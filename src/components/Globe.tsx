@@ -65,10 +65,10 @@ const Globe: React.FC = () => {
         d3.drag().on("drag", (event) => {
           const rotate = projection.rotate();
           const k = sensitivity / projection.scale();
-          projection.rotate([
-            rotate[0] + event.dx * k,
-            rotate[1] - event.dy * k,
-          ]);
+          //   projection.rotate([
+          //     rotate[0] + event.dx * k,
+          //     rotate[1] - event.dy * k,
+          //   ]);
           path = d3.geoPath().projection(projection);
           svg.selectAll("path").attr("d", path as any);
         })
@@ -107,7 +107,7 @@ const Globe: React.FC = () => {
       // Auto-rotation
       d3.timer(function (elapsed) {
         const rotate = projection.rotate();
-        const k = sensitivity / projection.scale() / 5;
+        const k = sensitivity / projection.scale();
         projection.rotate([rotate[0] - 1 * k, rotate[1]]);
         path = d3.geoPath().projection(projection);
         svg.selectAll("path").attr("d", path as any);
