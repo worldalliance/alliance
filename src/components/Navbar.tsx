@@ -12,25 +12,45 @@ export enum NavbarPage {
   Settings = "Settings",
 }
 
+const links: NavbarPage[] = [
+  NavbarPage.ActionItems,
+  NavbarPage.CurrentIssues,
+  NavbarPage.Announcements,
+  NavbarPage.Forum,
+  NavbarPage.People,
+];
+
+const destinations: Record<NavbarPage, string> = {
+  [NavbarPage.ActionItems]: "/home",
+  [NavbarPage.CurrentIssues]: "/issues",
+  [NavbarPage.Announcements]: "/announcements",
+  [NavbarPage.Forum]: "/forum",
+  [NavbarPage.People]: "/people",
+  [NavbarPage.Platform]: "/platform",
+  [NavbarPage.Settings]: "/settings",
+};
+
 interface NavbarProps {
   currentPage: NavbarPage;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ currentPage }) => {
   return (
-    <div className="flex flex-col font-itc w-[180px] bg-white border-r border-r-[#ddd] shadow-sm pl-[10px] h-screen text-left m-5 space-y-4 justify-center">
-      <div className="absolute w-100 top-10 left-0 flex flex-row justify-center items-center w-[190px]">
+    <div className="flex flex-col font-itc w-[180px] bg-white border-r border-r-[#ddd] shadow-sm pl-[10px] h-screen text-left space-y-4 justify-center pl-6 sticky">
+      <div className="absolute w-[100%] top-10 left-0 flex flex-row justify-center items-center">
         <Logo />
       </div>
-      <p>
-        <strong>Action Items</strong>
-      </p>
-      <p>Current Issues</p>
-      <p>Announcements</p>
-      <p>Forum</p>
-      <p>People</p>
-      <p>Platform</p>
-      <p>Settings</p>
+      {links.map((link) => (
+        <Link to={destinations[link]} key={link}>
+          <p
+            className={` p-2 m-0 ${
+              currentPage === link ? "font-itc-bold bg-gray-100" : ""
+            }`}
+          >
+            {link}
+          </p>
+        </Link>
+      ))}
     </div>
   );
 };

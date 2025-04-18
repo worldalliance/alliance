@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
+import { world } from "./world";
 
 interface Coordinate {
   longitude: number;
@@ -15,15 +16,7 @@ const Globe: React.FC = () => {
     const generateGlobe = async () => {
       if (!mapRef.current) return;
 
-      // Fetch world data
-      let worldData;
-      try {
-        const response = await fetch("/assets/world.json");
-        worldData = await response.json();
-      } catch (error) {
-        console.error("Failed to load world data:", error);
-        return;
-      }
+      let worldData = world;
 
       const width = mapRef.current.getBoundingClientRect().width;
       const scale = 200;
