@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import "./Globe.css";
 
 interface Coordinate {
   longitude: number;
@@ -150,7 +149,7 @@ const Globe: React.FC = () => {
     generateGlobe();
   }, []);
 
-  return <div id="map" ref={mapRef} className="globe-container"></div>;
+  return <div id="map" ref={mapRef} className="w-[450px] py-[30px]"></div>;
 };
 
 export default Globe;

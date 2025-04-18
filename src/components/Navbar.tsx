@@ -1,26 +1,27 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import "./Navbar.css";
+import Logo from "./Logo";
 
-interface NavbarProps {
-  isHomePage?: boolean;
+export enum NavbarPage {
+  ActionItems = "Action Items",
+  CurrentIssues = "Current Issues",
+  Announcements = "Announcements",
+  Forum = "Forum",
+  People = "People",
+  Platform = "Platform",
+  Settings = "Settings",
 }
 
-const Navbar: React.FC<NavbarProps> = ({ isHomePage = false }) => {
-  if (isHomePage) {
-    // Simple version for home page
-    return (
-      <div className="navbar home-navbar">
-        <img src="/assets/dotgrid-25H09-664520.png" alt="The Alliance Logo" />
-        <h1>The Alliance</h1>
-      </div>
-    );
-  }
+interface NavbarProps {
+  currentPage: NavbarPage;
+}
 
-  // Full sidebar version for dashboard page
+const Navbar: React.FC<NavbarProps> = ({ currentPage }) => {
   return (
-    <div className="navbar sidebar">
-      <img src="/assets/dotgrid-25H09-664520.png" alt="logo" className="logo" />
+    <div className="flex flex-col font-itc w-[180px] bg-white border-r border-r-[#ddd] shadow-sm pl-[10px] h-screen text-left m-5 space-y-4 justify-center">
+      <div className="absolute w-100 top-10 left-0 flex flex-row justify-center items-center w-[190px]">
+        <Logo />
+      </div>
       <p>
         <strong>Action Items</strong>
       </p>

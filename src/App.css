@@ -1,15 +1,11 @@
-/* Common shared styles */
+/* Common shared styles now handled by Tailwind */
 
-.row {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: center;
-}
-
-p {
-  margin: 0;
-  font-size: 11pt;
-  text-align: left;
+@layer components {
+  .row {
+    @apply flex flex-row flex-nowrap items-center justify-center;
+  }
+  
+  p {
+    @apply m-0 text-[11pt] text-left;
+  }
 }
