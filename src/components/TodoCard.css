@@ -1,0 +1,52 @@
+.todo-card {
+  padding: 10px;
+  border-radius: 10px;
+  background-color: white;
+  box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.03);
+  padding: 20px;
+  border: 1px solid #ddd;
+  margin-bottom: 10px;
+}
+
+.checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 35%;
+  border: 1px solid #333;
+  cursor: pointer;
+}
+
+.checkbox:hover {
+  background-color: #eee;
+}
+
+.todo-card-title {
+  font-family: 'Font';
+  font-weight: 400 !important;
+  font-size: 13pt;
+}
+
+.badge {
+  background-color: #eee;
+  padding: 3px 6px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #333;
+}
+
+.badge p {
+  font-size: 10pt;
+  font-weight: 600;
+  margin-top: 5px;
+  color: #fff;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  padding-left: 10px;
+}
