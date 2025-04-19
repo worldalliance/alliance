@@ -12,7 +12,7 @@ export enum NavbarPage {
   Settings = "Settings",
 }
 
-const links: NavbarPage[] = [
+export const links: NavbarPage[] = [
   NavbarPage.ActionItems,
   NavbarPage.CurrentIssues,
   NavbarPage.Announcements,
@@ -21,7 +21,7 @@ const links: NavbarPage[] = [
   NavbarPage.Platform,
 ];
 
-const destinations: Record<NavbarPage, string> = {
+export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.ActionItems]: "/home",
   [NavbarPage.CurrentIssues]: "/issues",
   [NavbarPage.Announcements]: "/announcements",
@@ -31,7 +31,7 @@ const destinations: Record<NavbarPage, string> = {
   [NavbarPage.Settings]: "/settings",
 };
 
-interface NavbarProps {
+export interface NavbarProps {
   currentPage: NavbarPage;
 }
 
