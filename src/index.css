@@ -60,10 +60,7 @@
   strong {
     @apply font-itc-bold;
   }
-  
-  a {
-    @apply text-black no-underline;
-  }
+
   
   code {
     @apply font-mono;

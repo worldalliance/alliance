@@ -18,6 +18,7 @@ const links: NavbarPage[] = [
   NavbarPage.Announcements,
   NavbarPage.Forum,
   NavbarPage.People,
+  NavbarPage.Platform,
 ];
 
 const destinations: Record<NavbarPage, string> = {
@@ -38,7 +39,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage }) => {
   return (
     <div className="flex flex-col font-itc w-[180px] bg-white border-r border-r-[#ddd] shadow-sm pl-[10px] h-screen text-left space-y-4 justify-center pl-6 sticky">
       <div className="absolute w-[100%] top-10 left-0 flex flex-row justify-center items-center">
-        <Logo />
+        <Logo href="/" />
       </div>
       {links.map((link) => (
         <Link to={destinations[link]} key={link}>
