@@ -7,7 +7,7 @@ import IssuePage from "./pages/IssuePage";
 
 function App() {
   return (
-    <Router basename="/alliance">
+    <Router>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/home" element={<HomePage />} />
