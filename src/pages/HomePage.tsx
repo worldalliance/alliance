@@ -2,6 +2,7 @@ import React from "react";
 import Navbar, { NavbarPage } from "../components/Navbar";
 import ActionItemCard, { ActionCardAction } from "../components/ActionItemCard";
 import ActivityPanel from "../components/ActivityPanel";
+import SocialPanel from "../components/SocialPanel";
 
 const todoItems = [
   {
@@ -10,14 +11,18 @@ const todoItems = [
     description:
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque vitae neque leo. Aliquam interdum pretium quam vitae auctor. Phasellus blandit aliquam magna vel congue.",
     category: "Climate",
-    actions: [ActionCardAction.Discuss, ActionCardAction.Details],
+    actions: [
+      ActionCardAction.Discuss,
+      ActionCardAction.Details,
+      ActionCardAction.Complete,
+    ],
   },
   {
     id: 2,
     title: "Call your senator to stop the loreming of ipsums",
     description:
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusm tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusm tempor incididunt ut labore et dolore magna aliqua.",
-    category: "Climate",
+    category: "Tech Safety",
     actions: [ActionCardAction.Discuss, ActionCardAction.Details],
   },
 ];
@@ -53,11 +58,10 @@ const HomePage: React.FC = () => {
             />
           ))}
         </div>
-        <div className="flex flex-col">
-          <h1 className="text-[#111] font-avenir text-[14pt] font-extrabold mb-5 my-0">
-            Updates
-          </h1>
+        <div className="flex flex-col gap-y-5">
+          <h1 className="font-avenir text-[14pt] font-bold">Updates</h1>
           <ActivityPanel />
+          <SocialPanel />
         </div>
       </div>
     </div>
