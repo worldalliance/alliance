@@ -31,7 +31,7 @@ const LandingPage: React.FC = () => {
         </div>
         <Link
           to="/home"
-          className="text-black font-extrabold font-itc-bold pt-[50px]"
+          className="text-black font-extrabold font-itc pt-[50px]"
         >
           Join Today.
         </Link>

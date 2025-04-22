@@ -7,7 +7,6 @@ module.exports = {
     extend: {
         fontFamily: {
             'itc': ['ITC', 'monospace'],
-            'itc-bold': ['ITC-Bold', 'monospace'],
             'berlingske': ['Berlingske', 'monospace'],
             'font': ['Font', 'monospace'],
             'toledo': ['Toledo', 'monospace'],
@@ -15,6 +14,9 @@ module.exports = {
             'eb-garamond': ['EB-Garamond', 'monospace'],
             'garamond': ['Garamond', 'monospace'],
             'bueno': ['Bueno', 'monospace'],
+            'sabon': ['Sabon', 'monospace'],
+            'avenir': ['Avenir', 'monospace'],
+            'nunito': ['Nunito Sans', 'monospace'],
           },
     },
   },

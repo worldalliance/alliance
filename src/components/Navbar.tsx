@@ -1,6 +1,6 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import Logo from "./Logo";
+import NavbarVertical from "./NavbarVertical";
+import NavbarHorizontal from "./NavbarHorizontal";
 
 export enum NavbarPage {
   ActionItems = "Action Items",
@@ -31,27 +31,25 @@ export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.Settings]: "/settings",
 };
 
+export const platformSublinks = [
+  { text: "Manifesto", to: "/platform/overview" },
+  { text: "Organization", to: "/platform/features" },
+  { text: "Roadmap", to: "/platform/docs" },
+];
+
 export interface NavbarProps {
   currentPage: NavbarPage;
+  format?: "horizontal" | "vertical";
 }
 
-const Navbar: React.FC<NavbarProps> = ({ currentPage }) => {
+const Navbar: React.FC<NavbarProps> = ({ currentPage, format }) => {
   return (
-    <div className="flex flex-col font-itc w-[180px] bg-white border-r border-r-[#ddd] shadow-sm pl-[10px] h-screen text-left space-y-4 justify-center pl-6 sticky">
-      <div className="absolute w-[100%] top-10 left-0 flex flex-row justify-center items-center">
-        <Logo href="/" />
-      </div>
-      {links.map((link) => (
-        <Link to={destinations[link]} key={link}>
-          <p
-            className={` p-2 m-0 ${
-              currentPage === link ? "font-itc-bold bg-gray-100" : ""
-            }`}
-          >
-            {link}
-          </p>
-        </Link>
-      ))}
+    <div className="font-avenir text-[11pt] bg-white fixed z-10">
+      {format === "vertical" ? (
+        <NavbarVertical currentPage={currentPage} />
+      ) : (
+        <NavbarHorizontal currentPage={currentPage} />
+      )}
     </div>
   );
 };

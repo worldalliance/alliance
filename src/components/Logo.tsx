@@ -4,9 +4,10 @@ import { useNavigate } from "react-router-dom";
 
 interface LogoProps {
   href?: string;
+  className?: string;
 }
 
-const Logo: React.FC<LogoProps> = ({ href }) => {
+const Logo: React.FC<LogoProps> = ({ href, className }) => {
   const navigate = useNavigate();
 
   const clickHandler = useCallback(() => {
@@ -16,9 +17,12 @@ const Logo: React.FC<LogoProps> = ({ href }) => {
   }, [href, navigate]);
 
   return (
-    <div onClick={clickHandler} className={`${href ? "cursor-pointer" : ""}`}>
-      <img src={godImage} alt="logo" className="w-[40px]" />
-    </div>
+    <img
+      src={godImage}
+      onClick={clickHandler}
+      alt="logo"
+      className={`${href ? "cursor-pointer" : ""} ${className} aspect-square w-[30px] `}
+    />
   );
 };
 

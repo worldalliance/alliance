@@ -44,25 +44,39 @@
 }
 
 @font-face {
-  font-family: 'ITC-Bold';
+  font-family: 'ITC';
   src: url('../public/assets/fonts/ITCAvantGardePro-Md.otf') format('opentype');
+  font-weight: bold;
 }
 
-@layer base {
-  body {
-    @apply m-0 font-itc;
-  }
-  
-  h1 {
-    @apply font-berlingske opacity-90 my-5;
-  }
-  
-  strong {
-    @apply font-itc-bold;
-  }
+@font-face {
+  font-family: 'Sabon';
+  src: url('../public/assets/fonts/sabon-regular.ttf') format('truetype');
+}
 
-  
-  code {
-    @apply font-mono;
-  }
+@font-face {
+    font-family: 'Sabon';
+    src: url('../public/assets/fonts/sabon-bold.ttf') format('truetype');
+    font-weight: bold;
+}
+
+@font-face {
+    font-family: 'Avenir';
+    src: url('../public/assets/fonts/Avenir_Next_W00_400.woff2') format('woff2');
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: 'Avenir';
+    src: url('../public/assets/fonts/Avenir_Next_W00_600.woff2') format('woff2');
+    font-weight: 600;
+}
+
+@font-face {
+    font-family: 'Roboto';
+    src: url('../public/assets/fonts/Roboto-VariableFont_wdth\,wght.ttf') format('truetype');
+}
+
+html {
+    overflow-x: hidden;
 }

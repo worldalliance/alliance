@@ -2,6 +2,7 @@ import React from "react";
 import type { Preview } from "@storybook/react";
 import { MemoryRouter } from "react-router";
 import "tailwindcss/tailwind.css";
+import "../src/index.css";
 
 const preview: Preview = {
   parameters: {
@@ -11,6 +12,7 @@ const preview: Preview = {
         date: /Date$/i,
       },
     },
+    layout: "fullscreen",
   },
   decorators: [
     (Story: any) => (

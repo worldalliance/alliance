@@ -1,6 +1,6 @@
 import React from "react";
 import Navbar, { NavbarPage } from "../components/Navbar";
-import TodoCard from "../components/TodoCard";
+import ActionItemCard from "../components/ActionItemCard";
 import ProblemAreaCard, {
   ProblemAreaCardProps,
 } from "../components/ProblemAreaCard";
