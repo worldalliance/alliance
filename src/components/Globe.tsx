@@ -7,7 +7,12 @@ interface Coordinate {
   latitude: number;
 }
 
-const Globe: React.FC = () => {
+interface GlobeProps {
+  spin?: boolean;
+  people?: number;
+}
+
+const Globe: React.FC<GlobeProps> = ({ spin = true, people = 0 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
 
   const generateGlobe = useCallback(async () => {
@@ -16,7 +21,7 @@ const Globe: React.FC = () => {
     let worldData = world;
 
     const width = mapRef.current.getBoundingClientRect().width;
-    const scale = 200;
+    const scale = width / 2;
     const height = scale * 2 + 10;
     const sensitivity = 75;
 
@@ -55,6 +60,7 @@ const Globe: React.FC = () => {
       d3.drag().on("drag", (event: d3.D3DragEvent) => {
         const rotate = projection.rotate();
         projection.rotate([rotate[0] + event.dx * k, rotate[1] - event.dy * k]);
+        updateElementsVisibility();
       })
     );
 
@@ -85,39 +91,135 @@ const Globe: React.FC = () => {
       .style("stroke-width", 0.5)
       .style("opacity", 1);
 
-    // Sample coordinates for points (empty in the original)
+    // Generate random coordinates for people dots within countries
     const coordinates: Coordinate[] = [];
 
-    // Auto-rotation
-    d3.timer(function (elapsed) {
-      const rotate = projection.rotate();
-      const k = sensitivity / projection.scale() / 2;
-      projection.rotate([rotate[0] - 1 * k, rotate[1]]);
-      path = d3.geoPath().projection(projection);
-      svg.selectAll("path").attr("d", path as any);
-    }, 200);
+    if (people > 0) {
+      // Calculate the total area of all countries to distribute dots proportionally
+      const countriesArea = worldData.features.reduce(
+        (acc: number, feature: any) => {
+          const area = feature.geometry ? d3.geoArea(feature.geometry) : 0;
+          return acc + area;
+        },
+        0
+      );
 
-    // Plot points on the globe
-    svg
-      .append("g")
-      .attr("class", "points")
+      for (let i = 0; i < 100; i++) {
+        coordinates.push({
+          longitude: Math.random() * 360 - 180,
+          latitude: Math.random() * 100 - 50,
+        });
+      }
+
+      worldData.features.forEach((feature: any) => {
+        if (!feature.geometry) return;
+        console.log(feature.properties.name);
+        if (feature.properties.name !== "USA") return;
+
+        const area = d3.geoArea(feature.geometry);
+        const countryPeopleCount = 100;
+
+        // Generate points within the country bounds
+        for (let i = 0; i < countryPeopleCount; i++) {
+          // Use a bounding box approach to find points within the country
+          const bounds = path.bounds(feature);
+          const x =
+            bounds[0][0] + Math.random() * (bounds[1][0] - bounds[0][0]);
+          const y =
+            bounds[0][1] + Math.random() * (bounds[1][1] - bounds[0][1]);
+
+          const lonlat = [x, y] as [number, number];
+          if (lonlat && d3.geoContains(feature, lonlat)) {
+            coordinates.push({
+              longitude: lonlat[0],
+              latitude: lonlat[1],
+            });
+          }
+        }
+      });
+    }
+
+    // Create a group for people dots
+    const peopleGroup = svg.append("g").attr("class", "people-points");
+
+    // Plot people dots on the globe
+    const dots = peopleGroup
       .selectAll("circle")
       .data(coordinates)
       .enter()
       .append("circle")
-      .attr("class", "point")
+      .attr("class", "person-point")
       .attr("cx", (d) => projection([d.longitude, d.latitude])![0])
       .attr("cy", (d) => projection([d.longitude, d.latitude])![1])
-      .attr("idx", (d, i) => i)
-      .attr("r", 3)
-      .attr("fill", "red");
-  }, []);
+      .attr("r", 2)
+      .attr("fill", "red")
+      .attr("opacity", 0.5);
+
+    // Function to check if a point is visible (on the front side of the globe)
+    function isVisible(d: Coordinate): boolean {
+      const [x, y] = projection([d.longitude, d.latitude])!;
+      const center = projection.translate();
+      const radius = projection.scale();
+
+      // Calculate distance from the center
+      const dx = x - center[0];
+      const dy = y - center[1];
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      const centerLonLat = projection.invert!([0, 0])!;
+      //   console.log(centerLonLat);
+      //   console.log(d);
+
+      if (d.longitude > 180) {
+        d.longitude -= 360;
+      }
+
+      if (
+        Math.abs(d.longitude - (centerLonLat[0] + 90)) > 88 ||
+        Math.abs(d.latitude) > 75
+      ) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+
+    // Function to update visibility of points based on globe rotation
+    function updateElementsVisibility() {
+      peopleGroup
+        .selectAll("circle")
+        .attr("visibility", (d: any) => (isVisible(d) ? "visible" : "hidden"));
+    }
+
+    // Auto-rotation
+    if (spin) {
+      d3.timer(function (elapsed) {
+        const rotate = projection.rotate();
+        const k = sensitivity / projection.scale() / 3;
+        projection.rotate([rotate[0] - 1 * k, rotate[1]]);
+        path = d3.geoPath().projection(projection);
+        svg.selectAll("path").attr("d", path as any);
+
+        // Update positions and visibility of people dots
+        dots
+          .attr("cx", (d) => projection([d.longitude, d.latitude])?.[0] ?? 0)
+          .attr("cy", (d) => projection([d.longitude, d.latitude])?.[1] ?? 0);
+
+        updateElementsVisibility();
+      }, 200);
+    }
+
+    projection.rotate([270, 0]);
+    path = d3.geoPath().projection(projection);
+    svg.selectAll("path").attr("d", path as any);
+    updateElementsVisibility();
+  }, [people]);
 
   useEffect(() => {
     generateGlobe();
   }, [generateGlobe]);
 
-  return <div id="map" ref={mapRef} className="w-[450px] py-[30px]"></div>;
+  return <div id="map" ref={mapRef} className="w-[100%]"></div>;
 };
 
 export default Globe;

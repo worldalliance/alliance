@@ -1,3 +1,5 @@
+const usedColors = ['blue', 'red', 'green', 'stone']
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -6,6 +8,7 @@ module.exports = {
   theme: {
     extend: {
         fontFamily: {
+            'newsreader': ['Newsreader', 'monospace'],
             'itc': ['ITC', 'monospace'],
             'berlingske': ['Berlingske', 'monospace'],
             'font': ['Font', 'monospace'],
@@ -15,11 +18,11 @@ module.exports = {
             'garamond': ['Garamond', 'monospace'],
             'bueno': ['Bueno', 'monospace'],
             'sabon': ['Sabon', 'monospace'],
-            'avenir': ['Avenir', 'monospace'],
+            'avenir': ['Newsreader', 'monospace'],
             'nunito': ['Nunito Sans', 'monospace'],
           },
     },
   },
+  safelist: usedColors.map((c) => `bg-${c}-500`),
   plugins: [],
 }
-

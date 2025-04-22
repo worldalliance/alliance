@@ -7,7 +7,7 @@ const SocialPanel = () => {
         <UserBubble />
         <div className="flex flex-col flex-1 justify-center">
           <p>
-            <span className="font-bold">John Ipsum </span>
+            <span className="font-bold">Friend Ipsum </span>
             <span className="text-gray-500">
               joined the boycott 10 minutes ago!
             </span>
@@ -18,7 +18,7 @@ const SocialPanel = () => {
         <UserBubble />
         <div className="flex flex-col flex-1 justify-center">
           <p>
-            <span className="font-bold">John Lorem </span>
+            <span className="font-bold">Friend Lorem </span>
             <span className="text-gray-500">did some other thing!</span>
           </p>
         </div>

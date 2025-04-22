@@ -7,7 +7,7 @@ const meta = {
   tags: [],
   parameters: {},
   args: {
-    currentPage: NavbarPage.ActionItems,
+    currentPage: NavbarPage.Dashboard,
   },
 } satisfies Meta<typeof Navbar>;
 

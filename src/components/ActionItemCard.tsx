@@ -2,6 +2,10 @@ import React from "react";
 import Badge from "./system/Badge";
 import Card from "./system/Card";
 import Button, { ButtonColor } from "./system/Button";
+import { useNavigate } from "react-router-dom";
+import StatusIndicator from "./StatusIndicator";
+import { Status } from "./StatusIndicator";
+
 interface ActionItemCardProps {
   title: string;
   description: string;
@@ -21,26 +25,33 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   category,
   actions,
 }) => {
+  const navigate = useNavigate();
+
   return (
-    <Card className="block bg-stone-50 mb-2.5 max-w-[600px] space-y-2 text-[11pt] font-avenir">
-      <div className="flex items-center justify-start w-[100%] space-x-3">
-        <p className="font-bold">{title}</p>
-        <Badge>{category}</Badge>
-      </div>
-      <div className="flex items-center justify-between ">
-        <p>{description}</p>
-      </div>
-      <div className="flex items-center justify-end">
-        {actions.map((action) => (
-          <Button
-            color={ButtonColor.Transparent}
-            key={action}
-            label={action}
-            onClick={() => {}}
-          />
-        ))}
-      </div>
-    </Card>
+    <div className="relative">
+      <StatusIndicator status={Status.InProgress} />
+      <Card className="block bg-stone-50 text-[11pt] font-avenir">
+        <div className="flex items-center justify-start w-[100%] space-x-3">
+          <p className="font-bold">{title}</p>
+          <Badge>{category}</Badge>
+        </div>
+        <div className="flex items-center justify-between ">
+          <p>{description}</p>
+        </div>
+        <div className="flex items-center justify-end">
+          {actions.map((action) => (
+            <Button
+              color={ButtonColor.Transparent}
+              key={action}
+              label={action}
+              onClick={() => {
+                navigate(`/action/${title}`);
+              }}
+            />
+          ))}
+        </div>
+      </Card>
+    </div>
   );
 };
 

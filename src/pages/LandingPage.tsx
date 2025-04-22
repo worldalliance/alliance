@@ -9,25 +9,17 @@ const LandingPage: React.FC = () => {
     <div className="flex flex-col items-center justify-center h-screen">
       <div className="flex flex-col items-center justify-center text-center">
         <div className="flex flex-row flex-nowrap items-center justify-center">
-          <Logo />
-          <h1 className="text-4xl ml-3">The Alliance</h1>
+          {/* <Logo /> */}
+          <h1 className="text-4xl ml-3 font-berlingske text-[48pt]">
+            The Alliance
+          </h1>
         </div>
-        <p className="max-w-[500px] text-[12pt] mb-5">
+        <p className="max-w-[500px] text-[12pt] m-5">
           An online democratic polity to solve the world's most pressing issues
           in climate, AI, inequality, and other such things like that.
         </p>
-        <div className="flex flex-row flex-nowrap items-center justify-center">
-          <div className="w-[20vw] text-right space-y-8">
-            <p>Alliance</p>
-            <p>Alliance</p>
-            <p>Alliance</p>
-          </div>
+        <div className="flex flex-row flex-nowrap items-center justify-center w-[400px]">
           <Globe />
-          <div className="w-[20vw] text-left space-y-4">
-            <p>Alliance</p>
-            <p>Alliance</p>
-            <p>Alliance</p>
-          </div>
         </div>
         <Link
           to="/home"

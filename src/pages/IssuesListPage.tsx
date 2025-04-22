@@ -30,7 +30,6 @@ const IssuesListPage: React.FC = () => {
 
   return (
     <div className="flex flex-row min-h-screen">
-      <Navbar currentPage={NavbarPage.CurrentIssues} />
       <div className="w-[calc(100%-200px)] items-center justify-center p-10 flex flex-col flex-nowrap ">
         <h1 className="text-[#111] font-font text-[15pt] font-extrabold mb-5 text-center">
           Alliance Priorities

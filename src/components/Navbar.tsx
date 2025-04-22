@@ -3,8 +3,8 @@ import NavbarVertical from "./NavbarVertical";
 import NavbarHorizontal from "./NavbarHorizontal";
 
 export enum NavbarPage {
-  ActionItems = "Action Items",
-  CurrentIssues = "Current Issues",
+  Dashboard = "Dashboard",
+  CurrentActions = "Current Actions",
   Announcements = "Announcements",
   Forum = "Forum",
   People = "People",
@@ -13,8 +13,8 @@ export enum NavbarPage {
 }
 
 export const links: NavbarPage[] = [
-  NavbarPage.ActionItems,
-  NavbarPage.CurrentIssues,
+  NavbarPage.Dashboard,
+  NavbarPage.CurrentActions,
   NavbarPage.Announcements,
   NavbarPage.Forum,
   NavbarPage.People,
@@ -22,8 +22,8 @@ export const links: NavbarPage[] = [
 ];
 
 export const destinations: Record<NavbarPage, string> = {
-  [NavbarPage.ActionItems]: "/home",
-  [NavbarPage.CurrentIssues]: "/issues",
+  [NavbarPage.Dashboard]: "/home",
+  [NavbarPage.CurrentActions]: "/actions",
   [NavbarPage.Announcements]: "/announcements",
   [NavbarPage.Forum]: "/forum",
   [NavbarPage.People]: "/people",

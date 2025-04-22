@@ -3,6 +3,8 @@ import Navbar, { NavbarPage } from "../components/Navbar";
 import ActionItemCard, { ActionCardAction } from "../components/ActionItemCard";
 import ActivityPanel from "../components/ActivityPanel";
 import SocialPanel from "../components/SocialPanel";
+import ActionPromptCard from "../components/ActionPromptCard";
+import Card, { CardStyle } from "../components/system/Card";
 
 const todoItems = [
   {
@@ -30,10 +32,15 @@ const todoItems = [
 const HomePage: React.FC = () => {
   return (
     <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-stone-50">
-      <Navbar currentPage={NavbarPage.ActionItems} format="horizontal" />
       <div className="flex flex-row py-[80px] justify-center w-full gap-x-[20px]">
-        <div className="flex flex-col border-r border-gray-300 pr-5">
-          <h1 className="text-[#111] font-avenir text-[14pt] font-extrabold mb-5 my-0">
+        <div className="flex flex-col border-r border-gray-300 pr-5 max-w-[600px] space-y-3">
+          <ActionPromptCard
+            id="1"
+            title="Boycott Lorem Inc."
+            description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque vitae neque leo. Aliquam interdum pretium quam vitae auctor. Phasellus blandit aliquam magna vel congue."
+            category="Climate"
+          />
+          <h1 className="text-[#111] text-[14pt] font-extrabold my-5">
             You've committed to
           </h1>
           {todoItems.map((item) => (
@@ -45,18 +52,21 @@ const HomePage: React.FC = () => {
               actions={item.actions}
             />
           ))}
-          <h1 className="text-[#111] font-avenir text-[14pt] font-extrabold my-5">
+          <h1 className="text-[#111] text-[14pt] font-extrabold my-5">
             Action History
           </h1>
-          {todoItems.map((item) => (
-            <ActionItemCard
-              key={item.id}
-              title={item.title}
-              description={item.description}
-              category={item.category}
-              actions={item.actions}
-            />
-          ))}
+          <Card style={CardStyle.Outline}>
+            <p>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+              eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            </p>
+          </Card>
+          <Card style={CardStyle.Outline}>
+            <p>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+              eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            </p>
+          </Card>
         </div>
         <div className="flex flex-col gap-y-5">
           <h1 className="font-avenir text-[14pt] font-bold">Updates</h1>

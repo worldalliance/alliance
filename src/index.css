@@ -77,6 +77,37 @@
     src: url('../public/assets/fonts/Roboto-VariableFont_wdth\,wght.ttf') format('truetype');
 }
 
+@font-face {
+    font-family: 'Newsreader';
+    src: url('../public/assets/fonts/Newsreader-VariableFont_opsz\,wght.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'Playfair';
+    src: url('../public/assets/fonts/PlayfairDisplay-VariableFont_wght.ttf') format('truetype');
+}
+
+
 html {
     overflow-x: hidden;
+    font-family: 'Newsreader';
+    font-size: 11pt;
+}
+
+h1 {
+    font-family: 'Newsreader';
+    font-weight: bold;
+    font-size: 20px;
+    /* margin-top: 20px; */
+}
+
+h2 {
+    font-family: 'Newsreader';
+    font-weight: bold;
+    font-size: 16px;
+}
+
+p {
+    font-family: 'Newsreader';
+    font-size: 11pt;
 }

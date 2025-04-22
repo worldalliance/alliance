@@ -8,9 +8,9 @@ interface ButtonProps {
 }
 
 export enum ButtonColor {
-  Stone = "stone",
-  Green = "green",
-  Red = "red",
+  Stone = "bg-stone-500",
+  Green = "bg-green-500",
+  Red = "bg-red-500",
   Transparent = "transparent",
 }
 
@@ -30,10 +30,10 @@ const Button: React.FC<ButtonProps> = ({
   const color = colorProp ?? ButtonColor.Stone;
   return (
     <div
-      className={`px-3 py-1 bg-${ButtonColorClasses[color]}-500 rounded ${className} cursor-pointer hover:bg-${ButtonColorClasses[color]}-100 ${
+      className={`px-3 py-1 pt-2 ${ButtonColorClasses[color]} rounded ${className} cursor-pointer hover:bg-${ButtonColorClasses[color]}-100 font-newsreader ${
         color === ButtonColor.Transparent
-          ? "bg-transparent text-black hover:bg-black/10 font-avenir font-bold"
-          : "text-white py-2"
+          ? "bg-transparent text-black hover:bg-black/10"
+          : "text-white py-2 bg-stone-500"
       }`}
       onClick={onClick}
     >
