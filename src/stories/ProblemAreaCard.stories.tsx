@@ -4,7 +4,7 @@ import ProblemAreaCard from "../components/ProblemAreaCard";
 const meta = {
   title: "Alliance/ProblemAreaCard",
   component: ProblemAreaCard,
-  tags: [],
+  tags: ["component"],
   parameters: {
     layout: "centered",
   },

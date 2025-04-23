@@ -7,9 +7,14 @@ import {
   platformSublinks,
 } from "./Navbar";
 import DropdownLink from "./DropdownLink";
+import LandingNavbar from "./LandingNavbar";
 export type InnerNavbarProps = Pick<NavbarProps, "currentPage">;
 
 const NavbarHorizontal: React.FC<InnerNavbarProps> = ({ currentPage }) => {
+  if (document.location.href.endsWith("#/")) {
+    return <LandingNavbar />;
+  }
+
   return (
     <div
       className="

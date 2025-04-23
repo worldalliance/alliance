@@ -4,7 +4,7 @@ import Navbar, { NavbarPage } from "../components/Navbar";
 const meta = {
   title: "Alliance/Navbar",
   component: Navbar,
-  tags: [],
+  tags: ["component"],
   parameters: {},
   args: {
     currentPage: NavbarPage.Dashboard,

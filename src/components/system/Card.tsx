@@ -21,7 +21,7 @@ const Card: React.FC<CardProps> = ({ children, className, onClick, style }) => {
     [CardStyle.White]: "bg-white border-gray-200",
     [CardStyle.Alert]: "bg-sky-100 border-sky-300 shadow-md",
     [CardStyle.Outline]: "bg-transparent border-gray-200",
-    [CardStyle.Grey]: "bg-stone-200 border-gray-300 border-[1.5px]",
+    [CardStyle.Grey]: "bg-stone-200/75 border-gray-300 border-[1.5px]",
     [CardStyle.Bubble]:
       "!rounded-full bg-stone-200 border-gray-300 border-[1.5px] items-center justify-center text-center text-[9pt] max-w-[200px]",
   };

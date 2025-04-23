@@ -1,14 +1,17 @@
 import UserBubble from "./UserBubble";
 
-const UserBubbleRow: React.FC = () => {
+interface UserBubbleRowProps {
+  n?: number;
+  bgColor?: string;
+}
+
+const UserBubbleRow: React.FC<UserBubbleRowProps> = ({ n = 5 }) => {
   return (
     <div className="flex flex-row gap-x-2">
-      <UserBubble clipped={true} />
-      <UserBubble clipped={true} />
-      <UserBubble clipped={true} />
-      <UserBubble clipped={true} />
-      <UserBubble clipped={true} />
-      <UserBubble />
+      {Array.from({ length: n - 1 }).map((_, i) => (
+        <UserBubble clipped={true} key={i} />
+      ))}
+      <UserBubble clipped={false} />
     </div>
   );
 };

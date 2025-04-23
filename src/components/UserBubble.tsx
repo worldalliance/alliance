@@ -4,6 +4,7 @@ import userImage from "../assets/icons8-user-80.png";
 interface UserBubbleProps extends PropsWithChildren {
   className?: string;
   clipped?: boolean;
+  bgColor?: string;
 }
 
 const UserBubble: React.FC<UserBubbleProps> = ({

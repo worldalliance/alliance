@@ -4,7 +4,7 @@ import ActionItemCard, { ActionCardAction } from "../components/ActionItemCard";
 const meta = {
   title: "Alliance/ActionItemCard",
   component: ActionItemCard,
-  tags: [],
+  tags: ["component"],
   parameters: {
     layout: "centered",
   },

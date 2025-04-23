@@ -111,3 +111,7 @@ p {
     font-family: 'Newsreader';
     font-size: 11pt;
 }
+
+a {
+    color: var(--text-blue-500);
+}

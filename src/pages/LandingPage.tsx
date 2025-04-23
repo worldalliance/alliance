@@ -1,32 +1,33 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import Navbar from "../components/Navbar";
-import Globe from "../components/Globe";
-import Logo from "../components/Logo";
+import HighResGlobe from "../components/HighResGlobe";
+import Card from "../components/system/Card";
 
 const LandingPage: React.FC = () => {
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <div className="flex flex-col items-center justify-center text-center">
-        <div className="flex flex-row flex-nowrap items-center justify-center">
-          {/* <Logo /> */}
-          <h1 className="text-4xl ml-3 font-berlingske text-[48pt]">
-            The Alliance
-          </h1>
+    <div className="flex flex-col items-center justify-center bg-gray-950 text-white">
+      <div className="flex flex-col items-center justify-center text-center pt-[50px]">
+        <div className="flex flex-row flex-nowrap items-center justify-center h-[500px]">
+          <div className="w-[500px] ">
+            <HighResGlobe />
+          </div>
         </div>
-        <p className="max-w-[500px] text-[12pt] m-5">
-          An online democratic polity to solve the world's most pressing issues
-          in climate, AI, inequality, and other such things like that.
-        </p>
-        <div className="flex flex-row flex-nowrap items-center justify-center w-[400px]">
-          <Globe />
+        <div className="flex flex-col items-center text-left w-[100%] mt-[50px] gap-y-10 p-10 max-w-[1000px]">
+          <h1 className="text-4xl text-[32pt]">Our Priorities</h1>
+          <div className="flex flex-row flex-nowrap items-center justify-center gap-x-10 w-full text-center">
+            <div className="bg-white/10 h-[400px] flex-1 p-3 rounded">
+              <h1>Lorem</h1>
+            </div>
+            <div className="bg-white/10 h-[400px] flex-1 p-3 rounded">
+              <h1>Ipsum</h1>
+            </div>
+            <div className="bg-white/10 h-[400px] flex-1 p-3 rounded">
+              <h1>Dolor</h1>
+            </div>
+          </div>
         </div>
-        <Link
-          to="/home"
-          className="text-black font-extrabold font-itc pt-[50px]"
-        >
-          Join Today.
-        </Link>
+
+        <div className="flex flex-row flex-nowrap items-center justify-center w-[400px]"></div>
       </div>
     </div>
   );

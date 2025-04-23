@@ -10,9 +10,14 @@ interface Coordinate {
 interface GlobeProps {
   spin?: boolean;
   people?: number;
+  strokeWidth?: number;
 }
 
-const Globe: React.FC<GlobeProps> = ({ spin = true, people = 0 }) => {
+const Globe: React.FC<GlobeProps> = ({
+  spin = true,
+  people = 0,
+  strokeWidth = 0.5,
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
 
   const generateGlobe = useCallback(async () => {
@@ -21,7 +26,7 @@ const Globe: React.FC<GlobeProps> = ({ spin = true, people = 0 }) => {
     let worldData = world;
 
     const width = mapRef.current.getBoundingClientRect().width;
-    const scale = width / 2;
+    const scale = width / 2 - 2;
     const height = scale * 2 + 10;
     const sensitivity = 75;
 
@@ -48,7 +53,7 @@ const Globe: React.FC<GlobeProps> = ({ spin = true, people = 0 }) => {
       .append("circle")
       .attr("fill", "#fff")
       .attr("stroke", "#000")
-      .attr("stroke-width", "0.5")
+      .attr("stroke-width", strokeWidth)
       .attr("cx", width / 2)
       .attr("cy", height / 2)
       .attr("r", initialScale);
@@ -86,9 +91,9 @@ const Globe: React.FC<GlobeProps> = ({ spin = true, people = 0 }) => {
         (d: any) => "country_" + d.properties.name.replace(" ", "_")
       )
       .attr("d", path as any)
-      .attr("fill", "#fff")
+      .attr("fill", "#c0e3aa")
       .style("stroke", "black")
-      .style("stroke-width", 0.5)
+      .style("stroke-width", strokeWidth)
       .style("opacity", 1);
 
     // Generate random coordinates for people dots within countries
@@ -152,14 +157,12 @@ const Globe: React.FC<GlobeProps> = ({ spin = true, people = 0 }) => {
       .attr("cx", (d) => projection([d.longitude, d.latitude])![0])
       .attr("cy", (d) => projection([d.longitude, d.latitude])![1])
       .attr("r", 2)
-      .attr("fill", "red")
-      .attr("opacity", 0.5);
+      .attr("fill", "#349cf7")
+      .attr("opacity", "1");
 
-    // Function to check if a point is visible (on the front side of the globe)
     function isVisible(d: Coordinate): boolean {
       const [x, y] = projection([d.longitude, d.latitude])!;
       const center = projection.translate();
-      const radius = projection.scale();
 
       // Calculate distance from the center
       const dx = x - center[0];
@@ -170,12 +173,9 @@ const Globe: React.FC<GlobeProps> = ({ spin = true, people = 0 }) => {
       //   console.log(centerLonLat);
       //   console.log(d);
 
-      if (d.longitude > 180) {
-        d.longitude -= 360;
-      }
-
       if (
-        Math.abs(d.longitude - (centerLonLat[0] + 90)) > 88 ||
+        (Math.abs(d.longitude - (centerLonLat[0] + 90)) > 88 &&
+          Math.abs(d.longitude - (centerLonLat[0] + 90 - 360)) > 88) ||
         Math.abs(d.latitude) > 75
       ) {
         return false;

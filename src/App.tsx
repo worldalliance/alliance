@@ -15,7 +15,10 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/home" element={<HomePage />} />
-          <Route path="/action/:id" element={<ActionPage />} />
+          <Route
+            path="/action/:id"
+            element={<ActionPage state="uncommitted" />}
+          />
           <Route path="/issues" element={<IssuesListPage />} />
           <Route path="/issues/:issue" element={<IssuePage />} />
         </Routes>

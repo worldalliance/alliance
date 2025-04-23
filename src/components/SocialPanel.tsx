@@ -9,7 +9,7 @@ const SocialPanel = () => {
           <p>
             <span className="font-bold">Friend Ipsum </span>
             <span className="text-gray-500">
-              joined the boycott 10 minutes ago!
+              joined some action 10 minutes ago!
             </span>
           </p>
         </div>
