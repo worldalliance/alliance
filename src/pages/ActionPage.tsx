@@ -44,11 +44,15 @@ const ActionPage: React.FC<ActionState> = ({ state }) => {
           </a>
         </p>
         {state === "committed" && <PokePanel />}
-        <h1 className="mt-5">Why?</h1>
-        <p>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua.
-        </p>
+        {state === "uncommitted" && (
+          <Card style={CardStyle.Grey} className="mb-5">
+            <h1>Why Join?</h1>
+            <p>
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+              eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            </p>
+          </Card>
+        )}
         <h1>What you can do</h1>
         <p>
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
@@ -76,7 +80,7 @@ const ActionPage: React.FC<ActionState> = ({ state }) => {
       </div>
       <div className="flex flex-col gap-y-5 items-stretch max-w-[300px]">
         <div className="w-[75 self-center">
-          <Globe people={2300} />
+          <Globe people={23} colored />
           <p className="text-center pt-2 text-[11pt]">
             23,053 people committed
           </p>

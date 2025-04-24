@@ -11,12 +11,14 @@ interface GlobeProps {
   spin?: boolean;
   people?: number;
   strokeWidth?: number;
+  colored?: boolean;
 }
 
 const Globe: React.FC<GlobeProps> = ({
   spin = true,
   people = 0,
   strokeWidth = 0.5,
+  colored = false,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -71,9 +73,15 @@ const Globe: React.FC<GlobeProps> = ({
 
     svg.call(
       // @ts-ignore - d3 typing issue with zoom
-      d3.zoom().on("zoom", () => {
-        // Zoom functionality is commented out in the original
-      })
+      d3
+        .zoom()
+        .filter((event) => {
+          // Only allow zoom on ctrl+scroll, or other interactions
+          return (
+            !event.ctrlKey && !event.button && !event.type.includes("wheel")
+          );
+        })
+        .on("zoom", null)
     );
 
     let map = svg.append("g");
@@ -91,7 +99,7 @@ const Globe: React.FC<GlobeProps> = ({
         (d: any) => "country_" + d.properties.name.replace(" ", "_")
       )
       .attr("d", path as any)
-      .attr("fill", "#c0e3aa")
+      .attr("fill", colored ? "#c0e3aa" : "#fff")
       .style("stroke", "black")
       .style("stroke-width", strokeWidth)
       .style("opacity", 1);
@@ -195,7 +203,7 @@ const Globe: React.FC<GlobeProps> = ({
     if (spin) {
       d3.timer(function (elapsed) {
         const rotate = projection.rotate();
-        const k = sensitivity / projection.scale() / 3;
+        const k = -sensitivity / projection.scale() / 3;
         projection.rotate([rotate[0] - 1 * k, rotate[1]]);
         path = d3.geoPath().projection(projection);
         svg.selectAll("path").attr("d", path as any);
@@ -219,7 +227,7 @@ const Globe: React.FC<GlobeProps> = ({
     generateGlobe();
   }, [generateGlobe]);
 
-  return <div id="map" ref={mapRef} className="w-[100%]"></div>;
+  return <div id="map" ref={mapRef} className="w-[100%] aspect-square"></div>;
 };
 
 export default Globe;

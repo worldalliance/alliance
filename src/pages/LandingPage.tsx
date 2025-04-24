@@ -2,34 +2,38 @@ import React from "react";
 import { Link } from "react-router-dom";
 import HighResGlobe from "../components/HighResGlobe";
 import Card from "../components/system/Card";
+import Globe from "../components/Globe";
+import downArrow from "../assets/icons8-expand-arrow-96.png";
 
 const LandingPage: React.FC = () => {
   return (
-    <div className="flex flex-col items-center justify-center bg-gray-950 text-white">
-      <div className="flex flex-col items-center justify-center text-center pt-[50px]">
-        <div className="flex flex-row flex-nowrap items-center justify-center h-[500px]">
-          <div className="w-[500px] ">
-            <HighResGlobe />
-          </div>
-        </div>
-        <div className="flex flex-col items-center text-left w-[100%] mt-[50px] gap-y-10 p-10 max-w-[1000px]">
-          <h1 className="text-4xl text-[32pt]">Our Priorities</h1>
-          <div className="flex flex-row flex-nowrap items-center justify-center gap-x-10 w-full text-center">
-            <div className="bg-white/10 h-[400px] flex-1 p-3 rounded">
-              <h1>Lorem</h1>
-            </div>
-            <div className="bg-white/10 h-[400px] flex-1 p-3 rounded">
-              <h1>Ipsum</h1>
-            </div>
-            <div className="bg-white/10 h-[400px] flex-1 p-3 rounded">
-              <h1>Dolor</h1>
+    <>
+      <div className="flex flex-col items-center justify-center bg-white text-white h-screen">
+        <div className="flex flex-col items-center justify-center text-center pt-[50px]">
+          <div className="flex flex-row flex-nowrap items-center justify-center h-[500px]">
+            <div className="w-[500px] ">
+              <Globe strokeWidth={0.7} />
+              <p
+                className="absolute bottom-0 top-0 left-0 m-auto right-0 z-10 text-black/90 py-8 text-xl w-fit h-fit pt-20"
+                style={{
+                  filter: "drop-shadow(0 0 10px rgb(255, 255, 255))",
+                }}
+              >
+                24,215 members
+              </p>
             </div>
           </div>
         </div>
-
-        <div className="flex flex-row flex-nowrap items-center justify-center w-[400px]"></div>
+        <div className="absolute bottom-10 left-0 right-0 flex flex-row justify-center items-center">
+          <img src={downArrow} alt="down arrow" className="w-[20px] h-[20px]" />
+        </div>
       </div>
-    </div>
+      <div className="flex flex-col items-center bg-white text-black h-screen p-10">
+        <div className="flex flex-col text-center">
+          <h1 className="text-4xl">Our Priorities</h1>
+        </div>
+      </div>
+    </>
   );
 };
 

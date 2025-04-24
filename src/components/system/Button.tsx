@@ -13,6 +13,7 @@ export enum ButtonColor {
   Red = "bg-red-500",
   Blue = "bg-cyan-600",
   Transparent = "transparent",
+  Grey = "bg-gray-200 !text-black",
 }
 
 const ButtonColorClasses: Record<ButtonColor, string> = {
@@ -21,6 +22,7 @@ const ButtonColorClasses: Record<ButtonColor, string> = {
   [ButtonColor.Red]: "red",
   [ButtonColor.Blue]: "blue",
   [ButtonColor.Transparent]: "transparent",
+  [ButtonColor.Grey]: "gray",
 };
 
 const Button: React.FC<ButtonProps> = ({
@@ -32,14 +34,14 @@ const Button: React.FC<ButtonProps> = ({
   const color = colorProp ?? ButtonColor.Stone;
   return (
     <div
-      className={`px-3 py-1 ${color} w-fit h-fit rounded ${className} cursor-pointer hover:bg-${ButtonColorClasses[color]}-100 font-newsreader ${
+      className={`px-3 py-1 w-fit h-fit rounded ${className} cursor-pointer hover:bg-${ButtonColorClasses[color]}-100 font-newsreader ${
         color === ButtonColor.Transparent
           ? "bg-transparent text-black hover:bg-black/10 pt-2"
           : "text-white py-2 pt-3"
-      }`}
+      }  ${color} `}
       onClick={onClick}
     >
-      <p>{label}</p>
+      {label}
     </div>
   );
 };

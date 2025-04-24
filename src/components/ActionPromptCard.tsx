@@ -31,7 +31,7 @@ const ActionPromptCard: React.FC<ActionPromptCardProps> = ({
         }}
       >
         <div className="flex items-center justify-start w-[100%] space-x-3">
-          <p className="font-bold">New Action: {title}</p>
+          <p className="font-bold">Commit to a new action: {title}</p>
         </div>
         <div className="flex items-center justify-between ">
           <p>{description}</p>

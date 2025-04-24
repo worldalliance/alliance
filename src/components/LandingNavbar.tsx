@@ -10,7 +10,7 @@ const LandingNavbar = () => {
     <div
       className="
       flex flex-row border-b border-[#ddd]
-    w-screen text-left space-x-10 items-center justify-evenly pl-6 sticky py-3 bg-stone-50"
+    w-screen text-left space-x-10 items-center justify-evenly pl-6 sticky py-3 bg-white"
     >
       <Link to="/">
         <p className="pt-1 whitespace-nowrap !text-[12pt] ">News</p>
@@ -19,7 +19,7 @@ const LandingNavbar = () => {
         <p className="pt-1 whitespace-nowrap !text-[12pt]">Issues</p>
       </Link>
       <Link to="/">
-        <p className="pt-1 whitespace-nowrap !text-[14pt] font-font">
+        <p className="pt-1 whitespace-nowrap !text-[14pt] font-berlingske">
           The ALLIANCE
         </p>
       </Link>

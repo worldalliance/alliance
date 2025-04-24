@@ -49,7 +49,7 @@ const HighResGlobe = () => {
       animateIn={false}
       globeImageUrl="//cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg"
       bumpImageUrl="//cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png"
-      atmosphereColor="#000000"
+      atmosphereColor="#00000000"
       backgroundColor="rgba(0, 0, 0, 0)"
     />
   );

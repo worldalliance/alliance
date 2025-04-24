@@ -33,16 +33,16 @@ const HomePage: React.FC = () => {
   return (
     <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-stone-50">
       <div className="flex flex-row py-[80px] justify-center w-full gap-x-[20px]">
-        <div className="flex flex-col border-r border-gray-300 pr-5 max-w-[600px] space-y-3">
+        <div className="flex flex-col border-r border-gray-300 pr-5 max-w-[600px] gap-y-5 overflow-y-scroll">
+          <h1 className="text-[#111] text-[14pt]">
+            Welcome back! Here's what you can help with right now
+          </h1>
           <ActionPromptCard
             id="1"
-            title="Boycott Lorem Inc."
+            title="Boycotting Lorem Inc."
             description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque vitae neque leo. Aliquam interdum pretium quam vitae auctor. Phasellus blandit aliquam magna vel congue."
             category="Climate"
           />
-          <h1 className="text-[#111] text-[14pt] font-extrabold my-5">
-            You've committed to
-          </h1>
           {todoItems.map((item) => (
             <ActionItemCard
               key={item.id}
@@ -52,7 +52,7 @@ const HomePage: React.FC = () => {
               actions={item.actions}
             />
           ))}
-          <h1 className="text-[#111] text-[14pt] font-extrabold my-5">
+          <h1 className="text-[#111] text-[14pt] font-extrabold">
             Action History
           </h1>
           <Card style={CardStyle.Outline}>
@@ -68,9 +68,23 @@ const HomePage: React.FC = () => {
             </p>
           </Card>
         </div>
-        <div className="flex flex-col gap-y-5">
-          <h1 className="font-avenir text-[14pt] font-bold">Updates</h1>
-          <ActivityPanel />
+        <div className="flex flex-col gap-y-5 w-[320px]">
+          <Card style={CardStyle.White}>
+            <h1 className="font-bold pb-0">You've committed to:</h1>
+            <div className="flex flex-row gap-x-2 items-center cursor-pointer hover:text-blue-700 transition-all duration-300">
+              <div className="w-3 h-3 bg-blue-500 rounded-full mb-1"></div>
+              <p>Boycott Lorem Inc. for the next week</p>
+            </div>
+            {/* </Card>
+          <Card style={CardStyle.Outline}> */}
+            <div className="flex flex-row gap-x-2 items-center cursor-pointer hover:text-blue-700 transition-all duration-300">
+              <div className="w-3 h-3 bg-blue-500 rounded-full mb-1"></div>
+              <p>
+                Find <b>2</b> friends to join lorem ipsum
+              </p>
+            </div>
+          </Card>
+          <h1 className="font-bold pt-5">Friend Activity</h1>
           <SocialPanel />
         </div>
       </div>
