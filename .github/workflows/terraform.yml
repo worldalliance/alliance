@@ -73,10 +73,12 @@ jobs:
             sudo yum install -y unzip nginx
 
             # Create a new app directory
-            mkdir -p ~/my-react-app
+            mkdir -p ~/alliance-app
 
             # Unzip build into that directory
-            unzip -o ~/react-build.zip -d ~/my-react-app
+            unzip -o ~/react-build.zip -d ~/alliance-app
+
+            sudo rm -f /etc/nginx/conf.d/default.conf
 
             # Write Nginx config
             cat <<EOF | sudo tee /etc/nginx/conf.d/react.conf
@@ -84,7 +86,7 @@ jobs:
               listen 80;
               server_name _;
 
-              root /home/ec2-user/my-react-app;
+              root /home/ec2-user/alliance-app/build;
               index index.html;
 
               location / {
@@ -92,6 +94,9 @@ jobs:
               }
             }
             EOF
+
+            chmod o+x /home/ec2-user
+            chmod -R o+rx /home/ec2-user/alliance-app
 
             # Remove the default site config (optional but cleaner)
             sudo rm -f /etc/nginx/conf.d/default.conf
