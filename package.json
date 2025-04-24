@@ -2,7 +2,7 @@
   "name": "reactmocks",
   "version": "0.1.0",
   "private": false,
-  "homepage": "https://caseymanning.github.io/alliance/",
+  "homepage": "http://ec2-52-33-140-117.us-west-2.compute.amazonaws.com/",
   "dependencies": {
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
