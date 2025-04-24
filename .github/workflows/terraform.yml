@@ -69,7 +69,32 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            # Install dependencies
             sudo yum install -y unzip nginx
-            rm -rf /usr/share/nginx/html/*
-            unzip ~/react-build.zip -d /usr/share/nginx/html/
+
+            # Create a new app directory
+            mkdir -p ~/my-react-app
+
+            # Unzip build into that directory
+            unzip -o ~/react-build.zip -d ~/my-react-app
+
+            # Write Nginx config
+            cat <<EOF | sudo tee /etc/nginx/conf.d/react.conf
+            server {
+              listen 80;
+              server_name _;
+
+              root /home/ec2-user/my-react-app;
+              index index.html;
+
+              location / {
+                try_files \$uri /index.html;
+              }
+            }
+            EOF
+
+            # Remove the default site config (optional but cleaner)
+            sudo rm -f /etc/nginx/conf.d/default.conf
+
+            # Restart Nginx
             sudo systemctl restart nginx
