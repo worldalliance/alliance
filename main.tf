@@ -6,17 +6,11 @@ terraform {
     }
   }
   required_version = ">= 1.2.0"
-#  cloud { 
-#    organization = "alliance-app" 
-#    workspaces { 
-#      name = "alliance-workspace" 
-#    } 
-#  } 
 }
 
 provider "aws" {
   region = "us-west-2"
-  shared_credentials_files = [".aws/credentials"]
+  #shared_credentials_files = [".aws/credentials"]
 }
 
 resource "aws_default_vpc" "default_vpc" {
