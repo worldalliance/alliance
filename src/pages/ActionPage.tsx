@@ -18,7 +18,7 @@ const ActionPage: React.FC<ActionState> = ({ state }) => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-row min-h-screen pt-[100px] w-full justify-center gap-x-7 bg-stone-50">
+    <div className="flex flex-row min-h-screen pt-12 w-full justify-center gap-x-7 bg-stone-50">
       <div className="flex flex-col max-w-[700px] gap-y-3 border-r border-gray-200 pr-7">
         <div className="flex flex-row justify-between items-center">
           <h1 className="font-berlingske text-[28pt]">
