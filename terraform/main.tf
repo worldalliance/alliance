@@ -26,7 +26,7 @@ resource "aws_key_pair" "ssh-key" {
 
 resource "aws_security_group" "ec2_security_group" {
   name        = "ec2 security group"
-  description = "allow access on ports 80, 22, 3005"
+  description = "allow access on ports 80 and 22"
   vpc_id      = aws_default_vpc.default_vpc.id
 
   ingress {
@@ -72,6 +72,7 @@ resource "aws_instance" "app_server" {
   associate_public_ip_address = true
   key_name = "ssh-key"
 
+  user_data = ""
   user_data_replace_on_change = true
 
   tags = {
