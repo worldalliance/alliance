@@ -197,9 +197,14 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Install Node.js 20.x (NodeSource)
-            curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
-            sudo yum install -y nodejs unzip
+            # Install nvm and Node.js 20
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            nvm install 20
+            nvm use 20
+            nvm alias default 20
 
             mkdir -p ~/nest-backend
             unzip -o ~/nest-build.zip -d ~/nest-backend
@@ -207,7 +212,7 @@ jobs:
             cd ~/nest-backend
             npm install --production
 
-            sudo npm install -g pm2
+            npm install -g pm2
             pm2 delete nest-app || true
             pm2 start dist/main.js --name nest-app
             pm2 save
