@@ -146,7 +146,7 @@ resource "aws_db_parameter_group" "alliance" {
 resource "aws_db_instance" "alliance" {
   identifier             = "alliance"
   instance_class         = "db.t3.micro"
-  allocated_storage      = 5
+  allocated_storage      = 10
   engine                 = "postgres"
   engine_version         = "17"
   username               = "edu"
