@@ -64,19 +64,6 @@ resource "aws_instance" "app_server" {
   associate_public_ip_address = true
   key_name = "ssh-key"
 
-    user_data = <<-EOF
-    #!/bin/bash
-    sudo yum install git -y
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-    source ~/.bashrc
-    nvm install --lts
-    git clone https://github.com/CaseyManning/alliance.git /home/ec2-user/app
-    cd /home/ec2-user/app
-    npm install
-    npm run build # if applicable
-    npm start &
-  EOF
-
   tags = {
     Name = "AllianceServerInstance"
   }
@@ -146,7 +133,7 @@ resource "aws_db_parameter_group" "alliance" {
 resource "aws_db_instance" "alliance" {
   identifier             = "alliance"
   instance_class         = "db.t3.micro"
-  allocated_storage      = 10
+  allocated_storage      = 10 # changes won't apply without apply_immediately = true
   engine                 = "postgres"
   engine_version         = "17"
   username               = "edu"
