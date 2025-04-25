@@ -21,10 +21,12 @@ import { User } from './user/user.entity';
       database: process.env.DB_NAME,
       entities: [User],
       synchronize: process.env.NODE_ENV !== 'production',
-      ssl:
-        process.env.NODE_ENV === 'production'
-          ? { rejectUnauthorized: false }
-          : undefined,
+      ssl: { rejectUnauthorized: false },
+      extra: {
+        ssl: {
+          rejectUnauthorized: false,
+        },
+      },
     }),
   ],
   controllers: [AppController],
