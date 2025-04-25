@@ -21,11 +21,11 @@ const ProblemAreaCard: React.FC<ProblemAreaCardProps> = ({
 
   return (
     <Card
-      className="mb-2.5 w-[500px] flex-col flex-nowrap space-y-3 transition-all duration-300"
+      className="mb-2.5 p-8 flex-col flex-nowrap space-y-3 transition-all duration-300"
       onClick={handleClick}
     >
-      <p className="font-font font-normal text-[13pt]">{name}</p>
-      <p>{description}</p>
+      <p className="font-font font-normal text-4xl">{name}</p>
+      {/* <p>{description}</p> */}
     </Card>
   );
 };
