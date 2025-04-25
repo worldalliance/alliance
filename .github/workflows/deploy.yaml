@@ -215,6 +215,7 @@ jobs:
             export DB_HOST=${{ secrets.RDS_HOSTNAME }}
             export DB_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
             export DB_USERNAME=${{ needs.provision-infrastructure.outputs.rds_username }}
+            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
 
             mkdir -p ~/nest-backend
             unzip -o ~/nest-build.zip -d ~/nest-backend
