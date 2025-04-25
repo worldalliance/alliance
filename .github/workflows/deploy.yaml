@@ -28,14 +28,17 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+        working-directory: ./tf
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
+        working-directory: ./tf
 
       - name: Set Terraform Outputs
         id: tf_outputs
         run: |
           echo "instance_ip=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
+        working-directory: ./tf
 
   # Job 2: Build React App
   build-react-app:
