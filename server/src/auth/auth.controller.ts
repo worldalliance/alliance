@@ -7,10 +7,13 @@ import {
   Post,
   Request,
   UseInterceptors,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { SignUp } from './sign-up.dto';
+import { User } from 'src/user/user.entity';
+import { AuthGuard } from './auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -30,8 +33,11 @@ export class AuthController {
     return Promise.resolve({ success: true });
   }
 
-  @Get('profile')
-  getProfile(@Request() req) {
-    return req.user;
+  @Get('/me')
+  @UseGuards(AuthGuard)
+  async me(@Request() req): Promise<{ email: string; name: string }> {
+    console.log('getting profile profile: ', req.user);
+    const profile = await this.authService.getProfile(req.user.email);
+    return { email: profile.email, name: profile.name };
   }
 }

@@ -5,6 +5,8 @@ interface ButtonProps {
   onClick: () => void;
   className?: string;
   color?: ButtonColor;
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
 }
 
 export enum ButtonColor {
@@ -30,19 +32,23 @@ const Button: React.FC<ButtonProps> = ({
   onClick,
   className,
   color: colorProp,
+  type = "button",
+  disabled = false,
 }) => {
   const color = colorProp ?? ButtonColor.Stone;
   return (
-    <div
-      className={`px-3 py-1 w-fit h-fit rounded ${className} cursor-pointer hover:bg-${ButtonColorClasses[color]}-100 font-newsreader ${
+    <button
+      type={type}
+      className={`px-3 py-1 w-fit h-fit rounded ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-${ButtonColorClasses[color]}-100'} font-newsreader ${
         color === ButtonColor.Transparent
           ? "bg-transparent text-black hover:bg-black/10 pt-2"
           : "text-white py-2 pt-3"
       }  ${color} `}
       onClick={onClick}
+      disabled={disabled}
     >
       {label}
-    </div>
+    </button>
   );
 };
 

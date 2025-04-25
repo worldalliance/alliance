@@ -7,7 +7,7 @@ export enum NavbarPage {
   CurrentActions = "Current Actions",
   Announcements = "Announcements",
   Forum = "Forum",
-  People = "People",
+  Account = "Account",
   Platform = "Platform",
   Settings = "Settings",
 }
@@ -17,8 +17,8 @@ export const links: NavbarPage[] = [
   NavbarPage.CurrentActions,
   NavbarPage.Announcements,
   NavbarPage.Forum,
-  NavbarPage.People,
   NavbarPage.Platform,
+  NavbarPage.Account,
 ];
 
 export const destinations: Record<NavbarPage, string> = {
@@ -26,7 +26,7 @@ export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.CurrentActions]: "/actions",
   [NavbarPage.Announcements]: "/announcements",
   [NavbarPage.Forum]: "/forum",
-  [NavbarPage.People]: "/people",
+  [NavbarPage.Account]: "/account",
   [NavbarPage.Platform]: "/platform",
   [NavbarPage.Settings]: "/settings",
 };

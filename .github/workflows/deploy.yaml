@@ -121,3 +121,94 @@ jobs:
             chmod -R o+rx /home/ec2-user/alliance-app
 
             sudo systemctl restart nginx
+
+  test-nest-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Backend Dependencies
+        run: npm ci
+        working-directory: ./server
+
+      - name: Run Jest Tests
+        run: npm run test
+        working-directory: ./server
+
+  build-nest-backend:
+    runs-on: ubuntu-latest
+    needs: test-nest-backend
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: ./server
+
+      - name: Build NestJS App
+        run: npm run build
+        working-directory: ./server
+
+      - name: Zip Build Output
+        run: zip -r nest-build.zip dist package.json package-lock.json
+        working-directory: ./server
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nest-build
+          path: server/nest-build.zip
+  deploy-nest-backend:
+    runs-on: ubuntu-latest
+    needs:
+      - provision-infrastructure
+      - build-nest-backend
+    steps:
+      - name: Download NestJS Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nest-build
+
+      - name: Upload NestJS Build to EC2
+        uses: appleboy/scp-action@v0.1.3
+        with:
+          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "nest-build.zip"
+          target: "~/"
+
+      - name: SSH and Deploy Backend on EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo yum install -y unzip nodejs npm
+
+            mkdir -p ~/nest-backend
+            unzip -o ~/nest-build.zip -d ~/nest-backend
+
+            cd ~/nest-backend
+            npm install --production
+
+            # Install pm2 to manage the node app
+            sudo npm install -g pm2
+
+            # Restart the NestJS app with PM2
+            pm2 delete nest-app || true
+            pm2 start dist/main.js --name nest-app
+            pm2 save

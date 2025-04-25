@@ -24,8 +24,6 @@ export class UserService {
     return this.userRepository.findOneBy({ id });
   }
   async findOneByEmail(email: string): Promise<User | null> {
-    console.log('finding by email', email);
-    console.log('count', await this.userRepository.count());
     return this.userRepository.findOneBy({ email: email });
   }
 

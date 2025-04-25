@@ -4,10 +4,13 @@ import HighResGlobe from "../components/HighResGlobe";
 import Card from "../components/system/Card";
 import Globe from "../components/Globe";
 import downArrow from "../assets/icons8-expand-arrow-96.png";
+import LandingNavbar from "../components/LandingNavbar";
+import Button, { ButtonColor } from "../components/system/Button";
 
 const LandingPage: React.FC = () => {
   return (
     <>
+      <LandingNavbar />
       <div className="flex flex-col items-center justify-center bg-white text-white h-screen">
         <div className="flex flex-col items-center justify-center text-center pt-[50px]">
           <div className="flex flex-row flex-nowrap items-center justify-center h-[500px]">
@@ -22,6 +25,22 @@ const LandingPage: React.FC = () => {
                 24,215 members
               </p>
             </div>
+          </div>
+          <div className="flex gap-6 mt-8">
+            <Link to="/login">
+              <Button 
+                label="Login" 
+                onClick={() => {}} 
+                color={ButtonColor.Blue}
+              />
+            </Link>
+            <Link to="/signup">
+              <Button 
+                label="Create Account" 
+                onClick={() => {}} 
+                color={ButtonColor.Green}
+              />
+            </Link>
           </div>
         </div>
         <div className="absolute bottom-10 left-0 right-0 flex flex-row justify-center items-center">

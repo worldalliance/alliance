@@ -6,7 +6,7 @@ export type InnerNavbarProps = Pick<NavbarProps, "currentPage">;
 
 const NavbarVertical: React.FC<InnerNavbarProps> = ({ currentPage }) => {
   return (
-    <div className="flex flex-col w-[180px] bg-white border-r border-r-[#ddd] shadow-sm pl-[10px] h-screen text-left space-y-4 justify-center pl-6 sticky">
+    <div className="flex flex-col w-[180px] bg-white border-r border-r-[#ddd] shadow-sm pl-6 h-screen text-left space-y-4 justify-center sticky">
       {links.map((link) => (
         <Link to={destinations[link]} key={link}>
           <p

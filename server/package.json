@@ -31,6 +31,7 @@
     "bcryptjs": "^3.0.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "jest-ts-auto-mock": "^2.1.0",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "pg": "^8.15.5",
@@ -38,6 +39,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "ts-auto-mock": "^3.7.4",
+    "ttypescript": "^1.5.15",
     "typeorm": "^0.3.22"
   },
   "devDependencies": {
@@ -61,11 +63,11 @@
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
-    "ts-jest": "^29.2.5",
+    "ts-jest": "^29.3.2",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
+    "typescript": "^5.8.3",
     "typescript-eslint": "^8.20.0"
   },
   "jest": {
@@ -77,7 +79,14 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": "ts-jest",
+      ".(ts|tsx)": "ts-jest",
+      "^.+\\.tsx?$": [
+          "ts-jest",
+          {
+            "compiler": "ttypescript"
+          }
+        ]
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

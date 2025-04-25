@@ -37,4 +37,13 @@ export class AuthService {
       access_token: await this.jwtService.signAsync(payload),
     };
   }
+
+  async getProfile(email: string): Promise<User> {
+    const user = await this.usersService.findOneByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    console.log(user);
+    return user;
+  }
 }
