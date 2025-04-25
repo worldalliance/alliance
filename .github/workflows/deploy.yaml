@@ -12,6 +12,25 @@ env:
   CI: ""
 
 jobs:
+  test-nest-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Backend Dependencies
+        run: npm ci
+        working-directory: ./server
+
+      - name: Run Jest Tests
+        run: npm run test
+        working-directory: ./server
+
   provision-infrastructure:
     runs-on: ubuntu-latest
     outputs:
@@ -68,7 +87,6 @@ jobs:
           name: react-build
           path: frontend/react-build.zip
 
-  # Job 3: Deploy React App to EC2
   deploy-react-app:
     runs-on: ubuntu-latest
     needs:
@@ -121,25 +139,6 @@ jobs:
             chmod -R o+rx /home/ec2-user/alliance-app
 
             sudo systemctl restart nginx
-
-  test-nest-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Backend Dependencies
-        run: npm ci
-        working-directory: ./server
-
-      - name: Run Jest Tests
-        run: npm run test
-        working-directory: ./server
 
   build-nest-backend:
     runs-on: ubuntu-latest
@@ -197,7 +196,7 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            sudo yum install -y unzip nodejs npm
+            sudo yum install -y unzip nodejs20 npm
 
             mkdir -p ~/nest-backend
             unzip -o ~/nest-build.zip -d ~/nest-backend

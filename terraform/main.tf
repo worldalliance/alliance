@@ -64,6 +64,8 @@ resource "aws_instance" "app_server" {
   associate_public_ip_address = true
   key_name = "ssh-key"
 
+  user_data_replace_on_change = true
+
   tags = {
     Name = "AllianceServerInstance"
   }
