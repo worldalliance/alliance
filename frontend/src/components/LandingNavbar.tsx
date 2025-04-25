@@ -26,14 +26,9 @@ const LandingNavbar = () => {
       <Link to="/">
         <p className="pt-1 whitespace-nowrap !text-[12pt]">Platform</p>
       </Link>
-      <div className="flex gap-4">
-        <Link to="/login">
-          <p className="pt-1 whitespace-nowrap !text-[12pt]">Login</p>
-        </Link>
-        <Link to="/signup">
-          <p className="pt-1 whitespace-nowrap !text-[12pt] font-bold">Join</p>
-        </Link>
-      </div>
+      <Link to="/login">
+        <p className="pt-1 whitespace-nowrap !text-[12pt]">Login</p>
+      </Link>
     </div>
   );
 };

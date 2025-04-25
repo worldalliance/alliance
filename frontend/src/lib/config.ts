@@ -14,7 +14,7 @@ export const getApiUrl = (): string => {
     return "http://localhost:3005"; // Local development
   } else {
     // Use EC2 subnet from terraform config
-    return "http://10.0.4.0:3001";
+    return "http://alliance-beta.xyz:3005";
   }
 };
 

@@ -11,36 +11,21 @@ const LandingPage: React.FC = () => {
   return (
     <>
       <LandingNavbar />
-      <div className="flex flex-col items-center justify-center bg-white text-white h-screen">
+      <div className="flex flex-col items-center justify-center bg-white  h-screen">
         <div className="flex flex-col items-center justify-center text-center pt-[50px]">
           <div className="flex flex-row flex-nowrap items-center justify-center h-[500px]">
-            <div className="w-[500px] ">
+            <div className="w-[500px] relative">
               <Globe strokeWidth={0.7} />
               <p
-                className="absolute bottom-0 top-0 left-0 m-auto right-0 z-10 text-black/90 py-8 text-xl w-fit h-fit pt-20"
+                className="absolute bottom-0 top-0 left-0 m-auto right-0 z-10 py-8 text-xl w-fit h-fit "
                 style={{
-                  filter: "drop-shadow(0 0 10px rgb(255, 255, 255))",
+                  textShadow:
+                    "-1px 0 white, 0 1px white, 1px 0 white, 0 -1px white",
                 }}
               >
                 24,215 members
               </p>
             </div>
-          </div>
-          <div className="flex gap-6 mt-8">
-            <Link to="/login">
-              <Button 
-                label="Login" 
-                onClick={() => {}} 
-                color={ButtonColor.Blue}
-              />
-            </Link>
-            <Link to="/signup">
-              <Button 
-                label="Create Account" 
-                onClick={() => {}} 
-                color={ButtonColor.Green}
-              />
-            </Link>
           </div>
         </div>
         <div className="absolute bottom-10 left-0 right-0 flex flex-row justify-center items-center">
