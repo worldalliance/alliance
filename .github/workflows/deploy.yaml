@@ -195,19 +195,17 @@ jobs:
           host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            sudo yum install -y unzip nodejs20 npm
+        script: |
+          curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+          sudo yum install -y nodejs unzip
 
-            mkdir -p ~/nest-backend
-            unzip -o ~/nest-build.zip -d ~/nest-backend
+          mkdir -p ~/nest-backend
+          unzip -o ~/nest-build.zip -d ~/nest-backend
 
-            cd ~/nest-backend
-            npm install --production
+          cd ~/nest-backend
+          npm install --production
 
-            # Install pm2 to manage the node app
-            sudo npm install -g pm2
-
-            # Restart the NestJS app with PM2
-            pm2 delete nest-app || true
-            pm2 start dist/main.js --name nest-app
-            pm2 save
+          sudo npm install -g pm2
+          pm2 delete nest-app || true
+          pm2 start dist/main.js --name nest-app
+          pm2 save
