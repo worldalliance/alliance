@@ -7,6 +7,26 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user/user.entity';
 
+function validateEnv() {
+  const requiredVars = [
+    'DB_HOST',
+    'DB_USERNAME',
+    'DB_PASSWORD',
+    'DB_NAME',
+    'JWT_SECRET',
+  ];
+
+  const missing = requiredVars.filter((v) => !process.env[v]);
+
+  if (missing.length > 0) {
+    console.error(
+      `ERR: Missing required environment variables: ${missing.join(', ')}`,
+    );
+    process.exit(1);
+  }
+}
+validateEnv();
+
 @Module({
   imports: [
     AuthModule,

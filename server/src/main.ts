@@ -7,6 +7,7 @@ async function bootstrap() {
     typeof process.env.DB_PASSWORD,
     process.env.DB_PASSWORD ? '[exists]' : '[missing]',
   );
+  console.log('node env:', process.env.NODE_ENV);
 
   const app = await NestFactory.create(AppModule);
   app.enableCors();
