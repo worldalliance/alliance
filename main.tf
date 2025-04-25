@@ -135,7 +135,7 @@ resource "aws_security_group" "rds" {
 
 resource "aws_db_parameter_group" "alliance" {
   name   = "alliance"
-  family = "postgres14"
+  family = "postgres17"
 
   parameter {
     name  = "log_connections"
@@ -148,7 +148,7 @@ resource "aws_db_instance" "alliance" {
   instance_class         = "db.t3.micro"
   allocated_storage      = 5
   engine                 = "postgres"
-  engine_version         = "14.2"
+  engine_version         = "17"
   username               = "edu"
   password               = var.db_password
   db_subnet_group_name   = aws_db_subnet_group.alliance.name
