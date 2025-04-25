@@ -55,7 +55,7 @@ jobs:
       - name: Set Terraform Outputs
         id: tf_outputs
         run: |
-          echo "instance_ip=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
+          echo "instance_ip=$(terraform output -raw server_ip)" >> $GITHUB_OUTPUT
         working-directory: ./terraform
 
   build-react-app:
