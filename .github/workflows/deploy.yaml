@@ -212,9 +212,9 @@ jobs:
             nvm use 20
             nvm alias default 20
 
-            export RDS_HOST=${{ needs.provision-infrastructure.outputs.rds_hostname }}
-            export RDS_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
-            export RDS_USERNAME=${{ needs.provision-infrastructure.outputs.rds_username }}
+            export DB_HOST=${{ secrets.RDS_HOSTNAME }}
+            export DB_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
+            export DB_USERNAME=${{ needs.provision-infrastructure.outputs.rds_username }}
 
             mkdir -p ~/nest-backend
             unzip -o ~/nest-build.zip -d ~/nest-backend
