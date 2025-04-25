@@ -7,7 +7,6 @@ const IssuePage: React.FC = () => {
 
   return (
     <div className="flex flex-row min-h-screen">
-      <Navbar currentPage={NavbarPage.CurrentActions} />
       <p>{issue}</p>
     </div>
   );
