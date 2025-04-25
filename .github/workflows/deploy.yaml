@@ -216,6 +216,7 @@ jobs:
             export DB_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
             export DB_USERNAME=${{ needs.provision-infrastructure.outputs.rds_username }}
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            export JWT_SECRET=${{ secrets.JWT_SECRET }}
             export DB_NAME="alliance"
 
             mkdir -p ~/nest-backend
