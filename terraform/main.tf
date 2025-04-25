@@ -100,13 +100,17 @@ module "vpc" {
   cidr                 = "10.0.0.0/16"
   azs                  = data.aws_availability_zones.available.names
   public_subnets       = ["10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24"]
+  private_subnets      = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  
+  enable_nat_gateway   = true
+  single_nat_gateway   = true
   enable_dns_hostnames = true
   enable_dns_support   = true
 }
 
 resource "aws_db_subnet_group" "alliance" {
   name       = "alliance"
-  subnet_ids = module.vpc.public_subnets
+  subnet_ids = module.vpc.private_subnets
 
   tags = {
     Name = "alliance"
@@ -157,6 +161,6 @@ resource "aws_db_instance" "alliance" {
   db_subnet_group_name   = aws_db_subnet_group.alliance.name
   vpc_security_group_ids = [aws_security_group.rds.id]
   parameter_group_name   = aws_db_parameter_group.alliance.name
-  publicly_accessible    = true
+  publicly_accessible    = false
   skip_final_snapshot    = true
 }
