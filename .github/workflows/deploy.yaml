@@ -35,6 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       instance_ip: ${{ steps.tf_outputs.outputs.instance_ip }}
+      rds_hostname: ${{ steps.tf_outputs.outputs.rds_hostname }}
+      rds_port: ${{ steps.tf_outputs.outputs.rds_port }}
+      rds_username: ${{ steps.tf_outputs.outputs.rds_username }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -56,6 +59,9 @@ jobs:
         id: tf_outputs
         run: |
           echo "instance_ip=$(terraform output -raw server_ip)" >> $GITHUB_OUTPUT
+          echo "rds_hostname=$(terraform output -raw rds_hostname)" >> $GITHUB_OUTPUT
+          echo "rds_port=$(terraform output -raw rds_port)" >> $GITHUB_OUTPUT
+          echo "rds_username=$(terraform output -raw rds_username)" >> $GITHUB_OUTPUT
         working-directory: ./terraform
 
   build-react-app:
@@ -205,6 +211,10 @@ jobs:
             nvm install 20
             nvm use 20
             nvm alias default 20
+
+            export RDS_HOST=${{ needs.provision-infrastructure.outputs.rds_hostname }}
+            export RDS_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
+            export RDS_USERNAME=${{ needs.provision-infrastructure.outputs.rds_username }}
 
             mkdir -p ~/nest-backend
             unzip -o ~/nest-build.zip -d ~/nest-backend
