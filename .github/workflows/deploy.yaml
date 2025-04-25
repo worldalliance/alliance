@@ -27,17 +27,17 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: ./tf
+        working-directory: ./terraform
 
       - name: Terraform Apply
         run: terraform apply -auto-approve
-        working-directory: ./tf
+        working-directory: ./terraform
 
       - name: Set Terraform Outputs
         id: tf_outputs
         run: |
           echo "instance_ip=$(terraform output -raw instance_public_ip)" >> $GITHUB_OUTPUT
-        working-directory: ./tf
+        working-directory: ./terraform
 
   build-react-app:
     runs-on: ubuntu-latest
