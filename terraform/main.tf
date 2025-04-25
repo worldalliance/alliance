@@ -78,6 +78,11 @@ resource "aws_instance" "app_server" {
   tags = {
     Name = "AllianceServerInstance"
   }
+  lifecycle {
+    ignore_changes = [
+      associate_public_ip_address,
+    ]
+  }
 }
 
 resource "aws_eip" "app_eip" {
