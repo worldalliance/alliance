@@ -26,3 +26,5 @@ yarn-error.log*
 .terraform.lock.hcl
 
 .aws
+
+secret.tfvars
