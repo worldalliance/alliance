@@ -1,0 +1,109 @@
+import React, { useEffect, useState } from "react";
+import Card, { CardStyle } from "./Card";
+import { Action, fetchActions } from "./actionsapi";
+import { useNavigate } from "react-router-dom";
+
+const AdminPanel: React.FC = () => {
+  const [actions, setActions] = useState<Action[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const loadActions = async () => {
+      try {
+        const data = await fetchActions();
+        setActions(data);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load actions");
+        setLoading(false);
+        console.error(err);
+      }
+    };
+
+    loadActions();
+  }, []);
+
+  const handleCreateAction = () => {
+    navigate("/action/new");
+  };
+
+  const handleEditAction = (id: number) => {
+    navigate(`/action/${id}`);
+  };
+
+  return (
+    <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-stone-50">
+      <div className="flex flex-row py-12 justify-center w-full gap-x-6">
+        <div className="flex flex-col border-r border-gray-300 pr-6 w-[600px] gap-y-5">
+          <div className="flex justify-between items-center">
+            <h1 className="text-[#111] text-[14pt] font-bold font-sabon">
+              Alliance Admin
+            </h1>
+          </div>
+          <h1 className="text-[#111] text-[14pt] font-extrabold">
+            Actions List
+          </h1>
+
+          {loading ? (
+            <p>Loading actions...</p>
+          ) : error ? (
+            <p className="text-red-500">{error}</p>
+          ) : actions.length === 0 ? (
+            <p>No actions found.</p>
+          ) : (
+            actions.map((action) => (
+              <Card key={action.id} style={CardStyle.Outline}>
+                <div
+                  onClick={() => handleEditAction(action.id)}
+                  className="cursor-pointer"
+                >
+                  <div className="flex justify-between mb-2">
+                    <h2 className="font-bold">{action.name}</h2>
+                    <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+                      {action.status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 mb-2">
+                    {action.category}
+                  </p>
+                  <p className="text-sm">{action.description}</p>
+                </div>
+              </Card>
+            ))
+          )}
+        </div>
+        <div className="flex flex-col gap-y-5 w-[320px]">
+          <Card style={CardStyle.White}>
+            <h1 className="font-bold pb-0">Admin Actions</h1>
+            <div className="flex flex-col gap-y-3 mt-4">
+              <button
+                onClick={handleCreateAction}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Create New Action
+              </button>
+            </div>
+          </Card>
+          <Card style={CardStyle.White}>
+            <h1 className="font-bold pb-0">Status Overview</h1>
+            <div className="mt-2">
+              <p>Total Actions: {actions.length}</p>
+              <p>
+                Active: {actions.filter((a) => a.status === "active").length}
+              </p>
+              <p>Draft: {actions.filter((a) => a.status === "draft").length}</p>
+              <p>
+                Completed:{" "}
+                {actions.filter((a) => a.status === "completed").length}
+              </p>
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminPanel;

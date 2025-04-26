@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Card, { CardStyle } from "../components/system/Card";
 import Button, { ButtonColor } from "../components/system/Button";
 import { useAuth } from "../context/AuthContext";
-import { authApi } from "../lib/api";
+import { authApi } from "../lib/authapi";
 import FormInput from "../components/system/FormInput";
 import { NavbarPage } from "../components/Navbar";
 
@@ -45,7 +45,7 @@ const AccountPage: React.FC = () => {
           <Button
             label="Log Out"
             onClick={handleLogout}
-            color={ButtonColor.Red}
+            color={ButtonColor.Stone}
             className="px-4"
           />
         </div>

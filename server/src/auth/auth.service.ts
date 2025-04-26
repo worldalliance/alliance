@@ -19,6 +19,7 @@ export class AuthService {
   async login(
     email: string,
     password: string,
+    adminOnly: boolean = false,
   ): Promise<{ access_token: string }> {
     const user = await this.usersService.findOneByEmail(email);
 
@@ -27,6 +28,10 @@ export class AuthService {
     }
 
     if (!(await user.checkPassword(password))) {
+      throw new UnauthorizedException();
+    }
+
+    if (adminOnly && !user.admin) {
       throw new UnauthorizedException();
     }
 

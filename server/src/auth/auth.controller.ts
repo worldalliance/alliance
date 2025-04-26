@@ -6,14 +6,13 @@ import {
   HttpStatus,
   Post,
   Request,
-  UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { SignUp } from './sign-up.dto';
-import { User } from 'src/user/user.entity';
-import { AuthGuard } from './auth.guard';
+import { AuthGuard, JwtRequest } from './auth.guard';
+import { SignInDto } from './dto/signin.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -22,20 +21,29 @@ export class AuthController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  login(@Body() signInDto: Record<string, any>) {
+  login(@Body() signInDto: SignInDto) {
     return this.authService.login(signInDto.email, signInDto.password);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('admin/login')
+  adminLogin(@Body() signInDto: SignInDto) {
+    return this.authService.login(signInDto.email, signInDto.password, true);
   }
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  register(@Body() signUp: SignUp): Promise<{ success: boolean }> {
-    this.authService.register(signUp);
-    return Promise.resolve({ success: true });
+  async register(@Body() signUp: SignUp): Promise<{ success: boolean }> {
+    await this.authService.register(signUp);
+    return { success: true };
   }
 
   @Get('/me')
   @UseGuards(AuthGuard)
-  async me(@Request() req): Promise<{ email: string; name: string }> {
+  async me(
+    @Request() req: JwtRequest,
+  ): Promise<{ email: string; name: string }> {
     console.log('getting profile profile: ', req.user);
     const profile = await this.authService.getProfile(req.user.email);
     return { email: profile.email, name: profile.name };

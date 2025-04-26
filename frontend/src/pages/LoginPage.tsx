@@ -69,15 +69,16 @@ const LoginPage: React.FC = () => {
                   placeholder="your@email.com"
                   required
                   name="email"
+                  autoComplete="email"
                 />
               </div>
-
               <div>
                 <FormInput
                   label="Password"
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
+                  autoComplete="current-password"
                   required
                   name="password"
                 />

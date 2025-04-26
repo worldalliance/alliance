@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  HashRouter as Router,
+  BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
@@ -15,6 +15,7 @@ import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AccountPage from "./pages/AccountPage";
+import ActionsListPage from "./pages/ActionsListPage";
 
 // A simple auth check component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -67,8 +68,6 @@ const AppRoutes = () => {
             </LoggedOutOnlyRoute>
           }
         />
-
-        {/* Protected Routes */}
         <Route
           path="/home"
           element={
@@ -106,6 +105,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <AccountPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/actions"
+          element={
+            <ProtectedRoute>
+              <ActionsListPage />
             </ProtectedRoute>
           }
         />

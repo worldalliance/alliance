@@ -7,6 +7,7 @@ interface FormInputProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   required?: boolean;
+  autoComplete?: string;
   error?: string;
   name: string;
   disabled?: boolean;
@@ -19,6 +20,7 @@ const FormInput: React.FC<FormInputProps> = ({
   onChange,
   placeholder,
   required = false,
+  autoComplete = "off",
   error,
   name,
   disabled = false,
@@ -46,6 +48,7 @@ const FormInput: React.FC<FormInputProps> = ({
         text-[11pt] font-avenir transition-all duration-200 
         ${disabled ? "bg-stone-50 text-stone-500 cursor-not-allowed" : "hover:border-gray-400"} 
         ${error ? "focus:border-red-500" : "focus:border-cyan-500"}`}
+        autoComplete={autoComplete}
       />
       {error && <p className="text-red-500 text-[10pt] mt-1">{error}</p>}
     </div>

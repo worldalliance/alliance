@@ -153,6 +153,7 @@ resource "aws_db_parameter_group" "alliance" {
 
 resource "aws_db_instance" "alliance" {
   identifier             = "alliance"
+  db_name                = "alliance"
   instance_class         = "db.t3.micro"
   allocated_storage      = 10 # changes won't apply without apply_immediately = true
   engine                 = "postgres"

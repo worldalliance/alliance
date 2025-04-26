@@ -6,7 +6,7 @@ import React, {
   ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../lib/api";
+import { authApi } from "../lib/authapi";
 
 interface AuthContextType {
   isAuthenticated: boolean;

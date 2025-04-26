@@ -11,6 +11,7 @@ interface ActionItemCardProps {
   description: string;
   category: string;
   actions: ActionCardAction[];
+  onClick?: () => void;
 }
 
 export enum ActionCardAction {
@@ -24,6 +25,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   description,
   category,
   actions,
+  onClick,
 }) => {
   const navigate = useNavigate();
 
@@ -45,7 +47,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
               key={action}
               label={action}
               onClick={() => {
-                navigate(`/action/${title}`);
+                onClick ? onClick() : navigate(`/action/${title}`);
               }}
             />
           ))}

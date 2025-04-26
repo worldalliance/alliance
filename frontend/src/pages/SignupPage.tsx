@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Card, { CardStyle } from "../components/system/Card";
 import Button, { ButtonColor } from "../components/system/Button";
 import FormInput from "../components/system/FormInput";
-import { authApi } from "../lib/api";
+import { authApi } from "../lib/authapi";
 import { SignUpData } from "../types/auth";
 import LandingNavbar from "../components/LandingNavbar";
 

@@ -6,32 +6,16 @@ import { UserModule } from './user/user.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user/user.entity';
-
-function validateEnv() {
-  const requiredVars = [
-    'DB_HOST',
-    'DB_USERNAME',
-    'DB_PASSWORD',
-    'DB_NAME',
-    'JWT_SECRET',
-  ];
-
-  const missing = requiredVars.filter((v) => !process.env[v]);
-
-  if (missing.length > 0) {
-    console.error(
-      `ERR: Missing required environment variables: ${missing.join(', ')}`,
-    );
-    process.exit(1);
-  }
-}
-validateEnv();
+import { ActionsModule } from './actions/actions.module';
+import { Action } from './actions/entities/action.entity';
 
 @Module({
   imports: [
     AuthModule,
     UserModule,
-    ConfigModule.forRoot(),
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,
@@ -39,15 +23,16 @@ validateEnv();
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User],
+      entities: [User, Action],
       synchronize: process.env.NODE_ENV !== 'production',
-      ssl: { rejectUnauthorized: false },
-      extra: {
-        ssl: {
-          rejectUnauthorized: false,
-        },
-      },
+      ...(process.env.NODE_ENV === 'production'
+        ? {
+            ssl: { rejectUnauthorized: false },
+            extra: { ssl: { rejectUnauthorized: false } },
+          }
+        : {}),
     }),
+    ActionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

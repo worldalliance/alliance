@@ -24,6 +24,7 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.0",
+    "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/typeorm": "^11.0.0",
@@ -82,11 +83,11 @@
       "^.+\\.(t|j)s$": "ts-jest",
       ".(ts|tsx)": "ts-jest",
       "^.+\\.tsx?$": [
-          "ts-jest",
-          {
-            "compiler": "ttypescript"
-          }
-        ]
+        "ts-jest",
+        {
+          "compiler": "ttypescript"
+        }
+      ]
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

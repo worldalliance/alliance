@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import { NavbarPage } from "../components/Navbar";
 import { useNavigate, useParams } from "react-router-dom";
@@ -8,14 +9,36 @@ import Globe from "../components/Globe";
 import UserBubbleRow from "../components/UserBubbleRow";
 import Button, { ButtonColor } from "../components/system/Button";
 import PokePanel from "../components/PokePanel";
+import { actionsApi, Action } from "../lib/actionsApi";
 
 export interface ActionState {
   state: "uncommitted" | "committed" | "completed";
 }
 
-const ActionPage: React.FC<ActionState> = ({ state }) => {
-  const { action } = useParams();
+const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
+  const { actionId } = useParams();
   const navigate = useNavigate();
+  const [action, setAction] = useState<Action | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const fetchAction = async () => {
+      if (!actionId) return;
+      
+      try {
+        const actionData = await actionsApi.getActionById(Number(actionId));
+        setAction(actionData);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load action details. Please try again later.");
+        setLoading(false);
+        console.error("Error fetching action:", err);
+      }
+    };
+
+    fetchAction();
+  }, [actionId]);
 
   return (
     <div className="flex flex-row min-h-screen pt-12 w-full justify-center gap-x-7 bg-stone-50">
