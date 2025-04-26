@@ -33,18 +33,23 @@ export class AuthGuard implements CanActivate {
     if (isPublic) {
       return true;
     }
+    console.log('processing auth guard');
 
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
     if (!token) {
+      console.log('no token');
       throw new UnauthorizedException();
     }
     try {
+      console.log('jwt secret', process.env.JWT_SECRET);
+      console.log('token', token);
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: process.env.JWT_SECRET,
       });
       request['user'] = payload;
-    } catch {
+    } catch (error) {
+      console.log('jwt verification error: ', error);
       throw new UnauthorizedException();
     }
     return true;

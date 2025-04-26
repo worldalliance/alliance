@@ -38,6 +38,7 @@ export class ActionsController {
   @Get()
   @UseGuards(AuthGuard)
   findAll() {
+    console.log('findAll');
     return this.actionsService.findAll();
   }
 

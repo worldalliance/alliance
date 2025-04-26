@@ -28,6 +28,7 @@ export class AdminGuard implements CanActivate {
     console.log(token);
 
     if (!token) {
+      console.log('no token');
       throw new UnauthorizedException();
     }
     try {

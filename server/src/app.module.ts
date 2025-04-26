@@ -3,11 +3,12 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user/user.entity';
 import { ActionsModule } from './actions/actions.module';
 import { Action } from './actions/entities/action.entity';
+import { UserService } from './user/user.service';
 
 @Module({
   imports: [
@@ -37,4 +38,10 @@ import { Action } from './actions/entities/action.entity';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+  constructor(private userService: UserService) {
+    void this.onModuleInit();
+  }
+
+  async onModuleInit() {}
+}

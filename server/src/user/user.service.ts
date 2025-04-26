@@ -30,4 +30,8 @@ export class UserService {
   async remove(id: number): Promise<void> {
     await this.userRepository.delete(id);
   }
+
+  async setAdmin(id: number, admin: boolean): Promise<void> {
+    await this.userRepository.update(id, { admin });
+  }
 }

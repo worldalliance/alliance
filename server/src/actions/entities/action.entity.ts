@@ -5,6 +5,7 @@ import {
   ManyToMany,
   PrimaryGeneratedColumn,
   JoinTable,
+  CreateDateColumn,
 } from 'typeorm';
 
 @Entity()
@@ -30,7 +31,7 @@ export class Action {
   @Column()
   status: string;
 
-  @Column()
+  @CreateDateColumn()
   createdAt: Date;
 
   @ManyToMany(() => User, (user) => user.actions)
