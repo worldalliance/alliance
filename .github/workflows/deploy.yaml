@@ -157,7 +157,7 @@ jobs:
             cat <<EOF | sudo tee /etc/nginx/conf.d/react.conf
             server {
               listen 80;
-              server_name alliance-beta.xyz;
+              server_name ${{vars.DOMAIN_NAME }};
 
               root /home/ec2-user/alliance-app/build;
               index index.html;
@@ -212,7 +212,7 @@ jobs:
 
             server {
               listen 80;
-              server_name admin.alliance-beta.xyz;
+              server_name admin.${{vars.ADMIN_DOMAIN_NAME}};
 
               root /home/ec2-user/admin-app/build;
               index index.html;
@@ -314,3 +314,21 @@ jobs:
             pm2 delete nest-app || true
             pm2 start dist/main.js --name nest-app
             pm2 save
+  verify-deployment:
+    needs:
+      - deploy-nest-backend
+      - deploy-react-app
+      - deploy-admin-app
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check main app
+        run: |
+          echo "Checking main app..."
+          curl --fail --silent --show-error http://${{vars.DOMAIN_NAME}} > /dev/null
+          echo "✅ main app is reachable"
+
+      - name: Check admin app
+        run: |
+          echo "Checking admin app..."
+          curl --fail --silent --show-error http://admin.${{vars.ADMIN_DOMAIN_NAME}} > /dev/null
+          echo "✅ admin app is reachable"
