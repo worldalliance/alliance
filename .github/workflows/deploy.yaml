@@ -171,6 +171,8 @@ jobs:
             chmod o+x /home/ec2-user
             chmod -R o+rx /home/ec2-user/alliance-app
 
+            sudo systemctl restart nginx
+
   deploy-admin-app:
     runs-on: ubuntu-latest
     needs:
@@ -211,8 +213,6 @@ jobs:
             server {
               listen 80;
               server_name admin.alliance-beta.xyz;
-
-              client_max_body_size 20M;
 
               root /home/ec2-user/admin-app/build;
               index index.html;

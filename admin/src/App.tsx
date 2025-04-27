@@ -3,7 +3,6 @@ import "./App.css";
 import "./tailwind.css";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./AuthContext";
-import { useAuth } from "./AuthContext";
 import AdminPanel from "./AdminPanel";
 import LoginPage from "./LoginPage";
 import AdminActionPage from "./AdminActionPage";

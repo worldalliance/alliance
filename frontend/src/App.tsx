@@ -27,7 +27,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
     return <Navigate to="/login" />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <Navbar currentPage={NavbarPage.Dashboard} format="horizontal" />
+      {children}
+    </>
+  );
 };
 
 const LoggedOutOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -43,13 +48,8 @@ const LoggedOutOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
 
 // AppRoutes component to use the auth context
 const AppRoutes = () => {
-  const { isAuthenticated } = useAuth();
-
   return (
     <>
-      {isAuthenticated && (
-        <Navbar currentPage={NavbarPage.Dashboard} format="horizontal" />
-      )}
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route
