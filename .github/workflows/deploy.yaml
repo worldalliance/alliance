@@ -219,6 +219,8 @@ jobs:
             export JWT_SECRET=${{ secrets.JWT_SECRET }}
             export NODE_ENV=production
             export DB_NAME="alliance"
+            export ADMIN_USER=${{ secrets.ADMIN_USER }}
+            export ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
 
             mkdir -p ~/nest-backend
             unzip -o ~/nest-build.zip -d ~/nest-backend
