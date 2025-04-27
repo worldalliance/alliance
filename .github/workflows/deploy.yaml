@@ -177,7 +177,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - provision-infrastructure
-      - build-react-app
+      - build-admin-frontend
       - deploy-react-app
     steps:
       - name: Download Admin Build Artifact
