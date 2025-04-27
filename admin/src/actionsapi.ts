@@ -5,7 +5,6 @@ export interface Action {
   name: string;
   category: string;
   whyJoin: string;
-  type: string;
   description: string;
   status: string;
   createdAt?: string;
@@ -16,7 +15,6 @@ export interface CreateActionDto {
   name: string;
   category: string;
   whyJoin: string;
-  type: string;
   description: string;
   status: string;
 }
@@ -25,7 +23,6 @@ export interface UpdateActionDto {
   name?: string;
   category?: string;
   whyJoin?: string;
-  type?: string;
   description?: string;
   status?: string;
 }

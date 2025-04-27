@@ -5,7 +5,6 @@ export interface Action {
   name: string;
   category: string;
   whyJoin: string;
-  type: string;
   description: string;
   status: string;
   createdAt: Date;
@@ -25,14 +24,11 @@ export const actionsApi = {
       throw new Error("Authentication required");
     }
 
-    const response = await fetch(
-      `${apiConfig.baseUrl}/actions`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await fetch(`${apiConfig.baseUrl}/actions`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       throw new Error("Failed to fetch actions");
@@ -51,14 +47,11 @@ export const actionsApi = {
       throw new Error("Authentication required");
     }
 
-    const response = await fetch(
-      `${apiConfig.baseUrl}/actions/${id}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await fetch(`${apiConfig.baseUrl}/actions/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch action with ID ${id}`);
@@ -77,21 +70,18 @@ export const actionsApi = {
       throw new Error("Authentication required");
     }
 
-    const response = await fetch(
-      `${apiConfig.baseUrl}/actions/${id}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const response = await fetch(`${apiConfig.baseUrl}/actions/${id}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to join action with ID ${id}`);
     }
 
     return await response.json();
-  }
+  },
 };

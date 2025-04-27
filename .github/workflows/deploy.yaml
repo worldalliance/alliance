@@ -167,7 +167,7 @@ jobs:
                   try_files \$uri /index.html;
                 }
               }
-              EOF
+            EOF
             fi
 
             chmod o+x /home/ec2-user

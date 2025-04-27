@@ -1,25 +1,32 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardStyle } from "./Card";
-import { Action, fetchAction, createAction, updateAction, deleteAction, CreateActionDto, UpdateActionDto } from "./actionsapi";
+import {
+  Action,
+  fetchAction,
+  createAction,
+  updateAction,
+  deleteAction,
+  CreateActionDto,
+  UpdateActionDto,
+} from "./actionsapi";
 
 const AdminActionPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNewAction = id === "new";
-  
+
   const [action, setAction] = useState<Action | null>(null);
   const [loading, setLoading] = useState<boolean>(!isNewAction);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [form, setForm] = useState<CreateActionDto>({
     name: "",
     category: "",
     whyJoin: "",
-    type: "",
     description: "",
-    status: "draft"
+    status: "draft",
   });
 
   useEffect(() => {
@@ -36,9 +43,8 @@ const AdminActionPage: React.FC = () => {
           name: actionData.name,
           category: actionData.category,
           whyJoin: actionData.whyJoin || "",
-          type: actionData.type || "",
           description: actionData.description || "",
-          status: actionData.status
+          status: actionData.status,
         });
         setLoading(false);
       } catch (err) {
@@ -51,11 +57,15 @@ const AdminActionPage: React.FC = () => {
     loadAction();
   }, [id, isNewAction]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value } = e.target;
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
@@ -70,7 +80,7 @@ const AdminActionPage: React.FC = () => {
         navigate(`/action/${newAction.id}`);
       } else {
         await updateAction(Number(id), form as UpdateActionDto);
-        setAction(prev => prev ? { ...prev, ...form } : null);
+        setAction((prev) => (prev ? { ...prev, ...form } : null));
       }
       setSaving(false);
     } catch (err) {
@@ -83,11 +93,15 @@ const AdminActionPage: React.FC = () => {
   const handleCancel = () => {
     navigate("/");
   };
-  
+
   const handleDelete = async () => {
     if (!id || isNewAction) return;
-    
-    if (window.confirm("Are you sure you want to delete this action? This cannot be undone.")) {
+
+    if (
+      window.confirm(
+        "Are you sure you want to delete this action? This cannot be undone."
+      )
+    ) {
       try {
         setLoading(true);
         await deleteAction(Number(id));
@@ -143,7 +157,10 @@ const AdminActionPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="category" className="block font-medium text-gray-700">
+              <label
+                htmlFor="category"
+                className="block font-medium text-gray-700"
+              >
                 Category *
               </label>
               <input
@@ -158,21 +175,10 @@ const AdminActionPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="type" className="block font-medium text-gray-700">
-                Type
-              </label>
-              <input
-                type="text"
-                id="type"
-                name="type"
-                value={form.type}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="description" className="block font-medium text-gray-700">
+              <label
+                htmlFor="description"
+                className="block font-medium text-gray-700"
+              >
                 Description
               </label>
               <textarea
@@ -186,7 +192,10 @@ const AdminActionPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="whyJoin" className="block font-medium text-gray-700">
+              <label
+                htmlFor="whyJoin"
+                className="block font-medium text-gray-700"
+              >
                 Why Join
               </label>
               <textarea
@@ -200,7 +209,10 @@ const AdminActionPage: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="status" className="block font-medium text-gray-700">
+              <label
+                htmlFor="status"
+                className="block font-medium text-gray-700"
+              >
                 Status *
               </label>
               <select
@@ -242,7 +254,11 @@ const AdminActionPage: React.FC = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   disabled={saving}
                 >
-                  {saving ? "Saving..." : isNewAction ? "Create Action" : "Update Action"}
+                  {saving
+                    ? "Saving..."
+                    : isNewAction
+                      ? "Create Action"
+                      : "Update Action"}
                 </button>
               </div>
             </div>
