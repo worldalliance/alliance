@@ -330,20 +330,28 @@ jobs:
         run: |
           echo "Checking main app..."
           curl --fail --silent --show-error http://${{vars.DOMAIN_NAME}} > /dev/null
-          echo "✅ main app is reachable"
+          echo "main app is reachable"
 
       - name: Check admin app
         run: |
           echo "Checking admin app..."
           curl --fail --silent --show-error http://admin.${{vars.DOMAIN_NAME}} > /dev/null
-          echo "✅ admin app is reachable"
-  add-letsencrypt-cert:
-    runs-on: ubuntu-latest
+          echo "admin app is reachable"
+  verify-https:
     needs:
+      - deploy-nest-backend
       - deploy-react-app
       - deploy-admin-app
+    runs-on: ubuntu-latest
     steps:
       - name: Check main app
         run: |
-          echo "did_regenerate_main_nginx_config=${{ needs.deploy-react-app.outputs.did_regenerate_main_nginx_config }}"
-          echo "did_regenerate_admin_nginx_config=${{ needs.deploy-admin-app.outputs.did_regenerate_admin_nginx_config }}"
+          echo "Checking main app..."
+          curl --fail --silent --show-error https://${{vars.DOMAIN_NAME}} > /dev/null
+          echo "main app https ok"
+
+      - name: Check admin app
+        run: |
+          echo "Checking admin app..."
+          curl --fail --silent --show-error https://admin.${{vars.DOMAIN_NAME}} > /dev/null
+          echo "admin app https ok"
