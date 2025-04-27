@@ -9,7 +9,7 @@ const LandingNavbar = () => {
   return (
     <div
       className="
-      flex flex-row border-b border-[#ddd]
+      flex flex-row border-b border-[#ddd] z-10
     w-screen text-left space-x-10 items-center justify-evenly pl-6 sticky py-3 bg-white"
     >
       <Link to="/">

@@ -12,7 +12,7 @@ const LandingPage: React.FC = () => {
     <>
       <LandingNavbar />
       <div className="flex flex-col items-center justify-center bg-white  h-screen">
-        <div className="flex flex-col items-center justify-center text-center pt-[50px]">
+        <div className="flex flex-col items-center justify-center text-center mt-[-80px]">
           <div className="flex flex-row flex-nowrap items-center justify-center h-[500px]">
             <div className="w-[500px] relative">
               <Globe strokeWidth={0.7} />
