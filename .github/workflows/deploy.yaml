@@ -211,7 +211,6 @@ jobs:
             sudo rm -f /etc/nginx/conf.d/default.conf
 
             if [ ! -f /etc/nginx/conf.d/admin.conf ]; then
-
               cat <<EOF | sudo tee /etc/nginx/conf.d/admin.conf
 
               server {
@@ -225,11 +224,7 @@ jobs:
                   try_files \$uri /index.html;
                 }
               }
-              EOF
-              echo "did_regenerate_admin_nginx_config=true" >> $GITHUB_OUTPUT
-            else
-              echo "admin.conf already exists"
-              echo "did_regenerate_admin_nginx_config=false" >> $GITHUB_OUTPUT
+            EOF
             fi
 
             chmod o+x /home/ec2-user
