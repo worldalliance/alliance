@@ -212,6 +212,8 @@ jobs:
               listen 80;
               server_name admin.alliance-beta.xyz;
 
+              client_max_body_size 20M;
+
               root /home/ec2-user/admin-app/build;
               index index.html;
 
