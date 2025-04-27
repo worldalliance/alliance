@@ -25,7 +25,7 @@ import { UserService } from './user/user.service';
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
       entities: [User, Action],
-      synchronize: process.env.NODE_ENV !== 'production',
+      synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'
         ? {
             ssl: { rejectUnauthorized: false },
