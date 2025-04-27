@@ -168,10 +168,6 @@ jobs:
                 }
               }
               EOF
-              echo "did_regenerate_main_nginx_config=true" >> $GITHUB_OUTPUT
-            else
-              echo "react.conf already exists"
-              echo "did_regenerate_main_nginx_config=false" >> $GITHUB_OUTPUT
             fi
 
             chmod o+x /home/ec2-user
