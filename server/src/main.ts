@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { useContainer } from 'class-validator';
 
 function validateEnv() {
   const requiredVars = [
@@ -30,6 +31,8 @@ async function bootstrap() {
   console.log('node env:', process.env.NODE_ENV);
 
   const app = await NestFactory.create(AppModule);
+
+  useContainer(app.select(AppModule), { fallbackOnErrors: true });
 
   validateEnv();
 
