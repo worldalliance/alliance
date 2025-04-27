@@ -12,11 +12,11 @@ import { UserService } from './user/user.service';
 
 @Module({
   imports: [
-    AuthModule,
-    UserModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    AuthModule,
+    UserModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: process.env.DB_HOST,
