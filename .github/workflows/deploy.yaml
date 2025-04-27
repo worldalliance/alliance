@@ -35,7 +35,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       instance_ip: ${{ steps.tf_outputs.outputs.instance_ip }}
-      rds_hostname: ${{ steps.tf_outputs.outputs.rds_hostname }}
       rds_port: ${{ steps.tf_outputs.outputs.rds_port }}
       rds_username: ${{ steps.tf_outputs.outputs.rds_username }}
     steps:
@@ -59,7 +58,6 @@ jobs:
         id: tf_outputs
         run: |
           echo "instance_ip=$(terraform output -raw server_ip)" >> $GITHUB_OUTPUT
-          echo "rds_hostname=$(terraform output -raw rds_hostname)" >> $GITHUB_OUTPUT
           echo "rds_port=$(terraform output -raw rds_port)" >> $GITHUB_OUTPUT
           echo "rds_username=$(terraform output -raw rds_username)" >> $GITHUB_OUTPUT
         working-directory: ./terraform
