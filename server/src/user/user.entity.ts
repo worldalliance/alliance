@@ -1,6 +1,6 @@
 import * as bcrypt from 'bcryptjs';
 import { Exclude } from 'class-transformer';
-import { Action } from 'src/actions/entities/action.entity';
+import { Action } from '../actions/entities/action.entity';
 
 import {
   Entity,

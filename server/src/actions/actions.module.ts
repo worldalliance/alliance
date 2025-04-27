@@ -3,8 +3,8 @@ import { ActionsService } from './actions.service';
 import { ActionsController } from './actions.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
-import { UserModule } from 'src/user/user.module';
-import { User } from 'src/user/user.entity';
+import { UserModule } from '../user/user.module';
+import { User } from '../user/user.entity';
 
 @Module({
   imports: [
