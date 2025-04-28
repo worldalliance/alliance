@@ -4,6 +4,8 @@ import ActionItemCard from "../components/ActionItemCard";
 import ProblemAreaCard, {
   ProblemAreaCardProps,
 } from "../components/ProblemAreaCard";
+import LandingNavbar from "../components/LandingNavbar";
+import { useAuth } from "../context/AuthContext";
 
 const IssuesListPage: React.FC = () => {
   // Sample todo items data
@@ -34,24 +36,32 @@ const IssuesListPage: React.FC = () => {
     },
   ];
 
+  const { isAuthenticated } = useAuth();
+
   return (
-    <div className="flex flex-row min-h-screen">
-      <div className="w-[80%] mx-auto items-center justify-center p-10 flex flex-col flex-nowrap">
-        <h1 className="text-[#111] font-font text-5xl font-extrabold mb-8 text-center">
-          Alliance Priorities
-        </h1>
-        <div className="grid grid-cols-2 gap-x-6 w-full flex-1">
-          {issues.map((issue) => (
-            <ProblemAreaCard
-              name={issue.name}
-              description={issue.description}
-              href={`/issues/${issue.href}`}
-              key={issue.name}
-            />
-          ))}
+    <>
+      { isAuthenticated && (
+        <Navbar currentPage={NavbarPage.Dashboard} format="horizontal" />
+      )}
+      {!isAuthenticated && <LandingNavbar />}
+      <div className="flex flex-row min-h-screen">
+        <div className="w-[80%] mx-auto items-center justify-center p-10 flex flex-col flex-nowrap">
+          <h1 className="text-[#111] font-font text-5xl font-extrabold mb-8 text-center">
+            Alliance Priorities
+          </h1>
+          <div className="grid grid-cols-2 gap-x-6 w-full flex-1">
+            {issues.map((issue) => (
+              <ProblemAreaCard
+                name={issue.name}
+                description={issue.description}
+                href={`/issues/${issue.href}`}
+                key={issue.name}
+              />
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

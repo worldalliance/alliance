@@ -15,7 +15,7 @@ const LandingNavbar = () => {
       <Link to="/">
         <p className="pt-1 whitespace-nowrap !text-[12pt] ">News</p>
       </Link>
-      <Link to="/">
+      <Link to="/issues">
         <p className="pt-1 whitespace-nowrap !text-[12pt]">Issues</p>
       </Link>
       <Link to="/">

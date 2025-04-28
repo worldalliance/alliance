@@ -16,6 +16,7 @@ import SignupPage from "./pages/SignupPage";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AccountPage from "./pages/AccountPage";
 import ActionsListPage from "./pages/ActionsListPage";
+import AnnouncementsPage from "./pages/AnnouncementsPage";
 
 // A simple auth check component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -87,17 +88,13 @@ const AppRoutes = () => {
         <Route
           path="/issues"
           element={
-            <ProtectedRoute>
-              <IssuesListPage />
-            </ProtectedRoute>
+            <IssuesListPage />
           }
         />
         <Route
           path="/issues/:issue"
           element={
-            <ProtectedRoute>
-              <IssuePage />
-            </ProtectedRoute>
+            <IssuePage />
           }
         />
         <Route
@@ -113,6 +110,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <ActionsListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/announcements"
+          element={
+            <ProtectedRoute>
+              <AnnouncementsPage />
             </ProtectedRoute>
           }
         />
