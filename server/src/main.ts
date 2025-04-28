@@ -10,6 +10,7 @@ function validateEnv() {
     'DB_PASSWORD',
     'DB_NAME',
     'JWT_SECRET',
+    'JWT_REFRESH_SECRET',
   ];
 
   const missing = requiredVars.filter((v) => !process.env[v]);
@@ -23,19 +24,9 @@ function validateEnv() {
 }
 
 async function bootstrap() {
-  console.log(
-    'DB_PASSWORD:',
-    typeof process.env.DB_PASSWORD,
-    process.env.DB_PASSWORD ? '[exists]' : '[missing]',
-  );
-  console.log('node env:', process.env.NODE_ENV);
-
   const app = await NestFactory.create(AppModule);
-
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
-
   validateEnv();
-
   app.useGlobalPipes(new ValidationPipe());
   app.enableCors();
   await app.listen(process.env.PORT ?? 3005, '0.0.0.0');

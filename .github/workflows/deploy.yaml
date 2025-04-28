@@ -304,6 +304,7 @@ jobs:
             export DB_USERNAME=${{ needs.provision-infrastructure.outputs.rds_username }}
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             export JWT_SECRET=${{ secrets.JWT_SECRET }}
+            export JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
             export NODE_ENV=production
             export DB_NAME="alliance"
             export ADMIN_USER=${{ secrets.ADMIN_USER }}

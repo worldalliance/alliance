@@ -22,6 +22,7 @@ export const apiConfig = {
     login: "/auth/login",
     register: "/auth/register",
     profile: "/auth/me",
+    refresh: "/auth/refresh",
     actions: "/actions",
     action: (id: number) => `/actions/${id}`,
   },

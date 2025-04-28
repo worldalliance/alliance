@@ -13,8 +13,8 @@ import {
 import { ActionsService } from './actions.service';
 import { CreateActionDto } from './dto/create-action.dto';
 import { UpdateActionDto } from './dto/update-action.dto';
-import { AuthGuard, JwtRequest } from '../auth/auth.guard';
-import { AdminGuard } from '../auth/admin.guard';
+import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 
 @Controller('actions')
 export class ActionsController {

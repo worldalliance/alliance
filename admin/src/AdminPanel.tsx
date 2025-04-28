@@ -80,7 +80,7 @@ const AdminPanel: React.FC = () => {
             <div className="flex flex-col gap-y-3 mt-4">
               <button
                 onClick={handleCreateAction}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                className="w-full bg-stone-600 hover:bg-stone-700 text-white px-4 py-2 rounded-md text-sm font-medium"
               >
                 Create New Action
               </button>

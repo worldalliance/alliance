@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Card, { CardStyle } from "../components/system/Card";
 import Button, { ButtonColor } from "../components/system/Button";
 import { useAuth } from "../context/AuthContext";
@@ -11,9 +11,9 @@ const AccountPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
-  };
+  }, [logout]);
 
   useEffect(() => {
     console.log(user);
@@ -35,6 +35,9 @@ const AccountPage: React.FC = () => {
         </div>
       </div>
     );
+  }
+  if (!user) {
+    return <div>Not found</div>;
   }
 
   return (

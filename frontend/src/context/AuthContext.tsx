@@ -7,10 +7,11 @@ import React, {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../lib/authapi";
+import { UserData } from "../types/auth";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: any | null;
+  user: UserData | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -21,7 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
@@ -29,14 +30,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("token");
+      const refreshToken = localStorage.getItem("refresh_token");
+
+      console.log("token: ", token);
+      console.log("refreshToken: ", refreshToken);
 
       if (token) {
         try {
           const userProfile = await authApi.getProfile();
           setUser(userProfile);
         } catch (error) {
-          // Token might be expired or invalid
+          console.log("error: ", error);
+          console.log("trying to refresh token");
           localStorage.removeItem("token");
+
+          if (refreshToken) {
+            const response = await authApi.refreshAccessToken(refreshToken);
+            if (response) {
+              localStorage.setItem("token", response.access_token);
+              const userProfile = await authApi.getProfile();
+              setUser(userProfile);
+            } else {
+              console.log("refresh token failed: logging out");
+              logout();
+            }
+          }
         }
       }
 
@@ -52,6 +70,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     try {
       const response = await authApi.login({ email, password });
       localStorage.setItem("token", response.access_token);
+      localStorage.setItem("refresh_token", response.refresh_token);
 
       console.log("got response: ", response);
 
@@ -69,8 +88,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
   const logout = () => {
     localStorage.removeItem("token");
-    setUser(null);
+    localStorage.removeItem("refresh_token");
+
     navigate("/login");
+    setUser(null);
   };
 
   const value = {

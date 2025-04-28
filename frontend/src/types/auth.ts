@@ -7,6 +7,11 @@ export interface SignUpData {
   password: string;
 }
 
+export interface UserData {
+  name: string;
+  email: string;
+}
+
 /**
  * Login data structure
  */
@@ -20,4 +25,5 @@ export interface LoginData {
  */
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
 }

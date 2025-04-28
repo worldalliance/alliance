@@ -11,8 +11,9 @@ import {
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { SignUp } from './sign-up.dto';
-import { AuthGuard, JwtRequest } from './auth.guard';
+import { AuthGuard, JwtRequest } from './guards/auth.guard';
 import { SignInDto } from './dto/signin.dto';
+import { RefreshTokenGuard } from './guards/refresh.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -37,6 +38,13 @@ export class AuthController {
   async register(@Body() signUp: SignUp): Promise<{ success: boolean }> {
     await this.authService.register(signUp);
     return { success: true };
+  }
+
+  @Post('refresh')
+  @UseGuards(RefreshTokenGuard)
+  refreshTokens(@Request() req: JwtRequest) {
+    const userId: number = req.user.sub;
+    return this.authService.refreshAccessToken(userId);
   }
 
   @Get('/me')

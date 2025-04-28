@@ -24,7 +24,7 @@ const LoggedOutOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const isAuthenticated = localStorage.getItem("token") !== null;
   if (isAuthenticated) {
-    return <Navigate to="/home" />;
+    return <Navigate to="/" />;
   }
 
   return <>{children}</>;

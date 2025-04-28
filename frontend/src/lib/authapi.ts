@@ -1,4 +1,4 @@
-import { SignUpData, LoginData, AuthResponse } from "../types/auth";
+import { SignUpData, LoginData, AuthResponse, UserData } from "../types/auth";
 import { apiConfig } from "./config";
 
 /**
@@ -51,10 +51,7 @@ export const authApi = {
     return await response.json();
   },
 
-  /**
-   * Get user profile (requires auth)
-   */
-  async getProfile(): Promise<any> {
+  async getProfile(): Promise<UserData> {
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -72,6 +69,24 @@ export const authApi = {
 
     if (!response.ok) {
       throw new Error("Failed to fetch profile");
+    }
+
+    return await response.json();
+  },
+
+  async refreshAccessToken(refreshToken: string): Promise<AuthResponse | null> {
+    const response = await fetch(
+      `${apiConfig.baseUrl}${apiConfig.endpoints.refresh}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${refreshToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
     }
 
     return await response.json();

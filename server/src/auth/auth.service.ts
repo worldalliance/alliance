@@ -3,6 +3,7 @@ import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../user/user.entity';
 import { SignUp } from './sign-up.dto';
+import { JWTTokenType, JwtPayload } from './guards/auth.guard';
 
 @Injectable()
 export class AuthService {
@@ -20,7 +21,7 @@ export class AuthService {
     email: string,
     password: string,
     adminOnly: boolean = false,
-  ): Promise<{ access_token: string }> {
+  ): Promise<{ access_token: string; refresh_token: string }> {
     const user = await this.usersService.findOneByEmail(email);
 
     if (!user) {
@@ -35,9 +36,40 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const payload = { sub: user.id, email: user.email };
     return {
-      access_token: await this.jwtService.signAsync(payload),
+      access_token: await this.generateAccessToken(user),
+      refresh_token: await this.generateRefreshToken(user),
+    };
+  }
+
+  async generateRefreshToken(user: User): Promise<string> {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      tokenType: JWTTokenType.refresh,
+    };
+    return this.jwtService.signAsync(payload, {
+      expiresIn: '7d',
+      secret: process.env.JWT_REFRESH_SECRET,
+    });
+  }
+
+  async generateAccessToken(user: User): Promise<string> {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      tokenType: JWTTokenType.access,
+    };
+    return this.jwtService.signAsync(payload, { expiresIn: '15m' });
+  }
+
+  async refreshAccessToken(userId: number): Promise<{ access_token: string }> {
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      throw new UnauthorizedException('Invalid user id');
+    }
+    return {
+      access_token: await this.generateAccessToken(user),
     };
   }
 

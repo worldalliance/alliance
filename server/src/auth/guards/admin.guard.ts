@@ -6,53 +6,52 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from './public.decorator';
+import { UserService } from '../../user/user.service';
 
 export interface JwtPayload {
   sub: number;
   email: string;
 }
 
-export interface JwtRequest extends Request {
-  user: JwtPayload;
-}
-
 @Injectable()
-export class AuthGuard implements CanActivate {
+export class AdminGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
-    private reflector: Reflector,
+    private userService: UserService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (isPublic) {
-      return true;
-    }
-    console.log('processing auth guard');
-
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
+
+    console.log('processing admin guard');
+    console.log(token);
+
     if (!token) {
       console.log('no token');
       throw new UnauthorizedException();
     }
     try {
-      console.log('jwt secret', process.env.JWT_SECRET);
-      console.log('token', token);
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: process.env.JWT_SECRET,
       });
       request['user'] = payload;
-    } catch (error) {
-      console.log('jwt verification error: ', error);
+
+      const user = await this.userService.findOneByEmail(payload.email);
+      console.log('user', user);
+      if (!user) {
+        console.log('admin guard failed');
+        throw new UnauthorizedException();
+      }
+      if (!user.admin) {
+        console.log('user is not admin');
+        throw new UnauthorizedException();
+      }
+      console.log('admin guard passed');
+      return true;
+    } catch {
       throw new UnauthorizedException();
     }
-    return true;
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {
