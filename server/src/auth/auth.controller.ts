@@ -42,9 +42,9 @@ export class AuthController {
 
   @Post('refresh')
   @UseGuards(RefreshTokenGuard)
-  refreshTokens(@Request() req: JwtRequest) {
+  async refreshTokens(@Request() req: JwtRequest) {
     const userId: number = req.user.sub;
-    return this.authService.refreshAccessToken(userId);
+    return { access_token: await this.authService.refreshAccessToken(userId) };
   }
 
   @Get('/me')

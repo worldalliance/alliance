@@ -4,6 +4,8 @@ import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../user/user.entity';
+import { UnauthorizedException } from '@nestjs/common';
+import { Action } from 'src/actions/entities/action.entity';
 
 describe('UsersService', () => {
   let service: AuthService;
@@ -15,6 +17,10 @@ describe('UsersService', () => {
           provide: getRepositoryToken(User),
           useValue: {},
         },
+        {
+          provide: getRepositoryToken(Action),
+          useValue: {},
+        },
         JwtService,
         UserService,
         AuthService,
@@ -24,7 +30,17 @@ describe('UsersService', () => {
     service = module.get<AuthService>(AuthService);
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
+  describe('login', () => {
+    it('should return unauthorized if user is not found', async () => {
+      const result = await service.login(
+        'doesntexist@example.com',
+        'badpassword',
+      );
+      expect(result)
+        .rejects.toThrow(UnauthorizedException)
+        .catch((e) => {
+          expect(e).toBeInstanceOf(UnauthorizedException);
+        });
+    });
   });
 });

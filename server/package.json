@@ -39,6 +39,7 @@
     "postgres": "^3.4.5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sqlite3": "^5.1.7",
     "ts-auto-mock": "^3.7.4",
     "ttypescript": "^1.5.15",
     "typeorm": "^0.3.22"

@@ -5,6 +5,11 @@ import { User } from '../user/user.entity';
 import { SignUp } from './sign-up.dto';
 import { JWTTokenType, JwtPayload } from './guards/auth.guard';
 
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -21,7 +26,7 @@ export class AuthService {
     email: string,
     password: string,
     adminOnly: boolean = false,
-  ): Promise<{ access_token: string; refresh_token: string }> {
+  ): Promise<AuthTokens> {
     const user = await this.usersService.findOneByEmail(email);
 
     if (!user) {
@@ -63,14 +68,12 @@ export class AuthService {
     return this.jwtService.signAsync(payload, { expiresIn: '15m' });
   }
 
-  async refreshAccessToken(userId: number): Promise<{ access_token: string }> {
+  async refreshAccessToken(userId: number): Promise<string> {
     const user = await this.usersService.findOne(userId);
     if (!user) {
       throw new UnauthorizedException('Invalid user id');
     }
-    return {
-      access_token: await this.generateAccessToken(user),
-    };
+    return await this.generateAccessToken(user);
   }
 
   async getProfile(email: string): Promise<User> {
