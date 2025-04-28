@@ -32,7 +32,7 @@ export class ActionsController {
     if (!req.user) {
       throw new UnauthorizedException('User not found');
     }
-    return this.actionsService.joinAction(+id, req.user.email);
+    return this.actionsService.joinAction(+id, req.user.sub);
   }
 
   @Get()
@@ -45,6 +45,7 @@ export class ActionsController {
   @Get(':id')
   @UseGuards(AuthGuard)
   findOne(@Param('id') id: string) {
+    console.log('getting an action: ', id);
     return this.actionsService.findOne(+id);
   }
 

@@ -8,6 +8,7 @@ import { User } from './user/user.entity';
 import { ActionsModule } from './actions/actions.module';
 import { Action } from './actions/entities/action.entity';
 import { UserService } from './user/user.service';
+import { UserAction } from './actions/entities/user-action.entity';
 
 @Module({
   imports: [
@@ -23,7 +24,7 @@ import { UserService } from './user/user.service';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, Action],
+      entities: [User, Action, UserAction],
       synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'
         ? {

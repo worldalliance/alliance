@@ -5,12 +5,15 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
 import { Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
+import { UserAction, UserActionRelation } from './entities/user-action.entity';
 
 @Injectable()
 export class ActionsService {
   constructor(
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
+    @InjectRepository(UserAction)
+    private readonly userActionRepository: Repository<UserAction>,
     private userService: UserService,
   ) {}
 
@@ -27,17 +30,44 @@ export class ActionsService {
     return this.actionRepository.findOneBy({ id });
   }
 
-  async joinAction(id: number, email: string): Promise<Action | null> {
-    const action = await this.findOne(id);
-    const user = await this.userService.findOneByEmail(email);
-    if (!action) {
-      throw new NotFoundException('Action not found');
+  async setActionRelation(
+    actionId: number,
+    userId: number,
+    status: UserActionRelation,
+  ): Promise<UserAction> {
+    const action = await this.findOne(actionId);
+    const user = await this.userService.findOne(userId);
+    if (!action || !user) {
+      throw new NotFoundException('Action or user not found');
     }
-    if (!user) {
-      throw new NotFoundException('User not found');
+    let userAction = await this.userActionRepository.findOne({
+      where: { user: { id: userId }, action: { id: actionId } },
+      relations: ['user', 'action'],
+    });
+
+    if (!userAction) {
+      userAction = this.userActionRepository.create({
+        user,
+        action,
+        status,
+      });
+    } else {
+      userAction.status = status;
     }
 
-    return action;
+    return await this.userActionRepository.save(userAction);
+  }
+
+  async joinAction(actionId: number, userId: number): Promise<UserAction> {
+    return this.setActionRelation(actionId, userId, UserActionRelation.JOINED);
+  }
+
+  async completeAction(actionId: number, userId: number): Promise<UserAction> {
+    return this.setActionRelation(
+      actionId,
+      userId,
+      UserActionRelation.COMPLETED,
+    );
   }
 
   async update(

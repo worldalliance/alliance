@@ -1,6 +1,5 @@
 import * as bcrypt from 'bcryptjs';
 import { Exclude } from 'class-transformer';
-import { Action } from '../actions/entities/action.entity';
 
 import {
   Entity,
@@ -10,8 +9,9 @@ import {
   UpdateDateColumn,
   BeforeInsert,
   BeforeUpdate,
-  ManyToMany,
+  OneToMany,
 } from 'typeorm';
+import { UserAction } from 'src/actions/entities/user-action.entity';
 
 @Entity()
 export class User {
@@ -37,8 +37,8 @@ export class User {
   @Column({ default: false })
   admin: boolean;
 
-  @ManyToMany(() => Action, (action) => action.users)
-  actions: Action[];
+  @OneToMany(() => UserAction, (userAction) => userAction.user)
+  actionRelations: UserAction[];
 
   constructor(data: Partial<User> = {}) {
     Object.assign(this, data);

@@ -31,7 +31,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
 
   return (
     <div className="relative">
-      <StatusIndicator status={Status.InProgress} />
+      {/* <StatusIndicator status={Status.InProgress} /> */}
       <Card className="block bg-stone-50 text-[11pt] font-avenir">
         <div className="flex items-center justify-start w-[100%] space-x-3">
           <p className="font-bold">{title}</p>

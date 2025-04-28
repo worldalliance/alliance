@@ -1,14 +1,24 @@
-import React, { useEffect, useState } from "react";
-import { actionsApi, Action } from "../lib/actionsApi";
+import React, { useEffect, useMemo, useState } from "react";
+import { actionsApi, Action, ActionStatus } from "../lib/actionsApi";
 import ActionItemCard, { ActionCardAction } from "../components/ActionItemCard";
 import Navbar from "../components/Navbar";
 import { NavbarPage } from "../components/Navbar";
 import { useNavigate } from "react-router-dom";
+import Button, { ButtonColor } from "../components/system/Button";
+
+enum FilterMode {
+  Active = "active",
+  All = "all",
+  Upcoming = "upcoming",
+  Completed = "past",
+  Joined = "joined",
+}
 
 const ActionsListPage: React.FC = () => {
   const [actions, setActions] = useState<Action[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.Active);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -28,10 +38,31 @@ const ActionsListPage: React.FC = () => {
     fetchActions();
   }, []);
 
+  const filteredActions = useMemo(() => {
+    if (filterMode === FilterMode.Active) {
+      return actions.filter((action) => action.status === ActionStatus.Active);
+    }
+    return actions;
+  }, [actions, filterMode]);
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="font-berlingske text-4xl mb-6">Actions</h1>
+    <div className="flex flex-col min-h-screen bg-stone-50 items-center">
+      <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))]">
+        <div className="flex py-8 flex-row justify-between items-center w-[90%]">
+          <p className="font-sabon text-xl text-left h-fit">Filter:</p>
+          <div className="flex flex-row gap-x-2 items-center">
+            {Object.values(FilterMode).map((mode) => (
+              <Button
+                key={mode}
+                color={
+                  filterMode === mode ? ButtonColor.Blue : ButtonColor.Light
+                }
+                onClick={() => setFilterMode(mode)}
+                label={mode}
+              ></Button>
+            ))}
+          </div>
+        </div>
 
         {loading && <p className="text-center py-4">Loading actions...</p>}
 
@@ -41,18 +72,16 @@ const ActionsListPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {actions.map((action) => (
-            <ActionItemCard
-              key={action.id}
-              title={action.name}
-              description={action.description}
-              category={action.category}
-              actions={[ActionCardAction.Details]}
-              onClick={() => navigate(`/action/${action.id}`)}
-            />
-          ))}
-        </div>
+        {filteredActions.map((action) => (
+          <ActionItemCard
+            key={action.id}
+            title={action.name}
+            description={action.description}
+            category={action.category}
+            actions={[ActionCardAction.Details]}
+            onClick={() => navigate(`/action/${action.id}`)}
+          />
+        ))}
       </div>
     </div>
   );

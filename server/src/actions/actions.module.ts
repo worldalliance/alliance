@@ -5,11 +5,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
 import { UserModule } from '../user/user.module';
 import { User } from '../user/user.entity';
+import { UserAction } from './entities/user-action.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     TypeOrmModule.forFeature([Action]),
+    TypeOrmModule.forFeature([UserAction]),
     UserModule,
   ],
   controllers: [ActionsController],

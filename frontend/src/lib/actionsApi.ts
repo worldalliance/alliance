@@ -1,12 +1,18 @@
 import { apiConfig } from "./config";
 
+export enum ActionStatus {
+  Active = "active",
+  Upcoming = "upcoming",
+  Past = "past",
+}
+
 export interface Action {
   id: number;
   name: string;
   category: string;
   whyJoin: string;
   description: string;
-  status: string;
+  status: ActionStatus;
   createdAt: Date;
 }
 
@@ -42,6 +48,8 @@ export const actionsApi = {
    */
   async getActionById(id: number): Promise<Action> {
     const token = localStorage.getItem("token");
+
+    console.log("getting action by id", id);
 
     if (!token) {
       throw new Error("Authentication required");

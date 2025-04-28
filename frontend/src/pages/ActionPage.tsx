@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import { NavbarPage } from "../components/Navbar";
 import { useNavigate, useParams } from "react-router-dom";
@@ -16,17 +16,20 @@ export interface ActionState {
 }
 
 const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
-  const { actionId } = useParams();
+  const { id: actionId } = useParams();
   const navigate = useNavigate();
   const [action, setAction] = useState<Action | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
+
+  console.log("actionId", actionId);
+
   useEffect(() => {
     const fetchAction = async () => {
       if (!actionId) return;
-      
+
       try {
+        console.log("fetching action", actionId);
         const actionData = await actionsApi.getActionById(Number(actionId));
         setAction(actionData);
         setLoading(false);
@@ -40,13 +43,13 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
     fetchAction();
   }, [actionId]);
 
+  console.log("action", action);
+
   return (
-    <div className="flex flex-row min-h-screen pt-12 w-full justify-center gap-x-7 bg-stone-50">
+    <div className="flex flex-row min-h-screen pt-12 px-3 w-full justify-center gap-x-7 bg-stone-50">
       <div className="flex flex-col max-w-[700px] gap-y-3 border-r border-gray-200 pr-7">
         <div className="flex flex-row justify-between items-center">
-          <h1 className="font-berlingske text-[28pt]">
-            Lorem Ipsum Initiative
-          </h1>
+          <h1 className="font-berlingske text-[28pt]">{action?.name}</h1>
           {state === "uncommitted" && (
             <Button
               className="mt-1"
@@ -103,7 +106,9 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
       </div>
       <div className="flex flex-col gap-y-5 items-stretch max-w-[300px]">
         <div className="w-[75 self-center">
-          <Globe people={23} colored />
+          <Suspense fallback={<div>Loading...</div>}>
+            <Globe people={23} colored />
+          </Suspense>
           <p className="text-center pt-2 text-[11pt]">
             23,053 people committed
           </p>

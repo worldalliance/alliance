@@ -52,7 +52,6 @@ export class AuthController {
   async me(
     @Request() req: JwtRequest,
   ): Promise<{ email: string; name: string }> {
-    console.log('getting profile profile: ', req.user);
     const profile = await this.authService.getProfile(req.user.email);
     return { email: profile.email, name: profile.name };
   }

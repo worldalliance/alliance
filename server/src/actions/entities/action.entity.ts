@@ -1,12 +1,12 @@
-import { User } from '../../user/user.entity';
 import {
   Column,
   Entity,
-  ManyToMany,
   PrimaryGeneratedColumn,
   JoinTable,
   CreateDateColumn,
+  OneToMany,
 } from 'typeorm';
+import { UserAction } from './user-action.entity';
 
 @Entity()
 export class Action {
@@ -31,7 +31,7 @@ export class Action {
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToMany(() => User, (user) => user.actions)
+  @OneToMany(() => UserAction, (userAction) => userAction.action)
   @JoinTable()
-  users: User[];
+  userRelations: UserAction[];
 }

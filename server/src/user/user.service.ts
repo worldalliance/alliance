@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
+import { UserActionRelation } from 'src/actions/entities/user-action.entity';
 
 @Injectable()
 export class UserService {
@@ -25,6 +26,20 @@ export class UserService {
   }
   async findOneByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOneBy({ email: email });
+  }
+
+  async getActionRelation(
+    id: number,
+    actionId: number,
+  ): Promise<UserActionRelation> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+    });
+
+    const relation: UserActionRelation =
+      user?.actionRelations.find((relation) => relation.action.id === actionId)
+        ?.status ?? UserActionRelation.NONE;
+    return relation;
   }
 
   async remove(id: number): Promise<void> {

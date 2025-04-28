@@ -381,8 +381,6 @@ jobs:
   verify-api:
     needs:
       - deploy-nest-backend
-      - deploy-react-app
-      - deploy-admin-app
     runs-on: ubuntu-latest
     steps:
       - name: Check API health
