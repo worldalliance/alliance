@@ -48,14 +48,14 @@ jobs:
 
       - name: Run Jest Tests
         run: |
-          JWT_SECRET=test_secret_key
-          JWT_REFRESH_SECRET=test_refresh_key
-          DB_HOST=localhost
-          DB_PORT=5432
-          DB_USERNAME=postgres
-          DB_PASSWORD=alliance
-          DB_NAME=alliance
-          NODE_ENV=test
+          export JWT_SECRET=test_secret_key
+          export JWT_REFRESH_SECRET=test_refresh_key
+          export DB_HOST=localhost
+          export DB_PORT=5432
+          export DB_USERNAME=postgres
+          export DB_PASSWORD=alliance
+          export DB_NAME=alliance
+          export NODE_ENV=test
           npm run test:e2e
         working-directory: ./server
 
