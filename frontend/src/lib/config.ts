@@ -11,7 +11,7 @@ export const getApiUrl = (): string => {
   if (process.env.NODE_ENV === "development") {
     return "http://localhost:3005"; // Local development
   } else {
-    return "http://alliance-beta.xyz:3005";
+    return "http://alliance-beta.xyz/api";
   }
 };
 
