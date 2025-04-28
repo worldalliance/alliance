@@ -1,25 +1,26 @@
-import { IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty } from 'class-validator';
+import { ActionStatus } from '../entities/action.entity';
 
 export class CreateActionDto {
-  @IsString()
   @IsNotEmpty()
+  @ApiProperty()
   name: string;
 
-  @IsString()
   @IsNotEmpty()
+  @ApiProperty()
   category: string;
 
-  @IsString()
+  @ApiProperty()
   whyJoin: string;
 
-  @IsString()
+  @ApiProperty()
   type: string;
 
-  @IsString()
+  @ApiProperty()
   description: string;
 
-  @IsString()
   @IsNotEmpty()
-  status: string;
+  @ApiProperty({ enum: Object.keys(ActionStatus) })
+  status: ActionStatus;
 }

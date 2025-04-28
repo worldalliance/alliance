@@ -36,7 +36,7 @@ export class AuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    console.log('processing auth guard');
+
     if (isPublic) {
       return true;
     }

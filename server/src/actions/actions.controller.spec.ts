@@ -6,6 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Action } from './entities/action.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../user/user.entity';
+import { UserAction } from './entities/user-action.entity';
 
 describe('ActionsController', () => {
   let controller: ActionsController;
@@ -19,6 +20,10 @@ describe('ActionsController', () => {
         JwtService,
         {
           provide: getRepositoryToken(Action),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(UserAction),
           useValue: {},
         },
         {

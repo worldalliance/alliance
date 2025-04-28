@@ -4,6 +4,7 @@ import { Action } from './entities/action.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
+import { UserAction } from './entities/user-action.entity';
 
 describe('ActionsService', () => {
   let service: ActionsService;
@@ -19,6 +20,10 @@ describe('ActionsService', () => {
         },
         {
           provide: getRepositoryToken(User),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(UserAction),
           useValue: {},
         },
       ],

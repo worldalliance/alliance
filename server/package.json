@@ -27,6 +27,7 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/swagger": "^11.1.5",
     "@nestjs/typeorm": "^11.0.0",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
@@ -46,7 +47,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.18.0",
+    "@eslint/js": "^9.25.1",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
@@ -57,7 +58,7 @@
     "@types/node": "^22.10.7",
     "@types/passport-local": "^1.0.38",
     "@types/supertest": "^6.0.2",
-    "eslint": "^9.18.0",
+    "eslint": "^9.25.1",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^16.0.0",
@@ -70,7 +71,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript-eslint": "^8.31.1"
   },
   "jest": {
     "moduleFileExtensions": [

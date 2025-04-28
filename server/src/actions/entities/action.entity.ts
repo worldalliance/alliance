@@ -8,6 +8,13 @@ import {
 } from 'typeorm';
 import { UserAction } from './user-action.entity';
 
+export enum ActionStatus {
+  Active = 'active',
+  Upcoming = 'upcoming',
+  Past = 'past',
+  Draft = 'draft',
+}
+
 @Entity()
 export class Action {
   @PrimaryGeneratedColumn()
@@ -26,7 +33,7 @@ export class Action {
   description: string;
 
   @Column()
-  status: string;
+  status: ActionStatus;
 
   @CreateDateColumn()
   createdAt: Date;

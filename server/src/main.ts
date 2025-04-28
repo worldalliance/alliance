@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { useContainer } from 'class-validator';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 function validateEnv() {
   const requiredVars = [
@@ -29,6 +30,19 @@ async function bootstrap() {
   validateEnv();
   app.useGlobalPipes(new ValidationPipe());
   app.enableCors();
+
+  const config = new DocumentBuilder()
+    .setTitle('Alliance API')
+    .setVersion('1.0')
+    .addTag('alliance')
+    .build();
+
+  const documentFactory = () => SwaggerModule.createDocument(app, config);
+
+  SwaggerModule.setup('openapi', app, documentFactory, {
+    yamlDocumentUrl: '/openapi.yaml',
+  });
+
   await app.listen(process.env.PORT ?? 3005, '0.0.0.0');
 }
 

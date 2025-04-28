@@ -11,7 +11,7 @@ import {
   BeforeUpdate,
   OneToMany,
 } from 'typeorm';
-import { UserAction } from 'src/actions/entities/user-action.entity';
+import { UserAction } from '../actions/entities/user-action.entity';
 
 @Entity()
 export class User {
