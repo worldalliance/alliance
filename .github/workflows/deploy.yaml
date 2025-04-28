@@ -254,7 +254,8 @@ jobs:
   build-nest-backend:
     runs-on: ubuntu-latest
     needs:
-      - test-nest-backend
+      - test-backend
+      - test-backend-e2e
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
