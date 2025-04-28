@@ -13,7 +13,9 @@ const AdminPanel: React.FC = () => {
     const loadActions = async () => {
       try {
         const data = await fetchActions();
-        setActions(data);
+        if (data && data !== "unauthorized") {
+          setActions(data);
+        }
         setLoading(false);
       } catch (err) {
         setError("Failed to load actions");

@@ -29,10 +29,12 @@ export interface UpdateActionDto {
 
 const API_URL = getApiUrl();
 
-export const fetchActions = async (): Promise<Action[]> => {
+export const fetchActions = async (): Promise<
+  Action[] | "unauthorized" | null
+> => {
   const token = localStorage.getItem("token");
   if (!token) {
-    throw new Error("No authentication token");
+    return "unauthorized";
   }
 
   const response = await fetch(`${API_URL}/actions`, {
@@ -41,8 +43,12 @@ export const fetchActions = async (): Promise<Action[]> => {
     },
   });
 
+  if (response.status === 401) {
+    return "unauthorized";
+  }
+
   if (!response.ok) {
-    throw new Error("Failed to fetch actions");
+    return null;
   }
 
   return await response.json();

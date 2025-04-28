@@ -13,12 +13,36 @@ export interface LoginData {
  */
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
 }
 
 /**
  * API client for authentication
  */
 export const authApi = {
+  /**
+   * Register a new user
+   */
+  async register(data: any): Promise<{ success: boolean }> {
+    const response = await fetch(
+      `${apiConfig.baseUrl}${apiConfig.endpoints.register}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Registration failed");
+    }
+
+    return await response.json();
+  },
+
   /**
    * Login a user
    */
@@ -37,6 +61,24 @@ export const authApi = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.message || "Login failed");
+    }
+
+    return await response.json();
+  },
+
+  async refreshAccessToken(refreshToken: string): Promise<AuthResponse | null> {
+    const response = await fetch(
+      `${apiConfig.baseUrl}${apiConfig.endpoints.refresh}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${refreshToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
     }
 
     return await response.json();

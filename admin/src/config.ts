@@ -16,6 +16,7 @@ export const apiConfig = {
   endpoints: {
     login: "/auth/login",
     register: "/auth/register",
+    refresh: "/auth/refresh",
     profile: "/auth/me",
     actions: "/actions",
     action: (id: number) => `/actions/${id}`,
