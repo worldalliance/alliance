@@ -9,9 +9,9 @@ export const getApiUrl = (): string => {
   }
 
   if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3005"; // Local development
+    return "https://localhost:3005"; // Local development
   } else {
-    return "http://alliance-beta.xyz/api";
+    return "https://alliance-beta.xyz/api";
   }
 };
 
