@@ -377,3 +377,16 @@ jobs:
           echo "Checking admin app..."
           curl --fail --silent --show-error https://admin.${{vars.DOMAIN_NAME}} > /dev/null
           echo "admin app https ok"
+
+  verify-api:
+    needs:
+      - deploy-nest-backend
+      - deploy-react-app
+      - deploy-admin-app
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API health
+        run: |
+          echo "Checking API health..."
+          curl --fail --silent --show-error https://${{vars.DOMAIN_NAME}}/api/ > /dev/null
+          echo "API health ok"
