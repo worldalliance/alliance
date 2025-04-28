@@ -22,6 +22,7 @@ describe('AppController (e2e)', () => {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
+          envFilePath: '.env.test',
         }),
         AuthModule,
         JwtModule,
