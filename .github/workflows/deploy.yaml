@@ -234,7 +234,7 @@ jobs:
 
               server {
                 listen 80;
-                server_name admin.${{vars.ADMIN_DOMAIN_NAME}};
+                server_name admin.${{vars.DOMAIN_NAME}};
 
                 root /home/ec2-user/admin-app/build;
                 index index.html;
@@ -336,10 +336,23 @@ jobs:
             cd ~/nest-backend
             npm install --production
 
-            npm install -g pm2
-            pm2 delete nest-app || true
-            pm2 start dist/main.js --name nest-app
-            pm2 save
+            if [ ! -f /etc/nginx/conf.d/api.conf ]; then
+              cat <<EOF | sudo tee /etc/nginx/conf.d/api.conf
+
+              server {
+                listen 3005;
+                server_name ${{vars.DOMAIN_NAME}};
+
+                root /home/ec2-user/nest-backend/dist;
+                index index.html;
+
+                location / {
+                  try_files \$uri /index.html;
+                }
+              }
+            EOF
+            fi
+
   verify-deployment:
     needs:
       - deploy-nest-backend
