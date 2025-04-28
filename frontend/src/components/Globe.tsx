@@ -126,8 +126,6 @@ const Globe: React.FC<GlobeProps> = ({
 
       worldData.features.forEach((feature: any) => {
         if (!feature.geometry) return;
-        console.log(feature.properties.name);
-        if (feature.properties.name !== "USA") return;
 
         const area = d3.geoArea(feature.geometry);
         const countryPeopleCount = 100;

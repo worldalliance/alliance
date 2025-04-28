@@ -13,7 +13,7 @@ import Navbar, { NavbarPage } from "./components/Navbar";
 import ActionPage from "./pages/ActionPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+import { AuthProvider } from "./context/AuthContext";
 import AccountPage from "./pages/AccountPage";
 import ActionsListPage from "./pages/ActionsListPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
@@ -85,18 +85,8 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/issues"
-          element={
-            <IssuesListPage />
-          }
-        />
-        <Route
-          path="/issues/:issue"
-          element={
-            <IssuePage />
-          }
-        />
+        <Route path="/issues" element={<IssuesListPage />} />
+        <Route path="/issues/:issue" element={<IssuePage />} />
         <Route
           path="/account"
           element={

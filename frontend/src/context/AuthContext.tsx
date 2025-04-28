@@ -32,15 +32,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const token = localStorage.getItem("token");
       const refreshToken = localStorage.getItem("refresh_token");
 
-      console.log("token: ", token);
-      console.log("refreshToken: ", refreshToken);
-
       if (token) {
         try {
           const userProfile = await authApi.getProfile();
           setUser(userProfile);
         } catch (error) {
-          console.log("error: ", error);
           console.log("trying to refresh token");
           localStorage.removeItem("token");
 
