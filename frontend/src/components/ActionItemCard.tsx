@@ -8,6 +8,7 @@ interface ActionItemCardProps {
   title: string;
   description: string;
   category: string;
+  className?: string;
   actions: ActionCardAction[];
   onClick?: () => void;
 }
@@ -24,11 +25,12 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   category,
   actions,
   onClick,
+  className,
 }) => {
   const navigate = useNavigate();
 
   return (
-    <div className="relative">
+    <div className={`relative ${className}`}>
       {/* <StatusIndicator status={Status.InProgress} /> */}
       <Card className="block bg-stone-50 text-[11pt] font-avenir">
         <div className="flex items-center justify-start w-[100%] space-x-3">

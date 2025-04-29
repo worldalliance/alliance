@@ -73,7 +73,6 @@ export class AuthController {
     @Request() req: JwtRequest,
   ): Promise<{ email: string; name: string }> {
     const profile = await this.authService.getProfile(req.user.email);
-    console.log('returning profile: ', profile);
     return { email: profile.email, name: profile.name };
   }
 }

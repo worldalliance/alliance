@@ -7,8 +7,9 @@ import React, {
   useCallback,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "./authapi";
-import { fetchActions } from "./actionsapi";
+import { actionsFindAll, authLogin, authMe, authRefreshTokens } from "./client";
+import { client } from "./client/client.gen";
+import { getApiUrl } from "./config";
 
 interface UserData {
   name: string;
@@ -50,18 +51,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       console.log("refreshToken: ", refreshToken);
 
       if (token) {
-        const actions = await fetchActions();
-        if (actions === "unauthorized") {
+        const actions = await actionsFindAll();
+        if (actions.error) {
           localStorage.removeItem("token");
 
-          if (refreshToken) {
-            const response = await authApi.refreshAccessToken(refreshToken);
-            if (response) {
-              localStorage.setItem("token", response.access_token);
-            } else {
-              console.log("refresh token failed: logging out");
-              logout();
-            }
+          const response = await authRefreshTokens({
+            headers: {
+              Authorization: `Bearer ${refreshToken}`,
+            },
+          });
+
+          if (response.data) {
+            localStorage.setItem("token", response.data.access_token);
+
+            client.setConfig({
+              baseUrl: getApiUrl(),
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            });
+          } else {
+            console.log("refresh token failed: logging out");
+            logout();
           }
         }
       }
@@ -76,7 +87,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setLoading(true);
     console.log("logging in");
     try {
-      const response = await authApi.login({ email, password });
+      const response = await authLogin({
+        body: { email, password },
+      });
       localStorage.setItem("token", response.access_token);
       localStorage.setItem("refresh_token", response.refresh_token);
 

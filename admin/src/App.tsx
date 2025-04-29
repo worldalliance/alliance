@@ -1,11 +1,11 @@
 import React from "react";
-import "./App.css";
-import "./tailwind.css";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./AuthContext";
 import AdminPanel from "./AdminPanel";
 import LoginPage from "./LoginPage";
 import AdminActionPage from "./AdminActionPage";
+import { getApiUrl } from "./config";
+import { client } from "./client/client.gen";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -29,6 +29,13 @@ const LoggedOutOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
 
   return <>{children}</>;
 };
+
+client.setConfig({
+  baseUrl: getApiUrl(),
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem("token")}`,
+  },
+});
 
 // AppRoutes component to use the auth context
 const AppRoutes = () => {

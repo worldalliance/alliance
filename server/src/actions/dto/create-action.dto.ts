@@ -1,8 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { IsNotEmpty } from 'class-validator';
 import { ActionStatus } from '../entities/action.entity';
 
 export class ActionDto {
+  @IsNotEmpty()
+  @ApiProperty()
+  id: number;
+
   @IsNotEmpty()
   @ApiProperty()
   name: string;
@@ -24,3 +28,5 @@ export class ActionDto {
   @ApiProperty({ enum: Object.keys(ActionStatus) })
   status: ActionStatus;
 }
+
+export class CreateActionDto extends OmitType(ActionDto, ['id']) {}

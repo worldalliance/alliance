@@ -45,7 +45,7 @@ const ActionsListPage: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-stone-50 items-center">
-      <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))]">
+      <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
         <div className="flex py-8 flex-row justify-between items-center w-[90%]">
           <p className="font-sabon text-xl text-left h-fit pt-2">Filter:</p>
           <div className="flex flex-row gap-x-2 items-center">
@@ -78,6 +78,7 @@ const ActionsListPage: React.FC = () => {
             category={action.category}
             actions={[ActionCardAction.Details]}
             onClick={() => navigate(`/action/${action.id}`)}
+            className="w-full"
           />
         ))}
       </div>

@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ActionDto } from './create-action.dto';
 
 export class AllActionsDto {
   @ApiProperty()
-  actions: { name: string; status: string }[];
+  actions: ActionDto[];
 }

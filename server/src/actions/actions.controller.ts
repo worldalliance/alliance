@@ -11,12 +11,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
-import { ActionDto } from './dto/create-action.dto';
+import { ActionDto, CreateActionDto } from './dto/create-action.dto';
 import { UpdateActionDto } from './dto/update-action.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { ApiOkResponse, ApiUnauthorizedResponse } from '@nestjs/swagger';
-import { AllActionsDto } from './dto/actionresponse.dto';
 
 @Controller('actions')
 export class ActionsController {
@@ -24,7 +23,7 @@ export class ActionsController {
 
   @Post('create')
   @UseGuards(AdminGuard)
-  create(@Body() createActionDto: ActionDto) {
+  create(@Body() createActionDto: CreateActionDto) {
     return this.actionsService.create(createActionDto);
   }
 
@@ -39,8 +38,8 @@ export class ActionsController {
 
   @Get()
   @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [AllActionsDto] })
-  findAll() {
+  @ApiOkResponse({ type: [ActionDto] })
+  async findAll() {
     return this.actionsService.findAll();
   }
 

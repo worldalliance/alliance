@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import { LoginData } from "./authapi";
 import { useAuth } from "./AuthContext";
-import "./tailwind.css";
+import { SignInDto } from "./client";
 
 const LoginPage: React.FC = () => {
   const { login, loading } = useAuth();
-  const [formData, setFormData] = useState<LoginData>({
+  const [formData, setFormData] = useState<SignInDto>({
     email: "",
     password: "",
   });

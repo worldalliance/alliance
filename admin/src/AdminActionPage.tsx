@@ -1,32 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardStyle } from "./Card";
+import { ActionDto } from "./client/types.gen";
 import {
-  Action,
-  fetchAction,
-  createAction,
-  updateAction,
-  deleteAction,
-  CreateActionDto,
-  UpdateActionDto,
-} from "./actionsapi";
+  actionsCreate,
+  actionsFindOne,
+  actionsRemove,
+  actionsUpdate,
+} from "./client/sdk.gen";
 
 const AdminActionPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const isNewAction = id === "new";
 
-  const [action, setAction] = useState<Action | null>(null);
+  const [action, setAction] = useState<ActionDto | null>(null);
   const [loading, setLoading] = useState<boolean>(!isNewAction);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState<CreateActionDto>({
+  const [form, setForm] = useState<ActionDto>({
     name: "",
     category: "",
     whyJoin: "",
     description: "",
-    status: "draft",
+    status: "Draft",
+    type: "Action",
   });
 
   useEffect(() => {
@@ -37,14 +36,21 @@ const AdminActionPage: React.FC = () => {
 
     const loadAction = async () => {
       try {
-        const actionData = await fetchAction(Number(id));
+        const response = await actionsFindOne({
+          path: { id: Number(id) },
+        });
+        const actionData = response.data;
+        if (!actionData) {
+          throw new Error("Action not found");
+        }
         setAction(actionData);
         setForm({
           name: actionData.name,
           category: actionData.category,
-          whyJoin: actionData.whyJoin || "",
-          description: actionData.description || "",
+          whyJoin: actionData.whyJoin,
+          description: actionData.description,
           status: actionData.status,
+          type: actionData.type,
         });
         setLoading(false);
       } catch (err) {
@@ -76,10 +82,23 @@ const AdminActionPage: React.FC = () => {
 
     try {
       if (isNewAction) {
-        const newAction = await createAction(form);
+        const response = await actionsCreate({
+          body: form,
+        });
+        const newAction = response.data;
+        if (!newAction) {
+          throw new Error("Failed to create action");
+        }
         navigate(`/action/${newAction.id}`);
       } else {
-        await updateAction(Number(id), form as UpdateActionDto);
+        const response = await actionsUpdate({
+          path: { id: Number(id) },
+          body: form,
+        });
+        const updatedAction = response.data;
+        if (!updatedAction) {
+          throw new Error("Failed to update action");
+        }
         setAction((prev) => (prev ? { ...prev, ...form } : null));
       }
       setSaving(false);
@@ -104,7 +123,12 @@ const AdminActionPage: React.FC = () => {
     ) {
       try {
         setLoading(true);
-        await deleteAction(Number(id));
+        const response = await actionsRemove({
+          path: { id: Number(id) },
+        });
+        if (response.error) {
+          throw new Error("Failed to delete action");
+        }
         navigate("/");
       } catch (err) {
         setError("Failed to delete action");

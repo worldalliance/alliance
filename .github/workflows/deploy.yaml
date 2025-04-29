@@ -179,7 +179,7 @@ jobs:
                 listen 80;
                 server_name ${{vars.DOMAIN_NAME }};
 
-                root /home/ec2-user/alliance-app/build;
+                root /home/ec2-user/alliance-app/dist;
                 index index.html;
 
                 location / {

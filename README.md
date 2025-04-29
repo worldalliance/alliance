@@ -1,8 +1,8 @@
 # Alliance
 
-## UsefulCommands
+## Useful Commands
 
-## Frontend
+### Frontend
 
 Dev server: `npm run dev`
 

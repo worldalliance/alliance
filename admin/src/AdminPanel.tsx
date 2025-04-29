@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Card, { CardStyle } from "./Card";
-import { Action, fetchActions } from "./actionsapi";
 import { useNavigate } from "react-router-dom";
+import { ActionDto, actionsFindAll } from "./client";
 
 const AdminPanel: React.FC = () => {
-  const [actions, setActions] = useState<Action[]>([]);
+  const [actions, setActions] = useState<ActionDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -12,9 +12,10 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     const loadActions = async () => {
       try {
-        const data = await fetchActions();
-        if (data && data !== "unauthorized") {
-          setActions(data);
+        const response = await actionsFindAll();
+        console.log(response.data);
+        if (response.data) {
+          setActions(response.data);
         }
         setLoading(false);
       } catch (err) {
@@ -56,7 +57,7 @@ const AdminPanel: React.FC = () => {
             <p>No actions found.</p>
           ) : (
             actions.map((action) => (
-              <Card key={action.id} style={CardStyle.Outline}>
+              <Card key={action.name} style={CardStyle.Outline}>
                 <div
                   onClick={() => handleEditAction(action.id)}
                   className="cursor-pointer"
@@ -93,12 +94,11 @@ const AdminPanel: React.FC = () => {
             <div className="mt-2">
               <p>Total Actions: {actions.length}</p>
               <p>
-                Active: {actions.filter((a) => a.status === "active").length}
+                Active: {actions.filter((a) => a.status === "Active").length}
               </p>
-              <p>Draft: {actions.filter((a) => a.status === "draft").length}</p>
+              <p>Draft: {actions.filter((a) => a.status === "Draft").length}</p>
               <p>
-                Completed:{" "}
-                {actions.filter((a) => a.status === "completed").length}
+                Completed: {actions.filter((a) => a.status === "Past").length}
               </p>
             </div>
           </Card>

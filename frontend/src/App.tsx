@@ -19,7 +19,7 @@ import ActionsListPage from "./pages/ActionsListPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
 import { client } from "./client/client.gen";
 import { getApiUrl } from "./lib/config";
-import { Auth } from "@hey-api/client-fetch";
+
 // A simple auth check component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
