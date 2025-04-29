@@ -101,7 +101,7 @@ jobs:
         working-directory: ./frontend
 
       - name: Zip Build Output
-        run: zip -r react-build.zip build
+        run: zip -r react-build.zip dist
         working-directory: ./frontend
 
       - name: Upload Artifact
