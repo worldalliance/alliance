@@ -1,90 +1,87 @@
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @font-face {
   font-family: 'Font';
-  src: url('../public/assets/fonts/font.woff2') format('woff2');
+  src: url('/assets/fonts/font.woff2') format('woff2');
 }
 
 @font-face {
   font-family: 'Berlingske';
-  src: url('../public/assets/fonts/BerlingskeSerif-Blk.woff2') format('woff2');
+  src: url('/assets/fonts/BerlingskeSerif-Blk.woff2') format('woff2');
 }
 
 @font-face {
   font-family: 'ITC';
-  src: url('../public/assets/fonts/ITCAvantGardePro-Bk.otf') format('opentype');
+  src: url('/assets/fonts/ITCAvantGardePro-Bk.otf') format('opentype');
 }
 
 @font-face {
   font-family: 'Toledo';
-  src: url('../public/assets/fonts/Toledo-Serial\ Regular.ttf') format('truetype');
+  src: url('/assets/fonts/Toledo-Serial\ Regular.ttf') format('truetype');
 }
 
 @font-face {
   font-family: 'Public';
-  src: url('../public/assets/fonts/PublicSans-VariableFont_wght.ttf') format('woff2');
+  src: url('/assets/fonts/PublicSans-VariableFont_wght.ttf') format('woff2');
 }
 
 @font-face {
   font-family: 'EB-Garamond';
-  src: url('../public/assets/fonts/EBGaramond-VariableFont_wght.ttf') format('truetype');
+  src: url('/assets/fonts/EBGaramond-VariableFont_wght.ttf') format('truetype');
 }
 
 @font-face {
   font-family: 'Garamond';
-  src: url('../public/assets/fonts/Adobe\ Garamond\ Pro\ Regular.ttf') format('truetype');
+  src: url('/assets/fonts/Adobe\ Garamond\ Pro\ Regular.ttf') format('truetype');
 }
 
 @font-face {
   font-family: 'Bueno';
-  src: url('../public/assets/fonts/bueno-regular.ttf') format('truetype');
+  src: url('/assets/fonts/bueno-regular.ttf') format('truetype');
 }
 
 @font-face {
   font-family: 'ITC';
-  src: url('../public/assets/fonts/ITCAvantGardePro-Md.otf') format('opentype');
+  src: url('/assets/fonts/ITCAvantGardePro-Md.otf') format('opentype');
   font-weight: bold;
 }
 
 @font-face {
   font-family: 'Sabon';
-  src: url('../public/assets/fonts/sabon-regular.ttf') format('truetype');
+  src: url('/assets/fonts/sabon-regular.ttf') format('truetype');
 }
 
 @font-face {
     font-family: 'Sabon';
-    src: url('../public/assets/fonts/sabon-bold.ttf') format('truetype');
+    src: url('/assets/fonts/sabon-bold.ttf') format('truetype');
     font-weight: bold;
 }
 
 @font-face {
     font-family: 'Avenir';
-    src: url('../public/assets/fonts/Avenir_Next_W00_400.woff2') format('woff2');
+    src: url('/assets/fonts/Avenir_Next_W00_400.woff2') format('woff2');
     font-weight: 400;
 }
 
 @font-face {
     font-family: 'Avenir';
-    src: url('../public/assets/fonts/Avenir_Next_W00_600.woff2') format('woff2');
+        src: url('/assets/fonts/Avenir_Next_W00_600.woff2') format('woff2');
     font-weight: 600;
 }
 
 @font-face {
     font-family: 'Roboto';
-    src: url('../public/assets/fonts/Roboto-VariableFont_wdth\,wght.ttf') format('truetype');
+    src: url('/assets/fonts/Roboto-VariableFont_wdth\,wght.ttf') format('truetype');
 }
 
 @font-face {
     font-family: 'Newsreader';
-    src: url('../public/assets/fonts/Newsreader-VariableFont_opsz\,wght.ttf') format('truetype');
+    src: url('/assets/fonts/Newsreader-VariableFont_opsz\,wght.ttf') format('truetype');
 }
 
 @font-face {
     font-family: 'Playfair';
-    src: url('../public/assets/fonts/PlayfairDisplay-VariableFont_wght.ttf') format('truetype');
+    src: url('/assets/fonts/PlayfairDisplay-VariableFont_wght.ttf') format('truetype');
 }
 
 
@@ -114,4 +111,20 @@ p {
 
 a {
     color: var(--text-blue-500);
+}
+
+.font-sabon {
+    font-family: 'Sabon';
+}
+
+.font-berlingske {
+    font-family: 'Berlingske';
+}
+
+.font-itc {
+    font-family: 'ITC';
+}
+
+.font-toledo {
+    font-family: 'Toledo';
 }

@@ -1,4 +1,4 @@
-import { ProgressCircle } from "./ProgressCircle";
+import { ProgressCircle } from "./tremor/ProgressCircle";
 
 export enum Status {
   New = "New",
