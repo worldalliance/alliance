@@ -97,7 +97,7 @@ jobs:
         working-directory: ./frontend
 
       - name: Build React App
-        run: npm run build
+        run: npx vite build
         working-directory: ./frontend
 
       - name: Zip Build Output

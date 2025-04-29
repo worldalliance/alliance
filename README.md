@@ -1,8 +1,12 @@
 # Alliance
 
-Run `npm start`
+## UsefulCommands
 
-## Not yet automated things:
+## Frontend
+
+Dev server: `npm run dev`
+
+Storybook: `yarn storybook`
 
 ### Certbot
 

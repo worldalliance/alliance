@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import Card, { CardStyle } from "./system/Card";
 import { Status } from "./StatusIndicator";
 import StatusIndicator from "./StatusIndicator";
+import Badge from "./system/Badge";
 
 export interface ActionPromptCardProps {
   title: string;
@@ -30,6 +31,7 @@ const ActionPromptCard: React.FC<ActionPromptCardProps> = ({
       >
         <div className="flex items-center justify-start w-[100%] space-x-3">
           <p className="font-bold">Commit to a new action: {title}</p>
+          <Badge>{category}</Badge>
         </div>
         <div className="flex items-center justify-between ">
           <p>{description}</p>
