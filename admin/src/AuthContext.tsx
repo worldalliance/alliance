@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { actionsFindAll, authLogin, authMe, authRefreshTokens } from "./client";
+import { actionsFindAll, authLogin, authRefreshTokens } from "./client";
 import { client } from "./client/client.gen";
 import { getApiUrl } from "./config";
 

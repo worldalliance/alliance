@@ -11,6 +11,7 @@ Storybook: `yarn storybook`
 ### Certbot
 
 `sudo dnf install -y certbot python3-certbot-nginx`
+
 `sudo certbot --nginx -d alliance-beta.xyz -d admin.alliance-beta.xyz`
 
 ### Openapi client gen:

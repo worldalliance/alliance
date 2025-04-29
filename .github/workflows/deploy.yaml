@@ -126,11 +126,11 @@ jobs:
         working-directory: ./admin
 
       - name: Build React App
-        run: npm run build
+        run: npx vite build
         working-directory: ./admin
 
       - name: Zip Build Output
-        run: zip -r admin-build.zip build
+        run: zip -r admin-build.zip dist
         working-directory: ./admin
 
       - name: Upload Artifact
@@ -245,7 +245,7 @@ jobs:
                 listen 80;
                 server_name admin.${{vars.DOMAIN_NAME}};
 
-                root /home/ec2-user/admin-app/build;
+                root /home/ec2-user/admin-app/dist;
                 index index.html;
 
                 location / {

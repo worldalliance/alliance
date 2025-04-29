@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardStyle } from "./Card";
-import { ActionDto } from "./client/types.gen";
+import { CreateActionDto } from "./client/types.gen";
 import {
   actionsCreate,
   actionsFindOne,
@@ -14,12 +14,12 @@ const AdminActionPage: React.FC = () => {
   const navigate = useNavigate();
   const isNewAction = id === "new";
 
-  const [action, setAction] = useState<ActionDto | null>(null);
+  const [action, setAction] = useState<CreateActionDto | null>(null);
   const [loading, setLoading] = useState<boolean>(!isNewAction);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [form, setForm] = useState<ActionDto>({
+  const [form, setForm] = useState<CreateActionDto>({
     name: "",
     category: "",
     whyJoin: "",
