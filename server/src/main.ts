@@ -31,17 +31,23 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
   app.enableCors();
 
-  const config = new DocumentBuilder()
-    .setTitle('Alliance API')
-    .setVersion('1.0')
-    .addTag('alliance')
-    .build();
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('Alliance API')
+      .setVersion('1.0')
+      .addTag('alliance')
+      .build();
 
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
+    const documentFactory = () =>
+      SwaggerModule.createDocument(app, config, {
+        operationIdFactory: (controllerKey: string, methodKey: string) =>
+          controllerKey.replace('Controller', '') + '_' + methodKey,
+      });
 
-  SwaggerModule.setup('openapi', app, documentFactory, {
-    yamlDocumentUrl: '/openapi.yaml',
-  });
+    SwaggerModule.setup('openapi', app, documentFactory, {
+      yamlDocumentUrl: '/openapi.yaml',
+    });
+  }
 
   await app.listen(process.env.PORT ?? 3005, '0.0.0.0');
 }

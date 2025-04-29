@@ -12,6 +12,7 @@ import { UserModule } from '../src/user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { AuthTokens } from '../src/auth/auth.service';
+import { UserAction } from '../src/actions/entities/user-action.entity';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -30,7 +31,7 @@ describe('AppController (e2e)', () => {
         TypeOrmModule.forRoot({
           type: 'sqlite',
           database: ':memory:',
-          entities: [User, Action],
+          entities: [User, Action, UserAction],
           synchronize: true,
         }),
       ],

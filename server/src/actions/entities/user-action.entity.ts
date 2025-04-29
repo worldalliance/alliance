@@ -25,8 +25,7 @@ export class UserAction {
   action: Action;
 
   @Column({
-    type: 'enum',
-    enum: Object.values(UserActionRelation),
+    type: 'varchar', // should be an enum but sqlite doesn't support it (which we use for e2e tests only)
     default: UserActionRelation.NONE,
   })
   status: UserActionRelation;
