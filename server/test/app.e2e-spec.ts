@@ -11,8 +11,8 @@ import { AuthModule } from '../src/auth/auth.module';
 import { UserModule } from '../src/user/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
-import { AuthTokens } from '../src/auth/auth.service';
 import { UserAction } from '../src/actions/entities/user-action.entity';
+import { AuthTokens } from 'src/auth/dto/authtokens.dto';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -109,7 +109,7 @@ describe('AppController (e2e)', () => {
         const refreshResponse = await request(app.getHttpServer())
           .post('/auth/refresh')
           .set('Authorization', `Bearer ${loginBody.refresh_token}`)
-          .expect(201);
+          .expect(200);
 
         const refreshBody = refreshResponse.body as Pick<
           AuthTokens,
