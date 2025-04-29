@@ -7,3 +7,11 @@ export class SignInDto {
   @ApiProperty()
   password: string;
 }
+
+export class ProfileDto {
+  @ApiProperty()
+  email: string;
+
+  @ApiProperty()
+  name: string;
+}

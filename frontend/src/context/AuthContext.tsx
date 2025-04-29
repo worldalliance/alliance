@@ -6,12 +6,14 @@ import React, {
   ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { authApi } from "../lib/authapi";
 import { UserData } from "../types/auth";
+import { authLogin, authMe, authRefreshTokens } from "../client";
+import { client } from "../client/client.gen";
+import { getApiUrl } from "../lib/config";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: UserData | null;
+  user: UserData | undefined;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -22,7 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<UserData | null>(null);
+  const [user, setUser] = useState<UserData | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
@@ -30,21 +32,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("token");
+
       const refreshToken = localStorage.getItem("refresh_token");
 
       if (token) {
         try {
-          const userProfile = await authApi.getProfile();
-          setUser(userProfile);
+          const userProfile = await authMe();
+          setUser(userProfile.data);
+
+          if (userProfile.error) {
+            throw new Error("User profile not found");
+          }
+
+          console.log("user profile: ", userProfile);
         } catch (error) {
           console.log("trying to refresh token");
           localStorage.removeItem("token");
 
           if (refreshToken) {
-            const response = await authApi.refreshAccessToken(refreshToken);
-            if (response) {
-              localStorage.setItem("token", response.access_token);
-              const userProfile = await authApi.getProfile();
+            const response = await authRefreshTokens({
+              headers: {
+                Authorization: `Bearer ${refreshToken}`,
+              },
+            });
+
+            if (response.data) {
+              localStorage.setItem("token", response.data.access_token);
+
+              client.setConfig({
+                baseUrl: getApiUrl(),
+                headers: {
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+              });
+
+              const userProfile = (await authMe()).data;
               setUser(userProfile);
             } else {
               console.log("refresh token failed: logging out");
@@ -64,15 +86,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setLoading(true);
     console.log("logging in");
     try {
-      const response = await authApi.login({ email, password });
-      localStorage.setItem("token", response.access_token);
-      localStorage.setItem("refresh_token", response.refresh_token);
-
+      const response = await authLogin({
+        body: { email, password },
+      });
       console.log("got response: ", response);
+      if (response.data) {
+        console.log("setting tokens: ", response.data.access_token);
+        localStorage.setItem("token", response.data.access_token);
+        localStorage.setItem("refresh_token", response.data.refresh_token);
+        console.log("got response: ", response);
+      } else {
+        throw new Error("Login failed: No data received");
+      }
 
       // Fetch user profile after successful login
-      const userProfile = await authApi.getProfile();
-      setUser(userProfile);
+      const userProfile = await authMe();
+      if (userProfile.data) {
+        setUser(userProfile.data);
+      }
 
       navigate("/home");
     } catch (error) {
@@ -87,7 +118,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     localStorage.removeItem("refresh_token");
 
     navigate("/login");
-    setUser(null);
+    setUser(undefined);
   };
 
   const value = {

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateActionDto } from './dto/create-action.dto';
+import { ActionDto } from './dto/create-action.dto';
 import { UpdateActionDto } from './dto/update-action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
@@ -17,7 +17,7 @@ export class ActionsService {
     private userService: UserService,
   ) {}
 
-  async create(createActionDto: CreateActionDto): Promise<Action> {
+  async create(createActionDto: ActionDto): Promise<Action> {
     const action = this.actionRepository.create(createActionDto);
     return this.actionRepository.save(action);
   }

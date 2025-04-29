@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty } from 'class-validator';
 import { ActionStatus } from '../entities/action.entity';
 
-export class CreateActionDto {
+export class ActionDto {
   @IsNotEmpty()
   @ApiProperty()
   name: string;

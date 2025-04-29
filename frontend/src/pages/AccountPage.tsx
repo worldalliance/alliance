@@ -14,7 +14,6 @@ const AccountPage: React.FC = () => {
   }, [logout]);
 
   useEffect(() => {
-    console.log(user);
     if (user) {
       setLoading(false);
     }

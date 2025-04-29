@@ -17,7 +17,9 @@ import { AuthProvider } from "./context/AuthContext";
 import AccountPage from "./pages/AccountPage";
 import ActionsListPage from "./pages/ActionsListPage";
 import AnnouncementsPage from "./pages/AnnouncementsPage";
-
+import { client } from "./client/client.gen";
+import { getApiUrl } from "./lib/config";
+import { Auth } from "@hey-api/client-fetch";
 // A simple auth check component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -46,6 +48,13 @@ const LoggedOutOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
 
   return <>{children}</>;
 };
+
+client.setConfig({
+  baseUrl: getApiUrl(),
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem("token")}`,
+  },
+});
 
 // AppRoutes component to use the auth context
 const AppRoutes = () => {

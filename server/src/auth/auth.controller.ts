@@ -12,24 +12,25 @@ import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { SignUp } from './sign-up.dto';
 import { AuthGuard, JwtRequest } from './guards/auth.guard';
-import { SignInDto } from './dto/signin.dto';
+import { ProfileDto, SignInDto } from './dto/signin.dto';
 import { RefreshTokenGuard } from './guards/refresh.guard';
-import { ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
+import { AccessToken, AuthTokens } from './dto/authtokens.dto';
 
+@ApiBearerAuth()
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Login successful',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid credentials',
-  })
+  @ApiOkResponse({ type: AuthTokens })
+  @ApiUnauthorizedResponse()
   @Post('login')
   login(@Body() signInDto: SignInDto) {
     return this.authService.login(signInDto.email, signInDto.password);
@@ -37,14 +38,8 @@ export class AuthController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Login successful',
-  })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid credentials',
-  })
+  @ApiOkResponse({ type: AuthTokens })
+  @ApiUnauthorizedResponse()
   @Post('admin/login')
   adminLogin(@Body() signInDto: SignInDto) {
     return this.authService.login(signInDto.email, signInDto.password, true);
@@ -56,10 +51,7 @@ export class AuthController {
     status: HttpStatus.CREATED,
     description: 'User created successfully',
   })
-  @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid credentials',
-  })
+  @ApiUnauthorizedResponse()
   async register(@Body() signUp: SignUp): Promise<{ success: boolean }> {
     await this.authService.register(signUp);
     return { success: true };
@@ -67,6 +59,8 @@ export class AuthController {
 
   @Post('refresh')
   @UseGuards(RefreshTokenGuard)
+  @ApiOkResponse({ type: AccessToken })
+  @HttpCode(HttpStatus.OK)
   async refreshTokens(@Request() req: JwtRequest) {
     const userId: number = req.user.sub;
     return { access_token: await this.authService.refreshAccessToken(userId) };
@@ -74,11 +68,12 @@ export class AuthController {
 
   @Get('/me')
   @UseGuards(AuthGuard)
-  @ApiBearerAuth()
+  @ApiOkResponse({ type: ProfileDto })
   async me(
     @Request() req: JwtRequest,
   ): Promise<{ email: string; name: string }> {
     const profile = await this.authService.getProfile(req.user.email);
+    console.log('returning profile: ', profile);
     return { email: profile.email, name: profile.name };
   }
 }

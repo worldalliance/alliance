@@ -15,4 +15,4 @@ Storybook: `yarn storybook`
 
 ### Openapi client gen:
 
-`npx openapi-typescript http://localhost:3005/openapi.yaml -o frontend/src/lib/schema.d.ts`
+`npx @hey-api/openapi-ts`

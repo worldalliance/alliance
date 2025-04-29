@@ -36,6 +36,7 @@ async function bootstrap() {
       .setTitle('Alliance API')
       .setVersion('1.0')
       .addTag('alliance')
+      .addBearerAuth()
       .build();
 
     const documentFactory = () =>

@@ -4,11 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { User } from '../user/user.entity';
 import { SignUp } from './sign-up.dto';
 import { JWTTokenType, JwtPayload } from './guards/auth.guard';
-
-export interface AuthTokens {
-  access_token: string;
-  refresh_token: string;
-}
+import { AuthTokens } from './dto/authtokens.dto';
 
 @Injectable()
 export class AuthService {
