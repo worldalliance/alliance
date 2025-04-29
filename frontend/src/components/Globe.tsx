@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { world } from "./world";
+import world from "./world";
 
 interface Coordinate {
   longitude: number;

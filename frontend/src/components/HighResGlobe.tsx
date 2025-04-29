@@ -31,7 +31,7 @@ const HighResGlobe = () => {
           ),
           new THREE.MeshPhongMaterial({ map: cloudsTexture, transparent: true })
         );
-        globe.scene().add(clouds);
+        globe.scene().add(clouds as any);
 
         (function rotateClouds() {
           clouds.rotation.y += (CLOUDS_ROTATION_SPEED * Math.PI) / 180;
