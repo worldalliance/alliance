@@ -1,7 +1,6 @@
-import { ProgressCircle } from "./tremor/ProgressCircle";
 import Card, { CardStyle } from "./system/Card";
-import UserBubbleRow from "./UserBubbleRow";
 import Button, { ButtonColor } from "./system/Button";
+
 const PokePanel = () => {
   return (
     <Card style={CardStyle.Grey} className="text-[11pt]">

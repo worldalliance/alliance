@@ -3,8 +3,6 @@ import Badge from "./system/Badge";
 import Card from "./system/Card";
 import Button, { ButtonColor } from "./system/Button";
 import { useNavigate } from "react-router-dom";
-import StatusIndicator from "./StatusIndicator";
-import { Status } from "./StatusIndicator";
 
 interface ActionItemCardProps {
   title: string;

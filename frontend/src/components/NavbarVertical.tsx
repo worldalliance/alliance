@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import Logo from "./Logo";
 import { destinations, links, NavbarProps } from "./Navbar";
 
 export type InnerNavbarProps = Pick<NavbarProps, "currentPage">;

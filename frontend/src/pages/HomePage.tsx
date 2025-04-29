@@ -1,7 +1,5 @@
 import React from "react";
-import Navbar, { NavbarPage } from "../components/Navbar";
 import ActionItemCard, { ActionCardAction } from "../components/ActionItemCard";
-import ActivityPanel from "../components/ActivityPanel";
 import SocialPanel from "../components/SocialPanel";
 import ActionPromptCard from "../components/ActionPromptCard";
 import Card, { CardStyle } from "../components/system/Card";

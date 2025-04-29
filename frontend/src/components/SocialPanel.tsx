@@ -1,6 +1,7 @@
 import Button, { ButtonColor } from "./system/Button";
 import Card from "./system/Card";
 import UserBubble from "./UserBubble";
+
 const SocialPanel = () => {
   return (
     <Card className="h-[300px] font-avenir text-[11pt] gap-y-5">

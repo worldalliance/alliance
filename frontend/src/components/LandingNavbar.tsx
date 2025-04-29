@@ -1,9 +1,4 @@
 import { Link } from "react-router-dom";
-import { links } from "./Navbar";
-import { destinations } from "./Navbar";
-import { platformSublinks } from "./Navbar";
-import { NavbarPage } from "./Navbar";
-import DropdownLink from "./DropdownLink";
 
 const LandingNavbar = () => {
   return (

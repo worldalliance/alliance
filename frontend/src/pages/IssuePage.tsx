@@ -15,8 +15,8 @@ const IssuePage: React.FC = () => {
       )}
       {!isAuthenticated && <LandingNavbar />}
       <div className="flex flex-row min-h-screen">
-      <p>{issue}</p>
-    </div>
+        <p>{issue}</p>
+      </div>
     </>
   );
 };

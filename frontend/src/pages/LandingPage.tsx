@@ -1,11 +1,7 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import HighResGlobe from "../components/HighResGlobe";
-import Card from "../components/system/Card";
 import Globe from "../components/Globe";
 import downArrow from "../assets/icons8-expand-arrow-96.png";
 import LandingNavbar from "../components/LandingNavbar";
-import Button, { ButtonColor } from "../components/system/Button";
 
 const LandingPage: React.FC = () => {
   return (

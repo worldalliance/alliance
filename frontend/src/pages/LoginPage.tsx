@@ -5,7 +5,6 @@ import Button, { ButtonColor } from "../components/system/Button";
 import FormInput from "../components/system/FormInput";
 import { LoginData } from "../types/auth";
 import { useAuth } from "../context/AuthContext";
-import LandingNavbar from "../components/LandingNavbar";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();

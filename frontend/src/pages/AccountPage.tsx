@@ -2,9 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import Card, { CardStyle } from "../components/system/Card";
 import Button, { ButtonColor } from "../components/system/Button";
 import { useAuth } from "../context/AuthContext";
-import { authApi } from "../lib/authapi";
 import FormInput from "../components/system/FormInput";
-import { NavbarPage } from "../components/Navbar";
 
 const AccountPage: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();

@@ -1,5 +1,5 @@
-import Globe, { GlobeMethods } from "react-globe.gl";
 import React, { useEffect, useRef } from "react";
+import Globe, { GlobeMethods } from "react-globe.gl";
 import * as THREE from "three";
 import cloudsImg from "../assets/fair_clouds_4k.png";
 

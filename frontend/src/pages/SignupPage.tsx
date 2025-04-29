@@ -5,7 +5,6 @@ import Button, { ButtonColor } from "../components/system/Button";
 import FormInput from "../components/system/FormInput";
 import { authApi } from "../lib/authapi";
 import { SignUpData } from "../types/auth";
-import LandingNavbar from "../components/LandingNavbar";
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();

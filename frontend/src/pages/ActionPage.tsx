@@ -1,10 +1,7 @@
 import React, { Suspense, useEffect, useState } from "react";
-import Navbar from "../components/Navbar";
-import { NavbarPage } from "../components/Navbar";
 import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardStyle } from "../components/system/Card";
 import StatsCard from "../components/StatsCard";
-import ActivityPanel from "../components/ActivityPanel";
 import Globe from "../components/Globe";
 import UserBubbleRow from "../components/UserBubbleRow";
 import Button, { ButtonColor } from "../components/system/Button";

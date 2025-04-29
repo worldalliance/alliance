@@ -1,11 +1,10 @@
 import React from "react";
 import Navbar, { NavbarPage } from "../components/Navbar";
-import ActionItemCard from "../components/ActionItemCard";
 import ProblemAreaCard, {
   ProblemAreaCardProps,
 } from "../components/ProblemAreaCard";
-import LandingNavbar from "../components/LandingNavbar";
 import { useAuth } from "../context/AuthContext";
+import LandingNavbar from "../components/LandingNavbar";
 
 const IssuesListPage: React.FC = () => {
   // Sample todo items data
@@ -40,7 +39,7 @@ const IssuesListPage: React.FC = () => {
 
   return (
     <>
-      { isAuthenticated && (
+      {isAuthenticated && (
         <Navbar currentPage={NavbarPage.Dashboard} format="horizontal" />
       )}
       {!isAuthenticated && <LandingNavbar />}
