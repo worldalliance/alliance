@@ -1,11 +1,11 @@
 import React from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./AuthContext";
-import AdminPanel from "./AdminPanel";
 import LoginPage from "./LoginPage";
 import AdminActionPage from "./AdminActionPage";
 import { getApiUrl } from "./config";
 import { client } from "./client/client.gen";
+import AdminPanel from "./AdminPanel";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,

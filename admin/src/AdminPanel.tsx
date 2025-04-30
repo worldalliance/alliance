@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Card, { CardStyle } from "./Card";
 import { useNavigate } from "react-router-dom";
 import { ActionDto, actionsFindAll } from "./client";
@@ -35,6 +35,12 @@ const AdminPanel: React.FC = () => {
   const handleEditAction = (id: number) => {
     navigate(`/action/${id}`);
   };
+
+  const logout = useCallback(() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("refresh_token");
+    navigate("/login");
+  }, [navigate]);
 
   return (
     <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-stone-50">
@@ -101,6 +107,14 @@ const AdminPanel: React.FC = () => {
                 Completed: {actions.filter((a) => a.status === "Past").length}
               </p>
             </div>
+          </Card>
+          <Card style={CardStyle.White}>
+            <button
+              className="w-full bg-stone-600 hover:bg-stone-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              onClick={logout}
+            >
+              Logout
+            </button>
           </Card>
         </div>
       </div>

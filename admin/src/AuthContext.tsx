@@ -7,7 +7,7 @@ import React, {
   useCallback,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { actionsFindAll, authLogin, authRefreshTokens } from "./client";
+import { actionsFindAll, authAdminLogin, authRefreshTokens } from "./client";
 import { client } from "./client/client.gen";
 import { getApiUrl } from "./config";
 
@@ -87,11 +87,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setLoading(true);
     console.log("logging in");
     try {
-      const response = await authLogin({
+      const response = await authAdminLogin({
         body: { email, password },
       });
-      localStorage.setItem("token", response.access_token);
-      localStorage.setItem("refresh_token", response.refresh_token);
+      localStorage.setItem("token", response.data.access_token);
+      localStorage.setItem("refresh_token", response.data.refresh_token);
 
       console.log("got response: ", response);
 
