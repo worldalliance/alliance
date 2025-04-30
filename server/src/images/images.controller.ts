@@ -11,7 +11,6 @@ import {
   Res,
   StreamableFile,
   Param,
-  FileTypeValidator,
 } from '@nestjs/common';
 import { ImagesService } from './images.service';
 import {
@@ -25,7 +24,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { ImageResponseDto } from './dto/image-response.dto';
+import {
+  DeleteImageResponseDto,
+  ImageResponseDto,
+} from './dto/image-response.dto';
 import { createReadStream, existsSync } from 'fs';
 import { Response } from 'express';
 import { ImageMimeTypeValidator } from './image-validator.pipe';
@@ -79,8 +81,10 @@ export class ImagesController {
     image: Express.Multer.File,
   ) {
     console.log('Stored file path:', image.path);
+    const imageEntity = await this.imagesService.createImage(image);
     return {
-      filename: image.filename,
+      id: imageEntity.id,
+      filename: imageEntity.filename,
     };
   }
 
@@ -137,8 +141,11 @@ export class ImagesController {
   }
 
   @Delete(':id')
-  @ApiOkResponse({ type: Boolean })
-  async deleteImage(id: number): Promise<boolean> {
-    return this.imagesService.deleteImage(id);
+  @ApiOkResponse({ type: DeleteImageResponseDto })
+  async deleteImage(@Param('id') id: number): Promise<{ deleted: boolean }> {
+    console.log('Deleting image with id:', id);
+    const result = await this.imagesService.deleteImage(id);
+    console.log('Result:', result);
+    return { deleted: result };
   }
 }

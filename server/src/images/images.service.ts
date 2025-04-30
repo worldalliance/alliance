@@ -2,19 +2,24 @@ import { Injectable } from '@nestjs/common';
 import { Image } from './entities/image.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { FilesService } from './files.service';
 
 @Injectable()
 export class ImagesService {
   constructor(
     @InjectRepository(Image)
     private imageRepository: Repository<Image>,
+    private filesService: FilesService,
   ) {}
   async getImages(): Promise<Image[]> {
     return this.imageRepository.find();
   }
 
-  async createImage(image: Image): Promise<Image> {
-    return this.imageRepository.save(image);
+  async createImage(image: Express.Multer.File): Promise<Image> {
+    const imageEntity = this.imageRepository.create({
+      filename: image.filename,
+    });
+    return this.imageRepository.save(imageEntity);
   }
 
   async getImage(id: number): Promise<Image | null> {
@@ -27,10 +32,16 @@ export class ImagesService {
   }
 
   async deleteImage(id: number): Promise<boolean> {
-    const result = await this.imageRepository.delete(id);
-    if (result.affected === 0) {
+    console.log('Deleting image with id:', id);
+    const image = await this.getImage(id);
+    console.log('Image:', image);
+    if (!image) {
+      console.log('Image not found');
       return false;
     }
+    await this.imageRepository.delete(id);
+    await this.filesService.deleteFile(image.filename);
+
     return true;
   }
 }

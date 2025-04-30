@@ -7,8 +7,9 @@ import {
   OneToMany,
   UpdateDateColumn,
 } from 'typeorm';
-import { UserAction } from './user-action.entity';
+import { UserAction, UserActionRelation } from './user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { Expose } from 'class-transformer';
 
 export enum ActionStatus {
   Active = 'active',
@@ -58,4 +59,14 @@ export class Action {
   @OneToMany(() => UserAction, (userAction) => userAction.action)
   @JoinTable()
   userRelations: UserAction[];
+
+  @Expose()
+  @ApiProperty()
+  get usersJoined(): number {
+    return (
+      this.userRelations?.filter(
+        (ur) => ur.status === UserActionRelation.JOINED,
+      ).length || 0
+    );
+  }
 }

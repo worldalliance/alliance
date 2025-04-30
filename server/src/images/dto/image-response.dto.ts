@@ -1,14 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Image } from '../entities/image.entity';
+import { PickType } from '@nestjs/mapped-types';
 
-export class ImageResponseDto {
-  @ApiProperty({
-    description: 'The filename of the image',
-    example: '1234567890.jpg',
-  })
-  filename: string;
-}
+export class ImageResponseDto extends PickType(Image, ['filename', 'id']) {}
 
 export class ImageDataDto {
   @ApiProperty({ type: 'string', format: 'binary' })
   contents: string;
+}
+
+export class DeleteImageResponseDto {
+  @ApiProperty({ type: Boolean })
+  deleted: boolean;
 }

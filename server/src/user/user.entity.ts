@@ -12,20 +12,23 @@ import {
   OneToMany,
 } from 'typeorm';
 import { UserAction } from '../actions/entities/user-action.entity';
-
+import { ApiProperty } from '@nestjs/swagger';
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
+  @ApiProperty()
   name: string;
 
   @Column({ unique: true })
+  @ApiProperty()
   email: string;
 
   @Column()
   @Exclude()
+  @ApiProperty()
   password: string;
 
   @CreateDateColumn()
