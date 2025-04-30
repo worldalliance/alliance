@@ -13,7 +13,9 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { UserAction } from '../src/actions/entities/user-action.entity';
 import { AuthTokens } from 'src/auth/dto/authtokens.dto';
-
+import { Image } from '../src/images/entities/image.entity';
+import { ImagesModule } from '../src/images/images.module';
+import { CommuniquesModule } from '../src/communiques/communiques.module';
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
   let userRepository: Repository<User>;
@@ -31,9 +33,11 @@ describe('AppController (e2e)', () => {
         TypeOrmModule.forRoot({
           type: 'sqlite',
           database: ':memory:',
-          entities: [User, Action, UserAction],
+          entities: [User, Action, UserAction, Image],
           synchronize: true,
         }),
+        ImagesModule,
+        CommuniquesModule,
       ],
       controllers: [AppController],
     }).compile();

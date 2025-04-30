@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardStyle } from "../components/system/Card";
 import StatsCard from "../components/StatsCard";
@@ -49,7 +49,22 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
     fetchAction();
   }, [actionId]);
 
-  console.log("action", action);
+  const onJoinAction = useCallback(async () => {
+    if (!actionId) return;
+
+    try {
+      const response = await actionsJoin({
+        path: { id: actionId },
+      });
+
+      if (response.error) {
+        throw new Error("Failed to join action");
+      }
+    } catch (err) {
+      console.error("Error joining action:", err);
+      setError("Failed to join this action. Please try again later.");
+    }
+  }, [actionId]);
 
   return (
     <div className="flex flex-row min-h-screen pt-12 px-3 w-full justify-center gap-x-7 bg-stone-50">
@@ -61,57 +76,40 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
             className="w-full h-auto rounded-md border border-gray-300"
           />
         )}
-        <div className="flex flex-row justify-between items-center">
-          <h1 className="font-berlingske text-[28pt]">{action?.name}</h1>
+        <div className="flex flex-row justify-between items-center my-5">
+          <div className="flex flex-col gap-y-3">
+            <h1>{action?.name}</h1>
+            <p className="text-gray-900 text-[12pt] mt-[-3px]">
+              Part of the{" "}
+              <a
+                className="text-blue-500 cursor-pointer"
+                onClick={() => {
+                  navigate("/issues/climate");
+                }}
+              >
+                Alliance Climate Program
+              </a>
+            </p>
+          </div>
           {state === "uncommitted" && actionId && (
             <Button
               className="mt-1"
               label="Commit to this action"
-              onClick={async () => {
-                try {
-                  const response = await actionsJoin({
-                    path: { id: actionId },
-                  });
-
-                  if (response.error) {
-                    throw new Error("Failed to join action");
-                  }
-
-                  // Navigate to committed state or show success message
-                  navigate(`/actions/${actionId}/committed`);
-                } catch (err) {
-                  console.error("Error joining action:", err);
-                  // Display error message to user
-                  setError(
-                    "Failed to join this action. Please try again later."
-                  );
-                }
-              }}
+              onClick={onJoinAction}
             />
           )}
         </div>
-        <p className="text-gray-900 text-[12pt] mt-[-3px] mb-5">
-          Part of the{" "}
-          <a
-            className="text-blue-500 cursor-pointer"
-            onClick={() => {
-              navigate("/issues/climate");
-            }}
-          >
-            Alliance Climate Program
-          </a>
-        </p>
         {state === "committed" && <PokePanel />}
         {state === "uncommitted" && (
           <Card style={CardStyle.Grey} className="mb-5">
-            <h1>Why Join?</h1>
+            <h2>Why Join?</h2>
             <p>
               Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
               eiusmod tempor incididunt ut labore et dolore magna aliqua.
             </p>
           </Card>
         )}
-        <h1>What you can do</h1>
+        <h2>What you can do</h2>
         <p>
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
           eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem
@@ -120,12 +118,12 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
           sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
           incididunt ut labore et dolore magna aliqua.
         </p>
-        <h1>FAQ</h1>
+        <h2>FAQ</h2>
         <p>
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
           eiusmod tempor incididunt ut labore et dolore magna aliqua.
         </p>
-        <h1>Discussion</h1>
+        <h2>Discussion</h2>
         <Card style={CardStyle.White}>
           <p>Forum post lorem</p>
         </Card>

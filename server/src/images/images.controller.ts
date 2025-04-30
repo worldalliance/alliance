@@ -11,6 +11,7 @@ import {
   Res,
   StreamableFile,
   Param,
+  FileTypeValidator,
 } from '@nestjs/common';
 import { ImagesService } from './images.service';
 import {
@@ -27,6 +28,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ImageResponseDto } from './dto/image-response.dto';
 import { createReadStream, existsSync } from 'fs';
 import { Response } from 'express';
+import { ImageMimeTypeValidator } from './image-validator.pipe';
 
 @Controller('images')
 export class ImagesController {
@@ -64,7 +66,13 @@ export class ImagesController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 1000 * 1000 * 1000 }),
-          //   new FileTypeValidator({ fileType: 'image/png' }),
+          new ImageMimeTypeValidator([
+            'image/png',
+            'image/jpeg',
+            'image/jpg',
+            'image/gif',
+            'image/webp',
+          ]),
         ],
       }),
     )

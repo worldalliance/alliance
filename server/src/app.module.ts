@@ -12,6 +12,7 @@ import { UserAction } from './actions/entities/user-action.entity';
 import { CommuniquesModule } from './communiques/communiques.module';
 import { ImagesModule } from './images/images.module';
 import { MulterModule } from '@nestjs/platform-express';
+import { Image } from './images/entities/image.entity';
 
 @Module({
   imports: [
@@ -28,7 +29,7 @@ import { MulterModule } from '@nestjs/platform-express';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, Action, UserAction],
+      entities: [User, Action, UserAction, Image],
       synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'
         ? {
