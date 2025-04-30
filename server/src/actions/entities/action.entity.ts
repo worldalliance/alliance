@@ -5,8 +5,10 @@ import {
   JoinTable,
   CreateDateColumn,
   OneToMany,
+  UpdateDateColumn,
 } from 'typeorm';
 import { UserAction } from './user-action.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
 export enum ActionStatus {
   Active = 'active',
@@ -18,28 +20,40 @@ export enum ActionStatus {
 @Entity()
 export class Action {
   @PrimaryGeneratedColumn()
+  @ApiProperty()
   id: number;
 
   @Column()
+  @ApiProperty()
   name: string;
 
   @Column()
+  @ApiProperty()
   category: string;
 
   @Column()
+  @ApiProperty()
   whyJoin: string;
 
   @Column({ nullable: true })
+  @ApiProperty()
   image: string;
 
   @Column()
+  @ApiProperty()
   description: string;
 
   @Column()
+  @ApiProperty({ enum: Object.keys(ActionStatus) })
   status: ActionStatus;
 
   @CreateDateColumn()
+  @ApiProperty()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  @ApiProperty()
+  updatedAt: Date;
 
   @OneToMany(() => UserAction, (userAction) => userAction.action)
   @JoinTable()

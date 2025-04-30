@@ -1,19 +1,21 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { actionsApi, Action, ActionStatus } from "../lib/actionsApi";
 import ActionItemCard, { ActionCardAction } from "../components/ActionItemCard";
 import { useNavigate } from "react-router-dom";
 import Button, { ButtonColor } from "../components/system/Button";
+import { actionsFindAll } from "../client/sdk.gen";
+import { ActionDto } from "../client/types.gen";
 
 enum FilterMode {
   All = "all",
-  Active = "active",
-  Upcoming = "upcoming",
-  Completed = "past",
+  Active = "Active",
+  Upcoming = "Upcoming",
+  Past = "Past",
+  Draft = "Draft",
   Joined = "joined",
 }
 
 const ActionsListPage: React.FC = () => {
-  const [actions, setActions] = useState<Action[]>([]);
+  const [actions, setActions] = useState<ActionDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
@@ -23,8 +25,14 @@ const ActionsListPage: React.FC = () => {
     const fetchActions = async () => {
       try {
         console.log("fetching actions");
-        const actionsList = await actionsApi.getAllActions();
-        setActions(actionsList);
+
+        const response = await actionsFindAll();
+
+        if (response.error) {
+          throw new Error("Failed to fetch actions");
+        }
+
+        setActions(response.data || []);
         setLoading(false);
       } catch (err) {
         setError("Failed to load actions. Please try again later.");
@@ -37,10 +45,15 @@ const ActionsListPage: React.FC = () => {
   }, []);
 
   const filteredActions = useMemo(() => {
-    if (filterMode === FilterMode.Active) {
-      return actions.filter((action) => action.status === ActionStatus.Active);
+    if (filterMode === FilterMode.All) {
+      return actions;
     }
-    return actions;
+
+    if (filterMode === FilterMode.Joined) {
+      return actions; //todo: implement
+    }
+
+    return actions.filter((action) => action.status === filterMode);
   }, [actions, filterMode]);
 
   return (

@@ -1,3 +1,5 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 import {
   Column,
   CreateDateColumn,
@@ -9,19 +11,20 @@ import {
 @Entity()
 export class Communique {
   @PrimaryGeneratedColumn()
+  @ApiProperty()
   id: number;
 
   @Column()
+  @ApiProperty()
   title: string;
 
   @Column('text')
-  description: string;
+  @ApiProperty()
+  bodyText: string;
 
-  @Column()
+  @Column({ nullable: true })
+  @ApiProperty({ nullable: true })
   headerImage: string;
-
-  @Column()
-  image: string;
 
   @CreateDateColumn()
   dateCreated: Date;

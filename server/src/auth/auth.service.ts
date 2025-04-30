@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../user/user.entity';
-import { SignUp } from './sign-up.dto';
+import { SignUpDto } from './sign-up.dto';
 import { JWTTokenType, JwtPayload } from './guards/auth.guard';
 import { AuthTokens } from './dto/authtokens.dto';
 
@@ -13,7 +13,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  async register(signUp: SignUp): Promise<User> {
+  async register(signUp: SignUpDto): Promise<User> {
     const user = await this.usersService.create(signUp);
     return user;
   }

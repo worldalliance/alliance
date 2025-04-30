@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
-import { SignUp } from './sign-up.dto';
+import { SignUpDto } from './sign-up.dto';
 import { AuthGuard, JwtRequest } from './guards/auth.guard';
 import { ProfileDto, SignInDto } from './dto/signin.dto';
 import { RefreshTokenGuard } from './guards/refresh.guard';
@@ -52,7 +52,7 @@ export class AuthController {
     description: 'User created successfully',
   })
   @ApiUnauthorizedResponse()
-  async register(@Body() signUp: SignUp): Promise<{ success: boolean }> {
+  async register(@Body() signUp: SignUpDto): Promise<{ success: boolean }> {
     await this.authService.register(signUp);
     return { success: true };
   }

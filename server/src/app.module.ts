@@ -13,6 +13,7 @@ import { CommuniquesModule } from './communiques/communiques.module';
 import { ImagesModule } from './images/images.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { Image } from './images/entities/image.entity';
+import { Communique } from './communiques/entities/communique.entity';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { Image } from './images/entities/image.entity';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, Action, UserAction, Image],
+      entities: [User, Action, UserAction, Image, Communique],
       synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'
         ? {

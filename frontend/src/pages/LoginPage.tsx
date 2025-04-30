@@ -3,13 +3,13 @@ import { Link, useLocation } from "react-router-dom";
 import Card, { CardStyle } from "../components/system/Card";
 import Button, { ButtonColor } from "../components/system/Button";
 import FormInput from "../components/system/FormInput";
-import { LoginData } from "../types/auth";
 import { useAuth } from "../context/AuthContext";
+import { SignInDto } from "../client";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
   const { login, loading } = useAuth();
-  const [formData, setFormData] = useState<LoginData>({
+  const [formData, setFormData] = useState<SignInDto>({
     email: "",
     password: "",
   });
@@ -40,7 +40,7 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-stone-50">
       <div className="flex flex-col flex-grow items-center justify-center font-avenir">
         <div className="w-full max-w-md px-8">
-          <h1 className="text-2xl font-sabon text-center mb-8">Log in</h1>
+          <h2 className="text-2xl font-sabon text-center mb-8">Log in</h2>
 
           {message && (
             <Card style={CardStyle.Alert} className="mb-6">

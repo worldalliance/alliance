@@ -2,7 +2,7 @@ import { IsDefined, IsNotEmpty, IsEmail, Validate } from 'class-validator';
 import { IsUserAlreadyExist } from '../user/validators/user-already-exists.validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class SignUp {
+export class SignUpDto {
   @IsDefined()
   @IsNotEmpty()
   @ApiProperty()

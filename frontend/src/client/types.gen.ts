@@ -10,7 +10,7 @@ export type AuthTokens = {
     refresh_token: string;
 };
 
-export type SignUp = {
+export type SignUpDto = {
     name: string;
     email: string;
     password: string;
@@ -27,10 +27,9 @@ export type ProfileDto = {
 
 export type CreateActionDto = {
     name: string;
-    image: string;
     category: string;
     whyJoin: string;
-    type: string;
+    image: string;
     description: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
 };
@@ -38,28 +37,39 @@ export type CreateActionDto = {
 export type ActionDto = {
     id: number;
     name: string;
-    image: string;
     category: string;
     whyJoin: string;
-    type: string;
+    image: string;
     description: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
 };
 
 export type UpdateActionDto = {
-    [key: string]: unknown;
+    name?: string;
+    category?: string;
+    whyJoin?: string;
+    image?: string;
+    description?: string;
+    status?: 'Active' | 'Upcoming' | 'Past' | 'Draft';
 };
 
 export type CreateCommuniqueDto = {
     title: string;
-    description: string;
-    image: string;
+    bodyText: string;
+    headerImage: string | null;
+};
+
+export type CommuniqueDto = {
+    id: number;
+    title: string;
+    bodyText: string;
+    headerImage: string | null;
 };
 
 export type UpdateCommuniqueDto = {
     title?: string;
-    description?: string;
-    image?: string;
+    bodyText?: string;
+    headerImage?: string | null;
 };
 
 export type ImageResponseDto = {
@@ -115,7 +125,7 @@ export type AuthAdminLoginResponses = {
 export type AuthAdminLoginResponse = AuthAdminLoginResponses[keyof AuthAdminLoginResponses];
 
 export type AuthRegisterData = {
-    body: SignUp;
+    body: SignUpDto;
     path?: never;
     query?: never;
     url: '/auth/register';
@@ -169,6 +179,32 @@ export type ActionsCreateResponses = {
     201: unknown;
 };
 
+export type ActionsJoinData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/actions/join/{id}';
+};
+
+export type ActionsJoinResponses = {
+    201: unknown;
+};
+
+export type ActionsFindAllData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions';
+};
+
+export type ActionsFindAllResponses = {
+    200: Array<ActionDto>;
+};
+
+export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
+
 export type ActionsRemoveData = {
     body?: never;
     path: {
@@ -214,32 +250,6 @@ export type ActionsUpdateResponses = {
     200: unknown;
 };
 
-export type ActionsJoinData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/actions/{id}';
-};
-
-export type ActionsJoinResponses = {
-    201: unknown;
-};
-
-export type ActionsFindAllData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions';
-};
-
-export type ActionsFindAllResponses = {
-    200: Array<ActionDto>;
-};
-
-export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
-
 export type CommuniquesFindAllData = {
     body?: never;
     path?: never;
@@ -248,7 +258,7 @@ export type CommuniquesFindAllData = {
 };
 
 export type CommuniquesFindAllResponses = {
-    200: Array<CreateCommuniqueDto>;
+    200: Array<CommuniqueDto>;
 };
 
 export type CommuniquesFindAllResponse = CommuniquesFindAllResponses[keyof CommuniquesFindAllResponses];
@@ -291,7 +301,7 @@ export type CommuniquesFindOneData = {
 };
 
 export type CommuniquesFindOneResponses = {
-    200: CreateCommuniqueDto;
+    200: CommuniqueDto;
 };
 
 export type CommuniquesFindOneResponse = CommuniquesFindOneResponses[keyof CommuniquesFindOneResponses];
@@ -306,7 +316,7 @@ export type CommuniquesUpdateData = {
 };
 
 export type CommuniquesUpdateResponses = {
-    200: CreateCommuniqueDto;
+    200: CommuniqueDto;
 };
 
 export type CommuniquesUpdateResponse = CommuniquesUpdateResponses[keyof CommuniquesUpdateResponses];

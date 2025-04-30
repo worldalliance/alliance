@@ -16,10 +16,10 @@ import SignupPage from "./pages/SignupPage";
 import { AuthProvider } from "./context/AuthContext";
 import AccountPage from "./pages/AccountPage";
 import ActionsListPage from "./pages/ActionsListPage";
-import AnnouncementsPage from "./pages/AnnouncementsPage";
 import { client } from "./client/client.gen";
 import { getApiUrl } from "./lib/config";
 import NewLandingPage from "./pages/NewLandingPage";
+import AnnouncementListPage from "./pages/AnnouncementListPage";
 
 // A simple auth check component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -118,7 +118,7 @@ const AppRoutes = () => {
           path="/announcements"
           element={
             <ProtectedRoute>
-              <AnnouncementsPage />
+              <AnnouncementListPage />
             </ProtectedRoute>
           }
         />

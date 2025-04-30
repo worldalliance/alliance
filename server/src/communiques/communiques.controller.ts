@@ -8,9 +8,12 @@ import {
   Delete,
 } from '@nestjs/common';
 import { CommuniquesService } from './communiques.service';
-import { UpdateCommuniqueDto } from './dto/update-communique.dto';
 import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
-import { CreateCommuniqueDto } from './dto/create-communique.dto';
+import {
+  CommuniqueDto,
+  CreateCommuniqueDto,
+  UpdateCommuniqueDto,
+} from './dto/communique.dto';
 
 @Controller('communiques')
 export class CommuniquesController {
@@ -23,19 +26,19 @@ export class CommuniquesController {
   }
 
   @Get()
-  @ApiOkResponse({ type: [CreateCommuniqueDto] })
+  @ApiOkResponse({ type: [CommuniqueDto] })
   findAll() {
     return this.communiquesService.findAll();
   }
 
   @Get(':id')
-  @ApiOkResponse({ type: CreateCommuniqueDto })
+  @ApiOkResponse({ type: CommuniqueDto })
   findOne(@Param('id') id: string) {
     return this.communiquesService.findOne(+id);
   }
 
   @Patch(':id')
-  @ApiOkResponse({ type: CreateCommuniqueDto })
+  @ApiOkResponse({ type: CommuniqueDto })
   update(
     @Param('id') id: string,
     @Body() updateCommuniqueDto: UpdateCommuniqueDto,

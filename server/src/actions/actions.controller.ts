@@ -11,8 +11,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
-import { ActionDto, CreateActionDto } from './dto/create-action.dto';
-import { UpdateActionDto } from './dto/update-action.dto';
+import { ActionDto, CreateActionDto, UpdateActionDto } from './dto/action.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { ApiOkResponse, ApiUnauthorizedResponse } from '@nestjs/swagger';
@@ -27,7 +26,7 @@ export class ActionsController {
     return this.actionsService.create(createActionDto);
   }
 
-  @Post(':id')
+  @Post('join/:id')
   @UseGuards(AuthGuard)
   join(@Request() req: JwtRequest, @Param('id') id: string) {
     if (!req.user) {

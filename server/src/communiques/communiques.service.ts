@@ -2,8 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Communique } from './entities/communique.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateCommuniqueDto } from './dto/create-communique.dto';
-import { UpdateCommuniqueDto } from './dto/update-communique.dto';
+import { CreateCommuniqueDto, UpdateCommuniqueDto } from './dto/communique.dto';
 @Injectable()
 export class CommuniquesService {
   constructor(

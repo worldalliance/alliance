@@ -3,12 +3,11 @@ import { useNavigate, Link } from "react-router-dom";
 import Card, { CardStyle } from "../components/system/Card";
 import Button, { ButtonColor } from "../components/system/Button";
 import FormInput from "../components/system/FormInput";
-import { authApi } from "../lib/authapi";
-import { SignUpData } from "../types/auth";
+import { authRegister, SignUpDto } from "../client";
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<SignUpData>({
+  const [formData, setFormData] = useState<SignUpDto>({
     name: "",
     email: "",
     password: "",
@@ -52,7 +51,7 @@ const SignupPage: React.FC = () => {
     }
 
     try {
-      await authApi.register(formData);
+      await authRegister({ body: formData });
       // Registration successful, redirect to login
       navigate("/login", {
         state: { message: "Registration successful! Please log in." },
@@ -68,9 +67,9 @@ const SignupPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-stone-50">
       <div className="flex flex-col flex-grow items-center justify-center font-avenir">
         <div className="w-full max-w-md px-8">
-          <h1 className="text-2xl font-sabon text-center mb-8">
+          <h2 className="text-2xl font-sabon text-center mb-8">
             Create an account
-          </h1>
+          </h2>
 
           {error && (
             <Card
