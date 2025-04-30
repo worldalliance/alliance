@@ -9,12 +9,16 @@ import { ActionsModule } from './actions/actions.module';
 import { Action } from './actions/entities/action.entity';
 import { UserService } from './user/user.service';
 import { UserAction } from './actions/entities/user-action.entity';
+import { CommuniquesModule } from './communiques/communiques.module';
+import { ImagesModule } from './images/images.module';
+import { MulterModule } from '@nestjs/platform-express';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    MulterModule.register({}),
     AuthModule,
     UserModule,
     TypeOrmModule.forRoot({
@@ -34,6 +38,8 @@ import { UserAction } from './actions/entities/user-action.entity';
         : {}),
     }),
     ActionsModule,
+    CommuniquesModule,
+    ImagesModule,
   ],
   controllers: [AppController],
   providers: [],

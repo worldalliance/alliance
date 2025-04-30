@@ -11,6 +11,9 @@ export class ActionDto {
   @ApiProperty()
   name: string;
 
+  @ApiProperty()
+  image: string;
+
   @IsNotEmpty()
   @ApiProperty()
   category: string;

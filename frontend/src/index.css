@@ -109,10 +109,6 @@ p {
     font-size: 11pt;
 }
 
-a {
-    color: var(--text-blue-500);
-}
-
 .font-sabon {
     font-family: 'Sabon';
 }
@@ -127,4 +123,29 @@ a {
 
 .font-toledo {
     font-family: 'Toledo';
+}
+
+.font-avenir {
+    font-family: 'Avenir';
+}
+
+.font-public {
+    font-family: 'Public';
+}
+.font-font {
+    font-family: 'Font';
+}
+
+/* a {
+    color: var(--text-blue-500) !important;
+} */
+
+.goob {
+background: radial-gradient(
+  circle at 0% 40%,
+  #000000 0%,
+  #17243b 30%,
+  #030b13 70%,
+  #000814 100%
+);
 }

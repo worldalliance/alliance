@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardStyle } from "./Card";
 import { CreateActionDto } from "./client/types.gen";
@@ -7,7 +7,11 @@ import {
   actionsFindOne,
   actionsRemove,
   actionsUpdate,
+  imagesGetImage,
+  imagesUploadImage,
 } from "./client/sdk.gen";
+import { client } from "./client/client.gen";
+import { getApiUrl } from "./config";
 
 const AdminActionPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +22,10 @@ const AdminActionPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(!isNewAction);
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<CreateActionDto>({
     name: "",
@@ -26,6 +34,7 @@ const AdminActionPage: React.FC = () => {
     description: "",
     status: "Draft",
     type: "Action",
+    image: "",
   });
 
   useEffect(() => {
@@ -44,6 +53,7 @@ const AdminActionPage: React.FC = () => {
           throw new Error("Action not found");
         }
         setAction(actionData);
+        console.log("actionData: ", actionData);
         setForm({
           name: actionData.name,
           category: actionData.category,
@@ -51,7 +61,9 @@ const AdminActionPage: React.FC = () => {
           description: actionData.description,
           status: actionData.status,
           type: actionData.type,
+          image: actionData.image || "",
         });
+
         setLoading(false);
       } catch (err) {
         setError("Failed to load action");
@@ -75,15 +87,72 @@ const AdminActionPage: React.FC = () => {
     }));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return null;
+
+    try {
+      setUploadingImage(true);
+      setError(null);
+
+      const formData = new FormData();
+      formData.append("image", imageFile);
+
+      console.log("formData: ", formData);
+
+      const response = await imagesUploadImage({
+        body: { image: imageFile },
+      });
+
+      if (!response.data) {
+        throw new Error("Failed to upload image");
+      }
+
+      return response.data.filename;
+    } catch (err) {
+      console.error("Error uploading image:", err);
+      setError("Failed to upload image. Please try again.");
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setError(null);
 
     try {
+      // Upload image first if one is selected
+      let imageFilename = null;
+      if (imageFile) {
+        imageFilename = await uploadImage();
+        if (!imageFilename) {
+          throw new Error("Failed to upload image");
+        }
+      }
+
+      // Create form data with image ID if available
+      const formData = {
+        ...form,
+        ...(imageFilename && { image: imageFilename }),
+      };
+
       if (isNewAction) {
         const response = await actionsCreate({
-          body: form,
+          body: formData,
         });
         const newAction = response.data;
         if (!newAction) {
@@ -93,7 +162,7 @@ const AdminActionPage: React.FC = () => {
       } else {
         const response = await actionsUpdate({
           path: { id: Number(id) },
-          body: form,
+          body: formData,
         });
         const updatedAction = response.data;
         if (!updatedAction) {
@@ -141,6 +210,8 @@ const AdminActionPage: React.FC = () => {
   if (loading) {
     return <div className="p-8">Loading action...</div>;
   }
+
+  const baseUrl = getApiUrl();
 
   return (
     <div className="flex flex-col min-h-screen bg-stone-50 p-8">
@@ -253,6 +324,55 @@ const AdminActionPage: React.FC = () => {
               </select>
             </div>
 
+            <div className="space-y-2">
+              <label
+                htmlFor="image"
+                className="block font-medium text-gray-700"
+              >
+                Image
+              </label>
+              <input
+                type="file"
+                id="image"
+                name="image"
+                accept="image/*"
+                onChange={handleImageChange}
+                ref={fileInputRef}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="text-sm text-gray-500 mt-1">
+                Only JPEG images are accepted. Maximum size: 1MB
+              </p>
+
+              {/* Show preview of newly selected image */}
+              {imagePreview && (
+                <div className="mt-2">
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    New Image Preview:
+                  </p>
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full max-w-md h-auto rounded-md border border-gray-300"
+                  />
+                </div>
+              )}
+
+              {/* Show existing image if editing and no new image selected */}
+              {!imagePreview && !isNewAction && form.image && (
+                <div className="mt-2">
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    Current Image:
+                  </p>
+                  <img
+                    src={`${baseUrl}/images/${form.image}`}
+                    alt="Current"
+                    className="w-full max-w-md h-auto rounded-md border border-gray-300"
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-between pt-4">
               {!isNewAction && (
                 <button
@@ -276,10 +396,12 @@ const AdminActionPage: React.FC = () => {
                 <button
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  disabled={saving}
+                  disabled={saving || uploadingImage}
                 >
-                  {saving
-                    ? "Saving..."
+                  {saving || uploadingImage
+                    ? uploadingImage
+                      ? "Uploading Image..."
+                      : "Saving..."
                     : isNewAction
                       ? "Create Action"
                       : "Update Action"}

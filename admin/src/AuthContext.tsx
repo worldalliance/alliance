@@ -7,7 +7,12 @@ import React, {
   useCallback,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { actionsFindAll, authAdminLogin, authRefreshTokens } from "./client";
+import {
+  actionsFindAll,
+  authAdminLogin,
+  authRefreshTokens,
+  appHealthCheck,
+} from "./client";
 import { client } from "./client/client.gen";
 import { getApiUrl } from "./config";
 
@@ -22,7 +27,11 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  isServerRunning: boolean;
+  checkServerStatus: () => Promise<boolean>;
 }
+
+// Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -31,6 +40,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isServerRunning, setIsServerRunning] = useState<boolean>(true);
   const navigate = useNavigate();
 
   const logout = useCallback(() => {
@@ -41,9 +51,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setUser(null);
   }, [navigate]);
 
+  const checkServerStatus = async (): Promise<boolean> => {
+    try {
+      const response = await appHealthCheck();
+      const serverRunning = !response.error;
+      setIsServerRunning(serverRunning);
+      return serverRunning;
+    } catch (error) {
+      console.error("Server health check failed:", error);
+      setIsServerRunning(false);
+      return false;
+    }
+  };
+
   // Check if user is authenticated on mount
   useEffect(() => {
     const checkAuth = async () => {
+      // First check if the server is running
+      const serverRunning = await checkServerStatus();
+      if (!serverRunning) {
+        setLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem("token");
       const refreshToken = localStorage.getItem("refresh_token");
 
@@ -87,15 +117,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setLoading(true);
     console.log("logging in");
     try {
+      // Check server status before attempting to login
+      const serverRunning = await checkServerStatus();
+      if (!serverRunning) {
+        throw new Error("Server not running");
+      }
+
       const response = await authAdminLogin({
         body: { email, password },
       });
-      localStorage.setItem("token", response.data.access_token);
-      localStorage.setItem("refresh_token", response.data.refresh_token);
+      if (response.data) {
+        localStorage.setItem("token", response.data.access_token);
+        localStorage.setItem("refresh_token", response.data.refresh_token);
 
-      console.log("got response: ", response);
+        console.log("got response: ", response);
 
-      navigate("/");
+        navigate("/");
+      }
     } catch (error) {
       throw error;
     } finally {
@@ -109,6 +147,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     login,
     logout,
     loading,
+    isServerRunning,
+    checkServerStatus,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -16,4 +16,4 @@ Storybook: `yarn storybook`
 
 ### Openapi client gen:
 
-`npx @hey-api/openapi-ts`
+`npx run gen-api` (or `npx @hey-api/openapi-ts`)

@@ -30,3 +30,5 @@ yarn-error.log*
 secret.tfvars
 
 nginx-confs/
+
+server/uploads/

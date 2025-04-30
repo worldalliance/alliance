@@ -4,9 +4,11 @@ import Card, { CardStyle } from "../components/system/Card";
 import StatsCard from "../components/StatsCard";
 import Globe from "../components/Globe";
 import UserBubbleRow from "../components/UserBubbleRow";
-import Button, { ButtonColor } from "../components/system/Button";
+import Button from "../components/system/Button";
 import PokePanel from "../components/PokePanel";
-import { actionsApi, Action } from "../lib/actionsApi";
+import { actionsFindOne, actionsJoin } from "../client/sdk.gen";
+import { ActionDto } from "../client/types.gen";
+import { getApiUrl } from "../lib/config";
 
 export interface ActionState {
   state: "uncommitted" | "committed" | "completed";
@@ -15,7 +17,7 @@ export interface ActionState {
 const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
-  const [action, setAction] = useState<Action | null>(null);
+  const [action, setAction] = useState<ActionDto | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,8 +29,15 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
 
       try {
         console.log("fetching action", actionId);
-        const actionData = await actionsApi.getActionById(Number(actionId));
-        setAction(actionData);
+        const response = await actionsFindOne({
+          path: { id: actionId },
+        });
+
+        if (response.error) {
+          throw new Error("Failed to fetch action");
+        }
+
+        setAction(response.data);
         setLoading(false);
       } catch (err) {
         setError("Failed to load action details. Please try again later.");
@@ -45,13 +54,39 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
   return (
     <div className="flex flex-row min-h-screen pt-12 px-3 w-full justify-center gap-x-7 bg-stone-50">
       <div className="flex flex-col max-w-[700px] gap-y-3 border-r border-gray-200 pr-7">
+        {action?.image && (
+          <img
+            src={`${getApiUrl()}/images/${action.image}`}
+            alt={action.name}
+            className="w-full h-auto rounded-md border border-gray-300"
+          />
+        )}
         <div className="flex flex-row justify-between items-center">
           <h1 className="font-berlingske text-[28pt]">{action?.name}</h1>
-          {state === "uncommitted" && (
+          {state === "uncommitted" && actionId && (
             <Button
               className="mt-1"
               label="Commit to this action"
-              onClick={() => {}}
+              onClick={async () => {
+                try {
+                  const response = await actionsJoin({
+                    path: { id: actionId },
+                  });
+
+                  if (response.error) {
+                    throw new Error("Failed to join action");
+                  }
+
+                  // Navigate to committed state or show success message
+                  navigate(`/actions/${actionId}/committed`);
+                } catch (err) {
+                  console.error("Error joining action:", err);
+                  // Display error message to user
+                  setError(
+                    "Failed to join this action. Please try again later."
+                  );
+                }
+              }}
             />
           )}
         </div>

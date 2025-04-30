@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "gen-api": "npx @hey-api/openapi-ts"
   },
   "dependencies": {
     "@storybook/react": "^8.6.12",

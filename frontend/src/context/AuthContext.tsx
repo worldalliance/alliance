@@ -96,10 +96,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         localStorage.setItem("refresh_token", response.data.refresh_token);
         console.log("got response: ", response);
       } else {
-        throw new Error("Login failed: No data received");
+        throw new Error("Login failed");
       }
 
-      // Fetch user profile after successful login
       const userProfile = await authMe();
       if (userProfile.data) {
         setUser(userProfile.data);

@@ -29,6 +29,9 @@ export class Action {
   @Column()
   whyJoin: string;
 
+  @Column({ nullable: true })
+  image: string;
+
   @Column()
   description: string;
 

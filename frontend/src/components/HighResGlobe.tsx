@@ -1,10 +1,17 @@
 import React, { useEffect, useRef } from "react";
-import Globe, { GlobeMethods } from "react-globe.gl";
+import Globe, { GlobeMethods, GlobeProps } from "react-globe.gl";
 import * as THREE from "three";
 import cloudsImg from "../assets/fair_clouds_4k.png";
 
-const HighResGlobe = () => {
+export interface HighResGlobeProps
+  extends Pick<GlobeProps, "width" | "height"> {
+  atmosphereColor?: string;
+}
+
+const HighResGlobe = (props: HighResGlobeProps) => {
   const globeEl = useRef<GlobeMethods | undefined>(undefined);
+
+  const { width, height } = props;
 
   useEffect(() => {
     const globe = globeEl.current;
@@ -14,6 +21,9 @@ const HighResGlobe = () => {
     // Auto-rotate
     globe.controls().autoRotate = true;
     globe.controls().autoRotateSpeed = 0.35;
+    globe.controls().enableZoom = false;
+    globe.controls().enablePan = false;
+    globe.controls().enableRotate = false;
 
     // Add clouds sphere
     const CLOUDS_IMG_URL = cloudsImg; // from https://github.com/turban/webgl-earth
@@ -43,13 +53,13 @@ const HighResGlobe = () => {
 
   return (
     <Globe
-      width={600}
-      height={600}
+      width={width}
+      height={height}
       ref={globeEl}
       animateIn={false}
       globeImageUrl="//cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg"
       bumpImageUrl="//cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png"
-      atmosphereColor="#00000000"
+      atmosphereColor="#6f8494"
       backgroundColor="rgba(0, 0, 0, 0)"
     />
   );

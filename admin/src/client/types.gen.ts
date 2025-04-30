@@ -27,6 +27,7 @@ export type ProfileDto = {
 
 export type CreateActionDto = {
     name: string;
+    image: string;
     category: string;
     whyJoin: string;
     type: string;
@@ -37,6 +38,7 @@ export type CreateActionDto = {
 export type ActionDto = {
     id: number;
     name: string;
+    image: string;
     category: string;
     whyJoin: string;
     type: string;
@@ -46,6 +48,25 @@ export type ActionDto = {
 
 export type UpdateActionDto = {
     [key: string]: unknown;
+};
+
+export type CreateCommuniqueDto = {
+    title: string;
+    description: string;
+    image: string;
+};
+
+export type UpdateCommuniqueDto = {
+    title?: string;
+    description?: string;
+    image?: string;
+};
+
+export type ImageResponseDto = {
+    /**
+     * The filename of the image
+     */
+    filename: string;
 };
 
 export type AppHealthCheckData = {
@@ -218,6 +239,123 @@ export type ActionsFindAllResponses = {
 };
 
 export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
+
+export type CommuniquesFindAllData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/communiques';
+};
+
+export type CommuniquesFindAllResponses = {
+    200: Array<CreateCommuniqueDto>;
+};
+
+export type CommuniquesFindAllResponse = CommuniquesFindAllResponses[keyof CommuniquesFindAllResponses];
+
+export type CommuniquesCreateData = {
+    body: CreateCommuniqueDto;
+    path?: never;
+    query?: never;
+    url: '/communiques';
+};
+
+export type CommuniquesCreateResponses = {
+    201: CreateCommuniqueDto;
+};
+
+export type CommuniquesCreateResponse = CommuniquesCreateResponses[keyof CommuniquesCreateResponses];
+
+export type CommuniquesRemoveData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/communiques/{id}';
+};
+
+export type CommuniquesRemoveResponses = {
+    200: boolean;
+};
+
+export type CommuniquesRemoveResponse = CommuniquesRemoveResponses[keyof CommuniquesRemoveResponses];
+
+export type CommuniquesFindOneData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/communiques/{id}';
+};
+
+export type CommuniquesFindOneResponses = {
+    200: CreateCommuniqueDto;
+};
+
+export type CommuniquesFindOneResponse = CommuniquesFindOneResponses[keyof CommuniquesFindOneResponses];
+
+export type CommuniquesUpdateData = {
+    body: UpdateCommuniqueDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/communiques/{id}';
+};
+
+export type CommuniquesUpdateResponses = {
+    200: CreateCommuniqueDto;
+};
+
+export type CommuniquesUpdateResponse = CommuniquesUpdateResponses[keyof CommuniquesUpdateResponses];
+
+export type ImagesUploadImageData = {
+    body: {
+        image?: Blob | File;
+    };
+    path?: never;
+    query?: never;
+    url: '/images/upload';
+};
+
+export type ImagesUploadImageResponses = {
+    201: ImageResponseDto;
+};
+
+export type ImagesUploadImageResponse = ImagesUploadImageResponses[keyof ImagesUploadImageResponses];
+
+export type ImagesGetImageData = {
+    body?: never;
+    path: {
+        filename: string;
+    };
+    query?: never;
+    url: '/images/{filename}';
+};
+
+export type ImagesGetImageResponses = {
+    /**
+     * Returns an image file
+     */
+    200: Blob | File;
+};
+
+export type ImagesGetImageResponse = ImagesGetImageResponses[keyof ImagesGetImageResponses];
+
+export type ImagesDeleteImageData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/images/{id}';
+};
+
+export type ImagesDeleteImageResponses = {
+    200: boolean;
+};
+
+export type ImagesDeleteImageResponse = ImagesDeleteImageResponses[keyof ImagesDeleteImageResponses];
 
 export type ClientOptions = {
     baseUrl: string;
