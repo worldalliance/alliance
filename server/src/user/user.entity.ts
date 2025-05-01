@@ -10,9 +10,13 @@ import {
   BeforeInsert,
   BeforeUpdate,
   OneToMany,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
 import { UserAction } from '../actions/entities/user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { Communique } from '../communiques/entities/communique.entity';
+
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -40,6 +44,10 @@ export class User {
   @Column({ default: false })
   @ApiProperty()
   admin: boolean;
+
+  @ManyToMany(() => Communique, (communique) => communique.usersRead)
+  @JoinTable()
+  communiquesRead: Communique[];
 
   @OneToMany(() => UserAction, (userAction) => userAction.user)
   actionRelations: UserAction[];

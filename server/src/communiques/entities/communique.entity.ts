@@ -1,9 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { User } from '../../user/user.entity';
 
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinTable,
+  ManyToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -32,4 +35,8 @@ export class Communique {
 
   @UpdateDateColumn()
   dateUpdated: Date;
+
+  @ManyToMany(() => User, (user) => user.communiquesRead)
+  @JoinTable()
+  usersRead: User[];
 }

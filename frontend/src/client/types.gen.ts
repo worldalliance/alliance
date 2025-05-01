@@ -34,7 +34,6 @@ export type CreateActionDto = {
     image: string;
     description: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
-    usersJoined: number;
 };
 
 export type ActionDto = {
@@ -55,7 +54,6 @@ export type UpdateActionDto = {
     image?: string;
     description?: string;
     status?: 'Active' | 'Upcoming' | 'Past' | 'Draft';
-    usersJoined?: number;
 };
 
 export type CreateCommuniqueDto = {
@@ -185,8 +183,10 @@ export type ActionsCreateData = {
 };
 
 export type ActionsCreateResponses = {
-    201: unknown;
+    200: ActionDto;
 };
+
+export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
 
 export type ActionsJoinData = {
     body?: never;
@@ -329,6 +329,34 @@ export type CommuniquesUpdateResponses = {
 };
 
 export type CommuniquesUpdateResponse = CommuniquesUpdateResponses[keyof CommuniquesUpdateResponses];
+
+export type CommuniquesGetReadData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/communiques/{id}/read';
+};
+
+export type CommuniquesGetReadResponses = {
+    200: boolean;
+};
+
+export type CommuniquesGetReadResponse = CommuniquesGetReadResponses[keyof CommuniquesGetReadResponses];
+
+export type CommuniquesReadData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/communiques/{id}/read';
+};
+
+export type CommuniquesReadResponses = {
+    200: unknown;
+};
 
 export type ImagesUploadImageData = {
     body: {

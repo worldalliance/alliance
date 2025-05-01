@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { CommuniquesService } from './communiques.service';
 import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
@@ -15,7 +16,8 @@ import {
   CreateCommuniqueDto,
   UpdateCommuniqueDto,
 } from './dto/communique.dto';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
+import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 
 @Controller('communiques')
 export class CommuniquesController {
@@ -48,6 +50,20 @@ export class CommuniquesController {
     @Body() updateCommuniqueDto: UpdateCommuniqueDto,
   ) {
     return this.communiquesService.update(+id, updateCommuniqueDto);
+  }
+
+  @Post(':id/read')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse()
+  read(@Request() req: JwtRequest, @Param('id') id: string) {
+    return this.communiquesService.setRead(req.user.sub, +id);
+  }
+
+  @Get(':id/read')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: Boolean })
+  getRead(@Request() req: JwtRequest, @Param('id') id: string) {
+    return this.communiquesService.getRead(req.user.sub, +id);
   }
 
   @Delete(':id')

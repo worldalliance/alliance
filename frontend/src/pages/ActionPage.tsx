@@ -67,13 +67,13 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
   }, [actionId]);
 
   return (
-    <div className="flex flex-row min-h-screen pt-12 px-3 w-full justify-center gap-x-7 bg-stone-50">
+    <div className="flex flex-row min-h-screen py-12 px-3 w-full justify-center gap-x-7 bg-stone-50">
       <div className="flex flex-col max-w-[700px] gap-y-3 border-r border-gray-200 pr-7">
         {action?.image && (
           <img
             src={`${getApiUrl()}/images/${action.image}`}
             alt={action.name}
-            className="w-full h-auto rounded-md border border-gray-300"
+            className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
           />
         )}
         <div className="flex flex-row justify-between items-center my-5">

@@ -1,27 +1,34 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Communique } from './entities/communique.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateCommuniqueDto, UpdateCommuniqueDto } from './dto/communique.dto';
+import { UserService } from '../user/user.service';
+
 @Injectable()
 export class CommuniquesService {
   constructor(
     @InjectRepository(Communique)
-    private CommuniqueRepository: Repository<Communique>,
+    private communiqueRepository: Repository<Communique>,
+    private userService: UserService,
   ) {}
   async findAll(): Promise<Communique[]> {
-    return this.CommuniqueRepository.find();
+    return this.communiqueRepository.find();
   }
 
   async create(communique: CreateCommuniqueDto): Promise<Communique> {
-    return this.CommuniqueRepository.save(communique);
+    return this.communiqueRepository.save(communique);
   }
 
   async update(
     id: number,
     communique: UpdateCommuniqueDto,
   ): Promise<Communique> {
-    await this.CommuniqueRepository.update(id, communique);
+    await this.communiqueRepository.update(id, communique);
     const output = await this.findOne(id);
     if (!output) {
       throw new NotFoundException('Updated communique not found');
@@ -30,16 +37,36 @@ export class CommuniquesService {
   }
 
   async findOne(id: number): Promise<Communique | null> {
-    const Communique = await this.CommuniqueRepository.findOneBy({ id });
-    if (!Communique) {
+    const communique = await this.communiqueRepository.findOneBy({ id });
+    if (!communique) {
       console.log('Communique not found');
       return null;
     }
-    return Communique;
+    return communique;
+  }
+
+  async setRead(userId: number, id: number) {
+    const communique = await this.communiqueRepository.findOneBy({ id });
+    const user = await this.userService.findOne(userId);
+    if (!communique || !user) {
+      throw new BadRequestException('Communique or user not found');
+    }
+    communique.usersRead.push(user);
+    await this.communiqueRepository.save(communique);
+  }
+
+  async getRead(userId: number, id: number) {
+    const communique = await this.communiqueRepository.findOneBy({ id });
+    const user = await this.userService.findOne(userId);
+    if (!communique || !user) {
+      throw new BadRequestException('Communique or user not found');
+    }
+    console.log(communique);
+    return communique.usersRead.some((user) => user.id === userId);
   }
 
   async remove(id: number): Promise<boolean> {
-    const result = await this.CommuniqueRepository.delete(id);
+    const result = await this.communiqueRepository.delete(id);
     if (result.affected === 0) {
       return false;
     }

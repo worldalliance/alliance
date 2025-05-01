@@ -1,19 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { communiquesFindOne } from "../client/sdk.gen";
+import { communiquesFindOne, communiquesRead } from "../client/sdk.gen";
 import { CommuniqueDto } from "../client/types.gen";
 import ReactMarkdown from "react-markdown";
 import { getApiUrl } from "../lib/config";
 import { AdminOnly } from "../context/AdminOnly";
 import Button, { ButtonColor } from "../components/system/Button";
+import { useAuth } from "../context/AuthContext";
 
 const AnnouncementPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [announcement, setAnnouncement] = useState<CommuniqueDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [readMarked, setReadMarked] = useState(false);
 
+  // Fetch the announcement data
   useEffect(() => {
     const fetchAnnouncement = async () => {
       if (!id) {
@@ -42,6 +46,32 @@ const AnnouncementPage: React.FC = () => {
 
     fetchAnnouncement();
   }, [id]);
+
+  // Mark the announcement as read after it has been loaded
+  useEffect(() => {
+    const markAsRead = async () => {
+      // Only proceed if announcement is loaded, user is authenticated, and we haven't already marked it as read
+      if (!announcement || !isAuthenticated || readMarked || !id) {
+        return;
+      }
+
+      try {
+        // Call the API to mark the announcement as read
+        await communiquesRead({
+          path: { id }
+        });
+        
+        // Update our local state to indicate we've marked it as read
+        setReadMarked(true);
+        console.log(`Marked announcement ${id} as read`);
+      } catch (error) {
+        console.error(`Error marking announcement ${id} as read:`, error);
+        // We don't set an error state here as it's not critical to the user experience
+      }
+    };
+
+    markAsRead();
+  }, [announcement, isAuthenticated, id, readMarked]);
 
   const handleBackClick = () => {
     navigate("/announcements");

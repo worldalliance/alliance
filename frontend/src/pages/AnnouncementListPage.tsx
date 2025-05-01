@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { communiquesFindAll } from "../client/sdk.gen";
+import { communiquesFindAll, communiquesGetRead } from "../client/sdk.gen";
 import { CommuniqueDto } from "../client/types.gen";
 import AnnouncementCard from "../components/AnnoucementCard";
 import Button, { ButtonColor } from "../components/system/Button";
 import { AdminOnly } from "../context/AdminOnly";
+import { useAuth } from "../context/AuthContext";
 
 const AnnouncementsListPage: React.FC = () => {
   const [announcements, setAnnouncements] = useState<CommuniqueDto[]>([]);
+  const [unreadStatus, setUnreadStatus] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,7 +26,38 @@ const AnnouncementsListPage: React.FC = () => {
           throw new Error("Failed to fetch announcements");
         }
 
-        setAnnouncements(response.data || []);
+        const fetchedAnnouncements = response.data || [];
+        setAnnouncements(fetchedAnnouncements);
+
+        // If user is authenticated, check read status for each announcement
+        if (isAuthenticated && fetchedAnnouncements.length > 0) {
+          const readStatusMap: Record<number, boolean> = {};
+
+          // Check read status for each announcement
+          await Promise.all(
+            fetchedAnnouncements.map(async (announcement) => {
+              try {
+                const readResponse = await communiquesGetRead({
+                  path: { id: announcement.id.toString() },
+                });
+
+                // If read response is true, the announcement has been read
+                // We want to track if it's unread, so we invert the value
+                readStatusMap[announcement.id] = !(readResponse.data ?? false);
+              } catch (error) {
+                console.error(
+                  `Error checking read status for announcement ${announcement.id}:`,
+                  error
+                );
+                // Default to showing as unread if there's an error
+                readStatusMap[announcement.id] = true;
+              }
+            })
+          );
+
+          setUnreadStatus(readStatusMap);
+        }
+
         setLoading(false);
       } catch (err) {
         setError("Failed to load announcements. Please try again later.");
@@ -33,7 +67,7 @@ const AnnouncementsListPage: React.FC = () => {
     };
 
     fetchAnnouncements();
-  }, []);
+  }, [isAuthenticated]);
 
   return (
     <div className="flex flex-col min-h-screen bg-stone-50 items-center">
@@ -41,14 +75,14 @@ const AnnouncementsListPage: React.FC = () => {
         <div className="w-full flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Announcements</h1>
           <AdminOnly>
-            <Button 
-              label="New Announcement" 
-              color={ButtonColor.Blue} 
-              onClick={() => navigate('/announcements/new')} 
+            <Button
+              label="New Announcement"
+              color={ButtonColor.Blue}
+              onClick={() => navigate("/announcements/new")}
             />
           </AdminOnly>
         </div>
-        
+
         {loading && (
           <p className="text-center py-4">Loading announcements...</p>
         )}
@@ -63,10 +97,11 @@ const AnnouncementsListPage: React.FC = () => {
           <AnnouncementCard
             key={announcement.id}
             data={announcement}
-            unread={false}
+            unread={unreadStatus[announcement.id] ?? false}
             className="w-full"
           />
         ))}
+
         {announcements.length === 0 && !loading && (
           <p className="text-center py-4">No announcements</p>
         )}

@@ -14,6 +14,7 @@ import { UserAction } from '../src/actions/entities/user-action.entity';
 import { Action } from '../src/actions/entities/action.entity';
 import { AuthController } from '../src/auth/auth.controller';
 import { Image } from '../src/images/entities/image.entity';
+import { Communique } from '../src/communiques/entities/communique.entity';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication<App>;
@@ -33,7 +34,7 @@ describe('Auth (e2e)', () => {
         TypeOrmModule.forRoot({
           type: 'sqlite',
           database: ':memory:',
-          entities: [User, Action, UserAction, Image],
+          entities: [User, Action, UserAction, Image, Communique],
           synchronize: true,
         }),
       ],

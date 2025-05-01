@@ -133,6 +133,14 @@ const AppRoutes = () => {
           }
         />
         <Route
+          path="/announcements/edit/:id"
+          element={
+            <ProtectedRoute>
+              <AnnouncementEditPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/announcements/:id"
           element={
             <ProtectedRoute>
