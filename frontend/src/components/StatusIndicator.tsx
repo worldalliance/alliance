@@ -3,6 +3,7 @@ import { ProgressCircle } from "./tremor/ProgressCircle";
 export enum Status {
   New = "New",
   InProgress = "InProgress",
+  Unread = "Unread",
 }
 
 export interface StatusIndicatorProps {
@@ -14,6 +15,8 @@ const StatusIndicator = ({ status }: StatusIndicatorProps) => {
     <div className="absolute top-0 my-auto bottom-0 left-[-30px] h-fit rounded-full text-red-500 text-[25pt] font-bold">
       !
     </div>
+  ) : status === Status.Unread ? (
+    <div className="absolute top-0 my-auto bottom-0 left-[-35px] rounded-full bg-blue-500 w-4 h-4"></div>
   ) : (
     <div className="absolute top-0 my-auto bottom-0 left-[-35px] h-fit rounded-full">
       <ProgressCircle

@@ -38,6 +38,7 @@ export class User {
   updatedAt: Date;
 
   @Column({ default: false })
+  @ApiProperty()
   admin: boolean;
 
   @OneToMany(() => UserAction, (userAction) => userAction.user)

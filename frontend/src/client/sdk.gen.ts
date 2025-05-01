@@ -214,8 +214,8 @@ export const imagesGetImage = <ThrowOnError extends boolean = false>(options: Op
     });
 };
 
-export const imagesDeleteImage = <ThrowOnError extends boolean = false>(options?: Options<ImagesDeleteImageData, ThrowOnError>) => {
-    return (options?.client ?? _heyApiClient).delete<ImagesDeleteImageResponse, unknown, ThrowOnError>({
+export const imagesDeleteImage = <ThrowOnError extends boolean = false>(options: Options<ImagesDeleteImageData, ThrowOnError>) => {
+    return (options.client ?? _heyApiClient).delete<ImagesDeleteImageResponse, unknown, ThrowOnError>({
         url: '/images/{id}',
         ...options
     });

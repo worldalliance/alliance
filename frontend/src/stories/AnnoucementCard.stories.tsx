@@ -11,16 +11,26 @@ const meta = {
   args: {
     data: {
       id: 1,
-      title: "Boycott Acme Inc.",
+      title: "Alliance beta site launched!",
       bodyText:
-        "Acme. corp has been found to lorem over 160,00 ipsums every single year, causing untold devastation in the placeholder text industry.",
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
       headerImage: null,
+      dateCreated: "2025-01-01",
     },
-    unread: false,
   },
 } satisfies Meta<typeof AnnouncementCard>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Default: Story = {};
+export const Unread: Story = {
+  args: {
+    unread: true,
+  },
+};
+
+export const Read: Story = {
+  args: {
+    unread: false,
+  },
+};

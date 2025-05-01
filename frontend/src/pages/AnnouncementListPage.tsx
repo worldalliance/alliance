@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { communiquesFindAll } from "../client/sdk.gen";
 import { CommuniqueDto } from "../client/types.gen";
 import AnnouncementCard from "../components/AnnoucementCard";
+import Button, { ButtonColor } from "../components/system/Button";
+import { AdminOnly } from "../context/AdminOnly";
 
 const AnnouncementsListPage: React.FC = () => {
   const [announcements, setAnnouncements] = useState<CommuniqueDto[]>([]);
@@ -36,6 +38,17 @@ const AnnouncementsListPage: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-stone-50 items-center">
       <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
+        <div className="w-full flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">Announcements</h1>
+          <AdminOnly>
+            <Button 
+              label="New Announcement" 
+              color={ButtonColor.Blue} 
+              onClick={() => navigate('/announcements/new')} 
+            />
+          </AdminOnly>
+        </div>
+        
         {loading && (
           <p className="text-center py-4">Loading announcements...</p>
         )}
@@ -54,7 +67,7 @@ const AnnouncementsListPage: React.FC = () => {
             className="w-full"
           />
         ))}
-        {announcements.length === 0 && (
+        {announcements.length === 0 && !loading && (
           <p className="text-center py-4">No announcements</p>
         )}
       </div>

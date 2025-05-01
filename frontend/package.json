@@ -19,6 +19,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-globe.gl": "^2.33.2",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.5.3",
     "recharts": "^2.15.3",
     "storybook": "^8.6.12",

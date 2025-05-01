@@ -13,7 +13,7 @@ export enum ButtonColor {
   Stone = "bg-stone-700",
   Green = "bg-green-500",
   Red = "bg-red-500",
-  Light = "bg-stone-400",
+  Light = "bg-stone-200",
   Blue = "bg-cyan-600",
   Transparent = "transparent",
   Grey = "bg-gray-200 !text-black",
@@ -45,7 +45,7 @@ const Button: React.FC<ButtonProps> = ({
         color === ButtonColor.Transparent
           ? "bg-transparent text-black hover:bg-black/10 pt-2"
           : "text-white py-1 pt-2"
-      }  ${color} `}
+      }  ${color} ${color === ButtonColor.Light ? "!text-stone-800" : ""}`}
       onClick={onClick}
       disabled={disabled}
     >

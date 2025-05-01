@@ -27,6 +27,7 @@ export class Communique {
   headerImage: string;
 
   @CreateDateColumn()
+  @ApiProperty()
   dateCreated: Date;
 
   @UpdateDateColumn()

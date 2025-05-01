@@ -7,10 +7,8 @@ import {
   actionsFindOne,
   actionsRemove,
   actionsUpdate,
-  imagesGetImage,
   imagesUploadImage,
 } from "./client/sdk.gen";
-import { client } from "./client/client.gen";
 import { getApiUrl } from "./config";
 
 const AdminActionPage: React.FC = () => {
@@ -33,7 +31,6 @@ const AdminActionPage: React.FC = () => {
     whyJoin: "",
     description: "",
     status: "Draft",
-    type: "Action",
     image: "",
   });
 
@@ -44,9 +41,12 @@ const AdminActionPage: React.FC = () => {
     }
 
     const loadAction = async () => {
+      if (!id) {
+        throw new Error("Action ID is required");
+      }
       try {
         const response = await actionsFindOne({
-          path: { id: Number(id) },
+          path: { id: id },
         });
         const actionData = response.data;
         if (!actionData) {
@@ -60,7 +60,6 @@ const AdminActionPage: React.FC = () => {
           whyJoin: actionData.whyJoin,
           description: actionData.description,
           status: actionData.status,
-          type: actionData.type,
           image: actionData.image || "",
         });
 
@@ -118,8 +117,7 @@ const AdminActionPage: React.FC = () => {
       if (!response.data) {
         throw new Error("Failed to upload image");
       }
-
-      return response.data.filename;
+      return response.data.filename as string;
     } catch (err) {
       console.error("Error uploading image:", err);
       setError("Failed to upload image. Please try again.");
@@ -160,8 +158,11 @@ const AdminActionPage: React.FC = () => {
         }
         navigate(`/action/${newAction.id}`);
       } else {
+        if (!id) {
+          throw new Error("Action ID is required");
+        }
         const response = await actionsUpdate({
-          path: { id: Number(id) },
+          path: { id },
           body: formData,
         });
         const updatedAction = response.data;
@@ -193,7 +194,7 @@ const AdminActionPage: React.FC = () => {
       try {
         setLoading(true);
         const response = await actionsRemove({
-          path: { id: Number(id) },
+          path: { id },
         });
         if (response.error) {
           throw new Error("Failed to delete action");

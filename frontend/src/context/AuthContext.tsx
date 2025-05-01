@@ -6,14 +6,13 @@ import React, {
   ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserData } from "../types/auth";
-import { authLogin, authMe, authRefreshTokens } from "../client";
+import { authLogin, authMe, authRefreshTokens, ProfileDto } from "../client";
 import { client } from "../client/client.gen";
 import { getApiUrl } from "../lib/config";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: UserData | undefined;
+  user: ProfileDto | undefined;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -24,7 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<UserData | undefined>(undefined);
+  const [user, setUser] = useState<ProfileDto | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 

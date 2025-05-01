@@ -101,17 +101,14 @@ export class ImagesController {
     @Res({ passthrough: true }) res: Response,
     @Param('filename') filename: string,
   ): Promise<StreamableFile> {
-    // Image is stored in the uploads directory
     const imagePath = join(process.cwd(), 'uploads', filename);
 
-    // Check if the file exists
     if (!existsSync(imagePath)) {
       throw new NotFoundException(`Image ${filename} not found`);
     }
 
-    // Determine content type based on file extension
     const ext = extname(filename).toLowerCase();
-    let contentType = 'application/octet-stream'; // Default
+    let contentType = 'application/octet-stream';
 
     switch (ext) {
       case '.jpg':
@@ -134,6 +131,8 @@ export class ImagesController {
       'Content-Type': contentType,
       'Content-Disposition': `inline; filename="${filename}"`,
     });
+
+    console.log('getting imagePath', imagePath);
 
     // Create and return a readable stream of the file
     const fileStream = createReadStream(imagePath);

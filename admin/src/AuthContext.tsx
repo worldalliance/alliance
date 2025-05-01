@@ -12,18 +12,14 @@ import {
   authAdminLogin,
   authRefreshTokens,
   appHealthCheck,
+  ProfileDto,
 } from "./client";
 import { client } from "./client/client.gen";
 import { getApiUrl } from "./config";
 
-interface UserData {
-  name: string;
-  email: string;
-}
-
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: UserData | null;
+  user: ProfileDto | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
@@ -38,7 +34,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
-  const [user, setUser] = useState<UserData | null>(null);
+  const [user, setUser] = useState<ProfileDto | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isServerRunning, setIsServerRunning] = useState<boolean>(true);
   const navigate = useNavigate();

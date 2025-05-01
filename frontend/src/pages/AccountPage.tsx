@@ -3,6 +3,8 @@ import Card, { CardStyle } from "../components/system/Card";
 import Button, { ButtonColor } from "../components/system/Button";
 import { useAuth } from "../context/AuthContext";
 import FormInput from "../components/system/FormInput";
+import { AdminOnly } from "../context/AdminOnly";
+import Badge from "../components/system/Badge";
 
 const AccountPage: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -41,7 +43,12 @@ const AccountPage: React.FC = () => {
     <div className="min-h-screen bg-stone-50 pt-20 px-8 md:px-16">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-sabon">Account</h1>
+          <div className="flex flex-row items-center gap-2">
+            <h1 className="text-2xl font-sabon">Account</h1>
+            <AdminOnly>
+              <Badge className="bg-amber-500">Admin</Badge>
+            </AdminOnly>
+          </div>
           <Button
             label="Log Out"
             onClick={handleLogout}

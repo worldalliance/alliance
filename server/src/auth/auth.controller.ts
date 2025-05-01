@@ -12,7 +12,7 @@ import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { SignUpDto } from './sign-up.dto';
 import { AuthGuard, JwtRequest } from './guards/auth.guard';
-import { ProfileDto, SignInDto } from './dto/signin.dto';
+import { ProfileDto, SignInDto, SignInResponseDto } from './dto/signin.dto';
 import { RefreshTokenGuard } from './guards/refresh.guard';
 import {
   ApiBearerAuth,
@@ -20,7 +20,7 @@ import {
   ApiResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { AccessToken, AuthTokens } from './dto/authtokens.dto';
+import { AccessToken } from './dto/authtokens.dto';
 
 @ApiBearerAuth()
 @Controller('auth')
@@ -29,7 +29,7 @@ export class AuthController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: AuthTokens })
+  @ApiOkResponse({ type: SignInResponseDto })
   @ApiUnauthorizedResponse()
   @Post('login')
   login(@Body() signInDto: SignInDto) {
@@ -38,7 +38,7 @@ export class AuthController {
 
   @Public()
   @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: AuthTokens })
+  @ApiOkResponse({ type: SignInResponseDto })
   @ApiUnauthorizedResponse()
   @Post('admin/login')
   adminLogin(@Body() signInDto: SignInDto) {
@@ -69,10 +69,12 @@ export class AuthController {
   @Get('/me')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ProfileDto })
-  async me(
-    @Request() req: JwtRequest,
-  ): Promise<{ email: string; name: string }> {
+  async me(@Request() req: JwtRequest): Promise<ProfileDto> {
     const profile = await this.authService.getProfile(req.user.email);
-    return { email: profile.email, name: profile.name };
+    return {
+      email: profile.email,
+      name: profile.name,
+      admin: profile.admin,
+    };
   }
 }

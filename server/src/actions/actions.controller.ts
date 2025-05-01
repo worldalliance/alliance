@@ -22,6 +22,7 @@ export class ActionsController {
 
   @Post('create')
   @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionDto })
   create(@Body() createActionDto: CreateActionDto) {
     return this.actionsService.create(createActionDto);
   }

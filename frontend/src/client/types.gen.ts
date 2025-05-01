@@ -5,9 +5,10 @@ export type SignInDto = {
     password: string;
 };
 
-export type AuthTokens = {
+export type SignInResponseDto = {
     access_token: string;
     refresh_token: string;
+    isAdmin: boolean;
 };
 
 export type SignUpDto = {
@@ -21,8 +22,9 @@ export type AccessToken = {
 };
 
 export type ProfileDto = {
-    email: string;
     name: string;
+    email: string;
+    admin: boolean;
 };
 
 export type CreateActionDto = {
@@ -32,6 +34,7 @@ export type CreateActionDto = {
     image: string;
     description: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    usersJoined: number;
 };
 
 export type ActionDto = {
@@ -42,6 +45,7 @@ export type ActionDto = {
     image: string;
     description: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    usersJoined: number;
 };
 
 export type UpdateActionDto = {
@@ -51,12 +55,14 @@ export type UpdateActionDto = {
     image?: string;
     description?: string;
     status?: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    usersJoined?: number;
 };
 
 export type CreateCommuniqueDto = {
     title: string;
     bodyText: string;
     headerImage: string | null;
+    dateCreated: string;
 };
 
 export type CommuniqueDto = {
@@ -64,19 +70,22 @@ export type CommuniqueDto = {
     title: string;
     bodyText: string;
     headerImage: string | null;
+    dateCreated: string;
 };
 
 export type UpdateCommuniqueDto = {
     title?: string;
     bodyText?: string;
     headerImage?: string | null;
+    dateCreated?: string;
 };
 
 export type ImageResponseDto = {
-    /**
-     * The filename of the image
-     */
-    filename: string;
+    [key: string]: unknown;
+};
+
+export type DeleteImageResponseDto = {
+    deleted: boolean;
 };
 
 export type AppHealthCheckData = {
@@ -102,7 +111,7 @@ export type AuthLoginErrors = {
 };
 
 export type AuthLoginResponses = {
-    200: AuthTokens;
+    200: SignInResponseDto;
 };
 
 export type AuthLoginResponse = AuthLoginResponses[keyof AuthLoginResponses];
@@ -119,7 +128,7 @@ export type AuthAdminLoginErrors = {
 };
 
 export type AuthAdminLoginResponses = {
-    200: AuthTokens;
+    200: SignInResponseDto;
 };
 
 export type AuthAdminLoginResponse = AuthAdminLoginResponses[keyof AuthAdminLoginResponses];
@@ -356,13 +365,15 @@ export type ImagesGetImageResponse = ImagesGetImageResponses[keyof ImagesGetImag
 
 export type ImagesDeleteImageData = {
     body?: never;
-    path?: never;
+    path: {
+        id: number;
+    };
     query?: never;
     url: '/images/{id}';
 };
 
 export type ImagesDeleteImageResponses = {
-    200: boolean;
+    200: DeleteImageResponseDto;
 };
 
 export type ImagesDeleteImageResponse = ImagesDeleteImageResponses[keyof ImagesDeleteImageResponses];

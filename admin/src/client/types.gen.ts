@@ -5,12 +5,13 @@ export type SignInDto = {
     password: string;
 };
 
-export type AuthTokens = {
+export type SignInResponseDto = {
     access_token: string;
     refresh_token: string;
+    isAdmin: boolean;
 };
 
-export type SignUp = {
+export type SignUpDto = {
     name: string;
     email: string;
     password: string;
@@ -21,16 +22,16 @@ export type AccessToken = {
 };
 
 export type ProfileDto = {
-    email: string;
     name: string;
+    email: string;
+    admin: boolean;
 };
 
 export type CreateActionDto = {
     name: string;
-    image: string;
     category: string;
     whyJoin: string;
-    type: string;
+    image: string;
     description: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
 };
@@ -38,35 +39,51 @@ export type CreateActionDto = {
 export type ActionDto = {
     id: number;
     name: string;
-    image: string;
     category: string;
     whyJoin: string;
-    type: string;
+    image: string;
     description: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    usersJoined: number;
 };
 
 export type UpdateActionDto = {
-    [key: string]: unknown;
+    name?: string;
+    category?: string;
+    whyJoin?: string;
+    image?: string;
+    description?: string;
+    status?: 'Active' | 'Upcoming' | 'Past' | 'Draft';
 };
 
 export type CreateCommuniqueDto = {
     title: string;
-    description: string;
-    image: string;
+    bodyText: string;
+    headerImage: string | null;
+    dateCreated: string;
+};
+
+export type CommuniqueDto = {
+    id: number;
+    title: string;
+    bodyText: string;
+    headerImage: string | null;
+    dateCreated: string;
 };
 
 export type UpdateCommuniqueDto = {
     title?: string;
-    description?: string;
-    image?: string;
+    bodyText?: string;
+    headerImage?: string | null;
+    dateCreated?: string;
 };
 
 export type ImageResponseDto = {
-    /**
-     * The filename of the image
-     */
-    filename: string;
+    [key: string]: unknown;
+};
+
+export type DeleteImageResponseDto = {
+    deleted: boolean;
 };
 
 export type AppHealthCheckData = {
@@ -92,7 +109,7 @@ export type AuthLoginErrors = {
 };
 
 export type AuthLoginResponses = {
-    200: AuthTokens;
+    200: SignInResponseDto;
 };
 
 export type AuthLoginResponse = AuthLoginResponses[keyof AuthLoginResponses];
@@ -109,13 +126,13 @@ export type AuthAdminLoginErrors = {
 };
 
 export type AuthAdminLoginResponses = {
-    200: AuthTokens;
+    200: SignInResponseDto;
 };
 
 export type AuthAdminLoginResponse = AuthAdminLoginResponses[keyof AuthAdminLoginResponses];
 
 export type AuthRegisterData = {
-    body: SignUp;
+    body: SignUpDto;
     path?: never;
     query?: never;
     url: '/auth/register';
@@ -166,8 +183,36 @@ export type ActionsCreateData = {
 };
 
 export type ActionsCreateResponses = {
+    200: ActionDto;
+};
+
+export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
+
+export type ActionsJoinData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/actions/join/{id}';
+};
+
+export type ActionsJoinResponses = {
     201: unknown;
 };
+
+export type ActionsFindAllData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions';
+};
+
+export type ActionsFindAllResponses = {
+    200: Array<ActionDto>;
+};
+
+export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
 
 export type ActionsRemoveData = {
     body?: never;
@@ -214,32 +259,6 @@ export type ActionsUpdateResponses = {
     200: unknown;
 };
 
-export type ActionsJoinData = {
-    body?: never;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/actions/{id}';
-};
-
-export type ActionsJoinResponses = {
-    201: unknown;
-};
-
-export type ActionsFindAllData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions';
-};
-
-export type ActionsFindAllResponses = {
-    200: Array<ActionDto>;
-};
-
-export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
-
 export type CommuniquesFindAllData = {
     body?: never;
     path?: never;
@@ -248,7 +267,7 @@ export type CommuniquesFindAllData = {
 };
 
 export type CommuniquesFindAllResponses = {
-    200: Array<CreateCommuniqueDto>;
+    200: Array<CommuniqueDto>;
 };
 
 export type CommuniquesFindAllResponse = CommuniquesFindAllResponses[keyof CommuniquesFindAllResponses];
@@ -291,7 +310,7 @@ export type CommuniquesFindOneData = {
 };
 
 export type CommuniquesFindOneResponses = {
-    200: CreateCommuniqueDto;
+    200: CommuniqueDto;
 };
 
 export type CommuniquesFindOneResponse = CommuniquesFindOneResponses[keyof CommuniquesFindOneResponses];
@@ -306,7 +325,7 @@ export type CommuniquesUpdateData = {
 };
 
 export type CommuniquesUpdateResponses = {
-    200: CreateCommuniqueDto;
+    200: CommuniqueDto;
 };
 
 export type CommuniquesUpdateResponse = CommuniquesUpdateResponses[keyof CommuniquesUpdateResponses];
@@ -346,13 +365,15 @@ export type ImagesGetImageResponse = ImagesGetImageResponses[keyof ImagesGetImag
 
 export type ImagesDeleteImageData = {
     body?: never;
-    path?: never;
+    path: {
+        id: number;
+    };
     query?: never;
     url: '/images/{id}';
 };
 
 export type ImagesDeleteImageResponses = {
-    200: boolean;
+    200: DeleteImageResponseDto;
 };
 
 export type ImagesDeleteImageResponse = ImagesDeleteImageResponses[keyof ImagesDeleteImageResponses];

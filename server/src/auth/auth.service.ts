@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { User } from '../user/user.entity';
 import { SignUpDto } from './sign-up.dto';
 import { JWTTokenType, JwtPayload } from './guards/auth.guard';
-import { AuthTokens } from './dto/authtokens.dto';
+import { SignInResponseDto } from './dto/signin.dto';
 
 @Injectable()
 export class AuthService {
@@ -22,7 +22,7 @@ export class AuthService {
     email: string,
     password: string,
     adminOnly: boolean = false,
-  ): Promise<AuthTokens> {
+  ): Promise<SignInResponseDto> {
     const user = await this.usersService.findOneByEmail(email);
 
     if (!user) {
@@ -40,6 +40,7 @@ export class AuthService {
     return {
       access_token: await this.generateAccessToken(user),
       refresh_token: await this.generateRefreshToken(user),
+      isAdmin: user.admin,
     };
   }
 
