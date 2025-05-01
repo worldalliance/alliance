@@ -3,6 +3,7 @@ import { ImagesController } from './images.controller';
 import { ImagesService } from './images.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Image } from './entities/image.entity';
+import { FilesService } from './files.service';
 
 describe('ImagesController', () => {
   let controller: ImagesController;
@@ -11,6 +12,7 @@ describe('ImagesController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [ImagesController],
       providers: [
+        FilesService,
         ImagesService,
         {
           provide: getRepositoryToken(Image),
