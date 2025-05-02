@@ -37,7 +37,10 @@ export class CommuniquesService {
   }
 
   async findOne(id: number): Promise<Communique | null> {
-    const communique = await this.communiqueRepository.findOneBy({ id });
+    const communique = await this.communiqueRepository.findOne({
+      where: { id },
+      relations: ['usersRead'],
+    });
     if (!communique) {
       console.log('Communique not found');
       return null;
@@ -46,22 +49,27 @@ export class CommuniquesService {
   }
 
   async setRead(userId: number, id: number) {
-    const communique = await this.communiqueRepository.findOneBy({ id });
+    const communique = await this.findOne(id);
     const user = await this.userService.findOne(userId);
     if (!communique || !user) {
       throw new BadRequestException('Communique or user not found');
+    }
+    if (!communique.usersRead) {
+      communique.usersRead = [];
     }
     communique.usersRead.push(user);
     await this.communiqueRepository.save(communique);
   }
 
   async getRead(userId: number, id: number) {
-    const communique = await this.communiqueRepository.findOneBy({ id });
+    const communique = await this.findOne(id);
     const user = await this.userService.findOne(userId);
     if (!communique || !user) {
       throw new BadRequestException('Communique or user not found');
     }
-    console.log(communique);
+    if (!communique.usersRead) {
+      return false;
+    }
     return communique.usersRead.some((user) => user.id === userId);
   }
 

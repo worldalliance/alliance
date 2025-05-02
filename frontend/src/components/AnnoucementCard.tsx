@@ -37,6 +37,8 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
     navigate(`/announcements/${data.id}`);
   };
 
+  console.log("card with id: ", data.id, "is unread: ", unread);
+
   let imgSource = null;
   if (data.headerImage) {
     imgSource = getImageSource(data.headerImage);
@@ -44,7 +46,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
     imgSource = test_image;
   }
 
-  const unreadStyles = "h-[200px] ";
+  const unreadStyles = "h-[185px] ";
   const readStyles = "h-[100px]";
 
   return (
@@ -57,14 +59,15 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
         onClick={handleClick}
       >
         <div className="flex flex-row h-full">
-          <div className="flex flex-col p-5 gap-y-2 w-full">
+          <div className="flex flex-col p-5 gap-y-2 w-full relative">
             <div className="flex flex-row justify-between items-center w-full">
               <h2 className="font-bold">{data.title}</h2>
               <p className="text-gray-500 text-[10pt]">
                 {formatDate(data.dateCreated)}
               </p>
             </div>
-            <p>{truncatedBody}</p>
+            <p className="relative">{truncatedBody}</p>
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent"></div>
           </div>
           {unread && imgSource && (
             <img

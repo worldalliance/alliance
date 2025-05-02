@@ -14,6 +14,7 @@ import { ApiCreatedResponse, ApiOkResponse } from '@nestjs/swagger';
 import {
   CommuniqueDto,
   CreateCommuniqueDto,
+  ReadResultDto,
   UpdateCommuniqueDto,
 } from './dto/communique.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -56,14 +57,19 @@ export class CommuniquesController {
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   read(@Request() req: JwtRequest, @Param('id') id: string) {
+    console.log('setting read: ', req.user.sub, id);
     return this.communiquesService.setRead(req.user.sub, +id);
   }
 
   @Get(':id/read')
   @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: Boolean })
-  getRead(@Request() req: JwtRequest, @Param('id') id: string) {
-    return this.communiquesService.getRead(req.user.sub, +id);
+  @ApiOkResponse({ type: ReadResultDto })
+  async getRead(
+    @Request() req: JwtRequest,
+    @Param('id') id: string,
+  ): Promise<ReadResultDto> {
+    const read = await this.communiquesService.getRead(req.user.sub, +id);
+    return { read };
   }
 
   @Delete(':id')

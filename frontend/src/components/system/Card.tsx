@@ -28,7 +28,7 @@ const Card: React.FC<CardProps> = ({ children, className, onClick, style }) => {
 
   return (
     <div
-      className={`flex flex-col ${styleClasses[cardStyle]} gap-y-2 rounded-lg p-4 border ${className} ${onClick ? "cursor-pointer hover:border-black transition-all duration-100" : ""}`}
+      className={`flex flex-col ${styleClasses[cardStyle]} gap-y-2 rounded-lg p-4 border ${className} ${onClick ? "cursor-pointer hover:border-black transition-[border] duration-100" : ""}`}
       onClick={onClick}
     >
       {children}

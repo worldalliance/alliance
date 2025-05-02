@@ -32,3 +32,4 @@ secret.tfvars
 nginx-confs/
 
 server/uploads/
+**/CLAUDE.local.md

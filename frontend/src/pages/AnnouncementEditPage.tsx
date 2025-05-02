@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { 
-  communiquesCreate, 
-  communiquesFindOne, 
-  communiquesUpdate, 
-  imagesUploadImage 
+import {
+  communiquesCreate,
+  communiquesFindOne,
+  communiquesUpdate,
+  imagesUploadImage,
 } from "../client/sdk.gen";
 import Button, { ButtonColor } from "../components/system/Button";
 import FormInput from "../components/system/FormInput";
@@ -45,7 +45,7 @@ const AnnouncementEditPage: React.FC = () => {
       try {
         setLoading(true);
         const response = await communiquesFindOne({
-          path: { id }
+          path: { id },
         });
 
         if (response.error || !response.data) {
@@ -53,12 +53,12 @@ const AnnouncementEditPage: React.FC = () => {
         }
 
         const announcement = response.data;
-        
+
         // Populate form with existing data
         setTitle(announcement.title);
         setBodyText(announcement.bodyText);
         setHeaderImage(announcement.headerImage);
-        
+
         setLoading(false);
       } catch (err) {
         console.error("Error loading announcement:", err);
@@ -163,7 +163,9 @@ const AnnouncementEditPage: React.FC = () => {
       }
     } catch (err) {
       console.error("Error saving announcement:", err);
-      setError(`Failed to ${isEditing ? 'update' : 'create'} announcement. Please try again.`);
+      setError(
+        `Failed to ${isEditing ? "update" : "create"} announcement. Please try again.`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -186,7 +188,7 @@ const AnnouncementEditPage: React.FC = () => {
           <h1 className="text-2xl font-bold mb-4">
             {isEditing ? "Edit Announcement" : "Create New Announcement"}
           </h1>
-          
+
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {error}
@@ -256,11 +258,11 @@ const AnnouncementEditPage: React.FC = () => {
                   isSubmitting
                     ? uploadingImage
                       ? "Uploading Image..."
-                      : isEditing 
-                        ? "Updating..." 
+                      : isEditing
+                        ? "Updating..."
                         : "Creating..."
-                    : isEditing 
-                      ? "Update Announcement" 
+                    : isEditing
+                      ? "Update Announcement"
                       : "Create Announcement"
                 }
                 onClick={() => {}}

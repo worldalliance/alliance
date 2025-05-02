@@ -78,6 +78,10 @@ export type UpdateCommuniqueDto = {
     dateCreated?: string;
 };
 
+export type ReadResultDto = {
+    read: boolean;
+};
+
 export type ImageResponseDto = {
     [key: string]: unknown;
 };
@@ -340,7 +344,7 @@ export type CommuniquesGetReadData = {
 };
 
 export type CommuniquesGetReadResponses = {
-    200: boolean;
+    200: ReadResultDto;
 };
 
 export type CommuniquesGetReadResponse = CommuniquesGetReadResponses[keyof CommuniquesGetReadResponses];

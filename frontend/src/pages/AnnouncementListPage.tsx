@@ -36,22 +36,10 @@ const AnnouncementsListPage: React.FC = () => {
           // Check read status for each announcement
           await Promise.all(
             fetchedAnnouncements.map(async (announcement) => {
-              try {
-                const readResponse = await communiquesGetRead({
-                  path: { id: announcement.id.toString() },
-                });
-
-                // If read response is true, the announcement has been read
-                // We want to track if it's unread, so we invert the value
-                readStatusMap[announcement.id] = !(readResponse.data ?? false);
-              } catch (error) {
-                console.error(
-                  `Error checking read status for announcement ${announcement.id}:`,
-                  error
-                );
-                // Default to showing as unread if there's an error
-                readStatusMap[announcement.id] = true;
-              }
+              const readResponse = await communiquesGetRead({
+                path: { id: announcement.id.toString() },
+              });
+              readStatusMap[announcement.id] = readResponse.data?.read ?? false;
             })
           );
 
@@ -68,6 +56,14 @@ const AnnouncementsListPage: React.FC = () => {
 
     fetchAnnouncements();
   }, [isAuthenticated]);
+
+  const unreadAnnouncements = announcements.filter(
+    (announcement) => !unreadStatus[announcement.id]
+  );
+
+  const readAnnouncements = announcements.filter(
+    (announcement) => unreadStatus[announcement.id]
+  );
 
   return (
     <div className="flex flex-col min-h-screen bg-stone-50 items-center">
@@ -93,11 +89,22 @@ const AnnouncementsListPage: React.FC = () => {
           </div>
         )}
 
-        {announcements.map((announcement) => (
+        {unreadAnnouncements.map((announcement) => (
           <AnnouncementCard
             key={announcement.id}
             data={announcement}
-            unread={unreadStatus[announcement.id] ?? false}
+            unread={!unreadStatus[announcement.id]}
+            className="w-full"
+          />
+        ))}
+        {readAnnouncements.length > 0 && unreadAnnouncements.length > 0 && (
+          <div className="w-[200px] h-[1px] bg-stone-200 my-4"></div>
+        )}
+        {readAnnouncements.map((announcement) => (
+          <AnnouncementCard
+            key={announcement.id}
+            data={announcement}
+            unread={false}
             className="w-full"
           />
         ))}

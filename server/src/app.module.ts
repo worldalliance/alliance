@@ -14,6 +14,7 @@ import { ImagesModule } from './images/images.module';
 import { MulterModule } from '@nestjs/platform-express';
 import { Image } from './images/entities/image.entity';
 import { Communique } from './communiques/entities/communique.entity';
+import { ForumModule } from './forum/forum.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { Communique } from './communiques/entities/communique.entity';
     ActionsModule,
     CommuniquesModule,
     ImagesModule,
+    ForumModule,
   ],
   controllers: [AppController],
   providers: [],

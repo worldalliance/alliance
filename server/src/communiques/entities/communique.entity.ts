@@ -37,6 +37,6 @@ export class Communique {
   dateUpdated: Date;
 
   @ManyToMany(() => User, (user) => user.communiquesRead)
-  @JoinTable()
+  @JoinTable({ name: 'communique_users_read' })
   usersRead: User[];
 }

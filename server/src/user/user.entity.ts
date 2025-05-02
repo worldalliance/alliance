@@ -11,7 +11,6 @@ import {
   BeforeUpdate,
   OneToMany,
   ManyToMany,
-  JoinTable,
 } from 'typeorm';
 import { UserAction } from '../actions/entities/user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
@@ -46,7 +45,6 @@ export class User {
   admin: boolean;
 
   @ManyToMany(() => Communique, (communique) => communique.usersRead)
-  @JoinTable()
   communiquesRead: Communique[];
 
   @OneToMany(() => UserAction, (userAction) => userAction.user)
