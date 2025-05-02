@@ -6,22 +6,25 @@ import Globe from "../components/Globe";
 import UserBubbleRow from "../components/UserBubbleRow";
 import Button from "../components/system/Button";
 import PokePanel from "../components/PokePanel";
-import { actionsFindOne, actionsJoin } from "../client/sdk.gen";
-import { ActionDto } from "../client/types.gen";
+import {
+  actionsFindOne,
+  actionsJoin,
+  actionsMyStatus,
+} from "../client/sdk.gen";
+import { ActionDto, UserActionDto } from "../client/types.gen";
 import { getApiUrl } from "../lib/config";
+import ActionForumPosts from "../components/ActionForumPosts";
 
-export interface ActionState {
-  state: "uncommitted" | "committed" | "completed";
-}
-
-const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
+const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
   const [action, setAction] = useState<ActionDto | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  console.log("actionId", actionId);
+  const [userRelation, setUserRelation] = useState<
+    UserActionDto["status"] | null
+  >(null);
 
   useEffect(() => {
     const fetchAction = async () => {
@@ -35,6 +38,18 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
 
         if (response.error) {
           throw new Error("Failed to fetch action");
+        }
+
+        const userStatusResponse = await actionsMyStatus({
+          path: { id: actionId },
+        });
+
+        console.log("userStatusResponse", userStatusResponse);
+        if (userStatusResponse.error) {
+          throw new Error("Failed to fetch user status");
+        }
+        if (userStatusResponse.data) {
+          setUserRelation(userStatusResponse.data.status);
         }
 
         setAction(response.data);
@@ -91,7 +106,7 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
               </a>
             </p>
           </div>
-          {state === "uncommitted" && actionId && (
+          {userRelation === "NONE" && actionId && (
             <Button
               className="mt-1"
               label="Commit to this action"
@@ -99,48 +114,36 @@ const ActionPage: React.FC<ActionState> = ({ state = "uncommitted" }) => {
             />
           )}
         </div>
-        {state === "committed" && <PokePanel />}
-        {state === "uncommitted" && (
+        {userRelation === "JOINED" && <PokePanel />}
+        {userRelation === "NONE" && (
           <Card style={CardStyle.Grey} className="mb-5">
             <h2>Why Join?</h2>
             <p>
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-              eiusmod tempor incididunt ut labore et dolore magna aliqua.
+              {action?.whyJoin ||
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
             </p>
           </Card>
         )}
         <h2>What you can do</h2>
         <p>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem
-          ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-          tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor
-          sit amet, consectetur adipiscing elit. Sed do eiusmod tempor
-          incididunt ut labore et dolore magna aliqua.
+          {action?.description ||
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
         </p>
         <h2>FAQ</h2>
         <p>
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
           eiusmod tempor incididunt ut labore et dolore magna aliqua.
         </p>
-        <h2>Discussion</h2>
-        <Card style={CardStyle.White}>
-          <p>Forum post lorem</p>
-        </Card>
-        <Card style={CardStyle.White}>
-          <p>Forum post ipsum</p>
-        </Card>
-        <Card style={CardStyle.White}>
-          <p>Forum post dolor sit amet</p>
-        </Card>
+
+        {actionId && <ActionForumPosts actionId={actionId} />}
       </div>
       <div className="flex flex-col gap-y-5 items-stretch max-w-[300px]">
-        <div className="w-[75 self-center">
+        <div className="w-[75] self-center">
           <Suspense fallback={<div>Loading...</div>}>
-            <Globe people={23} colored />
+            <Globe people={action?.usersJoined || 0} colored />
           </Suspense>
           <p className="text-center pt-2 text-[11pt]">
-            23,053 people committed
+            {action?.usersJoined?.toLocaleString() || 0} people committed
           </p>
         </div>
 

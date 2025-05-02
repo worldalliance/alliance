@@ -22,6 +22,9 @@ import NewLandingPage from "./pages/NewLandingPage";
 import AnnouncementListPage from "./pages/AnnouncementListPage";
 import AnnouncementEditPage from "./pages/AnnouncementEditPage";
 import AnnouncementPage from "./pages/AnnouncementPage";
+import ForumPage from "./pages/ForumPage";
+import PostDetailPage from "./pages/PostDetailPage";
+import PostFormPage from "./pages/PostFormPage";
 
 // A simple auth check component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -94,7 +97,7 @@ const AppRoutes = () => {
           path="/action/:id"
           element={
             <ProtectedRoute>
-              <ActionPage state="uncommitted" />
+              <ActionPage />
             </ProtectedRoute>
           }
         />
@@ -145,6 +148,39 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <AnnouncementPage />
+            </ProtectedRoute>
+          }
+        />
+        {/* Forum Routes */}
+        <Route
+          path="/forum"
+          element={
+            <ProtectedRoute>
+              <ForumPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forum/post/:postId"
+          element={
+            <ProtectedRoute>
+              <PostDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forum/new"
+          element={
+            <ProtectedRoute>
+              <PostFormPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/forum/edit/:postId"
+          element={
+            <ProtectedRoute>
+              <PostFormPage />
             </ProtectedRoute>
           }
         />

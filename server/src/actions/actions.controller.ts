@@ -11,7 +11,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
-import { ActionDto, CreateActionDto, UpdateActionDto } from './dto/action.dto';
+import {
+  ActionDto,
+  CreateActionDto,
+  UpdateActionDto,
+  UserActionDto,
+} from './dto/action.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { ApiOkResponse, ApiUnauthorizedResponse } from '@nestjs/swagger';
@@ -36,6 +41,19 @@ export class ActionsController {
     return this.actionsService.joinAction(+id, req.user.sub);
   }
 
+  @Get('myStatus/:id')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: UserActionDto })
+  myStatus(
+    @Request() req: JwtRequest,
+    @Param('id') id: string,
+  ): Promise<UserActionDto | null> {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.actionsService.getActionRelation(+id, req.user.sub);
+  }
+
   @Get()
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ActionDto] })
@@ -48,7 +66,6 @@ export class ActionsController {
   @ApiOkResponse({ type: ActionDto })
   @ApiUnauthorizedResponse()
   findOne(@Param('id') id: string) {
-    console.log('getting an action: ', id);
     return this.actionsService.findOne(+id);
   }
 

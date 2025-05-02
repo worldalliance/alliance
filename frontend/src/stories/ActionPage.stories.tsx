@@ -6,22 +6,10 @@ const meta = {
   component: ActionPage,
   tags: ["page"],
   parameters: {},
-  args: {
-    state: "uncommitted",
-  },
+  args: {},
 } satisfies Meta<typeof ActionPage>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Uncommitted: Story = {
-  args: {
-    state: "uncommitted",
-  },
-};
-
-export const Committed: Story = {
-  args: {
-    state: "committed",
-  },
-};
+export const Default: Story = {};

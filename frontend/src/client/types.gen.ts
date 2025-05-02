@@ -47,6 +47,10 @@ export type ActionDto = {
     usersJoined: number;
 };
 
+export type UserActionDto = {
+    status: 'COMPLETED' | 'JOINED' | 'SEEN' | 'DECLINED' | 'NONE';
+};
+
 export type UpdateActionDto = {
     name?: string;
     category?: string;
@@ -88,6 +92,72 @@ export type ImageResponseDto = {
 
 export type DeleteImageResponseDto = {
     deleted: boolean;
+};
+
+export type CreatePostDto = {
+    title: string;
+    content: string;
+    actionId?: number;
+};
+
+export type User = {
+    name: string;
+    email: string;
+    password: string;
+    admin: boolean;
+};
+
+export type Action = {
+    id: number;
+    name: string;
+    category: string;
+    whyJoin: string;
+    image: string;
+    description: string;
+    status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    createdAt: string;
+    updatedAt: string;
+    usersJoined: number;
+};
+
+export type Post = {
+    id: number;
+    title: string;
+    content: string;
+    author: User;
+    authorId: number;
+    action?: Action;
+    actionId?: number;
+    replies: Array<Reply>;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type Reply = {
+    id: number;
+    content: string;
+    author: User;
+    authorId: number;
+    post: Post;
+    postId: number;
+    createdAt: string;
+    updatedAt: string;
+};
+
+export type UpdatePostDto = {
+    title?: string;
+    content?: string;
+    actionId?: number;
+};
+
+export type CreateReplyDto = {
+    content: string;
+    postId: number;
+};
+
+export type UpdateReplyDto = {
+    content?: string;
+    postId?: number;
 };
 
 export type AppHealthCheckData = {
@@ -204,6 +274,21 @@ export type ActionsJoinData = {
 export type ActionsJoinResponses = {
     201: unknown;
 };
+
+export type ActionsMyStatusData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/actions/myStatus/{id}';
+};
+
+export type ActionsMyStatusResponses = {
+    200: UserActionDto;
+};
+
+export type ActionsMyStatusResponse = ActionsMyStatusResponses[keyof ActionsMyStatusResponses];
 
 export type ActionsFindAllData = {
     body?: never;
@@ -409,6 +494,135 @@ export type ImagesDeleteImageResponses = {
 };
 
 export type ImagesDeleteImageResponse = ImagesDeleteImageResponses[keyof ImagesDeleteImageResponses];
+
+export type ForumFindAllPostsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/forum/posts';
+};
+
+export type ForumFindAllPostsResponses = {
+    200: Array<Post>;
+};
+
+export type ForumFindAllPostsResponse = ForumFindAllPostsResponses[keyof ForumFindAllPostsResponses];
+
+export type ForumCreatePostData = {
+    body: CreatePostDto;
+    path?: never;
+    query?: never;
+    url: '/forum/posts';
+};
+
+export type ForumCreatePostResponses = {
+    200: Post;
+};
+
+export type ForumCreatePostResponse = ForumCreatePostResponses[keyof ForumCreatePostResponses];
+
+export type ForumFindPostsByActionData = {
+    body?: never;
+    path: {
+        actionId: string;
+    };
+    query?: never;
+    url: '/forum/posts/action/{actionId}';
+};
+
+export type ForumFindPostsByActionResponses = {
+    200: Array<Post>;
+};
+
+export type ForumFindPostsByActionResponse = ForumFindPostsByActionResponses[keyof ForumFindPostsByActionResponses];
+
+export type ForumRemovePostData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/forum/posts/{id}';
+};
+
+export type ForumRemovePostResponses = {
+    200: boolean;
+};
+
+export type ForumRemovePostResponse = ForumRemovePostResponses[keyof ForumRemovePostResponses];
+
+export type ForumFindOnePostData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/forum/posts/{id}';
+};
+
+export type ForumFindOnePostResponses = {
+    200: Post;
+};
+
+export type ForumFindOnePostResponse = ForumFindOnePostResponses[keyof ForumFindOnePostResponses];
+
+export type ForumUpdatePostData = {
+    body: UpdatePostDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/forum/posts/{id}';
+};
+
+export type ForumUpdatePostResponses = {
+    200: Post;
+};
+
+export type ForumUpdatePostResponse = ForumUpdatePostResponses[keyof ForumUpdatePostResponses];
+
+export type ForumCreateReplyData = {
+    body: CreateReplyDto;
+    path?: never;
+    query?: never;
+    url: '/forum/replies';
+};
+
+export type ForumCreateReplyResponses = {
+    200: Reply;
+};
+
+export type ForumCreateReplyResponse = ForumCreateReplyResponses[keyof ForumCreateReplyResponses];
+
+export type ForumRemoveReplyData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/forum/replies/{id}';
+};
+
+export type ForumRemoveReplyResponses = {
+    200: boolean;
+};
+
+export type ForumRemoveReplyResponse = ForumRemoveReplyResponses[keyof ForumRemoveReplyResponses];
+
+export type ForumUpdateReplyData = {
+    body: UpdateReplyDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/forum/replies/{id}';
+};
+
+export type ForumUpdateReplyResponses = {
+    200: Reply;
+};
+
+export type ForumUpdateReplyResponse = ForumUpdateReplyResponses[keyof ForumUpdateReplyResponses];
 
 export type ClientOptions = {
     baseUrl: string;

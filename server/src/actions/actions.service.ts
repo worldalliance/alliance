@@ -25,8 +25,16 @@ export class ActionsService {
     return this.actionRepository.find();
   }
 
-  findOne(id: number): Promise<Action | null> {
-    return this.actionRepository.findOneBy({ id });
+  async findOne(id: number): Promise<Action | null> {
+    const action = await this.actionRepository.findOne({
+      where: { id },
+      relations: ['userRelations'],
+    });
+    if (!action) {
+      throw new NotFoundException('Action not found');
+    }
+    const usersJoined = action?.userRelations?.length || 0;
+    return { ...action, usersJoined };
   }
 
   async setActionRelation(
@@ -55,6 +63,15 @@ export class ActionsService {
     }
 
     return await this.userActionRepository.save(userAction);
+  }
+
+  async getActionRelation(
+    actionId: number,
+    userId: number,
+  ): Promise<UserAction | null> {
+    return this.userActionRepository.findOne({
+      where: { action: { id: actionId }, user: { id: userId } },
+    });
   }
 
   async joinAction(actionId: number, userId: number): Promise<UserAction> {

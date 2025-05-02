@@ -126,15 +126,11 @@ export class ImagesController {
         break;
     }
 
-    // Set appropriate headers
     res.set({
       'Content-Type': contentType,
       'Content-Disposition': `inline; filename="${filename}"`,
     });
 
-    console.log('getting imagePath', imagePath);
-
-    // Create and return a readable stream of the file
     const fileStream = createReadStream(imagePath);
     return new StreamableFile(fileStream);
   }

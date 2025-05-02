@@ -3,6 +3,7 @@ import { CreateDateColumn, Entity, Unique, UpdateDateColumn } from 'typeorm';
 import { User } from '../../user/user.entity';
 import { Column, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Action } from './action.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserActionRelation {
   COMPLETED = 'completed',
@@ -28,6 +29,7 @@ export class UserAction {
     type: 'varchar', // should be an enum but sqlite doesn't support it (which we use for e2e tests only)
     default: UserActionRelation.NONE,
   })
+  @ApiProperty({ enum: Object.keys(UserActionRelation) })
   status: UserActionRelation;
 
   @CreateDateColumn()
