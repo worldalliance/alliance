@@ -40,7 +40,7 @@ export class ImagesController {
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
-        destination: './uploads',
+        destination: '../uploads',
         filename: (req, file, callback) => {
           const uniqueSuffix = uuidv4();
           const extension = extname(file.originalname);
@@ -101,7 +101,7 @@ export class ImagesController {
     @Res({ passthrough: true }) res: Response,
     @Param('filename') filename: string,
   ): Promise<StreamableFile> {
-    const imagePath = join(process.cwd(), 'uploads', filename);
+    const imagePath = join(process.cwd(), '../uploads', filename);
 
     if (!existsSync(imagePath)) {
       throw new NotFoundException(`Image ${filename} not found`);

@@ -202,7 +202,7 @@ const Globe: React.FC<GlobeProps> = ({
     if (spin) {
       d3.timer(function (elapsed) {
         const rotate = projection.rotate();
-        const k = -sensitivity / projection.scale() / 3;
+        const k = -sensitivity / projection.scale() / 6;
         projection.rotate([rotate[0] - 1 * k, rotate[1]]);
         path = d3.geoPath().projection(projection);
         svg.selectAll("path").attr("d", path as any);
