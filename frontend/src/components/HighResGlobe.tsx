@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import Globe, { GlobeMethods, GlobeProps } from "react-globe.gl";
 import * as THREE from "three";
-import cloudsImg from "../assets/fair_clouds_4k.png";
+import cloudsImg from "../assets/fair_clouds_4k.webp";
+import earthImg from "../assets/earth-blue-marble.webp";
 
 export interface HighResGlobeProps
   extends Pick<GlobeProps, "width" | "height"> {
@@ -57,8 +58,8 @@ const HighResGlobe = (props: HighResGlobeProps) => {
       height={height}
       ref={globeEl}
       animateIn={false}
-      globeImageUrl="//cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg"
-      bumpImageUrl="//cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png"
+      globeImageUrl={earthImg}
+      //   bumpImageUrl="//cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png"
       atmosphereColor="#6f8494"
       backgroundColor="rgba(0, 0, 0, 0)"
     />

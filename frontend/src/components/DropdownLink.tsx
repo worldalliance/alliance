@@ -7,14 +7,20 @@ interface DropdownLinkProps {
   text: string;
   to: string;
   sublinks: typeof platformSublinks;
+  inverted: boolean;
 }
 
-const DropdownLink: React.FC<DropdownLinkProps> = ({ text, to, sublinks }) => {
+const DropdownLink: React.FC<DropdownLinkProps> = ({
+  text,
+  to,
+  sublinks,
+  inverted,
+}) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
     <div
-      className="relative py-3"
+      className="relative"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -25,16 +31,21 @@ const DropdownLink: React.FC<DropdownLinkProps> = ({ text, to, sublinks }) => {
         <img
           src={dropDownArrow}
           alt="dropdown arrow"
-          className="w-[10px]"
+          className="w-[15px]"
+          style={{ filter: inverted ? "invert(0)" : "invert(1)" }}
         ></img>
       </div>
       {isHovered && (
-        <div className="absolute top-full left-0 bg-white shadow-md rounded-b-md py-2 mt-n1 z-10 min-w-[150px]">
+        <div
+          className={`absolute top-full left-0 rounded-b-md z-10 min-w-[150px] ml-[-17px] pt-3 ${
+            inverted ? "bg-white" : "bg-transparent"
+          }`}
+        >
           {sublinks.map((sublink, index) => (
             <Link
               to={sublink.to}
               key={index}
-              className="block px-4 py-2 hover:bg-gray-100"
+              className="block px-4 py-2 hover:bg-gray-100/50"
             >
               {sublink.text}
             </Link>

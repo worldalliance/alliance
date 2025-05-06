@@ -22,7 +22,6 @@ const NavbarHorizontal: React.FC<InnerNavbarProps> = ({ currentPage }) => {
       flex flex-row border-b border-[#ddd]
     w-screen text-left space-x-10 items-center justify-center pl-6 sticky"
     >
-      {/* <Logo href="/" className="w-[22px]" /> */}
       {links.map((link) =>
         link === NavbarPage.Platform ? (
           <DropdownLink

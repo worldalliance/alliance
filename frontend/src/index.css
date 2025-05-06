@@ -105,7 +105,10 @@ h2 {
 
 p {
     font-family: 'Newsreader';
-    font-size: 11pt;
+}
+
+img {
+    user-select: none;
 }
 
 .font-sabon {
@@ -135,16 +138,27 @@ p {
     font-family: 'Font';
 }
 
-/* a {
-    color: var(--text-blue-500) !important;
-} */
-
 .goob {
-background: radial-gradient(
-  circle at 0% 40%,
-  #000000 0%,
-  #17243b 30%,
-  #030b13 70%,
-  #000814 100%
-);
+    background: radial-gradient(
+    circle at 50% 80%,
+    #000000 0%,
+    #17243b 30%,
+    #030b13 70%,
+    #000308 100%
+    );
+}
+
+.grain {
+    background-image: url('noise.png');
+    background-size: 300px;
+    background-position: center;
+    background-repeat: repeat;
+    opacity: 0.8;
+    filter: saturate(0);
+    mix-blend-mode: soft-light;
+}
+
+.coloroverlay {
+    background: radial-gradient(circle at 20% 20%, #ff6700 10%, #95ff00 100%);
+    opacity: 0.2;
 }

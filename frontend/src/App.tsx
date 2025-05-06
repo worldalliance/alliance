@@ -5,26 +5,26 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import LandingPage from "./pages/LandingPage";
-import HomePage from "./pages/HomePage";
-import IssuesListPage from "./pages/IssuesListPage";
-import IssuePage from "./pages/IssuePage";
+import LandingPage from "./pages/static/LandingPage";
+import HomePage from "./pages/app/HomePage";
+import IssuesListPage from "./pages/app/IssuesListPage";
+import IssuePage from "./pages/app/IssuePage";
 import Navbar, { NavbarPage } from "./components/Navbar";
-import ActionPage from "./pages/ActionPage";
-import LoginPage from "./pages/LoginPage";
-import SignupPage from "./pages/SignupPage";
+import ActionPage from "./pages/app/ActionPage";
+import LoginPage from "./pages/app/LoginPage";
+import SignupPage from "./pages/app/SignupPage";
 import { AuthProvider } from "./context/AuthContext";
-import AccountPage from "./pages/AccountPage";
-import ActionsListPage from "./pages/ActionsListPage";
+import AccountPage from "./pages/app/AccountPage";
+import ActionsListPage from "./pages/app/ActionsListPage";
 import { client } from "./client/client.gen";
 import { getApiUrl } from "./lib/config";
-import NewLandingPage from "./pages/NewLandingPage";
-import AnnouncementListPage from "./pages/AnnouncementListPage";
-import AnnouncementEditPage from "./pages/AnnouncementEditPage";
-import AnnouncementPage from "./pages/AnnouncementPage";
-import ForumPage from "./pages/ForumPage";
-import PostDetailPage from "./pages/PostDetailPage";
-import PostFormPage from "./pages/PostFormPage";
+import NewLandingPage from "./pages/static/NewLandingPage";
+import AnnouncementListPage from "./pages/app/AnnouncementListPage";
+import AnnouncementEditPage from "./pages/app/AnnouncementEditPage";
+import AnnouncementPage from "./pages/app/AnnouncementPage";
+import ForumPage from "./pages/app/ForumPage";
+import PostDetailPage from "./pages/app/PostDetailPage";
+import PostFormPage from "./pages/app/PostFormPage";
 
 // A simple auth check component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -67,8 +67,7 @@ const AppRoutes = () => {
   return (
     <>
       <Routes>
-        <Route path="/new" element={<NewLandingPage />} />
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<NewLandingPage />} />
         <Route
           path="/login"
           element={
