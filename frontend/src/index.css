@@ -149,7 +149,7 @@ img {
 }
 
 .grain {
-    background-image: url('noise.png');
+    background-image: url('src/assets/noise.png');
     background-size: 300px;
     background-position: center;
     background-repeat: repeat;
