@@ -208,7 +208,6 @@ jobs:
     needs:
       - provision-infrastructure
       - build-admin-frontend
-      - deploy-react-app
     steps:
       - name: Download Admin Build Artifact
         uses: actions/download-artifact@v4
