@@ -1,5 +1,5 @@
 import { StoryObj, Meta } from "@storybook/react";
-import ActionPage from "../pages/ActionPage";
+import ActionPage from "../pages/app/ActionPage";
 
 const meta = {
   title: "Alliance/ActionPage",

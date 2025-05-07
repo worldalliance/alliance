@@ -31,7 +31,7 @@ const NewNavbar: React.FC<{
     <div
       className={`
       flex flex-col md:flex-row gap-y-4
-      w-screen justify-between items-center px-20 fixed top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300 ${
+      w-screen justify-between items-center px-20 sticky top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300 ${
         transparent
           ? "bg-transparent py-10 text-white"
           : "bg-white text-black py-3"

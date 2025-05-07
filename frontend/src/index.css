@@ -84,6 +84,10 @@
     src: url('/assets/fonts/PlayfairDisplay-VariableFont_wght.ttf') format('truetype');
 }
 
+@theme {
+    --color-hgreen: #3f5640;
+}
+
 
 html {
     overflow-x: hidden;
@@ -100,7 +104,8 @@ h1 {
 h2 {
     font-family: 'Newsreader';
     font-weight: bold;
-    font-size: 20px;
+    font-size: 24px;
+    margin-top: 4px;
 }
 
 p {
@@ -114,6 +119,7 @@ img {
 .font-sabon {
     font-family: 'Sabon';
 }
+
 
 .font-berlingske {
     font-family: 'Berlingske';

@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import HighResGlobe from "../../components/HighResGlobe";
 import PlatformUIDemoCard from "../../components/PlatformUIDemoCard";
 import NewNavbar from "../../components/NewNavbar";
-import LandingPageActionCard from "../../components/LandingPageActionCard";
 import dropDownArrow from "../../assets/icons8-expand-arrow-96.png";
 import Footer from "../../components/Footer";
 import LineHeader from "../../components/LineHeader";
@@ -14,19 +13,23 @@ const NewLandingPage: React.FC = () => {
   const mainContentRef = useRef<HTMLDivElement>(null);
   const navbarRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
+  const scrollOffsetThreshold = 20;
 
   useEffect(() => {
     if (mainContentRef.current && navbarRef.current) {
       setScrollOffset(
-        mainContentRef.current.offsetTop -
-          (navbarRef.current.clientHeight * 2) / 3
+        mainContentRef.current.offsetTop - navbarRef.current.clientHeight * 2
       );
     }
   }, [mainContentRef, navbarRef]);
 
   const handleScroll = () => {
     const scrollPosition = window.scrollY;
-    setScrolled(scrollPosition >= scrollOffset);
+    if (scrollPosition >= scrollOffset + scrollOffsetThreshold) {
+      setScrolled(true);
+    } else if (scrollPosition < scrollOffset - scrollOffsetThreshold) {
+      setScrolled(false);
+    }
   };
 
   useEffect(() => {
@@ -44,7 +47,7 @@ const NewLandingPage: React.FC = () => {
   return (
     <div>
       <NewNavbar transparent={!scrolled} ref={navbarRef} />
-      <div className="flex flex-col items-center justify-center bg-gray-950 w-screen h-screen overflow-hidden relative goob">
+      <div className="flex flex-col items-center justify-center bg-gray-950 w-screen h-[101vh] overflow-hidden relative goob -translate-y-[119px]">
         <div className="mb-[-40%]">
           <HighResGlobe width={size} height={size} />
         </div>

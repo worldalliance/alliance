@@ -1,9 +1,9 @@
 import { Meta, StoryObj } from "@storybook/react";
-import ProblemAreaCard from "../components/ProblemAreaCard";
+import IssueCard from "../components/IssueCard";
 
 const meta = {
   title: "Alliance/ProblemAreaCard",
-  component: ProblemAreaCard,
+  component: IssueCard,
   tags: ["component"],
   parameters: {
     layout: "centered",
@@ -13,7 +13,7 @@ const meta = {
     description: "This is a problem area",
     href: "/problem-area",
   },
-} satisfies Meta<typeof ProblemAreaCard>;
+} satisfies Meta<typeof IssueCard>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
