@@ -6,6 +6,7 @@ export enum CardStyle {
   Alert = "alert",
   Grey = "grey",
   Bubble = "bubble",
+  Black = "black",
 }
 
 export interface CardProps extends PropsWithChildren {
@@ -24,6 +25,7 @@ const Card: React.FC<CardProps> = ({ children, className, onClick, style }) => {
     [CardStyle.Grey]: "bg-stone-200/75 border-gray-300 border-[1.5px]",
     [CardStyle.Bubble]:
       "!rounded-full bg-stone-200 border-gray-300 border-[1.5px] items-center justify-center text-center text-[9pt] max-w-[200px]",
+    [CardStyle.Black]: "bg-black border-gray-300 text-white",
   };
 
   return (

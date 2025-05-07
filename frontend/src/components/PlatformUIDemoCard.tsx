@@ -3,25 +3,39 @@ import uistuff from "../assets/uistuff.png";
 import uistuff2 from "../assets/uistuff2.png";
 import uistuff3 from "../assets/uistuff3.png";
 
-const images = [uistuff, uistuff2, uistuff3];
+const images = [uistuff2, uistuff3, uistuff];
 const titles = [
-  "Participate in collective actions",
-  "See updates on current events",
-  "Deliberate on important issues",
+  "Alliance experts propose an action",
+  "Commit to participate",
+  "See immediate results",
 ];
 
-const PlatformUIDemoCard = ({ idx }: { idx: number }) => {
+const cardSizes = {
+  small: "w-[300px]",
+  large: "w-[600px]",
+};
+
+const PlatformUIDemoCard = ({
+  idx,
+  size,
+}: {
+  idx: number;
+  size: "small" | "large";
+}) => {
   return (
-    <div className="w-[400px] items-center">
-      <Card style={CardStyle.White} className="w-full !p-0 overflow-hidden">
-        {/* <img
+    <div className={`${cardSizes[size]} items-center`}>
+      <Card
+        style={CardStyle.Black}
+        className="w-full !p-0 overflow-hidden h-[300px]"
+      >
+        <p className="font-font text-xl font-bold p-5 pb-3 text-left">
+          {titles[idx]}
+        </p>
+        <img
           src={images[idx]}
           className="w-full aspect-square object-cover left-0 top-0"
-        ></img> */}
+        ></img>
       </Card>
-      <p className="font-font text-xl font-bold p-5 text-center">
-        {titles[idx]}
-      </p>
     </div>
   );
 };

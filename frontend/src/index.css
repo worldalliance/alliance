@@ -153,7 +153,7 @@ img {
     background-size: 300px;
     background-position: center;
     background-repeat: repeat;
-    opacity: 0.8;
+    opacity: 0.6;
     filter: saturate(0);
     mix-blend-mode: soft-light;
 }

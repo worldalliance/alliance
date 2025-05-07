@@ -5,7 +5,6 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
-import LandingPage from "./pages/static/LandingPage";
 import HomePage from "./pages/app/HomePage";
 import IssuesListPage from "./pages/app/IssuesListPage";
 import IssuePage from "./pages/app/IssuePage";
@@ -25,6 +24,7 @@ import AnnouncementPage from "./pages/app/AnnouncementPage";
 import ForumPage from "./pages/app/ForumPage";
 import PostDetailPage from "./pages/app/PostDetailPage";
 import PostFormPage from "./pages/app/PostFormPage";
+import AboutPage from "./pages/static/AboutPage";
 
 // A simple auth check component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
@@ -68,6 +68,7 @@ const AppRoutes = () => {
     <>
       <Routes>
         <Route path="/" element={<NewLandingPage />} />
+        <Route path="/platform" element={<AboutPage />} />
         <Route
           path="/login"
           element={

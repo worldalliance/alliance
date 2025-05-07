@@ -32,7 +32,7 @@ export const destinations: Record<NavbarPage, string> = {
 };
 
 export const platformSublinks = [
-  { text: "Overview", to: "/platform/overview" },
+  { text: "Overview", to: "/platform" },
   { text: "Resources", to: "/platform/resources" },
   { text: "Updates", to: "/platform/updates" },
   { text: "Staff", to: "/platform/staff" },

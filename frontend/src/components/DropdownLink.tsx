@@ -45,7 +45,7 @@ const DropdownLink: React.FC<DropdownLinkProps> = ({
             <Link
               to={sublink.to}
               key={index}
-              className="block px-4 py-2 hover:bg-gray-100/50"
+              className="block px-4 py-2 hover:bg-gray-100/50 text-[13pt]"
             >
               {sublink.text}
             </Link>
