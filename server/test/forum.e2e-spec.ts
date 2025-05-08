@@ -16,7 +16,7 @@ import { Post } from '../src/forum/entities/post.entity';
 import { Reply } from '../src/forum/entities/reply.entity';
 import { AuthModule } from '../src/auth/auth.module';
 import { UserModule } from '../src/user/user.module';
-import { CreatePostDto } from 'src/forum/dto/create-post.dto';
+import { CreatePostDto } from '../src/forum/dto/post.dto';
 
 describe('Forum (e2e)', () => {
   let app: INestApplication<App>;

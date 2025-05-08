@@ -1,10 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ForumController } from './forum.controller';
 import { ForumService } from './forum.service';
-import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto } from './dto/update-post.dto';
-import { CreateReplyDto } from './dto/create-reply.dto';
-import { UpdateReplyDto } from './dto/update-reply.dto';
+import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
+import { CreateReplyDto, UpdateReplyDto } from './dto/reply.dto';
 import { Post } from './entities/post.entity';
 import { Reply } from './entities/reply.entity';
 import { JwtService } from '@nestjs/jwt';
