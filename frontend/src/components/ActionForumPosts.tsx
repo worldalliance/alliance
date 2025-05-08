@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Post } from "../client/types.gen";
+import { PostDto } from "../client/types.gen";
 import { useAuth } from "../context/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import Card from "./system/Card";
@@ -12,7 +12,7 @@ interface ActionForumPostsProps {
 }
 
 const ActionForumPosts: React.FC<ActionForumPostsProps> = ({ actionId }) => {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();

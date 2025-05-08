@@ -9,15 +9,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ForumService } from './forum.service';
-import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto } from './dto/update-post.dto';
-import { CreateReplyDto } from './dto/create-reply.dto';
-import { UpdateReplyDto } from './dto/update-reply.dto';
+import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
+import { CreateReplyDto, UpdateReplyDto } from './dto/reply.dto';
 import { AuthGuard, JwtPayload } from '../auth/guards/auth.guard';
 import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
-import { Post as PostEntity } from './entities/post.entity';
 import { Reply } from './entities/reply.entity';
 import { ReqUser } from '../auth/user.decorator';
+import { PostDto } from './dto/post.dto';
+import { ReplyDto } from './dto/reply.dto';
 
 @ApiTags('forum')
 @Controller('forum')
@@ -27,51 +26,51 @@ export class ForumController {
   @Post('posts')
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Create a new forum post' })
-  @ApiOkResponse({ type: PostEntity })
+  @ApiOkResponse({ type: PostDto })
   createPost(
     @Body() createPostDto: CreatePostDto,
     @ReqUser() user: JwtPayload,
-  ) {
+  ): Promise<PostDto> {
     return this.forumService.createPost(createPostDto, user.sub);
   }
 
   @Get('posts')
   @ApiOperation({ summary: 'Get all forum posts' })
-  @ApiOkResponse({ type: [PostEntity] })
-  findAllPosts() {
+  @ApiOkResponse({ type: [PostDto] })
+  findAllPosts(): Promise<PostDto[]> {
     return this.forumService.findAllPosts();
   }
 
   @Get('posts/action/:actionId')
   @ApiOperation({ summary: 'Get posts for a specific action' })
-  @ApiOkResponse({ type: [PostEntity] })
-  findPostsByAction(@Param('actionId') actionId: string) {
+  @ApiOkResponse({ type: [PostDto] })
+  findPostsByAction(@Param('actionId') actionId: string): Promise<PostDto[]> {
     return this.forumService.findPostsByAction(+actionId);
   }
 
   @Get('posts/:id')
   @ApiOperation({ summary: 'Get a specific post with its replies' })
-  @ApiOkResponse({ type: PostEntity })
-  findOnePost(@Param('id') id: string) {
+  @ApiOkResponse({ type: PostDto })
+  findOnePost(@Param('id') id: string): Promise<PostDto> {
     return this.forumService.findOnePost(+id);
   }
 
   @Patch('posts/:id')
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Update a post' })
-  @ApiOkResponse({ type: PostEntity })
+  @ApiOkResponse({ type: PostDto })
   updatePost(
     @Param('id') id: string,
     @Body() updatePostDto: UpdatePostDto,
     @ReqUser() user: JwtPayload,
-  ) {
+  ): Promise<PostDto> {
     return this.forumService.updatePost(+id, updatePostDto, user.sub);
   }
 
   @Delete('posts/:id')
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Delete a post' })
-  @ApiOkResponse({ type: Boolean })
+  @ApiOkResponse()
   removePost(@Param('id') id: string, @ReqUser() user: JwtPayload) {
     return this.forumService.removePost(+id, user.sub);
   }
@@ -90,19 +89,19 @@ export class ForumController {
   @Patch('replies/:id')
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Update a reply' })
-  @ApiOkResponse({ type: Reply })
+  @ApiOkResponse({ type: ReplyDto })
   updateReply(
     @Param('id') id: string,
     @Body() updateReplyDto: UpdateReplyDto,
     @ReqUser() user: JwtPayload,
-  ) {
+  ): Promise<ReplyDto> {
     return this.forumService.updateReply(+id, updateReplyDto, user.sub);
   }
 
   @Delete('replies/:id')
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Delete a reply' })
-  @ApiOkResponse({ type: Boolean })
+  @ApiOkResponse()
   removeReply(@Param('id') id: string, @ReqUser() user: JwtPayload) {
     return this.forumService.removeReply(+id, user.sub);
   }

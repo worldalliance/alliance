@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { CreatePostDto, Post, ActionDto } from "../../client/types.gen";
+import { CreatePostDto, ActionDto, PostDto } from "../../client/types.gen";
 import { useAuth } from "../../context/AuthContext";
 import Card from "../../components/system/Card";
 import {
@@ -79,7 +79,7 @@ const PostFormPage: React.FC = () => {
         actionId: actionId || undefined,
       };
 
-      let response: { data: Post | undefined };
+      let response: { data: PostDto | undefined };
 
       if (mode === "create") {
         response = await forumCreatePost({

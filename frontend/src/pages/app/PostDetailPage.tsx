@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { Post, CreateReplyDto } from "../../client/types.gen";
+import { PostDto, CreateReplyDto } from "../../client/types.gen";
 import { useAuth } from "../../context/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import Card from "../../components/system/Card";
@@ -13,7 +13,7 @@ import {
 
 const PostDetailPage: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<PostDto | null>(null);
   const [replyContent, setReplyContent] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);

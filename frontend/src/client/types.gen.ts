@@ -100,13 +100,6 @@ export type CreatePostDto = {
     actionId?: number;
 };
 
-export type User = {
-    name: string;
-    email: string;
-    password: string;
-    admin: boolean;
-};
-
 export type Action = {
     id: number;
     name: string;
@@ -118,6 +111,13 @@ export type Action = {
     createdAt: string;
     updatedAt: string;
     usersJoined: number;
+};
+
+export type User = {
+    name: string;
+    email: string;
+    password: string;
+    admin: boolean;
 };
 
 export type Post = {
@@ -144,6 +144,24 @@ export type Reply = {
     updatedAt: string;
 };
 
+export type UserDto = {
+    name: string;
+    email: string;
+};
+
+export type PostDto = {
+    id: number;
+    title: string;
+    content: string;
+    authorId: number;
+    action?: Action;
+    actionId?: number;
+    replies: Array<Reply>;
+    createdAt: string;
+    updatedAt: string;
+    author: UserDto;
+};
+
 export type UpdatePostDto = {
     title?: string;
     content?: string;
@@ -158,6 +176,16 @@ export type CreateReplyDto = {
 export type UpdateReplyDto = {
     content?: string;
     postId?: number;
+};
+
+export type ReplyDto = {
+    id: number;
+    content: string;
+    authorId: number;
+    postId: number;
+    createdAt: string;
+    updatedAt: string;
+    author: UserDto;
 };
 
 export type AppHealthCheckData = {
@@ -503,7 +531,7 @@ export type ForumFindAllPostsData = {
 };
 
 export type ForumFindAllPostsResponses = {
-    200: Array<Post>;
+    200: Array<PostDto>;
 };
 
 export type ForumFindAllPostsResponse = ForumFindAllPostsResponses[keyof ForumFindAllPostsResponses];
@@ -516,7 +544,7 @@ export type ForumCreatePostData = {
 };
 
 export type ForumCreatePostResponses = {
-    200: Post;
+    200: PostDto;
 };
 
 export type ForumCreatePostResponse = ForumCreatePostResponses[keyof ForumCreatePostResponses];
@@ -531,7 +559,7 @@ export type ForumFindPostsByActionData = {
 };
 
 export type ForumFindPostsByActionResponses = {
-    200: Array<Post>;
+    200: Array<PostDto>;
 };
 
 export type ForumFindPostsByActionResponse = ForumFindPostsByActionResponses[keyof ForumFindPostsByActionResponses];
@@ -546,10 +574,8 @@ export type ForumRemovePostData = {
 };
 
 export type ForumRemovePostResponses = {
-    200: boolean;
+    200: unknown;
 };
-
-export type ForumRemovePostResponse = ForumRemovePostResponses[keyof ForumRemovePostResponses];
 
 export type ForumFindOnePostData = {
     body?: never;
@@ -561,7 +587,7 @@ export type ForumFindOnePostData = {
 };
 
 export type ForumFindOnePostResponses = {
-    200: Post;
+    200: PostDto;
 };
 
 export type ForumFindOnePostResponse = ForumFindOnePostResponses[keyof ForumFindOnePostResponses];
@@ -576,7 +602,7 @@ export type ForumUpdatePostData = {
 };
 
 export type ForumUpdatePostResponses = {
-    200: Post;
+    200: PostDto;
 };
 
 export type ForumUpdatePostResponse = ForumUpdatePostResponses[keyof ForumUpdatePostResponses];
@@ -604,10 +630,8 @@ export type ForumRemoveReplyData = {
 };
 
 export type ForumRemoveReplyResponses = {
-    200: boolean;
+    200: unknown;
 };
-
-export type ForumRemoveReplyResponse = ForumRemoveReplyResponses[keyof ForumRemoveReplyResponses];
 
 export type ForumUpdateReplyData = {
     body: UpdateReplyDto;
@@ -619,7 +643,7 @@ export type ForumUpdateReplyData = {
 };
 
 export type ForumUpdateReplyResponses = {
-    200: Reply;
+    200: ReplyDto;
 };
 
 export type ForumUpdateReplyResponse = ForumUpdateReplyResponses[keyof ForumUpdateReplyResponses];

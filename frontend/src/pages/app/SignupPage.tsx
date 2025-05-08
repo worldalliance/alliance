@@ -125,7 +125,7 @@ const SignupPage: React.FC = () => {
                   label={loading ? "Creating account..." : "Register"}
                   onClick={() => {}}
                   color={ButtonColor.Stone}
-                  className="w-full flex justify-center text-center font-avenir justify-self-center"
+                  className="w-full flex justify-center text-center font-avenir justify-self-center pb-2"
                   type="submit"
                   disabled={loading}
                 />
