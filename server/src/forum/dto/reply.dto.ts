@@ -1,6 +1,6 @@
 import { ApiProperty, PartialType, PickType } from '@nestjs/swagger';
 import { Reply } from '../entities/reply.entity';
-import { UserDto } from 'src/user/user.dto';
+import { UserDto } from '../../user/user.dto';
 
 // return object for get requests
 export class ReplyDto extends PickType(Reply, [
