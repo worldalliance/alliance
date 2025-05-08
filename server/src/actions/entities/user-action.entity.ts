@@ -6,11 +6,11 @@ import { Action } from './action.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum UserActionRelation {
-  COMPLETED = 'completed',
-  JOINED = 'joined',
-  SEEN = 'seen',
-  DECLINED = 'declined',
-  NONE = 'none',
+  completed = 'completed',
+  joined = 'joined',
+  seen = 'seen',
+  declined = 'declined',
+  none = 'none',
 }
 
 @Entity()
@@ -27,7 +27,7 @@ export class UserAction {
 
   @Column({
     type: 'varchar', // should be an enum but sqlite doesn't support it (which we use for e2e tests only)
-    default: UserActionRelation.NONE,
+    default: UserActionRelation.none,
   })
   @ApiProperty({ enum: Object.keys(UserActionRelation) })
   status: UserActionRelation;

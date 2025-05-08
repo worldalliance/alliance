@@ -24,7 +24,7 @@ const IssueCard: React.FC<IssueCardProps> = ({ name, description, href }) => {
       bgImage={bgImage}
     >
       <div className="drop-shadow-lg drop-shadow-black/20 space-y-2">
-        <h2 className="font-font font-normal !text-4xl drop-shadow-md drop-shadow-white/90">
+        <h2 className="font-font font-normal !text-4xl drop-shadow-xl drop-shadow-white/40">
           {name}
         </h2>
         <p className="drop-shadow-2xl drop-shadow-white/90 text-bold">

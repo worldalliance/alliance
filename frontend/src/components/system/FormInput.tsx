@@ -46,7 +46,7 @@ const FormInput: React.FC<FormInputProps> = ({
           error ? "border-red-500" : "border-gray-300"
         } rounded-md px-3 py-3 pb-2 bg-white focus:outline-none focus:ring-1 focus:ring-cyan-500 
         text-[11pt] font-avenir transition-all duration-200 
-        ${disabled ? "bg-stone-50 text-stone-500 cursor-not-allowed" : "hover:border-gray-400"} 
+        ${disabled ? "bg-pagebg text-stone-500 cursor-not-allowed" : "hover:border-gray-400"} 
         ${error ? "focus:border-red-500" : "focus:border-cyan-500"}`}
         autoComplete={autoComplete}
       />

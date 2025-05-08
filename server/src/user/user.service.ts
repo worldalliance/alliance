@@ -38,7 +38,7 @@ export class UserService {
 
     const relation: UserActionRelation =
       user?.actionRelations.find((relation) => relation.action.id === actionId)
-        ?.status ?? UserActionRelation.NONE;
+        ?.status ?? UserActionRelation.none;
     return relation;
   }
 

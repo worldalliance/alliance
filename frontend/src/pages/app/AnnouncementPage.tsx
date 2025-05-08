@@ -88,7 +88,7 @@ const AnnouncementPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen bg-stone-50 items-center">
+      <div className="flex flex-col min-h-screen bg-pagebg items-center">
         <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))]">
           <p className="text-center py-4">Loading announcement...</p>
         </div>
@@ -98,7 +98,7 @@ const AnnouncementPage: React.FC = () => {
 
   if (error || !announcement) {
     return (
-      <div className="flex flex-col min-h-screen bg-stone-50 items-center">
+      <div className="flex flex-col min-h-screen bg-pagebg items-center">
         <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))]">
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 w-full">
             {error || "Announcement not found"}
@@ -115,7 +115,7 @@ const AnnouncementPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-stone-50 items-center">
+    <div className="flex flex-col min-h-screen bg-pagebg items-center">
       <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))]">
         <div className="w-full">
           <div className="mb-3 flex flex-row gap-x-3">

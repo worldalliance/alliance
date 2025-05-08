@@ -44,14 +44,19 @@ export class ActionsController {
   @Get('myStatus/:id')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: UserActionDto })
-  myStatus(
+  async myStatus(
     @Request() req: JwtRequest,
     @Param('id') id: string,
   ): Promise<UserActionDto | null> {
     if (!req.user) {
       throw new UnauthorizedException('User not found');
     }
-    return this.actionsService.getActionRelation(+id, req.user.sub);
+    const userAction = await this.actionsService.getActionRelation(
+      +id,
+      req.user.sub,
+    );
+    console.log(userAction);
+    return userAction;
   }
 
   @Get()

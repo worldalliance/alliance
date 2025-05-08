@@ -13,11 +13,11 @@ const ForumListPost = ({
   return (
     <Card
       key={post.id}
-      className="w-full rounded-sm"
+      className="w-full rounded-none -mb-[1px] hover:z-10"
       onClick={() => handleViewPost(post.id)}
       style={CardStyle.White}
     >
-      <div className="flex flex-row justify-between">
+      <div className="flex flex-row justify-between gap-3">
         <p className="text-md font-medium">{post.title}</p>
         <Badge>{post.action?.category}</Badge>
       </div>

@@ -43,7 +43,7 @@ const AdminPanel: React.FC = () => {
   }, [navigate]);
 
   return (
-    <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-stone-50">
+    <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-pagebg">
       <div className="flex flex-row py-12 justify-center w-full gap-x-6 px-3">
         <div className="flex flex-col border-r border-gray-300 pr-6 w-[600px] gap-y-5">
           <div className="flex justify-between items-center">

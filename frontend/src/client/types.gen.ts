@@ -48,7 +48,7 @@ export type ActionDto = {
 };
 
 export type UserActionDto = {
-    status: 'COMPLETED' | 'JOINED' | 'SEEN' | 'DECLINED' | 'NONE';
+    status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
 };
 
 export type UpdateActionDto = {

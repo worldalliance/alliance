@@ -86,6 +86,7 @@
 
 @theme {
     --color-hgreen: #3f5640;
+    --pagebg: #ffffff;
 }
 
 
@@ -104,7 +105,7 @@ h1 {
 h2 {
     font-family: 'Newsreader';
     font-weight: bold;
-    font-size: 24px;
+    font-size: 20px;
     margin-top: 4px;
 }
 

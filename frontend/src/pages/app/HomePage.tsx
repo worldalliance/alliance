@@ -31,7 +31,7 @@ const todoItems = [
 
 const HomePage: React.FC = () => {
   return (
-    <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-stone-50">
+    <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-pagebg">
       <div className="flex flex-row py-12 justify-center w-full gap-x-6">
         <div className="flex flex-col border-r border-gray-300 pr-6 max-w-[600px] gap-y-5 overflow-y-auto">
           <h2 className="text-[#111] text-[14pt]">

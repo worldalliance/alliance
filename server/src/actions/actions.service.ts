@@ -69,20 +69,28 @@ export class ActionsService {
     actionId: number,
     userId: number,
   ): Promise<UserAction | null> {
-    return this.userActionRepository.findOne({
+    let userAction = await this.userActionRepository.findOne({
       where: { action: { id: actionId }, user: { id: userId } },
     });
+    if (!userAction) {
+      userAction = await this.setActionRelation(
+        actionId,
+        userId,
+        UserActionRelation.none,
+      );
+    }
+    return userAction;
   }
 
   async joinAction(actionId: number, userId: number): Promise<UserAction> {
-    return this.setActionRelation(actionId, userId, UserActionRelation.JOINED);
+    return this.setActionRelation(actionId, userId, UserActionRelation.joined);
   }
 
   async completeAction(actionId: number, userId: number): Promise<UserAction> {
     return this.setActionRelation(
       actionId,
       userId,
-      UserActionRelation.COMPLETED,
+      UserActionRelation.completed,
     );
   }
 

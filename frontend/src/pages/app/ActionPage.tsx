@@ -14,7 +14,7 @@ import {
 import { ActionDto, UserActionDto } from "../../client/types.gen";
 import { getApiUrl } from "../../lib/config";
 import ActionForumPosts from "../../components/ActionForumPosts";
-
+import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
@@ -81,9 +81,9 @@ const ActionPage: React.FC = () => {
     }
   }, [actionId]);
 
-  return (
-    <div className="flex flex-row min-h-screen py-12 px-3 w-full justify-center gap-x-7 bg-stone-50">
-      <div className="flex flex-col max-w-[700px] gap-y-3 border-r border-gray-200 pr-7">
+  const mainContent = (
+    <>
+      <div className="flex flex-col gap-y-3 flex-2 p-10 px-20">
         {action?.image && (
           <img
             src={`${getApiUrl()}/images/${action.image}`}
@@ -91,7 +91,7 @@ const ActionPage: React.FC = () => {
             className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
           />
         )}
-        <div className="flex flex-row justify-between items-center my-5">
+        <div className="flex flex-row justify-between items-start my-5">
           <div className="flex flex-col gap-y-3">
             <h1>{action?.name}</h1>
             <p className="text-gray-900 text-[12pt] mt-[-3px]">
@@ -106,16 +106,16 @@ const ActionPage: React.FC = () => {
               </a>
             </p>
           </div>
-          {userRelation === "NONE" && actionId && (
+          {userRelation === "none" && actionId && (
             <Button
-              className="mt-1"
+              className="mt-2"
               label="Commit to this action"
               onClick={onJoinAction}
             />
           )}
         </div>
-        {userRelation === "JOINED" && <PokePanel />}
-        {userRelation === "NONE" && (
+        {userRelation === "joined" && <PokePanel />}
+        {userRelation === "none" && (
           <Card style={CardStyle.Grey} className="mb-5">
             <h2>Why Join?</h2>
             <p>
@@ -137,25 +137,33 @@ const ActionPage: React.FC = () => {
 
         {actionId && <ActionForumPosts actionId={actionId} />}
       </div>
-      <div className="flex flex-col gap-y-5 items-stretch max-w-[300px]">
-        <div className="w-[75] self-center">
-          <Suspense fallback={<div>Loading...</div>}>
-            <Globe people={action?.usersJoined || 0} colored />
-          </Suspense>
-          <p className="text-center pt-2 text-[11pt]">
-            {action?.usersJoined?.toLocaleString() || 0} people committed
-          </p>
-        </div>
+    </>
+  );
 
-        <Card style={CardStyle.White} className="items-center">
-          <UserBubbleRow />
-          <p className="text-center pt-2 text-[11pt]">
-            <b>6 friends</b> already joined this action!
-          </p>
-        </Card>
-        <StatsCard />
-      </div>
-    </div>
+  return (
+    <TwoColumnSplit
+      left={mainContent}
+      right={
+        <>
+          <Card style={CardStyle.White} className="items-center gap-y-5 p-10">
+            <div className="w-[75] self-center">
+              <Suspense fallback={<div>Loading...</div>}>
+                <Globe people={action?.usersJoined || 0} colored />
+              </Suspense>
+              <p className="text-center pt-2 text-[11pt]">
+                {action?.usersJoined?.toLocaleString() || 0} people committed
+              </p>
+            </div>
+            <div className="w-full border-t border-gray-300" />
+            <UserBubbleRow />
+            <p className="text-center pt-2 text-[11pt]">
+              <b>6 friends</b> already joined this action!
+            </p>
+          </Card>
+          <StatsCard />
+        </>
+      }
+    />
   );
 };
 

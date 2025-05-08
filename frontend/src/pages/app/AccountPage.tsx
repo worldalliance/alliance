@@ -23,7 +23,7 @@ const AccountPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-stone-50 pt-20 px-8 md:px-16">
+      <div className="min-h-screen bg-pagebg pt-20 px-8 md:px-16">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-sabon mb-8">Account</h1>
           <Card style={CardStyle.White} className="p-8">
@@ -40,7 +40,7 @@ const AccountPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 pt-20 px-8 md:px-16">
+    <div className="min-h-screen bg-pagebg pt-20 px-8 md:px-16">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <div className="flex flex-row items-center gap-2">

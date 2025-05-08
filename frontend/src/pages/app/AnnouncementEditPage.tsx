@@ -172,7 +172,7 @@ const AnnouncementEditPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen bg-stone-50 items-center">
+      <div className="flex flex-col min-h-screen bg-pagebg items-center">
         <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))]">
           <p className="text-center py-4">Loading announcement...</p>
         </div>
@@ -181,7 +181,7 @@ const AnnouncementEditPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-stone-50 items-center">
+    <div className="flex flex-col min-h-screen bg-pagebg items-center">
       <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))]">
         <div className="w-full mb-6">
           <h1 className="text-2xl font-bold mb-4">

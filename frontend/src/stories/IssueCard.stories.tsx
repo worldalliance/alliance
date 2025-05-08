@@ -2,7 +2,7 @@ import { Meta, StoryObj } from "@storybook/react";
 import IssueCard from "../components/IssueCard";
 
 const meta = {
-  title: "Alliance/ProblemAreaCard",
+  title: "Alliance/IssueCard",
   component: IssueCard,
   tags: ["component"],
   parameters: {
@@ -10,8 +10,8 @@ const meta = {
   },
   args: {
     name: "Problem Area",
-    description: "This is a problem area",
-    href: "/problem-area",
+    description: "This is an issue",
+    href: "/issue",
   },
 } satisfies Meta<typeof IssueCard>;
 

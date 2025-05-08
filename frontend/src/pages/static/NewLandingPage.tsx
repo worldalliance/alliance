@@ -10,10 +10,11 @@ import Card, { CardStyle } from "../../components/system/Card";
 const NewLandingPage: React.FC = () => {
   const size = 2 * Math.min(window.innerWidth, window.innerHeight);
   const [scrollOffset, setScrollOffset] = useState(0);
+  const [navbarHeight, setNavbarHeight] = useState(0);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const navbarRef = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(false);
-  const scrollOffsetThreshold = 20;
+  const scrollOffsetThreshold = 30;
 
   useEffect(() => {
     if (mainContentRef.current && navbarRef.current) {
@@ -25,12 +26,19 @@ const NewLandingPage: React.FC = () => {
 
   const handleScroll = () => {
     const scrollPosition = window.scrollY;
-    if (scrollPosition >= scrollOffset + scrollOffsetThreshold) {
+    if (!scrolled && scrollPosition >= scrollOffset + scrollOffsetThreshold) {
       setScrolled(true);
-    } else if (scrollPosition < scrollOffset - scrollOffsetThreshold) {
+    } else if (
+      scrolled &&
+      scrollPosition < scrollOffset - scrollOffsetThreshold
+    ) {
       setScrolled(false);
     }
   };
+
+  useEffect(() => {
+    setNavbarHeight(navbarRef.current?.clientHeight || 0);
+  }, [navbarRef]);
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll);
@@ -47,7 +55,12 @@ const NewLandingPage: React.FC = () => {
   return (
     <div>
       <NewNavbar transparent={!scrolled} ref={navbarRef} />
-      <div className="flex flex-col items-center justify-center bg-gray-950 w-screen h-[101vh] overflow-hidden relative goob -translate-y-[119px]">
+      <div
+        className="flex flex-col items-center justify-center bg-gray-950 w-screen h-[101vh] overflow-hidden relative goob"
+        style={{
+          transform: `translateY(-${navbarHeight}px)`,
+        }}
+      >
         <div className="mb-[-40%]">
           <HighResGlobe width={size} height={size} />
         </div>
@@ -78,7 +91,7 @@ const NewLandingPage: React.FC = () => {
         {/* </div> */}
       </div>
       <div
-        className="bg-white w-screen py-20 flex flex-col items-center"
+        className="bg-white w-screen flex flex-col items-center"
         ref={mainContentRef}
       >
         <div className="container mx-auto flex flex-col items-center gap-y-15">

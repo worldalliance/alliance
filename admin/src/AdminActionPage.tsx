@@ -215,7 +215,7 @@ const AdminActionPage: React.FC = () => {
   const baseUrl = getApiUrl();
 
   return (
-    <div className="flex flex-col min-h-screen bg-stone-50 p-8">
+    <div className="flex flex-col min-h-screen bg-pagebg p-8">
       <div className="max-w-3xl mx-auto w-full">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-[#111] text-[20pt] font-bold font-sabon">

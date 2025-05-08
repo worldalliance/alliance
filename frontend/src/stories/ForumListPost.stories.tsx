@@ -26,7 +26,7 @@ const samplePost: PostDto = {
   updatedAt: new Date().toISOString(),
 };
 
-export const AllCards: Story = {
+export const ManyPosts: Story = {
   render: () => {
     return (
       <div className="flex flex-col min-w-[800px]">

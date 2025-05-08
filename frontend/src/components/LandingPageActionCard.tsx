@@ -20,7 +20,7 @@ const LandingPageActionCard: React.FC<LandingPageActionCardProps> = ({
       {/* <StatusIndicator status={Status.InProgress} /> */}
       <Card
         style={CardStyle.Grey}
-        className="block bg-stone-50 text-[11pt] font-avenir min-h-[100px] min-w-[600px]"
+        className="block bg-pagebg text-[11pt] font-avenir min-h-[100px] min-w-[600px]"
       ></Card>
     </div>
   );

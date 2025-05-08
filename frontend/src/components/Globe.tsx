@@ -28,7 +28,7 @@ const Globe: React.FC<GlobeProps> = ({
     let worldData = world;
 
     const width = mapRef.current.getBoundingClientRect().width;
-    const scale = width / 2 - 0.1;
+    const scale = Math.max(width / 2 - 0.1, 0);
     const height = scale * 2 + 5;
     const sensitivity = 75;
 

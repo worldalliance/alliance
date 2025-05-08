@@ -9,7 +9,7 @@ const AboutPage: React.FC = () => {
     <div>
       <NewNavbar transparent={false} />
       <div className="bg-white container mx-auto py-30 flex flex-col gap-y-10 px-5 text-[12pt]">
-        <div className="bg-hgreen text-white p-10 min-w-100vw gap-y-5 flex flex-col rounded-xs">
+        <div className="bg-hgreen text-white p-10 min-w-100vw gap-y-5 flex flex-col rounded-md">
           <h1>What is the Alliance?</h1>
           <div className="flex flex-col gap-y-5">
             <p>

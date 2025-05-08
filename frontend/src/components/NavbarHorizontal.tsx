@@ -19,23 +19,31 @@ const NavbarHorizontal: React.FC<InnerNavbarProps> = ({ currentPage }) => {
   return (
     <div
       className="
-      flex flex-row border-b border-[#ddd]
-    w-screen text-left space-x-10 items-center justify-center pl-6 sticky"
+      flex flex-row border-b border-zinc-400
+    w-screen text-left space-x-10 items-center justify-start pl-6 sticky"
     >
-      {links.map((link) =>
-        link === NavbarPage.Platform ? (
-          <DropdownLink
-            key={link}
-            text={link}
-            to={destinations[link]}
-            sublinks={platformSublinks}
-          />
-        ) : (
-          <Link to={destinations[link]} key={link} className="py-3">
-            <p className="pt-1 whitespace-nowrap">{link}</p>
-          </Link>
-        )
-      )}
+      <Link to="/">
+        <h1 className="font-bold font-berlingske !text-[16pt] cursor-pointer">
+          the alliance
+        </h1>
+      </Link>
+      <div className="flex flex-row gap-x-10 px-10">
+        {links.map((link) =>
+          link === NavbarPage.Platform ? (
+            <DropdownLink
+              key={link}
+              text={link}
+              to={destinations[link]}
+              sublinks={platformSublinks}
+              inverted={false}
+            />
+          ) : (
+            <Link to={destinations[link]} key={link} className="py-3">
+              <p className="pt-1 whitespace-nowrap">{link}</p>
+            </Link>
+          )
+        )}
+      </div>
     </div>
   );
 };
