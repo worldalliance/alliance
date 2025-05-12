@@ -87,17 +87,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "yarn"
-
       - name: Enable Corepack (installs Yarn 4.x pinned in repo)
         run: corepack enable
 
       - name: Activate Yarn 4.x
         run: corepack prepare yarn@4.9.1 --activate
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "yarn"
 
       - name: Install Dependencies
         run: corepack yarn install --immutable
