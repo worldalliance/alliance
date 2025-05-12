@@ -96,12 +96,15 @@ jobs:
       - name: Enable Corepack (installs Yarn 4.x pinned in repo)
         run: corepack enable
 
+      - name: Activate Yarn 4.x
+        run: corepack prepare yarn@4.9.1 --activate
+
       - name: Install Dependencies
-        run: yarn install --immutable
+        run: corepack yarn install --immutable
         working-directory: ./
 
       - name: Build React App
-        run: yarn workspace @alliance/frontend build
+        run: corepack yarn workspace @alliance/frontend build
         working-directory: ./
 
       - name: Zip Build Output
