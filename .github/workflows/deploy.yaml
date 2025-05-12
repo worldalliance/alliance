@@ -94,21 +94,21 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
-        working-directory: ./frontend
+        working-directory: ./apps/frontend
 
       - name: Build React App
         run: npx vite build
-        working-directory: ./frontend
+        working-directory: ./apps/frontend
 
       - name: Zip Build Output
         run: zip -r react-build.zip dist
-        working-directory: ./frontend
+        working-directory: ./apps/frontend
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: react-build
-          path: frontend/react-build.zip
+          path: apps/frontend/react-build.zip
 
   build-admin-frontend:
     runs-on: ubuntu-latest
@@ -123,21 +123,21 @@ jobs:
 
       - name: Install Dependencies
         run: npm ci
-        working-directory: ./admin
+        working-directory: ./apps/admin
 
       - name: Build React App
         run: npx vite build
-        working-directory: ./admin
+        working-directory: ./apps/admin
 
       - name: Zip Build Output
         run: zip -r admin-build.zip dist
-        working-directory: ./admin
+        working-directory: ./apps/admin
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: admin-build
-          path: admin/admin-build.zip
+          path: apps/admin/admin-build.zip
 
   deploy-react-app:
     runs-on: ubuntu-latest
