@@ -9,6 +9,7 @@ const meta = {
   args: {
     left: <div>Left</div>,
     right: <div>Right</div>,
+    coloredRight: true,
   },
 } satisfies Meta<typeof TwoColumnSplit>;
 

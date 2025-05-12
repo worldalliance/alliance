@@ -144,8 +144,8 @@ const ActionPage: React.FC = () => {
     <TwoColumnSplit
       left={mainContent}
       right={
-        <>
-          <Card style={CardStyle.White} className="items-center gap-y-5 p-10">
+        <div className="flex flex-col gap-y-5 p-6">
+          <Card style={CardStyle.White} className="items-center gap-y-5">
             <div className="w-[75] self-center">
               <Suspense fallback={<div>Loading...</div>}>
                 <Globe people={action?.usersJoined || 0} colored />
@@ -161,8 +161,9 @@ const ActionPage: React.FC = () => {
             </p>
           </Card>
           <StatsCard />
-        </>
+        </div>
       }
+      coloredRight={true}
     />
   );
 };

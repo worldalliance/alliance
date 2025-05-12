@@ -20,13 +20,13 @@ const NavbarHorizontal: React.FC<InnerNavbarProps> = ({ currentPage }) => {
     <div
       className="
       flex flex-row border-b border-zinc-400
-    w-screen text-left space-x-10 items-center justify-start pl-6 sticky"
+    w-screen text-left space-x-10 items-center justify-center pl-6 sticky"
     >
-      <Link to="/">
+      {/* <Link to="/">
         <h1 className="font-bold font-berlingske !text-[16pt] cursor-pointer">
-          the alliance
+          alliance
         </h1>
-      </Link>
+      </Link> */}
       <div className="flex flex-row gap-x-10 px-10">
         {links.map((link) =>
           link === NavbarPage.Platform ? (
