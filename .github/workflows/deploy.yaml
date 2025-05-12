@@ -98,7 +98,7 @@ jobs:
         working-directory: ./
 
       - name: Build React App
-        run: yarn workspace frontend build
+        run: yarn workspace @alliance/frontend build
         working-directory: ./
 
       - name: Zip Build Output
@@ -123,12 +123,12 @@ jobs:
           node-version: 20
 
       - name: Install Dependencies
-        run: npm ci
-        working-directory: ./apps/admin
+        run: yarn install --frozen-lockfile
+        working-directory: ./
 
       - name: Build React App
-        run: npx vite build
-        working-directory: ./apps/admin
+        run: yarn workspace @alliance/admin build
+        working-directory: ./
 
       - name: Zip Build Output
         run: zip -r admin-build.zip dist

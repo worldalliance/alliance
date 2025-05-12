@@ -2,5 +2,14 @@
   "private": true,
   "name": "alliance",
   "version": "0.0.0",
-  "workspaces": ["frontend", "admin", "mobile", "shared"]
+  "workspaces": [
+    "apps/frontend",
+    "apps/admin",
+    "apps/mobile",
+    "shared"
+  ],
+  "packageManager": "yarn@4.9.1",
+  "dependencies": {
+    "@hey-api/client-fetch": "^0.10.0"
+  }
 }
