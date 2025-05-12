@@ -93,8 +93,11 @@ jobs:
           node-version: 20
           cache: "yarn"
 
+      - name: Enable Corepack (installs Yarn 4.x pinned in repo)
+        run: corepack enable
+
       - name: Install Dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
         working-directory: ./
 
       - name: Build React App
@@ -122,8 +125,11 @@ jobs:
         with:
           node-version: 20
 
+      - name: Enable Corepack (installs Yarn 4.x pinned in repo)
+        run: corepack enable
+
       - name: Install Dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
         working-directory: ./
 
       - name: Build React App
