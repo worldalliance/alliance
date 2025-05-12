@@ -81,34 +81,35 @@ jobs:
           echo "rds_username=$(terraform output -raw rds_username)" >> $GITHUB_OUTPUT
         working-directory: ./terraform
 
-  build-react-app:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+build-react-app:
+  runs-on: ubuntu-latest
+  steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: "yarn"
 
-      - name: Install Dependencies
-        run: npm ci
-        working-directory: ./apps/frontend
+    - name: Install Dependencies
+      run: yarn install --frozen-lockfile
+      working-directory: ./
 
-      - name: Build React App
-        run: npx vite build
-        working-directory: ./apps/frontend
+    - name: Build React App
+      run: yarn build
+      working-directory: ./apps/frontend
 
-      - name: Zip Build Output
-        run: zip -r react-build.zip dist
-        working-directory: ./apps/frontend
+    - name: Zip Build Output
+      run: zip -r react-build.zip dist
+      working-directory: ./apps/frontend
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: react-build
-          path: apps/frontend/react-build.zip
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: react-build
+        path: apps/frontend/react-build.zip
 
   build-admin-frontend:
     runs-on: ubuntu-latest
