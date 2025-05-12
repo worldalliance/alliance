@@ -24,6 +24,31 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@alliance/admin@workspace:apps/admin":
+  version: 0.0.0-use.local
+  resolution: "@alliance/admin@workspace:apps/admin"
+  dependencies:
+    "@alliance/shared": "workspace:*"
+    "@eslint/js": "npm:^9.22.0"
+    "@hey-api/client-fetch": "npm:^0.10.0"
+    "@tailwindcss/vite": "npm:^4.1.4"
+    "@types/react": "npm:^19.0.10"
+    "@types/react-dom": "npm:^19.0.4"
+    "@vitejs/plugin-react": "npm:^4.3.4"
+    eslint: "npm:^9.22.0"
+    eslint-plugin-react-hooks: "npm:^5.2.0"
+    eslint-plugin-react-refresh: "npm:^0.4.19"
+    globals: "npm:^16.0.0"
+    react: "npm:^19.1.0"
+    react-dom: "npm:^19.1.0"
+    react-router-dom: "npm:^7.5.3"
+    tailwindcss: "npm:^4.1.4"
+    typescript: "npm:~5.7.2"
+    typescript-eslint: "npm:^8.26.1"
+    vite: "npm:^6.3.1"
+  languageName: unknown
+  linkType: soft
+
 "@alliance/frontend@workspace:apps/frontend":
   version: 0.0.0-use.local
   resolution: "@alliance/frontend@workspace:apps/frontend"
@@ -4343,31 +4368,6 @@ __metadata:
   checksum: 10c0/dbd36c1ed1d2fa3550140000371fcf721578095b18777b85a79df231ca093b08edc6858d75d6e48c73e431c174dcf9214edbd7e6fa5911b93bd8abfa54e47123
   languageName: node
   linkType: hard
-
-"admin@workspace:apps/admin":
-  version: 0.0.0-use.local
-  resolution: "admin@workspace:apps/admin"
-  dependencies:
-    "@alliance/shared": "workspace:*"
-    "@eslint/js": "npm:^9.22.0"
-    "@hey-api/client-fetch": "npm:^0.10.0"
-    "@tailwindcss/vite": "npm:^4.1.4"
-    "@types/react": "npm:^19.0.10"
-    "@types/react-dom": "npm:^19.0.4"
-    "@vitejs/plugin-react": "npm:^4.3.4"
-    eslint: "npm:^9.22.0"
-    eslint-plugin-react-hooks: "npm:^5.2.0"
-    eslint-plugin-react-refresh: "npm:^0.4.19"
-    globals: "npm:^16.0.0"
-    react: "npm:^19.1.0"
-    react-dom: "npm:^19.1.0"
-    react-router-dom: "npm:^7.5.3"
-    tailwindcss: "npm:^4.1.4"
-    typescript: "npm:~5.7.2"
-    typescript-eslint: "npm:^8.26.1"
-    vite: "npm:^6.3.1"
-  languageName: unknown
-  linkType: soft
 
 "agent-base@npm:^7.1.0, agent-base@npm:^7.1.2":
   version: 7.1.3
