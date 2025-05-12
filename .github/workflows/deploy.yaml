@@ -98,8 +98,8 @@ jobs:
         working-directory: ./
 
       - name: Build React App
-        run: yarn build
-        working-directory: ./apps/frontend
+        run: yarn workspace frontend build
+        working-directory: ./
 
       - name: Zip Build Output
         run: zip -r react-build.zip dist
