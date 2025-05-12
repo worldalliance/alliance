@@ -1,0 +1,17 @@
+{
+  "name": "@alliance/shared",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "dependencies": {
+    "@hey-api/client-fetch": "^0.10.0"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "^0.67.3"
+  }
+}

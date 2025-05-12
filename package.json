@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "name": "alliance",
+  "version": "0.0.0",
+  "workspaces": ["frontend", "admin", "mobile", "shared"]
+}
