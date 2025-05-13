@@ -2,6 +2,7 @@
   "name": "alliance-mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "packageManager": "yarn@4.9.1",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -9,7 +10,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "gen-api": "npx @hey-api/openapi-ts"
+    "gen-api": "npx @hey-api/openapi-ts",
+    "eas-build-pre-install": "corepack enable"
   },
   "dependencies": {
     "@alliance/shared": "workspace:*",
@@ -18,9 +20,11 @@
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
+    "eas-cli": "^16.5.0",
     "expo": "~53.0.9",
     "expo-blur": "~14.1.4",
     "expo-constants": "~17.1.6",
+    "expo-dev-client": "~5.1.8",
     "expo-font": "~13.3.1",
     "expo-haptics": "~14.1.4",
     "expo-image": "~2.1.7",

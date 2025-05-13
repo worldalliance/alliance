@@ -4,9 +4,13 @@
 
 ### Frontend
 
-Dev server: `npm run dev`
+dev: `yarn workspace @alliance/frontend dev`
 
 Storybook: `yarn storybook`
+
+## Server
+
+dev: `npm start:dev`
 
 ### Certbot
 
@@ -16,4 +20,4 @@ Storybook: `yarn storybook`
 
 ### Openapi client gen:
 
-`npx run gen-api` (or `npx @hey-api/openapi-ts`)
+`cd shared && yarn gen-api` (with dev server running)
