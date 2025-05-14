@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PostDto } from "../../../../shared/client";
-import { useAuth } from "../../../../shared/lib/AuthContext";
+import { useAuth } from "../../../../shared/lib/BaseAuthContext";
 import { formatDistanceToNow } from "date-fns";
 import Card from "./system/Card";
 import Button from "./system/Button";
@@ -11,7 +11,9 @@ interface ActionForumPostsProps {
   actionId: string;
 }
 
-const ActionForumPosts: React.FC<ActionForumPostsProps> = ({ actionId }) => {
+const ActionForumPosts: React.FC<ActionForumPostsProps> = ({
+  actionId,
+}: ActionForumPostsProps) => {
   const [posts, setPosts] = useState<PostDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

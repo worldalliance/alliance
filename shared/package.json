@@ -6,14 +6,14 @@
   "types": "./src/index.ts",
   "packageManager": "yarn@4.9.1",
   "peerDependencies": {
-    "react": "*",
-    "react-native": "*"
+    "react": "*"
   },
   "dependencies": {
     "@hey-api/client-fetch": "^0.10.0"
   },
   "devDependencies": {
-    "@hey-api/openapi-ts": "^0.67.3"
+    "@hey-api/openapi-ts": "^0.67.3",
+    "typescript": "~5.7.2"
   },
   "scripts": {
     "gen-api": "yarn openapi-ts"

@@ -31,6 +31,7 @@ __metadata:
     "@alliance/shared": "workspace:*"
     "@eslint/js": "npm:^9.22.0"
     "@hey-api/client-fetch": "npm:^0.10.0"
+    "@hey-api/openapi-ts": "npm:^0.67.3"
     "@tailwindcss/vite": "npm:^4.1.4"
     "@types/react": "npm:^19.0.10"
     "@types/react-dom": "npm:^19.0.4"
@@ -56,6 +57,7 @@ __metadata:
     "@alliance/shared": "workspace:*"
     "@eslint/js": "npm:^9.22.0"
     "@hey-api/client-fetch": "npm:^0.10.0"
+    "@hey-api/openapi-ts": "npm:^0.67.3"
     "@storybook/addon-essentials": "npm:^8.6.12"
     "@storybook/addon-interactions": "npm:^8.6.12"
     "@storybook/addon-onboarding": "npm:^8.6.12"
@@ -105,9 +107,9 @@ __metadata:
   dependencies:
     "@hey-api/client-fetch": "npm:^0.10.0"
     "@hey-api/openapi-ts": "npm:^0.67.3"
+    typescript: "npm:~5.7.2"
   peerDependencies:
     react: "*"
-    react-native: "*"
   languageName: unknown
   linkType: soft
 
@@ -5122,8 +5124,6 @@ __metadata:
 "alliance@workspace:.":
   version: 0.0.0-use.local
   resolution: "alliance@workspace:."
-  dependencies:
-    "@hey-api/client-fetch": "npm:^0.10.0"
   languageName: unknown
   linkType: soft
 
