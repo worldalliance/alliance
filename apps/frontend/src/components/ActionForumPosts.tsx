@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { PostDto } from "../../../../shared/client";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../../../shared/lib/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import Card from "./system/Card";
 import Button from "./system/Button";

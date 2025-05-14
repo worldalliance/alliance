@@ -5,15 +5,9 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { useNavigate } from "react-router-dom";
-import {
-  authLogin,
-  authMe,
-  authRefreshTokens,
-  ProfileDto,
-} from "../../../../shared/client";
-import { getApiUrl } from "../lib/config";
-import { client } from "../../../../shared/client/client.gen";
+import { authLogin, authMe, authRefreshTokens, ProfileDto } from "../client";
+import { getApiUrl } from "../../apps/frontend/src/lib/config";
+import { client } from "../client/client.gen";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -25,12 +19,25 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+export interface AuthTokenStore {
+  setItem: (key: string, value: string) => void;
+  getItem: (key: string) => string | null;
+  removeItem: (key: string) => void;
+}
+
+export interface BaseAuthProviderProps extends React.PropsWithChildren {
+  navigateOnLogin: () => void;
+  navigateOnLogout: () => void;
+  tokenStore: AuthTokenStore;
+}
+
+export const BaseAuthProvider: React.FC<BaseAuthProviderProps> = ({
   children,
+  navigateOnLogin,
+  navigateOnLogout,
 }) => {
   const [user, setUser] = useState<ProfileDto | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
-  const navigate = useNavigate();
 
   // Check if user is authenticated on mount
   useEffect(() => {
@@ -108,7 +115,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         setUser(userProfile.data);
       }
 
-      navigate("/home");
+      navigateOnLogin();
     } catch (error) {
       throw error;
     } finally {
@@ -120,7 +127,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     localStorage.removeItem("token");
     localStorage.removeItem("refresh_token");
 
-    navigate("/login");
+    navigateOnLogout();
     setUser(undefined);
   };
 

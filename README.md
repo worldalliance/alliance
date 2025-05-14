@@ -2,15 +2,21 @@
 
 ## Useful Commands
 
-### Frontend
+### frontend
 
-dev: `yarn workspace @alliance/frontend dev`
+dev: `yarn frontend:dev`
 
-Storybook: `yarn storybook`
+Storybook: `yarn workspace @alliance/frontend storybook`
 
-## Server
+### server
 
 dev: `npm start:dev`
+
+### mobile
+
+dev: `yarn start`
+
+build: `yarn eas build --platform [ios|android]`
 
 ### Certbot
 

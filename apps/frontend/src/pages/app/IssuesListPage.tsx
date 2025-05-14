@@ -1,6 +1,5 @@
 import React from "react";
 import IssueCard, { IssueCardProps } from "../../components/IssueCard";
-import { useAuth } from "../../context/AuthContext";
 import NewNavbar from "../../components/NewNavbar";
 
 const IssuesListPage: React.FC = () => {

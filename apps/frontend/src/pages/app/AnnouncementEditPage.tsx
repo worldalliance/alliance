@@ -8,7 +8,7 @@ import {
 } from "../../../../../shared/client";
 import Button, { ButtonColor } from "../../components/system/Button";
 import FormInput from "../../components/system/FormInput";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../../../shared/lib/BaseAuthContext";
 import MarkdownEditor from "../../components/MarkdownEditor";
 
 const AnnouncementEditPage: React.FC = () => {

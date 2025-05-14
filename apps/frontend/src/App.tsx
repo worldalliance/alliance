@@ -12,7 +12,6 @@ import Navbar, { NavbarPage } from "./components/Navbar";
 import ActionPage from "./pages/app/ActionPage";
 import LoginPage from "./pages/app/LoginPage";
 import SignupPage from "./pages/app/SignupPage";
-import { AuthProvider } from "./context/AuthContext";
 import AccountPage from "./pages/app/AccountPage";
 import ActionsListPage from "./pages/app/ActionsListPage";
 import { getApiUrl } from "./lib/config";
@@ -25,6 +24,7 @@ import PostDetailPage from "./pages/app/PostDetailPage";
 import PostFormPage from "./pages/app/PostFormPage";
 import AboutPage from "./pages/static/AboutPage";
 import { client } from "../../../shared/client/client.gen";
+import { AuthProvider } from "./lib/AuthContext";
 
 // A simple auth check component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({

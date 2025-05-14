@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../../../shared/lib/BaseAuthContext";
 import FormInput from "../../components/system/FormInput";
-import { AdminOnly } from "../../context/AdminOnly";
+import { AdminOnly } from "../../../../../shared/lib/AdminOnly";
 import Badge from "../../components/system/Badge";
 
 const AccountPage: React.FC = () => {

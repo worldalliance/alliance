@@ -7,8 +7,8 @@ import {
 import { CommuniqueDto } from "../../../../../shared/client";
 import AnnouncementCard from "../../components/AnnoucementCard";
 import Button, { ButtonColor } from "../../components/system/Button";
-import { AdminOnly } from "../../context/AdminOnly";
-import { useAuth } from "../../context/AuthContext";
+import { AdminOnly } from "../../../../../shared/lib/AdminOnly";
+import { useAuth } from "../../../../../shared/lib/BaseAuthContext";
 
 const AnnouncementsListPage: React.FC = () => {
   const [announcements, setAnnouncements] = useState<CommuniqueDto[]>([]);

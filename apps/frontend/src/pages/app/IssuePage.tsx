@@ -1,7 +1,7 @@
 import Navbar from "../../components/Navbar";
 import { NavbarPage } from "../../components/Navbar";
 import LandingNavbar from "../../components/LandingNavbar";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../../../shared/lib/BaseAuthContext";
 import { useParams } from "react-router-dom";
 
 const IssuePage: React.FC = () => {

@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
 import FormInput from "../../components/system/FormInput";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../../../../shared/lib/BaseAuthContext";
 import { SignInDto } from "../../../../../shared/client";
 
 const LoginPage: React.FC = () => {

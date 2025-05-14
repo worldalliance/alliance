@@ -8,6 +8,9 @@
     "apps/mobile",
     "shared"
   ],
+  "scripts": {
+    "frontend:dev": "yarn workspace @alliance/frontend dev"
+  },
   "packageManager": "yarn@4.9.1",
   "dependencies": {
     "@hey-api/client-fetch": "^0.10.0"
