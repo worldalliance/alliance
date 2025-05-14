@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { useContainer } from 'class-validator';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import * as cookieParser from 'cookie-parser';
 
 function validateEnv() {
   const requiredVars = [
@@ -29,6 +30,7 @@ async function bootstrap() {
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   validateEnv();
   app.useGlobalPipes(new ValidationPipe());
+  app.use(cookieParser());
   //   app.enableCors();
   app.enableCors({
     origin: true,

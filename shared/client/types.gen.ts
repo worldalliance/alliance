@@ -6,8 +6,6 @@ export type SignInDto = {
 };
 
 export type SignInResponseDto = {
-    access_token: string;
-    refresh_token: string;
     isAdmin: boolean;
 };
 
@@ -276,6 +274,17 @@ export type AuthMeResponses = {
 };
 
 export type AuthMeResponse = AuthMeResponses[keyof AuthMeResponses];
+
+export type AuthLogoutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/logout';
+};
+
+export type AuthLogoutResponses = {
+    200: unknown;
+};
 
 export type ActionsCreateData = {
     body: CreateActionDto;

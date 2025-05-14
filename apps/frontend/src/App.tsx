@@ -25,17 +25,16 @@ import PostFormPage from "./pages/app/PostFormPage";
 import AboutPage from "./pages/static/AboutPage";
 import { client } from "../../../shared/client/client.gen";
 import { AuthProvider } from "./lib/AuthContext";
+import { useAuth } from "../../../shared/lib/BaseAuthContext";
 
 // A simple auth check component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
+const ProtectedRoute: React.FC<React.PropsWithChildren> = ({
   children,
-}) => {
-  const isAuthenticated = localStorage.getItem("token") !== null;
-
+}: React.PropsWithChildren) => {
+  const { isAuthenticated } = useAuth();
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
-
   return (
     <>
       <Navbar currentPage={NavbarPage.Dashboard} format="horizontal" />
@@ -44,9 +43,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-const LoggedOutOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
+const LoggedOutOnlyRoute: React.FC<React.PropsWithChildren> = ({
   children,
-}) => {
+}: React.PropsWithChildren) => {
   const isAuthenticated = localStorage.getItem("token") !== null;
   if (isAuthenticated) {
     return <Navigate to="/home" />;
@@ -57,6 +56,7 @@ const LoggedOutOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
 
 client.setConfig({
   baseUrl: getApiUrl(),
+  credentials: "include",
   headers: {
     Authorization: `Bearer ${localStorage.getItem("token")}`,
   },

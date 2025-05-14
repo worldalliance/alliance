@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtPayload, JWTTokenType } from './auth.guard';
+import { Request } from 'express';
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
@@ -16,13 +17,7 @@ export class RefreshTokenGuard implements CanActivate {
 
     console.log('running refresh token guard');
 
-    const authHeader = request.headers['authorization'] as string | undefined;
-    if (!authHeader) {
-      console.log('missing auth header');
-      throw new UnauthorizedException('Missing authorization header');
-    }
-
-    const token = authHeader.split(' ')[1];
+    const token = this.extractTokenFromCookie(request);
 
     if (!token) {
       console.log('missing token');
@@ -48,5 +43,19 @@ export class RefreshTokenGuard implements CanActivate {
       console.log('refresh token guard error: ', err);
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
+  }
+
+  private extractTokenFromCookie(request: Request): string | undefined {
+    return request.cookies?.refresh_token;
+  }
+
+  private extractTokenFromHeader(request: Request): string | undefined {
+    const authHeader = request.headers['authorization'] as string | undefined;
+    if (!authHeader) {
+      console.log('missing auth header');
+      throw new UnauthorizedException('Missing authorization header');
+    }
+
+    return authHeader.split(' ')[1];
   }
 }

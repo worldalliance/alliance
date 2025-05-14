@@ -9,7 +9,8 @@
     "shared"
   ],
   "scripts": {
-    "frontend:dev": "yarn workspace @alliance/frontend dev"
+    "frontend:dev": "yarn workspace @alliance/frontend dev",
+    "gen-api": "yarn workspace @alliance/shared gen-api"
   },
   "packageManager": "yarn@4.9.1"
 }

@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Post,
   Request,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -21,6 +22,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { AccessToken } from './dto/authtokens.dto';
+import { Response } from 'express';
 
 @ApiBearerAuth()
 @Controller('auth')
@@ -32,8 +34,16 @@ export class AuthController {
   @ApiOkResponse({ type: SignInResponseDto })
   @ApiUnauthorizedResponse()
   @Post('login')
-  login(@Body() signInDto: SignInDto) {
-    return this.authService.login(signInDto.email, signInDto.password);
+  async login(
+    @Body() signInDto: SignInDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { access_token, refresh_token, isAdmin } =
+      await this.authService.login(signInDto.email, signInDto.password);
+
+    this.authService.setAuthCookies(res, access_token, refresh_token);
+
+    return { isAdmin };
   }
 
   @Public()
@@ -76,5 +86,12 @@ export class AuthController {
       name: profile.name,
       admin: profile.admin,
     };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Res({ passthrough: true }) res: Response) {
+    this.authService.clearAuthCookies(res);
+    return { success: true };
   }
 }
