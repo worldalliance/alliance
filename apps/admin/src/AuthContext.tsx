@@ -120,7 +120,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       }
 
       const response = await authAdminLogin({
-        body: { email, password },
+        body: { email, password, mode: "cookie" },
       });
       if (response.data) {
         localStorage.setItem("token", response.data.access_token);

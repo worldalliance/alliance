@@ -20,7 +20,7 @@ interface AuthContextType {
   user: ProfileDto | undefined;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  loading: boolean;
+  isLoading: boolean;
 }
 
 const ACCESS_KEY = "accessToken";
@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<
   }>
 > = ({ children, tokenStore }) => {
   const [user, setUser] = useState<ProfileDto | undefined>(undefined);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const router = useRouter();
 
@@ -99,7 +99,9 @@ export const AuthProvider: React.FC<
   useEffect(() => {
     (async () => {
       try {
+        console.log("getting access token");
         const accessToken = await getAccessToken();
+        console.log("got access token: ", accessToken);
         if (accessToken) {
           client.setConfig({
             headers: {
@@ -121,20 +123,20 @@ export const AuthProvider: React.FC<
           logout();
         }
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     })();
   }, [logout, getAccessToken, getRefreshToken, refreshAccessToken]);
 
   const login = async (email: string, password: string) => {
-    setLoading(true);
+    setIsLoading(true);
     try {
       console.log("sending LOGIN request:");
       console.log({ email, password, mode: "header" });
       const response = await authLogin({
         body: { email, password, mode: "header" },
       });
-      console.log("got response: ", response);
+
       if (response.error || !response.data) {
         throw new Error("Login failed");
       }
@@ -153,22 +155,27 @@ export const AuthProvider: React.FC<
         },
       });
 
+      console.log(
+        "saving tokens: ",
+        response.data.access_token,
+        response.data.refresh_token
+      );
       await saveTokens(response.data.access_token, response.data.refresh_token);
 
       router.replace("/");
     } catch (error) {
       throw error;
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const value: AuthContextType = {
-    isAuthenticated: !!user || loading,
+    isAuthenticated: !!user,
     user,
     login,
     logout,
-    loading,
+    isLoading,
   };
 
   console.log("value: ", value);

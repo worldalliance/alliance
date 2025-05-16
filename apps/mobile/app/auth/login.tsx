@@ -16,7 +16,7 @@ import { useAuth } from "../../lib/AuthContext";
 
 const LoginScreen = () => {
   const router = useRouter();
-  const { login, loading } = useAuth();
+  const { login, isLoading } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,9 +87,9 @@ const LoginScreen = () => {
           <TouchableOpacity
             style={styles.loginButton}
             onPress={handleLogin}
-            disabled={isSubmitting || loading}
+            disabled={isSubmitting || isLoading}
           >
-            {isSubmitting || loading ? (
+            {isSubmitting || isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.loginButtonText}>Log In</Text>
