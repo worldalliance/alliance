@@ -1,23 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { App } from 'supertest/types';
-import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ImagesModule } from '../src/images/images.module';
-import { DataSource, Repository } from 'typeorm';
-import { Image } from '../src/images/entities/image.entity';
 import { join } from 'path';
 import { unlinkSync, existsSync, mkdirSync } from 'fs';
-import { AuthModule } from '../src/auth/auth.module';
-import { UserModule } from '../src/user/user.module';
-import { JwtModule } from '@nestjs/jwt';
-import { ImagesController } from '../src/images/images.controller';
+import { createTestApp, TestContext } from './e2e-test-utils';
+import { ForumModule } from '../src/forum/forum.module';
+import { ImagesModule } from '../src/images/images.module';
 
 describe('Images (e2e)', () => {
-  let app: INestApplication<App>;
-  let imageRepository: Repository<Image>;
-  let dataSource: DataSource;
+  let ctx: TestContext;
   let uploadedFilename: string | null;
   let testImagePath: string;
 
@@ -28,38 +17,14 @@ describe('Images (e2e)', () => {
   }
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({
-          isGlobal: true,
-          envFilePath: '.env.test',
-        }),
-        TypeOrmModule.forFeature([Image]),
-        AuthModule,
-        JwtModule,
-        UserModule,
-        TypeOrmModule.forRoot({
-          type: 'sqlite',
-          database: ':memory:',
-          entities: [Image],
-          synchronize: true,
-        }),
-        ImagesModule,
-      ],
-      controllers: [ImagesController],
-    }).compile();
+    ctx = await createTestApp([ForumModule, ImagesModule]);
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    dataSource = moduleFixture.get<DataSource>(DataSource);
-    imageRepository = dataSource.getRepository(Image);
     testImagePath = join(__dirname, './test_image.jpg');
     uploadedFilename = null;
   });
 
   afterEach(async () => {
-    await imageRepository.query('DELETE FROM image');
+    await ctx.imageRepo.query('DELETE FROM image');
 
     if (uploadedFilename && existsSync(join(uploadsDir, uploadedFilename))) {
       try {
@@ -74,7 +39,7 @@ describe('Images (e2e)', () => {
     it('should upload a valid image file', async () => {
       expect(existsSync(testImagePath)).toBe(true);
 
-      const response = await request(app.getHttpServer())
+      const response = await request(ctx.app.getHttpServer())
         .post('/images/upload')
         .attach('image', testImagePath)
         .expect(201);
@@ -84,7 +49,7 @@ describe('Images (e2e)', () => {
 
       uploadedFilename = response.body.filename;
 
-      const savedImage = await imageRepository.findOne({
+      const savedImage = await ctx.imageRepo.findOne({
         where: { filename: response.body.filename },
       });
 
@@ -95,21 +60,23 @@ describe('Images (e2e)', () => {
     it('should reject non-image files', async () => {
       const textFilePath = join(__dirname, '../package.json');
 
-      return request(app.getHttpServer())
+      return request(ctx.app.getHttpServer())
         .post('/images/upload')
         .attach('image', textFilePath)
         .expect(400);
     });
 
     it('should require an image file', async () => {
-      return request(app.getHttpServer()).post('/images/upload').expect(400);
+      return request(ctx.app.getHttpServer())
+        .post('/images/upload')
+        .expect(400);
     });
   });
 
   describe('/images/:filename (GET)', () => {
     it('should retrieve an existing image', async () => {
       // Upload the image
-      const uploadResponse = await request(app.getHttpServer())
+      const uploadResponse = await request(ctx.app.getHttpServer())
         .post('/images/upload')
         .attach('image', testImagePath)
         .expect(201);
@@ -119,7 +86,7 @@ describe('Images (e2e)', () => {
       uploadedFilename = filename;
 
       // Test retrieving the image
-      const getResponse = await request(app.getHttpServer())
+      const getResponse = await request(ctx.app.getHttpServer())
         .get(`/images/${filename}`)
         .expect(200)
         .expect('Content-Type', /image\/(jpeg|jpg)/);
@@ -128,7 +95,7 @@ describe('Images (e2e)', () => {
     });
 
     it('should return 404 for non-existent images', async () => {
-      return request(app.getHttpServer())
+      return request(ctx.app.getHttpServer())
         .get('/images/non-existent-image.jpg')
         .expect(404);
     });
@@ -137,7 +104,7 @@ describe('Images (e2e)', () => {
   it('should return false for non-existent image id', async () => {
     const nonExistentId = 999;
 
-    return request(app.getHttpServer())
+    return request(ctx.app.getHttpServer())
       .delete(`/images/${nonExistentId}`)
       .expect(200)
       .expect((res) => {
@@ -146,6 +113,6 @@ describe('Images (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    await ctx.app.close();
   });
 });
