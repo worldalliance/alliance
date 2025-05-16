@@ -101,6 +101,52 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@alliance/mobile@workspace:apps/mobile":
+  version: 0.0.0-use.local
+  resolution: "@alliance/mobile@workspace:apps/mobile"
+  dependencies:
+    "@alliance/shared": "workspace:*"
+    "@babel/core": "npm:^7.25.2"
+    "@expo/vector-icons": "npm:^14.1.0"
+    "@hey-api/client-fetch": "npm:^0.10.0"
+    "@hey-api/openapi-ts": "npm:^0.67.3"
+    "@react-navigation/bottom-tabs": "npm:^7.3.10"
+    "@react-navigation/elements": "npm:^2.3.8"
+    "@react-navigation/native": "npm:^7.1.6"
+    "@types/react": "npm:~19.0.10"
+    eas-cli: "npm:^16.5.0"
+    eslint: "npm:^9.25.0"
+    eslint-config-expo: "npm:~9.2.0"
+    expo: "npm:~53.0.9"
+    expo-blur: "npm:~14.1.4"
+    expo-constants: "npm:~17.1.6"
+    expo-dev-client: "npm:~5.1.8"
+    expo-font: "npm:~13.3.1"
+    expo-haptics: "npm:~14.1.4"
+    expo-image: "npm:~2.1.7"
+    expo-linking: "npm:~7.1.5"
+    expo-router: "npm:~5.0.6"
+    expo-secure-store: "npm:^14.2.3"
+    expo-splash-screen: "npm:~0.30.8"
+    expo-status-bar: "npm:~2.2.3"
+    expo-symbols: "npm:~0.4.4"
+    expo-system-ui: "npm:~5.0.7"
+    expo-web-browser: "npm:~14.1.6"
+    react: "npm:19.0.0"
+    react-dom: "npm:19.0.0"
+    react-native: "npm:0.79.2"
+    react-native-gesture-handler: "npm:~2.24.0"
+    react-native-localhost: "npm:^1.0.0"
+    react-native-reanimated: "npm:~3.17.4"
+    react-native-safe-area-context: "npm:5.4.0"
+    react-native-screens: "npm:~4.10.0"
+    react-native-web: "npm:~0.20.0"
+    react-native-webview: "npm:13.13.5"
+    typescript: "npm:~5.8.3"
+    zustand: "npm:^5.0.4"
+  languageName: unknown
+  linkType: soft
+
 "@alliance/shared@workspace:*, @alliance/shared@workspace:shared":
   version: 0.0.0-use.local
   resolution: "@alliance/shared@workspace:shared"
@@ -5075,52 +5121,6 @@ __metadata:
   checksum: 10c0/ec3ba10a573c6b60f94639ffc53526275917a2df6810e4ab5a6b959d87459f9ef3f00d5e7865b82677cb7d21590355b34da14d1d0b9c32d75f95a187e76fff35
   languageName: node
   linkType: hard
-
-"alliance-mobile@workspace:apps/mobile":
-  version: 0.0.0-use.local
-  resolution: "alliance-mobile@workspace:apps/mobile"
-  dependencies:
-    "@alliance/shared": "workspace:*"
-    "@babel/core": "npm:^7.25.2"
-    "@expo/vector-icons": "npm:^14.1.0"
-    "@hey-api/client-fetch": "npm:^0.10.0"
-    "@hey-api/openapi-ts": "npm:^0.67.3"
-    "@react-navigation/bottom-tabs": "npm:^7.3.10"
-    "@react-navigation/elements": "npm:^2.3.8"
-    "@react-navigation/native": "npm:^7.1.6"
-    "@types/react": "npm:~19.0.10"
-    eas-cli: "npm:^16.5.0"
-    eslint: "npm:^9.25.0"
-    eslint-config-expo: "npm:~9.2.0"
-    expo: "npm:~53.0.9"
-    expo-blur: "npm:~14.1.4"
-    expo-constants: "npm:~17.1.6"
-    expo-dev-client: "npm:~5.1.8"
-    expo-font: "npm:~13.3.1"
-    expo-haptics: "npm:~14.1.4"
-    expo-image: "npm:~2.1.7"
-    expo-linking: "npm:~7.1.5"
-    expo-router: "npm:~5.0.6"
-    expo-secure-store: "npm:^14.2.3"
-    expo-splash-screen: "npm:~0.30.8"
-    expo-status-bar: "npm:~2.2.3"
-    expo-symbols: "npm:~0.4.4"
-    expo-system-ui: "npm:~5.0.7"
-    expo-web-browser: "npm:~14.1.6"
-    react: "npm:19.0.0"
-    react-dom: "npm:19.0.0"
-    react-native: "npm:0.79.2"
-    react-native-gesture-handler: "npm:~2.24.0"
-    react-native-localhost: "npm:^1.0.0"
-    react-native-reanimated: "npm:~3.17.4"
-    react-native-safe-area-context: "npm:5.4.0"
-    react-native-screens: "npm:~4.10.0"
-    react-native-web: "npm:~0.20.0"
-    react-native-webview: "npm:13.13.5"
-    typescript: "npm:~5.8.3"
-    zustand: "npm:^5.0.4"
-  languageName: unknown
-  linkType: soft
 
 "alliance@workspace:.":
   version: 0.0.0-use.local
