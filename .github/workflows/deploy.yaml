@@ -410,3 +410,28 @@ jobs:
           echo "Checking API health..."
           curl --fail --silent --show-error https://${{vars.DOMAIN_NAME}}/api/ > /dev/null
           echo "API health ok"
+  build-mobile-app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Activate Yarn 4.x
+        run: corepack prepare yarn@4.9.1 --activate
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "yarn"
+
+      - name: Install Dependencies
+        run: corepack yarn install --immutable
+        working-directory: ./
+
+      - name: Build Mobile App
+        run: corepack yarn workspace @alliance/mobile build
+        working-directory: ./

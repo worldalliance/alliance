@@ -4,11 +4,42 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { useAuth } from "../../../lib/AuthContext";
+import { useEffect, useState } from "react";
+import { actionsFindAll, ActionDto } from "../../../../../shared/client";
+import ActionCard from "../../../components/ActionCard";
+import { router } from "expo-router";
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  const [actions, setActions] = useState<ActionDto[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchActions = async () => {
+      try {
+        const response = await actionsFindAll();
+        if (response.error) {
+          throw new Error("Failed to fetch actions");
+        }
+        setActions(response.data || []);
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load actions");
+        setLoading(false);
+        console.error("Error fetching actions:", err);
+      }
+    };
+
+    fetchActions();
+  }, []);
+
+  const navigateToAction = (actionId: number) => {
+    router.push(`/action/${actionId}`);
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -41,6 +72,37 @@ export default function HomeScreen() {
             <Text style={styles.actionButtonText}>Resources</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      <View style={styles.actionsListContainer}>
+        <View style={styles.actionsTitleRow}>
+          <Text style={styles.sectionTitle}>Actions</Text>
+          {/* <TouchableOpacity onPress={() => router.push("/actions")}>
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity> */}
+        </View>
+
+        {loading ? (
+          <ActivityIndicator
+            size="large"
+            color="#0D1B2A"
+            style={styles.loader}
+          />
+        ) : error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : actions.length === 0 ? (
+          <Text style={styles.noActionsText}>No actions available</Text>
+        ) : (
+          actions
+            .slice(0, 3)
+            .map((action) => (
+              <ActionCard
+                key={action.id}
+                action={action}
+                onPress={() => navigateToAction(action.id)}
+              />
+            ))
+        )}
       </View>
 
       <View style={styles.statsCard}>
@@ -136,6 +198,36 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: 14,
+  },
+  actionsListContainer: {
+    paddingHorizontal: 16,
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  actionsTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: "#0D1B2A",
+    fontWeight: "600",
+  },
+  loader: {
+    marginVertical: 20,
+  },
+  errorText: {
+    color: "#FF3B30",
+    textAlign: "center",
+    padding: 16,
+  },
+  noActionsText: {
+    color: "#666",
+    fontSize: 16,
+    textAlign: "center",
+    padding: 20,
   },
   statsCard: {
     backgroundColor: "#fff",
