@@ -9,6 +9,8 @@ import {
   UseGuards,
   Request,
   UnauthorizedException,
+  ValidationPipe,
+  UsePipes,
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
 import {
@@ -27,6 +29,7 @@ export class ActionsController {
 
   @Post('create')
   @UseGuards(AdminGuard)
+  @UsePipes(new ValidationPipe())
   @ApiOkResponse({ type: ActionDto })
   create(@Body() createActionDto: CreateActionDto) {
     return this.actionsService.create(createActionDto);
@@ -63,6 +66,13 @@ export class ActionsController {
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ActionDto] })
   async findAll() {
+    return this.actionsService.findPublic();
+  }
+
+  @Get('all')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [ActionDto] })
+  async findAllPublic() {
     return this.actionsService.findAll();
   }
 

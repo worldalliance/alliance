@@ -10,6 +10,7 @@ import {
 import { UserAction, UserActionRelation } from './user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
+import { IsNotEmpty } from 'class-validator';
 
 export enum ActionStatus {
   Active = 'active',
@@ -26,6 +27,7 @@ export class Action {
 
   @Column()
   @ApiProperty()
+  @IsNotEmpty()
   name: string;
 
   @Column()
@@ -42,10 +44,12 @@ export class Action {
 
   @Column()
   @ApiProperty()
+  @IsNotEmpty()
   description: string;
 
   @Column()
   @ApiProperty({ enum: Object.keys(ActionStatus) })
+  @IsNotEmpty()
   status: ActionStatus;
 
   @CreateDateColumn()

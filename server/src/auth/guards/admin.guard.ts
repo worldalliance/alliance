@@ -24,9 +24,6 @@ export class AdminGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
 
-    console.log('processing admin guard');
-    console.log(token);
-
     if (!token) {
       console.log('no token');
       throw new UnauthorizedException();
@@ -38,7 +35,7 @@ export class AdminGuard implements CanActivate {
       request['user'] = payload;
 
       const user = await this.userService.findOneByEmail(payload.email);
-      console.log('user', user);
+
       if (!user) {
         console.log('admin guard failed');
         throw new UnauthorizedException();
@@ -47,7 +44,6 @@ export class AdminGuard implements CanActivate {
         console.log('user is not admin');
         throw new UnauthorizedException();
       }
-      console.log('admin guard passed');
       return true;
     } catch {
       throw new UnauthorizedException();

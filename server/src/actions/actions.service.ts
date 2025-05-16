@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateActionDto, UpdateActionDto } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Action } from './entities/action.entity';
-import { Repository } from 'typeorm';
+import { Action, ActionStatus } from './entities/action.entity';
+import { Not, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';
 
@@ -23,6 +23,12 @@ export class ActionsService {
 
   findAll(): Promise<Action[]> {
     return this.actionRepository.find();
+  }
+
+  findPublic(): Promise<Action[]> {
+    return this.actionRepository.find({
+      where: { status: Not(ActionStatus.Draft) },
+    });
   }
 
   async findOne(id: number): Promise<Action | null> {
