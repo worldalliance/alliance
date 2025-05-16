@@ -5,7 +5,7 @@ import {
   ActionDto,
   PostDto,
 } from "../../../../../shared/client";
-import { useAuth } from "../../../../../shared/lib/BaseAuthContext";
+import { useAuth } from "../../lib/AuthContext";
 import Card from "../../components/system/Card";
 import {
   actionsFindAll,

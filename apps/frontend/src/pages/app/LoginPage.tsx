@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
 import FormInput from "../../components/system/FormInput";
-import { useAuth } from "../../../../../shared/lib/BaseAuthContext";
+import { useAuth } from "../../lib/AuthContext";
 import { SignInDto } from "../../../../../shared/client";
 
 const LoginPage: React.FC = () => {
@@ -12,6 +12,7 @@ const LoginPage: React.FC = () => {
   const [formData, setFormData] = useState<SignInDto>({
     email: "",
     password: "",
+    mode: "cookie",
   });
   const [error, setError] = useState<string | null>(null);
 

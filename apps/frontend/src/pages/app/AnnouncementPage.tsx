@@ -7,9 +7,9 @@ import {
 import { CommuniqueDto } from "../../../../../shared/client";
 import ReactMarkdown from "react-markdown";
 import { getApiUrl } from "../../lib/config";
-import { AdminOnly } from "../../../../../shared/lib/AdminOnly";
+import { AdminOnly } from "../../lib/AdminOnly";
 import Button, { ButtonColor } from "../../components/system/Button";
-import { useAuth } from "../../../../../shared/lib/BaseAuthContext";
+import { useAuth } from "../../lib/AuthContext";
 
 const AnnouncementPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();

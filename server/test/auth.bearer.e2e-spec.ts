@@ -76,7 +76,11 @@ describe('Auth (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .post('/auth/login')
-      .send({ email: 'newusertest@test.com', password: 'password' })
+      .send({
+        email: 'newusertest@test.com',
+        password: 'password',
+        mode: 'header',
+      })
       .expect(200);
 
     const body = response.body as AuthTokens;
@@ -103,7 +107,11 @@ describe('Auth (e2e)', () => {
 
       const loginResponse = await request(app.getHttpServer())
         .post('/auth/login')
-        .send({ email: 'newusertest@test.com', password: 'password' })
+        .send({
+          email: 'newusertest@test.com',
+          password: 'password',
+          mode: 'header',
+        })
         .expect(200);
 
       const loginBody = loginResponse.body as AuthTokens;

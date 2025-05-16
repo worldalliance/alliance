@@ -17,7 +17,9 @@ export class RefreshTokenGuard implements CanActivate {
 
     console.log('running refresh token guard');
 
-    const token = this.extractTokenFromCookie(request);
+    const token =
+      this.extractTokenFromCookie(request) ??
+      this.extractTokenFromHeader(request);
 
     if (!token) {
       console.log('missing token');

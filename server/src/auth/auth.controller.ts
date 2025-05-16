@@ -12,8 +12,17 @@ import {
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 import { SignUpDto } from './sign-up.dto';
-import { AuthGuard, JwtRequest } from './guards/auth.guard';
-import { ProfileDto, SignInDto, SignInResponseDto } from './dto/signin.dto';
+import {
+  AuthGuard,
+  extractRefreshTokenFromCookie,
+  JwtRequest,
+} from './guards/auth.guard';
+import {
+  ProfileDto,
+  RequestMode,
+  SignInDto,
+  SignInResponseDto,
+} from './dto/signin.dto';
 import { RefreshTokenGuard } from './guards/refresh.guard';
 import {
   ApiBearerAuth,
@@ -42,7 +51,9 @@ export class AuthController {
       await this.authService.login(signInDto.email, signInDto.password);
 
     this.authService.setAuthCookies(res, access_token, refresh_token);
-
+    if (signInDto.mode === 'header') {
+      return { access_token, refresh_token, isAdmin };
+    }
     return { isAdmin };
   }
 
@@ -71,9 +82,20 @@ export class AuthController {
   @UseGuards(RefreshTokenGuard)
   @ApiOkResponse({ type: AccessToken })
   @HttpCode(HttpStatus.OK)
-  async refreshTokens(@Request() req: JwtRequest) {
+  async refreshTokens(
+    @Request() req: JwtRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const userId: number = req.user.sub;
-    return { access_token: await this.authService.refreshAccessToken(userId) };
+    const access_token = await this.authService.refreshAccessToken(userId);
+    const mode: RequestMode = extractRefreshTokenFromCookie(req)
+      ? 'cookie'
+      : 'header';
+    if (mode === 'cookie') {
+      this.authService.setAuthCookies(res, access_token);
+      return;
+    }
+    return { access_token };
   }
 
   @Get('/me')

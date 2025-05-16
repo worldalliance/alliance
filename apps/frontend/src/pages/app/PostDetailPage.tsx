@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { PostDto, CreateReplyDto } from "../../../../../shared/client";
-import { useAuth } from "../../../../../shared/lib/BaseAuthContext";
+import { useAuth } from "../../lib/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import Card from "../../components/system/Card";
 import {

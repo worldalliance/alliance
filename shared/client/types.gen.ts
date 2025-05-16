@@ -3,10 +3,13 @@
 export type SignInDto = {
     email: string;
     password: string;
+    mode: 'cookie' | 'header';
 };
 
 export type SignInResponseDto = {
     isAdmin: boolean;
+    access_token: string;
+    refresh_token: string;
 };
 
 export type SignUpDto = {
