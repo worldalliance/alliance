@@ -1,5 +1,5 @@
 {
-  "name": "alliance-mobile",
+  "name": "@alliance/mobile",
   "main": "expo-router/entry",
   "version": "1.0.0",
   "packageManager": "yarn@4.9.1",
