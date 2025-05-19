@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+// AuthProvider.tsx
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   authLogin,
   authLogout,
@@ -6,97 +14,89 @@ import {
   authRefreshTokens,
   ProfileDto,
 } from "../../../../shared/client";
-import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: ProfileDto | undefined;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export interface AuthProviderProps extends React.PropsWithChildren {}
+export const AuthProvider: React.FC<React.PropsWithChildren> = ({
+  children,
+}) => {
+  const [user, setUser] = useState<ProfileDto | undefined>();
+  const [loading, setLoading] = useState(true);
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<ProfileDto | undefined>(undefined);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  const navigate = useNavigate();
-
+  // ---------- bootstrap on first mount ----------
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
       try {
-        const profile = (await authMe()).data;
-        console.log("got profile: ", profile);
-        setUser(profile);
+        const { data } = await authMe();
+        if (!cancelled) setUser(data);
       } catch {
         try {
-          console.log("attempting silent refresh");
-          await authRefreshTokens(); // cookie is sent automatically
-          const profile = (await authMe()).data;
-          setUser(profile);
+          await authRefreshTokens();
+          const { data } = await authMe();
+          if (!cancelled) setUser(data);
         } catch {
-          logout();
+          console.log("AuthContext", "refresh failed");
         }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    })();
+    };
+
+    bootstrap();
+    return () => {
+      cancelled = true; // guard against late resolves
+    };
   }, []);
 
-  const login = async (email: string, password: string) => {
+  // ---------- actions ----------
+  const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
-    console.log("logging in");
     try {
-      const response = await authLogin({
+      const { error } = await authLogin({
         body: { email, password, mode: "cookie" },
       });
-      console.log("got response: ", response);
-      if (response.error) {
-        throw new Error("Login failed");
-      }
+      if (error) throw new Error("Login failed");
 
-      const userProfile = await authMe();
-      if (userProfile.data) {
-        setUser(userProfile.data);
-      }
-
-      navigate("/home");
-    } catch (error) {
-      throw error;
+      const { data } = await authMe(); // guaranteed by fresh cookie
+      setUser(data);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const logout = () => {
-    navigate("/login");
-    authLogout();
+  const logout = useCallback(async () => {
+    await authLogout();
     setUser(undefined);
-  };
+  }, []);
 
-  const value: AuthContextType = {
-    isAuthenticated: !!user || loading,
-    user,
-    login,
-    logout,
-    loading,
-  };
+  const value = useMemo<AuthContextType>(
+    () => ({
+      isAuthenticated: !!user,
+      user,
+      login,
+      logout,
+      loading,
+    }),
+    [user, loading, login, logout]
+  );
 
-  console.log("value: ", value);
+  console.log("AuthContext", value);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-
-  return context;
+export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
+  return ctx;
 };

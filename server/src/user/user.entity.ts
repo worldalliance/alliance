@@ -15,6 +15,7 @@ import {
 import { UserAction } from '../actions/entities/user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Communique } from '../communiques/entities/communique.entity';
+import { IsNotEmpty } from 'class-validator';
 
 @Entity()
 export class User {
@@ -23,10 +24,12 @@ export class User {
 
   @Column()
   @ApiProperty()
+  @IsNotEmpty()
   name: string;
 
   @Column({ unique: true })
   @ApiProperty()
+  @IsNotEmpty()
   email: string;
 
   @Column()

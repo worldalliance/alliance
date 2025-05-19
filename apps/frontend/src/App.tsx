@@ -45,7 +45,7 @@ const ProtectedRoute: React.FC<React.PropsWithChildren> = ({
 const LoggedOutOnlyRoute: React.FC<React.PropsWithChildren> = ({
   children,
 }: React.PropsWithChildren) => {
-  const isAuthenticated = localStorage.getItem("token") !== null;
+  const { isAuthenticated } = useAuth();
   if (isAuthenticated) {
     return <Navigate to="/home" />;
   }

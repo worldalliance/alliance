@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  StyleSheet,
   View,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import { Stack, Link, useRouter } from "expo-router";
 import { authRegister } from "@alliance/shared/client";
+import { authStyles } from "../../lib/style/authStyles";
 
 const SignupScreen = () => {
   const router = useRouter();
@@ -95,7 +95,7 @@ const SignupScreen = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={authStyles.container}
     >
       <Stack.Screen
         options={{
@@ -103,14 +103,17 @@ const SignupScreen = () => {
           headerShown: true,
         }}
       />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.formContainer}>
-          <Text style={styles.title}>Create an Account</Text>
+      <ScrollView contentContainerStyle={authStyles.scrollContent}>
+        <View style={authStyles.formContainer}>
+          <Text style={authStyles.title}>Create an Account</Text>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Full Name</Text>
+          <View style={authStyles.inputContainer}>
+            <Text style={authStyles.label}>Full Name</Text>
             <TextInput
-              style={[styles.input, errors.name ? styles.inputError : null]}
+              style={[
+                authStyles.input,
+                errors.name ? authStyles.inputError : null,
+              ]}
               placeholder="John Doe"
               value={name}
               onChangeText={(text) => {
@@ -120,14 +123,17 @@ const SignupScreen = () => {
               autoCapitalize="words"
             />
             {errors.name ? (
-              <Text style={styles.errorText}>{errors.name}</Text>
+              <Text style={authStyles.errorText}>{errors.name}</Text>
             ) : null}
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
+          <View style={authStyles.inputContainer}>
+            <Text style={authStyles.label}>Email</Text>
             <TextInput
-              style={[styles.input, errors.email ? styles.inputError : null]}
+              style={[
+                authStyles.input,
+                errors.email ? authStyles.inputError : null,
+              ]}
               placeholder="your@email.com"
               value={email}
               onChangeText={(text) => {
@@ -139,14 +145,17 @@ const SignupScreen = () => {
               autoCorrect={false}
             />
             {errors.email ? (
-              <Text style={styles.errorText}>{errors.email}</Text>
+              <Text style={authStyles.errorText}>{errors.email}</Text>
             ) : null}
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
+          <View style={authStyles.inputContainer}>
+            <Text style={authStyles.label}>Password</Text>
             <TextInput
-              style={[styles.input, errors.password ? styles.inputError : null]}
+              style={[
+                authStyles.input,
+                errors.password ? authStyles.inputError : null,
+              ]}
               placeholder="Minimum 8 characters"
               value={password}
               onChangeText={(text) => {
@@ -158,27 +167,27 @@ const SignupScreen = () => {
               autoCorrect={false}
             />
             {errors.password ? (
-              <Text style={styles.errorText}>{errors.password}</Text>
+              <Text style={authStyles.errorText}>{errors.password}</Text>
             ) : null}
           </View>
 
           <TouchableOpacity
-            style={styles.signupButton}
+            style={authStyles.primaryButton}
             onPress={handleSignup}
             disabled={isSubmitting}
           >
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.signupButtonText}>Create Account</Text>
+              <Text style={authStyles.primaryButtonText}>Create Account</Text>
             )}
           </TouchableOpacity>
 
-          <View style={styles.loginContainer}>
-            <Text style={styles.loginText}>Already have an account?</Text>
+          <View style={authStyles.linkContainer}>
+            <Text style={authStyles.linkText}>Already have an account?</Text>
             <Link href="/auth/login" asChild>
               <TouchableOpacity>
-                <Text style={styles.loginLink}>Log In</Text>
+                <Text style={authStyles.link}>Log In</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -187,86 +196,5 @@ const SignupScreen = () => {
     </KeyboardAvoidingView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 20,
-  },
-  formContainer: {
-    backgroundColor: "#ffffff",
-    borderRadius: 8,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#444",
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 4,
-    padding: 12,
-    fontSize: 16,
-  },
-  inputError: {
-    borderColor: "#e53935",
-  },
-  errorText: {
-    color: "#e53935",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  signupButton: {
-    backgroundColor: "#444",
-    borderRadius: 4,
-    padding: 14,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  signupButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  loginContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 24,
-  },
-  loginText: {
-    color: "#666",
-    fontSize: 14,
-  },
-  loginLink: {
-    color: "#0066cc",
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 4,
-  },
-});
 
 export default SignupScreen;

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  StyleSheet,
   View,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 import { Stack, Link, useRouter } from "expo-router";
 import { useAuth } from "../../lib/AuthContext";
+import { authStyles } from "../../lib/style/authStyles";
 
 const LoginScreen = () => {
   const router = useRouter();
@@ -46,7 +46,7 @@ const LoginScreen = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
+      style={authStyles.container}
     >
       <Stack.Screen
         options={{
@@ -54,14 +54,14 @@ const LoginScreen = () => {
           headerShown: true,
         }}
       />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.formContainer}>
-          <Text style={styles.title}>Welcome Back</Text>
+      <ScrollView contentContainerStyle={authStyles.scrollContent}>
+        <View style={authStyles.formContainer}>
+          <Text style={authStyles.title}>Log In</Text>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email</Text>
+          <View style={authStyles.inputContainer}>
+            <Text style={authStyles.label}>Email</Text>
             <TextInput
-              style={styles.input}
+              style={authStyles.input}
               placeholder="your@email.com"
               value={email}
               onChangeText={setEmail}
@@ -71,10 +71,10 @@ const LoginScreen = () => {
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
+          <View style={authStyles.inputContainer}>
+            <Text style={authStyles.label}>Password</Text>
             <TextInput
-              style={styles.input}
+              style={authStyles.input}
               placeholder="Your password"
               value={password}
               onChangeText={setPassword}
@@ -85,22 +85,22 @@ const LoginScreen = () => {
           </View>
 
           <TouchableOpacity
-            style={styles.loginButton}
+            style={authStyles.primaryButton}
             onPress={handleLogin}
             disabled={isSubmitting || isLoading}
           >
             {isSubmitting || isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>Log In</Text>
+              <Text style={authStyles.primaryButtonText}>Log In</Text>
             )}
           </TouchableOpacity>
 
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don&apos;t have an account?</Text>
+          <View style={authStyles.linkContainer}>
+            <Text style={authStyles.linkText}>Don&apos;t have an account?</Text>
             <Link href="/auth/signup" asChild>
               <TouchableOpacity>
-                <Text style={styles.signupLink}>Sign Up</Text>
+                <Text style={authStyles.link}>Sign Up</Text>
               </TouchableOpacity>
             </Link>
           </View>
@@ -109,78 +109,5 @@ const LoginScreen = () => {
     </KeyboardAvoidingView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: "center",
-    padding: 20,
-  },
-  formContainer: {
-    backgroundColor: "#ffffff",
-    borderRadius: 8,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#444",
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 4,
-    padding: 12,
-    fontSize: 16,
-  },
-  loginButton: {
-    backgroundColor: "#444",
-    borderRadius: 4,
-    padding: 14,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  loginButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  signupContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 24,
-  },
-  signupText: {
-    color: "#666",
-    fontSize: 14,
-  },
-  signupLink: {
-    color: "#0066cc",
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 4,
-  },
-});
 
 export default LoginScreen;
