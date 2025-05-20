@@ -16,7 +16,7 @@ const TwoColumnSplit = ({
       </div>
       <div
         className={`flex-col items-stretch flex-1 max-w-[350px] h-full ${
-          coloredRight ? "bg-[#c4d8bf]" : "bg-white"
+          coloredRight ? "bg-agreen" : "bg-white"
         } min-h-[100vh] hidden sm:flex`}
       >
         {right}

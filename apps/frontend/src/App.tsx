@@ -30,8 +30,8 @@ import { AuthProvider, useAuth } from "./lib/AuthContext";
 const ProtectedRoute: React.FC<React.PropsWithChildren> = ({
   children,
 }: React.PropsWithChildren) => {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) {
+  const { isAuthenticated, loading } = useAuth();
+  if (!isAuthenticated && !loading) {
     return <Navigate to="/login" />;
   }
   return (
