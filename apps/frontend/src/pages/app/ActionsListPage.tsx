@@ -47,7 +47,7 @@ const ActionsListPage: React.FC = () => {
   }, [actions, filterMode]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-agreen items-center">
+    <div className="flex flex-col min-h-screen bg-white items-center">
       <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
         <div className="flex py-8 flex-row justify-between items-center w-[90%]">
           <p className="font-sabon text-xl text-left h-fit pt-2">Filter:</p>

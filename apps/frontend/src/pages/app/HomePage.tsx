@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import ActionItemCard, {
   ActionCardAction,
 } from "../../components/ActionItemCard";
@@ -6,7 +6,7 @@ import ActionPromptCard from "../../components/ActionPromptCard";
 import Button, { ButtonColor } from "../../components/system/Button";
 import { HomeTaskView } from "../../components/HomeTaskView";
 import { ActionDto } from "@alliance/shared/client";
-import { actionsFindAll } from "@alliance/shared/client";
+import { actionsFindAll, actionsUpdate } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 import { useAuth } from "../../lib/AuthContext";
 
@@ -39,8 +39,10 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const { loading: authLoading } = useAuth();
 
+  console.log(todoActions);
+
   useEffect(() => {
-    if (authLoading) return; // wait until auth bootstrap finished
+    if (authLoading) return;
     client.setConfig({
       baseUrl: "http://localhost:3005",
       credentials: "include",
@@ -54,32 +56,10 @@ const HomePage: React.FC = () => {
   return (
     <div className="flex flex-col w-full h-full items-center bg-white">
       <div className="flex flex-col py-12 max-w-[600px] gap-y-5 overflow-y-auto">
-        <div className="flex flex-row items-center gap-x-2 justify-between w-full">
-          <h1
-            className="text-[#111] !text-[16pt] font-font"
-            style={{
-              fontWeight: "1000 !important",
-            }}
-          >
-            Your Tasks
-          </h1>
-          <Button
-            color={ButtonColor.Light}
-            label="View All"
-            onClick={() => {}}
-          />
-        </div>
         {error && <p className="text-red-500">{error}</p>}
-        <HomeTaskView actions={todoActions} />
+        <HomeTaskView actions={todoActions} onTaskComplete={() => {}} />
         <div className="flex flex-row items-center gap-x-2 justify-between w-full mt-5">
-          <h1
-            className="text-[#111] !text-[16pt] font-font"
-            style={{
-              fontWeight: "1000 !important",
-            }}
-          >
-            New Actions
-          </h1>
+          <h1 className="text-[#111] !text-[16pt] font-font">New Actions</h1>
           <Button
             color={ButtonColor.Light}
             label="View All"

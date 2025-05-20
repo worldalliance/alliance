@@ -2,7 +2,7 @@ import React from "react";
 
 interface ButtonProps {
   label: string;
-  onClick: () => void;
+  onClick: (e: React.MouseEvent) => void;
   className?: string;
   color?: ButtonColor;
   type?: "button" | "submit" | "reset";

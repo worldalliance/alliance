@@ -11,7 +11,7 @@ export enum CardStyle {
 
 export interface CardProps extends PropsWithChildren {
   className?: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
   style?: CardStyle;
   bgImage?: string;
 }

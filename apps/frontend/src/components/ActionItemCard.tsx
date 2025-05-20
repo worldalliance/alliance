@@ -4,7 +4,7 @@ import Card, { CardStyle } from "./system/Card";
 import Button, { ButtonColor } from "./system/Button";
 import { useNavigate } from "react-router-dom";
 
-interface ActionItemCardProps {
+export interface ActionItemCardProps {
   title: string;
   description: string;
   category: string;
