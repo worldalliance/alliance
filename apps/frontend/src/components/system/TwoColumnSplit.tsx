@@ -1,17 +1,25 @@
 export interface TwoColumnSplitProps {
   left: React.ReactNode;
   right: React.ReactNode;
+  coloredLeft?: boolean;
   coloredRight?: boolean;
+  border?: boolean;
 }
 
 const TwoColumnSplit = ({
   left,
   right,
+  coloredLeft = false,
   coloredRight = false,
+  border = true,
 }: TwoColumnSplitProps) => {
   return (
     <div className="flex flex-row min-h-screen w-full h-full justify-center bg-pagebg">
-      <div className="flex flex-col flex-2 border-r border-zinc-400 items-center">
+      <div
+        className={`flex flex-col flex-2 ${
+          border ? "border-r border-zinc-400" : ""
+        } items-center ${coloredLeft ? "bg-agreen" : "bg-white"}`}
+      >
         {left}
       </div>
       <div

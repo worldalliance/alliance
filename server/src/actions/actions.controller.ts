@@ -11,6 +11,7 @@ import {
   UnauthorizedException,
   ValidationPipe,
   UsePipes,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
 import {
@@ -26,14 +27,6 @@ import { ApiOkResponse, ApiUnauthorizedResponse } from '@nestjs/swagger';
 @Controller('actions')
 export class ActionsController {
   constructor(private readonly actionsService: ActionsService) {}
-
-  @Post('create')
-  @UseGuards(AdminGuard)
-  @UsePipes(new ValidationPipe())
-  @ApiOkResponse({ type: ActionDto })
-  create(@Body() createActionDto: CreateActionDto) {
-    return this.actionsService.create(createActionDto);
-  }
 
   @Post('join/:id')
   @UseGuards(AuthGuard)
@@ -72,7 +65,7 @@ export class ActionsController {
   @Get('all')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [ActionDto] })
-  async findAllPublic() {
+  async findAllWithDrafts() {
     return this.actionsService.findAll();
   }
 
@@ -80,8 +73,16 @@ export class ActionsController {
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionDto })
   @ApiUnauthorizedResponse()
-  findOne(@Param('id') id: string) {
-    return this.actionsService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.actionsService.findOne(id);
+  }
+
+  @Post('create')
+  @UseGuards(AdminGuard)
+  @UsePipes(new ValidationPipe())
+  @ApiOkResponse({ type: ActionDto })
+  create(@Body() createActionDto: CreateActionDto) {
+    return this.actionsService.create(createActionDto);
   }
 
   @Patch(':id')

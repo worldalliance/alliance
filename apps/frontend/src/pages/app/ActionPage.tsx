@@ -135,7 +135,7 @@ const ActionPage: React.FC = () => {
           eiusmod tempor incididunt ut labore et dolore magna aliqua.
         </p>
 
-        {actionId && <ActionForumPosts actionId={actionId} />}
+        <ActionForumPosts actionId={actionId} />
       </div>
     </>
   );

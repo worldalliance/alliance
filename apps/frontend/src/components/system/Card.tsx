@@ -26,7 +26,8 @@ const Card: React.FC<CardProps> = ({
   const cardStyle = style ?? CardStyle.White;
 
   const styleClasses = {
-    [CardStyle.White]: "bg-white border-zinc-400 shadow-zinc-200/50",
+    [CardStyle.White]:
+      "bg-white border-gray-300 transition-[border] duration-100 border-box",
     [CardStyle.Alert]: "bg-sky-100 border-sky-300",
     [CardStyle.Outline]: "bg-transparent border-gray-300",
     [CardStyle.Grey]: "bg-stone-200/75 border-gray-300 border-[1.5px]",

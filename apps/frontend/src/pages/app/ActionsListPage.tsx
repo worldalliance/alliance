@@ -24,26 +24,14 @@ const ActionsListPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchActions = async () => {
-      try {
-        console.log("fetching actions");
-
-        const response = await actionsFindAll();
-
-        if (response.error) {
-          throw new Error("Failed to fetch actions");
-        }
-
+    actionsFindAll().then((response) => {
+      if (response.data) {
         setActions(response.data || []);
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to load actions. Please try again later.");
-        setLoading(false);
-        console.error("Error fetching actions:", err);
+      } else {
+        setError("Failed to load actions");
       }
-    };
-
-    fetchActions();
+      setLoading(false);
+    });
   }, []);
 
   const filteredActions = useMemo(() => {
@@ -52,14 +40,14 @@ const ActionsListPage: React.FC = () => {
     }
 
     if (filterMode === FilterMode.Joined) {
-      return actions; //todo: implement
+      return actions; //TODO: implement
     }
 
     return actions.filter((action) => action.status === filterMode);
   }, [actions, filterMode]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-pagebg items-center">
+    <div className="flex flex-col min-h-screen bg-agreen items-center">
       <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
         <div className="flex py-8 flex-row justify-between items-center w-[90%]">
           <p className="font-sabon text-xl text-left h-fit pt-2">Filter:</p>

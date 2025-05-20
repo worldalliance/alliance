@@ -28,13 +28,8 @@ export type ProfileDto = {
     admin: boolean;
 };
 
-export type CreateActionDto = {
-    name: string;
-    category: string;
-    whyJoin: string;
-    image: string;
-    description: string;
-    status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+export type UserActionDto = {
+    status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
 };
 
 export type ActionDto = {
@@ -48,8 +43,13 @@ export type ActionDto = {
     usersJoined: number;
 };
 
-export type UserActionDto = {
-    status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
+export type CreateActionDto = {
+    name: string;
+    category: string;
+    whyJoin: string;
+    image: string;
+    description: string;
+    status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
 };
 
 export type UpdateActionDto = {
@@ -289,19 +289,6 @@ export type AuthLogoutResponses = {
     200: unknown;
 };
 
-export type ActionsCreateData = {
-    body: CreateActionDto;
-    path?: never;
-    query?: never;
-    url: '/actions/create';
-};
-
-export type ActionsCreateResponses = {
-    200: ActionDto;
-};
-
-export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
-
 export type ActionsJoinData = {
     body?: never;
     path: {
@@ -387,6 +374,32 @@ export type ActionsUpdateData = {
 export type ActionsUpdateResponses = {
     200: unknown;
 };
+
+export type ActionsCreateData = {
+    body: CreateActionDto;
+    path?: never;
+    query?: never;
+    url: '/actions/create';
+};
+
+export type ActionsCreateResponses = {
+    200: ActionDto;
+};
+
+export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
+
+export type ActionsFindAllWithDraftsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/all';
+};
+
+export type ActionsFindAllWithDraftsResponses = {
+    200: Array<ActionDto>;
+};
+
+export type ActionsFindAllWithDraftsResponse = ActionsFindAllWithDraftsResponses[keyof ActionsFindAllWithDraftsResponses];
 
 export type CommuniquesFindAllData = {
     body?: never;

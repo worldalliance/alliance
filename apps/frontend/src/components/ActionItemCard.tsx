@@ -1,6 +1,6 @@
 import React from "react";
 import Badge from "./system/Badge";
-import Card from "./system/Card";
+import Card, { CardStyle } from "./system/Card";
 import Button, { ButtonColor } from "./system/Button";
 import { useNavigate } from "react-router-dom";
 
@@ -32,7 +32,10 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   return (
     <div className={`relative ${className}`}>
       {/* <StatusIndicator status={Status.InProgress} /> */}
-      <Card className="block bg-pagebg text-[11pt] font-avenir">
+      <Card
+        className="block bg-pagebg text-[11pt] font-avenir"
+        style={CardStyle.White}
+      >
         <div className="flex items-center justify-start w-[100%] space-x-3">
           <p className="font-bold">{title}</p>
           <Badge>{category}</Badge>

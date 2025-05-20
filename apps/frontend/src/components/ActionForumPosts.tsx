@@ -8,7 +8,7 @@ import Button from "./system/Button";
 import { forumFindPostsByAction } from "../../../../shared/client";
 
 interface ActionForumPostsProps {
-  actionId: string;
+  actionId: string | undefined;
 }
 
 const ActionForumPosts: React.FC<ActionForumPostsProps> = ({
@@ -49,14 +49,6 @@ const ActionForumPosts: React.FC<ActionForumPostsProps> = ({
   const handleViewPost = (postId: number) => {
     navigate(`/forum/post/${postId}`);
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center py-4">
-        <div className="loader">Loading...</div>
-      </div>
-    );
-  }
 
   if (error) {
     return <div className="text-red-500 text-sm py-2">{error}</div>;

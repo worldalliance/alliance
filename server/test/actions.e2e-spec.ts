@@ -3,7 +3,7 @@ import { Action, ActionStatus } from '../src/actions/entities/action.entity';
 import { CreateActionDto } from 'src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 
-describe('Forum (e2e)', () => {
+describe('Actions (e2e)', () => {
   let ctx: TestContext;
   let testAction: Action;
   let testDraftAction: Action;

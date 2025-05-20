@@ -19,16 +19,6 @@ export enum ButtonColor {
   Grey = "bg-gray-200 !text-black",
 }
 
-const ButtonColorClasses: Record<ButtonColor, string> = {
-  [ButtonColor.Stone]: "stone",
-  [ButtonColor.Green]: "green",
-  [ButtonColor.Red]: "red",
-  [ButtonColor.Light]: "light",
-  [ButtonColor.Blue]: "blue",
-  [ButtonColor.Transparent]: "transparent",
-  [ButtonColor.Grey]: "gray",
-};
-
 const Button: React.FC<ButtonProps> = ({
   label,
   onClick,

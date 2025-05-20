@@ -26,6 +26,11 @@ import AboutPage from "./pages/static/AboutPage";
 import { client } from "../../../shared/client/client.gen";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 
+client.setConfig({
+  baseUrl: getApiUrl(),
+  credentials: "include",
+});
+
 // A simple auth check component
 const ProtectedRoute: React.FC<React.PropsWithChildren> = ({
   children,
@@ -52,14 +57,6 @@ const LoggedOutOnlyRoute: React.FC<React.PropsWithChildren> = ({
 
   return <>{children}</>;
 };
-
-client.setConfig({
-  baseUrl: getApiUrl(),
-  credentials: "include",
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
-  },
-});
 
 // AppRoutes component to use the auth context
 const AppRoutes = () => {
