@@ -20,6 +20,8 @@
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
+    "msw": "^2.8.4",
+    "msw-storybook-addon": "^2.0.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-globe.gl": "^2.33.2",
@@ -64,6 +66,11 @@
   "eslintConfig": {
     "extends": [
       "plugin:storybook/recommended"
+    ]
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
     ]
   }
 }
