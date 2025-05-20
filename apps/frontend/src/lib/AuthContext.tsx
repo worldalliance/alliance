@@ -31,17 +31,22 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
     const [user, setUser] = useState<ProfileDto | undefined>();
     const [loading, setLoading] = useState(true);
 
-    // ---------- bootstrap on first mount ----------
     useEffect(() => {
       let cancelled = false;
 
       const bootstrap = async () => {
         try {
           const { data } = await authMe();
-          if (!cancelled) setUser(data);
+          if (data) {
+            if (!cancelled) setUser(data);
+          } else {
+            throw new Error("No user data");
+          }
         } catch {
           try {
-            await authRefreshTokens();
+            console.log("AuthContext", "refreshing tokens");
+            const response = await authRefreshTokens();
+            console.log("AuthContext", "refresh response", response);
             const { data } = await authMe();
             if (!cancelled) setUser(data);
           } catch {
@@ -54,7 +59,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
 
       bootstrap();
       return () => {
-        cancelled = true; // guard against late resolves
+        cancelled = true;
       };
     }, []);
 
