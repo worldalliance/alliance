@@ -1,7 +1,8 @@
 import * as request from 'supertest';
 import { Action, ActionStatus } from '../src/actions/entities/action.entity';
-import { CreateActionDto } from 'src/actions/dto/action.dto';
+import { CreateActionDto } from '../src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
+import { UserActionRelation } from '../src/actions/entities/user-action.entity';
 
 describe('Actions (e2e)', () => {
   let ctx: TestContext;
@@ -80,7 +81,7 @@ describe('Actions (e2e)', () => {
       expect(res.status).toBe(201);
     });
 
-    it('user can join an action', async () => {
+    it('user is shown their own relation to an action', async () => {
       const action = await ctx.actionRepo.findOneBy({
         name: 'Test Action',
       });
@@ -90,6 +91,23 @@ describe('Actions (e2e)', () => {
         .set('Authorization', `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(201);
+
+      const res2 = await request(ctx.app.getHttpServer())
+        .get(`/actions/${action!.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+      expect(res2.status).toBe(200);
+      expect(res2.body.myRelation.status).toBe(UserActionRelation.joined);
+    });
+
+    it('user can see their relaton to all actions', async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get('/actions')
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body[0].myRelation.status).toBe(UserActionRelation.joined);
+      expect(res.body[0].usersJoined).toBe(1);
     });
 
     it('can fetch all actions with status', async () => {

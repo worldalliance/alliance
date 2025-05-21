@@ -19,10 +19,14 @@ export class UserAction {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, (user) => user.actionRelations)
+  @ManyToOne(() => User, (user) => user.actionRelations, {
+    onDelete: 'CASCADE',
+  })
   user: User;
 
-  @ManyToOne(() => Action, (action) => action.userRelations)
+  @ManyToOne(() => Action, (action) => action.userRelations, {
+    onDelete: 'CASCADE',
+  })
   action: Action;
 
   @Column({
@@ -37,4 +41,12 @@ export class UserAction {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @ApiProperty()
+  @Column({ nullable: true })
+  dateCommitted: Date;
+
+  @ApiProperty()
+  @Column({ nullable: true })
+  deadline: Date;
 }

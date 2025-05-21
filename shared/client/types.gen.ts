@@ -30,6 +30,8 @@ export type ProfileDto = {
 
 export type UserActionDto = {
     status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
+    dateCommitted: string;
+    deadline: string;
 };
 
 export type ActionDto = {
@@ -41,6 +43,7 @@ export type ActionDto = {
     description: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
     usersJoined: number;
+    myRelation: UserActionDto;
 };
 
 export type CreateActionDto = {
@@ -321,7 +324,7 @@ export type ActionsFindAllData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/actions';
+    url: '/actions/findAll';
 };
 
 export type ActionsFindAllResponses = {
@@ -329,6 +332,19 @@ export type ActionsFindAllResponses = {
 };
 
 export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
+
+export type ActionsFindAllPublicData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions';
+};
+
+export type ActionsFindAllPublicResponses = {
+    200: Array<ActionDto>;
+};
+
+export type ActionsFindAllPublicResponse = ActionsFindAllPublicResponses[keyof ActionsFindAllPublicResponses];
 
 export type ActionsFindAllWithDraftsData = {
     body?: never;

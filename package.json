@@ -10,6 +10,8 @@
   ],
   "scripts": {
     "frontend:dev": "yarn workspace @alliance/frontend dev",
+    "admin:dev": "yarn workspace @alliance/admin dev",
+    "server:dev": "cd server && npm run start:dev",
     "gen-api": "yarn workspace @alliance/shared gen-api"
   },
   "packageManager": "yarn@4.9.1"

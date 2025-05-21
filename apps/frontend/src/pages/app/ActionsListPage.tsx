@@ -27,6 +27,7 @@ const ActionsListPage: React.FC = () => {
     actionsFindAll().then((response) => {
       if (response.data) {
         setActions(response.data || []);
+        console.log(response.data);
       } else {
         setError("Failed to load actions");
       }
