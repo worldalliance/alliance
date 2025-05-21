@@ -25,6 +25,7 @@ import PostFormPage from "./pages/app/PostFormPage";
 import AboutPage from "./pages/static/AboutPage";
 import { client } from "../../../shared/client/client.gen";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
+import TempProdPassword from "./TempProdPassword";
 
 client.setConfig({
   baseUrl: getApiUrl(),
@@ -188,9 +189,11 @@ const AppRoutes = () => {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <TempProdPassword>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </TempProdPassword>
     </Router>
   );
 }
