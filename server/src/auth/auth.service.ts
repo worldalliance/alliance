@@ -15,24 +15,27 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  private static ACCESS_COOKIE = 'access_token';
-  private static REFRESH_COOKIE = 'refresh_token';
+  public static ACCESS_COOKIE = 'access_token';
+  public static REFRESH_COOKIE = 'refresh_token';
 
   setAuthCookies(res: Response, access: string, refresh?: string) {
     const secure = process.env.NODE_ENV === 'production';
+
     res.cookie(AuthService.ACCESS_COOKIE, access, {
       httpOnly: true,
       secure,
       sameSite: 'strict',
       maxAge: 1000 * 60 * 15, // 15 min
     });
-    res.cookie(AuthService.REFRESH_COOKIE, refresh, {
-      httpOnly: true,
-      secure,
-      sameSite: 'strict',
-      path: '/auth/refresh', // refresh cookie sent only to this route
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-    });
+    if (refresh) {
+      res.cookie(AuthService.REFRESH_COOKIE, refresh, {
+        httpOnly: true,
+        secure,
+        sameSite: 'strict',
+        path: '/auth/refresh', // refresh cookie sent only to this route
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      });
+    }
   }
 
   clearAuthCookies(res: Response) {
@@ -77,10 +80,11 @@ export class AuthService {
       email: user.email,
       tokenType: JWTTokenType.refresh,
     };
-    return this.jwtService.signAsync(payload, {
+    const token = await this.jwtService.signAsync(payload, {
       expiresIn: '7d',
       secret: process.env.JWT_REFRESH_SECRET,
     });
+    return token;
   }
 
   async generateAccessToken(user: User): Promise<string> {

@@ -50,11 +50,12 @@ const AccountPage: React.FC = () => {
             </AdminOnly>
           </div>
           <Button
-            label="Log Out"
             onClick={handleLogout}
             color={ButtonColor.Stone}
             className="px-4"
-          />
+          >
+            Log Out
+          </Button>
         </div>
 
         {error && (

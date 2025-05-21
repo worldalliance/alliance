@@ -33,7 +33,7 @@ const ActionPage: React.FC = () => {
       try {
         console.log("fetching action", actionId);
         const response = await actionsFindOne({
-          path: { id: actionId },
+          path: { id: parseInt(actionId) },
         });
 
         if (response.error) {
@@ -107,11 +107,9 @@ const ActionPage: React.FC = () => {
             </p>
           </div>
           {userRelation === "none" && actionId && (
-            <Button
-              className="mt-2"
-              label="Commit to this action"
-              onClick={onJoinAction}
-            />
+            <Button className="mt-2" onClick={onJoinAction}>
+              Commit to this action
+            </Button>
           )}
         </div>
         {userRelation === "joined" && <PokePanel />}

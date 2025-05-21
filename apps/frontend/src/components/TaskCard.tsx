@@ -77,16 +77,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
           <div className="flex justify-between items-center gap-x-2">
             <p className="text-gray-700 font-bold">You committed 3 days ago</p>
             <div className="flex flex-row gap-x-2">
-              <Button
-                color={ButtonColor.Light}
-                onClick={goToActionPage}
-                label="Action Page"
-              />
-              <Button
-                color={ButtonColor.Blue}
-                onClick={handleCompleteClick}
-                label="Complete Task"
-              />
+              <Button color={ButtonColor.Light} onClick={goToActionPage}>
+                Details
+              </Button>
+              <Button color={ButtonColor.Blue} onClick={handleCompleteClick}>
+                Complete Task
+              </Button>
             </div>
           </div>
         </div>

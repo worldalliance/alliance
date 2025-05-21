@@ -13,11 +13,12 @@ const SocialPanel = () => {
           </p>
         </div>
         <Button
-          label="Say thanks"
           onClick={() => {}}
           color={ButtonColor.Grey}
           className="text-[9pt]"
-        />
+        >
+          Say thanks
+        </Button>
       </div>
       <div className="flex flex-row gap-x-2">
         <UserBubble />
@@ -28,11 +29,12 @@ const SocialPanel = () => {
           </p>
         </div>
         <Button
-          label="Say thanks"
           onClick={() => {}}
           color={ButtonColor.Grey}
           className="text-[9pt]"
-        />
+        >
+          Say thanks
+        </Button>
       </div>
     </div>
   );

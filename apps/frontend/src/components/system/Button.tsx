@@ -1,13 +1,19 @@
 import React from "react";
 
-interface ButtonProps {
-  label: string;
-  onClick: (e: React.MouseEvent) => void;
+type ButtonProps = React.PropsWithChildren & {
   className?: string;
   color?: ButtonColor;
-  type?: "button" | "submit" | "reset";
   disabled?: boolean;
-}
+} & (
+    | {
+        type: "submit";
+        onClick?: (e: React.FormEvent) => void;
+      }
+    | {
+        type?: "button" | "reset";
+        onClick: (e: React.MouseEvent) => void;
+      }
+  );
 
 export enum ButtonColor {
   Stone = "bg-stone-700",
@@ -20,8 +26,8 @@ export enum ButtonColor {
 }
 
 const Button: React.FC<ButtonProps> = ({
-  label,
   onClick,
+  children,
   className,
   color: colorProp,
   type = "button",
@@ -39,7 +45,7 @@ const Button: React.FC<ButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
     >
-      {label}
+      {children}
     </button>
   );
 };

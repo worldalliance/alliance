@@ -75,10 +75,11 @@ const AnnouncementsListPage: React.FC = () => {
           <h1 className="text-2xl font-bold">Announcements</h1>
           <AdminOnly>
             <Button
-              label="New Announcement"
               color={ButtonColor.Blue}
               onClick={() => navigate("/announcements/new")}
-            />
+            >
+              New Announcement
+            </Button>
           </AdminOnly>
         </div>
 

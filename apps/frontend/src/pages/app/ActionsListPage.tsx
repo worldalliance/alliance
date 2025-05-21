@@ -59,8 +59,9 @@ const ActionsListPage: React.FC = () => {
                   filterMode === mode ? ButtonColor.Blue : ButtonColor.Light
                 }
                 onClick={() => setFilterMode(mode)}
-                label={mode}
-              ></Button>
+              >
+                {mode}
+              </Button>
             ))}
           </div>
         </div>

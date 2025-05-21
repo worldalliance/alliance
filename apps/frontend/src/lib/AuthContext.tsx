@@ -105,7 +105,7 @@ export const useAuth = () => {
   if (import.meta.env.STORYBOOK) {
     return {
       isAuthenticated: true,
-      user: {},
+      user: undefined,
       login: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       loading: false,

@@ -48,11 +48,12 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
             <Button
               color={ButtonColor.Transparent}
               key={action}
-              label={action}
               onClick={() => {
                 onClick ? onClick() : navigate(`/action/${title}`);
               }}
-            />
+            >
+              {action}
+            </Button>
           ))}
         </div>
       </Card>

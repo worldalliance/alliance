@@ -60,11 +60,9 @@ const HomePage: React.FC = () => {
         <HomeTaskView actions={todoActions} onTaskComplete={() => {}} />
         <div className="flex flex-row items-center gap-x-2 justify-between w-full mt-5">
           <h1 className="text-[#111] !text-[16pt] font-font">New Actions</h1>
-          <Button
-            color={ButtonColor.Light}
-            label="View All"
-            onClick={() => {}}
-          />
+          <Button color={ButtonColor.Light} onClick={() => {}}>
+            View All
+          </Button>
         </div>
         <ActionPromptCard
           id="1"

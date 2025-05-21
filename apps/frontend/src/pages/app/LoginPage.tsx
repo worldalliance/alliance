@@ -86,13 +86,13 @@ const LoginPage: React.FC = () => {
 
               <div className="pt-2">
                 <Button
-                  label={loading ? "Logging in..." : "Log in"}
-                  onClick={() => {}}
                   color={ButtonColor.Stone}
                   className="w-full flex justify-center text-center py-3 pb-2"
                   type="submit"
                   disabled={loading}
-                />
+                >
+                  Log In
+                </Button>
               </div>
             </form>
           </Card>

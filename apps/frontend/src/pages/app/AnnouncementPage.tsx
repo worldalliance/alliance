@@ -122,17 +122,16 @@ const AnnouncementPage: React.FC = () => {
       <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))]">
         <div className="w-full">
           <div className="mb-3 flex flex-row gap-x-3">
-            <Button
-              label="Back to Announcements"
-              color={ButtonColor.Light}
-              onClick={handleBackClick}
-            />
+            <Button color={ButtonColor.Light} onClick={handleBackClick}>
+              Back to Announcements
+            </Button>
             <AdminOnly>
               <Button
-                label="Edit"
                 color={ButtonColor.Blue}
                 onClick={() => navigate(`/announcements/edit/${id}`)}
-              />
+              >
+                Edit
+              </Button>
             </AdminOnly>
           </div>
 
