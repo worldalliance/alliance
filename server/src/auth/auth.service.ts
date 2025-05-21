@@ -93,7 +93,7 @@ export class AuthService {
       email: user.email,
       tokenType: JWTTokenType.access,
     };
-    return this.jwtService.signAsync(payload, { expiresIn: '15s' });
+    return this.jwtService.signAsync(payload, { expiresIn: '15m' });
   }
 
   async refreshAccessToken(userId: number): Promise<string> {
