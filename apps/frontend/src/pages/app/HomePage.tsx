@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
-import ActionItemCard from "../../components/ActionItemCard";
-import Button, { ButtonColor } from "../../components/system/Button";
 import { HomeTaskView } from "../../components/HomeTaskView";
-import { ActionDto, actionsComplete } from "../../../../../shared/client";
-import { actionsFindAll } from "../../../../../shared/client";
+import {
+  ActionDto,
+  actionsComplete,
+  actionsFindAllWithStatus,
+} from "../../../../../shared/client";
 import { client } from "../../../../../shared/client/client.gen";
 import { useAuth } from "../../lib/AuthContext";
 import { getApiUrl } from "../../lib/config";
@@ -26,7 +27,9 @@ const HomePage: React.FC = () => {
       actions.filter((action) => action.myRelation?.status === "joined")
     );
     setNewActions(
-      actions.filter((action) => action.myRelation?.status === "none")
+      actions.filter(
+        (action) => !action.myRelation || action.myRelation.status === "none"
+      )
     );
   }, []);
 
@@ -36,7 +39,7 @@ const HomePage: React.FC = () => {
       baseUrl: getApiUrl(),
       credentials: "include",
     });
-    actionsFindAll()
+    actionsFindAllWithStatus()
       .then(({ data }) => {
         if (data) {
           updateActions(data);

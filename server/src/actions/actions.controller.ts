@@ -24,6 +24,9 @@ import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { ApiOkResponse, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
+import { Sse, MessageEvent } from '@nestjs/common';
+import { Observable, fromEvent, concat, from } from 'rxjs';
+import { map, filter, scan } from 'rxjs/operators';
 
 @Controller('actions')
 export class ActionsController {
@@ -65,10 +68,10 @@ export class ActionsController {
     return userAction;
   }
 
-  @Get('findAll')
+  @Get('withStatus')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ActionDto] })
-  async findAll(@Request() req: JwtRequest) {
+  async findAllWithStatus(@Request() req: JwtRequest) {
     return this.actionsService.findPublicWithRelation(req.user?.sub);
   }
 
@@ -115,5 +118,32 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   remove(@Param('id') id: string) {
     return this.actionsService.remove(+id);
+  }
+
+  @Sse('live/:id')
+  @Public()
+  sseActionCount(
+    @Param('id', ParseIntPipe) id: number,
+  ): Observable<MessageEvent> {
+    const snapshot$ = from(this.actionsService.countCommitted(id));
+
+    const deltas$ = fromEvent<{ actionId: number; delta: number }>(
+      this.actionsService.eventEmitter,
+      'action.delta',
+    ).pipe(
+      filter((e) => e.actionId === id),
+      map((e) => e.delta),
+    );
+
+    const counter$ = concat(snapshot$, deltas$).pipe(
+      scan((runningTotal, delta) => runningTotal + delta),
+      map((total) => ({ data: total.toString() }) as MessageEvent),
+    );
+
+    // const heartbeat$ = interval(15000).pipe(
+    //   map(() => ({ event: 'ping', data: 'h' }) as MessageEvent),
+    // );
+
+    return counter$;
   }
 }

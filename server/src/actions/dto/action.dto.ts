@@ -20,6 +20,8 @@ export class ActionDto extends OmitType(Action, [
   usersJoined: number;
 }
 
+export class PublicActionDto extends OmitType(ActionDto, ['myRelation']) {}
+
 export class CreateActionDto extends OmitType(ActionDto, [
   'id',
   'usersJoined',

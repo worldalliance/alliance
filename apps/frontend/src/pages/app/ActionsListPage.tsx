@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ActionItemCard from "../../components/ActionItemCard";
-import { useNavigate } from "react-router-dom";
 import Button, { ButtonColor } from "../../components/system/Button";
-import { actionsFindAll } from "../../../../../shared/client";
+import { actionsFindAllWithStatus } from "../../../../../shared/client";
 import { ActionDto } from "../../../../../shared/client";
 
 enum FilterMode {
@@ -10,7 +9,6 @@ enum FilterMode {
   Active = "Active",
   Upcoming = "Upcoming",
   Past = "Past",
-  Draft = "Draft",
   Joined = "joined",
 }
 
@@ -21,7 +19,7 @@ const ActionsListPage: React.FC = () => {
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
 
   useEffect(() => {
-    actionsFindAll().then((response) => {
+    actionsFindAllWithStatus().then((response) => {
       if (response.data) {
         setActions(response.data || []);
         console.log(response.data);

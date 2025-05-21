@@ -333,18 +333,18 @@ export type ActionsMyStatusResponses = {
 
 export type ActionsMyStatusResponse = ActionsMyStatusResponses[keyof ActionsMyStatusResponses];
 
-export type ActionsFindAllData = {
+export type ActionsFindAllWithStatusData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/actions/findAll';
+    url: '/actions/withStatus';
 };
 
-export type ActionsFindAllResponses = {
+export type ActionsFindAllWithStatusResponses = {
     200: Array<ActionDto>;
 };
 
-export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
+export type ActionsFindAllWithStatusResponse = ActionsFindAllWithStatusResponses[keyof ActionsFindAllWithStatusResponses];
 
 export type ActionsFindAllPublicData = {
     body?: never;

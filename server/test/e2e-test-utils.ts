@@ -15,6 +15,7 @@ import { Communique } from '../src/communiques/entities/communique.entity';
 import { Image } from '../src/images/entities/image.entity';
 import { Post } from '../src/forum/entities/post.entity';
 import { Reply } from '../src/forum/entities/reply.entity';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 export interface TestContext {
   app: INestApplication;
@@ -40,6 +41,7 @@ export async function createTestApp(
         isGlobal: true,
         envFilePath: '.env.test',
       }),
+      EventEmitterModule.forRoot(),
       TypeOrmModule.forRoot({
         type: 'sqlite',
         database: ':memory:',

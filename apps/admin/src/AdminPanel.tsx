@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Card, { CardStyle } from "./Card";
 import { useNavigate } from "react-router-dom";
-import { ActionDto, actionsFindAll } from "../../../shared/client";
+import { ActionDto, actionsFindAllWithDrafts } from "../../../shared/client";
 
 const AdminPanel: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
@@ -12,7 +12,7 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     const loadActions = async () => {
       try {
-        const response = await actionsFindAll();
+        const response = await actionsFindAllWithDrafts();
         console.log(response.data);
         if (response.data) {
           setActions(response.data);

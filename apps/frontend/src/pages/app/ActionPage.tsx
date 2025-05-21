@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardStyle } from "../../components/system/Card";
 import StatsCard from "../../components/StatsCard";
 import Globe from "../../components/Globe";
-import UserBubbleRow from "../../components/UserBubbleRow";
 import Button from "../../components/system/Button";
 import PokePanel from "../../components/PokePanel";
 import {
@@ -81,6 +80,14 @@ const ActionPage: React.FC = () => {
       setError("Failed to join this action. Please try again later.");
     }
   }, [actionId]);
+
+  const evtSource = new EventSource(`${getApiUrl()}/actions/live/${actionId}`);
+  evtSource.onmessage = (e) => {
+    const newUserCount = Number(e.data);
+    if (newUserCount !== action?.usersJoined && action) {
+      setAction({ ...action, usersJoined: newUserCount });
+    }
+  };
 
   const mainContent = (
     <>

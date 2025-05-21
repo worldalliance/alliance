@@ -17,7 +17,7 @@ const NavbarHorizontal: React.FC<InnerNavbarProps> = () => {
   if (document.location.href.endsWith("#/")) {
     return <LandingNavbar />;
   }
-  console.log("isFeatureEnabled", isFeatureEnabled(Features.Forum));
+
   const activeLinks = isFeatureEnabled(Features.Forum)
     ? links
     : links.filter((link) => link !== NavbarPage.Forum);

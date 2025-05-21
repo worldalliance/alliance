@@ -42,7 +42,6 @@ describe('Actions (e2e)', () => {
         category: '',
         whyJoin: '',
         image: '',
-        userRelations: [],
       };
 
       const res = await request(ctx.app.getHttpServer())
@@ -100,9 +99,9 @@ describe('Actions (e2e)', () => {
       expect(res2.body.myRelation.status).toBe(UserActionRelation.joined);
     });
 
-    it('user can see their relaton to all actions', async () => {
+    it('user can see their relation to all actions', async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions')
+        .get('/actions/withStatus')
         .set('Authorization', `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
@@ -137,6 +136,13 @@ describe('Actions (e2e)', () => {
       expect(res.status).toBe(200);
       expect(res.body.length).toBe(2);
       expect(res.body[1].status).toBe(ActionStatus.Draft);
+    });
+
+    it('unauthenticated user can see actions', async () => {
+      const res = await request(ctx.app.getHttpServer()).get('/actions');
+
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(1);
     });
   });
 
