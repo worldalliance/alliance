@@ -8,9 +8,14 @@ const TempProdPassword: React.FC<React.PropsWithChildren> = ({ children }) => {
     return <>{children}</>;
   }
 
+  if (localStorage.getItem("prod-login")) {
+    return <>{children}</>;
+  }
+
   useEffect(() => {
     if (password === "ally") {
       setPutPassword(true);
+      localStorage.setItem("prod-login", "true");
     }
   }, [password]);
 
