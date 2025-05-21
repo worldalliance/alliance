@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "./AuthContext";
+import { AuthProvider, useAuth } from "./AuthContext";
 import LoginPage from "./LoginPage";
 import AdminActionPage from "./AdminActionPage";
 import { getApiUrl } from "./config";
@@ -10,7 +10,9 @@ import AdminPanel from "./AdminPanel";
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const isAuthenticated = localStorage.getItem("token") !== null;
+  const { isAuthenticated } = useAuth();
+
+  console.log("isAuthenticated", isAuthenticated);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
@@ -22,7 +24,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
 const LoggedOutOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const isAuthenticated = localStorage.getItem("token") !== null;
+  const { isAuthenticated } = useAuth();
   if (isAuthenticated) {
     return <Navigate to="/" />;
   }
@@ -32,9 +34,7 @@ const LoggedOutOnlyRoute: React.FC<{ children: React.ReactNode }> = ({
 
 client.setConfig({
   baseUrl: getApiUrl(),
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem("token")}`,
-  },
+  credentials: "include",
 });
 
 // AppRoutes component to use the auth context

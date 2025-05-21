@@ -11,6 +11,11 @@ export const testActions: ActionDto[] = [
     image: "",
     status: "Active",
     usersJoined: 0,
+    myRelation: {
+      status: "joined",
+      deadline: new Date().toISOString(),
+      dateCommitted: new Date().toISOString(),
+    },
   },
   {
     name: "A task to do something else",
@@ -22,5 +27,10 @@ export const testActions: ActionDto[] = [
     image: "",
     status: "Active",
     usersJoined: 0,
+    myRelation: {
+      status: "joined",
+      deadline: new Date().toISOString(),
+      dateCommitted: new Date().toISOString(),
+    },
   },
 ];

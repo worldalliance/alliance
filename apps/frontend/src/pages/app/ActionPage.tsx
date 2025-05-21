@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardStyle } from "../../components/system/Card";
 import StatsCard from "../../components/StatsCard";
 import Globe from "../../components/Globe";
-import UserBubbleRow from "../../components/UserBubbleRow";
 import Button from "../../components/system/Button";
 import PokePanel from "../../components/PokePanel";
 import {
@@ -12,9 +11,10 @@ import {
   actionsMyStatus,
 } from "../../../../../shared/client";
 import { ActionDto, UserActionDto } from "../../../../../shared/client";
-import { getApiUrl } from "../../lib/config";
+import { getApiUrl, isFeatureEnabled } from "../../lib/config";
 import ActionForumPosts from "../../components/ActionForumPosts";
 import TwoColumnSplit from "../../components/system/TwoColumnSplit";
+import { Features } from "@alliance/shared/lib/features";
 const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
@@ -33,7 +33,7 @@ const ActionPage: React.FC = () => {
       try {
         console.log("fetching action", actionId);
         const response = await actionsFindOne({
-          path: { id: actionId },
+          path: { id: parseInt(actionId) },
         });
 
         if (response.error) {
@@ -81,6 +81,14 @@ const ActionPage: React.FC = () => {
     }
   }, [actionId]);
 
+  const evtSource = new EventSource(`${getApiUrl()}/actions/live/${actionId}`);
+  evtSource.onmessage = (e) => {
+    const newUserCount = Number(e.data);
+    if (newUserCount !== action?.usersJoined && action) {
+      setAction({ ...action, usersJoined: newUserCount });
+    }
+  };
+
   const mainContent = (
     <>
       <div className="flex flex-col gap-y-3 flex-2 p-10 px-20">
@@ -107,11 +115,9 @@ const ActionPage: React.FC = () => {
             </p>
           </div>
           {userRelation === "none" && actionId && (
-            <Button
-              className="mt-2"
-              label="Commit to this action"
-              onClick={onJoinAction}
-            />
+            <Button className="mt-2" onClick={onJoinAction}>
+              Commit to this action
+            </Button>
           )}
         </div>
         {userRelation === "joined" && <PokePanel />}
@@ -134,8 +140,9 @@ const ActionPage: React.FC = () => {
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
           eiusmod tempor incididunt ut labore et dolore magna aliqua.
         </p>
-
-        <ActionForumPosts actionId={actionId} />
+        {isFeatureEnabled(Features.Forum) && (
+          <ActionForumPosts actionId={actionId} />
+        )}
       </div>
     </>
   );
@@ -145,20 +152,23 @@ const ActionPage: React.FC = () => {
       left={mainContent}
       right={
         <div className="flex flex-col gap-y-5 p-6">
-          <Card style={CardStyle.White} className="items-center gap-y-5">
-            <div className="w-[75] self-center">
+          <Card
+            style={CardStyle.White}
+            className="items-center gap-y-5 aspect-square justify-center"
+          >
+            <div className="w-[180px] self-center">
               <Suspense fallback={<div>Loading...</div>}>
                 <Globe people={action?.usersJoined || 0} colored />
               </Suspense>
-              <p className="text-center pt-2 text-[11pt]">
+              <p className="text-center pt-5 text-[11pt]">
                 {action?.usersJoined?.toLocaleString() || 0} people committed
               </p>
             </div>
-            <div className="w-full border-t border-gray-300" />
+            {/* <div className="w-full border-t border-gray-300" />
             <UserBubbleRow />
             <p className="text-center pt-2 text-[11pt]">
               <b>6 friends</b> already joined this action!
-            </p>
+            </p> */}
           </Card>
           <StatsCard />
         </div>

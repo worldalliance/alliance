@@ -11,11 +11,9 @@ const PokePanel = () => {
             <b>3 friends</b> committed to this action but haven't started yet
           </p>
         </div>
-        <Button
-          color={ButtonColor.Stone}
-          label="Send a poke"
-          onClick={() => {}}
-        />
+        <Button color={ButtonColor.Stone} onClick={() => {}}>
+          Send a poke
+        </Button>
       </div>
     </Card>
   );

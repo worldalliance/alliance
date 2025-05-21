@@ -7,6 +7,7 @@ import { Action } from './entities/action.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../user/user.entity';
 import { UserAction } from './entities/user-action.entity';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 describe('ActionsController', () => {
   let controller: ActionsController;
@@ -17,6 +18,7 @@ describe('ActionsController', () => {
       providers: [
         ActionsService,
         UserService,
+        EventEmitter2,
         JwtService,
         {
           provide: getRepositoryToken(Action),

@@ -30,6 +30,8 @@ export type ProfileDto = {
 
 export type UserActionDto = {
     status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
+    dateCommitted: string;
+    deadline: string;
 };
 
 export type ActionDto = {
@@ -41,6 +43,7 @@ export type ActionDto = {
     description: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
     usersJoined: number;
+    myRelation: UserActionDto;
 };
 
 export type CreateActionDto = {
@@ -302,6 +305,19 @@ export type ActionsJoinResponses = {
     201: unknown;
 };
 
+export type ActionsCompleteData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/actions/complete/{id}';
+};
+
+export type ActionsCompleteResponses = {
+    201: unknown;
+};
+
 export type ActionsMyStatusData = {
     body?: never;
     path: {
@@ -317,18 +333,44 @@ export type ActionsMyStatusResponses = {
 
 export type ActionsMyStatusResponse = ActionsMyStatusResponses[keyof ActionsMyStatusResponses];
 
-export type ActionsFindAllData = {
+export type ActionsFindAllWithStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/withStatus';
+};
+
+export type ActionsFindAllWithStatusResponses = {
+    200: Array<ActionDto>;
+};
+
+export type ActionsFindAllWithStatusResponse = ActionsFindAllWithStatusResponses[keyof ActionsFindAllWithStatusResponses];
+
+export type ActionsFindAllPublicData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/actions';
 };
 
-export type ActionsFindAllResponses = {
+export type ActionsFindAllPublicResponses = {
     200: Array<ActionDto>;
 };
 
-export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
+export type ActionsFindAllPublicResponse = ActionsFindAllPublicResponses[keyof ActionsFindAllPublicResponses];
+
+export type ActionsFindAllWithDraftsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/all';
+};
+
+export type ActionsFindAllWithDraftsResponses = {
+    200: Array<ActionDto>;
+};
+
+export type ActionsFindAllWithDraftsResponse = ActionsFindAllWithDraftsResponses[keyof ActionsFindAllWithDraftsResponses];
 
 export type ActionsRemoveData = {
     body?: never;
@@ -346,7 +388,7 @@ export type ActionsRemoveResponses = {
 export type ActionsFindOneData = {
     body?: never;
     path: {
-        id: string;
+        id: number;
     };
     query?: never;
     url: '/actions/{id}';
@@ -387,19 +429,6 @@ export type ActionsCreateResponses = {
 };
 
 export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
-
-export type ActionsFindAllWithDraftsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/all';
-};
-
-export type ActionsFindAllWithDraftsResponses = {
-    200: Array<ActionDto>;
-};
-
-export type ActionsFindAllWithDraftsResponse = ActionsFindAllWithDraftsResponses[keyof ActionsFindAllWithDraftsResponses];
 
 export type CommuniquesFindAllData = {
     body?: never;

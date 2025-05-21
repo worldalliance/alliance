@@ -1,2 +1,3 @@
-frontend: yarn workspace @alliance/frontend dev
-server: cd server && PORT=3005 npm start
+frontend: yarn frontend:dev
+admin: yarn admin:dev
+server: yarn server:dev

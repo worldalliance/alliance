@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
-import { SignInDto } from "../../../shared/client";
+import { appHealthCheck, SignInDto } from "../../../shared/client";
 
 const LoginPage: React.FC = () => {
-  const { login, loading, isServerRunning, checkServerStatus } = useAuth();
+  const { login, loading } = useAuth();
   const [formData, setFormData] = useState<SignInDto>({
     email: "",
     password: "",
+    mode: "cookie",
   });
   const [error, setError] = useState<string | null>(null);
   const [checkingServer, setCheckingServer] = useState<boolean>(true);
@@ -15,13 +16,8 @@ const LoginPage: React.FC = () => {
     const verifyServerRunning = async () => {
       setCheckingServer(true);
       try {
-        const serverRunning = await checkServerStatus();
-        if (!serverRunning) {
-          setError("Server not running");
-        } else {
-          // Clear error if server is now running
-          setError(null);
-        }
+        await appHealthCheck();
+        setError(null);
       } catch {
         setError("Unable to connect to server. Please try again later.");
       } finally {
@@ -30,7 +26,7 @@ const LoginPage: React.FC = () => {
     };
 
     verifyServerRunning();
-  }, [checkServerStatus]);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -43,12 +39,6 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    // Check if server is running before attempting login
-    if (!isServerRunning) {
-      setError("Server is not running. Please try again later.");
-      return;
-    }
 
     try {
       await login(formData.email, formData.password);
@@ -69,10 +59,8 @@ const LoginPage: React.FC = () => {
                   onClick={async () => {
                     setCheckingServer(true);
                     try {
-                      const serverRunning = await checkServerStatus();
-                      if (serverRunning) {
-                        setError(null);
-                      }
+                      await appHealthCheck();
+                      setError(null);
                     } finally {
                       setCheckingServer(false);
                     }
@@ -103,7 +91,6 @@ const LoginPage: React.FC = () => {
                     required
                     name="email"
                     autoComplete="email"
-                    disabled={!isServerRunning}
                   />
                 </div>
                 <div>
@@ -116,7 +103,6 @@ const LoginPage: React.FC = () => {
                     autoComplete="current-password"
                     required
                     name="password"
-                    disabled={!isServerRunning}
                   />
                 </div>
 
@@ -124,7 +110,7 @@ const LoginPage: React.FC = () => {
                   <button
                     className="w-full flex justify-center text-center py-3"
                     type="submit"
-                    disabled={loading || !isServerRunning}
+                    disabled={loading}
                   >
                     {loading ? "Logging in..." : "Log in"}
                   </button>

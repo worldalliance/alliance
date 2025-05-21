@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Card, { CardStyle } from "./Card";
 import { useNavigate } from "react-router-dom";
-import { ActionDto, actionsFindAll } from "../../../shared/client";
+import { ActionDto, actionsFindAllWithDrafts } from "../../../shared/client";
+import { useAuth } from "./AuthContext";
 
 const AdminPanel: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
@@ -9,10 +10,12 @@ const AdminPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const { logout } = useAuth();
+
   useEffect(() => {
     const loadActions = async () => {
       try {
-        const response = await actionsFindAll();
+        const response = await actionsFindAllWithDrafts();
         console.log(response.data);
         if (response.data) {
           setActions(response.data);
@@ -35,12 +38,6 @@ const AdminPanel: React.FC = () => {
   const handleEditAction = (id: number) => {
     navigate(`/action/${id}`);
   };
-
-  const logout = useCallback(() => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refresh_token");
-    navigate("/login");
-  }, [navigate]);
 
   return (
     <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-pagebg">

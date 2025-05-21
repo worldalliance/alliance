@@ -14,6 +14,7 @@ export interface CardProps extends PropsWithChildren {
   onClick?: (e: React.MouseEvent) => void;
   style?: CardStyle;
   bgImage?: string;
+  closed?: boolean;
 }
 
 const Card: React.FC<CardProps> = ({
@@ -22,6 +23,7 @@ const Card: React.FC<CardProps> = ({
   onClick,
   style,
   bgImage,
+  closed,
 }) => {
   const cardStyle = style ?? CardStyle.White;
 
@@ -38,7 +40,10 @@ const Card: React.FC<CardProps> = ({
   return (
     <div
       className={`flex flex-col ${styleClasses[cardStyle]} gap-y-2 rounded-lg p-4 border ${className} ${onClick ? "cursor-pointer hover:border-black transition-[border] duration-100" : ""} bg-cover bg-center`}
-      style={{ backgroundImage: `url(${bgImage})` }}
+      style={{
+        backgroundImage: `url(${bgImage})`,
+        height: closed ? "0px" : "calc-size(auto, size)",
+      }}
       onClick={onClick}
     >
       {children}

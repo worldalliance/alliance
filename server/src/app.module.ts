@@ -17,6 +17,7 @@ import { Communique } from './communiques/entities/communique.entity';
 import { ForumModule } from './forum/forum.module';
 import { Post } from './forum/entities/post.entity';
 import { Reply } from './forum/entities/reply.entity';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { Reply } from './forum/entities/reply.entity';
       isGlobal: true,
     }),
     MulterModule.register({}),
+    EventEmitterModule.forRoot(),
     AuthModule,
     UserModule,
     TypeOrmModule.forRoot({

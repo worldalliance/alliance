@@ -248,27 +248,27 @@ const AnnouncementEditPage: React.FC = () => {
 
             <div className="flex justify-between mt-6">
               <Button
-                label="Cancel"
                 onClick={() => navigate("/announcements")}
                 color={ButtonColor.Grey}
-              />
+              >
+                Cancel
+              </Button>
               <Button
-                label={
-                  isSubmitting
-                    ? uploadingImage
-                      ? "Uploading Image..."
-                      : isEditing
-                        ? "Updating..."
-                        : "Creating..."
-                    : isEditing
-                      ? "Update Announcement"
-                      : "Create Announcement"
-                }
-                onClick={() => {}}
                 type="submit"
+                onClick={handleSubmit}
                 color={ButtonColor.Blue}
                 disabled={isSubmitting || uploadingImage}
-              />
+              >
+                {isSubmitting
+                  ? uploadingImage
+                    ? "Uploading Image..."
+                    : isEditing
+                      ? "Updating..."
+                      : "Creating..."
+                  : isEditing
+                    ? "Update Announcement"
+                    : "Create Announcement"}
+              </Button>
             </div>
           </form>
         </div>

@@ -1,86 +1,71 @@
 import React, { useEffect, useState, useCallback } from "react";
-import ActionItemCard, {
-  ActionCardAction,
-} from "../../components/ActionItemCard";
-import ActionPromptCard from "../../components/ActionPromptCard";
-import Button, { ButtonColor } from "../../components/system/Button";
 import { HomeTaskView } from "../../components/HomeTaskView";
-import { ActionDto } from "@alliance/shared/client";
-import { actionsFindAll, actionsUpdate } from "@alliance/shared/client";
-import { client } from "@alliance/shared/client/client.gen";
+import {
+  ActionDto,
+  actionsComplete,
+  actionsFindAllWithStatus,
+} from "../../../../../shared/client";
+import { client } from "../../../../../shared/client/client.gen";
 import { useAuth } from "../../lib/AuthContext";
-
-const todoItems = [
-  {
-    id: 1,
-    title: "Boycott Lorem Inc.",
-    description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque vitae neque leo. Aliquam interdum pretium quam vitae auctor. Phasellus blandit aliquam magna vel congue.",
-    category: "Climate",
-    actions: [
-      ActionCardAction.Discuss,
-      ActionCardAction.Details,
-      ActionCardAction.Complete,
-    ],
-  },
-  {
-    id: 2,
-    title: "Call your senator to stop the loreming of ipsums",
-    description:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusm tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusm tempor incididunt ut labore et dolore magna aliqua.",
-    category: "Tech Safety",
-    actions: [ActionCardAction.Discuss, ActionCardAction.Details],
-  },
-];
+import { getApiUrl } from "../../lib/config";
+import { useNavigate } from "react-router-dom";
+import { HomeNewActionsView } from "../../components/HomeNewActionsView";
 
 const HomePage: React.FC = () => {
+  const [actions, setActions] = useState<ActionDto[]>([]);
   const [todoActions, setTodoActions] = useState<ActionDto[]>([]);
+  const [newActions, setNewActions] = useState<ActionDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { loading: authLoading } = useAuth();
 
-  console.log(todoActions);
+  console.log(actions);
+
+  const updateActions = useCallback((actions: ActionDto[]) => {
+    setActions(actions);
+    setTodoActions(
+      actions.filter((action) => action.myRelation?.status === "joined")
+    );
+    setNewActions(
+      actions.filter(
+        (action) => !action.myRelation || action.myRelation.status === "none"
+      )
+    );
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
     client.setConfig({
-      baseUrl: "http://localhost:3005",
+      baseUrl: getApiUrl(),
       credentials: "include",
     });
-    actionsFindAll()
-      .then(({ data }) => setTodoActions(data || []))
+    actionsFindAllWithStatus()
+      .then(({ data }) => {
+        if (data) {
+          updateActions(data);
+        }
+      })
       .catch(() => setError("Failed to load actions"))
       .finally(() => setLoading(false));
   }, [authLoading]);
 
+  const navigate = useNavigate();
+
+  const handleTaskComplete = (actionId: number) => {
+    actionsComplete({ path: { id: actionId.toString() } }).then(() => {
+      updateActions(actions.filter((action) => action.id !== actionId));
+    });
+  };
+
   return (
     <div className="flex flex-col w-full h-full items-center bg-white">
-      <div className="flex flex-col py-12 max-w-[600px] gap-y-5 overflow-y-auto">
+      <div className="flex flex-col py-12 w-[600px] gap-y-5 overflow-y-auto">
         {error && <p className="text-red-500">{error}</p>}
-        <HomeTaskView actions={todoActions} onTaskComplete={() => {}} />
-        <div className="flex flex-row items-center gap-x-2 justify-between w-full mt-5">
-          <h1 className="text-[#111] !text-[16pt] font-font">New Actions</h1>
-          <Button
-            color={ButtonColor.Light}
-            label="View All"
-            onClick={() => {}}
-          />
-        </div>
-        <ActionPromptCard
-          id="1"
-          title="Boycotting Lorem Inc."
-          description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque vitae neque leo. Aliquam interdum pretium quam vitae auctor. Phasellus blandit aliquam magna vel congue."
-          category="Climate"
+        <HomeTaskView
+          actions={todoActions}
+          onTaskComplete={handleTaskComplete}
         />
-        {todoItems.map((item) => (
-          <ActionItemCard
-            key={item.id}
-            title={item.title}
-            description={item.description}
-            category={item.category}
-            actions={item.actions}
-          />
-        ))}
+        <HomeNewActionsView actions={newActions} />
       </div>
     </div>
   );

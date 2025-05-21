@@ -102,16 +102,17 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
 );
 
 export const useAuth = () => {
+  const ctx = useContext(AuthContext);
+
   if (import.meta.env.STORYBOOK) {
     return {
       isAuthenticated: true,
-      user: {},
+      user: undefined,
       login: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       loading: false,
     };
   }
-  const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 };

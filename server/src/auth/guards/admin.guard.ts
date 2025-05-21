@@ -22,7 +22,10 @@ export class AdminGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-    const token = this.extractTokenFromHeader(request);
+
+    const token =
+      this.extractTokenFromCookie(request) ??
+      this.extractTokenFromHeader(request);
 
     if (!token) {
       console.log('no token');
@@ -48,6 +51,11 @@ export class AdminGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException();
     }
+  }
+
+  private extractTokenFromCookie(request: Request): string | undefined {
+    console.log('request.cookies: ', request.cookies);
+    return request.cookies?.access_token;
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {

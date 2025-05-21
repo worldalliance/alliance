@@ -46,7 +46,7 @@ const AdminActionPage: React.FC = () => {
       }
       try {
         const response = await actionsFindOne({
-          path: { id: id },
+          path: { id: parseInt(id) },
         });
         const actionData = response.data;
         if (!actionData) {

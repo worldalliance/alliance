@@ -36,7 +36,7 @@ export class Post {
   @ApiProperty()
   authorId: number;
 
-  @ManyToOne(() => Action, { nullable: true })
+  @ManyToOne(() => Action, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn()
   @ApiProperty({ required: false })
   action: Action;

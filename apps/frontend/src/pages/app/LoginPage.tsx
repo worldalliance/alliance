@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
 import FormInput from "../../components/system/FormInput";
 import { useAuth } from "../../lib/AuthContext";
-import { SignInDto } from "../../../../../shared/client";
+import { appHealthCheck, SignInDto } from "../../../../../shared/client";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
@@ -37,6 +37,18 @@ const LoginPage: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const health = await appHealthCheck();
+        console.log("appHealthCheck", health);
+      } catch {
+        setError("no server connection");
+      }
+    };
+    checkHealth();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-pagebg">
       <div className="flex flex-col flex-grow items-center justify-center font-avenir">
@@ -52,7 +64,7 @@ const LoginPage: React.FC = () => {
           {error && (
             <Card
               style={CardStyle.Alert}
-              className="border-red-400 bg-red-50 mb-6"
+              className="!border-red-400 !bg-red-50 mb-6"
             >
               <span className="text-red-700">{error}</span>
             </Card>
@@ -86,13 +98,13 @@ const LoginPage: React.FC = () => {
 
               <div className="pt-2">
                 <Button
-                  label={loading ? "Logging in..." : "Log in"}
-                  onClick={() => {}}
                   color={ButtonColor.Stone}
                   className="w-full flex justify-center text-center py-3 pb-2"
                   type="submit"
                   disabled={loading}
-                />
+                >
+                  Log In
+                </Button>
               </div>
             </form>
           </Card>

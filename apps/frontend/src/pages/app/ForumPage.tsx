@@ -45,11 +45,9 @@ const ForumPage: React.FC = () => {
         <div className="flex py-4 flex-row justify-between items-center w-full">
           <h1 className="font-sabon text-xl text-left h-fit">Alliance Forum</h1>
           {isAuthenticated && (
-            <Button
-              onClick={handleCreatePost}
-              color={ButtonColor.Blue}
-              label="Create Post"
-            />
+            <Button onClick={handleCreatePost} color={ButtonColor.Blue}>
+              Create Post
+            </Button>
           )}
         </div>
 
