@@ -10,7 +10,7 @@ Storybook: `yarn workspace @alliance/frontend storybook`
 
 ### server
 
-dev: `npm start:dev`
+dev: `npm run start:dev`
 
 ### mobile
 
