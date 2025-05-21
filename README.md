@@ -1,22 +1,40 @@
 # Alliance
 
-## Useful Commands
+## Setup
+
+**client/mobile:**
+
+`yarn install`
+
+**server:**
+
+`cd server`
+
+`npm install`
+
+`cp .env.example .env` (and make any necessary edits)
+
+Set up postgres database running locally with username/password/db name matching .env file
+
+## Running Locally
 
 ### frontend
 
-dev: `yarn frontend:dev`
+dev: `cd apps/frontend && yarn dev`
 
-Storybook: `yarn workspace @alliance/frontend storybook`
+storybook: `yarn workspace @alliance/frontend storybook`
 
 ### server
 
-dev: `npm start:dev`
+dev: `cd server && npm run start:dev`
 
 ### mobile
 
-dev: `yarn start`
+dev: `cd apps/mobile && yarn start`
 
 build: `yarn eas build --platform [ios|android]`
+
+## Miscellaneous commands
 
 ### Certbot
 
@@ -26,4 +44,4 @@ build: `yarn eas build --platform [ios|android]`
 
 ### Openapi client gen:
 
-`cd shared && yarn gen-api` (with dev server running)
+`yarn gen-api` (with dev server running)

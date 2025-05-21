@@ -330,6 +330,19 @@ export type ActionsFindAllResponses = {
 
 export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
 
+export type ActionsFindAllWithDraftsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/all';
+};
+
+export type ActionsFindAllWithDraftsResponses = {
+    200: Array<ActionDto>;
+};
+
+export type ActionsFindAllWithDraftsResponse = ActionsFindAllWithDraftsResponses[keyof ActionsFindAllWithDraftsResponses];
+
 export type ActionsRemoveData = {
     body?: never;
     path: {
@@ -346,7 +359,7 @@ export type ActionsRemoveResponses = {
 export type ActionsFindOneData = {
     body?: never;
     path: {
-        id: string;
+        id: number;
     };
     query?: never;
     url: '/actions/{id}';
@@ -387,19 +400,6 @@ export type ActionsCreateResponses = {
 };
 
 export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
-
-export type ActionsFindAllWithDraftsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/all';
-};
-
-export type ActionsFindAllWithDraftsResponses = {
-    200: Array<ActionDto>;
-};
-
-export type ActionsFindAllWithDraftsResponse = ActionsFindAllWithDraftsResponses[keyof ActionsFindAllWithDraftsResponses];
 
 export type CommuniquesFindAllData = {
     body?: never;
