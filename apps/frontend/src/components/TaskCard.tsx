@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CardStyle } from "./system/Card";
 
@@ -11,7 +11,11 @@ import Button, { ButtonColor } from "./system/Button";
 import expandArrow from "../assets/icons8-expand-arrow-96.png";
 
 export interface TaskCardProps {
-  action: Pick<ActionDto, "name" | "description" | "category">;
+  action: Pick<
+    ActionDto,
+    "name" | "description" | "category" | "id" | "myRelation"
+  >;
+  onComplete: (actionId: number) => void;
 }
 
 enum TaskCardState {
@@ -22,7 +26,7 @@ enum TaskCardState {
   Closed = "closed",
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ action }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
   const navigate = useNavigate();
   const [state, setState] = useState<TaskCardState>(TaskCardState.Default);
 
@@ -63,9 +67,22 @@ const TaskCard: React.FC<TaskCardProps> = ({ action }) => {
     if (state === TaskCardState.Completed) {
       setTimeout(() => {
         setState(TaskCardState.Closed);
+        setTimeout(() => {
+          onComplete(action.id);
+        }, 500);
       }, 500);
     }
   }, [state]);
+
+  const timeRemaining = useMemo(() => {
+    const millis =
+      new Date(action.myRelation?.deadline).getTime() - new Date().getTime();
+    const days = Math.floor(millis / 1000 / 60 / 60 / 24);
+    const hours = Math.floor(
+      (millis - days * 1000 * 60 * 60 * 24) / (1000 * 60 * 60)
+    );
+    return `${days} days, ${hours} hours to complete`;
+  }, [action.myRelation?.deadline]);
 
   return (
     <Card
@@ -96,9 +113,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ action }) => {
             variant="neutral"
             className="w-5 h-5"
           />
-          <p className="text-[12pt] pt-[1px] font-semibold text-gray-600">
-            3 days remaining
-          </p>
+          <p className="text-[12pt] pt-[1px] text-gray-600">{timeRemaining}</p>
         </div>
       </div>
 

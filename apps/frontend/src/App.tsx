@@ -14,7 +14,7 @@ import LoginPage from "./pages/app/LoginPage";
 import SignupPage from "./pages/app/SignupPage";
 import AccountPage from "./pages/app/AccountPage";
 import ActionsListPage from "./pages/app/ActionsListPage";
-import { getApiUrl } from "./lib/config";
+import { getApiUrl, isFeatureEnabled } from "./lib/config";
 import NewLandingPage from "./pages/static/NewLandingPage";
 import AnnouncementListPage from "./pages/app/AnnouncementListPage";
 import AnnouncementEditPage from "./pages/app/AnnouncementEditPage";
@@ -26,6 +26,7 @@ import AboutPage from "./pages/static/AboutPage";
 import { client } from "../../../shared/client/client.gen";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import TempProdPassword from "./TempProdPassword";
+import { Features } from "@alliance/shared/lib/features";
 
 client.setConfig({
   baseUrl: getApiUrl(),
@@ -148,39 +149,42 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        {/* Forum Routes */}
-        <Route
-          path="/forum"
-          element={
-            <ProtectedRoute>
-              <ForumPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/forum/post/:postId"
-          element={
-            <ProtectedRoute>
-              <PostDetailPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/forum/new"
-          element={
-            <ProtectedRoute>
-              <PostFormPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/forum/edit/:postId"
-          element={
-            <ProtectedRoute>
-              <PostFormPage />
-            </ProtectedRoute>
-          }
-        />
+        {isFeatureEnabled(Features.Forum) && (
+          <>
+            <Route
+              path="/forum"
+              element={
+                <ProtectedRoute>
+                  <ForumPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/forum/post/:postId"
+              element={
+                <ProtectedRoute>
+                  <PostDetailPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/forum/new"
+              element={
+                <ProtectedRoute>
+                  <PostFormPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/forum/edit/:postId"
+              element={
+                <ProtectedRoute>
+                  <PostFormPage />
+                </ProtectedRoute>
+              }
+            />
+          </>
+        )}
       </Routes>
     </>
   );

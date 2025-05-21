@@ -38,6 +38,15 @@ export class ActionsController {
     return this.actionsService.joinAction(+id, req.user.sub);
   }
 
+  @Post('complete/:id')
+  @UseGuards(AuthGuard)
+  complete(@Request() req: JwtRequest, @Param('id') id: string) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.actionsService.completeAction(+id, req.user.sub);
+  }
+
   @Get('myStatus/:id')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: UserActionDto })

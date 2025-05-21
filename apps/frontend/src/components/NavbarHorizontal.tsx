@@ -8,13 +8,19 @@ import {
 } from "./Navbar";
 import DropdownLink from "./DropdownLink";
 import LandingNavbar from "./LandingNavbar";
+import { Features } from "@alliance/shared/lib/features";
+import { isFeatureEnabled } from "../lib/config";
 
 export type InnerNavbarProps = Pick<NavbarProps, "currentPage">;
 
-const NavbarHorizontal: React.FC<InnerNavbarProps> = ({ currentPage }) => {
+const NavbarHorizontal: React.FC<InnerNavbarProps> = () => {
   if (document.location.href.endsWith("#/")) {
     return <LandingNavbar />;
   }
+  console.log("isFeatureEnabled", isFeatureEnabled(Features.Forum));
+  const activeLinks = isFeatureEnabled(Features.Forum)
+    ? links
+    : links.filter((link) => link !== NavbarPage.Forum);
 
   return (
     <div
@@ -28,7 +34,7 @@ const NavbarHorizontal: React.FC<InnerNavbarProps> = ({ currentPage }) => {
         </h1>
       </Link> */}
       <div className="flex flex-row gap-x-10 px-10">
-        {links.map((link) =>
+        {activeLinks.map((link) =>
           link === NavbarPage.Platform ? (
             <DropdownLink
               key={link}

@@ -29,6 +29,11 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
           onComplete={() => handleTaskComplete(action.id)}
         />
       ))}
+      {initialActions.length === 0 && (
+        <p className="text-center text-gray-500 py-5">
+          Nothing to do right now!
+        </p>
+      )}
     </div>
   );
 };

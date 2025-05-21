@@ -1,60 +1,36 @@
 import React from "react";
 import Badge from "./system/Badge";
 import Card, { CardStyle } from "./system/Card";
-import Button, { ButtonColor } from "./system/Button";
 import { useNavigate } from "react-router-dom";
+import { ActionDto } from "@alliance/shared/client/types.gen";
 
-export interface ActionItemCardProps {
-  title: string;
-  description: string;
-  category: string;
+export interface ActionItemCardProps
+  extends Pick<ActionDto, "name" | "description" | "category" | "id"> {
   className?: string;
-  actions: ActionCardAction[];
-  onClick?: () => void;
-}
-
-export enum ActionCardAction {
-  Complete = "Complete",
-  Discuss = "Discuss",
-  Details = "Details",
 }
 
 const ActionItemCard: React.FC<ActionItemCardProps> = ({
-  title,
+  name,
+  id,
   description,
   category,
-  actions,
-  onClick,
   className,
 }) => {
   const navigate = useNavigate();
 
   return (
     <div className={`relative ${className}`}>
-      {/* <StatusIndicator status={Status.InProgress} /> */}
       <Card
         className="block bg-pagebg text-[11pt] font-avenir"
         style={CardStyle.White}
+        onClick={() => navigate(`/action/${id}`)}
       >
         <div className="flex items-center justify-start w-[100%] space-x-3">
-          <p className="font-bold">{title}</p>
+          <p className="font-bold">{name}</p>
           <Badge>{category}</Badge>
         </div>
         <div className="flex items-center justify-between ">
           <p>{description}</p>
-        </div>
-        <div className="flex items-center justify-end">
-          {actions.map((action) => (
-            <Button
-              color={ButtonColor.Transparent}
-              key={action}
-              onClick={() => {
-                onClick ? onClick() : navigate(`/action/${title}`);
-              }}
-            >
-              {action}
-            </Button>
-          ))}
         </div>
       </Card>
     </div>

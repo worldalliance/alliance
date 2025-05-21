@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ActionItemCard, {
-  ActionCardAction,
-} from "../../components/ActionItemCard";
+import ActionItemCard from "../../components/ActionItemCard";
 import { useNavigate } from "react-router-dom";
 import Button, { ButtonColor } from "../../components/system/Button";
 import { actionsFindAll } from "../../../../../shared/client";
@@ -21,7 +19,6 @@ const ActionsListPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
-  const navigate = useNavigate();
 
   useEffect(() => {
     actionsFindAll().then((response) => {
@@ -76,15 +73,7 @@ const ActionsListPage: React.FC = () => {
         )}
 
         {filteredActions.map((action) => (
-          <ActionItemCard
-            key={action.id}
-            title={action.name}
-            description={action.description}
-            category={action.category}
-            actions={[ActionCardAction.Details]}
-            onClick={() => navigate(`/action/${action.id}`)}
-            className="w-full"
-          />
+          <ActionItemCard key={action.id} {...action} className="w-full" />
         ))}
       </div>
     </div>

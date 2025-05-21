@@ -305,6 +305,19 @@ export type ActionsJoinResponses = {
     201: unknown;
 };
 
+export type ActionsCompleteData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/actions/complete/{id}';
+};
+
+export type ActionsCompleteResponses = {
+    201: unknown;
+};
+
 export type ActionsMyStatusData = {
     body?: never;
     path: {
