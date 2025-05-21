@@ -9,6 +9,7 @@ import { ActionDto } from "@alliance/shared/client";
 import { actionsFindAll, actionsUpdate } from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 import { useAuth } from "../../lib/AuthContext";
+import { getApiUrl } from "../../lib/config";
 
 const todoItems = [
   {
@@ -44,7 +45,7 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     if (authLoading) return;
     client.setConfig({
-      baseUrl: "http://localhost:3005",
+      baseUrl: getApiUrl(),
       credentials: "include",
     });
     actionsFindAll()
