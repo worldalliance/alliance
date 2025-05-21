@@ -54,6 +54,7 @@ export class AdminGuard implements CanActivate {
   }
 
   private extractTokenFromCookie(request: Request): string | undefined {
+    console.log('request.cookies: ', request.cookies);
     return request.cookies?.access_token;
   }
 

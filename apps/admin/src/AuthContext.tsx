@@ -65,13 +65,14 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
 
     // ---------- actions ----------
     const login = useCallback(async (email: string, password: string) => {
+      console.log("login", email, password);
       setLoading(true);
       try {
-        const { error } = await authAdminLogin({
+        const response = await authAdminLogin({
           body: { email, password, mode: "cookie" },
         });
-        if (error) throw new Error("Login failed");
-
+        if (response.error) throw new Error("Login failed");
+        console.log("login:", response.data);
         const { data } = await authMe(); // guaranteed by fresh cookie
         setUser(data);
       } finally {

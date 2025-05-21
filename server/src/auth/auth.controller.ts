@@ -62,8 +62,18 @@ export class AuthController {
   @ApiOkResponse({ type: SignInResponseDto })
   @ApiUnauthorizedResponse()
   @Post('admin/login')
-  adminLogin(@Body() signInDto: SignInDto) {
-    return this.authService.login(signInDto.email, signInDto.password, true);
+  async adminLogin(
+    @Body() signInDto: SignInDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { access_token, refresh_token, isAdmin } =
+      await this.authService.login(signInDto.email, signInDto.password, true);
+
+    this.authService.setAuthCookies(res, access_token, refresh_token);
+    if (signInDto.mode === 'header') {
+      return { access_token, refresh_token, isAdmin };
+    }
+    return { isAdmin: true };
   }
 
   @Post('register')

@@ -53,10 +53,8 @@ export class RefreshTokenGuard implements CanActivate {
   private extractTokenFromHeader(request: Request): string | undefined {
     const authHeader = request.headers['authorization'] as string | undefined;
     if (!authHeader) {
-      console.log('missing auth header');
-      throw new UnauthorizedException('Missing authorization header');
+      return undefined;
     }
-
     return authHeader.split(' ')[1];
   }
 }
