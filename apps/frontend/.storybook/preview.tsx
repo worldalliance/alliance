@@ -1,10 +1,10 @@
 import React from "react";
 import type { Preview } from "@storybook/react";
-import { MemoryRouter } from "react-router-dom";
 import "../src/index.css";
 import { initialize, mswLoader } from "msw-storybook-addon";
-import { http, HttpResponse, delay } from "msw";
+import { http, HttpResponse } from "msw";
 import { ActionDto } from "@alliance/shared/client";
+import { MemoryRouter } from "react-router-dom";
 
 initialize();
 
@@ -30,7 +30,7 @@ const testActions: ActionDto[] = [
     description:
       "Acme. corp has been found to lorem over 160,00 ipsums every single year, causing untold devastation in the placeholder text industry.",
     category: "Climate Change",
-    id: 1,
+    id: 2,
     whyJoin: "",
     image: "",
     status: "Active",
@@ -54,16 +54,29 @@ const preview: Preview = {
     layout: "fullscreen",
     msw: {
       handlers: [
-        http.get("http://localhost:3005/actions", () => {
+        http.get("/actions", () => {
           return HttpResponse.json(testActions);
+        }),
+        http.get("/actions/withStatus", () => {
+          return HttpResponse.json(testActions);
+        }),
+        http.get("/actions/:id", () => {
+          return HttpResponse.json(testActions[0]);
+        }),
+        http.get("/actions/myStatus/:id", () => {
+          return HttpResponse.json({
+            status: "none",
+            deadline: new Date().toISOString(),
+            dateCommitted: new Date().toISOString(),
+          });
         }),
       ],
     },
   },
   loaders: [mswLoader],
   decorators: [
-    (Story: any) => (
-      <MemoryRouter initialEntries={["/"]}>
+    (Story: React.ComponentType) => (
+      <MemoryRouter>
         <Story />
       </MemoryRouter>
     ),

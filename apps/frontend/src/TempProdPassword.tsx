@@ -4,14 +4,6 @@ const TempProdPassword: React.FC<React.PropsWithChildren> = ({ children }) => {
   const [password, setPassword] = useState("");
   const [putPassword, setPutPassword] = useState(false);
 
-  if (import.meta.env.MODE === "development") {
-    return <>{children}</>;
-  }
-
-  if (localStorage.getItem("prod-login")) {
-    return <>{children}</>;
-  }
-
   useEffect(() => {
     if (password === "ally") {
       setPutPassword(true);
@@ -19,7 +11,13 @@ const TempProdPassword: React.FC<React.PropsWithChildren> = ({ children }) => {
     }
   }, [password]);
 
-  console.log(putPassword);
+  if (import.meta.env.MODE === "development") {
+    return <>{children}</>;
+  }
+
+  if (localStorage.getItem("prod-login")) {
+    return <>{children}</>;
+  }
 
   if (!putPassword) {
     return (

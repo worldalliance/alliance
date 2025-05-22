@@ -15,6 +15,7 @@ import { getApiUrl, isFeatureEnabled } from "../../lib/config";
 import ActionForumPosts from "../../components/ActionForumPosts";
 import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
+
 const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
@@ -158,7 +159,7 @@ const ActionPage: React.FC = () => {
           >
             <div className="w-[180px] self-center">
               <Suspense fallback={<div>Loading...</div>}>
-                <Globe people={action?.usersJoined || 0} colored />
+                <Globe people={0} colored />
               </Suspense>
               <p className="text-center pt-5 text-[11pt]">
                 {action?.usersJoined?.toLocaleString() || 0} people committed

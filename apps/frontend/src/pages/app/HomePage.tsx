@@ -8,7 +8,6 @@ import {
 import { client } from "../../../../../shared/client/client.gen";
 import { useAuth } from "../../lib/AuthContext";
 import { getApiUrl } from "../../lib/config";
-import { useNavigate } from "react-router-dom";
 import { HomeNewActionsView } from "../../components/HomeNewActionsView";
 
 const HomePage: React.FC = () => {
@@ -16,7 +15,6 @@ const HomePage: React.FC = () => {
   const [todoActions, setTodoActions] = useState<ActionDto[]>([]);
   const [newActions, setNewActions] = useState<ActionDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const { loading: authLoading } = useAuth();
 
   console.log(actions);
@@ -45,11 +43,8 @@ const HomePage: React.FC = () => {
           updateActions(data);
         }
       })
-      .catch(() => setError("Failed to load actions"))
-      .finally(() => setLoading(false));
-  }, [authLoading]);
-
-  const navigate = useNavigate();
+      .catch(() => setError("Failed to load actions"));
+  }, [authLoading, updateActions]);
 
   const handleTaskComplete = (actionId: number) => {
     actionsComplete({ path: { id: actionId.toString() } }).then(() => {
