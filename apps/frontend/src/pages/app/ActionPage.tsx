@@ -15,13 +15,15 @@ import { getApiUrl, isFeatureEnabled } from "../../lib/config";
 import ActionForumPosts from "../../components/ActionForumPosts";
 import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
-
+import { useAuth } from "../../lib/AuthContext";
 const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
   const [action, setAction] = useState<ActionDto | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { isAuthenticated } = useAuth();
 
   const [userRelation, setUserRelation] = useState<
     UserActionDto["status"] | null
@@ -37,23 +39,28 @@ const ActionPage: React.FC = () => {
           path: { id: parseInt(actionId) },
         });
 
+        console.log("response", response);
+
         if (response.error) {
           throw new Error("Failed to fetch action");
         }
 
-        const userStatusResponse = await actionsMyStatus({
-          path: { id: actionId },
-        });
-
-        console.log("userStatusResponse", userStatusResponse);
-        if (userStatusResponse.error) {
-          throw new Error("Failed to fetch user status");
-        }
-        if (userStatusResponse.data) {
-          setUserRelation(userStatusResponse.data.status);
-        }
-
         setAction(response.data);
+
+        if (isAuthenticated) {
+          const userStatusResponse = await actionsMyStatus({
+            path: { id: actionId },
+          });
+
+          console.log("userStatusResponse", userStatusResponse);
+          if (userStatusResponse.error) {
+            throw new Error("Failed to fetch user status");
+          }
+          if (userStatusResponse.data) {
+            setUserRelation(userStatusResponse.data.status);
+          }
+        }
+
         setLoading(false);
       } catch (err) {
         setError("Failed to load action details. Please try again later.");
@@ -63,7 +70,7 @@ const ActionPage: React.FC = () => {
     };
 
     fetchAction();
-  }, [actionId]);
+  }, [actionId, isAuthenticated]);
 
   const onJoinAction = useCallback(async () => {
     if (!actionId) return;

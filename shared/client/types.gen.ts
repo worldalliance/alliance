@@ -430,6 +430,32 @@ export type ActionsCreateResponses = {
 
 export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
 
+export type ActionsSseActionCountData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/live/{id}';
+};
+
+export type ActionsSseActionCountResponses = {
+    200: unknown;
+};
+
+export type ActionsLiveListData = {
+    body?: never;
+    path?: never;
+    query: {
+        ids: string;
+    };
+    url: '/actions/live-list';
+};
+
+export type ActionsLiveListResponses = {
+    200: unknown;
+};
+
 export type CommuniquesFindAllData = {
     body?: never;
     path?: never;

@@ -44,7 +44,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
           }
         } catch {
           try {
-            console.log("AuthContext", "refreshing tokens");
             const response = await authRefreshTokens();
             console.log("AuthContext", "refresh response", response);
             const { data } = await authMe();

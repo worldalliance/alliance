@@ -1,8 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ActionItemCard from "../../components/ActionItemCard";
 import Button, { ButtonColor } from "../../components/system/Button";
-import { actionsFindAllWithStatus } from "../../../../../shared/client";
+import {
+  actionsFindAllPublic,
+  actionsFindAllWithStatus,
+} from "../../../../../shared/client";
 import { ActionDto } from "../../../../../shared/client";
+import { getBulkActionSSEUrl } from "../../lib/config";
+import { useAuth } from "../../lib/AuthContext";
 
 enum FilterMode {
   All = "all",
@@ -17,18 +22,37 @@ const ActionsListPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
+  const [liveCounts, setLiveCounts] = useState<Record<number, number>>({});
+
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    actionsFindAllWithStatus().then((response) => {
+    let evtSource: EventSource | null = null;
+    const req = isAuthenticated
+      ? actionsFindAllWithStatus
+      : actionsFindAllPublic;
+
+    req().then((response) => {
       if (response.data) {
         setActions(response.data || []);
-        console.log(response.data);
+
+        const ids = response.data.map((a) => a.id);
+
+        evtSource = new EventSource(getBulkActionSSEUrl(ids));
+
+        evtSource.onmessage = (e) => {
+          const counts = JSON.parse(e.data);
+          setLiveCounts(counts);
+        };
       } else {
         setError("Failed to load actions");
       }
       setLoading(false);
     });
-  }, []);
+    return () => {
+      evtSource?.close();
+    };
+  }, [isAuthenticated]);
 
   const filteredActions = useMemo(() => {
     if (filterMode === FilterMode.All) {
@@ -71,7 +95,12 @@ const ActionsListPage: React.FC = () => {
         )}
 
         {filteredActions.map((action) => (
-          <ActionItemCard key={action.id} {...action} className="w-full" />
+          <ActionItemCard
+            key={action.id}
+            {...action}
+            className="w-full"
+            liveCount={liveCounts[action.id]}
+          />
         ))}
       </div>
     </div>

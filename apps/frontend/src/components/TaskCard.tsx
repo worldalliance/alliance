@@ -72,11 +72,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
         }, 500);
       }, 500);
     }
-  }, [state]);
+  }, [state, action, onComplete]);
 
   const timeRemaining = useMemo(() => {
+    if (!action.myRelation?.deadline) return null;
     const millis =
-      new Date(action.myRelation?.deadline).getTime() - new Date().getTime();
+      new Date(action.myRelation.deadline).getTime() - new Date().getTime();
     const days = Math.floor(millis / 1000 / 60 / 60 / 24);
     const hours = Math.floor(
       (millis - days * 1000 * 60 * 60 * 24) / (1000 * 60 * 60)
@@ -107,13 +108,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
           <p className="font-bold text-[12pt] pt-[1px]">{action.name}</p>
         </div>
         <div className="flex flex-row items-center gap-x-2">
-          <ProgressCircle
-            value={50}
-            strokeWidth={10}
-            variant="neutral"
-            className="w-5 h-5"
-          />
-          <p className="text-[12pt] pt-[1px] text-gray-600">{timeRemaining}</p>
+          {action.myRelation.deadline && (
+            <>
+              <ProgressCircle
+                value={50}
+                strokeWidth={10}
+                variant="neutral"
+                className="w-5 h-5"
+              />
+              <p className="text-[12pt] pt-[1px] text-gray-600">
+                {timeRemaining}
+              </p>
+            </>
+          )}
         </div>
       </div>
 

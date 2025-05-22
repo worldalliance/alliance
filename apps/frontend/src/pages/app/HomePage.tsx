@@ -56,10 +56,12 @@ const HomePage: React.FC = () => {
     <div className="flex flex-col w-full h-full items-center bg-white">
       <div className="flex flex-col py-12 w-[600px] gap-y-5 overflow-y-auto">
         {error && <p className="text-red-500">{error}</p>}
-        <HomeTaskView
-          actions={todoActions}
-          onTaskComplete={handleTaskComplete}
-        />
+        {todoActions.length > 0 && (
+          <HomeTaskView
+            actions={todoActions}
+            onTaskComplete={handleTaskComplete}
+          />
+        )}
         <HomeNewActionsView actions={newActions} />
       </div>
     </div>

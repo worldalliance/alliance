@@ -70,12 +70,12 @@ const AnnouncementsListPage: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-pagebg items-center">
-      <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
+      <div className="px-4 py-10 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
         <div className="w-full flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Announcements</h1>
           <AdminOnly>
             <Button
-              color={ButtonColor.Blue}
+              color={ButtonColor.Yellow}
               onClick={() => navigate("/announcements/new")}
             >
               New Announcement
@@ -97,7 +97,7 @@ const AnnouncementsListPage: React.FC = () => {
           <AnnouncementCard
             key={announcement.id}
             data={announcement}
-            unread={!unreadStatus[announcement.id]}
+            unread={!unreadStatus[announcement.id] && isAuthenticated}
             className="w-full"
           />
         ))}

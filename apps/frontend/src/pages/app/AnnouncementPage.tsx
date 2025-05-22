@@ -119,15 +119,15 @@ const AnnouncementPage: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-pagebg items-center">
-      <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))]">
+      <div className="px-4 py-10 flex flex-col items-center w-[calc(min(800px,100%))]">
         <div className="w-full">
-          <div className="mb-3 flex flex-row gap-x-3">
+          <div className="mb-5 flex flex-row gap-x-3">
             <Button color={ButtonColor.Light} onClick={handleBackClick}>
-              Back to Announcements
+              Back
             </Button>
             <AdminOnly>
               <Button
-                color={ButtonColor.Blue}
+                color={ButtonColor.Yellow}
                 onClick={() => navigate(`/announcements/edit/${id}`)}
               >
                 Edit
@@ -145,7 +145,7 @@ const AnnouncementPage: React.FC = () => {
             </div>
           )}
 
-          <div className="mb-2 text-stone-500 text-sm">
+          <div className=" text-stone-500 text-sm">
             {formatDate(announcement.dateCreated)}
           </div>
 

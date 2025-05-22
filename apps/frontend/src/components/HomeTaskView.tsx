@@ -3,6 +3,8 @@ import TaskCard from "./TaskCard";
 import Button from "./system/Button";
 import { ButtonColor } from "./system/Button";
 import { useNavigate } from "react-router-dom";
+import { useCallback } from "react";
+
 export interface HomeTaskViewProps {
   actions: ActionDto[];
   onTaskComplete?: (actionId: number) => void;
@@ -14,11 +16,14 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
 }) => {
   const navigate = useNavigate();
 
-  const handleTaskComplete = (actionId: number) => {
-    if (onTaskComplete) {
-      onTaskComplete(actionId);
-    }
-  };
+  const handleTaskComplete = useCallback(
+    (actionId: number) => {
+      if (onTaskComplete) {
+        onTaskComplete(actionId);
+      }
+    },
+    [onTaskComplete]
+  );
 
   return (
     <div className="flex flex-col gap-y-2">

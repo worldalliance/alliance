@@ -49,6 +49,21 @@ const ProtectedRoute: React.FC<React.PropsWithChildren> = ({
   );
 };
 
+const PublicAppRoute: React.FC<React.PropsWithChildren> = ({
+  children,
+}: React.PropsWithChildren) => {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <>
+      {isAuthenticated && (
+        <Navbar currentPage={NavbarPage.Dashboard} format="horizontal" />
+      )}
+      {children}
+    </>
+  );
+};
+
 const LoggedOutOnlyRoute: React.FC<React.PropsWithChildren> = ({
   children,
 }: React.PropsWithChildren) => {
@@ -94,9 +109,9 @@ const AppRoutes = () => {
         <Route
           path="/action/:id"
           element={
-            <ProtectedRoute>
+            <PublicAppRoute>
               <ActionPage />
-            </ProtectedRoute>
+            </PublicAppRoute>
           }
         />
         <Route path="/issues" element={<IssuesListPage />} />
@@ -112,17 +127,17 @@ const AppRoutes = () => {
         <Route
           path="/actions"
           element={
-            <ProtectedRoute>
+            <PublicAppRoute>
               <ActionsListPage />
-            </ProtectedRoute>
+            </PublicAppRoute>
           }
         />
         <Route
           path="/announcements"
           element={
-            <ProtectedRoute>
+            <PublicAppRoute>
               <AnnouncementListPage />
-            </ProtectedRoute>
+            </PublicAppRoute>
           }
         />
         <Route
@@ -141,14 +156,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/announcements/:id"
-          element={
-            <ProtectedRoute>
-              <AnnouncementPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/announcements/:id" element={<AnnouncementPage />} />
         {isFeatureEnabled(Features.Forum) && (
           <>
             <Route

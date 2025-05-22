@@ -12,6 +12,8 @@ import {
   ValidationPipe,
   UsePipes,
   ParseIntPipe,
+  Query,
+  BadRequestException,
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
 import {
@@ -25,13 +27,23 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { ApiOkResponse, ApiUnauthorizedResponse } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
 import { Sse, MessageEvent } from '@nestjs/common';
-import { Observable, fromEvent, concat, from } from 'rxjs';
-import { map, filter, scan } from 'rxjs/operators';
+import { Observable, fromEvent, from, merge } from 'rxjs';
+import { map, filter, scan, share, bufferTime } from 'rxjs/operators';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Controller('actions')
 export class ActionsController {
-  constructor(private readonly actionsService: ActionsService) {}
-
+  private readonly delta$: Observable<{ actionId: number; delta: number }>;
+  constructor(
+    private readonly actionsService: ActionsService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {
+    /* ONE listener no matter how many clients */
+    this.delta$ = fromEvent<{ actionId: number; delta: number }>(
+      this.eventEmitter,
+      'action.delta',
+    ).pipe(share());
+  }
   @Post('join/:id')
   @UseGuards(AuthGuard)
   join(@Request() req: JwtRequest, @Param('id') id: string) {
@@ -89,8 +101,72 @@ export class ActionsController {
     return this.actionsService.findAll();
   }
 
+  @Sse('live/:id')
+  @Public()
+  sseActionCount(
+    @Param('id', ParseIntPipe) id: number,
+  ): Observable<MessageEvent> {
+    const snapshot$ = from(this.actionsService.countCommitted(id));
+
+    const counter$ = merge(
+      snapshot$,
+      this.delta$.pipe(
+        filter((e) => e.actionId === id),
+        map((e) => e.delta),
+      ),
+    ).pipe(
+      scan((total, delta) => total + delta),
+      map((t) => ({ data: t.toString() }) as MessageEvent),
+    );
+
+    return counter$;
+  }
+
+  @Sse('live-list')
+  @Public()
+  liveList(@Query('ids') idsQuery?: string): Observable<MessageEvent> {
+    if (!idsQuery) throw new BadRequestException('ids query param required');
+    const ids = idsQuery.split(',').map(Number).filter(Boolean);
+    const idSet = new Set(ids);
+
+    /* 1️⃣ initial snapshot */
+    const snapshot$ = from(this.actionsService.countCommittedBulk(ids));
+
+    /* 2️⃣ batch all deltas for these ids every 100 ms */
+    const batched$ = this.delta$.pipe(
+      filter((e) => idSet.has(e.actionId)), // only the ids this client cares about
+      bufferTime(100), // 100 ms window (tweak as needed)
+      filter((buf) => buf.length > 0), // skip empty windows
+      map((buf) => {
+        // collapse many deltas into cumulative {id: Δ}
+        const byId: Record<number, number> = {};
+        for (const { actionId, delta } of buf) {
+          byId[actionId] = (byId[actionId] ?? 0) + delta;
+        }
+        return byId;
+      }),
+    );
+
+    /* 3️⃣ running totals */
+    const counters$ = merge(snapshot$, batched$).pipe(
+      scan(
+        (state, change) => {
+          // change is snapshot (full map) *or* batched delta map
+          for (const id of Object.keys(change).map(Number)) {
+            state[id] = (state[id] ?? 0) + change[id];
+          }
+          return { ...state }; // emit copy for distinct reference
+        },
+        {} as Record<number, number>,
+      ),
+      map((s) => ({ data: JSON.stringify(s) }) as MessageEvent),
+    );
+
+    return counters$;
+  }
+
   @Get(':id')
-  @UseGuards(AuthGuard)
+  @Public()
   @ApiOkResponse({ type: ActionDto })
   @ApiUnauthorizedResponse()
   findOne(
@@ -118,32 +194,5 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   remove(@Param('id') id: string) {
     return this.actionsService.remove(+id);
-  }
-
-  @Sse('live/:id')
-  @Public()
-  sseActionCount(
-    @Param('id', ParseIntPipe) id: number,
-  ): Observable<MessageEvent> {
-    const snapshot$ = from(this.actionsService.countCommitted(id));
-
-    const deltas$ = fromEvent<{ actionId: number; delta: number }>(
-      this.actionsService.eventEmitter,
-      'action.delta',
-    ).pipe(
-      filter((e) => e.actionId === id),
-      map((e) => e.delta),
-    );
-
-    const counter$ = concat(snapshot$, deltas$).pipe(
-      scan((runningTotal, delta) => runningTotal + delta),
-      map((total) => ({ data: total.toString() }) as MessageEvent),
-    );
-
-    // const heartbeat$ = interval(15000).pipe(
-    //   map(() => ({ event: 'ping', data: 'h' }) as MessageEvent),
-    // );
-
-    return counter$;
   }
 }

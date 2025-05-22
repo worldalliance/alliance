@@ -21,6 +21,7 @@ export enum ButtonColor {
   Red = "bg-red-500",
   Light = "bg-stone-200",
   Blue = "bg-cyan-600",
+  Yellow = "bg-yellow-600",
   Transparent = "transparent",
   Grey = "bg-gray-200 !text-black",
 }

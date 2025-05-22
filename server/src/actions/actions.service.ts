@@ -173,4 +173,24 @@ export class ActionsService {
       }),
     );
   }
+
+  async countCommittedBulk(ids: number[]): Promise<Record<number, number>> {
+    if (!ids.length) return {};
+
+    const rows = await this.userActionRepository
+      .createQueryBuilder('ua')
+      .select('ua.actionId', 'id')
+      .addSelect('COUNT(*)', 'count')
+      .where('ua.actionId IN (:...ids)', { ids })
+      .andWhere('ua.status IN (:...statuses)', {
+        statuses: ['joined', 'completed'],
+      })
+      .groupBy('ua.actionId')
+      .getRawMany<{ id: string; count: string }>();
+
+    const map: Record<number, number> = {};
+    rows.forEach((r) => (map[+r.id] = +r.count));
+    ids.forEach((id) => (map[id] ??= 0)); // ensure every requested id has a key
+    return map;
+  }
 }

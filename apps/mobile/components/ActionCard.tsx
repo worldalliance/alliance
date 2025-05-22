@@ -26,7 +26,12 @@ export default function ActionCard({ action, onPress }: ActionCardProps) {
         </Text>
         <View style={styles.detailsButton}>
           <Text style={styles.detailsText}>Details</Text>
-          <FontAwesome name="chevron-right" size={12} color="#0D1B2A" style={styles.icon} />
+          <FontAwesome
+            name="chevron-right"
+            size={12}
+            color="#0D1B2A"
+            style={styles.icon}
+          />
         </View>
       </View>
     </TouchableOpacity>
