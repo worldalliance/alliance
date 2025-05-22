@@ -14,7 +14,7 @@ export class ActionDto extends OmitType(Action, [
   'userRelations',
 ]) {
   @ApiProperty({ type: UserActionDto })
-  myRelation: UserActionDto | null;
+  myRelation?: UserActionDto | null;
 
   @ApiProperty()
   usersJoined: number;

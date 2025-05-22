@@ -45,7 +45,7 @@ const AccountPage: React.FC = () => {
           <div className="flex flex-row items-center gap-2">
             <h1 className="text-2xl font-sabon">Account</h1>
             <AdminOnly>
-              <Badge className="bg-amber-500">Admin</Badge>
+              <Badge className="!bg-yellow-600">Admin</Badge>
             </AdminOnly>
           </div>
           <Button

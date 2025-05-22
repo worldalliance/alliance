@@ -69,7 +69,9 @@ export class Action {
   get usersJoined(): number {
     return (
       this.userRelations?.filter(
-        (ur) => ur.status === UserActionRelation.joined,
+        (ur) =>
+          ur.status === UserActionRelation.joined ||
+          ur.status === UserActionRelation.completed,
       ).length || 0
     );
   }

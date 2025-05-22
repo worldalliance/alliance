@@ -90,7 +90,7 @@ export class ActionsController {
   @Get()
   @Public()
   @ApiOkResponse({ type: [ActionDto] })
-  async findAllPublic() {
+  async findAllPublic(): Promise<ActionDto[]> {
     return this.actionsService.findPublic();
   }
 

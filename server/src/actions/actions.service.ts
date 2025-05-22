@@ -29,10 +29,18 @@ export class ActionsService {
     return this.actionRepository.find();
   }
 
-  findPublic(): Promise<Action[]> {
-    return this.actionRepository.find({
-      where: { status: Not(ActionStatus.Draft) },
-    });
+  findPublic(): Promise<ActionDto[]> {
+    return this.actionRepository
+      .find({
+        where: { status: Not(ActionStatus.Draft) },
+        relations: ['userRelations'],
+      })
+      .then((actions) => {
+        return actions.map((action) => ({
+          ...action,
+          usersJoined: action.usersJoined,
+        }));
+      });
   }
 
   async findPublicWithRelation(userId: number): Promise<ActionDto[]> {

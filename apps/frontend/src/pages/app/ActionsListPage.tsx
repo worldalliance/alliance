@@ -99,7 +99,7 @@ const ActionsListPage: React.FC = () => {
             key={action.id}
             {...action}
             className="w-full"
-            liveCount={liveCounts[action.id]}
+            liveCount={liveCounts[action.id] ?? action.usersJoined}
           />
         ))}
       </div>
