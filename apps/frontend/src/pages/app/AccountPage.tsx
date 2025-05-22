@@ -9,7 +9,6 @@ import Badge from "../../components/system/Badge";
 const AccountPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -57,15 +56,6 @@ const AccountPage: React.FC = () => {
             Log Out
           </Button>
         </div>
-
-        {error && (
-          <Card
-            style={CardStyle.Alert}
-            className="border-red-400 bg-red-50 mb-6"
-          >
-            <span className="text-red-700">{error}</span>
-          </Card>
-        )}
 
         <Card style={CardStyle.White} className="p-8 mb-6">
           <div className="mb-6">

@@ -15,7 +15,6 @@ const ActionForumPosts: React.FC<ActionForumPostsProps> = ({
   actionId,
 }: ActionForumPostsProps) => {
   const [posts, setPosts] = useState<PostDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -25,7 +24,6 @@ const ActionForumPosts: React.FC<ActionForumPostsProps> = ({
       if (!actionId) return;
 
       try {
-        setIsLoading(true);
         const response = await forumFindPostsByAction({
           path: { actionId },
         });
@@ -34,8 +32,6 @@ const ActionForumPosts: React.FC<ActionForumPostsProps> = ({
       } catch (err) {
         console.error("Error fetching action forum posts:", err);
         setError("Failed to load discussion posts");
-      } finally {
-        setIsLoading(false);
       }
     };
 

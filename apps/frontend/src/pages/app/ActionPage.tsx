@@ -159,7 +159,7 @@ const ActionPage: React.FC = () => {
           >
             <div className="w-[180px] self-center">
               <Suspense fallback={<div>Loading...</div>}>
-                <Globe people={0} colored />
+                <Globe people={action?.usersJoined || 0} colored />
               </Suspense>
               <p className="text-center pt-5 text-[11pt]">
                 {action?.usersJoined?.toLocaleString() || 0} people committed

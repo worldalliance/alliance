@@ -30,6 +30,32 @@ const Globe: React.FC<GlobeProps> = ({
     useRef<d3.Selection<SVGGElement, unknown, null, undefined>>(null);
   const rotateTimerRef = useRef<d3.Timer>(null);
 
+  /* helper reused in several places */
+  function isVisible(d: Coordinate): boolean {
+    const projection = projectionRef.current!;
+
+    const centerLonLat = projection.invert!([0, 0])!;
+
+    if (
+      (Math.abs(d.longitude - (centerLonLat[0] + 90)) > 90 &&
+        Math.abs(d.longitude - (centerLonLat[0] + 90 - 360)) > 90) ||
+      Math.abs(d.latitude) > 75
+    ) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  const updateDotPositions = () => {
+    const proj = projectionRef.current!;
+    peopleGroupRef.current
+      ?.selectAll<SVGCircleElement, Coordinate>("circle")
+      .attr("cx", (d) => proj([d.longitude, d.latitude])![0])
+      .attr("cy", (d) => proj([d.longitude, d.latitude])![1])
+      .attr("visibility", (d) => (isVisible(d) ? "visible" : "hidden"));
+  };
+
   /* ---------- 1) build globe ONCE -------------------------------------- */
   useEffect(() => {
     if (!mapRef.current) return;
@@ -58,6 +84,15 @@ const Globe: React.FC<GlobeProps> = ({
       .attr("height", height);
 
     svgRef.current = svg;
+
+    svg
+      .append("defs")
+      .append("clipPath")
+      .attr("id", "globe-clip")
+      .append("circle")
+      .attr("cx", width / 2)
+      .attr("cy", height / 2)
+      .attr("r", scale);
 
     /* --- base globe ---------------------------------------------------- */
     svg
@@ -103,7 +138,10 @@ const Globe: React.FC<GlobeProps> = ({
     );
 
     /* --- group that will hold the dynamic dots ------------------------ */
-    peopleGroupRef.current = svg.append("g").attr("class", "people-points");
+    peopleGroupRef.current = svg
+      .append("g")
+      .attr("class", "people-points")
+      .attr("clip-path", "url(#globe-clip)");
 
     /* --- spin --------------------------------------------------------- */
     if (spin) {
@@ -120,27 +158,7 @@ const Globe: React.FC<GlobeProps> = ({
       rotateTimerRef.current?.stop();
       svg.remove();
     };
-  }, []); //  <-- empty deps: run once
-
-  /* helper reused in several places */
-  const isVisible = (c: Coordinate) => {
-    const proj = projectionRef.current!;
-    const [x, y] = proj([c.longitude, c.latitude])!;
-    const center = proj.translate();
-    const dx = x - center[0];
-    const dy = y - center[1];
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance <= proj.scale() + 2; // simple back-face culling
-  };
-
-  const updateDotPositions = () => {
-    const proj = projectionRef.current!;
-    peopleGroupRef.current
-      ?.selectAll<SVGCircleElement, Coordinate>("circle")
-      .attr("cx", (d) => proj([d.longitude, d.latitude])![0])
-      .attr("cy", (d) => proj([d.longitude, d.latitude])![1])
-      .attr("visibility", (d) => (isVisible(d) ? "visible" : "hidden"));
-  };
+  }, [colored, spin, strokeWidth]);
 
   /* ---------- 2) update people when prop changes ---------------------- */
   useEffect(() => {
