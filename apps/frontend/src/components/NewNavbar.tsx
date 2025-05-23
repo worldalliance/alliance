@@ -33,7 +33,7 @@ const NewNavbar: React.FC<{
       w-screen justify-between items-center px-24 sticky top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300 ${
         transparent
           ? "bg-transparent py-10 text-white"
-          : "bg-white text-black py-4"
+          : "bg-black text-white py-6"
       }`}
       ref={ref}
     >
@@ -57,11 +57,11 @@ const NewNavbar: React.FC<{
             />
           ) : link == NavbarPage.Join ? (
             <Link to={destinations[link]} key={link}>
-              <p className={`${transparent ? "bg-white/15 hover:bg-white/20" : "bg-black text-white"} rounded-md py-2 px-5 whitespace-nowrap font-newsreader`}>Join</p>
+              <p className={`${transparent ? "border border-white/100 hover:bg-white hover:text-black" : "border border-white hover:bg-white hover:text-black"} rounded-md py-1 px-4 whitespace-nowrap font-newsreader`}>Join</p>
             </Link>
           ) : (
             <Link to={destinations[link]} key={link}>
-              <p className="whitespace-nowrap font-newsreader">{link}</p>
+              <p className="hover:underline whitespace-nowrap font-newsreader">{link}</p>
             </Link>
           )
         )}

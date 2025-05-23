@@ -32,20 +32,21 @@ const DropdownLink: React.FC<DropdownLinkProps> = ({
           src={dropDownArrow}
           alt="dropdown arrow"
           className="w-[15px]"
-          style={{ filter: inverted ? "invert(0)" : "invert(1)" }}
+          // style={{ filter: inverted ? "invert(0)" : "invert(1)" }}
+          style={{ filter: "invert(1)" }}
         ></img>
       </div>
       {isHovered && (
         <div
           className={`absolute top-full left-0 rounded-b-md z-10 min-w-[150px] ml-[-17px] pt-3 ${
-            inverted ? "bg-white" : "bg-transparent"
+            inverted ? "bg-black" : "bg-transparent"
           }`}
         >
           {sublinks.map((sublink, index) => (
             <Link
               to={sublink.to}
               key={index}
-              className="block px-4 py-2 hover:bg-gray-100/20 text-[13pt]"
+              className="block px-4 py-2 hover:underline text-[13pt]"
             >
               {sublink.text}
             </Link>

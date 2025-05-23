@@ -47,8 +47,8 @@ const NewLandingPage: React.FC = () => {
     };
   }, [handleScroll]);
 
-  const color1 = `hsl(${Math.random() * 180}, 100%, 50%)`;
-  const color2 = `hsl(${Math.random() * 180 + 180}, 100%, 50%)`;
+  const color1 = `hsl(125, 100%, 50%)`;
+  const color2 = `hsl(305, 100%, 50%)`;
 
   // lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 
@@ -71,31 +71,24 @@ const NewLandingPage: React.FC = () => {
             background: `radial-gradient(circle at 20% 20%, ${color1} 10%, ${color2} 100%)`,
           }}
         ></div>
-        {/* <div className="absolute bottom-0 left-0 right-0 top-0 m-auto justify-center items-center flex flex-col text-white"> */}
-        {/* <p
-            className="font-bold font-berlingske !text-[60pt]"
-            style={{ filter: "drop-shadow(#00000022 0px 10px 30px)" }}
-          >
-            the alliance
-          </p> */}
-        <img
+        <div
+          className="absolute top-0 left-0 right-0 bottom-0 bg-linear-to-t from-black to-transparent opacity-50"
+        ></div>
+
+        <h2 className="w-1/2 absolute bottom-25 text-white !text-7xl font-sabon">Global citizens acting as one for a conscionable world.</h2>
+        {/* <img
           src={dropDownArrow}
           alt="arrow down"
           className="w-10 absolute bottom-5 invert"
-        />
-        {/* <div className="absolute left-0 top-20 md:top-6 w-10 h-10 p-20 text-center md:text-left">
-          <p className="text-white min-w-[300px]">
-            An online democratic polity to facilitate global coordination.
-          </p>
-        </div> */}
+        /> */}
         {/* </div> */}
       </div>
       <div
-        className="bg-white w-screen flex flex-col items-center"
+        className="w-screen flex flex-col items-center"
         ref={mainContentRef}
       >
         <div className="container mx-auto flex flex-col items-center gap-y-15">
-          <LineHeader title="Participate in collective actions" />
+          <h2 className="text-black !text-[24pt] font-sabon">We do stuff, really great stuff.</h2>
           <div className="flex flex-col md:flex-row gap-4 max-w-[100%] justify-center">
             <PlatformUIDemoCard idx={0} size="large" />
             <PlatformUIDemoCard idx={1} size="small" />
