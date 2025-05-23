@@ -5,6 +5,7 @@ import { useAuth } from "../../lib/AuthContext";
 import FormInput from "../../components/system/FormInput";
 import { AdminOnly } from "../../lib/AdminOnly";
 import Badge from "../../components/system/Badge";
+import FriendsTab from "../../components/FriendsTab";
 
 const AccountPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -80,6 +81,9 @@ const AccountPage: React.FC = () => {
             />
           </div>
         </Card>
+
+        {/* The FriendsTab component handles all friend-related functionality */}
+        <FriendsTab userId={user.id} />
       </div>
     </div>
   );

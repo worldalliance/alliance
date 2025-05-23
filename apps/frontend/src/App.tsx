@@ -23,6 +23,7 @@ import ForumPage from "./pages/app/ForumPage";
 import PostDetailPage from "./pages/app/PostDetailPage";
 import PostFormPage from "./pages/app/PostFormPage";
 import AboutPage from "./pages/static/AboutPage";
+import UserProfilePage from "./pages/app/UserProfilePage";
 import { client } from "../../../shared/client/client.gen";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import TempProdPassword from "./TempProdPassword";
@@ -125,6 +126,14 @@ const AppRoutes = () => {
           }
         />
         <Route
+          path="/user/:id"
+          element={
+            <ProtectedRoute>
+              <UserProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/actions"
           element={
             <PublicAppRoute>
@@ -153,6 +162,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <AnnouncementEditPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <AccountPage />
             </ProtectedRoute>
           }
         />

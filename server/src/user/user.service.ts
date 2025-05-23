@@ -166,6 +166,16 @@ export class UserService {
     return users;
   }
 
+  async myFriendRelationship(
+    userId: number,
+    targetUserId: number,
+  ): Promise<FriendStatus> {
+    const rel = await this.friendRepository.findOne({
+      where: { requester: { id: userId }, addressee: { id: targetUserId } },
+    });
+    return rel ? rel.status : FriendStatus.None;
+  }
+
   private async findOneOrFail(id: number): Promise<User> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) throw new NotFoundException(`User ${id} not found`);

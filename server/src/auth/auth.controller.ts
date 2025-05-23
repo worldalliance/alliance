@@ -17,23 +17,21 @@ import {
   extractRefreshTokenFromCookie,
   JwtRequest,
 } from './guards/auth.guard';
-import {
-  ProfileDto,
-  RequestMode,
-  SignInDto,
-  SignInResponseDto,
-} from './dto/signin.dto';
+import { RequestMode, SignInDto, SignInResponseDto } from './dto/signin.dto';
 import { RefreshTokenGuard } from './guards/refresh.guard';
 import {
   ApiBearerAuth,
+  ApiCookieAuth,
   ApiOkResponse,
   ApiResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { AccessToken } from './dto/authtokens.dto';
 import { Response } from 'express';
+import { UserDto } from 'src/user/user.dto';
 
 @ApiBearerAuth()
+@ApiCookieAuth()
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -110,13 +108,14 @@ export class AuthController {
 
   @Get('/me')
   @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: ProfileDto })
-  async me(@Request() req: JwtRequest): Promise<ProfileDto> {
+  @ApiOkResponse({ type: UserDto })
+  async me(@Request() req: JwtRequest): Promise<UserDto> {
     const profile = await this.authService.getProfile(req.user.email);
     return {
       email: profile.email,
       name: profile.name,
       admin: profile.admin,
+      id: profile.id,
     };
   }
 

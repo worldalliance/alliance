@@ -19,7 +19,7 @@ const ForumListPost = ({
     >
       <div className="flex flex-row justify-between gap-3">
         <p className="text-md font-medium">{post.title}</p>
-        <Badge>{post.action?.category}</Badge>
+        {post.action?.category && <Badge>{post.action.category}</Badge>}
       </div>
       <div className="flex justify-between text-xs text-gray-500 mt-2">
         <div>

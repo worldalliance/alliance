@@ -8,8 +8,6 @@ export class SignInDto extends PickType(User, ['email', 'password']) {
   mode: RequestMode;
 }
 
-export class ProfileDto extends PickType(User, ['email', 'name', 'admin']) {}
-
 export class SignInResponseDto {
   @ApiProperty()
   isAdmin: boolean;

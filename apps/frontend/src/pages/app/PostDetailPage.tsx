@@ -161,104 +161,104 @@ const PostDetailPage: React.FC = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
         <Link to="/forum" className="text-blue-600 hover:underline">
-          &larr; Back to Forum
+          &larr; Back
         </Link>
       </div>
 
       {/* Post */}
-      <Card className="mb-8">
-        <div className="p-6">
-          <div className="flex justify-between items-start mb-4">
-            <h1 className="text-2xl font-semibold">{post.title}</h1>
-            {post.author.email === user?.email && (
-              <div className="space-x-2">
-                <Link
-                  to={`/forum/edit/${post.id}`}
-                  className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
-                >
-                  Edit
-                </Link>
-                <button
-                  onClick={handleDeletePost}
-                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition"
-                >
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-
-          {post.action && (
-            <div className="mb-4">
+      <div className="p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-semibold">{post.title}</h1>
+          {post.author.email === user?.email && (
+            <div className="space-x-2">
               <Link
-                to={`/action/${post.action.id}`}
-                className="inline-block bg-blue-50 text-blue-600 px-2 py-1 rounded-lg text-sm"
+                to={`/forum/edit/${post.id}`}
+                className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
               >
-                {post.action.name}
+                Edit
               </Link>
+              <button
+                onClick={handleDeletePost}
+                className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 transition cursor-pointer"
+              >
+                Delete
+              </button>
             </div>
           )}
-
-          <div className="mb-6 whitespace-pre-wrap">{post.content}</div>
-
-          <div className="text-sm text-gray-500">
-            <span>Posted by {post.author?.name || "Unknown user"}</span>
+        </div>
+        <div className="text-sm text-gray-500">
+          <span>
+            By{" "}
+            <a href={`/user/${post.author.id}`} className="font-semibold">
+              {post.author.name}
+            </a>
+          </span>
+          <span className="ml-4">
+            {formatDistanceToNow(new Date(post.createdAt), {
+              addSuffix: true,
+            })}
+          </span>
+          {post.updatedAt !== post.createdAt && (
             <span className="ml-4">
-              {formatDistanceToNow(new Date(post.createdAt), {
+              (Edited{" "}
+              {formatDistanceToNow(new Date(post.updatedAt), {
                 addSuffix: true,
               })}
+              )
             </span>
-            {post.updatedAt !== post.createdAt && (
-              <span className="ml-4">
-                (Edited{" "}
-                {formatDistanceToNow(new Date(post.updatedAt), {
-                  addSuffix: true,
-                })}
-                )
-              </span>
-            )}
-          </div>
+          )}
         </div>
-      </Card>
 
-      {/* Replies */}
-      <h2 className="text-xl font-semibold mb-4">Replies</h2>
+        {post.action && (
+          <div className="mb-4">
+            <Link
+              to={`/action/${post.action.id}`}
+              className="inline-block bg-blue-50 text-blue-600 px-2 py-1 rounded-lg text-sm"
+            >
+              yeah eyah
+            </Link>
+          </div>
+        )}
 
-      {post.replies && post.replies.length > 0 ? (
-        <div className="space-y-4 mb-8">
-          {post.replies.map((reply) => (
-            <Card key={reply.id} className="border-l-4 border-gray-300">
-              <div className="p-4">
-                <div className="mb-4 whitespace-pre-wrap">{reply.content}</div>
+        <div className="my-8 whitespace-pre-wrap text-lg">{post.content}</div>
+      </div>
 
-                <div className="flex justify-between text-sm text-gray-500">
-                  <div>
-                    Reply by {reply.author?.name || "Unknown user"}
-                    <span className="ml-2">
-                      {formatDistanceToNow(new Date(reply.createdAt), {
-                        addSuffix: true,
-                      })}
-                    </span>
+      {post.replies.length > 0 ? (
+        <>
+          <h2 className="text-xl font-semibold mb-4">Replies</h2>
+          <div className="space-y-4 mb-8">
+            {post.replies.map((reply) => (
+              <Card key={reply.id} className="border-l-4 border-gray-300">
+                <div className="p-4">
+                  <div className="mb-4 whitespace-pre-wrap">
+                    {reply.content}
                   </div>
 
-                  {reply.author.email === user?.email && (
-                    <button
-                      onClick={() => handleDeleteReply(reply.id)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  )}
+                  <div className="flex justify-between text-sm text-gray-500">
+                    <div>
+                      Reply by {reply.author?.name || "Unknown user"}
+                      <span className="ml-2">
+                        {formatDistanceToNow(new Date(reply.createdAt), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </div>
+
+                    {reply.author.email === user?.email && (
+                      <button
+                        onClick={() => handleDeleteReply(reply.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-6 text-gray-500 mb-8">
-          <p>No replies yet</p>
-        </div>
-      )}
+              </Card>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       {user ? (
         <div className="bg-gray-50 p-6 rounded-lg">

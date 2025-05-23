@@ -17,9 +17,8 @@ import {
 } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
 import { UserService } from './user.service';
-import { UserDto } from './user.dto';
+import { FriendStatusDto, UserDto } from './user.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
-import { ProfileDto } from '../auth/dto/signin.dto';
 import { FriendStatus } from './friend.entity';
 
 @Controller('user')
@@ -28,9 +27,9 @@ export class UserController {
 
   @Get('me')
   @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: ProfileDto })
+  @ApiOkResponse({ type: UserDto })
   @ApiUnauthorizedResponse()
-  async findMe(@Request() req: JwtRequest): Promise<ProfileDto> {
+  async findMe(@Request() req: JwtRequest): Promise<UserDto> {
     const profile = await this.userService.findOne(req.user.sub);
     if (!profile) {
       throw new UnauthorizedException();
@@ -39,6 +38,7 @@ export class UserController {
       email: profile.email,
       name: profile.name,
       admin: profile.admin,
+      id: profile.id,
     };
   }
 
@@ -118,16 +118,30 @@ export class UserController {
     return this.userService.findPendingRequests(req.user.sub, 'sent');
   }
 
+  @Get('myfriendrelationship/:id')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FriendStatusDto })
+  async myFriendRelationship(
+    @Request() req: JwtRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<FriendStatusDto> {
+    const status = await this.userService.myFriendRelationship(
+      req.user.sub,
+      +id,
+    );
+    return { status };
+  }
+
   @Get('listfriends/:id')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [UserDto] })
   async listFriends(
     @Request() req: JwtRequest,
-    @Param('id') id: string,
+    @Param('id', ParseIntPipe) id: number,
   ): Promise<UserDto[]> {
     if (!req.user) {
       throw new UnauthorizedException('User not found');
     }
-    return this.userService.findFriends(+id);
+    return this.userService.findFriends(id);
   }
 }

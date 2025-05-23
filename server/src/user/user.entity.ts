@@ -22,6 +22,7 @@ import { Friend } from './friend.entity';
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
+  @ApiProperty()
   id: number;
 
   @Column()

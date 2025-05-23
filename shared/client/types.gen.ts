@@ -22,15 +22,15 @@ export type AccessToken = {
     access_token: string;
 };
 
-export type ProfileDto = {
+export type UserDto = {
+    id: number;
     name: string;
     email: string;
     admin: boolean;
 };
 
-export type UserDto = {
-    name: string;
-    email: string;
+export type FriendStatusDto = {
+    status: 'pending' | 'accepted' | 'declined' | 'none';
 };
 
 export type UserActionDto = {
@@ -123,6 +123,7 @@ export type Action = {
 };
 
 export type User = {
+    id: number;
     name: string;
     email: string;
     password: string;
@@ -276,7 +277,7 @@ export type AuthMeData = {
 };
 
 export type AuthMeResponses = {
-    200: ProfileDto;
+    200: UserDto;
 };
 
 export type AuthMeResponse = AuthMeResponses[keyof AuthMeResponses];
@@ -304,7 +305,7 @@ export type UserFindMeErrors = {
 };
 
 export type UserFindMeResponses = {
-    200: ProfileDto;
+    200: UserDto;
 };
 
 export type UserFindMeResponse = UserFindMeResponses[keyof UserFindMeResponses];
@@ -327,6 +328,126 @@ export type UserFindOneResponses = {
 };
 
 export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];
+
+export type UserRemoveFriendData = {
+    body?: never;
+    path: {
+        targetUserId: number;
+    };
+    query?: never;
+    url: '/user/friends/{targetUserId}';
+};
+
+export type UserRemoveFriendResponses = {
+    /**
+     * Relationship removed
+     */
+    200: unknown;
+};
+
+export type UserRequestFriendData = {
+    body?: never;
+    path: {
+        targetUserId: number;
+    };
+    query?: never;
+    url: '/user/friends/{targetUserId}';
+};
+
+export type UserRequestFriendResponses = {
+    /**
+     * Friend request is now pending
+     */
+    200: unknown;
+};
+
+export type UserAcceptFriendRequestData = {
+    body?: never;
+    path: {
+        requesterId: number;
+    };
+    query?: never;
+    url: '/user/friends/{requesterId}/accept';
+};
+
+export type UserAcceptFriendRequestResponses = {
+    /**
+     * Friend request accepted
+     */
+    200: unknown;
+};
+
+export type UserDeclineFriendRequestData = {
+    body?: never;
+    path: {
+        requesterId: number;
+    };
+    query?: never;
+    url: '/user/friends/{requesterId}/decline';
+};
+
+export type UserDeclineFriendRequestResponses = {
+    /**
+     * Friend request declined
+     */
+    200: unknown;
+};
+
+export type UserListReceivedRequestsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/requests/received';
+};
+
+export type UserListReceivedRequestsResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserListReceivedRequestsResponse = UserListReceivedRequestsResponses[keyof UserListReceivedRequestsResponses];
+
+export type UserListSentRequestsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/requests/sent';
+};
+
+export type UserListSentRequestsResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserListSentRequestsResponse = UserListSentRequestsResponses[keyof UserListSentRequestsResponses];
+
+export type UserMyFriendRelationshipData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/myfriendrelationship/{id}';
+};
+
+export type UserMyFriendRelationshipResponses = {
+    200: FriendStatusDto;
+};
+
+export type UserMyFriendRelationshipResponse = UserMyFriendRelationshipResponses[keyof UserMyFriendRelationshipResponses];
+
+export type UserListFriendsData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/listfriends/{id}';
+};
+
+export type UserListFriendsResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserListFriendsResponse = UserListFriendsResponses[keyof UserListFriendsResponses];
 
 export type ActionsJoinData = {
     body?: never;

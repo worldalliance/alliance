@@ -1,5 +1,5 @@
-import { prod_api_url } from "@alliance/shared/lib/config";
-import { Features, isEnabled } from "@alliance/shared/lib/features";
+import { prod_api_url } from "../../../../shared/lib/config";
+import { Features, isEnabled } from "../../../../shared/lib/features";
 
 export const getApiUrl = (): string => {
   if (import.meta.env.REACT_APP_API_URL) {
