@@ -28,7 +28,7 @@ import {
 } from '@nestjs/swagger';
 import { AccessToken } from './dto/authtokens.dto';
 import { Response } from 'express';
-import { UserDto } from 'src/user/user.dto';
+import { UserDto } from '../user/user.dto';
 
 @ApiBearerAuth()
 @ApiCookieAuth()

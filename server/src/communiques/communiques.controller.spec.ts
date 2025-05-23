@@ -6,6 +6,7 @@ import { User } from '../user/user.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
+import { Friend } from '../user/friend.entity';
 
 describe('CommuniquesController', () => {
   let controller: CommuniquesController;
@@ -23,6 +24,10 @@ describe('CommuniquesController', () => {
         },
         {
           provide: getRepositoryToken(User),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(Friend),
           useValue: {},
         },
       ],
