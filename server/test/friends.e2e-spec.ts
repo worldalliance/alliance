@@ -16,11 +16,14 @@ describe('Friends (e2e)', () => {
     ctx = await createTestApp([]);
 
     // Default “regular user” that e2e-utils always seeds
-    const userA = await ctx.userRepo.findOneByOrFail({
-      email: 'user@example.com',
+    const userA = ctx.userRepo.create({
+      name: 'Friend A',
+      email: 'frienda@example.com',
+      password: 'Password123!', // will be hashed by entity hook
     });
+    await ctx.userRepo.save(userA);
     userAId = userA.id;
-    userAToken = ctx.accessToken;
+    userAToken = ctx.jwtService.sign({ sub: userAId });
 
     /* ───── create a second regular user (User B) ───── */
     const userB = ctx.userRepo.create({
@@ -28,10 +31,10 @@ describe('Friends (e2e)', () => {
       email: 'friendb@example.com',
       password: 'Password123!', // will be hashed by entity hook
     });
+
     await ctx.userRepo.save(userB);
     userBId = userB.id;
-
-    // Generate a JWT for User B (e2e-utils exposes `jwtService`)
+    console.log('userBId', userBId);
     userBToken = ctx.jwtService.sign({ sub: userBId });
   });
 
@@ -54,6 +57,7 @@ describe('Friends (e2e)', () => {
       .get('/user/friends/requests/sent')
       .set('Authorization', `Bearer ${userAToken}`);
 
+    console.log(sent.body);
     expect(sent.status).toBe(200);
     expect(sent.body.length).toBe(1);
     expect(sent.body[0].id).toBe(userBId);
@@ -79,11 +83,11 @@ describe('Friends (e2e)', () => {
 
   it('Both users now appear in each other’s friend lists', async () => {
     const aFriends = await request(ctx.app.getHttpServer())
-      .get('/user/friends')
+      .get(`/user/listfriends/${userAId}`)
       .set('Authorization', `Bearer ${userAToken}`);
 
     const bFriends = await request(ctx.app.getHttpServer())
-      .get('/user/friends')
+      .get(`/user/listfriends/${userBId}`)
       .set('Authorization', `Bearer ${userBToken}`);
 
     expect(aFriends.status).toBe(200);
@@ -101,7 +105,7 @@ describe('Friends (e2e)', () => {
 
     // Lists should now be empty
     const list = await request(ctx.app.getHttpServer())
-      .get('/user/friends')
+      .get(`/user/listfriends/${userAId}`)
       .set('Authorization', `Bearer ${userAToken}`);
 
     expect(list.status).toBe(200);
@@ -128,7 +132,9 @@ describe('Friends (e2e)', () => {
    * ──────────────────────────────────────────────────────────── */
 
   it('Unauthenticated requests are rejected', async () => {
-    const res = await request(ctx.app.getHttpServer()).get('/user/friends');
+    const res = await request(ctx.app.getHttpServer()).get(
+      '/user/listfriends/1',
+    );
     expect(res.status).toBe(401);
   });
 

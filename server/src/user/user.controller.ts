@@ -102,14 +102,6 @@ export class UserController {
     return this.userService.removeFriend(req.user.sub, targetUserId);
   }
 
-  @Get('friends')
-  @UseGuards(AuthGuard)
-  @ApiOperation({ summary: 'Get current user’s friends' })
-  @ApiOkResponse({ type: [UserDto] })
-  async listFriends(@Request() req: JwtRequest): Promise<UserDto[]> {
-    return this.userService.findFriends(req.user.sub);
-  }
-
   @Get('friends/requests/received')
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Requests other users sent to me (pending)' })
@@ -124,5 +116,18 @@ export class UserController {
   @ApiOkResponse({ type: [UserDto] })
   async listSentRequests(@Request() req: JwtRequest): Promise<UserDto[]> {
     return this.userService.findPendingRequests(req.user.sub, 'sent');
+  }
+
+  @Get('listfriends/:id')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: [UserDto] })
+  async listFriends(
+    @Request() req: JwtRequest,
+    @Param('id') id: string,
+  ): Promise<UserDto[]> {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.userService.findFriends(+id);
   }
 }

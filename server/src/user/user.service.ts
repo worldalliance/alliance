@@ -9,7 +9,6 @@ import { User } from './user.entity';
 import { UserActionRelation } from '../actions/entities/user-action.entity';
 import { Friend, FriendStatus } from './friend.entity';
 import { UserDto } from './user.dto';
-import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class UserService {
@@ -141,7 +140,7 @@ export class UserService {
       r.requester.id === userId ? r.addressee : r.requester,
     );
 
-    return plainToInstance(UserDto, others, { excludeExtraneousValues: true });
+    return others;
   }
 
   /** Pending sent / received requests as `UserDto[]`. */
@@ -159,13 +158,12 @@ export class UserService {
             where: { addressee: { id: userId }, status: FriendStatus.Pending },
             relations: ['requester'],
           });
-
     const users =
       direction === 'sent'
         ? rels.map((r) => r.addressee)
         : rels.map((r) => r.requester);
 
-    return plainToInstance(UserDto, users, { excludeExtraneousValues: true });
+    return users;
   }
 
   private async findOneOrFail(id: number): Promise<User> {
