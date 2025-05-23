@@ -16,6 +16,8 @@ import { UserAction } from '../actions/entities/user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Communique } from '../communiques/entities/communique.entity';
 import { IsNotEmpty } from 'class-validator';
+import { FriendStatus } from './friend.entity';
+import { Friend } from './friend.entity';
 
 @Entity()
 export class User {
@@ -52,6 +54,24 @@ export class User {
 
   @OneToMany(() => UserAction, (userAction) => userAction.user)
   actionRelations: UserAction[];
+
+  @OneToMany(() => Friend, (friend) => friend.requester)
+  sentFriendRequests: Friend[];
+
+  @OneToMany(() => Friend, (friend) => friend.addressee)
+  receivedFriendRequests: Friend[];
+
+  get friends(): User[] {
+    const sentAccepted =
+      this.sentFriendRequests
+        ?.filter((f) => f.status === FriendStatus.Accepted)
+        .map((f) => f.addressee) || [];
+    const receivedAccepted =
+      this.receivedFriendRequests
+        ?.filter((f) => f.status === FriendStatus.Accepted)
+        .map((f) => f.requester) || [];
+    return [...sentAccepted, ...receivedAccepted];
+  }
 
   constructor(data: Partial<User> = {}) {
     Object.assign(this, data);

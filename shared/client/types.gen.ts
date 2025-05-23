@@ -28,6 +28,11 @@ export type ProfileDto = {
     admin: boolean;
 };
 
+export type UserDto = {
+    name: string;
+    email: string;
+};
+
 export type UserActionDto = {
     status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
     dateCommitted: string;
@@ -146,11 +151,6 @@ export type Reply = {
     postId: number;
     createdAt: string;
     updatedAt: string;
-};
-
-export type UserDto = {
-    name: string;
-    email: string;
 };
 
 export type PostDto = {
@@ -292,6 +292,42 @@ export type AuthLogoutResponses = {
     200: unknown;
 };
 
+export type UserFindMeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/me';
+};
+
+export type UserFindMeErrors = {
+    401: unknown;
+};
+
+export type UserFindMeResponses = {
+    200: ProfileDto;
+};
+
+export type UserFindMeResponse = UserFindMeResponses[keyof UserFindMeResponses];
+
+export type UserFindOneData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/{id}';
+};
+
+export type UserFindOneErrors = {
+    401: unknown;
+};
+
+export type UserFindOneResponses = {
+    200: UserDto;
+};
+
+export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];
+
 export type ActionsJoinData = {
     body?: never;
     path: {
@@ -372,6 +408,32 @@ export type ActionsFindAllWithDraftsResponses = {
 
 export type ActionsFindAllWithDraftsResponse = ActionsFindAllWithDraftsResponses[keyof ActionsFindAllWithDraftsResponses];
 
+export type ActionsSseActionCountData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/live/{id}';
+};
+
+export type ActionsSseActionCountResponses = {
+    200: unknown;
+};
+
+export type ActionsLiveListData = {
+    body?: never;
+    path?: never;
+    query: {
+        ids: string;
+    };
+    url: '/actions/live-list';
+};
+
+export type ActionsLiveListResponses = {
+    200: unknown;
+};
+
 export type ActionsRemoveData = {
     body?: never;
     path: {
@@ -429,32 +491,6 @@ export type ActionsCreateResponses = {
 };
 
 export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
-
-export type ActionsSseActionCountData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/actions/live/{id}';
-};
-
-export type ActionsSseActionCountResponses = {
-    200: unknown;
-};
-
-export type ActionsLiveListData = {
-    body?: never;
-    path?: never;
-    query: {
-        ids: string;
-    };
-    url: '/actions/live-list';
-};
-
-export type ActionsLiveListResponses = {
-    200: unknown;
-};
 
 export type CommuniquesFindAllData = {
     body?: never;

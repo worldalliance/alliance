@@ -16,11 +16,12 @@ import { Image } from '../src/images/entities/image.entity';
 import { Post } from '../src/forum/entities/post.entity';
 import { Reply } from '../src/forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-
+import { Friend } from '../src/user/friend.entity';
 export interface TestContext {
   app: INestApplication;
   dataSource: DataSource;
   userRepo: Repository<User>;
+  friendRepo: Repository<Friend>;
   actionRepo: Repository<Action>;
   userActionRepo: Repository<UserAction>;
   imageRepo: Repository<Image>;
@@ -46,7 +47,16 @@ export async function createTestApp(
         type: 'sqlite',
         database: ':memory:',
         dropSchema: true,
-        entities: [User, Action, UserAction, Image, Communique, Post, Reply],
+        entities: [
+          User,
+          Action,
+          UserAction,
+          Image,
+          Communique,
+          Post,
+          Reply,
+          Friend,
+        ],
         synchronize: true,
       }),
       AuthModule,
@@ -67,6 +77,7 @@ export async function createTestApp(
   const imageRepo = dataSource.getRepository(Image);
   const postRepo = dataSource.getRepository(Post);
   const replyRepo = dataSource.getRepository(Reply);
+  const friendRepo = dataSource.getRepository(Friend);
   const jwtService = moduleFixture.get<JwtService>(JwtService);
 
   // Create test user
@@ -114,6 +125,7 @@ export async function createTestApp(
     app,
     dataSource,
     userRepo,
+    friendRepo,
     actionRepo,
     userActionRepo,
     imageRepo,

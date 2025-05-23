@@ -117,7 +117,7 @@ const AppRoutes = () => {
         <Route path="/issues" element={<IssuesListPage />} />
         <Route path="/issues/:issue" element={<IssuePage />} />
         <Route
-          path="/account"
+          path="/profile"
           element={
             <ProtectedRoute>
               <AccountPage />

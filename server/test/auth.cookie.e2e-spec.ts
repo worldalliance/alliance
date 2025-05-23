@@ -17,6 +17,7 @@ import { Action } from '../src/actions/entities/action.entity';
 import { UserAction } from '../src/actions/entities/user-action.entity';
 import { Image } from '../src/images/entities/image.entity';
 import { Communique } from '../src/communiques/entities/communique.entity';
+import { Friend } from '../src/user/friend.entity';
 
 describe('Auth via Http-Only cookies (e2e)', () => {
   let app: INestApplication;
@@ -36,7 +37,7 @@ describe('Auth via Http-Only cookies (e2e)', () => {
         TypeOrmModule.forRoot({
           type: 'sqlite',
           database: ':memory:',
-          entities: [User, Action, UserAction, Image, Communique],
+          entities: [User, Action, UserAction, Image, Communique, Friend],
           synchronize: true,
         }),
       ],
@@ -51,9 +52,6 @@ describe('Auth via Http-Only cookies (e2e)', () => {
     userRepo = dataSource.getRepository(User);
   });
 
-  /** ------------------------------------------------------------------ *
-   *  Helper: create an agent that persists the server-managed cookies   *
-   * ------------------------------------------------------------------- */
   const agent = () => request.agent(app.getHttpServer());
 
   it('rejects invalid login', () => {

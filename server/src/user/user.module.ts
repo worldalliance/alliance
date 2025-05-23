@@ -6,6 +6,8 @@ import { Action } from '../actions/entities/action.entity';
 import { IsUserAlreadyExist } from './validators/user-already-exists.validator';
 import { UserAction } from '../actions/entities/user-action.entity';
 import { Communique } from '../communiques/entities/communique.entity';
+import { UserController } from './user.controller';
+import { Friend } from './friend.entity';
 
 @Module({
   imports: [
@@ -13,7 +15,9 @@ import { Communique } from '../communiques/entities/communique.entity';
     TypeOrmModule.forFeature([Action]),
     TypeOrmModule.forFeature([UserAction]),
     TypeOrmModule.forFeature([Communique]),
+    TypeOrmModule.forFeature([Friend]),
   ],
+  controllers: [UserController],
   providers: [UserService, IsUserAlreadyExist],
   exports: [UserService],
 })

@@ -18,6 +18,7 @@ import { ForumModule } from './forum/forum.module';
 import { Post } from './forum/entities/post.entity';
 import { Reply } from './forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { Friend } from './user/friend.entity';
 
 @Module({
   imports: [
@@ -35,7 +36,16 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [User, Action, UserAction, Image, Communique, Post, Reply],
+      entities: [
+        User,
+        Action,
+        UserAction,
+        Image,
+        Communique,
+        Post,
+        Reply,
+        Friend,
+      ],
       synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'
         ? {
