@@ -32,10 +32,9 @@ export const destinations: Record<NavbarPage, string> = {
 };
 
 export const platformSublinks = [
-  { text: "Overview", to: "/platform" },
-  { text: "Resources", to: "/platform/resources" },
-  { text: "Updates", to: "/platform/updates" },
-  { text: "Staff", to: "/platform/staff" },
+  { text: "About", to: "/about" },
+  { text: "Resources", to: "/resources" },
+  { text: "Governance", to: "/platform/governance" },
 ];
 
 export interface NavbarProps {

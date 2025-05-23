@@ -26,7 +26,7 @@ const DropdownLink: React.FC<DropdownLinkProps> = ({
     >
       <div className="flex flex-row items-center space-x-2 h-full after:content-[''] after:absolute after:top-0 after:left-0 after:w-full after:h-[150%] after:bg-transparent after:z-10">
         <Link to={to}>
-          <p className="pt-1 whitespace-nowrap">{text}</p>
+          <p className="whitespace-nowrap">{text}</p>
         </Link>
         <img
           src={dropDownArrow}
@@ -45,7 +45,7 @@ const DropdownLink: React.FC<DropdownLinkProps> = ({
             <Link
               to={sublink.to}
               key={index}
-              className="block px-4 py-2 hover:bg-gray-100/50 text-[13pt]"
+              className="block px-4 py-2 hover:bg-gray-100/20 text-[13pt]"
             >
               {sublink.text}
             </Link>

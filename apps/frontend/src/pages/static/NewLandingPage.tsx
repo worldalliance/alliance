@@ -83,11 +83,11 @@ const NewLandingPage: React.FC = () => {
           alt="arrow down"
           className="w-10 absolute bottom-5 invert"
         />
-        <div className="absolute left-0 top-20 md:top-6 w-10 h-10 p-20 text-center md:text-left">
+        {/* <div className="absolute left-0 top-20 md:top-6 w-10 h-10 p-20 text-center md:text-left">
           <p className="text-white min-w-[300px]">
             An online democratic polity to facilitate global coordination.
           </p>
-        </div>
+        </div> */}
         {/* </div> */}
       </div>
       <div
