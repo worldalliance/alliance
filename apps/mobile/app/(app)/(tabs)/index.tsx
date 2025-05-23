@@ -7,21 +7,40 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useAuth } from "../../../lib/AuthContext";
-import { useEffect, useState } from "react";
-import { actionsFindAll, ActionDto } from "../../../../../shared/client";
+import { useEffect, useMemo, useState } from "react";
+import { ActionDto } from "../../../../../shared/client";
+import { actionsFindAllWithStatus } from "../../../../../shared/client";
 import ActionCard from "../../../components/ActionCard";
 import { router } from "expo-router";
+
+enum FilterMode {
+  All = "All",
+  Active = "Active",
+  Upcoming = "Upcoming",
+  Past = "Past",
+  Joined = "Joined",
+}
+
+const FILTERS = [
+  FilterMode.All,
+  FilterMode.Active,
+  FilterMode.Upcoming,
+  FilterMode.Past,
+  FilterMode.Joined,
+];
+
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
 
   useEffect(() => {
     const fetchActions = async () => {
       try {
-        const response = await actionsFindAll();
+        const response = await actionsFindAllWithStatus();
         if (response.error) {
           throw new Error("Failed to fetch actions");
         }
@@ -36,6 +55,17 @@ export default function HomeScreen() {
 
     fetchActions();
   }, []);
+
+  const filteredActions = useMemo(() => {
+    if (filterMode === FilterMode.All) {
+      return actions;
+    }
+    if (filterMode === FilterMode.Joined) {
+      // TODO: Implement joined filter logic based on user
+      return actions;
+    }
+    return actions.filter((action) => action.status === filterMode);
+  }, [actions, filterMode]);
 
   const navigateToAction = (actionId: number) => {
     router.push(`/action/${actionId}`);
@@ -58,16 +88,13 @@ export default function HomeScreen() {
 
       <View style={styles.actionsContainer}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
-
         <View style={styles.actionButtonsRow}>
           <TouchableOpacity style={styles.actionButton}>
             <Text style={styles.actionButtonText}>Events</Text>
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.actionButton}>
             <Text style={styles.actionButtonText}>Forum</Text>
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.actionButton}>
             <Text style={styles.actionButtonText}>Resources</Text>
           </TouchableOpacity>
@@ -77,11 +104,29 @@ export default function HomeScreen() {
       <View style={styles.actionsListContainer}>
         <View style={styles.actionsTitleRow}>
           <Text style={styles.sectionTitle}>Actions</Text>
-          {/* <TouchableOpacity onPress={() => router.push("/actions")}>
-            <Text style={styles.viewAllText}>View All</Text>
-          </TouchableOpacity> */}
         </View>
-
+        <View style={styles.filterRow}>
+          {FILTERS.map((mode) => (
+            <TouchableOpacity
+              key={mode}
+              style={[
+                styles.filterButton,
+                filterMode === mode && styles.filterButtonActive,
+              ]}
+              onPress={() => setFilterMode(mode)}
+            >
+              <Text
+                style={
+                  filterMode === mode
+                    ? styles.filterTextActive
+                    : styles.filterText
+                }
+              >
+                {mode}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         {loading ? (
           <ActivityIndicator
             size="large"
@@ -90,18 +135,16 @@ export default function HomeScreen() {
           />
         ) : error ? (
           <Text style={styles.errorText}>{error}</Text>
-        ) : actions.length === 0 ? (
+        ) : filteredActions.length === 0 ? (
           <Text style={styles.noActionsText}>No actions available</Text>
         ) : (
-          actions
-            .slice(0, 3)
-            .map((action) => (
-              <ActionCard
-                key={action.id}
-                action={action}
-                onPress={() => navigateToAction(action.id)}
-              />
-            ))
+          filteredActions.map((action) => (
+            <ActionCard
+              key={action.id}
+              action={action}
+              onPress={() => navigateToAction(action.id)}
+            />
+          ))
         )}
       </View>
 
@@ -209,6 +252,29 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 12,
+  },
+  filterRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  filterButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "#eee",
+    marginHorizontal: 2,
+  },
+  filterButtonActive: {
+    backgroundColor: "#0D1B2A",
+  },
+  filterText: {
+    color: "#333",
+    fontWeight: "500",
+  },
+  filterTextActive: {
+    color: "#fff",
+    fontWeight: "700",
   },
   viewAllText: {
     fontSize: 14,

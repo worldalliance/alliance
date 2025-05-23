@@ -16,6 +16,14 @@ enum FilterMode {
   Joined = "joined",
 }
 
+const FILTER_LABELS: Record<FilterMode, string> = {
+  [FilterMode.All]: "All",
+  [FilterMode.Active]: "Active",
+  [FilterMode.Upcoming]: "Upcoming",
+  [FilterMode.Past]: "Past",
+  [FilterMode.Joined]: "Joined",
+};
+
 const ActionsListPage: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
