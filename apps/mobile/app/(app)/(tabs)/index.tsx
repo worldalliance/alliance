@@ -12,6 +12,7 @@ import { ActionDto } from "../../../../../shared/client";
 import { actionsFindAllWithStatus } from "../../../../../shared/client";
 import ActionCard from "../../../components/ActionCard";
 import { router } from "expo-router";
+import usePushNotifications from "../../../lib/usePushNotifications";
 
 enum FilterMode {
   All = "All",
@@ -32,6 +33,7 @@ const FILTERS = [
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  usePushNotifications(user);
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

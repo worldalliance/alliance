@@ -23,6 +23,7 @@ export type AccessToken = {
 };
 
 export type ProfileDto = {
+    id: number;
     name: string;
     email: string;
     admin: boolean;
