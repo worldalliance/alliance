@@ -195,4 +195,12 @@ export class UserService {
     const user = await this.findOneOrFail(id);
     return 0;
   }
+  
+  async savePushToken(userId: number, token: string): Promise<void> {
+    await this.userRepository.update(userId, { pushToken: token });
+  }
+
+  async removePushToken(userId: number): Promise<void> {
+    await this.userRepository.update(userId, { pushToken: null });
+  }
 }

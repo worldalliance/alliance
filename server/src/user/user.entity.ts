@@ -1,6 +1,5 @@
 import * as bcrypt from 'bcryptjs';
 import { Exclude } from 'class-transformer';
-
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -61,6 +60,9 @@ export class User {
 
   @ManyToMany(() => Communique, (communique) => communique.usersRead)
   communiquesRead: Communique[];
+  // Allow null values for pushToken
+  @Column({ type: 'varchar', nullable: true })
+  pushToken: string | null;
 
   @OneToMany(() => UserAction, (userAction) => userAction.user)
   actionRelations: UserAction[];
