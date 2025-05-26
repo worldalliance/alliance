@@ -50,6 +50,14 @@ export class User {
   @ApiProperty()
   admin: boolean;
 
+  @Column({ nullable: true })
+  @ApiProperty({ nullable: true })
+  profilePicture: string;
+
+  @Column({ nullable: true })
+  @ApiProperty({ nullable: true })
+  profileDescription: string;
+
   @ManyToMany(() => Communique, (communique) => communique.usersRead)
   communiquesRead: Communique[];
 

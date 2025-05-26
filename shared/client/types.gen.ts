@@ -29,6 +29,15 @@ export type UserDto = {
     admin: boolean;
 };
 
+export type ProfileDto = {
+    id: number;
+    name: string;
+    email: string;
+    admin: boolean;
+    profilePicture: string | null;
+    profileDescription: string | null;
+};
+
 export type FriendStatusDto = {
     status: 'pending' | 'accepted' | 'declined' | 'none';
 };
@@ -128,6 +137,8 @@ export type User = {
     email: string;
     password: string;
     admin: boolean;
+    profilePicture: string | null;
+    profileDescription: string | null;
 };
 
 export type Post = {
@@ -324,7 +335,7 @@ export type UserFindOneErrors = {
 };
 
 export type UserFindOneResponses = {
-    200: UserDto;
+    200: ProfileDto;
 };
 
 export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];

@@ -15,8 +15,7 @@ import {
   authRefreshTokens,
   UserDto,
 } from "../../../../shared/client";
-import { getApiUrl } from "./config";
-import { client } from "@alliance/shared/client/client.gen";
+
 interface AuthContextType {
   isAuthenticated: boolean;
   user: UserDto | undefined;

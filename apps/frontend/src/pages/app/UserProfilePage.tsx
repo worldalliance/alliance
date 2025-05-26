@@ -3,28 +3,38 @@ import { useParams, useNavigate } from "react-router-dom";
 import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
 import { useAuth } from "../../lib/AuthContext";
-import UserBubble from "../../components/UserBubble";
 import {
   userFindOne,
   userRequestFriend,
-  userRemoveFriend,
   userListFriends,
   UserDto,
   userMyFriendRelationship,
   FriendStatusDto,
+  ActionDto,
 } from "../../../../../shared/client";
+import ProfileImage from "./ProfileImage";
+import testImg from "../../assets/fakebgimage.png";
+import icons8Plus from "../../assets/icons8-plus.svg";
+import dots from "../../assets/dots.svg";
+import UserActivityCard from "./UserActivityCard";
+
+enum ProfileTabs {
+  Activity = "Activity",
+  Forum = "Forum Posts",
+  Friends = "Friends",
+}
 
 const UserProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [profileUser, setProfileUser] = useState<UserDto | null>(null);
+  const [profileUser, setProfileUser] = useState<ProfileDto | null>(null);
   const [userFriends, setUserFriends] = useState<UserDto[]>([]);
   const [friendStatus, setFriendStatus] =
     useState<FriendStatusDto["status"]>("none");
-  const [sendingRequest, setSendingRequest] = useState(false);
   const [isMe, setIsMe] = useState(false);
+  const [selectedTab, setSelectedTab] = useState(ProfileTabs.Activity);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,27 +80,10 @@ const UserProfilePage: React.FC = () => {
     if (!id || !user) return;
 
     try {
-      setSendingRequest(true);
       await userRequestFriend({ path: { targetUserId: parseInt(id) } });
       setFriendStatus("pending");
     } catch (error) {
       console.error("Error sending friend request:", error);
-    } finally {
-      setSendingRequest(false);
-    }
-  };
-
-  const handleRemoveFriend = async () => {
-    if (!id || !user) return;
-
-    try {
-      setSendingRequest(true);
-      await userRemoveFriend({ path: { targetUserId: parseInt(id) } });
-      setFriendStatus("none");
-    } catch (error) {
-      console.error("Error removing friend:", error);
-    } finally {
-      setSendingRequest(false);
     }
   };
 
@@ -98,7 +91,6 @@ const UserProfilePage: React.FC = () => {
     return (
       <div className="min-h-screen bg-pagebg pt-20 px-8 md:px-16">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-sabon mb-8">User Profile</h1>
           <Card style={CardStyle.White} className="p-8">
             <p className="text-center text-stone-500">Loading profile...</p>
           </Card>
@@ -111,7 +103,6 @@ const UserProfilePage: React.FC = () => {
     return (
       <div className="min-h-screen bg-pagebg pt-20 px-8 md:px-16">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-2xl font-sabon mb-8">User Profile</h1>
           <Card style={CardStyle.White} className="p-8">
             <p className="text-center text-stone-500">User not found</p>
           </Card>
@@ -121,101 +112,66 @@ const UserProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-pagebg pt-20 px-8 md:px-16">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-sabon">User Profile</h1>
-          {isMe && (
-            <Button
-              onClick={() => navigate("/settings")}
-              color={ButtonColor.Stone}
-              className="px-4"
-            >
-              Edit My Profile
-            </Button>
-          )}
+    <div className="max-w-[800px] mx-auto">
+      <div className="w-full h-[200px] border-b border-stone-400"></div>
+      <div className="px-8 mt-[-55px] relative space-y-2 border-b border-stone-200">
+        <ProfileImage src={testImg} />
+        <div className="flex gap-2">
+          <h1>{profileUser.name}</h1>
         </div>
-
-        <Card style={CardStyle.White} className="p-8 mb-6">
-          <div className="flex items-center mb-8">
-            <UserBubble className="w-20 h-20 mr-6" />
-            <div>
-              <h2 className="text-xl font-bold">{profileUser.name}</h2>
-              <p className="text-stone-500">{profileUser.email}</p>
+        {/* stats row */}
+        <div className="flex flex-row gap-5">
+          <p>
+            <b>100 </b>
+            actions completed
+          </p>
+          <p>
+            <b>100 </b>
+            forum posts
+          </p>
+          <p>
+            <b>100 </b>
+            Friends
+          </p>
+        </div>
+        <p className="my-6">{profileUser.profileDescription}</p>
+        <div className="flex flex-row w-full justify-evenly">
+          {Object.values(ProfileTabs).map((tab) => (
+            <div
+              onClick={() => setSelectedTab(tab)}
+              className={`${selectedTab === tab ? "font-bold " : ""} flex-1 text-center py-3 pt-4 cursor-pointer hover:underline`}
+            >
+              <p className="text-lg">{tab}</p>
             </div>
+          ))}
+        </div>
+        {/* button row */}
+        <div className="absolute right-0 top-[70px] space-x-3 flex flex-row">
+          <Button
+            color={ButtonColor.Blue}
+            onClick={handleSendFriendRequest}
+            className="rounded-full"
+          >
+            <img src={icons8Plus} alt="send" className="invert w-6 h-6" />
+            <span className="mt-1">Send Friend Request</span>
+          </Button>
+          <Button
+            color={ButtonColor.Light}
+            onClick={handleSendFriendRequest}
+            className="!p-[8px] rounded-full"
+          >
+            <img src={dots} alt="send" className="w-7 h-7" />
+          </Button>
+        </div>
+      </div>
+      <div>
+        {selectedTab === ProfileTabs.Activity && (
+          <div className="px-8">
+            {profileUser.completedActions?.map((action: ActionDto) => (
+              <UserActivityCard action={action} />
+            ))}
           </div>
-
-          {!isMe && (
-            <div className="border-t pt-4">
-              {friendStatus === "none" && (
-                <Button
-                  onClick={handleSendFriendRequest}
-                  color={ButtonColor.Blue}
-                  disabled={sendingRequest}
-                >
-                  {sendingRequest ? "Sending..." : "Send Friend Request"}
-                </Button>
-              )}
-              {friendStatus === "pending" && (
-                <div className="flex items-center">
-                  <span className="text-stone-500 mr-4">
-                    Friend Request Pending
-                  </span>
-                  <Button
-                    onClick={handleRemoveFriend}
-                    color={ButtonColor.Stone}
-                    disabled={sendingRequest}
-                  >
-                    Cancel Request
-                  </Button>
-                </div>
-              )}
-              {friendStatus === "accepted" && (
-                <div className="flex items-center">
-                  <span className="text-green-600 mr-4">Friends</span>
-                  <Button
-                    onClick={handleRemoveFriend}
-                    color={ButtonColor.Red}
-                    disabled={sendingRequest}
-                  >
-                    Remove Friend
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
-
-        <Card style={CardStyle.White} className="p-8">
-          <h3 className="text-lg font-bold mb-4">
-            Friends ({userFriends.length})
-          </h3>
-          {userFriends.length === 0 ? (
-            <p className="text-stone-500">No friends yet</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {userFriends.map((friend) => (
-                <div
-                  key={friend.email}
-                  className="flex items-center p-2 border rounded-lg"
-                >
-                  <UserBubble className="w-10 h-10 mr-3" />
-                  <div>
-                    <p className="font-medium">{friend.name}</p>
-                    <p className="text-stone-500 text-sm">{friend.email}</p>
-                  </div>
-                  <Button
-                    onClick={() => navigate(`/user/${friend.email}`)}
-                    color={ButtonColor.Light}
-                    className="ml-auto"
-                  >
-                    View
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+        )}
       </div>
     </div>
   );

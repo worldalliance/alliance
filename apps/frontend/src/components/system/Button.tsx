@@ -20,7 +20,7 @@ export enum ButtonColor {
   Green = "bg-green-500",
   Red = "bg-red-500",
   Light = "bg-stone-200",
-  Blue = "bg-cyan-600",
+  Blue = "bg-[#318dde]",
   Yellow = "bg-yellow-600",
   Transparent = "transparent",
   Grey = "bg-gray-200 !text-black",
@@ -38,10 +38,10 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <button
       type={type}
-      className={`px-3 py-1 w-fit h-fit rounded ${className} ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-${ButtonColorClasses[color]}-100"} font-newsreader ${
+      className={`px-4 py-2 w-fit h-fit rounded flex items-center justify-center ${className} ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-${ButtonColorClasses[color]}-100"} font-newsreader ${
         color === ButtonColor.Transparent
-          ? "bg-transparent text-black hover:bg-black/10 pt-2"
-          : "text-white py-1 pt-2"
+          ? "bg-transparent text-black hover:bg-black/10"
+          : "text-white"
       }  ${color} ${color === ButtonColor.Light ? "!text-stone-800" : ""}`}
       onClick={onClick}
       disabled={disabled}

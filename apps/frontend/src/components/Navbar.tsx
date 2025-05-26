@@ -4,7 +4,7 @@ import NavbarHorizontal from "./NavbarHorizontal";
 
 export enum NavbarPage {
   Dashboard = "Dashboard",
-  CurrentActions = "Current Actions",
+  CurrentActions = "Actions",
   Announcements = "Announcements",
   Forum = "Forum",
   Profile = "Profile",
@@ -15,7 +15,6 @@ export enum NavbarPage {
 export const links: NavbarPage[] = [
   NavbarPage.Dashboard,
   NavbarPage.CurrentActions,
-  NavbarPage.Announcements,
   NavbarPage.Forum,
   NavbarPage.Settings,
 ];

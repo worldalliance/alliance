@@ -17,7 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
 import { UserService } from './user.service';
-import { FriendStatusDto, UserDto } from './user.dto';
+import { FriendStatusDto, ProfileDto, UserDto } from './user.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { FriendStatus } from './friend.entity';
 
@@ -44,9 +44,9 @@ export class UserController {
 
   @Get(':id')
   @Public()
-  @ApiOkResponse({ type: UserDto })
+  @ApiOkResponse({ type: ProfileDto })
   @ApiUnauthorizedResponse()
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<UserDto | null> {
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<ProfileDto | null> {
     return this.userService.findOne(id);
   }
 
