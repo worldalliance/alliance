@@ -198,7 +198,15 @@ export class ActionsService {
 
     const map: Record<number, number> = {};
     rows.forEach((r) => (map[+r.id] = +r.count));
-    ids.forEach((id) => (map[id] ??= 0)); // ensure every requested id has a key
+    ids.forEach((id) => (map[id] ??= 0));
     return map;
+  }
+
+  async findCompletedForUser(userId: number): Promise<ActionDto[]> {
+    const actions = await this.userActionRepository.find({
+      where: { user: { id: userId }, status: UserActionRelation.completed },
+      relations: ['action'],
+    });
+    return actions.map((action) => action.action);
   }
 }

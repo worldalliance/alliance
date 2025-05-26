@@ -624,6 +624,21 @@ export type ActionsCreateResponses = {
 
 export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
 
+export type ActionsFindCompletedForUserData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/actions/completed/{id}';
+};
+
+export type ActionsFindCompletedForUserResponses = {
+    200: Array<ActionDto>;
+};
+
+export type ActionsFindCompletedForUserResponse = ActionsFindCompletedForUserResponses[keyof ActionsFindCompletedForUserResponses];
+
 export type CommuniquesFindAllData = {
     body?: never;
     path?: never;

@@ -12,13 +12,13 @@ import {
   authLogout,
   authMe,
   authRefreshTokens,
-  ProfileDto,
+  UserDto,
 } from "../../../shared/client";
 import { authAdminLogin } from "../../../shared/client";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: ProfileDto | undefined;
+  user: UserDto | undefined;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -28,7 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
   ({ children }) => {
-    const [user, setUser] = useState<ProfileDto | undefined>();
+    const [user, setUser] = useState<UserDto | undefined>();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

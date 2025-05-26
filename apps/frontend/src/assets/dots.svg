@@ -5,26 +5,48 @@
    height="50"
    version="1.1"
    id="svg1"
+   sodipodi:docname="dots.svg"
+   inkscape:version="1.4.2 (ebf0e940, 2025-05-08)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="7.4323782"
+     inkscape:cx="24.958364"
+     inkscape:cy="18.634682"
+     inkscape:window-width="976"
+     inkscape:window-height="944"
+     inkscape:window-x="80"
+     inkscape:window-y="25"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg1" />
   <defs
      id="defs1" />
   <circle
      style="fill:#000000"
      id="path2"
      cx="24"
-     cy="24"
+     cy="24.269093"
      r="3" />
   <circle
      style="fill:#000000"
      id="path2-6"
      cx="34"
-     cy="24"
+     cy="24.269093"
      r="3" />
   <circle
      style="fill:#000000"
      id="path2-1"
      cx="14"
-     cy="24"
+     cy="24.269093"
      r="3" />
 </svg>

@@ -4,6 +4,7 @@ import UserProfilePage from "../pages/app/UserProfilePage";
 import StoryRouter from "./StoryRouter";
 import { http, HttpResponse } from "msw";
 import { ProfileDto } from "@alliance/shared/client";
+import { testActions } from "./testData";
 
 const testUser: ProfileDto = {
   id: 1,
@@ -24,6 +25,9 @@ const meta = {
       handlers: [
         http.get("/user/1", () => {
           return HttpResponse.json(testUser);
+        }),
+        http.get("/actions/completed/1", () => {
+          return HttpResponse.json(testActions);
         }),
       ],
     },

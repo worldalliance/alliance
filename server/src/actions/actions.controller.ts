@@ -195,4 +195,10 @@ export class ActionsController {
   remove(@Param('id') id: string) {
     return this.actionsService.remove(+id);
   }
+
+  @Get('completed/:id')
+  @ApiOkResponse({ type: [ActionDto] })
+  async findCompletedForUser(@Param('id') id: string) {
+    return this.actionsService.findCompletedForUser(+id);
+  }
 }

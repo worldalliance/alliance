@@ -11,6 +11,8 @@ import {
   userMyFriendRelationship,
   FriendStatusDto,
   ActionDto,
+  ProfileDto,
+  actionsFindCompletedForUser,
 } from "../../../../../shared/client";
 import ProfileImage from "./ProfileImage";
 import testImg from "../../assets/fakebgimage.png";
@@ -35,6 +37,7 @@ const UserProfilePage: React.FC = () => {
     useState<FriendStatusDto["status"]>("none");
   const [isMe, setIsMe] = useState(false);
   const [selectedTab, setSelectedTab] = useState(ProfileTabs.Activity);
+  const [completedActions, setCompletedActions] = useState<ActionDto[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,6 +79,15 @@ const UserProfilePage: React.FC = () => {
     }
   }, [id, user]);
 
+  useEffect(() => {
+    if (!id) return;
+    actionsFindCompletedForUser({ path: { id: id } }).then((response) => {
+      if (response.data) {
+        setCompletedActions(response.data);
+      }
+    });
+  }, [id]);
+
   const handleSendFriendRequest = async () => {
     if (!id || !user) return;
 
@@ -112,17 +124,17 @@ const UserProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-[800px] mx-auto">
-      <div className="w-full h-[200px] border-b border-stone-400"></div>
-      <div className="px-8 mt-[-55px] relative space-y-2 border-b border-stone-200">
-        <ProfileImage src={testImg} />
+    <div className="max-w-[800px] mx-auto space-y-2">
+      <div className="w-full h-[200px] border-stone-200"></div>
+      <div className="px-8 relative space-y-2 border-stone-300 border rounded-lg mx-2">
+        <ProfileImage src={testImg} className="mt-[-55px]" />
         <div className="flex gap-2">
           <h1>{profileUser.name}</h1>
         </div>
         {/* stats row */}
         <div className="flex flex-row gap-5">
           <p>
-            <b>100 </b>
+            <b>{completedActions.length} </b>
             actions completed
           </p>
           <p>
@@ -139,18 +151,18 @@ const UserProfilePage: React.FC = () => {
           {Object.values(ProfileTabs).map((tab) => (
             <div
               onClick={() => setSelectedTab(tab)}
-              className={`${selectedTab === tab ? "font-bold " : ""} flex-1 text-center py-3 pt-4 cursor-pointer hover:underline`}
+              className={`${selectedTab === tab ? "font-bold " : "text-gray-800"} flex-1 text-center py-3 pt-4 cursor-pointer hover:underline`}
             >
-              <p className="text-lg">{tab}</p>
+              <p className="text-md">{tab}</p>
             </div>
           ))}
         </div>
         {/* button row */}
-        <div className="absolute right-0 top-[70px] space-x-3 flex flex-row">
+        <div className="absolute right-0 top-0 space-x-3 flex flex-row p-5">
           <Button
             color={ButtonColor.Blue}
             onClick={handleSendFriendRequest}
-            className="rounded-full"
+            className="rounded-full pl-3"
           >
             <img src={icons8Plus} alt="send" className="invert w-6 h-6" />
             <span className="mt-1">Send Friend Request</span>
@@ -164,10 +176,15 @@ const UserProfilePage: React.FC = () => {
           </Button>
         </div>
       </div>
-      <div>
+      <div className="mx-2">
         {selectedTab === ProfileTabs.Activity && (
-          <div className="px-8">
-            {profileUser.completedActions?.map((action: ActionDto) => (
+          <div className="space-y-2">
+            {completedActions.length === 0 && (
+              <p className="text-center text-stone-500">
+                No actions completed yet
+              </p>
+            )}
+            {completedActions?.map((action: ActionDto) => (
               <UserActivityCard action={action} />
             ))}
           </div>

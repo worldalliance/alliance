@@ -25,7 +25,7 @@ const NavbarHorizontal: React.FC<InnerNavbarProps> = () => {
   return (
     <div
       className="
-      flex flex-row  border-zinc-400 border-b
+      flex flex-row border-stone-300 border-b
     w-screen text-left space-x-10 items-center justify-center pl-6 sticky"
     >
       {/* <Link to="/">
