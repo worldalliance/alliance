@@ -1,10 +1,9 @@
-import { ActionDto, UserDto } from "@alliance/shared/client";
-import { CardStyle } from "../../components/system/Card";
-import Card from "../../components/system/Card";
-import Badge from "../../components/system/Badge";
+import { ActionWithRelationDto } from "@alliance/shared/client";
+import { CardStyle } from "./system/Card";
+import Card from "./system/Card";
 
 interface UserActivityCardProps {
-  action: ActionDto;
+  action: ActionWithRelationDto;
 }
 
 const UserActivityCard = ({ action }: UserActivityCardProps) => {

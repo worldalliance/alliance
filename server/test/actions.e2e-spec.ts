@@ -42,6 +42,7 @@ describe('Actions (e2e)', () => {
         category: '',
         whyJoin: '',
         image: '',
+        timeEstimate: '1h',
       };
 
       const res = await request(ctx.app.getHttpServer())
@@ -117,6 +118,15 @@ describe('Actions (e2e)', () => {
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
       expect(res.body[0]).toHaveProperty('status');
+    });
+
+    it('can see completed actions for a user', async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/completed/${ctx.testUserId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.length).toBe(0);
     });
 
     it('user cannot see draft actions', async () => {

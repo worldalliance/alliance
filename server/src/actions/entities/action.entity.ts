@@ -47,6 +47,10 @@ export class Action {
   @IsNotEmpty()
   description: string;
 
+  @Column({ nullable: true })
+  @ApiProperty()
+  timeEstimate: string;
+
   @Column()
   @ApiProperty({ enum: Object.keys(ActionStatus) })
   @IsNotEmpty()

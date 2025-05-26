@@ -1,5 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ActionDto, CreateActionDto, UpdateActionDto } from './dto/action.dto';
+import {
+  ActionDto,
+  ActionWithRelationDto,
+  CreateActionDto,
+  UpdateActionDto,
+} from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action, ActionStatus } from './entities/action.entity';
 import { In, Not, Repository } from 'typeorm';
@@ -202,11 +207,15 @@ export class ActionsService {
     return map;
   }
 
-  async findCompletedForUser(userId: number): Promise<ActionDto[]> {
-    const actions = await this.userActionRepository.find({
+  async findCompletedForUser(userId: number): Promise<ActionWithRelationDto[]> {
+    const userActions = await this.userActionRepository.find({
       where: { user: { id: userId }, status: UserActionRelation.completed },
-      relations: ['action'],
+      relations: ['action', 'user'],
     });
-    return actions.map((action) => action.action);
+    return userActions.map((ua) => ({
+      ...ua.action,
+      relation: ua,
+      usersJoined: ua.action.usersJoined,
+    }));
   }
 }

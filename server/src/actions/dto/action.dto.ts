@@ -6,6 +6,7 @@ export class UserActionDto extends PickType(UserAction, [
   'status',
   'deadline',
   'dateCommitted',
+  'dateCompleted',
 ]) {}
 
 export class ActionDto extends OmitType(Action, [
@@ -14,7 +15,7 @@ export class ActionDto extends OmitType(Action, [
   'userRelations',
 ]) {
   @ApiProperty({ type: UserActionDto })
-  myRelation?: UserActionDto | null;
+  myRelation?: Omit<UserActionDto, 'action'> | null;
 
   @ApiProperty()
   usersJoined: number;
@@ -29,3 +30,8 @@ export class CreateActionDto extends OmitType(ActionDto, [
 ]) {}
 
 export class UpdateActionDto extends PartialType(CreateActionDto) {}
+
+export class ActionWithRelationDto extends PublicActionDto {
+  @ApiProperty({ type: UserActionDto })
+  relation?: Omit<UserActionDto, 'action'> | null;
+}

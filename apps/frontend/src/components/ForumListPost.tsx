@@ -13,7 +13,7 @@ const ForumListPost = ({
   return (
     <Card
       key={post.id}
-      className="w-full rounded-none -mb-[1px] hover:z-10"
+      className="w-full -mb-[1px] hover:z-10"
       onClick={() => handleViewPost(post.id)}
       style={CardStyle.White}
     >

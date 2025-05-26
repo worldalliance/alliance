@@ -45,6 +45,7 @@ export type FriendStatusDto = {
 export type UserActionDto = {
     status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
     dateCommitted: string;
+    dateCompleted: string;
     deadline: string;
 };
 
@@ -55,6 +56,7 @@ export type ActionDto = {
     whyJoin: string;
     image: string;
     description: string;
+    timeEstimate: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
     usersJoined: number;
     myRelation: UserActionDto;
@@ -66,6 +68,7 @@ export type CreateActionDto = {
     whyJoin: string;
     image: string;
     description: string;
+    timeEstimate: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
 };
 
@@ -75,7 +78,21 @@ export type UpdateActionDto = {
     whyJoin?: string;
     image?: string;
     description?: string;
+    timeEstimate?: string;
     status?: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+};
+
+export type ActionWithRelationDto = {
+    id: number;
+    name: string;
+    category: string;
+    whyJoin: string;
+    image: string;
+    description: string;
+    timeEstimate: string;
+    status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    usersJoined: number;
+    relation: UserActionDto;
 };
 
 export type CreateCommuniqueDto = {
@@ -125,6 +142,7 @@ export type Action = {
     whyJoin: string;
     image: string;
     description: string;
+    timeEstimate: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
     createdAt: string;
     updatedAt: string;
@@ -569,7 +587,7 @@ export type ActionsLiveListResponses = {
 export type ActionsRemoveData = {
     body?: never;
     path: {
-        id: string;
+        id: number;
     };
     query?: never;
     url: '/actions/{id}';
@@ -601,7 +619,7 @@ export type ActionsFindOneResponse = ActionsFindOneResponses[keyof ActionsFindOn
 export type ActionsUpdateData = {
     body: UpdateActionDto;
     path: {
-        id: string;
+        id: number;
     };
     query?: never;
     url: '/actions/{id}';
@@ -627,14 +645,14 @@ export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateRe
 export type ActionsFindCompletedForUserData = {
     body?: never;
     path: {
-        id: string;
+        id: number;
     };
     query?: never;
     url: '/actions/completed/{id}';
 };
 
 export type ActionsFindCompletedForUserResponses = {
-    200: Array<ActionDto>;
+    200: Array<ActionWithRelationDto>;
 };
 
 export type ActionsFindCompletedForUserResponse = ActionsFindCompletedForUserResponses[keyof ActionsFindCompletedForUserResponses];
@@ -869,6 +887,21 @@ export type ForumUpdatePostResponses = {
 };
 
 export type ForumUpdatePostResponse = ForumUpdatePostResponses[keyof ForumUpdatePostResponses];
+
+export type ForumFindPostsByUserData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/forum/posts/user/{id}';
+};
+
+export type ForumFindPostsByUserResponses = {
+    200: Array<PostDto>;
+};
+
+export type ForumFindPostsByUserResponse = ForumFindPostsByUserResponses[keyof ForumFindPostsByUserResponses];
 
 export type ForumCreateReplyData = {
     body: CreateReplyDto;

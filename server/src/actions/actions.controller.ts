@@ -18,6 +18,7 @@ import {
 import { ActionsService } from './actions.service';
 import {
   ActionDto,
+  ActionWithRelationDto,
   CreateActionDto,
   UpdateActionDto,
   UserActionDto,
@@ -186,19 +187,24 @@ export class ActionsController {
 
   @Patch(':id')
   @UseGuards(AdminGuard)
-  update(@Param('id') id: string, @Body() updateActionDto: UpdateActionDto) {
-    return this.actionsService.update(+id, updateActionDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateActionDto: UpdateActionDto,
+  ) {
+    return this.actionsService.update(id, updateActionDto);
   }
 
   @Delete(':id')
   @UseGuards(AdminGuard)
-  remove(@Param('id') id: string) {
-    return this.actionsService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.actionsService.remove(id);
   }
 
   @Get('completed/:id')
-  @ApiOkResponse({ type: [ActionDto] })
-  async findCompletedForUser(@Param('id') id: string) {
+  @ApiOkResponse({ type: [ActionWithRelationDto] })
+  async findCompletedForUser(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ActionWithRelationDto[]> {
     return this.actionsService.findCompletedForUser(+id);
   }
 }

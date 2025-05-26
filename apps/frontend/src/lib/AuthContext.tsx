@@ -15,6 +15,7 @@ import {
   authRefreshTokens,
   UserDto,
 } from "../../../../shared/client";
+import { testUser } from "../stories/testData";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -106,7 +107,7 @@ export const useAuth = () => {
   if (import.meta.env.STORYBOOK) {
     return {
       isAuthenticated: true,
-      user: undefined,
+      user: testUser,
       login: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       loading: false,

@@ -3,18 +3,13 @@ import UserProfilePage from "../pages/app/UserProfilePage";
 
 import StoryRouter from "./StoryRouter";
 import { http, HttpResponse } from "msw";
-import { ProfileDto } from "@alliance/shared/client";
-import { testActions } from "./testData";
-
-const testUser: ProfileDto = {
-  id: 1,
-  name: "First Lastname",
-  email: "first.lastname@example.com",
-  admin: false,
-  profilePicture: "https://via.placeholder.com/150",
-  profileDescription:
-    "This is a test description of a user thats a sort of medium length. It isn't too long, but it also isn't that short. It has a sort of just right amount of length.",
-};
+import { FriendStatusDto } from "@alliance/shared/client";
+import {
+  testActionsWithRelation,
+  testFriends,
+  testUser,
+  testForumPosts,
+} from "./testData";
 
 const meta = {
   title: "Alliance/UserProfilePage",
@@ -27,7 +22,21 @@ const meta = {
           return HttpResponse.json(testUser);
         }),
         http.get("/actions/completed/1", () => {
-          return HttpResponse.json(testActions);
+          return HttpResponse.json(testActionsWithRelation);
+        }),
+        http.get("/user/listfriends/1", () => {
+          return HttpResponse.json(testFriends);
+        }),
+        http.post("/user/friends/1", () => {
+          return HttpResponse.json({});
+        }),
+        http.get("/user/myfriendrelationship/1", () => {
+          return HttpResponse.json({
+            status: "none",
+          } satisfies FriendStatusDto);
+        }),
+        http.get("/forum/posts/user/1", () => {
+          return HttpResponse.json(testForumPosts);
         }),
       ],
     },
