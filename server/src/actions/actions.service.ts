@@ -176,10 +176,10 @@ export class ActionsService {
     return this.findOne(id);
   }
 
-  async addUpdate(id: number, actionEventDto: ActionEventDto): Promise<Action> {
+  async addEvent(id: number, actionEventDto: ActionEventDto): Promise<Action> {
     const action = await this.findOne(id);
 
-    const newUpdate = this.actionEventRepository.create({
+    const newEvent = this.actionEventRepository.create({
       message: actionEventDto.message,
       newStatus: actionEventDto.newStatus,
       sendNotifs: actionEventDto.sendNotifs as NotificationType,
@@ -188,9 +188,9 @@ export class ActionsService {
       action,
     });
 
-    await this.actionEventRepository.save(newUpdate);
+    await this.actionEventRepository.save(newEvent);
 
-    action.updates.push(newUpdate);
+    action.events.push(newEvent);
     await this.actionRepository.save(action);
 
     return action;
