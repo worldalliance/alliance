@@ -11,7 +11,7 @@ const meta = {
   parameters: {
     msw: {
       handlers: [
-        http.get("http://localhost:3005/actions/withStatus", () => {
+        http.get("/actions/withStatus", () => {
           return HttpResponse.json(testTodoActions);
         }),
       ],

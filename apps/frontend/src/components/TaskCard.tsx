@@ -71,7 +71,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
         setTimeout(() => {
           onComplete(action.id);
         }, 500);
-      }, 500);
+      }, 1000);
     }
   }, [state, action, onComplete]);
 
@@ -86,7 +86,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
   return (
     <Card
       style={CardStyle.White}
-      className={`px-5 transition-all duration-500 w-full overflow-hidden relative
+      className={` transition-all duration-500 w-full overflow-hidden relative
          ${state === TaskCardState.Expanded ? "pb-4" : ""}
           ${state === TaskCardState.Closed ? "py-0 border-0" : ""}`}
       closed={state === TaskCardState.Closed}
@@ -131,7 +131,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
               <Button color={ButtonColor.Light} onClick={goToActionPage}>
                 Details
               </Button>
-              <Button color={ButtonColor.Blue} onClick={handleCompleteClick}>
+              <Button color={ButtonColor.Green} onClick={handleCompleteClick}>
                 Complete Task
               </Button>
             </div>
@@ -157,13 +157,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
       )}
       {(state === TaskCardState.Completed ||
         state === TaskCardState.Closed) && (
-        <div className="absolute top-0 left-0 bottom-0 right-0 bg-green-100 flex justify-center items-center">
-          <p
-            className={`font-bold text-[14pt] transition-colors duration-500 ${
-              state === TaskCardState.Closed ? "text-green-100" : "text-black"
-            }`}
-          >
-            Great work!
+        <div
+          className={`absolute top-0 left-0 bottom-0 right-0 bg-[#bfe6a1] flex justify-center items-center gap-x-3 transition-colors duration-500 ${
+            state === TaskCardState.Closed ? "text-[#bfe6a1]" : "text-black"
+          }`}
+        >
+          <p className={`font-bold text-[14pt]`}>Great work!</p>
+          <p className="text-[12pt] ">
+            We'll let you know when we have results
           </p>
         </div>
       )}

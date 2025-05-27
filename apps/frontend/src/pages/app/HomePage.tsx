@@ -35,10 +35,10 @@ const HomePage: React.FC = () => {
 
   useEffect(() => {
     if (authLoading) return;
-    client.setConfig({
-      baseUrl: getApiUrl(),
-      credentials: "include",
-    });
+    // client.setConfig({
+    //   baseUrl: getApiUrl(),
+    //   credentials: "include",
+    // });
     actionsFindAllWithStatus()
       .then(({ data }) => {
         console.log(data);

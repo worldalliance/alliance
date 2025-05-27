@@ -17,7 +17,7 @@ type ButtonProps = React.PropsWithChildren & {
 
 export enum ButtonColor {
   Stone = "bg-stone-700",
-  Green = "bg-green-500",
+  Green = "bg-[#5d9c2d]",
   Red = "bg-red-500",
   Light = "bg-stone-200",
   Blue = "bg-[#318dde]",
@@ -46,6 +46,7 @@ const Button: React.FC<ButtonProps> = ({
       }  ${color} ${color === ButtonColor.Light ? "!text-stone-800" : ""}`}
       onClick={onClick}
       disabled={disabled}
+      style={{ fontWeight: 450 }}
     >
       {children}
     </button>
