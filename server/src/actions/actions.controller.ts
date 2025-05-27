@@ -19,6 +19,7 @@ import { ActionsService } from './actions.service';
 import {
   ActionDto,
   ActionWithRelationDto,
+  ActionEventDto,
   CreateActionDto,
   UpdateActionDto,
   UserActionDto,
@@ -218,4 +219,16 @@ export class ActionsController {
   ): Promise<ActionWithRelationDto[]> {
     return this.actionsService.findCompletedForUser(+id);
   }
+
+  @Post(':id/events')
+  @UseGuards(AdminGuard)
+  @UsePipes(new ValidationPipe())
+  @ApiOkResponse({ type: ActionDto })
+  async addEvent(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() actionEventDto: ActionEventDto,
+  ): Promise<ActionDto> {
+    return this.actionsService.addEvent(id, actionEventDto);
+  }
+
 }
