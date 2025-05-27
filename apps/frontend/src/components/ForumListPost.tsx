@@ -3,17 +3,23 @@ import Card, { CardStyle } from "./system/Card";
 import { PostDto } from "../../../../shared/client";
 import Badge from "./system/Badge";
 
+export interface ForumListPostProps {
+  post: PostDto;
+  handleViewPost: (id: number) => void;
+  first?: boolean;
+  last?: boolean;
+}
+
 const ForumListPost = ({
   post,
   handleViewPost,
-}: {
-  post: PostDto;
-  handleViewPost: (id: number) => void;
-}) => {
+  first,
+  last,
+}: ForumListPostProps) => {
   return (
     <Card
       key={post.id}
-      className="w-full -mb-[1px] hover:z-10"
+      className={`rounded-none w-full -mb-0 hover:z-20 ${first ? "rounded-t-lg" : ""} ${last ? "rounded-b-lg" : ""}`}
       onClick={() => handleViewPost(post.id)}
       style={CardStyle.White}
     >

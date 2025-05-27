@@ -31,6 +31,8 @@ const HomePage: React.FC = () => {
     );
   }, []);
 
+  console.log(todoActions);
+
   useEffect(() => {
     if (authLoading) return;
     client.setConfig({
@@ -39,6 +41,7 @@ const HomePage: React.FC = () => {
     });
     actionsFindAllWithStatus()
       .then(({ data }) => {
+        console.log(data);
         if (data) {
           updateActions(data);
         }

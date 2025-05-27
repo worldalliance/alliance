@@ -51,7 +51,7 @@ export const testActionsWithRelation: ActionWithRelationDto[] = [
       status: "completed",
       deadline: new Date().toISOString(),
       dateCommitted: new Date().toISOString(),
-      dateCompleted: new Date().toISOString(),
+      dateCompleted: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     },
   },
   {
@@ -60,7 +60,7 @@ export const testActionsWithRelation: ActionWithRelationDto[] = [
       status: "completed",
       deadline: new Date().toISOString(),
       dateCommitted: new Date().toISOString(),
-      dateCompleted: new Date().toISOString(),
+      dateCompleted: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
     },
   },
 ];
@@ -69,6 +69,16 @@ export const testUser: ProfileDto = {
   id: 1,
   name: "First Lastname",
   email: "first.lastname@example.com",
+  admin: false,
+  profilePicture: "https://via.placeholder.com/150",
+  profileDescription:
+    "This is a test description of a user thats a sort of medium length. It isn't too long, but it also isn't that short. It has a sort of just right amount of length.",
+};
+
+export const testUser2: ProfileDto = {
+  id: 2,
+  name: "Seconduser Lastname",
+  email: "seconduser.lastname@example.com",
   admin: false,
   profilePicture: "https://via.placeholder.com/150",
   profileDescription:
@@ -87,5 +97,26 @@ export const testForumPosts: PostDto[] = [
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     author: testUser,
+  },
+];
+
+export const testTodoActions: ActionDto[] = [
+  {
+    ...testActions[0],
+    myRelation: {
+      status: "joined",
+      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+      dateCommitted: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+      dateCompleted: new Date().toISOString(),
+    },
+  },
+  {
+    ...testActions[1],
+    myRelation: {
+      status: "joined",
+      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+      dateCommitted: new Date().toISOString(),
+      dateCompleted: new Date().toISOString(),
+    },
   },
 ];

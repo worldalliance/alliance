@@ -173,6 +173,15 @@ const UserProfilePage: React.FC = () => {
           >
             <img src={dots} alt="send" className="w-7 h-7" />
           </Button>
+          {isMe && (
+            <Button
+              color={ButtonColor.Light}
+              className="rounded-full"
+              onClick={() => navigate("/settings")}
+            >
+              Edit Profile
+            </Button>
+          )}
         </div>
         {/* <div className="absolute -left-20 top-0 p-5">
           <BackButton />

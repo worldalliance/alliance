@@ -15,7 +15,7 @@ import {
   authRefreshTokens,
   UserDto,
 } from "../../../../shared/client";
-import { testUser } from "../stories/testData";
+import { testUser2 } from "../stories/testData";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -45,8 +45,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
           }
         } catch {
           try {
-            const response = await authRefreshTokens();
-            console.log("AuthContext", "refresh response", response);
+            await authRefreshTokens();
             const { data } = await authMe();
             if (!cancelled) setUser(data);
           } catch {
@@ -107,7 +106,7 @@ export const useAuth = () => {
   if (import.meta.env.STORYBOOK) {
     return {
       isAuthenticated: true,
-      user: testUser,
+      user: testUser2,
       login: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       loading: false,

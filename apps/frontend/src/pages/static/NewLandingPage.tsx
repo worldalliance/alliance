@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import HighResGlobe from "../../components/HighResGlobe";
 import PlatformUIDemoCard from "../../components/PlatformUIDemoCard";
 import NewNavbar from "../../components/NewNavbar";
-import dropDownArrow from "../../assets/icons8-expand-arrow-96.png";
 import Footer from "../../components/Footer";
 import LineHeader from "../../components/LineHeader";
 import Card, { CardStyle } from "../../components/system/Card";
@@ -24,7 +23,7 @@ const NewLandingPage: React.FC = () => {
     }
   }, [mainContentRef, navbarRef]);
 
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     const scrollPosition = window.scrollY;
     if (!scrolled && scrollPosition >= scrollOffset + scrollOffsetThreshold) {
       setScrolled(true);
@@ -34,7 +33,7 @@ const NewLandingPage: React.FC = () => {
     ) {
       setScrolled(false);
     }
-  };
+  }, [scrolled, scrollOffset, scrollOffsetThreshold]);
 
   useEffect(() => {
     setNavbarHeight(navbarRef.current?.clientHeight || 0);
@@ -49,8 +48,6 @@ const NewLandingPage: React.FC = () => {
 
   const color1 = `hsl(125, 100%, 50%)`;
   const color2 = `hsl(305, 100%, 50%)`;
-
-  // lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
 
   return (
     <div>
@@ -71,11 +68,11 @@ const NewLandingPage: React.FC = () => {
             background: `radial-gradient(circle at 20% 20%, ${color1} 10%, ${color2} 100%)`,
           }}
         ></div>
-        <div
-          className="absolute top-0 left-0 right-0 bottom-0 bg-linear-to-t from-black to-transparent opacity-50"
-        ></div>
+        <div className="absolute top-0 left-0 right-0 bottom-0 bg-linear-to-t from-black to-transparent opacity-50"></div>
 
-        <h2 className="w-1/2 absolute bottom-25 text-white !text-7xl font-sabon">Global citizens acting as one for a conscionable world.</h2>
+        <h2 className="w-1/2 absolute bottom-25 text-white !text-7xl font-sabon">
+          Global citizens acting as one for a conscionable world.
+        </h2>
         {/* <img
           src={dropDownArrow}
           alt="arrow down"
@@ -83,12 +80,11 @@ const NewLandingPage: React.FC = () => {
         /> */}
         {/* </div> */}
       </div>
-      <div
-        className="w-screen flex flex-col items-center"
-        ref={mainContentRef}
-      >
+      <div className="w-screen flex flex-col items-center" ref={mainContentRef}>
         <div className="container mx-auto flex flex-col items-center gap-y-15">
-          <h2 className="text-black !text-[24pt] font-sabon">We do stuff, really great stuff.</h2>
+          <h2 className="text-black !text-[24pt] font-sabon">
+            We do stuff, really great stuff.
+          </h2>
           <div className="flex flex-col md:flex-row gap-4 max-w-[100%] justify-center">
             <PlatformUIDemoCard idx={0} size="large" />
             <PlatformUIDemoCard idx={1} size="small" />

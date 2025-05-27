@@ -9,6 +9,7 @@ import Button, { ButtonColor } from "./system/Button";
 
 // Import the dropdown icon
 import expandArrow from "../assets/icons8-expand-arrow-96.png";
+import { formatDistanceToNow } from "date-fns";
 
 export interface TaskCardProps {
   action: Pick<
@@ -76,13 +77,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
 
   const timeRemaining = useMemo(() => {
     if (!action.myRelation?.deadline) return null;
-    const millis =
-      new Date(action.myRelation.deadline).getTime() - new Date().getTime();
-    const days = Math.floor(millis / 1000 / 60 / 60 / 24);
-    const hours = Math.floor(
-      (millis - days * 1000 * 60 * 60 * 24) / (1000 * 60 * 60)
+    return (
+      formatDistanceToNow(new Date(action.myRelation.deadline), {}) +
+      " to complete"
     );
-    return `${days} days, ${hours} hours to complete`;
   }, [action.myRelation?.deadline]);
 
   return (

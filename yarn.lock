@@ -60,7 +60,6 @@ __metadata:
     "@hey-api/openapi-ts": "npm:^0.67.3"
     "@storybook/addon-essentials": "npm:^8.6.12"
     "@storybook/addon-interactions": "npm:^8.6.12"
-    "@storybook/addon-onboarding": "npm:^8.6.12"
     "@storybook/blocks": "npm:^8.6.12"
     "@storybook/react": "npm:^8.6.12"
     "@storybook/react-vite": "npm:^8.6.12"
@@ -3554,15 +3553,6 @@ __metadata:
   peerDependencies:
     storybook: ^8.6.12
   checksum: 10c0/1247ebf398b6297400d710a00d423c9d285c8af6f9bf7dd98a7734f54cc5689d7d3a3bf5a1e93847f5eb13d7edfe75900ac28b27932555292f09efe0c4093c28
-  languageName: node
-  linkType: hard
-
-"@storybook/addon-onboarding@npm:^8.6.12":
-  version: 8.6.12
-  resolution: "@storybook/addon-onboarding@npm:8.6.12"
-  peerDependencies:
-    storybook: ^8.6.12
-  checksum: 10c0/1dfdfff93b044efaf186d4011f250526187816197538e265ab26dacac1f1dc425f3676ba68874531aea151b142f76431c68e619e430565011124565748513292
   languageName: node
   linkType: hard
 

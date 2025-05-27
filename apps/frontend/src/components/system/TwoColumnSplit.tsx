@@ -17,7 +17,7 @@ const TwoColumnSplit = ({
     <div className="flex flex-row min-h-[calc(100vh-49px)] w-full h-full justify-center bg-pagebg">
       <div
         className={`flex flex-col flex-2 ${
-          border ? "sm:border-r border-zinc-400" : ""
+          border ? "sm:border-r border-stone-300" : ""
         } items-center ${coloredLeft ? "bg-agreen" : "bg-white"}`}
       >
         {left}

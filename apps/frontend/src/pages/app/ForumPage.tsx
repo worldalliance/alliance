@@ -43,7 +43,7 @@ const ForumPage: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-pagebg items-center">
       <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))] gap-y-3">
         <div className="flex py-4 flex-row justify-between items-center w-full">
-          <h1 className="font-sabon text-xl text-left h-fit">Alliance Forum</h1>
+          <h2 className="font-sabon text-xl text-left h-fit">Recent Posts</h2>
           {isAuthenticated && (
             <Button onClick={handleCreatePost} color={ButtonColor.Blue}>
               Create Post
@@ -65,11 +65,13 @@ const ForumPage: React.FC = () => {
           </div>
         ) : (
           <div className="w-full space-y-2">
-            {posts.map((post) => (
+            {posts.map((post, index) => (
               <ForumListPost
                 key={post.id}
                 post={post}
                 handleViewPost={handleViewPost}
+                first={index === 0}
+                last={index === posts.length - 1}
               />
             ))}
           </div>

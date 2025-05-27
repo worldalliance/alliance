@@ -20,7 +20,7 @@ const FriendRequestButton = ({
         className="rounded-full pl-3"
       >
         <img src={icons8Plus} alt="send" className="invert w-6 h-6" />
-        <span className="mt-1">Send Friend Request</span>
+        <span>Send Friend Request</span>
       </Button>
     );
   }
@@ -31,11 +31,11 @@ const FriendRequestButton = ({
         onClick={handleSendFriendRequest}
         className="rounded-full"
       >
-        <span className="mt-1">Request sent!</span>
+        <span>Request sent!</span>
       </Button>
     );
   }
-  return <span className="mt-1">Remove Friend</span>;
+  return <span>Remove Friend</span>;
 };
 
 export default FriendRequestButton;
