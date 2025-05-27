@@ -11,6 +11,7 @@ import { UserAction, UserActionRelation } from './user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsNotEmpty } from 'class-validator';
+import { ActionUpdate } from './action-update.entity';
 
 export enum ActionStatus {
   Active = 'active',
@@ -67,6 +68,12 @@ export class Action {
   @OneToMany(() => UserAction, (userAction) => userAction.action)
   @JoinTable()
   userRelations: UserAction[];
+
+  @OneToMany(() => ActionUpdate, (actionUpdate) => actionUpdate.action, {
+    cascade: true,
+  })
+  @ApiProperty({ type: () => [ActionUpdate] })
+  updates: ActionUpdate[];
 
   @Expose()
   @ApiProperty()

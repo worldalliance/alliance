@@ -46,6 +46,7 @@ describe('Actions (e2e)', () => {
         whyJoin: '',
         image: '',
         timeEstimate: '1h',
+        updates: []
       };
 
       const res = await request(ctx.app.getHttpServer())

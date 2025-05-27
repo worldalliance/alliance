@@ -7,6 +7,7 @@ import {
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action, ActionStatus } from './entities/action.entity';
+import { ActionUpdate, NotificationType } from './entities/action-update.entity';
 import { In, Not, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';
@@ -19,6 +20,8 @@ export class ActionsService {
   constructor(
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
+    @InjectRepository(ActionUpdate)
+    private readonly actionUpdateRepository: Repository<ActionUpdate>,
     @InjectRepository(UserAction)
     private readonly userActionRepository: Repository<UserAction>,
     private userService: UserService,
@@ -72,7 +75,7 @@ export class ActionsService {
   async findOne(id: number) {
     const action = await this.actionRepository.findOne({
       where: { id },
-      relations: ['userRelations'],
+      relations: ['userRelations', 'updates'],
     });
     if (!action) {
       throw new NotFoundException('Action not found');
@@ -164,12 +167,24 @@ export class ActionsService {
     );
   }
 
-  async update(
-    id: number,
-    updateActionDto: UpdateActionDto,
-  ): Promise<Action | null> {
-    await this.actionRepository.update(id, updateActionDto);
-    return this.findOne(id);
+  async update(id: number, updateActionDto: UpdateActionDto): Promise<Action> {
+    const action = await this.findOne(id);
+
+    const newUpdate = this.actionUpdateRepository.create({
+      message: updateActionDto.message,
+      newStatus: updateActionDto.newStatus,
+      sendNotifs: updateActionDto.sendNotifs as NotificationType,
+      updateDate: new Date(),
+      showInTimeline: updateActionDto.showInTimeline,
+      action,
+    });
+
+    await this.actionUpdateRepository.save(newUpdate);
+
+    action.updates.push(newUpdate); // Add the new update to the action
+    await this.actionRepository.save(action);
+
+    return action;
   }
 
   async remove(id: number) {

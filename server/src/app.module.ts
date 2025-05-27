@@ -18,9 +18,14 @@ import { ForumModule } from './forum/forum.module';
 import { Post } from './forum/entities/post.entity';
 import { Reply } from './forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+<<<<<<< HEAD
 import { Friend } from './user/friend.entity';
 import { NotifsModule } from './notifs/notifs.module';
 import { Notification } from './notifs/entities/notification.entity';
+import { ActionUpdate } from './actions/entities/action-update.entity';
+=======
+import { ActionUpdate } from './actions/entities/action-update.entity';
+>>>>>>> 2e5f1a8 (Added updates: ActionUpdate[] to actions)
 
 @Module({
   imports: [
@@ -48,6 +53,7 @@ import { Notification } from './notifs/entities/notification.entity';
         Reply,
         Notification,
         Friend,
+        ActionUpdate,
       ],
       synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'
