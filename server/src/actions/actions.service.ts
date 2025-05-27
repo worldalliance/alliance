@@ -4,10 +4,11 @@ import {
   ActionWithRelationDto,
   CreateActionDto,
   UpdateActionDto,
+  ActionEventDto
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action, ActionStatus } from './entities/action.entity';
-import { ActionUpdate, NotificationType } from './entities/action-update.entity';
+import { ActionEvent, NotificationType } from './entities/action-event.entity';
 import { In, Not, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';
@@ -20,8 +21,8 @@ export class ActionsService {
   constructor(
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
-    @InjectRepository(ActionUpdate)
-    private readonly actionUpdateRepository: Repository<ActionUpdate>,
+    @InjectRepository(ActionEvent)
+    private readonly actionEventRepository: Repository<ActionEvent>,
     @InjectRepository(UserAction)
     private readonly userActionRepository: Repository<UserAction>,
     private userService: UserService,
@@ -175,19 +176,19 @@ export class ActionsService {
     return this.findOne(id);
   }
 
-  async addUpdate(id: number, updateActionDto: UpdateActionDto): Promise<Action> {
+  async addUpdate(id: number, actionEventDto: ActionEventDto): Promise<Action> {
     const action = await this.findOne(id);
 
-    const newUpdate = this.actionUpdateRepository.create({
-      message: updateActionDto.message,
-      newStatus: updateActionDto.newStatus,
-      sendNotifs: updateActionDto.sendNotifs as NotificationType,
+    const newUpdate = this.actionEventRepository.create({
+      message: actionEventDto.message,
+      newStatus: actionEventDto.newStatus,
+      sendNotifs: actionEventDto.sendNotifs as NotificationType,
       updateDate: new Date(),
-      showInTimeline: updateActionDto.showInTimeline,
+      showInTimeline: actionEventDto.showInTimeline,
       action,
     });
 
-    await this.actionUpdateRepository.save(newUpdate);
+    await this.actionEventRepository.save(newUpdate);
 
     action.updates.push(newUpdate);
     await this.actionRepository.save(action);

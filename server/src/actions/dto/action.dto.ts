@@ -1,7 +1,7 @@
 import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Action, ActionStatus } from '../entities/action.entity';
 import { UserAction, UserActionRelation } from '../entities/user-action.entity';
-import { ActionUpdate } from '../entities/action-update.entity';
+import { ActionEvent } from '../entities/action-event.entity';
 
 export class UserActionDto extends PickType(UserAction, [
   'status',
@@ -10,14 +10,14 @@ export class UserActionDto extends PickType(UserAction, [
   'dateCompleted',
 ]) {}
 
-export class ActionUpdateDto extends PickType(ActionUpdate, [
+export class ActionEventDto extends PickType(ActionEvent, [
   'message',
   'newStatus',
   'sendNotifs',
   'updateDate',
   'showInTimeline',
 ]) {
-  constructor(partial: Partial<ActionUpdateDto>) {
+  constructor(partial: Partial<ActionEventDto>) {
     super();
     Object.assign(this, partial);
   }
@@ -35,8 +35,8 @@ export class ActionDto extends OmitType(Action, [
   @ApiProperty()
   usersJoined: number;
 
-  @ApiProperty({ type: [ActionUpdateDto] })
-  updates: ActionUpdateDto[];
+  @ApiProperty({ type: [ActionEventDto] })
+  updates: ActionEventDto[];
 
   constructor(action: Action) {
     super();
@@ -48,7 +48,7 @@ export class ActionDto extends OmitType(Action, [
     this.updates =
       action.updates?.map(
         (update) =>
-          new ActionUpdateDto({
+          new ActionEventDto({
             message: update.message,
             newStatus: update.newStatus,
             sendNotifs: update.sendNotifs,

@@ -6,14 +6,14 @@ import { Action } from './entities/action.entity';
 import { UserModule } from '../user/user.module';
 import { User } from '../user/user.entity';
 import { UserAction } from './entities/user-action.entity';
-import { ActionUpdate } from './entities/action-update.entity';
+import { ActionEvent } from './entities/action-event.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User]),
     TypeOrmModule.forFeature([Action]),
     TypeOrmModule.forFeature([UserAction]),
-    TypeOrmModule.forFeature([ActionUpdate]),
+    TypeOrmModule.forFeature([ActionEvent]),
     UserModule,
   ],
   controllers: [ActionsController],
