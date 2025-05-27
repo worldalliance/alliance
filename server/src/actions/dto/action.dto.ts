@@ -37,9 +37,9 @@ export class ActionDto extends OmitType(Action, [
   @ApiProperty({ type: [ActionEventDto] })
   events: ActionEventDto[];
 
-  constructor(action: Action) {
+  constructor(action: Partial<Action>) {
     super();
-    this.myRelation = null;
+    this.myRelation = null; // doesn't make sense for events to have a myRelation
     this.usersJoined =
       action.userRelations?.filter(
         (ur) => ur.status === UserActionRelation.joined,

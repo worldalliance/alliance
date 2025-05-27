@@ -16,6 +16,7 @@ import {
 import { ActionsService } from './actions.service';
 import {
   ActionDto,
+  ActionEventDto,
   CreateActionDto,
   UpdateActionDto,
   UserActionDto,
@@ -118,6 +119,17 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   remove(@Param('id') id: string) {
     return this.actionsService.remove(+id);
+  }
+
+  @Post(':id/events')
+  @UseGuards(AdminGuard)
+  @UsePipes(new ValidationPipe())
+  @ApiOkResponse({ type: ActionDto })
+  async addEvent(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() actionEventDto: ActionEventDto,
+  ): Promise<ActionDto> {
+    return this.actionsService.addEvent(id, actionEventDto);
   }
 
   @Sse('live/:id')

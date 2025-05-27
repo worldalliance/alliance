@@ -162,7 +162,7 @@ export class ActionsService {
     return this.findOne(id);
   }
 
-  async addEvent(id: number, actionEventDto: ActionEventDto): Promise<Action> {
+  async addEvent(id: number, actionEventDto: ActionEventDto): Promise<ActionDto> {
     const action = await this.findOne(id);
 
     const newEvent = this.actionEventRepository.create({
@@ -178,8 +178,8 @@ export class ActionsService {
 
     action.events.push(newEvent);
     await this.actionRepository.save(action);
-
-    return action;
+    
+    return new ActionDto(action);
   }
 
   async remove(id: number) {
