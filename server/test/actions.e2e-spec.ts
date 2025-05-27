@@ -42,6 +42,7 @@ describe('Actions (e2e)', () => {
         category: '',
         whyJoin: '',
         image: '',
+        updates: []
       };
 
       const res = await request(ctx.app.getHttpServer())
