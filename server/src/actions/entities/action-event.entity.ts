@@ -21,7 +21,7 @@ export enum NotificationType {
 }
 
 @Entity()
-export class ActionUpdate {
+export class ActionEvent {
   @PrimaryGeneratedColumn()
   id: number;
 

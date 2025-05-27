@@ -1,7 +1,7 @@
 import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Action, ActionStatus } from '../entities/action.entity';
 import { UserAction, UserActionRelation } from '../entities/user-action.entity';
-import { ActionUpdate } from '../entities/action-update.entity';
+import { ActionEvent } from '../entities/action-event.entity';
 
 export class UserActionDto extends PickType(UserAction, [
   'status',
@@ -9,14 +9,14 @@ export class UserActionDto extends PickType(UserAction, [
   'dateCommitted',
 ]) {}
 
-export class ActionUpdateDto extends PickType(ActionUpdate, [
+export class ActionEventDto extends PickType(ActionEvent, [
   'message',
   'newStatus',
   'sendNotifs',
   'updateDate',
   'showInTimeline',
 ]) {
-  constructor(partial: Partial<ActionUpdateDto>) {
+  constructor(partial: Partial<ActionEventDto>) {
     super();
     Object.assign(this, partial);
   }
@@ -34,8 +34,8 @@ export class ActionDto extends OmitType(Action, [
   @ApiProperty()
   usersJoined: number;
 
-  @ApiProperty({ type: [ActionUpdateDto] })
-  updates: ActionUpdateDto[];
+  @ApiProperty({ type: [ActionEventDto] })
+  updates: ActionEventDto[];
 
   constructor(action: Action) {
     super();
@@ -47,7 +47,7 @@ export class ActionDto extends OmitType(Action, [
     this.updates =
       action.updates?.map(
         (update) =>
-          new ActionUpdateDto({
+          new ActionEventDto({
             message: update.message,
             newStatus: update.newStatus,
             sendNotifs: update.sendNotifs,
@@ -66,28 +66,4 @@ export class CreateActionDto extends OmitType(ActionDto, [
   'myRelation',
 ]) {}
 
-export class UpdateActionDto extends PartialType(CreateActionDto) {
-  @ApiProperty({ type: String, description: 'Message describing the update' })
-  message?: string;
-
-  @ApiProperty({
-    enum: ['active', 'upcoming', 'past', 'draft'],
-    description: 'The new status of the action',
-  })
-  newStatus?: ActionStatus;
-
-  @ApiProperty({
-    enum: ['all', 'joined', 'none'],
-    description: 'Who should receive notifications',
-  })
-  sendNotifs?: 'all' | 'joined' | 'none';
-
-  @ApiProperty({ type: Date, description: 'Date of the update' })
-  updateDate?: Date;
-
-  @ApiProperty({
-    type: Boolean,
-    description: 'Whether the update should appear in the timeline',
-  })
-  showInTimeline?: boolean;
-}
+export class UpdateActionDto extends PartialType(CreateActionDto) {}
