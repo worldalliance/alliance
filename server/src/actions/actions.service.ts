@@ -154,7 +154,15 @@ export class ActionsService {
     );
   }
 
-  async update(id: number, updateActionDto: UpdateActionDto): Promise<Action> {
+  async update(
+    id: number,
+    updateActionDto: UpdateActionDto,
+  ): Promise<Action | null> {
+    await this.actionRepository.update(id, updateActionDto);
+    return this.findOne(id);
+  }
+
+  async addUpdate(id: number, updateActionDto: UpdateActionDto): Promise<Action> {
     const action = await this.findOne(id);
 
     const newUpdate = this.actionUpdateRepository.create({
@@ -168,7 +176,7 @@ export class ActionsService {
 
     await this.actionUpdateRepository.save(newUpdate);
 
-    action.updates.push(newUpdate); // Add the new update to the action
+    action.updates.push(newUpdate);
     await this.actionRepository.save(action);
 
     return action;
