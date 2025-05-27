@@ -46,7 +46,7 @@ export class ActionEvent {
   @Column({ default: false })
   showInTimeline: boolean;
 
-  @ManyToOne(() => Action, (action) => action.updates, {
+  @ManyToOne(() => Action, (action) => action.events, {
     onDelete: 'CASCADE',
   })
   action: Action;

@@ -69,7 +69,7 @@ export class Action {
     cascade: true,
   })
   @ApiProperty({ type: () => [ActionEvent] })
-  updates: ActionEvent[];
+  events: ActionEvent[];
 
   @Expose()
   @ApiProperty()

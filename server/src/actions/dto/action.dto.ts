@@ -26,7 +26,7 @@ export class ActionDto extends OmitType(Action, [
   'createdAt',
   'updatedAt',
   'userRelations',
-  'updates',
+  'events',
 ]) {
   @ApiProperty({ type: UserActionDto })
   myRelation: UserActionDto | null;
@@ -35,7 +35,7 @@ export class ActionDto extends OmitType(Action, [
   usersJoined: number;
 
   @ApiProperty({ type: [ActionEventDto] })
-  updates: ActionEventDto[];
+  events: ActionEventDto[];
 
   constructor(action: Action) {
     super();
@@ -44,15 +44,15 @@ export class ActionDto extends OmitType(Action, [
       action.userRelations?.filter(
         (ur) => ur.status === UserActionRelation.joined,
       ).length || 0;
-    this.updates =
-      action.updates?.map(
-        (update) =>
+    this.events =
+      action.events?.map(
+        (event) =>
           new ActionEventDto({
-            message: update.message,
-            newStatus: update.newStatus,
-            sendNotifs: update.sendNotifs,
-            updateDate: update.updateDate,
-            showInTimeline: update.showInTimeline,
+            message: event.message,
+            newStatus: event.newStatus,
+            sendNotifs: event.sendNotifs,
+            updateDate: event.updateDate,
+            showInTimeline: event.showInTimeline,
           }),
       ) || [];
   }
