@@ -16,6 +16,7 @@ import AccountPage from "./pages/app/AccountPage";
 import ActionsListPage from "./pages/app/ActionsListPage";
 import { getApiUrl, isFeatureEnabled } from "./lib/config";
 import NewLandingPage from "./pages/static/NewLandingPage";
+import PrelaunchLandingPage from "./pages/static/PrelaunchLanding";
 import AnnouncementListPage from "./pages/app/AnnouncementListPage";
 import AnnouncementEditPage from "./pages/app/AnnouncementEditPage";
 import AnnouncementPage from "./pages/app/AnnouncementPage";
@@ -82,7 +83,8 @@ const AppRoutes = () => {
   return (
     <>
       <Routes>
-        <Route path="/" element={<NewLandingPage />} />
+        <Route path="/" element={<PrelaunchLandingPage />} />
+        <Route path="/landing" element={<NewLandingPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route
           path="/login"

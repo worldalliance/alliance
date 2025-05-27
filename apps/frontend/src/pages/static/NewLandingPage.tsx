@@ -55,7 +55,7 @@ const NewLandingPage: React.FC = () => {
       <div
         className="flex flex-col items-center justify-center bg-gray-950 w-screen h-[101vh] overflow-hidden relative goob"
         style={{
-          transform: `translateY(-${navbarHeight}px)`,
+          marginTop: `-${navbarHeight}px`,
         }}
       >
         <div className="mb-[-40%]">
@@ -81,7 +81,7 @@ const NewLandingPage: React.FC = () => {
         {/* </div> */}
       </div>
       <div className="w-screen flex flex-col items-center" ref={mainContentRef}>
-        <div className="container mx-auto flex flex-col items-center gap-y-15">
+        <div className="container py-28 mx-auto flex flex-col items-center gap-y-15">
           <h2 className="text-black !text-[24pt] font-sabon">
             We do stuff, really great stuff.
           </h2>
