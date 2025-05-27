@@ -20,8 +20,8 @@ export const testActions: ActionDto[] = [
     myRelation: {
       status: "joined",
       deadline: new Date().toISOString(),
-      dateCommitted: new Date().toISOString(),
-      dateCompleted: new Date().toISOString(),
+      dateCommitted: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
+      dateCompleted: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     },
   },
   {
@@ -117,6 +117,27 @@ export const testTodoActions: ActionDto[] = [
       deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
       dateCommitted: new Date().toISOString(),
       dateCompleted: new Date().toISOString(),
+    },
+  },
+];
+
+export const testNotJoinedActions: ActionDto[] = [
+  {
+    ...testActions[0],
+    myRelation: {
+      status: "none",
+      dateCommitted: "",
+      dateCompleted: "",
+      deadline: "",
+    },
+  },
+  {
+    ...testActions[1],
+    myRelation: {
+      status: "none",
+      dateCommitted: "",
+      dateCompleted: "",
+      deadline: "",
     },
   },
 ];

@@ -8,7 +8,7 @@ import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { UserActionRelation } from '../actions/entities/user-action.entity';
 import { Friend, FriendStatus } from './friend.entity';
-import { UserDto } from './user.dto';
+import { UpdateProfileDto, UserDto } from './user.dto';
 
 @Injectable()
 export class UserService {
@@ -23,6 +23,11 @@ export class UserService {
     const user = this.userRepository.create(data);
 
     return this.userRepository.save(user);
+  }
+
+  async update(id: number, data: UpdateProfileDto): Promise<User> {
+    await this.userRepository.update(id, data);
+    return this.findOneOrFail(id);
   }
 
   findAll(): Promise<User[]> {

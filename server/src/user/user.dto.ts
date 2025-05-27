@@ -1,4 +1,4 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
+import { ApiProperty, PartialType, PickType } from '@nestjs/swagger';
 import { User } from './user.entity';
 import { FriendStatus } from './friend.entity';
 
@@ -17,3 +17,5 @@ export class ProfileDto extends PickType(User, [
   'profilePicture',
   'profileDescription',
 ]) {}
+
+export class UpdateProfileDto extends PartialType(UserDto) {}

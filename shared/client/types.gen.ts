@@ -38,6 +38,13 @@ export type ProfileDto = {
     profileDescription: string | null;
 };
 
+export type UpdateProfileDto = {
+    id?: number;
+    name?: string;
+    email?: string;
+    admin?: boolean;
+};
+
 export type FriendStatusDto = {
     status: 'pending' | 'accepted' | 'declined' | 'none';
 };
@@ -122,7 +129,8 @@ export type ReadResultDto = {
 };
 
 export type ImageResponseDto = {
-    [key: string]: unknown;
+    id: number;
+    filename: string;
 };
 
 export type DeleteImageResponseDto = {
@@ -334,7 +342,7 @@ export type UserFindMeErrors = {
 };
 
 export type UserFindMeResponses = {
-    200: UserDto;
+    200: ProfileDto;
 };
 
 export type UserFindMeResponse = UserFindMeResponses[keyof UserFindMeResponses];
@@ -357,6 +365,19 @@ export type UserFindOneResponses = {
 };
 
 export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];
+
+export type UserUpdateData = {
+    body: UpdateProfileDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/{id}';
+};
+
+export type UserUpdateResponses = {
+    200: unknown;
+};
 
 export type UserRemoveFriendData = {
     body?: never;

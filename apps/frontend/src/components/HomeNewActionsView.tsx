@@ -16,7 +16,7 @@ export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
     <div className="flex flex-col gap-y-2">
       <div className="flex flex-row items-center gap-x-2 justify-between w-full my-3">
         <h1 className="text-[#111] !text-[16pt] font-font">
-          Actions happening right now
+          Actions happening now
         </h1>
         <Button color={ButtonColor.Light} onClick={() => navigate("/actions")}>
           See all actions

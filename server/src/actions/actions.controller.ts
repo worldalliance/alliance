@@ -25,7 +25,11 @@ import {
 } from './dto/action.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
-import { ApiOkResponse, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import {
+  ApiOkResponse,
+  ApiOperation,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
 import { Sse, MessageEvent } from '@nestjs/common';
 import { Observable, fromEvent, from, merge } from 'rxjs';
@@ -66,6 +70,9 @@ export class ActionsController {
   @Get('myStatus/:id')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: UserActionDto })
+  @ApiOperation({
+    summary: "Get the authenticated user's relation to a single action",
+  })
   async myStatus(
     @Request() req: JwtRequest,
     @Param('id') id: string,
@@ -104,6 +111,7 @@ export class ActionsController {
 
   @Sse('live/:id')
   @Public()
+  @ApiOperation({ summary: 'SSE endpoint for join counts on a single action' })
   sseActionCount(
     @Param('id', ParseIntPipe) id: number,
   ): Observable<MessageEvent> {
@@ -125,6 +133,7 @@ export class ActionsController {
 
   @Sse('live-list')
   @Public()
+  @ApiOperation({ summary: 'SSE endpoint for join counts on multiple actions' })
   liveList(@Query('ids') idsQuery?: string): Observable<MessageEvent> {
     if (!idsQuery) throw new BadRequestException('ids query param required');
     const ids = idsQuery.split(',').map(Number).filter(Boolean);
@@ -202,6 +211,9 @@ export class ActionsController {
 
   @Get('completed/:id')
   @ApiOkResponse({ type: [ActionWithRelationDto] })
+  @ApiOperation({
+    summary: 'Get all completed actions for a user',
+  })
   async findCompletedForUser(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ActionWithRelationDto[]> {

@@ -1,6 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, PickType } from '@nestjs/swagger';
 import { Image } from '../entities/image.entity';
-import { PickType } from '@nestjs/mapped-types';
 
 export class ImageResponseDto extends PickType(Image, ['filename', 'id']) {}
 

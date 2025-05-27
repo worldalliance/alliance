@@ -6,6 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
+
 @Entity()
 export class Image {
   @PrimaryGeneratedColumn()

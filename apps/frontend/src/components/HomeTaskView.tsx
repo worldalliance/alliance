@@ -29,14 +29,14 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
     <div className="flex flex-col gap-y-2">
       <div className="flex flex-row items-center gap-x-2 justify-between w-full mb-3">
         <h1 className="text-[#111] !text-[16pt] font-font">Your Tasks</h1>
-        <Button
+        {/* <Button
           color={ButtonColor.Light}
           onClick={() => {
             navigate("/actions");
           }}
         >
           See completed
-        </Button>
+        </Button> */}
       </div>
       {initialActions.map((action) => (
         <TaskCard

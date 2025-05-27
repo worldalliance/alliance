@@ -28,6 +28,7 @@ import { client } from "../../../shared/client/client.gen";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import TempProdPassword from "./TempProdPassword";
 import { Features } from "@alliance/shared/lib/features";
+import ProfilePageEdit from "./pages/app/ProfilePageEdit";
 
 client.setConfig({
   baseUrl: getApiUrl(),
@@ -122,6 +123,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <AccountPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/editprofile"
+          element={
+            <ProtectedRoute>
+              <ProfilePageEdit />
             </ProtectedRoute>
           }
         />

@@ -9,6 +9,7 @@ import {
   Post,
   Patch,
   Delete,
+  Body,
 } from '@nestjs/common';
 import {
   ApiOkResponse,
@@ -17,7 +18,12 @@ import {
 } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
 import { UserService } from './user.service';
-import { FriendStatusDto, ProfileDto, UserDto } from './user.dto';
+import {
+  FriendStatusDto,
+  ProfileDto,
+  UpdateProfileDto,
+  UserDto,
+} from './user.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { FriendStatus } from './friend.entity';
 
@@ -27,9 +33,9 @@ export class UserController {
 
   @Get('me')
   @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: UserDto })
+  @ApiOkResponse({ type: ProfileDto })
   @ApiUnauthorizedResponse()
-  async findMe(@Request() req: JwtRequest): Promise<UserDto> {
+  async findMe(@Request() req: JwtRequest): Promise<ProfileDto> {
     const profile = await this.userService.findOne(req.user.sub);
     if (!profile) {
       throw new UnauthorizedException();
@@ -39,6 +45,8 @@ export class UserController {
       name: profile.name,
       admin: profile.admin,
       id: profile.id,
+      profileDescription: profile.profileDescription,
+      profilePicture: profile.profilePicture,
     };
   }
 
@@ -48,6 +56,19 @@ export class UserController {
   @ApiUnauthorizedResponse()
   findOne(@Param('id', ParseIntPipe) id: number): Promise<ProfileDto | null> {
     return this.userService.findOne(id);
+  }
+
+  @Patch(':id')
+  @UseGuards(AuthGuard)
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateActionDto: UpdateProfileDto,
+    @Request() req: JwtRequest,
+  ) {
+    if (id !== req.user.sub) {
+      throw new UnauthorizedException(); //TODO: move to guard
+    }
+    return this.userService.update(id, updateActionDto);
   }
 
   @Post('friends/:targetUserId')

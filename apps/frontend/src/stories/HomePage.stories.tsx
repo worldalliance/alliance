@@ -1,7 +1,7 @@
 import { StoryObj, Meta } from "@storybook/react";
 import HomePage from "../pages/app/HomePage";
 import { HttpResponse } from "msw";
-import { testTodoActions } from "./testData";
+import { testNotJoinedActions, testTodoActions } from "./testData";
 import { http } from "msw";
 
 const meta = {
@@ -12,7 +12,10 @@ const meta = {
     msw: {
       handlers: [
         http.get("/actions/withStatus", () => {
-          return HttpResponse.json(testTodoActions);
+          return HttpResponse.json([
+            ...testTodoActions,
+            ...testNotJoinedActions,
+          ]);
         }),
       ],
     },
