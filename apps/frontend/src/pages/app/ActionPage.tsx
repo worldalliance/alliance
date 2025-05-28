@@ -90,13 +90,13 @@ const ActionPage: React.FC = () => {
     }
   }, [actionId]);
 
-  const evtSource = new EventSource(`${getApiUrl()}/actions/live/${actionId}`);
-  evtSource.onmessage = (e) => {
-    const newUserCount = Number(e.data);
-    if (newUserCount !== action?.usersJoined && action) {
-      setAction({ ...action, usersJoined: newUserCount });
-    }
-  };
+  //   const evtSource = new EventSource(`${getApiUrl()}/actions/live/${actionId}`);
+  //   evtSource.onmessage = (e) => {
+  //     const newUserCount = Number(e.data);
+  //     if (newUserCount !== action?.usersJoined && action) {
+  //       setAction({ ...action, usersJoined: newUserCount });
+  //     }
+  //   };
 
   const mainContent = (
     <>

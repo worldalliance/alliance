@@ -30,8 +30,6 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
     {}
   );
 
-  console.log("userId", userId);
-
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -65,11 +63,13 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
   };
 
   const handleAcceptRequest = async (requesterId: number) => {
+    console.log("requesterId", requesterId);
     const userIdStr = requesterId.toString();
     startProcessing(userIdStr);
 
     try {
-      await userAcceptFriendRequest({ path: { requesterId } });
+      const response = await userAcceptFriendRequest({ path: { requesterId } });
+      console.log("response", response);
       fetchData();
     } catch (error) {
       console.error("Error accepting friend request:", error);
@@ -186,13 +186,13 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
                     </div>
                     <div className="flex space-x-2">
                       <Button
-                        onClick={() => navigate(`/app/user/1`)} // Replace with actual user ID
+                        onClick={() => navigate(`/user/${friend.id}`)}
                         color={ButtonColor.Stone}
                       >
                         View Profile
                       </Button>
                       <Button
-                        onClick={() => handleRemoveFriend(1)} // Replace with actual user ID
+                        onClick={() => handleRemoveFriend(friend.id)}
                         color={ButtonColor.Red}
                         disabled={processingIds[friend.email]}
                       >
@@ -226,7 +226,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
                     </div>
                     <div className="flex space-x-2">
                       <Button
-                        onClick={() => handleAcceptRequest(1)} // Replace with actual user ID
+                        onClick={() => handleAcceptRequest(request.id)}
                         color={ButtonColor.Green}
                         disabled={processingIds[request.email]}
                       >
@@ -235,7 +235,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
                           : "Accept"}
                       </Button>
                       <Button
-                        onClick={() => handleDeclineRequest(1)} // Replace with actual user ID
+                        onClick={() => handleDeclineRequest(request.id)}
                         color={ButtonColor.Stone}
                         disabled={processingIds[request.email]}
                       >
@@ -270,7 +270,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
                       <p className="text-stone-500 text-sm">{request.email}</p>
                     </div>
                     <Button
-                      onClick={() => handleCancelRequest(1)} // Replace with actual user ID
+                      onClick={() => handleCancelRequest(request.id)}
                       color={ButtonColor.Stone}
                       disabled={processingIds[request.email]}
                     >
