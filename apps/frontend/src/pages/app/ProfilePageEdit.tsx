@@ -197,7 +197,9 @@ const ProfileEditPage: React.FC = () => {
             src={
               avatarFile
                 ? URL.createObjectURL(avatarFile)
-                : getImageSource(avatarUrl)
+                : avatarUrl
+                  ? getImageSource(avatarUrl)
+                  : null
             }
             className="mt-[-55px]"
           />

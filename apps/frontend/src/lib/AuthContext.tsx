@@ -16,6 +16,7 @@ import {
   UserDto,
 } from "../../../../shared/client";
 import { testUser2 } from "../stories/testData";
+import { getApiUrl } from "./config";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -73,6 +74,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
 
         const { data } = await authMe();
         setUser(data);
+      } catch (error) {
+        console.error("login error", error);
       } finally {
         setLoading(false);
       }

@@ -142,7 +142,11 @@ const UserProfilePage: React.FC = () => {
       <div className="w-full h-[100px]"></div>
       <div className="px-8 relative space-y-2 border-stone-300 border rounded mx-2">
         <ProfileImage
-          src={getImageSource(profileUser.profilePicture)}
+          src={
+            profileUser.profilePicture
+              ? getImageSource(profileUser.profilePicture)
+              : null
+          }
           className="mt-[-55px]"
         />
         <div className="flex gap-2">

@@ -11,11 +11,12 @@ import {
   actionsMyStatus,
 } from "../../../../../shared/client";
 import { ActionDto, UserActionDto } from "../../../../../shared/client";
-import { getApiUrl, isFeatureEnabled } from "../../lib/config";
+import { getApiUrl, getImageSource, isFeatureEnabled } from "../../lib/config";
 import ActionForumPosts from "../../components/ActionForumPosts";
 import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
 import { useAuth } from "../../lib/AuthContext";
+import ActionUpdatesPanel from "../../components/ActionUpdatesPanel";
 const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
@@ -102,7 +103,7 @@ const ActionPage: React.FC = () => {
       <div className="flex flex-col gap-y-3 flex-2 p-10 px-20">
         {action?.image && (
           <img
-            src={`${getApiUrl()}/images/${action.image}`}
+            src={getImageSource(action.image)}
             alt={action.name}
             className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
           />
@@ -138,7 +139,8 @@ const ActionPage: React.FC = () => {
             </p>
           </Card>
         )}
-        <h2>What you can do</h2>
+        {action && <ActionUpdatesPanel action={action} />}
+        <h2 className="!mt-8">What you can do</h2>
         <p>
           {action?.description ||
             "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}

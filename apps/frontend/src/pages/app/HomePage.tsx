@@ -5,9 +5,7 @@ import {
   actionsComplete,
   actionsFindAllWithStatus,
 } from "../../../../../shared/client";
-import { client } from "../../../../../shared/client/client.gen";
 import { useAuth } from "../../lib/AuthContext";
-import { getApiUrl } from "../../lib/config";
 import { HomeNewActionsView } from "../../components/HomeNewActionsView";
 
 const HomePage: React.FC = () => {
@@ -35,10 +33,7 @@ const HomePage: React.FC = () => {
 
   useEffect(() => {
     if (authLoading) return;
-    // client.setConfig({
-    //   baseUrl: getApiUrl(),
-    //   credentials: "include",
-    // });
+
     actionsFindAllWithStatus()
       .then(({ data }) => {
         console.log(data);
