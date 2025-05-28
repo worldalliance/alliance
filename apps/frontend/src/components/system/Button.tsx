@@ -13,7 +13,11 @@ type ButtonProps = React.PropsWithChildren & {
         type?: "button" | "reset";
         onClick: (e: React.MouseEvent) => void;
       }
-  );
+  ) &
+  Pick<
+    React.HTMLAttributes<HTMLButtonElement>,
+    "onMouseEnter" | "onMouseLeave"
+  >;
 
 export enum ButtonColor {
   Stone = "bg-stone-700",
@@ -34,6 +38,8 @@ const Button: React.FC<ButtonProps> = ({
   color: colorProp,
   type = "button",
   disabled = false,
+  onMouseEnter,
+  onMouseLeave,
 }) => {
   const color = colorProp ?? ButtonColor.Stone;
   return (
@@ -47,6 +53,8 @@ const Button: React.FC<ButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       style={{ fontWeight: 450 }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       {children}
     </button>

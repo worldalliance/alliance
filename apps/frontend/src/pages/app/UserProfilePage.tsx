@@ -15,6 +15,7 @@ import {
   ActionWithRelationDto,
   PostDto,
   forumFindPostsByUser,
+  userRemoveFriend,
 } from "../../../../../shared/client";
 import ProfileImage from "../../components/ProfileImage";
 import testImg from "../../assets/fakebgimage.png";
@@ -72,6 +73,7 @@ const UserProfilePage: React.FC = () => {
         const { data: friendStatusData } = await userMyFriendRelationship({
           path: { id: userId },
         });
+        console.log("friendStatusData", friendStatusData);
         setFriendStatus(friendStatusData?.status ?? "none");
 
         const { data: forumPostsData } = await forumFindPostsByUser({
@@ -110,6 +112,16 @@ const UserProfilePage: React.FC = () => {
       setFriendStatus("pending");
     } catch (error) {
       console.error("Error sending friend request:", error);
+    }
+  };
+
+  const handleRemoveFriend = async () => {
+    if (!id || !user) return;
+    try {
+      await userRemoveFriend({ path: { targetUserId: parseInt(id) } });
+      setFriendStatus("none");
+    } catch (error) {
+      console.error("Error removing friend:", error);
     }
   };
 
@@ -173,6 +185,7 @@ const UserProfilePage: React.FC = () => {
           <FriendRequestButton
             friendStatus={friendStatus}
             handleSendFriendRequest={handleSendFriendRequest}
+            handleRemoveFriend={handleRemoveFriend}
           />
           <Button
             color={ButtonColor.Light}
@@ -244,6 +257,7 @@ const UserProfilePage: React.FC = () => {
               <div
                 className="flex flex-row gap-2 items-center cursor-pointer hover:bg-stone-100 rounded-md p-3 px-5 w-fit"
                 onClick={() => navigate(`/user/${friend.id}`)}
+                key={friend.id}
               >
                 <ProfileImage src={testImg} className="!w-10 !h-10" />
                 <p>{friend.name}</p>

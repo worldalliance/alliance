@@ -171,13 +171,17 @@ export class UserService {
     return users;
   }
 
-  async myFriendRelationship(
+  async getRelationshipStatus(
     userId: number,
     targetUserId: number,
   ): Promise<FriendStatus> {
-    const rel = await this.friendRepository.findOne({
-      where: { requester: { id: userId }, addressee: { id: targetUserId } },
-    });
+    const rel =
+      (await this.friendRepository.findOne({
+        where: { requester: { id: userId }, addressee: { id: targetUserId } },
+      })) ||
+      (await this.friendRepository.findOne({
+        where: { requester: { id: targetUserId }, addressee: { id: userId } },
+      }));
     return rel ? rel.status : FriendStatus.None;
   }
 

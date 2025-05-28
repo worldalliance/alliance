@@ -142,10 +142,12 @@ export class UserController {
     @Request() req: JwtRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<FriendStatusDto> {
-    const status = await this.userService.myFriendRelationship(
+    console.log('checking status between', req.user.sub, id);
+    const status = await this.userService.getRelationshipStatus(
       req.user.sub,
       +id,
     );
+    console.log('status', status);
     return { status };
   }
 

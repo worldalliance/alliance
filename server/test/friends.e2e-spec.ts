@@ -109,6 +109,15 @@ describe('Friends (e2e)', () => {
     expect(bFriends.body.some((u) => u.id === userAId)).toBe(true);
   });
 
+  it('user can check their friend status', async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .get(`/user/myfriendrelationship/${userBId}`)
+      .set('Authorization', `Bearer ${userAToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe(FriendStatus.Accepted);
+  });
+
   it('Either user can un-friend the other', async () => {
     const res = await request(ctx.app.getHttpServer())
       .delete(`/user/friends/${userAId}`)
