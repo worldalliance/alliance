@@ -13,14 +13,7 @@ import { actionsFindAllWithStatus } from "../../../../../shared/client";
 import ActionCard from "../../../components/ActionCard";
 import { router } from "expo-router";
 import usePushNotifications from "../../../lib/usePushNotifications";
-
-enum FilterMode {
-  All = "All",
-  Active = "Active",
-  Upcoming = "Upcoming",
-  Past = "Past",
-  Joined = "Joined",
-}
+import { FilterMode, filterActions } from "../../../../../shared/lib/actionUtils";
 
 const FILTERS = [
   FilterMode.All,
@@ -58,16 +51,7 @@ export default function HomeScreen() {
     fetchActions();
   }, []);
 
-  const filteredActions = useMemo(() => {
-    if (filterMode === FilterMode.All) {
-      return actions;
-    }
-    if (filterMode === FilterMode.Joined) {
-      // TODO: Implement joined filter logic based on user
-      return actions;
-    }
-    return actions.filter((action) => action.status === filterMode);
-  }, [actions, filterMode]);
+  const filteredActions = useMemo(() => filterActions(actions, filterMode), [actions, filterMode]);
 
   const navigateToAction = (actionId: number) => {
     router.push(`/action/${actionId}`);

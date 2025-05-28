@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ActionDto, CreateActionDto, UpdateActionDto, ActionEventDto } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Action, ActionStatus } from './entities/action.entity';
-import { ActionEvent, NotificationType } from './entities/action-event.entity';
+import { Action } from './entities/action.entity';
+import { ActionEvent, NotificationType, ActionStatus } from './entities/action-event.entity';
 import { In, Not, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';
@@ -166,19 +166,14 @@ export class ActionsService {
     const action = await this.findOne(id);
 
     const newEvent = this.actionEventRepository.create({
-      message: actionEventDto.message,
-      newStatus: actionEventDto.newStatus,
-      sendNotifs: actionEventDto.sendNotifs as NotificationType,
-      updateDate: new Date(),
-      showInTimeline: actionEventDto.showInTimeline,
-      action,
+      ...actionEventDto, 
+      action
     });
 
     await this.actionEventRepository.save(newEvent);
 
-    action.events.push(newEvent);
     await this.actionRepository.save(action);
-    
+
     return new ActionDto(action);
   }
 

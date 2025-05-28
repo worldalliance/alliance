@@ -1,5 +1,6 @@
 import * as request from 'supertest';
-import { Action, ActionStatus } from '../src/actions/entities/action.entity';
+import { Action } from '../src/actions/entities/action.entity';
+import { ActionStatus } from 'src/actions/entities/action-event.entity';
 import { CreateActionDto, ActionEventDto } from '../src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { UserActionRelation } from '../src/actions/entities/user-action.entity';
@@ -156,7 +157,7 @@ describe('Actions (e2e)', () => {
       const newEvent: ActionEventDto = {
         message: 'Test Event',
         newStatus: ActionStatus.Active,
-        sendNotifs: NotificationType.All,
+        sendNotifsTo: NotificationType.All,
         updateDate: new Date(),
         showInTimeline: true,
       };
@@ -184,6 +185,22 @@ describe('Actions (e2e)', () => {
       expect(res.body.events.length).toBe(1);
       expect(res.body.events[0].message).toBe('Test Event');
     });
+  });
+  it('admin cannot add an event to an action with missing data', async () => {
+    const action = await ctx.actionRepo.findOneBy({
+      name: 'Test Action',
+    });
+
+    const incompleteEvent: Partial<ActionEventDto> = {
+      message: 'Incomplete Event',
+    };
+
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/actions/${action!.id}/events`)
+      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .send(incompleteEvent);
+
+    expect(res.status).toBe(400);
   });
 
   afterAll(async () => {

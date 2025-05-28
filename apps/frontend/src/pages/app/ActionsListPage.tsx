@@ -3,22 +3,7 @@ import ActionItemCard from "../../components/ActionItemCard";
 import Button, { ButtonColor } from "../../components/system/Button";
 import { actionsFindAllWithStatus } from "../../../../../shared/client";
 import { ActionDto } from "../../../../../shared/client";
-
-enum FilterMode {
-  All = "all",
-  Active = "Active",
-  Upcoming = "Upcoming",
-  Past = "Past",
-  Joined = "joined",
-}
-
-const FILTER_LABELS: Record<FilterMode, string> = {
-  [FilterMode.All]: "All",
-  [FilterMode.Active]: "Active",
-  [FilterMode.Upcoming]: "Upcoming",
-  [FilterMode.Past]: "Past",
-  [FilterMode.Joined]: "Joined",
-};
+import { FilterMode, filterActions } from "../../../../../shared/lib/actionUtils";
 
 const ActionsListPage: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
@@ -38,17 +23,7 @@ const ActionsListPage: React.FC = () => {
     });
   }, []);
 
-  const filteredActions = useMemo(() => {
-    if (filterMode === FilterMode.All) {
-      return actions;
-    }
-
-    if (filterMode === FilterMode.Joined) {
-      return actions; //TODO: implement
-    }
-
-    return actions.filter((action) => action.status === filterMode);
-  }, [actions, filterMode]);
+  const filteredActions = useMemo(() => filterActions(actions, filterMode), [actions, filterMode]);
 
   return (
     <div className="flex flex-col min-h-screen bg-white items-center">

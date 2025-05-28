@@ -3,10 +3,17 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
-  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Action } from './action.entity';
+import { IsNotEmpty } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
+export enum NotificationType {
+  All = 'all',
+  Joined = 'joined',
+  None = 'none',
+}
 export enum ActionStatus {
   Active = 'active',
   Upcoming = 'upcoming',
@@ -14,22 +21,23 @@ export enum ActionStatus {
   Draft = 'draft',
 }
 
-export enum NotificationType {
-  All = 'all',
-  Joined = 'joined',
-  None = 'none',
-}
-
 @Entity()
 export class ActionEvent {
   @PrimaryGeneratedColumn()
+  @ApiProperty({ description: 'Unique identifier for the action event' })
   id: number;
 
+  @IsNotEmpty()
   @Column()
+  @ApiProperty({ description: 'Message describing the event' })
   message: string;
 
   @Column({
     type: 'enum',
+    enum: ActionStatus,
+  })
+  @ApiProperty({
+    description: 'New status of the action after the event',
     enum: ActionStatus,
   })
   newStatus: ActionStatus;
@@ -38,16 +46,26 @@ export class ActionEvent {
     type: 'enum',
     enum: NotificationType,
   })
-  sendNotifs: NotificationType;
+  @ApiProperty({
+    description: 'Notification type for the event',
+    enum: NotificationType,
+  })
+  sendNotifsTo: NotificationType;
 
-  @CreateDateColumn()
+  @UpdateDateColumn()
+  @ApiProperty({ description: 'Timestamp when the event was last updated' })
   updateDate: Date;
 
   @Column({ default: false })
+  @ApiProperty({
+    description: 'Indicates whether the event should be shown in the timeline',
+    default: false,
+  })
   showInTimeline: boolean;
 
   @ManyToOne(() => Action, (action) => action.events, {
     onDelete: 'CASCADE',
   })
+  @ApiProperty({ description: 'The action associated with this event', type: () => Action })
   action: Action;
 }
