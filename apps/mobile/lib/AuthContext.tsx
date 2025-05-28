@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<
       try {
         // Call the backend to remove the push token
         const apiUrl = getApiUrl();
-        await fetch(`${apiUrl}/users/remove-push-token`, {
+        await fetch(`${apiUrl}/users/removePushToken`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: user.id }),
@@ -184,7 +184,7 @@ export const AuthProvider: React.FC<
       // Call the backend to save the push token
       const apiUrl = getApiUrl();
       const token = (await Notifications.getExpoPushTokenAsync()).data;
-      await fetch(`${apiUrl}/users/push-token`, {
+      await fetch(`${apiUrl}/users/pushToken`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: userProfile.data.id, token }),

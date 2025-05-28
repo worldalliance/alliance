@@ -188,7 +188,6 @@ export class ActionsController {
 
   @Post('create')
   @UseGuards(AdminGuard)
-  @UsePipes(new ValidationPipe())
   @ApiOkResponse({ type: ActionDto })
   create(@Body() createActionDto: CreateActionDto) {
     return this.actionsService.create(createActionDto);
@@ -222,7 +221,6 @@ export class ActionsController {
 
   @Post(':id/events')
   @UseGuards(AdminGuard)
-  @UsePipes(new ValidationPipe())
   @ApiOkResponse({ type: ActionDto })
   async addEvent(
     @Param('id', ParseIntPipe) id: number,
