@@ -50,25 +50,21 @@ export class UserController {
     };
   }
 
+  @Post('update')
+  @UseGuards(AuthGuard)
+  update(
+    @Body() updateActionDto: UpdateProfileDto,
+    @Request() req: JwtRequest,
+  ) {
+    return this.userService.update(req.user.sub, updateActionDto);
+  }
+
   @Get(':id')
   @Public()
   @ApiOkResponse({ type: ProfileDto })
   @ApiUnauthorizedResponse()
   findOne(@Param('id', ParseIntPipe) id: number): Promise<ProfileDto | null> {
     return this.userService.findOne(id);
-  }
-
-  @Patch(':id')
-  @UseGuards(AuthGuard)
-  update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() updateActionDto: UpdateProfileDto,
-    @Request() req: JwtRequest,
-  ) {
-    if (id !== req.user.sub) {
-      throw new UnauthorizedException(); //TODO: move to guard
-    }
-    return this.userService.update(id, updateActionDto);
   }
 
   @Post('friends/:targetUserId')

@@ -39,7 +39,7 @@ const Card: React.FC<CardProps> = ({
 
   return (
     <div
-      className={`flex flex-col ${styleClasses[cardStyle]} gap-y-2 rounded-lg p-4 border ${className} ${onClick ? "cursor-pointer hover:border-black transition-[border] duration-100" : ""} bg-cover bg-center`}
+      className={`flex flex-col ${styleClasses[cardStyle]} gap-y-2 rounded p-4 border ${className} ${onClick ? "cursor-pointer hover:border-black transition-[border] duration-100" : ""} bg-cover bg-center`}
       style={{
         backgroundImage: `url(${bgImage})`,
         height: closed ? "0px" : "calc-size(auto, size)",

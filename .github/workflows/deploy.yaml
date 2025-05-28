@@ -192,6 +192,7 @@ jobs:
               server {
                 listen 80;
                 server_name ${{vars.DOMAIN_NAME }};
+                http2 on;
 
                 root /home/ec2-user/alliance-app/dist;
                 index index.html;
@@ -257,6 +258,7 @@ jobs:
               server {
                 listen 80;
                 server_name admin.${{vars.DOMAIN_NAME}};
+                http2 on;
 
                 root /home/ec2-user/admin-app/dist;
                 index index.html;

@@ -43,6 +43,8 @@ export type UpdateProfileDto = {
     name?: string;
     email?: string;
     admin?: boolean;
+    profilePicture?: string | null;
+    profileDescription?: string | null;
 };
 
 export type FriendStatusDto = {
@@ -347,6 +349,28 @@ export type UserFindMeResponses = {
 
 export type UserFindMeResponse = UserFindMeResponses[keyof UserFindMeResponses];
 
+export type UserHiData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/hi';
+};
+
+export type UserHiResponses = {
+    200: unknown;
+};
+
+export type UserUpdateData = {
+    body: UpdateProfileDto;
+    path?: never;
+    query?: never;
+    url: '/user/update';
+};
+
+export type UserUpdateResponses = {
+    201: unknown;
+};
+
 export type UserFindOneData = {
     body?: never;
     path: {
@@ -365,19 +389,6 @@ export type UserFindOneResponses = {
 };
 
 export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];
-
-export type UserUpdateData = {
-    body: UpdateProfileDto;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/{id}';
-};
-
-export type UserUpdateResponses = {
-    200: unknown;
-};
 
 export type UserRemoveFriendData = {
     body?: never;

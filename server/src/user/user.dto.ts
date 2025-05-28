@@ -18,4 +18,4 @@ export class ProfileDto extends PickType(User, [
   'profileDescription',
 ]) {}
 
-export class UpdateProfileDto extends PartialType(UserDto) {}
+export class UpdateProfileDto extends PartialType(ProfileDto) {}

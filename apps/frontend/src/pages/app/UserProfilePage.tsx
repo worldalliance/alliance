@@ -22,10 +22,11 @@ import dots from "../../assets/dots.svg";
 import UserActivityCard from "../../components/UserActivityCard";
 import ForumListPost from "../../components/ForumListPost";
 import FriendRequestButton from "../../components/FriendRequestButton";
+import { getImageSource } from "../../lib/config";
 
 enum ProfileTabs {
   Activity = "Activity",
-  Forum = "Forum Posts",
+  Forum = "Posts",
   Friends = "Friends",
 }
 
@@ -139,8 +140,11 @@ const UserProfilePage: React.FC = () => {
   return (
     <div className="max-w-[800px] mx-auto space-y-2">
       <div className="w-full h-[100px]"></div>
-      <div className="px-8 relative space-y-2 border-stone-300 border rounded-lg mx-2">
-        <ProfileImage src={testImg} className="mt-[-55px]" />
+      <div className="px-8 relative space-y-2 border-stone-300 border rounded mx-2">
+        <ProfileImage
+          src={getImageSource(profileUser.profilePicture)}
+          className="mt-[-55px]"
+        />
         <div className="flex gap-2">
           <h1>{profileUser.name}</h1>
         </div>
@@ -168,7 +172,7 @@ const UserProfilePage: React.FC = () => {
           />
           <Button
             color={ButtonColor.Light}
-            onClick={handleSendFriendRequest}
+            onClick={() => {}}
             className="!p-[8px] rounded-full"
           >
             <img src={dots} alt="send" className="w-7 h-7" />
@@ -188,7 +192,7 @@ const UserProfilePage: React.FC = () => {
           </div> */}
       </div>
       <div className="flex flex-row w-full justify-evenly">
-        {Object.values(ProfileTabs).map((tab) => (
+        {[ProfileTabs.Activity, ProfileTabs.Forum].map((tab) => (
           <div
             onClick={() => setSelectedTab(tab)}
             key={tab}

@@ -36,21 +36,21 @@ const ActionsListPage: React.FC = () => {
       if (response.data) {
         setActions(response.data || []);
 
-        const ids = response.data.map((a) => a.id);
+        // const ids = response.data.map((a) => a.id);
 
-        evtSource = new EventSource(getBulkActionSSEUrl(ids));
+        // evtSource = new EventSource(getBulkActionSSEUrl(ids));
 
-        evtSource.onmessage = (e) => {
-          const counts = JSON.parse(e.data);
-          setLiveCounts(counts);
-        };
+        // evtSource.onmessage = (e) => {
+        //   const counts = JSON.parse(e.data);
+        //   setLiveCounts(counts);
+        // };
       } else {
         setError("Failed to load actions");
       }
       setLoading(false);
     });
     return () => {
-      evtSource?.close();
+      //   evtSource?.close();
     };
   }, [isAuthenticated]);
 

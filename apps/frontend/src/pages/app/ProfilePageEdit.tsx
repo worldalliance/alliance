@@ -5,18 +5,26 @@ import Button, { ButtonColor } from "../../components/system/Button";
 import { useAuth } from "../../lib/AuthContext";
 import ProfileImage from "../../components/ProfileImage";
 import ReactMarkdown from "react-markdown";
-
 import {
   imagesUploadImage,
   userUpdate,
-  ProfileDto,
   userFindMe,
+  UpdateProfileDto,
+  forumFindPostsByUser,
+  userMyFriendRelationship,
+  userListFriends,
+  UserDto,
+  ActionWithRelationDto,
+  PostDto,
+  actionsFindCompletedForUser,
 } from "../../../../../shared/client";
+import { client } from "@alliance/shared/client/client.gen";
+import { getImageSource } from "../../lib/config";
 
-/**
- * ProfileEditPage – allows the logged‑in user to update their profile picture, name and bio.
- * Route: /profile/edit
- */
+client.setConfig({
+  baseUrl: "http://localhost:3005",
+});
+
 const ProfileEditPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -29,6 +37,11 @@ const ProfileEditPage: React.FC = () => {
   const [bio, setBio] = useState<string>("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [completedActions, setCompletedActions] = useState<
+    ActionWithRelationDto[]
+  >([]);
+  const [forumPosts, setForumPosts] = useState<PostDto[]>([]);
+  const [friends, setFriends] = useState<UserDto[]>([]);
 
   // Error & submit state
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +60,28 @@ const ProfileEditPage: React.FC = () => {
         setName(response.data.name || "");
         setBio(response.data.profileDescription || "");
         setAvatarUrl(response.data.profilePicture || null);
+
+        const { data: friendsData } = await userListFriends({
+          path: { id: user.id },
+        });
+        if (friendsData) {
+          setFriends(friendsData);
+        }
+
+        const { data: forumPostsData } = await forumFindPostsByUser({
+          path: { id: user.id },
+        });
+        if (forumPostsData) {
+          setForumPosts(forumPostsData);
+        }
+
+        actionsFindCompletedForUser({ path: { id: user.id } }).then(
+          (response) => {
+            if (response.data) {
+              setCompletedActions(response.data);
+            }
+          }
+        );
       }
       setLoading(false);
     }
@@ -90,10 +125,12 @@ const ProfileEditPage: React.FC = () => {
    * profile with name, bio & returned image URL.
    */
   const handleSave = async () => {
+    console.log("handleSave");
     if (!user) return;
 
     setSubmitting(true);
     setError(null);
+    console.log("handleSave 2");
 
     try {
       let uploadedFilename: string | undefined = undefined;
@@ -102,19 +139,24 @@ const ProfileEditPage: React.FC = () => {
         const response = await imagesUploadImage({
           body: { image: avatarFile },
         });
+        console.log("got image upload response");
         if (response.data) {
           uploadedFilename = response.data.filename;
         }
       }
 
-      const payload: Partial<ProfileDto> = {
+      console.log("handleSave 3");
+
+      const payload: UpdateProfileDto = {
         name,
         profileDescription: bio,
         profilePicture: uploadedFilename ?? avatarUrl ?? undefined,
       };
+      const response = await userUpdate({
+        body: payload,
+      });
 
-      await userUpdate({ body: payload });
-      await refreshProfile?.(); // pull fresh data into AuthContext (if implemented)
+      console.log("got response", response);
 
       navigate(`/user/${user.id}`);
     } catch (err: any) {
@@ -147,80 +189,142 @@ const ProfileEditPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-pagebg pt-20 px-4 md:px-0">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <Card style={CardStyle.White} className="p-8 space-y-6">
-          <h1 className="text-2xl font-semibold text-center">Edit Profile</h1>
-
-          {/* Avatar upload / preview */}
-          <div className="flex flex-col items-center gap-4">
-            <ProfileImage
-              src={avatarUrl}
-              className="w-24 h-24 border-2 border-stone-300 rounded-full object-cover"
-            />
-            <label className="cursor-pointer text-blue-600 underline text-sm">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarChange}
-              />
-              Change photo
-            </label>
-          </div>
-
-          {/* Name input */}
-          <div className="space-y-2">
-            <label className="block font-medium">Display Name</label>
+    <div className="max-w-[800px] mx-auto space-y-2">
+      <div className="w-full h-[100px]"></div>
+      <div className="px-8 relative space-y-2 border-stone-300 border rounded mx-2">
+        <div className="relative w-fit">
+          <ProfileImage
+            src={
+              avatarFile
+                ? URL.createObjectURL(avatarFile)
+                : getImageSource(avatarUrl)
+            }
+            className="mt-[-55px]"
+          />
+          <label className="cursor-pointer text-blue-600 underline text-sm absolute -top-5">
             <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full border border-stone-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
             />
-          </div>
-
-          {/* Bio markdown textarea */}
-          <div className="space-y-2">
-            <label className="block font-medium">Bio / Description</label>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              rows={6}
-              className="w-full border border-stone-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Write something about yourself (supports Markdown)"
-            />
-            <p className="text-xs text-stone-500">Markdown preview:</p>
-            <div className="border border-dashed rounded-md p-3 prose max-w-none">
-              {bio.trim() ? (
-                <ReactMarkdown>{bio}</ReactMarkdown>
-              ) : (
-                <p className="text-stone-400 italic">Nothing to preview…</p>
-              )}
-            </div>
-          </div>
-
-          {error && <p className="text-red-600 text-sm text-center">{error}</p>}
-
-          <div className="flex justify-end gap-4 pt-2">
-            <Button
-              color={ButtonColor.Light}
-              disabled={submitting}
-              onClick={() => navigate(-1)}
-            >
-              Cancel
-            </Button>
-            <Button
-              color={ButtonColor.Blue}
-              disabled={submitting}
-              onClick={handleSave}
-            >
-              {submitting ? "Saving…" : "Save Changes"}
-            </Button>
-          </div>
-        </Card>
+            Change photo
+          </label>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full border-none focus:outline-none text-[22pt] font-bold font-berlingske"
+          />
+        </div>
+        {/* stats row */}
+        <div className="flex flex-row gap-5 cursor-pointer">
+          <p>
+            <b>{completedActions.length} </b>
+            actions completed
+          </p>
+          <p>
+            <b>{forumPosts.length} </b>
+            forum posts
+          </p>
+          <p>
+            <b>{friends.length} </b>
+            Friends
+          </p>
+        </div>
+        <textarea
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          rows={6}
+          className="w-full border border-stone-300 focus:outline-none p-2 -ml-2 mt-2"
+        />
+        {/* button row */}
+        <div className="absolute right-0 top-0 space-x-3 flex flex-row p-5">
+          <Button color={ButtonColor.Blue} onClick={handleSave} className="">
+            Save
+          </Button>
+        </div>
+        {/* <div className="absolute -left-20 top-0 p-5">
+          <BackButton />
+          </div> */}
       </div>
     </div>
+    // <div className="min-h-screen bg-pagebg pt-20 px-4 md:px-0">
+    //   <div className="max-w-2xl mx-auto space-y-6">
+    //     <Card style={CardStyle.White} className="p-8 space-y-6">
+    //       <h1 className="text-2xl font-semibold text-center">Edit Profile</h1>
+
+    //       {/* Avatar upload / preview */}
+    //       <div className="flex flex-col items-center gap-4">
+    //         <ProfileImage
+    //           src={avatarUrl}
+    //           className="w-24 h-24 border-2 border-stone-300 rounded-full object-cover"
+    //         />
+    //         <label className="cursor-pointer text-blue-600 underline text-sm">
+    //           <input
+    //             type="file"
+    //             accept="image/*"
+    //             className="hidden"
+    //             onChange={handleAvatarChange}
+    //           />
+    //           Change photo
+    //         </label>
+    //       </div>
+
+    //       {/* Name input */}
+    //       <div className="space-y-2">
+    //         <label className="block font-medium">Display Name</label>
+    //         <input
+    //           type="text"
+    //           value={name}
+    //           onChange={(e) => setName(e.target.value)}
+    //           className="w-full border border-stone-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    //         />
+    //       </div>
+
+    //       {/* Bio markdown textarea */}
+    //       <div className="space-y-2">
+    //         <label className="block font-medium">Bio / Description</label>
+    //         <textarea
+    //           value={bio}
+    //           onChange={(e) => setBio(e.target.value)}
+    //           rows={6}
+    //           className="w-full border border-stone-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    //           placeholder="Write something about yourself (supports Markdown)"
+    //         />
+    //         <p className="text-xs text-stone-500">Markdown preview:</p>
+    //         <div className="border border-dashed rounded-md p-3 prose max-w-none">
+    //           {bio.trim() ? (
+    //             <ReactMarkdown>{bio}</ReactMarkdown>
+    //           ) : (
+    //             <p className="text-stone-400 italic">Nothing to preview…</p>
+    //           )}
+    //         </div>
+    //       </div>
+
+    //       {error && <p className="text-red-600 text-sm text-center">{error}</p>}
+
+    //       <div className="flex justify-end gap-4 pt-2">
+    //         <Button
+    //           color={ButtonColor.Light}
+    //           disabled={submitting}
+    //           onClick={() => navigate(-1)}
+    //         >
+    //           Cancel
+    //         </Button>
+    //         <Button
+    //           color={ButtonColor.Blue}
+    //           disabled={submitting}
+    //           onClick={handleSave}
+    //         >
+    //           {submitting ? "Saving…" : "Save Changes"}
+    //         </Button>
+    //       </div>
+    //     </Card>
+    //   </div>
+    // </div>
   );
 };
 

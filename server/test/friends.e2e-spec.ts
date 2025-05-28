@@ -51,6 +51,19 @@ describe('Friends (e2e)', () => {
     expect(res.body.status).toBe(FriendStatus.Pending);
   });
 
+  it('can update user', async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/user/update`)
+      .send({
+        name: 'Friend A',
+        profileDescription: 'Friend A',
+        profilePicture: 'Friend A',
+      })
+      .set('Authorization', `Bearer ${userAToken}`);
+
+    expect(res.status).toBe(201);
+  });
+
   it('Request appears in the correct sent/received queues', async () => {
     // Sent list for A
     const sent = await request(ctx.app.getHttpServer())
