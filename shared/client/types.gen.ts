@@ -349,17 +349,6 @@ export type UserFindMeResponses = {
 
 export type UserFindMeResponse = UserFindMeResponses[keyof UserFindMeResponses];
 
-export type UserHiData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/hi';
-};
-
-export type UserHiResponses = {
-    200: unknown;
-};
-
 export type UserUpdateData = {
     body: UpdateProfileDto;
     path?: never;
@@ -509,6 +498,21 @@ export type UserListFriendsResponses = {
 };
 
 export type UserListFriendsResponse = UserListFriendsResponses[keyof UserListFriendsResponses];
+
+export type UserCountReferredData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/countreferred/{id}';
+};
+
+export type UserCountReferredResponses = {
+    200: number;
+};
+
+export type UserCountReferredResponse = UserCountReferredResponses[keyof UserCountReferredResponses];
 
 export type ActionsJoinData = {
     body?: never;

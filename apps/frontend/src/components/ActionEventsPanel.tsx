@@ -2,7 +2,7 @@ import { ActionDto } from "@alliance/shared/client";
 import Timeline from "./system/Timeline";
 import TimelineItem from "./system/TimelineItem";
 
-const ActionUpdatesPanel = ({ action }: { action: ActionDto }) => {
+const ActionEventsPanel = ({ action }: { action: ActionDto }) => {
   return (
     <div className="flex flex-col gap-y-3">
       <h2>Activity</h2>
@@ -22,4 +22,4 @@ const ActionUpdatesPanel = ({ action }: { action: ActionDto }) => {
   );
 };
 
-export default ActionUpdatesPanel;
+export default ActionEventsPanel;

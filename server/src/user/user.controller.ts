@@ -142,12 +142,10 @@ export class UserController {
     @Request() req: JwtRequest,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<FriendStatusDto> {
-    console.log('checking status between', req.user.sub, id);
     const status = await this.userService.getRelationshipStatus(
       req.user.sub,
       +id,
     );
-    console.log('status', status);
     return { status };
   }
 
@@ -162,5 +160,13 @@ export class UserController {
       throw new UnauthorizedException('User not found');
     }
     return this.userService.findFriends(id);
+  }
+
+  @Get('countreferred/:id')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: Number })
+  @ApiOperation({ summary: 'Count the number of friends a user has referred' })
+  async countReferred(@Param('id', ParseIntPipe) id: number): Promise<number> {
+    return this.userService.countReferred(id);
   }
 }

@@ -190,4 +190,9 @@ export class UserService {
     if (!user) throw new NotFoundException(`User ${id} not found`);
     return user;
   }
+
+  async countReferred(id: number): Promise<number> {
+    const user = await this.findOneOrFail(id);
+    return 0;
+  }
 }

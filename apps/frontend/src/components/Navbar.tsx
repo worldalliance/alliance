@@ -16,6 +16,7 @@ export const links: NavbarPage[] = [
   NavbarPage.Dashboard,
   NavbarPage.CurrentActions,
   NavbarPage.Forum,
+  NavbarPage.Profile,
   NavbarPage.Settings,
 ];
 

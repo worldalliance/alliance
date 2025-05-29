@@ -22,6 +22,9 @@ export const getBulkActionSSEUrl = (actionIds: number[]) => {
 };
 
 export const getImageSource = (string: string) => {
+  if (import.meta.env.STORYBOOK) {
+    return string;
+  }
   return `${getApiUrl()}/images/${string}`;
 };
 

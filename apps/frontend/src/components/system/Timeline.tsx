@@ -21,7 +21,6 @@ const Timeline: React.FC<TimelineProps> = ({
   lineWidth = 2,
   dotSize = 20,
   lineColor = "#CBD5E0", // gray-300
-  dotColor = "#2B6CB0", // blue-600
   className,
 }) => {
   const halfDot = useMemo(() => dotSize / 2 - 0.5, [dotSize]);

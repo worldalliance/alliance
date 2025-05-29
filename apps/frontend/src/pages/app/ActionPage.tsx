@@ -11,12 +11,12 @@ import {
   actionsMyStatus,
 } from "../../../../../shared/client";
 import { ActionDto, UserActionDto } from "../../../../../shared/client";
-import { getApiUrl, getImageSource, isFeatureEnabled } from "../../lib/config";
+import { getImageSource, isFeatureEnabled } from "../../lib/config";
 import ActionForumPosts from "../../components/ActionForumPosts";
 import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
 import { useAuth } from "../../lib/AuthContext";
-import ActionUpdatesPanel from "../../components/ActionUpdatesPanel";
+import ActionEventsPanel from "../../components/ActionEventsPanel";
 const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
@@ -129,7 +129,7 @@ const ActionPage: React.FC = () => {
             </Button>
           )}
         </div>
-        {userRelation === "joined" && <PokePanel />}
+        {/* {userRelation === "joined" && <PokePanel />} */}
         {userRelation === "none" && (
           <Card style={CardStyle.Grey} className="mb-5">
             <h2>Why Join?</h2>
@@ -139,7 +139,9 @@ const ActionPage: React.FC = () => {
             </p>
           </Card>
         )}
-        {action && <ActionUpdatesPanel action={action} />}
+        {action && userRelation !== "none" && (
+          <ActionEventsPanel action={action} />
+        )}
         <h2 className="!mt-8">What you can do</h2>
         <p>
           {action?.description ||

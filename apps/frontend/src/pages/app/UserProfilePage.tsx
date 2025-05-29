@@ -16,6 +16,7 @@ import {
   PostDto,
   forumFindPostsByUser,
   userRemoveFriend,
+  userCountReferred,
 } from "../../../../../shared/client";
 import ProfileImage from "../../components/ProfileImage";
 import testImg from "../../assets/fakebgimage.png";
@@ -24,6 +25,7 @@ import UserActivityCard from "../../components/UserActivityCard";
 import ForumListPost from "../../components/ForumListPost";
 import FriendRequestButton from "../../components/FriendRequestButton";
 import { getImageSource } from "../../lib/config";
+import ImpactPanel from "../../components/ImpactPanel";
 
 enum ProfileTabs {
   Activity = "Activity",
@@ -33,7 +35,7 @@ enum ProfileTabs {
 
 const UserProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [profileUser, setProfileUser] = useState<ProfileDto | null>(null);
@@ -47,6 +49,7 @@ const UserProfilePage: React.FC = () => {
   >([]);
   const [forumPosts, setForumPosts] = useState<PostDto[]>([]);
   const [friends, setFriends] = useState<UserDto[]>([]);
+  const [referredCount, setReferredCount] = useState<number>(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,7 +76,6 @@ const UserProfilePage: React.FC = () => {
         const { data: friendStatusData } = await userMyFriendRelationship({
           path: { id: userId },
         });
-        console.log("friendStatusData", friendStatusData);
         setFriendStatus(friendStatusData?.status ?? "none");
 
         const { data: forumPostsData } = await forumFindPostsByUser({
@@ -81,6 +83,12 @@ const UserProfilePage: React.FC = () => {
         });
         if (forumPostsData) {
           setForumPosts(forumPostsData);
+        }
+        const { data: referredCountData } = await userCountReferred({
+          path: { id: userId },
+        });
+        if (referredCountData) {
+          setReferredCount(referredCountData);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -150,121 +158,132 @@ const UserProfilePage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-[800px] mx-auto space-y-2">
-      <div className="w-full h-[100px]"></div>
-      <div className="px-8 relative space-y-2 border-stone-300 border rounded mx-2">
-        <ProfileImage
-          src={
-            profileUser.profilePicture
-              ? getImageSource(profileUser.profilePicture)
-              : null
-          }
-          className="mt-[-55px]"
-        />
-        <div className="flex gap-2">
-          <h1>{profileUser.name}</h1>
-        </div>
-        {/* stats row */}
-        <div className="flex flex-row gap-5 cursor-pointer">
-          <p onClick={() => setSelectedTab(ProfileTabs.Activity)}>
-            <b>{completedActions.length} </b>
-            actions completed
-          </p>
-          <p onClick={() => setSelectedTab(ProfileTabs.Forum)}>
-            <b>{forumPosts.length} </b>
-            forum posts
-          </p>
-          <p onClick={() => setSelectedTab(ProfileTabs.Friends)}>
-            <b>{friends.length} </b>
-            Friends
-          </p>
-        </div>
-        <p className="my-6">{profileUser.profileDescription}</p>
-        {/* button row */}
-        <div className="absolute right-0 top-0 space-x-3 flex flex-row p-5">
-          <FriendRequestButton
-            friendStatus={friendStatus}
-            handleSendFriendRequest={handleSendFriendRequest}
-            handleRemoveFriend={handleRemoveFriend}
+    <div className="max-w-[800px] mx-auto">
+      <div className="mx-2 space-y-2">
+        <div className="w-full h-[100px]"></div>
+        <div className="px-8 relative space-y-2 border-stone-300 border rounded pb-8">
+          <ProfileImage
+            src={
+              profileUser.profilePicture
+                ? getImageSource(profileUser.profilePicture)
+                : null
+            }
+            className="mt-[-55px]"
           />
-          <Button
-            color={ButtonColor.Light}
-            onClick={() => {}}
-            className="!p-[8px] rounded-full"
-          >
-            <img src={dots} alt="send" className="w-7 h-7" />
-          </Button>
-          {isMe && (
-            <Button
-              color={ButtonColor.Light}
-              className="rounded-full"
-              onClick={() => navigate(`/editprofile`)}
-            >
-              Edit Profile
-            </Button>
-          )}
-        </div>
-        {/* <div className="absolute -left-20 top-0 p-5">
+          <div className="flex gap-2">
+            <h1>{profileUser.name}</h1>
+          </div>
+          {/* stats row */}
+          <div className="flex flex-row gap-5 cursor-pointer">
+            <p onClick={() => setSelectedTab(ProfileTabs.Activity)}>
+              <b>{completedActions.length} </b>
+              actions completed
+            </p>
+            <p onClick={() => setSelectedTab(ProfileTabs.Forum)}>
+              <b>{forumPosts.length} </b>
+              forum posts
+            </p>
+            <p onClick={() => setSelectedTab(ProfileTabs.Friends)}>
+              <b>{friends.length} </b>
+              Friends
+            </p>
+          </div>
+          <p className="my-6">{profileUser.profileDescription}</p>
+          {/* button row */}
+          <div className="absolute right-0 top-0 space-x-3 flex flex-row p-5">
+            {isAuthenticated && !isMe && (
+              <>
+                <FriendRequestButton
+                  friendStatus={friendStatus}
+                  handleSendFriendRequest={handleSendFriendRequest}
+                  handleRemoveFriend={handleRemoveFriend}
+                />
+                <Button
+                  color={ButtonColor.Light}
+                  onClick={() => {}}
+                  className="!p-[8px] rounded-full"
+                >
+                  <img src={dots} alt="send" className="w-7 h-7" />
+                </Button>
+              </>
+            )}
+            {isMe && (
+              <Button
+                color={ButtonColor.Light}
+                className="rounded-full"
+                onClick={() => navigate(`/editprofile`)}
+              >
+                Edit Profile
+              </Button>
+            )}
+          </div>
+          {/* <div className="absolute -left-20 top-0 p-5">
           <BackButton />
           </div> */}
-      </div>
-      <div className="flex flex-row w-full justify-evenly">
-        {[ProfileTabs.Activity, ProfileTabs.Forum].map((tab) => (
-          <div
-            onClick={() => setSelectedTab(tab)}
-            key={tab}
-            className={`${selectedTab === tab ? "font-bold underline" : "text-gray-800"} flex-1 text-center py-3 pt-4 cursor-pointer hover:underline`}
-          >
-            <p className="text-md">{tab}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mx-2 pt-3">
-        {selectedTab === ProfileTabs.Activity && (
-          <div className="space-y-2">
-            {completedActions.length === 0 && (
-              <p className="text-center text-stone-500">
-                No actions completed yet
-              </p>
-            )}
-            {completedActions?.map((action: ActionWithRelationDto) => (
-              <UserActivityCard action={action} key={action.id} />
-            ))}
-          </div>
-        )}
-        {selectedTab === ProfileTabs.Forum && (
-          <div className="space-y-2">
-            {forumPosts.length === 0 && (
-              <p className="text-center text-stone-500">No forum posts yet</p>
-            )}
-            {forumPosts?.map((post: PostDto) => (
-              <ForumListPost
-                post={post}
-                key={post.id}
-                handleViewPost={() => {
-                  navigate(`/forum/${post.id}`);
-                }}
-              />
-            ))}
-          </div>
-        )}
-        {selectedTab === ProfileTabs.Friends && (
-          <div className="space-2 flex flex-row flex-wrap gap-2 justify-center">
-            {friends.length === 0 && (
-              <p className="text-center text-stone-500">No friends yet</p>
-            )}
-            {friends?.map((friend: UserDto) => (
-              <div
-                className="flex flex-row gap-2 items-center cursor-pointer hover:bg-stone-100 rounded-md p-3 px-5 w-fit"
-                onClick={() => navigate(`/user/${friend.id}`)}
-                key={friend.id}
-              >
-                <ProfileImage src={testImg} className="!w-10 !h-10" />
-                <p>{friend.name}</p>
-              </div>
-            ))}
-          </div>
-        )}
+          <ImpactPanel
+            completedActions={completedActions}
+            isMe={isMe}
+            referredCount={referredCount}
+          />
+        </div>
+        <div className="flex flex-row w-full justify-evenly">
+          {[ProfileTabs.Activity, ProfileTabs.Forum].map((tab) => (
+            <div
+              onClick={() => setSelectedTab(tab)}
+              key={tab}
+              className={`${selectedTab === tab ? "font-bold underline" : "text-gray-800"} flex-1 text-center py-3 pt-4 cursor-pointer hover:underline`}
+            >
+              <p className="text-md">{tab}</p>
+            </div>
+          ))}
+        </div>
+        <div className="pt-3">
+          {selectedTab === ProfileTabs.Activity && (
+            <div className="space-y-2">
+              {completedActions.length === 0 && (
+                <p className="text-center text-stone-500">
+                  No actions completed yet
+                </p>
+              )}
+              {completedActions?.map((action: ActionWithRelationDto) => (
+                <UserActivityCard action={action} key={action.id} />
+              ))}
+            </div>
+          )}
+          {selectedTab === ProfileTabs.Forum && (
+            <div className="space-y-2">
+              {forumPosts.length === 0 && (
+                <p className="text-center text-stone-500">No forum posts yet</p>
+              )}
+              {forumPosts?.map((post: PostDto) => (
+                <ForumListPost
+                  post={post}
+                  key={post.id}
+                  handleViewPost={() => {
+                    navigate(`/forum/post/${post.id}`);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          {selectedTab === ProfileTabs.Friends && (
+            <div className="space-2 flex flex-row flex-wrap gap-2 justify-center">
+              {friends.length === 0 && (
+                <p className="text-center text-stone-500">No friends yet</p>
+              )}
+              {friends?.map((friend: UserDto) => (
+                <div
+                  className="flex flex-row gap-2 items-center cursor-pointer hover:bg-stone-100 rounded-md p-3 px-5 w-fit"
+                  onClick={() => navigate(`/user/${friend.id}`)}
+                  key={friend.id}
+                >
+                  <ProfileImage src={testImg} className="!w-10 !h-10" />
+                  <p>{friend.name}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

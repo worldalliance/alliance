@@ -12,9 +12,13 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
+  "overrides": {
+    "react-is": "^19.0.0"
+  },
   "dependencies": {
     "@alliance/shared": "workspace:*",
     "@hey-api/openapi-ts": "^0.67.3",
+    "@remixicon/react": "^4.6.0",
     "@storybook/react": "^8.6.12",
     "@tailwindcss/vite": "^4.1.4",
     "classnames": "^2.5.1",

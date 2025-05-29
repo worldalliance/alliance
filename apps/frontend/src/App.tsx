@@ -80,6 +80,7 @@ const LoggedOutOnlyRoute: React.FC<React.PropsWithChildren> = ({
 
 // AppRoutes component to use the auth context
 const AppRoutes = () => {
+  const { user } = useAuth();
   return (
     <>
       <Routes>
@@ -124,7 +125,7 @@ const AppRoutes = () => {
           path="/profile"
           element={
             <ProtectedRoute>
-              <AccountPage />
+              <Navigate to={`/user/${user?.id}`} />
             </ProtectedRoute>
           }
         />
@@ -136,14 +137,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/user/:id"
-          element={
-            <ProtectedRoute>
-              <UserProfilePage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/user/:id" element={<UserProfilePage />} />
         <Route
           path="/actions"
           element={
