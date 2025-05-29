@@ -19,6 +19,8 @@ import { Post } from './forum/entities/post.entity';
 import { Reply } from './forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Friend } from './user/friend.entity';
+import { NotifsModule } from './notifs/notifs.module';
+import { Notification } from './notifs/entities/notification.entity';
 
 @Module({
   imports: [
@@ -44,6 +46,7 @@ import { Friend } from './user/friend.entity';
         Communique,
         Post,
         Reply,
+        Notification,
         Friend,
       ],
       synchronize: true, //process.env.NODE_ENV !== 'production',
@@ -58,6 +61,7 @@ import { Friend } from './user/friend.entity';
     CommuniquesModule,
     ImagesModule,
     ForumModule,
+    NotifsModule,
   ],
   controllers: [AppController],
   providers: [],

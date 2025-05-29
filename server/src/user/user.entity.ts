@@ -18,6 +18,7 @@ import { Communique } from '../communiques/entities/communique.entity';
 import { IsNotEmpty } from 'class-validator';
 import { FriendStatus } from './friend.entity';
 import { Friend } from './friend.entity';
+import { Notification } from '../notifs/entities/notification.entity';
 
 @Entity()
 export class User {
@@ -69,6 +70,9 @@ export class User {
 
   @OneToMany(() => Friend, (friend) => friend.addressee)
   receivedFriendRequests: Friend[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
 
   get friends(): User[] {
     const sentAccepted =
