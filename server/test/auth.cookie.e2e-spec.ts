@@ -18,7 +18,7 @@ import { UserAction } from '../src/actions/entities/user-action.entity';
 import { Image } from '../src/images/entities/image.entity';
 import { Communique } from '../src/communiques/entities/communique.entity';
 import { Friend } from '../src/user/friend.entity';
-
+import { Notification } from '../src/notifs/entities/notification.entity';
 describe('Auth via Http-Only cookies (e2e)', () => {
   let app: INestApplication;
   let userRepo: Repository<User>;
@@ -37,7 +37,15 @@ describe('Auth via Http-Only cookies (e2e)', () => {
         TypeOrmModule.forRoot({
           type: 'sqlite',
           database: ':memory:',
-          entities: [User, Action, UserAction, Image, Communique, Friend],
+          entities: [
+            User,
+            Action,
+            UserAction,
+            Image,
+            Communique,
+            Friend,
+            Notification,
+          ],
           synchronize: true,
         }),
       ],

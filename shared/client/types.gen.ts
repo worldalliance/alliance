@@ -232,6 +232,16 @@ export type ReplyDto = {
     author: UserDto;
 };
 
+export type NotificationDto = {
+    id: number;
+    category: string;
+    message: string;
+    appLocation: string;
+    read: boolean;
+    createdAt: string;
+    updatedAt: string;
+};
+
 export type AppHealthCheckData = {
     body?: never;
     path?: never;
@@ -979,6 +989,32 @@ export type ForumUpdateReplyResponses = {
 };
 
 export type ForumUpdateReplyResponse = ForumUpdateReplyResponses[keyof ForumUpdateReplyResponses];
+
+export type NotifsFindAllData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/notifs';
+};
+
+export type NotifsFindAllResponses = {
+    200: Array<NotificationDto>;
+};
+
+export type NotifsFindAllResponse = NotifsFindAllResponses[keyof NotifsFindAllResponses];
+
+export type NotifsSetReadData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/notifs/{id}';
+};
+
+export type NotifsSetReadResponses = {
+    200: unknown;
+};
 
 export type ClientOptions = {
     baseUrl: string;

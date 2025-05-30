@@ -7,7 +7,7 @@ import {
   ManyToOne,
   JoinTable,
 } from 'typeorm';
-import { User } from 'src/user/user.entity';
+import { User } from '../../user/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
 
 @Entity()

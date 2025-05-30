@@ -17,6 +17,8 @@ import { Post } from '../src/forum/entities/post.entity';
 import { Reply } from '../src/forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Friend } from '../src/user/friend.entity';
+import { Notification } from '../src/notifs/entities/notification.entity';
+
 export interface TestContext {
   app: INestApplication;
   dataSource: DataSource;
@@ -56,6 +58,7 @@ export async function createTestApp(
           Post,
           Reply,
           Friend,
+          Notification,
         ],
         synchronize: true,
       }),
