@@ -57,11 +57,10 @@ export async function createTestApp(
           Image,
           Communique,
           Post,
-          Reply
+          Reply,
         ],
         synchronize: true,
         dropSchema: true,
-        logging: true
       }),
       // Register all entities in a single forFeature call
       // TypeOrmModule.forFeature([
@@ -78,15 +77,6 @@ export async function createTestApp(
       // ActionsModule,
       // UserModule,
       // ...modules,
-
-      TypeOrmModule.forFeature([User]),
-      TypeOrmModule.forFeature([Action]),
-      TypeOrmModule.forFeature([ActionEvent]),
-      TypeOrmModule.forFeature([UserAction]),
-      TypeOrmModule.forFeature([Image]),
-      TypeOrmModule.forFeature([Communique]),
-      TypeOrmModule.forFeature([Post]),
-      TypeOrmModule.forFeature([Reply]),
       AuthModule,
       ActionsModule,
       UserModule,
@@ -95,20 +85,14 @@ export async function createTestApp(
   }).compile();
 
   const app = moduleFixture.createNestApplication();
-  
+
   // Configure global pipes
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-    })
-  );
+  app.useGlobalPipes(new ValidationPipe());
 
   await app.init();
 
   const dataSource = moduleFixture.get(DataSource);
-  
+
   // Initialize database
   await dataSource.synchronize(true);
 
@@ -130,7 +114,7 @@ export async function createTestApp(
     replyRepo.clear(),
     postRepo.clear(),
     imageRepo.clear(),
-    userRepo.clear()
+    userRepo.clear(),
   ]);
 
   // Create test users
@@ -139,7 +123,7 @@ export async function createTestApp(
       email: 'user@example.com',
       password: 'pass',
       name: 'User',
-    })
+    }),
   );
 
   const adminUser = await userRepo.save(
@@ -148,18 +132,18 @@ export async function createTestApp(
       password: 'pass',
       name: 'Admin',
       admin: true,
-    })
+    }),
   );
 
   // Generate tokens
   const accessToken = jwtService.sign(
     { sub: user.id, email: user.email, name: user.name },
-    { secret: process.env.JWT_SECRET }
+    { secret: process.env.JWT_SECRET },
   );
 
   const adminAccessToken = jwtService.sign(
     { sub: adminUser.id, email: adminUser.email, name: adminUser.name },
-    { secret: process.env.JWT_SECRET }
+    { secret: process.env.JWT_SECRET },
   );
 
   return {

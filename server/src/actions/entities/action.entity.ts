@@ -40,7 +40,7 @@ export class Action {
   @IsNotEmpty()
   description: string;
 
-  @Column({ type: 'text' })
+  @Column()
   @ApiProperty({
     description: 'Current status of the action',
     enum: ActionStatus,
@@ -66,7 +66,7 @@ export class Action {
   @OneToMany(() => ActionEvent, (event) => event.action)
   @ApiProperty({
     description: 'Events associated with the action',
-    type: () => [ActionEvent]
+    type: () => [ActionEvent],
   })
   events: ActionEvent[];
 
