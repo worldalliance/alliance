@@ -1,7 +1,7 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { useEffect } from "react";
-import { getApiUrl } from "../lib/config"; // Import your API URL utility
+import { getApiUrl } from "../lib/config";
 
 export default function usePushNotifications(user: any) {
   useEffect(() => {
