@@ -24,7 +24,9 @@ export class UserModule implements OnModuleInit {
 
   async onModuleInit() {
     if (process.env.ADMIN_USER) {
-      const user = await this.userService.findOneByEmail(process.env.ADMIN_USER);
+      const user = await this.userService.findOneByEmail(
+        process.env.ADMIN_USER,
+      );
       if (user) {
         await this.userService.setAdmin(user.id, true);
       } else {

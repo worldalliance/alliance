@@ -6,6 +6,7 @@ import { User } from '../user/user.entity';
 import { UserService } from '../user/user.service';
 import { UserAction } from './entities/user-action.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ActionEvent } from './entities/action-event.entity';
 describe('ActionsService', () => {
   let service: ActionsService;
 
@@ -25,6 +26,10 @@ describe('ActionsService', () => {
         },
         {
           provide: getRepositoryToken(UserAction),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(ActionEvent),
           useValue: {},
         },
       ],
