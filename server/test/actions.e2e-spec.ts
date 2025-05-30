@@ -3,17 +3,20 @@ import { Action, ActionStatus } from '../src/actions/entities/action.entity';
 import { CreateActionDto } from '../src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { UserActionRelation } from '../src/actions/entities/user-action.entity';
+import { Repository } from 'typeorm';
 
 describe('Actions (e2e)', () => {
   let ctx: TestContext;
   let testAction: Action;
   let testDraftAction: Action;
+  let actionRepo: Repository<Action>;
 
   beforeAll(async () => {
     ctx = await createTestApp([]);
+    actionRepo = ctx.dataSource.getRepository(Action);
 
     // Create test action
-    testAction = ctx.actionRepo.create({
+    testAction = actionRepo.create({
       name: 'Test Action',
       category: 'Test',
       whyJoin: 'For testing',
@@ -21,7 +24,7 @@ describe('Actions (e2e)', () => {
       status: ActionStatus.Active,
     });
 
-    testDraftAction = ctx.actionRepo.create({
+    testDraftAction = actionRepo.create({
       name: 'Test Draft Action',
       category: 'Test',
       whyJoin: 'For testing',
@@ -29,8 +32,8 @@ describe('Actions (e2e)', () => {
       status: ActionStatus.Draft,
     });
 
-    await ctx.actionRepo.save(testAction);
-    await ctx.actionRepo.save(testDraftAction);
+    await actionRepo.save(testAction);
+    await actionRepo.save(testDraftAction);
   });
 
   describe('Actions', () => {
@@ -53,9 +56,7 @@ describe('Actions (e2e)', () => {
       expect(res.status).toBe(201);
       expect(res.body.name).toBe('Test Action');
 
-      await ctx.actionRepo.query('DELETE FROM action WHERE id = ?', [
-        res.body.id,
-      ]);
+      await actionRepo.query('DELETE FROM action WHERE id = ?', [res.body.id]);
     });
     it('action creation with missing data rejected', async () => {
       const res = await request(ctx.app.getHttpServer())
@@ -70,19 +71,16 @@ describe('Actions (e2e)', () => {
     });
 
     it('user can join an action', async () => {
-      const action = await ctx.actionRepo.findOneBy({
+      const action = await actionRepo.findOneBy({
         name: 'Test Action',
       });
+      expect(action).not.toBeNull();
 
-      const res = await request(ctx.app.getHttpServer())
-        .post(`/actions/join/${action!.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`);
-
-      expect(res.status).toBe(201);
+      await ctx.agent.post(`/actions/join/${action!.id}`).expect(201);
     });
 
     it('user is shown their own relation to an action', async () => {
-      const action = await ctx.actionRepo.findOneBy({
+      const action = await actionRepo.findOneBy({
         name: 'Test Action',
       });
 
@@ -157,9 +155,7 @@ describe('Actions (e2e)', () => {
   });
 
   afterAll(async () => {
-    await ctx.userActionRepo.query('DELETE FROM user_action');
-    await ctx.actionRepo.query('DELETE FROM action');
-    await ctx.userRepo.query('DELETE FROM user');
+    await actionRepo.query('DELETE FROM action');
     await ctx.app.close();
   });
 });

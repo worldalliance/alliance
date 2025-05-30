@@ -4,12 +4,14 @@ import { unlinkSync, existsSync, mkdirSync } from 'fs';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { ForumModule } from '../src/forum/forum.module';
 import { ImagesModule } from '../src/images/images.module';
+import { Repository } from 'typeorm';
+import { Image } from '../src/images/entities/image.entity';
 
 describe('Images (e2e)', () => {
   let ctx: TestContext;
   let uploadedFilename: string | null;
   let testImagePath: string;
-
+  let imageRepo: Repository<Image>;
   // Ensure uploads directory exists for tests
   const uploadsDir = join(process.cwd(), 'uploads');
   if (!existsSync(uploadsDir)) {
@@ -18,13 +20,14 @@ describe('Images (e2e)', () => {
 
   beforeAll(async () => {
     ctx = await createTestApp([ForumModule, ImagesModule]);
+    imageRepo = ctx.dataSource.getRepository(Image);
 
     testImagePath = join(__dirname, './test_image.jpg');
     uploadedFilename = null;
   });
 
   afterEach(async () => {
-    await ctx.imageRepo.query('DELETE FROM image');
+    await imageRepo.query('DELETE FROM image');
 
     if (uploadedFilename && existsSync(join(uploadsDir, uploadedFilename))) {
       try {
@@ -49,7 +52,7 @@ describe('Images (e2e)', () => {
 
       uploadedFilename = response.body.filename;
 
-      const savedImage = await ctx.imageRepo.findOne({
+      const savedImage = await imageRepo.findOne({
         where: { filename: response.body.filename },
       });
 

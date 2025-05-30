@@ -39,13 +39,15 @@ const NotificationsIcon = () => {
   return (
     <div
       className={`${
-        unreadCount > 0 ? "bg-red-500" : "bg-zinc-300"
-      } text-white w-7 h-7 rounded-full flex items-center justify-center cursor-pointer`}
+        unreadCount > 0
+          ? "bg-red-500 text-white"
+          : "bg-white text-zinc-400 border-2 border-zinc-300"
+      } w-7 h-7 rounded-full flex items-center justify-center cursor-pointer`}
       onClick={toggle}
     >
       <p className="font-avenir font-bold text-sm">{unreadCount}</p>
       {isOpen && (
-        <div className="absolute top-8 right-0 bg-white rounded border border-zinc-200 p-4 min-w-[200px]">
+        <div className="absolute top-8 shadow-lg/5 right-0 bg-white rounded border border-zinc-200 p-4 min-w-[200px]">
           {notifications.length === 0 && (
             <p className="text-zinc-500">No notifications</p>
           )}
