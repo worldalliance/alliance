@@ -1,10 +1,10 @@
 import * as request from 'supertest';
 import { Action } from '../src/actions/entities/action.entity';
-import { ActionStatus } from 'src/actions/entities/action-event.entity';
+import { ActionStatus } from '../src/actions/entities/action-event.entity';
 import { CreateActionDto, ActionEventDto } from '../src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { UserActionRelation } from '../src/actions/entities/user-action.entity';
-import { NotificationType } from 'src/actions/entities/action-event.entity';
+import { NotificationType } from '../src/actions/entities/action-event.entity';
 
 describe('Actions (e2e)', () => {
   let ctx: TestContext;

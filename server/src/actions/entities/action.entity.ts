@@ -2,7 +2,6 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
-  JoinTable,
   CreateDateColumn,
   OneToMany,
   UpdateDateColumn,
@@ -41,10 +40,10 @@ export class Action {
   @IsNotEmpty()
   description: string;
 
-  @Column()
+  @Column({ type: 'text' })
   @ApiProperty({
     description: 'Current status of the action',
-    enum: Object.keys(ActionStatus),
+    enum: ActionStatus,
   })
   @IsNotEmpty()
   status: ActionStatus;
@@ -58,19 +57,16 @@ export class Action {
   updatedAt: Date;
 
   @OneToMany(() => UserAction, (userAction) => userAction.action)
-  @JoinTable()
   @ApiProperty({
     description: 'Relations between users and the action',
     type: () => [UserAction],
   })
   userRelations: UserAction[];
 
-  @OneToMany(() => ActionEvent, (actionEvent) => actionEvent.action, {
-    cascade: true,
-  })
+  @OneToMany(() => ActionEvent, (event) => event.action)
   @ApiProperty({
     description: 'Events associated with the action',
-    type: () => [ActionEvent],
+    type: () => [ActionEvent]
   })
   events: ActionEvent[];
 

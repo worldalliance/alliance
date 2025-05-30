@@ -1,4 +1,3 @@
-// test-utils.ts
 import { INestApplication, Type, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -16,12 +15,14 @@ import { Image } from '../src/images/entities/image.entity';
 import { Post } from '../src/forum/entities/post.entity';
 import { Reply } from '../src/forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ActionEvent } from '../src/actions/entities/action-event.entity';
 
 export interface TestContext {
   app: INestApplication;
   dataSource: DataSource;
   userRepo: Repository<User>;
   actionRepo: Repository<Action>;
+  actionEventRepo: Repository<ActionEvent>;
   userActionRepo: Repository<UserAction>;
   imageRepo: Repository<Image>;
   postRepo: Repository<Post>;
@@ -35,6 +36,9 @@ export interface TestContext {
 export async function createTestApp(
   modules: Type<unknown>[],
 ): Promise<TestContext> {
+  // Increase Jest timeout
+  jest.setTimeout(30000);
+
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({
@@ -45,10 +49,44 @@ export async function createTestApp(
       TypeOrmModule.forRoot({
         type: 'sqlite',
         database: ':memory:',
-        dropSchema: true,
-        entities: [User, Action, UserAction, Image, Communique, Post, Reply],
+        entities: [
+          User,
+          Action,
+          ActionEvent,
+          UserAction,
+          Image,
+          Communique,
+          Post,
+          Reply
+        ],
         synchronize: true,
+        dropSchema: true,
+        logging: true
       }),
+      // Register all entities in a single forFeature call
+      // TypeOrmModule.forFeature([
+      //   User,
+      //   Action,
+      //   ActionEvent,
+      //   UserAction,
+      //   Image,
+      //   Communique,
+      //   Post,
+      //   Reply
+      // ]),
+      // AuthModule,
+      // ActionsModule,
+      // UserModule,
+      // ...modules,
+
+      TypeOrmModule.forFeature([User]),
+      TypeOrmModule.forFeature([Action]),
+      TypeOrmModule.forFeature([ActionEvent]),
+      TypeOrmModule.forFeature([UserAction]),
+      TypeOrmModule.forFeature([Image]),
+      TypeOrmModule.forFeature([Communique]),
+      TypeOrmModule.forFeature([Post]),
+      TypeOrmModule.forFeature([Reply]),
       AuthModule,
       ActionsModule,
       UserModule,
@@ -57,57 +95,71 @@ export async function createTestApp(
   }).compile();
 
   const app = moduleFixture.createNestApplication();
-  app.useGlobalPipes(new ValidationPipe());
+  
+  // Configure global pipes
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    })
+  );
+
   await app.init();
 
   const dataSource = moduleFixture.get(DataSource);
+  
+  // Initialize database
+  await dataSource.synchronize(true);
+
+  // Get repositories
   const userRepo = dataSource.getRepository(User);
   const actionRepo = dataSource.getRepository(Action);
+  const actionEventRepo = dataSource.getRepository(ActionEvent);
   const userActionRepo = dataSource.getRepository(UserAction);
   const imageRepo = dataSource.getRepository(Image);
   const postRepo = dataSource.getRepository(Post);
   const replyRepo = dataSource.getRepository(Reply);
   const jwtService = moduleFixture.get<JwtService>(JwtService);
 
-  // Create test user
-  const user = userRepo.create({
-    email: 'user@example.com',
-    password: 'pass',
-    name: 'User',
-  });
+  // Clean database before tests
+  await Promise.all([
+    actionEventRepo.clear(),
+    userActionRepo.clear(),
+    actionRepo.clear(),
+    replyRepo.clear(),
+    postRepo.clear(),
+    imageRepo.clear(),
+    userRepo.clear()
+  ]);
 
-  await userRepo.save(user);
+  // Create test users
+  const user = await userRepo.save(
+    userRepo.create({
+      email: 'user@example.com',
+      password: 'pass',
+      name: 'User',
+    })
+  );
 
-  const adminUser = userRepo.create({
-    email: 'admin@example.com',
-    password: 'pass',
-    name: 'Admin',
-    admin: true,
-  });
+  const adminUser = await userRepo.save(
+    userRepo.create({
+      email: 'admin@example.com',
+      password: 'pass',
+      name: 'Admin',
+      admin: true,
+    })
+  );
 
-  await userRepo.save(adminUser);
-
-  // Create auth token
+  // Generate tokens
   const accessToken = jwtService.sign(
-    {
-      sub: user.id,
-      email: user.email,
-      name: user.name,
-    },
-    {
-      secret: process.env.JWT_SECRET,
-    },
+    { sub: user.id, email: user.email, name: user.name },
+    { secret: process.env.JWT_SECRET }
   );
 
   const adminAccessToken = jwtService.sign(
-    {
-      sub: adminUser.id,
-      email: adminUser.email,
-      name: adminUser.name,
-    },
-    {
-      secret: process.env.JWT_SECRET,
-    },
+    { sub: adminUser.id, email: adminUser.email, name: adminUser.name },
+    { secret: process.env.JWT_SECRET }
   );
 
   return {
@@ -115,6 +167,7 @@ export async function createTestApp(
     dataSource,
     userRepo,
     actionRepo,
+    actionEventRepo,
     userActionRepo,
     imageRepo,
     postRepo,
