@@ -14,20 +14,18 @@ export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
 
   return (
     <div className="flex flex-col gap-y-2">
-      <div className="flex flex-row items-center gap-x-2 justify-between w-full my-3">
-        <h1 className="text-[#111] !text-[16pt] font-font">
-          Actions happening now
-        </h1>
-        <Button color={ButtonColor.Light} onClick={() => navigate("/actions")}>
+      <div className="flex flex-row items-center gap-x-2 justify-between w-full">
+        <p className="text-gray-500 text-lg">Actions needing commitment</p>
+        {/* <Button color={ButtonColor.Light} onClick={() => navigate("/actions")}>
           See all actions
-        </Button>
+        </Button> */}
       </div>
       {initialActions.map((action) => (
         <ActionItemCard key={action.id} {...action} />
       ))}
       {initialActions.length === 0 && (
-        <p className="text-center text-gray-500 py-5">
-          No new actions to show right now!
+        <p className="rounded border border-gray-200 text-center text-gray-500 py-5">
+          No actions need your attention right now!
         </p>
       )}
     </div>
