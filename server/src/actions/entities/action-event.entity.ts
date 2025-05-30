@@ -34,7 +34,8 @@ export class ActionEvent {
   @ApiProperty({ description: 'Message describing the event' })
   message: string;
 
-  @Column({ type: 'text' })
+  @Column()
+  @IsNotEmpty()
   @ApiProperty({
     description: 'New status of the action after the event',
     enum: ActionStatus,
@@ -42,6 +43,7 @@ export class ActionEvent {
   newStatus: ActionStatus;
 
   @Column({ type: 'text' })
+  @IsNotEmpty()
   @ApiProperty({
     description: 'Notification type for the event',
     enum: NotificationType,
@@ -58,9 +60,6 @@ export class ActionEvent {
     default: false,
   })
   showInTimeline: boolean;
-
-  @Column()
-  actionId: number;
 
   @ManyToOne(() => Action, (action) => action.events, {
     onDelete: 'CASCADE',

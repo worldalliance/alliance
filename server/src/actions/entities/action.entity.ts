@@ -70,7 +70,7 @@ export class Action {
   @OneToMany(() => ActionEvent, (event) => event.action)
   @ApiProperty({
     description: 'Events associated with the action',
-    type: () => [ActionEvent]
+    type: () => [ActionEvent],
   })
   events: ActionEvent[];
 

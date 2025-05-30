@@ -80,15 +80,6 @@ export async function createTestApp(
       // ActionsModule,
       // UserModule,
       // ...modules,
-
-      TypeOrmModule.forFeature([User]),
-      TypeOrmModule.forFeature([Action]),
-      TypeOrmModule.forFeature([ActionEvent]),
-      TypeOrmModule.forFeature([UserAction]),
-      TypeOrmModule.forFeature([Image]),
-      TypeOrmModule.forFeature([Communique]),
-      TypeOrmModule.forFeature([Post]),
-      TypeOrmModule.forFeature([Reply]),
       AuthModule,
       ActionsModule,
       UserModule,
@@ -102,7 +93,7 @@ export async function createTestApp(
   await app.init();
 
   const dataSource = moduleFixture.get(DataSource);
-  
+
   // Initialize database
   await dataSource.synchronize(true);
 
@@ -116,7 +107,7 @@ export async function createTestApp(
       email: 'user@example.com',
       password: 'pass',
       name: 'User',
-    })
+    }),
   );
 
   const adminUser = await userRepo.save(
@@ -125,18 +116,18 @@ export async function createTestApp(
       password: 'pass',
       name: 'Admin',
       admin: true,
-    })
+    }),
   );
 
   // Generate tokens
   const accessToken = jwtService.sign(
     { sub: user.id, email: user.email, name: user.name },
-    { secret: process.env.JWT_SECRET }
+    { secret: process.env.JWT_SECRET },
   );
 
   const adminAccessToken = jwtService.sign(
     { sub: adminUser.id, email: adminUser.email, name: adminUser.name },
-    { secret: process.env.JWT_SECRET }
+    { secret: process.env.JWT_SECRET },
   );
 
   const agent = supertest.agent(app.getHttpServer());
