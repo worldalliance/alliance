@@ -46,10 +46,6 @@ export class User {
   @ApiProperty()
   admin: boolean;
 
-  // Allow null values for pushToken
-  @Column({ type: 'varchar', nullable: true })
-  pushToken: string | null;
-
   @OneToMany(() => UserAction, (userAction) => userAction.user)
   actionRelations: UserAction[];
 

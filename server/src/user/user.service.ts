@@ -50,11 +50,4 @@ export class UserService {
     await this.userRepository.update(id, { admin });
   }
 
-  async savePushToken(userId: number, token: string): Promise<void> {
-    await this.userRepository.update(userId, { pushToken: token });
-  }
-
-  async removePushToken(userId: number): Promise<void> {
-    await this.userRepository.update(userId, { pushToken: null });
-  }
 }

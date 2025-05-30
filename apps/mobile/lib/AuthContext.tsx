@@ -12,7 +12,6 @@ import {
   authRefreshTokens,
   ProfileDto,
 } from "../../../shared/client";
-import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { client } from "@alliance/shared/client/client.gen";
 import { getApiUrl } from "./config";
@@ -67,25 +66,11 @@ export const AuthProvider: React.FC<
   }, [tokenStore]);
 
   const logout = useCallback(async () => {
-    if (user) {
-      try {
-        // Call the backend to remove the push token
-        const apiUrl = getApiUrl();
-        await fetch(`${apiUrl}/users/removePushToken`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: user.id }),
-        });
-      } catch (error) {
-        console.error("Failed to remove push token:", error);
-      }
-    }
-
     authLogout();
     clearTokens();
     setUser(undefined);
     router.replace("/auth/login");
-  }, [user, router, clearTokens]);
+  }, [router, clearTokens]);
 
   const refreshAccessToken = useCallback(async () => {
     let accessToken = await getAccessToken();
@@ -180,15 +165,6 @@ export const AuthProvider: React.FC<
         response.data.refresh_token
       );
       await saveTokens(response.data.access_token, response.data.refresh_token);
-
-      // Call the backend to save the push token
-      const apiUrl = getApiUrl();
-      const token = (await Notifications.getExpoPushTokenAsync()).data;
-      await fetch(`${apiUrl}/users/pushToken`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: userProfile.data.id, token }),
-      });
 
       router.replace("/");
     } catch (error) {
