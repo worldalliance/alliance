@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   UpdateDateColumn,
+  JoinColumn,
 } from 'typeorm';
 import { Action } from './action.entity';
 import { IsNotEmpty } from 'class-validator';
@@ -14,6 +15,7 @@ export enum NotificationType {
   Joined = 'joined',
   None = 'none',
 }
+
 export enum ActionStatus {
   Active = 'active',
   Upcoming = 'upcoming',
@@ -32,20 +34,14 @@ export class ActionEvent {
   @ApiProperty({ description: 'Message describing the event' })
   message: string;
 
-  @Column({
-    type: 'enum',
-    enum: ActionStatus,
-  })
+  @Column({ type: 'text' })
   @ApiProperty({
     description: 'New status of the action after the event',
     enum: ActionStatus,
   })
   newStatus: ActionStatus;
 
-  @Column({
-    type: 'enum',
-    enum: NotificationType,
-  })
+  @Column({ type: 'text' })
   @ApiProperty({
     description: 'Notification type for the event',
     enum: NotificationType,
@@ -63,9 +59,13 @@ export class ActionEvent {
   })
   showInTimeline: boolean;
 
+  @Column()
+  actionId: number;
+
   @ManyToOne(() => Action, (action) => action.events, {
     onDelete: 'CASCADE',
   })
-  @ApiProperty({ description: 'The action associated with this event', type: () => Action })
+  @JoinColumn({ name: 'actionId' })
+  @ApiProperty({ description: 'The action associated with this event' })
   action: Action;
 }

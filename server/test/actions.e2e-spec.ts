@@ -1,6 +1,6 @@
 import * as request from 'supertest';
 import { Action } from '../src/actions/entities/action.entity';
-import { ActionStatus } from 'src/actions/entities/action-event.entity';
+import { ActionStatus } from '../src/actions/entities/action-event.entity';
 import { CreateActionDto, ActionEventDto } from '../src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { UserActionRelation } from '../src/actions/entities/user-action.entity';
@@ -158,7 +158,7 @@ describe('Actions (e2e)', () => {
     });
 
     it('admin can add an event to an action', async () => {
-      const action = await ctx.actionRepo.findOneBy({
+      const action = await actionRepo.findOneBy({
         name: 'Test Action',
       });
 
@@ -181,7 +181,7 @@ describe('Actions (e2e)', () => {
     });
 
     it('events are included in action details', async () => {
-      const action = await ctx.actionRepo.findOneBy({
+      const action = await actionRepo.findOneBy({
         name: 'Test Action',
       });
 
@@ -195,7 +195,7 @@ describe('Actions (e2e)', () => {
     });
   });
   it('admin cannot add an event to an action with missing data', async () => {
-    const action = await ctx.actionRepo.findOneBy({
+    const action = await actionRepo.findOneBy({
       name: 'Test Action',
     });
 
