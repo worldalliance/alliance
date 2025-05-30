@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CardStyle } from "./system/Card";
+import Badge from "./system/Badge";
 
 import Card from "./system/Card";
 import { ProgressCircle } from "./tremor/ProgressCircle";
@@ -96,37 +97,36 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
           : undefined
       }
     >
-      <div className="flex flex-row justify-between items-center gap-x-10">
+      <div className="flex flex-row justify-between gap-x-10">
         <div className="flex flex-row items-center gap-x-2">
-          <img
+          <div className="flex flex-col gap-y-2">
+            <Badge>{action.category}</Badge>
+            <div>
+              <p className="font-bold text-[12pt] pt-[1px]">{action.name}</p>
+              <div className="flex flex row text-gray-500">
+                {action.myRelation.deadline && (
+                  <>
+                    <p className="">
+                      {timeRemaining}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        <img
             src={expandArrow}
             alt="Expand"
             className={`w-4 h-4 transition-transform ${state === TaskCardState.Expanded ? "rotate-180" : ""}`}
           />
-          <p className="font-bold text-[12pt] pt-[1px]">{action.name}</p>
-        </div>
-        <div className="flex flex-row items-center gap-x-2">
-          {action.myRelation.deadline && (
-            <>
-              <ProgressCircle
-                value={50}
-                strokeWidth={10}
-                variant="neutral"
-                className="w-5 h-5"
-              />
-              <p className="text-[12pt] pt-[1px] text-gray-600">
-                {timeRemaining}
-              </p>
-            </>
-          )}
-        </div>
       </div>
 
       {state !== TaskCardState.Default && (
         <div className="mt-4 transition-all duration-300">
+          <p className="text-gray-700">You committed 3 days ago.</p>
           <p className="text-gray-700 mb-4">{action.description}</p>
           <div className="flex justify-between items-center gap-x-2">
-            <p className="text-gray-700 font-bold">You committed 3 days ago</p>
             <div className="flex flex-row gap-x-2">
               <Button color={ButtonColor.Light} onClick={goToActionPage}>
                 Details

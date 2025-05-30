@@ -27,17 +27,7 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
 
   return (
     <div className="flex flex-col gap-y-2">
-      <div className="flex flex-row items-center gap-x-2 justify-between w-full mb-3">
-        <h1 className="text-[#111] !text-[16pt] font-font">Your Tasks</h1>
-        {/* <Button
-          color={ButtonColor.Light}
-          onClick={() => {
-            navigate("/actions");
-          }}
-        >
-          See completed
-        </Button> */}
-      </div>
+      <p className="text-gray-500 text-lg">Actions needing completion</p>
       {initialActions.map((action) => (
         <TaskCard
           key={action.id}
@@ -46,7 +36,7 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
         />
       ))}
       {initialActions.length === 0 && (
-        <p className="text-center text-gray-500 py-5">
+        <p className="rounded border border-gray-200 text-center text-gray-500 py-5">
           Nothing to do right now!
         </p>
       )}
