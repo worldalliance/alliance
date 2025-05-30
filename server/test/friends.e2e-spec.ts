@@ -1,38 +1,41 @@
 import * as request from 'supertest';
-import { FriendStatus } from '../src/user/friend.entity';
+import { Friend, FriendStatus } from '../src/user/friend.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
+import { Repository } from 'typeorm';
+import { User } from '../src/user/user.entity';
 
 describe('Friends (e2e)', () => {
   let ctx: TestContext;
+  let userRepo: Repository<User>;
+  let friendRepo: Repository<Friend>;
 
-  // IDs & tokens for the two regular users we’ll test with
-  let userAId: number; // already created by `createTestApp`
-  let userAToken: string; // ctx.accessToken
+  let userAId: number;
+  let userAToken: string;
   let userBId: number;
   let userBToken: string;
 
   beforeAll(async () => {
     /* ───── spin-up Nest app & baseline user ───── */
     ctx = await createTestApp([]);
-
-    // Default “regular user” that e2e-utils always seeds
-    const userA = ctx.userRepo.create({
+    userRepo = ctx.dataSource.getRepository(User);
+    friendRepo = ctx.dataSource.getRepository(Friend);
+    const userA = userRepo.create({
       name: 'Friend A',
       email: 'frienda@example.com',
-      password: 'Password123!', // will be hashed by entity hook
+      password: 'Password123!',
     });
-    await ctx.userRepo.save(userA);
+    await userRepo.save(userA);
     userAId = userA.id;
     userAToken = ctx.jwtService.sign({ sub: userAId });
 
     /* ───── create a second regular user (User B) ───── */
-    const userB = ctx.userRepo.create({
+    const userB = userRepo.create({
       name: 'Friend B',
       email: 'friendb@example.com',
-      password: 'Password123!', // will be hashed by entity hook
+      password: 'Password123!',
     });
 
-    await ctx.userRepo.save(userB);
+    await userRepo.save(userB);
     userBId = userB.id;
     console.log('userBId', userBId);
     userBToken = ctx.jwtService.sign({ sub: userBId });
@@ -70,7 +73,6 @@ describe('Friends (e2e)', () => {
       .get('/user/friends/requests/sent')
       .set('Authorization', `Bearer ${userAToken}`);
 
-    console.log(sent.body);
     expect(sent.status).toBe(200);
     expect(sent.body.length).toBe(1);
     expect(sent.body[0].id).toBe(userBId);
@@ -171,8 +173,8 @@ describe('Friends (e2e)', () => {
   /* ──────────────────────────────────────────────────────────── */
 
   afterAll(async () => {
-    await ctx.friendRepo.query('DELETE FROM friend');
-    await ctx.userRepo.query('DELETE FROM user');
+    await friendRepo.query('DELETE FROM friend');
+    await userRepo.query('DELETE FROM user');
     await ctx.app.close();
   });
 });

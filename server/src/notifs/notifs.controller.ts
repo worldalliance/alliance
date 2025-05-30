@@ -26,7 +26,7 @@ export class NotifsController {
     return this.notifsService.findAll(req.user.sub);
   }
 
-  @Post(':id')
+  @Post('read/:id')
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   setRead(@Param('id', ParseIntPipe) id: number, @Request() req: JwtRequest) {

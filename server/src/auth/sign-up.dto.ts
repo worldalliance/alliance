@@ -10,7 +10,7 @@ export class SignUpDto {
 
   @IsDefined()
   @IsEmail()
-  @Validate(IsUserAlreadyExist)
+  //   @Validate(IsUserAlreadyExist)
   @ApiProperty()
   readonly email: string;
 

@@ -5,7 +5,6 @@ import {
   ValidatorConstraintInterface,
 } from 'class-validator';
 import { Repository } from 'typeorm';
-
 import { User } from '../user.entity';
 
 @ValidatorConstraint({ name: 'isUserAlreadyExist', async: true })

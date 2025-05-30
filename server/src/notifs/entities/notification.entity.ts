@@ -27,9 +27,13 @@ export class Notification {
   @ApiProperty()
   message: string;
 
-  @Column()
+  @Column({ nullable: true })
   @ApiProperty()
-  appLocation: string;
+  webAppLocation: string;
+
+  @Column({ nullable: true })
+  @ApiProperty()
+  mobileAppLocation: string;
 
   @Column({ default: false })
   @ApiProperty()

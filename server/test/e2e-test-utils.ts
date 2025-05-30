@@ -2,7 +2,7 @@
 import { INestApplication, Type, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, useContainer } from 'typeorm';
 import { AuthModule } from '../src/auth/auth.module';
 import { ActionsModule } from '../src/actions/actions.module';
 import { UserModule } from '../src/user/user.module';
@@ -18,21 +18,19 @@ import { Reply } from '../src/forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Friend } from '../src/user/friend.entity';
 import { Notification } from '../src/notifs/entities/notification.entity';
+import TestAgent from 'supertest/lib/agent';
+import * as supertest from 'supertest';
+import { AppModule } from '../src/app.module';
+import * as cookieParser from 'cookie-parser';
 
 export interface TestContext {
   app: INestApplication;
   dataSource: DataSource;
-  userRepo: Repository<User>;
-  friendRepo: Repository<Friend>;
-  actionRepo: Repository<Action>;
-  userActionRepo: Repository<UserAction>;
-  imageRepo: Repository<Image>;
-  postRepo: Repository<Post>;
-  replyRepo: Repository<Reply>;
   accessToken: string;
   adminAccessToken: string;
   jwtService: JwtService;
   testUserId: number;
+  agent: TestAgent;
 }
 
 export async function createTestApp(
@@ -71,16 +69,11 @@ export async function createTestApp(
 
   const app = moduleFixture.createNestApplication();
   app.useGlobalPipes(new ValidationPipe());
+  app.use(cookieParser());
   await app.init();
 
   const dataSource = moduleFixture.get(DataSource);
   const userRepo = dataSource.getRepository(User);
-  const actionRepo = dataSource.getRepository(Action);
-  const userActionRepo = dataSource.getRepository(UserAction);
-  const imageRepo = dataSource.getRepository(Image);
-  const postRepo = dataSource.getRepository(Post);
-  const replyRepo = dataSource.getRepository(Reply);
-  const friendRepo = dataSource.getRepository(Friend);
   const jwtService = moduleFixture.get<JwtService>(JwtService);
 
   // Create test user
@@ -124,19 +117,22 @@ export async function createTestApp(
     },
   );
 
+  const agent = supertest.agent(app.getHttpServer());
+
+  // start agent as logged in user
+  await agent.post('/auth/login').send({
+    email: 'user@example.com',
+    password: 'pass',
+    mode: 'cookie',
+  });
+
   return {
     app,
     dataSource,
-    userRepo,
-    friendRepo,
-    actionRepo,
-    userActionRepo,
-    imageRepo,
-    postRepo,
-    replyRepo,
     accessToken,
     adminAccessToken,
     jwtService,
     testUserId: user.id,
+    agent,
   };
 }
