@@ -137,7 +137,14 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
-        <Route path="/user/:id" element={<UserProfilePage />} />
+        <Route
+          path="/user/:id"
+          element={
+            <PublicAppRoute>
+              <UserProfilePage />
+            </PublicAppRoute>
+          }
+        />
         <Route
           path="/actions"
           element={

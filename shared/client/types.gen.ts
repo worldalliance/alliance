@@ -217,26 +217,26 @@ export type CreateReplyDto = {
     postId: number;
 };
 
-export type UpdateReplyDto = {
-    content?: string;
-    postId?: number;
-};
-
 export type ReplyDto = {
     id: number;
     content: string;
-    authorId: number;
     postId: number;
     createdAt: string;
     updatedAt: string;
     author: UserDto;
 };
 
+export type UpdateReplyDto = {
+    content?: string;
+    postId?: number;
+};
+
 export type NotificationDto = {
     id: number;
     category: string;
     message: string;
-    appLocation: string;
+    webAppLocation: string;
+    mobileAppLocation: string;
     read: boolean;
     createdAt: string;
     updatedAt: string;
@@ -957,7 +957,7 @@ export type ForumCreateReplyData = {
 };
 
 export type ForumCreateReplyResponses = {
-    200: Reply;
+    200: ReplyDto;
 };
 
 export type ForumCreateReplyResponse = ForumCreateReplyResponses[keyof ForumCreateReplyResponses];
@@ -1009,7 +1009,7 @@ export type NotifsSetReadData = {
         id: number;
     };
     query?: never;
-    url: '/notifs/{id}';
+    url: '/notifs/read/{id}';
 };
 
 export type NotifsSetReadResponses = {

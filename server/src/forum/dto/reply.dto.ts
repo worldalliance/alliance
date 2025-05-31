@@ -7,7 +7,6 @@ export class ReplyDto extends PickType(Reply, [
   'id',
   'content',
   'postId',
-  'authorId',
   'createdAt',
   'updatedAt',
 ]) {

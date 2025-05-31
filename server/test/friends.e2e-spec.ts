@@ -15,7 +15,6 @@ describe('Friends (e2e)', () => {
   let userBToken: string;
 
   beforeAll(async () => {
-    /* ───── spin-up Nest app & baseline user ───── */
     ctx = await createTestApp([]);
     userRepo = ctx.dataSource.getRepository(User);
     friendRepo = ctx.dataSource.getRepository(Friend);
@@ -28,7 +27,6 @@ describe('Friends (e2e)', () => {
     userAId = userA.id;
     userAToken = ctx.jwtService.sign({ sub: userAId });
 
-    /* ───── create a second regular user (User B) ───── */
     const userB = userRepo.create({
       name: 'Friend B',
       email: 'friendb@example.com',
@@ -37,13 +35,8 @@ describe('Friends (e2e)', () => {
 
     await userRepo.save(userB);
     userBId = userB.id;
-    console.log('userBId', userBId);
     userBToken = ctx.jwtService.sign({ sub: userBId });
   });
-
-  /* ────────────────────────────────────────────────────────────
-   *  Friend-request life-cycle
-   * ──────────────────────────────────────────────────────────── */
 
   it('User A can send a friend request to User B', async () => {
     const res = await request(ctx.app.getHttpServer())

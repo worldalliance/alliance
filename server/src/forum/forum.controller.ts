@@ -86,12 +86,14 @@ export class ForumController {
   @Post('replies')
   @UseGuards(AuthGuard)
   @ApiOperation({ summary: 'Create a new reply to a post' })
-  @ApiOkResponse({ type: Reply })
-  createReply(
+  @ApiOkResponse({ type: ReplyDto })
+  async createReply(
     @Body() createReplyDto: CreateReplyDto,
     @ReqUser() user: JwtPayload,
-  ) {
-    return this.forumService.createReply(createReplyDto, user.sub);
+  ): Promise<ReplyDto> {
+    const reply = await this.forumService.createReply(createReplyDto, user.sub);
+    console.log('reply', reply);
+    return reply;
   }
 
   @Patch('replies/:id')
