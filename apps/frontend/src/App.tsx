@@ -25,7 +25,7 @@ import PostDetailPage from "./pages/app/PostDetailPage";
 import PostFormPage from "./pages/app/PostFormPage";
 import AboutPage from "./pages/static/AboutPage";
 import UserProfilePage from "./pages/app/UserProfilePage";
-import { client } from "../../../shared/client/client.gen";
+import { client } from "@alliance/shared/client/client.gen";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import TempProdPassword from "./TempProdPassword";
 import { Features } from "@alliance/shared/lib/features";
@@ -41,6 +41,7 @@ const ProtectedRoute: React.FC<React.PropsWithChildren> = ({
   children,
 }: React.PropsWithChildren) => {
   const { isAuthenticated, loading } = useAuth();
+
   if (!isAuthenticated && !loading) {
     return <Navigate to="/login" />;
   }

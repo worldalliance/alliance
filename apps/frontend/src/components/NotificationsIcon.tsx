@@ -24,15 +24,16 @@ const NotificationsIcon = () => {
     if (!isAuthenticated) {
       return;
     }
-    notifsFindAll().then((notifications) => {
-      console.log("notifications", notifications);
-      if (notifications.data) {
-        setNotifications(notifications.data);
-        setUnreadCount(
-          notifications.data.filter((notification) => !notification.read).length
-        );
-      }
-    });
+    notifsFindAll().then(
+      ({ data: notifications }: { data: NotificationDto[] | undefined }) => {
+        if (notifications) {
+          setNotifications(notifications);
+          setUnreadCount(
+            notifications.filter((notification) => !notification.read).length,
+          );
+        }
+      },
+    );
   }, [isAuthenticated]);
 
   const toggle = useCallback(() => {
@@ -44,7 +45,7 @@ const NotificationsIcon = () => {
       notifsSetRead({ path: { id } });
       navigate(getWebAppLocation(webAppLocation));
     },
-    [navigate]
+    [navigate],
   );
 
   return (
@@ -67,7 +68,7 @@ const NotificationsIcon = () => {
               key={notification.id}
               onClick={handleNotifClick(
                 notification.id,
-                notification.webAppLocation
+                notification.webAppLocation,
               )}
               className={`text-black hover:bg-zinc-100 p-2 rounded-md ${
                 !notification.read ? "bg-red-50" : ""
