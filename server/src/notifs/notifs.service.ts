@@ -14,10 +14,12 @@ export class NotifsService {
     private readonly notifsRepository: Repository<Notification>,
   ) {}
 
-  findAll(userId: number) {
-    return this.notifsRepository.find({
+  async findAll(userId: number) {
+    const notifs = await this.notifsRepository.find({
       where: { user: { id: userId } },
+      relations: ['user'],
     });
+    return notifs;
   }
 
   findOne(id: number) {

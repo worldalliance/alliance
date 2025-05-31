@@ -15,8 +15,6 @@ const HomePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const { loading: authLoading } = useAuth();
 
-  console.log(actions);
-
   const updateActions = useCallback((actions: ActionDto[]) => {
     setActions(actions);
     setTodoActions(

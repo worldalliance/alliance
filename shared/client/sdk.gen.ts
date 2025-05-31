@@ -543,7 +543,7 @@ export const notifsFindAll = <ThrowOnError extends boolean = false>(options?: Op
 
 export const notifsSetRead = <ThrowOnError extends boolean = false>(options: Options<NotifsSetReadData, ThrowOnError>) => {
     return (options.client ?? _heyApiClient).post<unknown, unknown, ThrowOnError>({
-        url: '/notifs/{id}',
+        url: '/notifs/read/{id}',
         ...options
     });
 };
