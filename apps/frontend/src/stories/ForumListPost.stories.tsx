@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
 import ForumListPost from "../components/ForumListPost";
-import { PostDto } from "../../../../shared/client";
+import { PostDto } from "@alliance/shared/client";
 
 const samplePost: PostDto = {
   id: 1,

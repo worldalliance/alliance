@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import Card, { CardStyle } from "./system/Card";
-import { PostDto } from "../../../../shared/client";
+import { PostDto } from "@alliance/shared/client";
 import Badge from "./system/Badge";
 import { useNavigate } from "react-router-dom";
 

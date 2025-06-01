@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  communiquesFindOne,
-  communiquesRead,
-} from "../../../../../shared/client";
-import { CommuniqueDto } from "../../../../../shared/client";
+import { communiquesFindOne, communiquesRead } from "@alliance/shared/client";
+import { CommuniqueDto } from "@alliance/shared/client";
 import ReactMarkdown from "react-markdown";
 import { getApiUrl } from "../../lib/config";
 import { AdminOnly } from "../../lib/AdminOnly";

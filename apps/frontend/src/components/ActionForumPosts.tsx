@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { PostDto } from "../../../../shared/client";
+import { PostDto } from "@alliance/shared/client";
 import { useAuth } from "../lib/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import Card from "./system/Card";
 import Button from "./system/Button";
-import { forumFindPostsByAction } from "../../../../shared/client";
+import { forumFindPostsByAction } from "@alliance/shared/client";
 
 interface ActionForumPostsProps {
   actionId: string | undefined;

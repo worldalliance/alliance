@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import Globe, { GlobeMethods, GlobeProps } from "react-globe.gl";
 import * as THREE from "three";
 import cloudsImg from "../assets/fair_clouds_4k.webp";
@@ -38,9 +38,12 @@ const HighResGlobe = (props: HighResGlobeProps) => {
           new THREE.SphereGeometry(
             globe.getGlobeRadius() * (1 + CLOUDS_ALT),
             75,
-            75
+            75,
           ),
-          new THREE.MeshPhongMaterial({ map: cloudsTexture, transparent: true })
+          new THREE.MeshPhongMaterial({
+            map: cloudsTexture,
+            transparent: true,
+          }),
         );
         globe.scene().add(clouds as any);
 
@@ -48,7 +51,7 @@ const HighResGlobe = (props: HighResGlobeProps) => {
           clouds.rotation.y += (CLOUDS_ROTATION_SPEED * Math.PI) / 180;
           requestAnimationFrame(rotateClouds);
         })();
-      }
+      },
     );
   }, []);
 

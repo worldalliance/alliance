@@ -11,7 +11,7 @@ import {
   userDeclineFriendRequest,
   userRemoveFriend,
   UserDto,
-} from "../../../../shared/client";
+} from "@alliance/shared/client";
 
 interface FriendsTabProps {
   userId: number;
@@ -24,10 +24,10 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
   const [receivedRequests, setReceivedRequests] = useState<UserDto[]>([]);
   const [sentRequests, setSentRequests] = useState<UserDto[]>([]);
   const [activeTab, setActiveTab] = useState<"friends" | "received" | "sent">(
-    "friends"
+    "friends",
   );
   const [processingIds, setProcessingIds] = useState<Record<string, boolean>>(
-    {}
+    {},
   );
 
   const fetchData = useCallback(async () => {
@@ -85,7 +85,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
     try {
       await userDeclineFriendRequest({ path: { requesterId } });
       setReceivedRequests((prev) =>
-        prev.filter((req) => req.email !== userIdStr)
+        prev.filter((req) => req.email !== userIdStr),
       );
       fetchData();
     } catch (error) {

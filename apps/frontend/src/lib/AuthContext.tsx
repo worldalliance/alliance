@@ -14,9 +14,9 @@ import {
   authMe,
   authRefreshTokens,
   UserDto,
-} from "../../../../shared/client";
+} from "@alliance/shared/client";
+
 import { testUser2 } from "../stories/testData";
-import { getApiUrl } from "./config";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -29,7 +29,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
-  ({ children }) => {
+  ({ children }: React.PropsWithChildren) => {
     const [user, setUser] = useState<UserDto | undefined>();
     const [loading, setLoading] = useState(true);
 
@@ -94,14 +94,16 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
         logout,
         loading,
       }),
-      [user, loading, login, logout]
+      [user, loading, login, logout],
     );
 
     return (
       <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
     );
-  }
+  },
 );
+
+AuthProvider.displayName = "AuthProvider";
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);

@@ -5,19 +5,19 @@ import Button, { ButtonColor } from "../../components/system/Button";
 import { useAuth } from "../../lib/AuthContext";
 import ProfileImage from "../../components/ProfileImage";
 import ReactMarkdown from "react-markdown";
+
 import {
   imagesUploadImage,
   userUpdate,
   userFindMe,
   UpdateProfileDto,
   forumFindPostsByUser,
-  userMyFriendRelationship,
   userListFriends,
   UserDto,
   ActionWithRelationDto,
   PostDto,
   actionsFindCompletedForUser,
-} from "../../../../../shared/client";
+} from "@alliance/shared/client";
 import { client } from "@alliance/shared/client/client.gen";
 import { getImageSource } from "../../lib/config";
 
@@ -80,7 +80,7 @@ const ProfileEditPage: React.FC = () => {
             if (response.data) {
               setCompletedActions(response.data);
             }
-          }
+          },
         );
       }
       setLoading(false);
@@ -96,7 +96,7 @@ const ProfileEditPage: React.FC = () => {
    * File object so we can send it on save.
    */
   const handleAvatarChange: React.ChangeEventHandler<HTMLInputElement> = (
-    e
+    e,
   ) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
@@ -159,11 +159,9 @@ const ProfileEditPage: React.FC = () => {
       console.log("got response", response);
 
       navigate(`/user/${user.id}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(
-        err?.response?.data?.message || "Something went wrong while saving."
-      );
+      setError("Something went wrong while saving.");
     } finally {
       setSubmitting(false);
     }

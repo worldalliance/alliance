@@ -4,13 +4,12 @@ import Card, { CardStyle } from "../../components/system/Card";
 import StatsCard from "../../components/StatsCard";
 import Globe from "../../components/Globe";
 import Button from "../../components/system/Button";
-import PokePanel from "../../components/PokePanel";
 import {
   actionsFindOne,
   actionsJoin,
   actionsMyStatus,
-} from "../../../../../shared/client";
-import { ActionDto, UserActionDto } from "../../../../../shared/client";
+} from "@alliance/shared/client";
+import { ActionDto, UserActionDto } from "@alliance/shared/client";
 import { getImageSource, isFeatureEnabled } from "../../lib/config";
 import ActionForumPosts from "../../components/ActionForumPosts";
 import TwoColumnSplit from "../../components/system/TwoColumnSplit";

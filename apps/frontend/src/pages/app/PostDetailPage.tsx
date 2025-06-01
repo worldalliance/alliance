@@ -5,7 +5,7 @@ import {
   CreateReplyDto,
   ReplyDto,
   Reply,
-} from "../../../../../shared/client";
+} from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import Card from "../../components/system/Card";
@@ -14,7 +14,7 @@ import {
   forumFindOnePost,
   forumRemovePost,
   forumRemoveReply,
-} from "../../../../../shared/client";
+} from "@alliance/shared/client";
 
 const PostDetailPage: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();

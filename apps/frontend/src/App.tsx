@@ -26,6 +26,7 @@ import PostFormPage from "./pages/app/PostFormPage";
 import AboutPage from "./pages/static/AboutPage";
 import UserProfilePage from "./pages/app/UserProfilePage";
 import { client } from "@alliance/shared/client/client.gen";
+
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import TempProdPassword from "./TempProdPassword";
 import { Features } from "@alliance/shared/lib/features";

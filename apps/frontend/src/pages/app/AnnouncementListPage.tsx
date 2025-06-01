@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import {
   communiquesFindAll,
   communiquesGetRead,
-} from "../../../../../shared/client";
-import { CommuniqueDto } from "../../../../../shared/client";
+  CommuniqueDto,
+} from "@alliance/shared/client";
 import AnnouncementCard from "../../components/AnnoucementCard";
 import Button, { ButtonColor } from "../../components/system/Button";
 import { useAuth } from "../../lib/AuthContext";
@@ -43,7 +43,7 @@ const AnnouncementsListPage: React.FC = () => {
                 path: { id: announcement.id.toString() },
               });
               readStatusMap[announcement.id] = readResponse.data?.read ?? false;
-            })
+            }),
           );
 
           setUnreadStatus(readStatusMap);
@@ -61,11 +61,11 @@ const AnnouncementsListPage: React.FC = () => {
   }, [isAuthenticated]);
 
   const unreadAnnouncements = announcements.filter(
-    (announcement) => !unreadStatus[announcement.id]
+    (announcement) => !unreadStatus[announcement.id],
   );
 
   const readAnnouncements = announcements.filter(
-    (announcement) => unreadStatus[announcement.id]
+    (announcement) => unreadStatus[announcement.id],
   );
 
   return (

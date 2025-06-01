@@ -8,7 +8,7 @@ import {
 } from "./Navbar";
 import DropdownLink from "./DropdownLink";
 import LandingNavbar from "./LandingNavbar";
-import { Features } from "../../../../shared/lib/features";
+import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../lib/config";
 import NotificationsIcon from "./NotificationsIcon";
 

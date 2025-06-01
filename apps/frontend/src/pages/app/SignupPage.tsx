@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
 import FormInput from "../../components/system/FormInput";
-import { authRegister, SignUpDto } from "../../../../../shared/client";
+import { authRegister, SignUpDto } from "@alliance/shared/client";
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();

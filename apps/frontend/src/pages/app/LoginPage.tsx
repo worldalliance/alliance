@@ -4,7 +4,7 @@ import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
 import FormInput from "../../components/system/FormInput";
 import { useAuth } from "../../lib/AuthContext";
-import { appHealthCheck, SignInDto } from "../../../../../shared/client";
+import { appHealthCheck, SignInDto } from "@alliance/shared/client";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
@@ -111,7 +111,7 @@ const LoginPage: React.FC = () => {
 
           <div className="mt-6 text-center">
             <p className="text-[11pt] text-stone-600">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link to="/signup" className="text-blue-600 hover:underline">
                 Register
               </Link>

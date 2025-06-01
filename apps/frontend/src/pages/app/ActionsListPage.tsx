@@ -4,9 +4,8 @@ import Button, { ButtonColor } from "../../components/system/Button";
 import {
   actionsFindAllPublic,
   actionsFindAllWithStatus,
-} from "../../../../../shared/client";
-import { ActionDto } from "../../../../../shared/client";
-import { getBulkActionSSEUrl } from "../../lib/config";
+} from "@alliance/shared/client";
+import { ActionDto } from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 
 enum FilterMode {
@@ -27,7 +26,7 @@ const ActionsListPage: React.FC = () => {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    let evtSource: EventSource | null = null;
+    // let evtSource: EventSource | null = null;
     const req = isAuthenticated
       ? actionsFindAllWithStatus
       : actionsFindAllPublic;

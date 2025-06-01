@@ -1,4 +1,5 @@
-import { ActionDto } from "../../../../shared/client";
+import React from "react";
+import { ActionDto } from "@alliance/shared/client";
 import ActionItemCard from "./ActionItemCard";
 import { ButtonColor } from "./system/Button";
 import Button from "./system/Button";
@@ -9,7 +10,7 @@ export interface HomeNewActionsViewProps {
 
 export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
   actions: initialActions,
-}) => {
+}: HomeNewActionsViewProps) => {
   const navigate = useNavigate();
 
   return (

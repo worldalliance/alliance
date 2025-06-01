@@ -77,12 +77,13 @@ __metadata:
     clsx: "npm:^2.1.1"
     d3: "npm:^7.9.0"
     date-fns: "npm:^4.1.0"
-    eslint: "npm:^9.22.0"
+    eslint: "npm:^9.28.0"
+    eslint-plugin-react: "npm:^7.37.5"
     eslint-plugin-react-hooks: "npm:^5.2.0"
     eslint-plugin-react-refresh: "npm:^0.4.19"
     eslint-plugin-storybook: "npm:^0.12.0"
     eslint-plugin-unused-imports: "npm:^4.1.4"
-    globals: "npm:^16.0.0"
+    globals: "npm:^16.2.0"
     msw: "npm:^2.8.4"
     msw-storybook-addon: "npm:^2.0.4"
     postcss: "npm:^8.5.3"
@@ -98,7 +99,7 @@ __metadata:
     tailwindcss: "npm:^4.1.4"
     three: "npm:^0.176.0"
     typescript: "npm:~5.7.2"
-    typescript-eslint: "npm:^8.26.1"
+    typescript-eslint: "npm:^8.33.0"
     vite: "npm:^6.3.1"
     web-vitals: "npm:^4.2.4"
   languageName: unknown
@@ -5275,6 +5276,8 @@ __metadata:
   dependencies:
     "@eslint/js": "npm:^9.28.0"
     eslint: "npm:^9.28.0"
+    eslint-plugin-import: "npm:^2.31.0"
+    eslint-plugin-workspaces: "npm:^0.11.0"
     typescript: "npm:^5.8.3"
     typescript-eslint: "npm:^8.33.0"
   languageName: unknown
@@ -8004,7 +8007,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-import@npm:^2.30.0":
+"eslint-plugin-import@npm:^2.30.0, eslint-plugin-import@npm:^2.31.0":
   version: 2.31.0
   resolution: "eslint-plugin-import@npm:2.31.0"
   dependencies:
@@ -8051,7 +8054,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-react@npm:^7.37.3":
+"eslint-plugin-react@npm:^7.37.3, eslint-plugin-react@npm:^7.37.5":
   version: 7.37.5
   resolution: "eslint-plugin-react@npm:7.37.5"
   dependencies:
@@ -8102,6 +8105,15 @@ __metadata:
     "@typescript-eslint/eslint-plugin":
       optional: true
   checksum: 10c0/3899f64b0e8b23fa6b81e2754fc10f93d8741e051d70390a8100ca39af7878bde8625f234b76111af69562ef2512104b52c3703e986ccb3ac9adc07911896acf
+  languageName: node
+  linkType: hard
+
+"eslint-plugin-workspaces@npm:^0.11.0":
+  version: 0.11.0
+  resolution: "eslint-plugin-workspaces@npm:0.11.0"
+  dependencies:
+    find-workspaces: "npm:^0.3.1"
+  checksum: 10c0/50506e150ba11d11eb0260782c3744060a72a645ea17baeac6b9a4c9df85feebba673338699562267cb579a6dbc4574e4a2bf79031863662edb4ca35f6fd54af
   languageName: node
   linkType: hard
 
@@ -8869,6 +8881,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"find-workspaces@npm:^0.3.1":
+  version: 0.3.1
+  resolution: "find-workspaces@npm:0.3.1"
+  dependencies:
+    fast-glob: "npm:^3.3.2"
+    pkg-types: "npm:^1.0.3"
+    yaml: "npm:^2.3.4"
+  checksum: 10c0/e28dd30a753d9cabc1c9e94746ef75be181ce6403d9987c9efac7379ab94c8f776f541acd342907f3077cf288b6464dc807b30b57b2ded96a3e1caca0da3b10a
+  languageName: node
+  linkType: hard
+
 "flat-cache@npm:^4.0.0":
   version: 4.0.1
   resolution: "flat-cache@npm:4.0.1"
@@ -9268,7 +9291,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"globals@npm:^16.0.0":
+"globals@npm:^16.0.0, globals@npm:^16.2.0":
   version: 16.2.0
   resolution: "globals@npm:16.2.0"
   checksum: 10c0/c2b3ea163faa6f8a38076b471b12f4bda891f7df7f7d2e8294fb4801d735a51a73431bf4c1696c5bf5dbca5e0a0db894698acfcbd3068730c6b12eef185dea25
@@ -12892,7 +12915,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pkg-types@npm:^1.2.0, pkg-types@npm:^1.3.0, pkg-types@npm:^1.3.1":
+"pkg-types@npm:^1.0.3, pkg-types@npm:^1.2.0, pkg-types@npm:^1.3.0, pkg-types@npm:^1.3.1":
   version: 1.3.1
   resolution: "pkg-types@npm:1.3.1"
   dependencies:
@@ -16550,7 +16573,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yaml@npm:^2.4.3":
+"yaml@npm:^2.3.4, yaml@npm:^2.4.3":
   version: 2.8.0
   resolution: "yaml@npm:2.8.0"
   bin:

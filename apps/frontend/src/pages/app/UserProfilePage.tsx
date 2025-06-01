@@ -17,7 +17,7 @@ import {
   forumFindPostsByUser,
   userRemoveFriend,
   userCountReferred,
-} from "../../../../../shared/client";
+} from "@alliance/shared/client";
 import ProfileImage from "../../components/ProfileImage";
 import testImg from "../../assets/fakebgimage.png";
 import dots from "../../assets/dots.svg";
@@ -109,7 +109,7 @@ const UserProfilePage: React.FC = () => {
         if (response.data) {
           setCompletedActions(response.data);
         }
-      }
+      },
     );
   }, [id]);
 

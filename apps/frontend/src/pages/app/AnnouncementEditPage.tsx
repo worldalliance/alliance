@@ -5,7 +5,7 @@ import {
   communiquesFindOne,
   communiquesUpdate,
   imagesUploadImage,
-} from "../../../../../shared/client";
+} from "@alliance/shared/client";
 import Button, { ButtonColor } from "../../components/system/Button";
 import FormInput from "../../components/system/FormInput";
 import { useAuth } from "../../lib/AuthContext";
@@ -163,7 +163,7 @@ const AnnouncementEditPage: React.FC = () => {
     } catch (err) {
       console.error("Error saving announcement:", err);
       setError(
-        `Failed to ${isEditing ? "update" : "create"} announcement. Please try again.`
+        `Failed to ${isEditing ? "update" : "create"} announcement. Please try again.`,
       );
     } finally {
       setIsSubmitting(false);

@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import {
-  CreatePostDto,
-  ActionDto,
-  PostDto,
-} from "../../../../../shared/client";
+import { CreatePostDto, ActionDto, PostDto } from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import Card from "../../components/system/Card";
 import {
@@ -12,7 +8,7 @@ import {
   forumCreatePost,
   forumFindOnePost,
   forumUpdatePost,
-} from "../../../../../shared/client";
+} from "@alliance/shared/client";
 
 type FormMode = "create" | "edit";
 
@@ -194,7 +190,7 @@ const PostFormPage: React.FC = () => {
                 value={actionId || ""}
                 onChange={(e) =>
                   setActionId(
-                    e.target.value ? Number(e.target.value) : undefined
+                    e.target.value ? Number(e.target.value) : undefined,
                   )
                 }
                 className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -208,7 +204,7 @@ const PostFormPage: React.FC = () => {
               </select>
               <p className="text-sm text-gray-500 mt-1">
                 Associating your post with an action will make it visible on
-                that action's page.
+                that action&apos;s page.
               </p>
             </div>
 

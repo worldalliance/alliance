@@ -2,7 +2,7 @@ import {
   NotificationDto,
   notifsFindAll,
   notifsSetRead,
-} from "../../../../shared/client";
+} from "@alliance/shared/client";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import { useNavigate } from "react-router-dom";

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { PostDto } from "../../../../../shared/client";
+import { PostDto } from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
-import { forumFindAllPosts } from "../../../../../shared/client";
+import { forumFindAllPosts } from "@alliance/shared/client";
 import Button, { ButtonColor } from "../../components/system/Button";
 import ForumListPost from "../../components/ForumListPost";
 
