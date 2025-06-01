@@ -18,6 +18,7 @@ import { ForumModule } from './forum/forum.module';
 import { Post } from './forum/entities/post.entity';
 import { Reply } from './forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ActionEvent } from './actions/entities/action-event.entity';
 import { Friend } from './user/friend.entity';
 import { NotifsModule } from './notifs/notifs.module';
 import { Notification } from './notifs/entities/notification.entity';
@@ -38,17 +39,7 @@ import { Notification } from './notifs/entities/notification.entity';
       username: process.env.DB_USERNAME,
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
-      entities: [
-        User,
-        Action,
-        UserAction,
-        Image,
-        Communique,
-        Post,
-        Reply,
-        Notification,
-        Friend,
-      ],
+      entities: [User, Action, UserAction, Image, Communique, Post, Reply],
       synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'
         ? {

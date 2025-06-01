@@ -16,6 +16,7 @@ enum FilterMode {
   Past = "Past",
   Joined = "joined",
 }
+import { FilterMode, filterActions } from "../../../../../shared/lib/actionUtils";
 
 const ActionsListPage: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
@@ -54,17 +55,7 @@ const ActionsListPage: React.FC = () => {
     };
   }, [isAuthenticated]);
 
-  const filteredActions = useMemo(() => {
-    if (filterMode === FilterMode.All) {
-      return actions;
-    }
-
-    if (filterMode === FilterMode.Joined) {
-      return actions; //TODO: implement
-    }
-
-    return actions.filter((action) => action.status === filterMode);
-  }, [actions, filterMode]);
+  const filteredActions = useMemo(() => filterActions(actions, filterMode), [actions, filterMode]);
 
   return (
     <div className="flex flex-col min-h-screen bg-white items-center">

@@ -17,6 +17,7 @@ import { CommuniquesModule } from '../src/communiques/communiques.module';
 import { Communique } from '../src/communiques/entities/communique.entity';
 import { Friend } from '../src/user/friend.entity';
 import { Notification } from '../src/notifs/entities/notification.entity';
+import { ActionEvent } from '../src/actions/entities/action-event.entity';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -42,6 +43,7 @@ describe('AppController (e2e)', () => {
             Communique,
             Friend,
             Notification,
+            ActionEvent
           ],
           synchronize: true,
         }),

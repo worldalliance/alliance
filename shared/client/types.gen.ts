@@ -71,6 +71,14 @@ export type ActionDto = {
     myRelation: UserActionDto;
 };
 
+export type ActionEventDto = {
+    id: number;
+    name: string;
+    date: string;
+    location?: string;
+    description?: string;
+};
+
 export type CreateActionDto = {
     name: string;
     category: string;
@@ -79,6 +87,7 @@ export type CreateActionDto = {
     description: string;
     timeEstimate: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    events?: ActionEventDto[];
 };
 
 export type UpdateActionDto = {

@@ -1,6 +1,5 @@
 import * as bcrypt from 'bcryptjs';
 import { Exclude } from 'class-transformer';
-
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -50,6 +49,9 @@ export class User {
   @Column({ default: false })
   @ApiProperty()
   admin: boolean;
+
+  @OneToMany(() => UserAction, (userAction) => userAction.user)
+  actionRelations: UserAction[];
 
   @Column({ nullable: true })
   @ApiProperty({ nullable: true })
