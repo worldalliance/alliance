@@ -8,8 +8,7 @@ import {
 } from "react-native";
 import { useAuth } from "../../../lib/AuthContext";
 import { useEffect, useMemo, useState } from "react";
-import { ActionDto } from "../../../../../shared/client";
-import { actionsFindAllWithStatus } from "../../../../../shared/client";
+import { ActionDto, actionsFindAllWithStatus } from "../../../../../shared/client";
 import ActionCard from "../../../components/ActionCard";
 import { router } from "expo-router";
 import { FilterMode, filterActions } from "../../../../../shared/lib/actionUtils";
