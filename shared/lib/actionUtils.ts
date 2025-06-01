@@ -8,6 +8,8 @@ export enum FilterMode {
   Joined = "joined",
 }
 
+export const ACTION_FILTERS = Object.values(FilterMode);
+
 export const filterActions = (actions: ActionDto[], mode: FilterMode): ActionDto[] => {
   if (mode === FilterMode.All) {
     return actions;
