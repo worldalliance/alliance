@@ -14,15 +14,6 @@ import ActionCard from "../../../components/ActionCard";
 import { router } from "expo-router";
 import { FilterMode, filterActions } from "../../../../../shared/lib/actionUtils";
 
-const FILTERS = [
-  FilterMode.All,
-  FilterMode.Active,
-  FilterMode.Upcoming,
-  FilterMode.Past,
-  FilterMode.Joined,
-];
-
-
 export default function HomeScreen() {
   const { user } = useAuth();
   const [actions, setActions] = useState<ActionDto[]>([]);
@@ -90,7 +81,7 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>Actions</Text>
         </View>
         <View style={styles.filterRow}>
-          {FILTERS.map((mode) => (
+          {Object.values(FilterMode).map((mode) => (
             <TouchableOpacity
               key={mode}
               style={[
