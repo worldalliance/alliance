@@ -13,12 +13,14 @@ import {
   authLogout,
   authMe,
   authRefreshTokens,
-  ProfileDto,
+  UserDto,
 } from "../../../../shared/client";
+import { testUser2 } from "../stories/testData";
+import { getApiUrl } from "./config";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: ProfileDto | undefined;
+  user: UserDto | undefined;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -28,7 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
   ({ children }) => {
-    const [user, setUser] = useState<ProfileDto | undefined>();
+    const [user, setUser] = useState<UserDto | undefined>();
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -44,9 +46,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
           }
         } catch {
           try {
-            console.log("AuthContext", "refreshing tokens");
-            const response = await authRefreshTokens();
-            console.log("AuthContext", "refresh response", response);
+            await authRefreshTokens();
             const { data } = await authMe();
             if (!cancelled) setUser(data);
           } catch {
@@ -72,8 +72,10 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
         });
         if (error) throw new Error("Login failed");
 
-        const { data } = await authMe(); // guaranteed by fresh cookie
+        const { data } = await authMe();
         setUser(data);
+      } catch (error) {
+        console.error("login error", error);
       } finally {
         setLoading(false);
       }
@@ -107,7 +109,7 @@ export const useAuth = () => {
   if (import.meta.env.STORYBOOK) {
     return {
       isAuthenticated: true,
-      user: undefined,
+      user: testUser2,
       login: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       loading: false,

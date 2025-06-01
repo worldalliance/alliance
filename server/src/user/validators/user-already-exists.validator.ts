@@ -5,7 +5,6 @@ import {
   ValidatorConstraintInterface,
 } from 'class-validator';
 import { Repository } from 'typeorm';
-
 import { User } from '../user.entity';
 
 @ValidatorConstraint({ name: 'isUserAlreadyExist', async: true })
@@ -23,6 +22,6 @@ export class IsUserAlreadyExist implements ValidatorConstraintInterface {
   }
 
   defaultMessage(): string {
-    return 'The email «$value» is already register.';
+    return 'The email «$value» is already registered.';
   }
 }

@@ -16,6 +16,7 @@ import AccountPage from "./pages/app/AccountPage";
 import ActionsListPage from "./pages/app/ActionsListPage";
 import { getApiUrl, isFeatureEnabled } from "./lib/config";
 import NewLandingPage from "./pages/static/NewLandingPage";
+import PrelaunchLandingPage from "./pages/static/PrelaunchLanding";
 import AnnouncementListPage from "./pages/app/AnnouncementListPage";
 import AnnouncementEditPage from "./pages/app/AnnouncementEditPage";
 import AnnouncementPage from "./pages/app/AnnouncementPage";
@@ -23,10 +24,12 @@ import ForumPage from "./pages/app/ForumPage";
 import PostDetailPage from "./pages/app/PostDetailPage";
 import PostFormPage from "./pages/app/PostFormPage";
 import AboutPage from "./pages/static/AboutPage";
+import UserProfilePage from "./pages/app/UserProfilePage";
 import { client } from "../../../shared/client/client.gen";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
 import TempProdPassword from "./TempProdPassword";
 import { Features } from "@alliance/shared/lib/features";
+import ProfilePageEdit from "./pages/app/ProfilePageEdit";
 
 client.setConfig({
   baseUrl: getApiUrl(),
@@ -49,6 +52,21 @@ const ProtectedRoute: React.FC<React.PropsWithChildren> = ({
   );
 };
 
+const PublicAppRoute: React.FC<React.PropsWithChildren> = ({
+  children,
+}: React.PropsWithChildren) => {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <>
+      {isAuthenticated && (
+        <Navbar currentPage={NavbarPage.Dashboard} format="horizontal" />
+      )}
+      {children}
+    </>
+  );
+};
+
 const LoggedOutOnlyRoute: React.FC<React.PropsWithChildren> = ({
   children,
 }: React.PropsWithChildren) => {
@@ -62,11 +80,13 @@ const LoggedOutOnlyRoute: React.FC<React.PropsWithChildren> = ({
 
 // AppRoutes component to use the auth context
 const AppRoutes = () => {
+  const { user } = useAuth();
   return (
     <>
       <Routes>
-        <Route path="/" element={<NewLandingPage />} />
-        <Route path="/platform" element={<AboutPage />} />
+        <Route path="/" element={<PrelaunchLandingPage />} />
+        <Route path="/landing" element={<NewLandingPage />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route
           path="/login"
           element={
@@ -94,35 +114,44 @@ const AppRoutes = () => {
         <Route
           path="/action/:id"
           element={
-            <ProtectedRoute>
+            <PublicAppRoute>
               <ActionPage />
-            </ProtectedRoute>
+            </PublicAppRoute>
           }
         />
         <Route path="/issues" element={<IssuesListPage />} />
         <Route path="/issues/:issue" element={<IssuePage />} />
         <Route
-          path="/account"
+          path="/profile"
           element={
             <ProtectedRoute>
-              <AccountPage />
+              <Navigate to={`/user/${user?.id}`} />
             </ProtectedRoute>
           }
         />
         <Route
-          path="/actions"
+          path="/editprofile"
           element={
             <ProtectedRoute>
-              <ActionsListPage />
+              <ProfilePageEdit />
             </ProtectedRoute>
+          }
+        />
+        <Route path="/user/:id" element={<UserProfilePage />} />
+        <Route
+          path="/actions"
+          element={
+            <PublicAppRoute>
+              <ActionsListPage />
+            </PublicAppRoute>
           }
         />
         <Route
           path="/announcements"
           element={
-            <ProtectedRoute>
+            <PublicAppRoute>
               <AnnouncementListPage />
-            </ProtectedRoute>
+            </PublicAppRoute>
           }
         />
         <Route
@@ -142,13 +171,14 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/announcements/:id"
+          path="/settings"
           element={
             <ProtectedRoute>
-              <AnnouncementPage />
+              <AccountPage />
             </ProtectedRoute>
           }
         />
+        <Route path="/announcements/:id" element={<AnnouncementPage />} />
         {isFeatureEnabled(Features.Forum) && (
           <>
             <Route

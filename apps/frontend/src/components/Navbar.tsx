@@ -4,10 +4,10 @@ import NavbarHorizontal from "./NavbarHorizontal";
 
 export enum NavbarPage {
   Dashboard = "Dashboard",
-  CurrentActions = "Current Actions",
+  CurrentActions = "Actions",
   Announcements = "Announcements",
   Forum = "Forum",
-  Account = "Account",
+  Profile = "Profile",
   Platform = "Platform",
   Settings = "Settings",
 }
@@ -15,10 +15,9 @@ export enum NavbarPage {
 export const links: NavbarPage[] = [
   NavbarPage.Dashboard,
   NavbarPage.CurrentActions,
-  NavbarPage.Announcements,
   NavbarPage.Forum,
-  //   NavbarPage.Platform,
-  NavbarPage.Account,
+  NavbarPage.Profile,
+  NavbarPage.Settings,
 ];
 
 export const destinations: Record<NavbarPage, string> = {
@@ -26,16 +25,15 @@ export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.CurrentActions]: "/actions",
   [NavbarPage.Announcements]: "/announcements",
   [NavbarPage.Forum]: "/forum",
-  [NavbarPage.Account]: "/account",
+  [NavbarPage.Profile]: "/profile",
   [NavbarPage.Platform]: "/platform",
   [NavbarPage.Settings]: "/settings",
 };
 
 export const platformSublinks = [
-  { text: "Overview", to: "/platform" },
-  { text: "Resources", to: "/platform/resources" },
-  { text: "Updates", to: "/platform/updates" },
-  { text: "Staff", to: "/platform/staff" },
+  { text: "About", to: "/about" },
+  { text: "Resources", to: "/resources" },
+  { text: "Governance", to: "/platform/governance" },
 ];
 
 export interface NavbarProps {

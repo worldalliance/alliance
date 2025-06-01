@@ -1,4 +1,4 @@
-import { ActionDto } from "@alliance/shared/client";
+import { ActionDto } from "../../../../shared/client";
 import ActionItemCard from "./ActionItemCard";
 import { ButtonColor } from "./system/Button";
 import Button from "./system/Button";
@@ -14,8 +14,10 @@ export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
 
   return (
     <div className="flex flex-col gap-y-2">
-      <div className="flex flex-row items-center gap-x-2 justify-between w-full mt-5">
-        <h1 className="text-[#111] !text-[16pt] font-font">New Actions</h1>
+      <div className="flex flex-row items-center gap-x-2 justify-between w-full my-3">
+        <h1 className="text-[#111] !text-[16pt] font-font">
+          Actions happening now
+        </h1>
         <Button color={ButtonColor.Light} onClick={() => navigate("/actions")}>
           See all actions
         </Button>

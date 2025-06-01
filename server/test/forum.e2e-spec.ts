@@ -4,24 +4,28 @@ import { ActionStatus } from '../src/actions/entities/action-event.entity';
 import { CreatePostDto } from '../src/forum/dto/post.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { ForumModule } from '../src/forum/forum.module';
+import { Repository } from 'typeorm';
+import { User } from 'src/user/user.entity';
 
 describe('Forum (e2e)', () => {
   let ctx: TestContext;
-
+  let actionRepo: Repository<Action>;
   let testAction: Action;
+  let userRepo: Repository<User>;
 
   beforeAll(async () => {
     ctx = await createTestApp([ForumModule]);
-
+    actionRepo = ctx.dataSource.getRepository(Action);
+    userRepo = ctx.dataSource.getRepository(User);
     // Create test action
-    testAction = ctx.actionRepo.create({
+    testAction = actionRepo.create({
       name: 'Test Action',
       category: 'Test',
       whyJoin: 'For testing',
       description: 'Test action for forum tests',
       status: ActionStatus.Active,
     });
-    await ctx.actionRepo.save(testAction);
+    await actionRepo.save(testAction);
   });
 
   describe('Posts', () => {
@@ -266,12 +270,12 @@ describe('Forum (e2e)', () => {
 
     it("should not allow updating another user's reply", async () => {
       // Create a second user
-      const anotherUser = ctx.userRepo.create({
+      const anotherUser = userRepo.create({
         email: 'anotheruser@test.com',
         password: 'password',
         name: 'Another Test User',
       });
-      await ctx.userRepo.save(anotherUser);
+      await userRepo.save(anotherUser);
 
       // Create token for another user
       const anotherToken = ctx.jwtService.sign(
@@ -306,10 +310,5 @@ describe('Forum (e2e)', () => {
         })
         .expect(404);
     });
-  });
-
-  afterEach(async () => {
-    await ctx.replyRepo.query('DELETE FROM reply');
-    await ctx.postRepo.query('DELETE FROM post');
   });
 });

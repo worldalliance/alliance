@@ -1,11 +1,25 @@
 import { StoryObj, Meta } from "@storybook/react";
 import HomePage from "../pages/app/HomePage";
+import { HttpResponse } from "msw";
+import { testNotJoinedActions, testTodoActions } from "./testData";
+import { http } from "msw";
 
 const meta = {
   title: "Alliance/HomePage",
   component: HomePage,
   tags: ["page"],
-  parameters: {},
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/actions/withStatus", () => {
+          return HttpResponse.json([
+            ...testTodoActions,
+            ...testNotJoinedActions,
+          ]);
+        }),
+      ],
+    },
+  },
   args: {},
 } satisfies Meta<typeof HomePage>;
 

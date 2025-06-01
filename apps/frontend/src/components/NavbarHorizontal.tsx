@@ -10,6 +10,7 @@ import DropdownLink from "./DropdownLink";
 import LandingNavbar from "./LandingNavbar";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../lib/config";
+import NotificationsIcon from "./NotificationsIcon";
 
 export type InnerNavbarProps = Pick<NavbarProps, "currentPage">;
 
@@ -25,8 +26,8 @@ const NavbarHorizontal: React.FC<InnerNavbarProps> = () => {
   return (
     <div
       className="
-      flex flex-row  border-zinc-400 border-b
-    w-screen text-left space-x-10 items-center justify-center pl-6 sticky"
+      flex flex-row border-stone-300 border-b
+    w-screen text-left space-x-10 items-center pl-10 sticky justify-center"
     >
       {/* <Link to="/">
         <h1 className="font-bold font-berlingske !text-[16pt] cursor-pointer">
@@ -49,6 +50,9 @@ const NavbarHorizontal: React.FC<InnerNavbarProps> = () => {
             </Link>
           )
         )}
+      </div>
+      <div className="absolute right-10">
+        <NotificationsIcon />
       </div>
     </div>
   );

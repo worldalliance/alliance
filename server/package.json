@@ -26,7 +26,6 @@
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/mapped-types": "*",
-    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.1.5",
     "@nestjs/typeorm": "^11.0.0",
@@ -75,7 +74,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.31.1"
+    "typescript-eslint": "^8.33.0"
   },
   "jest": {
     "moduleFileExtensions": [

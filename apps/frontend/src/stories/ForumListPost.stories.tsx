@@ -7,7 +7,12 @@ const samplePost: PostDto = {
   title: "How should the alliance handle forum post styling?",
   content:
     "We need to discuss how we should handle forum post styling. I think we should use the same styling as the website.",
-  author: { name: "John Doe", email: "john.doe@example.com" },
+  author: {
+    name: "John Doe",
+    email: "john.doe@example.com",
+    id: 0,
+    admin: false,
+  },
   action: {
     id: 1,
     name: "Nestle Rainforest Purchase",
@@ -19,6 +24,7 @@ const samplePost: PostDto = {
     createdAt: "",
     updatedAt: "",
     usersJoined: 0,
+    timeEstimate: "",
   },
   replies: [],
   authorId: 1,
@@ -35,6 +41,8 @@ export const ManyPosts: Story = {
             key={index}
             post={samplePost}
             handleViewPost={() => {}}
+            first={index === 0}
+            last={index === 9}
           />
         ))}
       </div>

@@ -9,6 +9,7 @@ import Button, { ButtonColor } from "./system/Button";
 
 // Import the dropdown icon
 import expandArrow from "../assets/icons8-expand-arrow-96.png";
+import { formatDistanceToNow } from "date-fns";
 
 export interface TaskCardProps {
   action: Pick<
@@ -70,24 +71,22 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
         setTimeout(() => {
           onComplete(action.id);
         }, 500);
-      }, 500);
+      }, 1000);
     }
-  }, [state]);
+  }, [state, action, onComplete]);
 
   const timeRemaining = useMemo(() => {
-    const millis =
-      new Date(action.myRelation?.deadline).getTime() - new Date().getTime();
-    const days = Math.floor(millis / 1000 / 60 / 60 / 24);
-    const hours = Math.floor(
-      (millis - days * 1000 * 60 * 60 * 24) / (1000 * 60 * 60)
+    if (!action.myRelation?.deadline) return null;
+    return (
+      formatDistanceToNow(new Date(action.myRelation.deadline), {}) +
+      " to complete"
     );
-    return `${days} days, ${hours} hours to complete`;
   }, [action.myRelation?.deadline]);
 
   return (
     <Card
       style={CardStyle.White}
-      className={`px-5 transition-all duration-500 w-full overflow-hidden relative
+      className={` transition-all duration-500 w-full overflow-hidden relative
          ${state === TaskCardState.Expanded ? "pb-4" : ""}
           ${state === TaskCardState.Closed ? "py-0 border-0" : ""}`}
       closed={state === TaskCardState.Closed}
@@ -107,13 +106,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
           <p className="font-bold text-[12pt] pt-[1px]">{action.name}</p>
         </div>
         <div className="flex flex-row items-center gap-x-2">
-          <ProgressCircle
-            value={50}
-            strokeWidth={10}
-            variant="neutral"
-            className="w-5 h-5"
-          />
-          <p className="text-[12pt] pt-[1px] text-gray-600">{timeRemaining}</p>
+          {action.myRelation.deadline && (
+            <>
+              <ProgressCircle
+                value={50}
+                strokeWidth={10}
+                variant="neutral"
+                className="w-5 h-5"
+              />
+              <p className="text-[12pt] pt-[1px] text-gray-600">
+                {timeRemaining}
+              </p>
+            </>
+          )}
         </div>
       </div>
 
@@ -126,7 +131,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
               <Button color={ButtonColor.Light} onClick={goToActionPage}>
                 Details
               </Button>
-              <Button color={ButtonColor.Blue} onClick={handleCompleteClick}>
+              <Button color={ButtonColor.Green} onClick={handleCompleteClick}>
                 Complete Task
               </Button>
             </div>
@@ -152,13 +157,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
       )}
       {(state === TaskCardState.Completed ||
         state === TaskCardState.Closed) && (
-        <div className="absolute top-0 left-0 bottom-0 right-0 bg-green-100 flex justify-center items-center">
-          <p
-            className={`font-bold text-[14pt] transition-colors duration-500 ${
-              state === TaskCardState.Closed ? "text-green-100" : "text-black"
-            }`}
-          >
-            Great work!
+        <div
+          className={`absolute top-0 left-0 bottom-0 right-0 bg-[#bfe6a1] flex justify-center items-center gap-x-3 transition-colors duration-500 ${
+            state === TaskCardState.Closed ? "text-[#bfe6a1]" : "text-black"
+          }`}
+        >
+          <p className={`font-bold text-[14pt]`}>Great work!</p>
+          <p className="text-[12pt] ">
+            We'll let you know when we have results
           </p>
         </div>
       )}

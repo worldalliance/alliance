@@ -40,6 +40,10 @@ export class Action {
   @IsNotEmpty()
   description: string;
 
+  @Column({ nullable: true })
+  @ApiProperty()
+  timeEstimate: string;
+
   @Column()
   @ApiProperty({
     description: 'Current status of the action',
@@ -78,7 +82,9 @@ export class Action {
   get usersJoined(): number {
     return (
       this.userRelations?.filter(
-        (ur) => ur.status === UserActionRelation.joined,
+        (ur) =>
+          ur.status === UserActionRelation.joined ||
+          ur.status === UserActionRelation.completed,
       ).length || 0
     );
   }

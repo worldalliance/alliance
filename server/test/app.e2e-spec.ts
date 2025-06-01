@@ -15,6 +15,8 @@ import { Image } from '../src/images/entities/image.entity';
 import { ImagesModule } from '../src/images/images.module';
 import { CommuniquesModule } from '../src/communiques/communiques.module';
 import { Communique } from '../src/communiques/entities/communique.entity';
+import { Friend } from '../src/user/friend.entity';
+import { Notification } from '../src/notifs/entities/notification.entity';
 import { ActionEvent } from '../src/actions/entities/action-event.entity';
 
 describe('AppController (e2e)', () => {
@@ -33,7 +35,16 @@ describe('AppController (e2e)', () => {
         TypeOrmModule.forRoot({
           type: 'sqlite',
           database: ':memory:',
-          entities: [User, Action, UserAction, Image, Communique, ActionEvent],
+          entities: [
+            User,
+            Action,
+            UserAction,
+            Image,
+            Communique,
+            Friend,
+            Notification,
+            ActionEvent
+          ],
           synchronize: true,
         }),
         ImagesModule,

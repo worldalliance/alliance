@@ -158,4 +158,11 @@ export class ForumService {
 
     await this.replyRepository.delete(id);
   }
+
+  async findPostsByUser(userId: number): Promise<Post[]> {
+    return this.postRepository.find({
+      where: { authorId: userId },
+      relations: ['author', 'action'],
+    });
+  }
 }

@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { ForumService } from './forum.service';
 import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
@@ -53,6 +54,13 @@ export class ForumController {
   @ApiOkResponse({ type: PostDto })
   findOnePost(@Param('id') id: string): Promise<PostDto> {
     return this.forumService.findOnePost(+id);
+  }
+
+  @Get('posts/user/:id')
+  @ApiOperation({ summary: 'Get all posts by a specific user' })
+  @ApiOkResponse({ type: [PostDto] })
+  findPostsByUser(@Param('id', ParseIntPipe) id: number): Promise<PostDto[]> {
+    return this.forumService.findPostsByUser(id);
   }
 
   @Patch('posts/:id')

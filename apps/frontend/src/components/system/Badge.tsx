@@ -7,7 +7,7 @@ interface BadgeProps extends PropsWithChildren {
 const Badge: React.FC<BadgeProps> = ({ children, className }) => {
   return (
     <div
-      className={`px-2 !font-itc whitespace-nowrap rounded-md flex items-center justify-center text-[9pt] bg-slate-600 text-white py-[3px] pb-[1px] ${className ?? ""}`}
+      className={`${className ?? ""} px-3 whitespace-nowrap rounded-md flex items-center justify-center text-[10pt] bg-slate-600 text-white py-1 pb-[2px] `}
     >
       {children}
     </div>

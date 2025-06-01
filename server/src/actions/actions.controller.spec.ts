@@ -8,7 +8,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { User } from '../user/user.entity';
 import { UserAction } from './entities/user-action.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-
+import { Friend } from '../user/friend.entity';
 describe('ActionsController', () => {
   let controller: ActionsController;
 
@@ -30,6 +30,10 @@ describe('ActionsController', () => {
         },
         {
           provide: getRepositoryToken(User),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(Friend),
           useValue: {},
         },
       ],

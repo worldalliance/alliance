@@ -12,11 +12,16 @@
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
+  "overrides": {
+    "react-is": "^19.0.0"
+  },
   "dependencies": {
     "@alliance/shared": "workspace:*",
     "@hey-api/openapi-ts": "^0.67.3",
+    "@remixicon/react": "^4.6.0",
     "@storybook/react": "^8.6.12",
     "@tailwindcss/vite": "^4.1.4",
+    "classnames": "^2.5.1",
     "clsx": "^2.1.1",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
@@ -39,7 +44,6 @@
     "@hey-api/client-fetch": "^0.10.0",
     "@storybook/addon-essentials": "^8.6.12",
     "@storybook/addon-interactions": "^8.6.12",
-    "@storybook/addon-onboarding": "^8.6.12",
     "@storybook/blocks": "^8.6.12",
     "@storybook/react-vite": "^8.6.12",
     "@storybook/test": "^8.6.12",

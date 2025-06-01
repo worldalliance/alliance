@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../user/user.entity';
@@ -32,7 +36,7 @@ export class AuthService {
         httpOnly: true,
         secure,
         sameSite: 'strict',
-        path: '/auth/refresh', // refresh cookie sent only to this route
+        path: '/auth/refresh',
         maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
       });
     }
@@ -44,6 +48,9 @@ export class AuthService {
   }
 
   async register(signUp: SignUpDto): Promise<User> {
+    if (await this.usersService.findOneByEmail(signUp.email)) {
+      throw new BadRequestException('User already exists');
+    }
     const user = await this.usersService.create(signUp);
     return user;
   }

@@ -48,5 +48,9 @@ export class UserAction {
 
   @ApiProperty()
   @Column({ nullable: true })
+  dateCompleted: Date;
+
+  @ApiProperty()
+  @Column({ nullable: true })
   deadline: Date;
 }

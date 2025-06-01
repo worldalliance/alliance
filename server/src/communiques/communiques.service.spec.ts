@@ -4,7 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Communique } from './entities/communique.entity';
 import { UserService } from '../user/user.service';
 import { User } from '../user/user.entity';
-
+import { Friend } from '../user/friend.entity';
 describe('CommuniquesService', () => {
   let service: CommuniquesService;
 
@@ -19,6 +19,10 @@ describe('CommuniquesService', () => {
         },
         {
           provide: getRepositoryToken(User),
+          useValue: {},
+        },
+        {
+          provide: getRepositoryToken(Friend),
           useValue: {},
         },
       ],

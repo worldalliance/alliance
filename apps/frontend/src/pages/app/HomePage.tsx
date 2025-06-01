@@ -5,10 +5,7 @@ import {
   actionsComplete,
   actionsFindAllWithStatus,
 } from "../../../../../shared/client";
-import { client } from "../../../../../shared/client/client.gen";
 import { useAuth } from "../../lib/AuthContext";
-import { getApiUrl } from "../../lib/config";
-import { useNavigate } from "react-router-dom";
 import { HomeNewActionsView } from "../../components/HomeNewActionsView";
 
 const HomePage: React.FC = () => {
@@ -16,7 +13,6 @@ const HomePage: React.FC = () => {
   const [todoActions, setTodoActions] = useState<ActionDto[]>([]);
   const [newActions, setNewActions] = useState<ActionDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const { loading: authLoading } = useAuth();
 
   console.log(actions);
@@ -33,23 +29,20 @@ const HomePage: React.FC = () => {
     );
   }, []);
 
+  console.log(todoActions);
+
   useEffect(() => {
     if (authLoading) return;
-    client.setConfig({
-      baseUrl: getApiUrl(),
-      credentials: "include",
-    });
+
     actionsFindAllWithStatus()
       .then(({ data }) => {
+        console.log(data);
         if (data) {
           updateActions(data);
         }
       })
-      .catch(() => setError("Failed to load actions"))
-      .finally(() => setLoading(false));
-  }, [authLoading]);
-
-  const navigate = useNavigate();
+      .catch(() => setError("Failed to load actions"));
+  }, [authLoading, updateActions]);
 
   const handleTaskComplete = (actionId: number) => {
     actionsComplete({ path: { id: actionId.toString() } }).then(() => {
@@ -61,10 +54,12 @@ const HomePage: React.FC = () => {
     <div className="flex flex-col w-full h-full items-center bg-white">
       <div className="flex flex-col py-12 w-[600px] gap-y-5 overflow-y-auto">
         {error && <p className="text-red-500">{error}</p>}
-        <HomeTaskView
-          actions={todoActions}
-          onTaskComplete={handleTaskComplete}
-        />
+        {todoActions.length > 0 && (
+          <HomeTaskView
+            actions={todoActions}
+            onTaskComplete={handleTaskComplete}
+          />
+        )}
         <HomeNewActionsView actions={newActions} />
       </div>
     </div>

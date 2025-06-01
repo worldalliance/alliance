@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import Card, { CardStyle } from "./system/Card";
 import { Status } from "./StatusIndicator";
 import StatusIndicator from "./StatusIndicator";
-import Badge from "./system/Badge";
 
 export interface ActionPromptCardProps {
   title: string;
@@ -14,7 +13,6 @@ export interface ActionPromptCardProps {
 const ActionPromptCard: React.FC<ActionPromptCardProps> = ({
   title,
   description,
-  category,
   id,
 }) => {
   const navigate = useNavigate();

@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   ActionDto,
+  ActionWithRelationDto,
   CreateActionDto,
   UpdateActionDto,
   ActionEventDto,
 } from './dto/action.dto';
+
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
 import { ActionEvent, ActionStatus } from './entities/action-event.entity';
@@ -37,10 +39,18 @@ export class ActionsService {
     return this.actionRepository.find();
   }
 
-  findPublic(): Promise<Action[]> {
-    return this.actionRepository.find({
-      where: { status: Not(ActionStatus.Draft) },
-    });
+  findPublic(): Promise<ActionDto[]> {
+    return this.actionRepository
+      .find({
+        where: { status: Not(ActionStatus.Draft) },
+        relations: ['userRelations'],
+      })
+      .then((actions) => {
+        return actions.map((action) => ({
+          ...action,
+          usersJoined: action.usersJoined,
+        }));
+      });
   }
 
   async findPublicWithRelation(userId: number): Promise<ActionDto[]> {
@@ -199,5 +209,37 @@ export class ActionsService {
         },
       }),
     );
+  }
+
+  async countCommittedBulk(ids: number[]): Promise<Record<number, number>> {
+    if (!ids.length) return {};
+
+    const rows = await this.userActionRepository
+      .createQueryBuilder('ua')
+      .select('ua.actionId', 'id')
+      .addSelect('COUNT(*)', 'count')
+      .where('ua.actionId IN (:...ids)', { ids })
+      .andWhere('ua.status IN (:...statuses)', {
+        statuses: ['joined', 'completed'],
+      })
+      .groupBy('ua.actionId')
+      .getRawMany<{ id: string; count: string }>();
+
+    const map: Record<number, number> = {};
+    rows.forEach((r) => (map[+r.id] = +r.count));
+    ids.forEach((id) => (map[id] ??= 0));
+    return map;
+  }
+
+  async findCompletedForUser(userId: number): Promise<ActionWithRelationDto[]> {
+    const userActions = await this.userActionRepository.find({
+      where: { user: { id: userId }, status: UserActionRelation.completed },
+      relations: ['action', 'user'],
+    });
+    return userActions.map((ua) => ({
+      ...ua.action,
+      relation: ua,
+      usersJoined: ua.action.usersJoined,
+    }));
   }
 }

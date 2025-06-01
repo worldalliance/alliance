@@ -5,11 +5,11 @@ import { useAuth } from "../../lib/AuthContext";
 import FormInput from "../../components/system/FormInput";
 import { AdminOnly } from "../../lib/AdminOnly";
 import Badge from "../../components/system/Badge";
+import FriendsTab from "../../components/FriendsTab";
 
 const AccountPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -46,7 +46,7 @@ const AccountPage: React.FC = () => {
           <div className="flex flex-row items-center gap-2">
             <h1 className="text-2xl font-sabon">Account</h1>
             <AdminOnly>
-              <Badge className="bg-amber-500">Admin</Badge>
+              <Badge className="!bg-yellow-600">Admin</Badge>
             </AdminOnly>
           </div>
           <Button
@@ -57,15 +57,6 @@ const AccountPage: React.FC = () => {
             Log Out
           </Button>
         </div>
-
-        {error && (
-          <Card
-            style={CardStyle.Alert}
-            className="border-red-400 bg-red-50 mb-6"
-          >
-            <span className="text-red-700">{error}</span>
-          </Card>
-        )}
 
         <Card style={CardStyle.White} className="p-8 mb-6">
           <div className="mb-6">
@@ -90,6 +81,9 @@ const AccountPage: React.FC = () => {
             />
           </div>
         </Card>
+
+        {/* The FriendsTab component handles all friend-related functionality */}
+        <FriendsTab userId={user.id} />
       </div>
     </div>
   );

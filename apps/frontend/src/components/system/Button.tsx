@@ -13,16 +13,22 @@ type ButtonProps = React.PropsWithChildren & {
         type?: "button" | "reset";
         onClick: (e: React.MouseEvent) => void;
       }
-  );
+  ) &
+  Pick<
+    React.HTMLAttributes<HTMLButtonElement>,
+    "onMouseEnter" | "onMouseLeave"
+  >;
 
 export enum ButtonColor {
   Stone = "bg-stone-700",
-  Green = "bg-green-500",
+  Green = "bg-[#5d9c2d]",
   Red = "bg-red-500",
   Light = "bg-stone-200",
-  Blue = "bg-cyan-600",
+  Blue = "bg-[#318dde]",
+  Yellow = "bg-yellow-600",
   Transparent = "transparent",
   Grey = "bg-gray-200 !text-black",
+  Outline = "border border-stone-300",
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -32,18 +38,23 @@ const Button: React.FC<ButtonProps> = ({
   color: colorProp,
   type = "button",
   disabled = false,
+  onMouseEnter,
+  onMouseLeave,
 }) => {
   const color = colorProp ?? ButtonColor.Stone;
   return (
     <button
       type={type}
-      className={`px-3 py-1 w-fit h-fit rounded ${className} ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-${ButtonColorClasses[color]}-100"} font-newsreader ${
+      className={`px-4 py-[8px] pt-[10px] w-fit h-fit rounded flex items-center justify-center ${className} ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-${ButtonColorClasses[color]}-100"} font-newsreader ${
         color === ButtonColor.Transparent
-          ? "bg-transparent text-black hover:bg-black/10 pt-2"
-          : "text-white py-1 pt-2"
+          ? "bg-transparent text-black hover:bg-black/10"
+          : "text-white"
       }  ${color} ${color === ButtonColor.Light ? "!text-stone-800" : ""}`}
       onClick={onClick}
       disabled={disabled}
+      style={{ fontWeight: 450 }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       {children}
     </button>

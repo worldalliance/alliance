@@ -15,10 +15,14 @@ import { UserAction } from '../actions/entities/user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Communique } from '../communiques/entities/communique.entity';
 import { IsNotEmpty } from 'class-validator';
+import { FriendStatus } from './friend.entity';
+import { Friend } from './friend.entity';
+import { Notification } from '../notifs/entities/notification.entity';
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
+  @ApiProperty()
   id: number;
 
   @Column()
@@ -49,8 +53,40 @@ export class User {
   @OneToMany(() => UserAction, (userAction) => userAction.user)
   actionRelations: UserAction[];
 
+  @Column({ nullable: true })
+  @ApiProperty({ nullable: true })
+  profilePicture: string;
+
+  @Column({ nullable: true })
+  @ApiProperty({ nullable: true })
+  profileDescription: string;
+
   @ManyToMany(() => Communique, (communique) => communique.usersRead)
   communiquesRead: Communique[];
+
+  @OneToMany(() => UserAction, (userAction) => userAction.user)
+  actionRelations: UserAction[];
+
+  @OneToMany(() => Friend, (friend) => friend.requester)
+  sentFriendRequests: Friend[];
+
+  @OneToMany(() => Friend, (friend) => friend.addressee)
+  receivedFriendRequests: Friend[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
+
+  get friends(): User[] {
+    const sentAccepted =
+      this.sentFriendRequests
+        ?.filter((f) => f.status === FriendStatus.Accepted)
+        .map((f) => f.addressee) || [];
+    const receivedAccepted =
+      this.receivedFriendRequests
+        ?.filter((f) => f.status === FriendStatus.Accepted)
+        .map((f) => f.requester) || [];
+    return [...sentAccepted, ...receivedAccepted];
+  }
 
   constructor(data: Partial<User> = {}) {
     Object.assign(this, data);

@@ -7,6 +7,7 @@ import { ActionDto } from "@alliance/shared/client/types.gen";
 export interface ActionItemCardProps
   extends Pick<ActionDto, "name" | "description" | "category" | "id"> {
   className?: string;
+  liveCount?: number;
 }
 
 const ActionItemCard: React.FC<ActionItemCardProps> = ({
@@ -15,6 +16,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   description,
   category,
   className,
+  liveCount,
 }) => {
   const navigate = useNavigate();
 
@@ -29,6 +31,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
           <p className="font-bold">{name}</p>
           <Badge>{category}</Badge>
         </div>
+        {liveCount !== undefined && <p>Count: {liveCount}</p>}
         <div className="flex items-center justify-between ">
           <p>{description}</p>
         </div>

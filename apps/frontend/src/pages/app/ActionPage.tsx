@@ -11,16 +11,20 @@ import {
   actionsMyStatus,
 } from "../../../../../shared/client";
 import { ActionDto, UserActionDto } from "../../../../../shared/client";
-import { getApiUrl, isFeatureEnabled } from "../../lib/config";
+import { getImageSource, isFeatureEnabled } from "../../lib/config";
 import ActionForumPosts from "../../components/ActionForumPosts";
 import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
+import { useAuth } from "../../lib/AuthContext";
+import ActionEventsPanel from "../../components/ActionEventsPanel";
 const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
   const [action, setAction] = useState<ActionDto | undefined>(undefined);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { isAuthenticated } = useAuth();
 
   const [userRelation, setUserRelation] = useState<
     UserActionDto["status"] | null
@@ -36,23 +40,28 @@ const ActionPage: React.FC = () => {
           path: { id: parseInt(actionId) },
         });
 
+        console.log("response", response);
+
         if (response.error) {
           throw new Error("Failed to fetch action");
         }
 
-        const userStatusResponse = await actionsMyStatus({
-          path: { id: actionId },
-        });
-
-        console.log("userStatusResponse", userStatusResponse);
-        if (userStatusResponse.error) {
-          throw new Error("Failed to fetch user status");
-        }
-        if (userStatusResponse.data) {
-          setUserRelation(userStatusResponse.data.status);
-        }
-
         setAction(response.data);
+
+        if (isAuthenticated) {
+          const userStatusResponse = await actionsMyStatus({
+            path: { id: actionId },
+          });
+
+          console.log("userStatusResponse", userStatusResponse);
+          if (userStatusResponse.error) {
+            throw new Error("Failed to fetch user status");
+          }
+          if (userStatusResponse.data) {
+            setUserRelation(userStatusResponse.data.status);
+          }
+        }
+
         setLoading(false);
       } catch (err) {
         setError("Failed to load action details. Please try again later.");
@@ -62,7 +71,7 @@ const ActionPage: React.FC = () => {
     };
 
     fetchAction();
-  }, [actionId]);
+  }, [actionId, isAuthenticated]);
 
   const onJoinAction = useCallback(async () => {
     if (!actionId) return;
@@ -81,20 +90,20 @@ const ActionPage: React.FC = () => {
     }
   }, [actionId]);
 
-  const evtSource = new EventSource(`${getApiUrl()}/actions/live/${actionId}`);
-  evtSource.onmessage = (e) => {
-    const newUserCount = Number(e.data);
-    if (newUserCount !== action?.usersJoined && action) {
-      setAction({ ...action, usersJoined: newUserCount });
-    }
-  };
+  //   const evtSource = new EventSource(`${getApiUrl()}/actions/live/${actionId}`);
+  //   evtSource.onmessage = (e) => {
+  //     const newUserCount = Number(e.data);
+  //     if (newUserCount !== action?.usersJoined && action) {
+  //       setAction({ ...action, usersJoined: newUserCount });
+  //     }
+  //   };
 
   const mainContent = (
     <>
       <div className="flex flex-col gap-y-3 flex-2 p-10 px-20">
         {action?.image && (
           <img
-            src={`${getApiUrl()}/images/${action.image}`}
+            src={getImageSource(action.image)}
             alt={action.name}
             className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
           />
@@ -120,7 +129,7 @@ const ActionPage: React.FC = () => {
             </Button>
           )}
         </div>
-        {userRelation === "joined" && <PokePanel />}
+        {/* {userRelation === "joined" && <PokePanel />} */}
         {userRelation === "none" && (
           <Card style={CardStyle.Grey} className="mb-5">
             <h2>Why Join?</h2>
@@ -130,7 +139,10 @@ const ActionPage: React.FC = () => {
             </p>
           </Card>
         )}
-        <h2>What you can do</h2>
+        {action && userRelation !== "none" && (
+          <ActionEventsPanel action={action} />
+        )}
+        <h2 className="!mt-8">What you can do</h2>
         <p>
           {action?.description ||
             "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}

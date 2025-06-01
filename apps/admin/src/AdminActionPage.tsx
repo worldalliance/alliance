@@ -32,6 +32,7 @@ const AdminActionPage: React.FC = () => {
     description: "",
     status: "Draft",
     image: "",
+    timeEstimate: "",
   });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ const AdminActionPage: React.FC = () => {
           description: actionData.description,
           status: actionData.status,
           image: actionData.image || "",
+          timeEstimate: actionData.timeEstimate,
         });
 
         setLoading(false);
@@ -117,7 +119,7 @@ const AdminActionPage: React.FC = () => {
       if (!response.data) {
         throw new Error("Failed to upload image");
       }
-      return response.data.filename as string;
+      return response.data.filename;
     } catch (err) {
       console.error("Error uploading image:", err);
       setError("Failed to upload image. Please try again.");
@@ -162,7 +164,7 @@ const AdminActionPage: React.FC = () => {
           throw new Error("Action ID is required");
         }
         const response = await actionsUpdate({
-          path: { id },
+          path: { id: parseInt(id) },
           body: formData,
         });
         const updatedAction = response.data;
@@ -194,7 +196,7 @@ const AdminActionPage: React.FC = () => {
       try {
         setLoading(true);
         const response = await actionsRemove({
-          path: { id },
+          path: { id: parseInt(id) },
         });
         if (response.error) {
           throw new Error("Failed to delete action");

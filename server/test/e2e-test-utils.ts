@@ -1,7 +1,7 @@
 import { INestApplication, Type, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, useContainer } from 'typeorm';
 import { AuthModule } from '../src/auth/auth.module';
 import { ActionsModule } from '../src/actions/actions.module';
 import { UserModule } from '../src/user/user.module';
@@ -15,6 +15,12 @@ import { Image } from '../src/images/entities/image.entity';
 import { Post } from '../src/forum/entities/post.entity';
 import { Reply } from '../src/forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { Friend } from '../src/user/friend.entity';
+import { Notification } from '../src/notifs/entities/notification.entity';
+import TestAgent from 'supertest/lib/agent';
+import * as supertest from 'supertest';
+import { AppModule } from '../src/app.module';
+import * as cookieParser from 'cookie-parser';
 import { ActionEvent } from '../src/actions/entities/action-event.entity';
 
 export interface TestContext {
@@ -31,6 +37,7 @@ export interface TestContext {
   adminAccessToken: string;
   jwtService: JwtService;
   testUserId: number;
+  agent: TestAgent;
 }
 
 export async function createTestApp(
@@ -49,18 +56,9 @@ export async function createTestApp(
       TypeOrmModule.forRoot({
         type: 'sqlite',
         database: ':memory:',
-        entities: [
-          User,
-          Action,
-          ActionEvent,
-          UserAction,
-          Image,
-          Communique,
-          Post,
-          Reply,
-        ],
-        synchronize: true,
         dropSchema: true,
+        entities: [User, Action, UserAction, Image, Communique, Post, Reply, Friend, Notification],
+        synchronize: true,
       }),
       // Register all entities in a single forFeature call
       // TypeOrmModule.forFeature([
@@ -88,6 +86,7 @@ export async function createTestApp(
 
   // Configure global pipes
   app.useGlobalPipes(new ValidationPipe());
+  app.use(cookieParser());
 
   await app.init();
 
@@ -146,6 +145,15 @@ export async function createTestApp(
     { secret: process.env.JWT_SECRET },
   );
 
+  const agent = supertest.agent(app.getHttpServer());
+
+  // start agent as logged in user
+  await agent.post('/auth/login').send({
+    email: 'user@example.com',
+    password: 'pass',
+    mode: 'cookie',
+  });
+
   return {
     app,
     dataSource,
@@ -160,5 +168,6 @@ export async function createTestApp(
     adminAccessToken,
     jwtService,
     testUserId: user.id,
+    agent,
   };
 }

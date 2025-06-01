@@ -22,16 +22,39 @@ export type AccessToken = {
     access_token: string;
 };
 
-export type ProfileDto = {
+export type UserDto = {
     id: number;
     name: string;
     email: string;
     admin: boolean;
 };
 
+export type ProfileDto = {
+    id: number;
+    name: string;
+    email: string;
+    admin: boolean;
+    profilePicture: string | null;
+    profileDescription: string | null;
+};
+
+export type UpdateProfileDto = {
+    id?: number;
+    name?: string;
+    email?: string;
+    admin?: boolean;
+    profilePicture?: string | null;
+    profileDescription?: string | null;
+};
+
+export type FriendStatusDto = {
+    status: 'pending' | 'accepted' | 'declined' | 'none';
+};
+
 export type UserActionDto = {
     status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
     dateCommitted: string;
+    dateCompleted: string;
     deadline: string;
 };
 
@@ -42,6 +65,7 @@ export type ActionDto = {
     whyJoin: string;
     image: string;
     description: string;
+    timeEstimate: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
     usersJoined: number;
     myRelation: UserActionDto;
@@ -61,6 +85,7 @@ export type CreateActionDto = {
     whyJoin: string;
     image: string;
     description: string;
+    timeEstimate: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
     events?: ActionEventDto[];
 };
@@ -71,7 +96,21 @@ export type UpdateActionDto = {
     whyJoin?: string;
     image?: string;
     description?: string;
+    timeEstimate?: string;
     status?: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+};
+
+export type ActionWithRelationDto = {
+    id: number;
+    name: string;
+    category: string;
+    whyJoin: string;
+    image: string;
+    description: string;
+    timeEstimate: string;
+    status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    usersJoined: number;
+    relation: UserActionDto;
 };
 
 export type CreateCommuniqueDto = {
@@ -101,7 +140,8 @@ export type ReadResultDto = {
 };
 
 export type ImageResponseDto = {
-    [key: string]: unknown;
+    id: number;
+    filename: string;
 };
 
 export type DeleteImageResponseDto = {
@@ -121,6 +161,7 @@ export type Action = {
     whyJoin: string;
     image: string;
     description: string;
+    timeEstimate: string;
     status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
     createdAt: string;
     updatedAt: string;
@@ -128,10 +169,13 @@ export type Action = {
 };
 
 export type User = {
+    id: number;
     name: string;
     email: string;
     password: string;
     admin: boolean;
+    profilePicture: string | null;
+    profileDescription: string | null;
 };
 
 export type Post = {
@@ -156,11 +200,6 @@ export type Reply = {
     postId: number;
     createdAt: string;
     updatedAt: string;
-};
-
-export type UserDto = {
-    name: string;
-    email: string;
 };
 
 export type PostDto = {
@@ -200,6 +239,16 @@ export type ReplyDto = {
     createdAt: string;
     updatedAt: string;
     author: UserDto;
+};
+
+export type NotificationDto = {
+    id: number;
+    category: string;
+    message: string;
+    appLocation: string;
+    read: boolean;
+    createdAt: string;
+    updatedAt: string;
 };
 
 export type AppHealthCheckData = {
@@ -286,7 +335,7 @@ export type AuthMeData = {
 };
 
 export type AuthMeResponses = {
-    200: ProfileDto;
+    200: UserDto;
 };
 
 export type AuthMeResponse = AuthMeResponses[keyof AuthMeResponses];
@@ -301,6 +350,188 @@ export type AuthLogoutData = {
 export type AuthLogoutResponses = {
     200: unknown;
 };
+
+export type UserFindMeData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/me';
+};
+
+export type UserFindMeErrors = {
+    401: unknown;
+};
+
+export type UserFindMeResponses = {
+    200: ProfileDto;
+};
+
+export type UserFindMeResponse = UserFindMeResponses[keyof UserFindMeResponses];
+
+export type UserUpdateData = {
+    body: UpdateProfileDto;
+    path?: never;
+    query?: never;
+    url: '/user/update';
+};
+
+export type UserUpdateResponses = {
+    201: unknown;
+};
+
+export type UserFindOneData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/{id}';
+};
+
+export type UserFindOneErrors = {
+    401: unknown;
+};
+
+export type UserFindOneResponses = {
+    200: ProfileDto;
+};
+
+export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];
+
+export type UserRemoveFriendData = {
+    body?: never;
+    path: {
+        targetUserId: number;
+    };
+    query?: never;
+    url: '/user/friends/{targetUserId}';
+};
+
+export type UserRemoveFriendResponses = {
+    /**
+     * Relationship removed
+     */
+    200: unknown;
+};
+
+export type UserRequestFriendData = {
+    body?: never;
+    path: {
+        targetUserId: number;
+    };
+    query?: never;
+    url: '/user/friends/{targetUserId}';
+};
+
+export type UserRequestFriendResponses = {
+    /**
+     * Friend request is now pending
+     */
+    200: unknown;
+};
+
+export type UserAcceptFriendRequestData = {
+    body?: never;
+    path: {
+        requesterId: number;
+    };
+    query?: never;
+    url: '/user/friends/{requesterId}/accept';
+};
+
+export type UserAcceptFriendRequestResponses = {
+    /**
+     * Friend request accepted
+     */
+    200: unknown;
+};
+
+export type UserDeclineFriendRequestData = {
+    body?: never;
+    path: {
+        requesterId: number;
+    };
+    query?: never;
+    url: '/user/friends/{requesterId}/decline';
+};
+
+export type UserDeclineFriendRequestResponses = {
+    /**
+     * Friend request declined
+     */
+    200: unknown;
+};
+
+export type UserListReceivedRequestsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/requests/received';
+};
+
+export type UserListReceivedRequestsResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserListReceivedRequestsResponse = UserListReceivedRequestsResponses[keyof UserListReceivedRequestsResponses];
+
+export type UserListSentRequestsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/friends/requests/sent';
+};
+
+export type UserListSentRequestsResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserListSentRequestsResponse = UserListSentRequestsResponses[keyof UserListSentRequestsResponses];
+
+export type UserMyFriendRelationshipData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/myfriendrelationship/{id}';
+};
+
+export type UserMyFriendRelationshipResponses = {
+    200: FriendStatusDto;
+};
+
+export type UserMyFriendRelationshipResponse = UserMyFriendRelationshipResponses[keyof UserMyFriendRelationshipResponses];
+
+export type UserListFriendsData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/listfriends/{id}';
+};
+
+export type UserListFriendsResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserListFriendsResponse = UserListFriendsResponses[keyof UserListFriendsResponses];
+
+export type UserCountReferredData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/countreferred/{id}';
+};
+
+export type UserCountReferredResponses = {
+    200: number;
+};
+
+export type UserCountReferredResponse = UserCountReferredResponses[keyof UserCountReferredResponses];
 
 export type ActionsJoinData = {
     body?: never;
@@ -382,10 +613,36 @@ export type ActionsFindAllWithDraftsResponses = {
 
 export type ActionsFindAllWithDraftsResponse = ActionsFindAllWithDraftsResponses[keyof ActionsFindAllWithDraftsResponses];
 
+export type ActionsSseActionCountData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/live/{id}';
+};
+
+export type ActionsSseActionCountResponses = {
+    200: unknown;
+};
+
+export type ActionsLiveListData = {
+    body?: never;
+    path?: never;
+    query: {
+        ids: string;
+    };
+    url: '/actions/live-list';
+};
+
+export type ActionsLiveListResponses = {
+    200: unknown;
+};
+
 export type ActionsRemoveData = {
     body?: never;
     path: {
-        id: string;
+        id: number;
     };
     query?: never;
     url: '/actions/{id}';
@@ -417,7 +674,7 @@ export type ActionsFindOneResponse = ActionsFindOneResponses[keyof ActionsFindOn
 export type ActionsUpdateData = {
     body: UpdateActionDto;
     path: {
-        id: string;
+        id: number;
     };
     query?: never;
     url: '/actions/{id}';
@@ -439,6 +696,21 @@ export type ActionsCreateResponses = {
 };
 
 export type ActionsCreateResponse = ActionsCreateResponses[keyof ActionsCreateResponses];
+
+export type ActionsFindCompletedForUserData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/completed/{id}';
+};
+
+export type ActionsFindCompletedForUserResponses = {
+    200: Array<ActionWithRelationDto>;
+};
+
+export type ActionsFindCompletedForUserResponse = ActionsFindCompletedForUserResponses[keyof ActionsFindCompletedForUserResponses];
 
 export type CommuniquesFindAllData = {
     body?: never;
@@ -671,6 +943,21 @@ export type ForumUpdatePostResponses = {
 
 export type ForumUpdatePostResponse = ForumUpdatePostResponses[keyof ForumUpdatePostResponses];
 
+export type ForumFindPostsByUserData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/forum/posts/user/{id}';
+};
+
+export type ForumFindPostsByUserResponses = {
+    200: Array<PostDto>;
+};
+
+export type ForumFindPostsByUserResponse = ForumFindPostsByUserResponses[keyof ForumFindPostsByUserResponses];
+
 export type ForumCreateReplyData = {
     body: CreateReplyDto;
     path?: never;
@@ -711,6 +998,32 @@ export type ForumUpdateReplyResponses = {
 };
 
 export type ForumUpdateReplyResponse = ForumUpdateReplyResponses[keyof ForumUpdateReplyResponses];
+
+export type NotifsFindAllData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/notifs';
+};
+
+export type NotifsFindAllResponses = {
+    200: Array<NotificationDto>;
+};
+
+export type NotifsFindAllResponse = NotifsFindAllResponses[keyof NotifsFindAllResponses];
+
+export type NotifsSetReadData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/notifs/{id}';
+};
+
+export type NotifsSetReadResponses = {
+    200: unknown;
+};
 
 export type ClientOptions = {
     baseUrl: string;

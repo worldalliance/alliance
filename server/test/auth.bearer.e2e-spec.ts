@@ -15,6 +15,8 @@ import { Action } from '../src/actions/entities/action.entity';
 import { AuthController } from '../src/auth/auth.controller';
 import { Image } from '../src/images/entities/image.entity';
 import { Communique } from '../src/communiques/entities/communique.entity';
+import { Friend } from '../src/user/friend.entity';
+import { Notification } from '../src/notifs/entities/notification.entity';
 import { ActionEvent } from '../src/actions/entities/action-event.entity';
 describe('Auth (e2e)', () => {
   let app: INestApplication<App>;
@@ -27,14 +29,22 @@ describe('Auth (e2e)', () => {
           isGlobal: true,
           envFilePath: '.env.test',
         }),
-        TypeOrmModule.forFeature([User, Action, UserAction]),
         AuthModule,
         JwtModule,
         UserModule,
         TypeOrmModule.forRoot({
           type: 'sqlite',
           database: ':memory:',
-          entities: [User, Action, UserAction, Image, Communique, ActionEvent],
+          entities: [
+            User,
+            Action,
+            UserAction,
+            Image,
+            Communique, 
+            ActionEvent,
+            Friend,
+            Notification,
+          ],
           synchronize: true,
         }),
       ],

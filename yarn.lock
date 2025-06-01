@@ -58,9 +58,9 @@ __metadata:
     "@eslint/js": "npm:^9.22.0"
     "@hey-api/client-fetch": "npm:^0.10.0"
     "@hey-api/openapi-ts": "npm:^0.67.3"
+    "@remixicon/react": "npm:^4.6.0"
     "@storybook/addon-essentials": "npm:^8.6.12"
     "@storybook/addon-interactions": "npm:^8.6.12"
-    "@storybook/addon-onboarding": "npm:^8.6.12"
     "@storybook/blocks": "npm:^8.6.12"
     "@storybook/react": "npm:^8.6.12"
     "@storybook/react-vite": "npm:^8.6.12"
@@ -73,6 +73,7 @@ __metadata:
     "@types/three": "npm:^0.176.0"
     "@vitejs/plugin-react": "npm:^4.3.4"
     autoprefixer: "npm:^10.4.21"
+    classnames: "npm:^2.5.1"
     clsx: "npm:^2.1.1"
     d3: "npm:^7.9.0"
     date-fns: "npm:^4.1.0"
@@ -3220,6 +3221,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@remixicon/react@npm:^4.6.0":
+  version: 4.6.0
+  resolution: "@remixicon/react@npm:4.6.0"
+  peerDependencies:
+    react: ">=18.2.0"
+  checksum: 10c0/52e21dabd5b5149206f2ef2d8ff59e38a0b7f4a043435ba65b1b8d1c41c755daea84da6c64e80f2ada0e582b4436366dbcef318add96ec11393b08b259b49df8
+  languageName: node
+  linkType: hard
+
 "@rollup/pluginutils@npm:^5.0.2":
   version: 5.1.4
   resolution: "@rollup/pluginutils@npm:5.1.4"
@@ -3563,15 +3573,6 @@ __metadata:
   peerDependencies:
     storybook: ^8.6.12
   checksum: 10c0/1247ebf398b6297400d710a00d423c9d285c8af6f9bf7dd98a7734f54cc5689d7d3a3bf5a1e93847f5eb13d7edfe75900ac28b27932555292f09efe0c4093c28
-  languageName: node
-  linkType: hard
-
-"@storybook/addon-onboarding@npm:^8.6.12":
-  version: 8.6.12
-  resolution: "@storybook/addon-onboarding@npm:8.6.12"
-  peerDependencies:
-    storybook: ^8.6.12
-  checksum: 10c0/1dfdfff93b044efaf186d4011f250526187816197538e265ab26dacac1f1dc425f3676ba68874531aea151b142f76431c68e619e430565011124565748513292
   languageName: node
   linkType: hard
 
@@ -6347,6 +6348,13 @@ __metadata:
   dependencies:
     consola: "npm:^3.2.3"
   checksum: 10c0/d26ad82a9a4a8858c7e149d90b878a3eceecd4cfd3e2ed3cd5f9a06212e451fb4f8cbe0fa39a3acb1b3e8f18e22db8ee5def5829384bad50e823d4b301609b48
+  languageName: node
+  linkType: hard
+
+"classnames@npm:^2.5.1":
+  version: 2.5.1
+  resolution: "classnames@npm:2.5.1"
+  checksum: 10c0/afff4f77e62cea2d79c39962980bf316bacb0d7c49e13a21adaadb9221e1c6b9d3cdb829d8bb1b23c406f4e740507f37e1dcf506f7e3b7113d17c5bab787aa69
   languageName: node
   linkType: hard
 
