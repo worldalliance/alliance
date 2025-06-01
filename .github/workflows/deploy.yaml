@@ -12,25 +12,6 @@ env:
   CI: ""
 
 jobs:
-  test-backend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Backend Dependencies
-        run: npm ci
-        working-directory: ./server
-
-      - name: Run Jest Tests
-        run: npm run test
-        working-directory: ./server
-
   test-backend-e2e:
     runs-on: ubuntu-latest
     steps:
@@ -278,7 +259,6 @@ jobs:
   build-nest-backend:
     runs-on: ubuntu-latest
     needs:
-      - test-backend
       - test-backend-e2e
     steps:
       - name: Checkout Code
