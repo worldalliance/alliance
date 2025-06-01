@@ -54,7 +54,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@alliance/frontend@workspace:apps/frontend"
   dependencies:
-    "@alliance/shared": "workspace:*"
     "@eslint/js": "npm:^9.22.0"
     "@hey-api/client-fetch": "npm:^0.10.0"
     "@hey-api/openapi-ts": "npm:^0.67.3"
@@ -5276,8 +5275,6 @@ __metadata:
   dependencies:
     "@eslint/js": "npm:^9.28.0"
     eslint: "npm:^9.28.0"
-    eslint-plugin-import: "npm:^2.31.0"
-    eslint-plugin-workspaces: "npm:^0.11.0"
     typescript: "npm:^5.8.3"
     typescript-eslint: "npm:^8.33.0"
   languageName: unknown
@@ -8007,7 +8004,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-import@npm:^2.30.0, eslint-plugin-import@npm:^2.31.0":
+"eslint-plugin-import@npm:^2.30.0":
   version: 2.31.0
   resolution: "eslint-plugin-import@npm:2.31.0"
   dependencies:
@@ -8105,15 +8102,6 @@ __metadata:
     "@typescript-eslint/eslint-plugin":
       optional: true
   checksum: 10c0/3899f64b0e8b23fa6b81e2754fc10f93d8741e051d70390a8100ca39af7878bde8625f234b76111af69562ef2512104b52c3703e986ccb3ac9adc07911896acf
-  languageName: node
-  linkType: hard
-
-"eslint-plugin-workspaces@npm:^0.11.0":
-  version: 0.11.0
-  resolution: "eslint-plugin-workspaces@npm:0.11.0"
-  dependencies:
-    find-workspaces: "npm:^0.3.1"
-  checksum: 10c0/50506e150ba11d11eb0260782c3744060a72a645ea17baeac6b9a4c9df85feebba673338699562267cb579a6dbc4574e4a2bf79031863662edb4ca35f6fd54af
   languageName: node
   linkType: hard
 
@@ -8878,17 +8866,6 @@ __metadata:
     locate-path: "npm:^6.0.0"
     path-exists: "npm:^4.0.0"
   checksum: 10c0/062c5a83a9c02f53cdd6d175a37ecf8f87ea5bbff1fdfb828f04bfa021441bc7583e8ebc0872a4c1baab96221fb8a8a275a19809fb93fbc40bd69ec35634069a
-  languageName: node
-  linkType: hard
-
-"find-workspaces@npm:^0.3.1":
-  version: 0.3.1
-  resolution: "find-workspaces@npm:0.3.1"
-  dependencies:
-    fast-glob: "npm:^3.3.2"
-    pkg-types: "npm:^1.0.3"
-    yaml: "npm:^2.3.4"
-  checksum: 10c0/e28dd30a753d9cabc1c9e94746ef75be181ce6403d9987c9efac7379ab94c8f776f541acd342907f3077cf288b6464dc807b30b57b2ded96a3e1caca0da3b10a
   languageName: node
   linkType: hard
 
@@ -12915,7 +12892,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pkg-types@npm:^1.0.3, pkg-types@npm:^1.2.0, pkg-types@npm:^1.3.0, pkg-types@npm:^1.3.1":
+"pkg-types@npm:^1.2.0, pkg-types@npm:^1.3.0, pkg-types@npm:^1.3.1":
   version: 1.3.1
   resolution: "pkg-types@npm:1.3.1"
   dependencies:
@@ -16573,7 +16550,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"yaml@npm:^2.3.4, yaml@npm:^2.4.3":
+"yaml@npm:^2.4.3":
   version: 2.8.0
   resolution: "yaml@npm:2.8.0"
   bin:
