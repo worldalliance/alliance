@@ -6,10 +6,12 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToOne,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../user/user.entity';
 import { Post } from './post.entity';
+import { Notification } from '../../notifs/entities/notification.entity';
 
 @Entity()
 export class Reply {
@@ -46,4 +48,10 @@ export class Reply {
   @UpdateDateColumn()
   @ApiProperty()
   updatedAt: Date;
+
+  @OneToOne(() => Notification, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn()
+  notification: Notification;
 }

@@ -87,7 +87,7 @@ export async function createTestApp(
   // Configure global pipes
   app.useGlobalPipes(new ValidationPipe());
   app.use(cookieParser());
-
+  
   await app.init();
 
   const dataSource = moduleFixture.get(DataSource);
@@ -103,6 +103,7 @@ export async function createTestApp(
   const imageRepo = dataSource.getRepository(Image);
   const postRepo = dataSource.getRepository(Post);
   const replyRepo = dataSource.getRepository(Reply);
+
   const jwtService = moduleFixture.get<JwtService>(JwtService);
 
   // Clean database before tests

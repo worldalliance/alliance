@@ -1,17 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { User } from '../src/user/user.entity';
+import { createTestApp, TestContext } from './e2e-test-utils';
 import * as request from 'supertest';
-import * as cookieParser from 'cookie-parser';
-import { Repository, DataSource } from 'typeorm';
-
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
-
 import { AuthModule } from '../src/auth/auth.module';
 import { UserModule } from '../src/user/user.module';
 import { AuthController } from '../src/auth/auth.controller';
-
 import { User } from '../src/user/user.entity';
 import { Action } from '../src/actions/entities/action.entity';
 import { UserAction } from '../src/actions/entities/user-action.entity';
@@ -20,8 +14,7 @@ import { Communique } from '../src/communiques/entities/communique.entity';
 import { ActionEvent } from '../src/actions/entities/action-event.entity';
 
 describe('Auth via Http-Only cookies (e2e)', () => {
-  let app: INestApplication;
-  let userRepo: Repository<User>;
+  let ctx: TestContext;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -43,13 +36,14 @@ describe('Auth via Http-Only cookies (e2e)', () => {
       ],
       controllers: [AuthController],
     }).compile();
+    ctx = await createTestApp([]);
 
-    app = moduleFixture.createNestApplication();
-    app.use(cookieParser()); // tests don’t run main.ts bootstrap
-    await app.init();
-
-    const dataSource = moduleFixture.get<DataSource>(DataSource);
-    userRepo = dataSource.getRepository(User);
+    await ctx.agent.post('/auth/register').send({
+      email: 'newuser@test.com',
+      password: 'password',
+      name: 'Cookie Tester',
+      mode: 'cookie',
+    });
   });
 
   /** ------------------------------------------------------------------ *
@@ -58,17 +52,17 @@ describe('Auth via Http-Only cookies (e2e)', () => {
   const agent = () => request.agent(app.getHttpServer());
 
   it('rejects invalid login', () => {
-    return agent()
+    return ctx.agent
       .post('/auth/login')
       .send({ email: 'nobody@test.com', password: 'password' })
       .expect(401);
   });
 
   it('registers a new user', () => {
-    return agent()
+    return ctx.agent
       .post('/auth/register')
       .send({
-        email: 'newuser@test.com',
+        email: 'newuser2@test.com',
         password: 'password',
         name: 'Cookie Tester',
         mode: 'cookie',
@@ -76,17 +70,31 @@ describe('Auth via Http-Only cookies (e2e)', () => {
       .expect(201);
   });
 
+  it('user can login', () => {
+    const loginResponse = ctx.agent.post('/auth/login').send({
+      email: 'newuser@test.com',
+      password: 'password',
+      mode: 'cookie',
+    });
+
+    loginResponse.expect(200);
+  });
+
+  it('logged in user can get profile', () => {
+    return ctx.agent.get('/auth/me').expect(200);
+  });
+
   describe('refresh flow', () => {
-    it('rejects refresh without a valid cookie', () => {
-      return agent().post('/auth/refresh').expect(401);
+    it('allows refresh with valid cookie', () => {
+      return ctx.agent.post('/auth/refresh').expect(200);
+    });
+
+    it('rejects refresh with invalid cookie', () => {
+      return request(ctx.app.getHttpServer()).post('/auth/refresh').expect(401);
     });
   });
 
-  afterEach(async () => {
-    await userRepo.query('DELETE FROM user');
-  });
-
   afterAll(async () => {
-    await app.close();
+    await ctx.app.close();
   });
 });

@@ -85,7 +85,6 @@ export class ActionsController {
       +id,
       req.user.sub,
     );
-    console.log(userAction);
     return userAction;
   }
 

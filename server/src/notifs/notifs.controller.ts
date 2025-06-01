@@ -11,7 +11,7 @@ import {
   ParseIntPipe,
 } from '@nestjs/common';
 import { NotifsService } from './notifs.service';
-import { AuthGuard, JwtRequest } from 'src/auth/guards/auth.guard';
+import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { ApiOkResponse } from '@nestjs/swagger';
 import { NotificationDto } from './dto/notification.dto';
 

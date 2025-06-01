@@ -2,9 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
-import { CreateReplyDto, UpdateReplyDto } from './dto/reply.dto';
+import { CreateReplyDto, ReplyDto, UpdateReplyDto } from './dto/reply.dto';
 import { Post } from './entities/post.entity';
 import { Reply } from './entities/reply.entity';
+import { Notification } from 'src/notifs/entities/notification.entity';
+import { User } from 'src/user/user.entity';
 
 @Injectable()
 export class ForumService {
@@ -13,6 +15,10 @@ export class ForumService {
     private postRepository: Repository<Post>,
     @InjectRepository(Reply)
     private replyRepository: Repository<Reply>,
+    @InjectRepository(Notification)
+    private notifRepository: Repository<Notification>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
   async createPost(
@@ -85,10 +91,10 @@ export class ForumService {
   async createReply(
     createReplyDto: CreateReplyDto,
     userId: number,
-  ): Promise<Reply> {
-    // Verify post exists
+  ): Promise<ReplyDto> {
     const post = await this.postRepository.findOne({
       where: { id: createReplyDto.postId },
+      relations: ['author'],
     });
 
     if (!post) {
@@ -102,12 +108,41 @@ export class ForumService {
       authorId: userId,
     });
 
-    // Update post timestamp to show activity
     await this.postRepository.update(createReplyDto.postId, {
       updatedAt: new Date(),
     });
 
-    return this.replyRepository.save(reply);
+    const postAuthor = await this.userRepository.findOne({
+      where: { id: post.authorId },
+    });
+    if (!postAuthor) {
+      throw new NotFoundException(
+        `Post author with ID "${post.authorId}" not found`,
+      );
+    }
+
+    // notify post author
+    const notif = this.notifRepository.create({
+      user: post.author,
+      message: `${postAuthor.name} replied to your forum post`,
+      category: 'forum',
+      webAppLocation: `/forum/post/${post.id}`,
+      mobileAppLocation: `/forum/post/${post.id}`, //TODO: mobile forum route,
+    });
+    await this.notifRepository.save(notif);
+
+    reply.notification = notif;
+    await this.replyRepository.save(reply);
+
+    const loadedReply = await this.replyRepository.findOne({
+      where: { id: reply.id },
+      relations: ['author', 'post'],
+    });
+    if (!loadedReply) {
+      throw new NotFoundException(`Reply with ID "${reply.id}" not found`);
+    }
+
+    return loadedReply;
   }
 
   async updateReply(

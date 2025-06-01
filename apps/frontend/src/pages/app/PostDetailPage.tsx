@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { PostDto, CreateReplyDto } from "../../../../../shared/client";
+import {
+  PostDto,
+  CreateReplyDto,
+  ReplyDto,
+  Reply,
+} from "../../../../../shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import Card from "../../components/system/Card";
@@ -63,9 +68,17 @@ const PostDetailPage: React.FC = () => {
 
       // Update post with new reply
       if (post && response.data) {
+        console.log("new reply data", response.data);
+        const newReply: ReplyDto = response.data;
+        const newReplyI: Reply = {
+          ...newReply,
+          authorId: newReply.author.id,
+          postId: newReply.postId,
+        };
+
         setPost({
           ...post,
-          replies: [...(post.replies || []), response.data],
+          replies: [...(post.replies || []), newReplyI],
           updatedAt: new Date().toISOString(),
         });
       }
@@ -157,6 +170,8 @@ const PostDetailPage: React.FC = () => {
     );
   }
 
+  console.log(post.replies);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
@@ -198,15 +213,6 @@ const PostDetailPage: React.FC = () => {
               addSuffix: true,
             })}
           </span>
-          {post.updatedAt !== post.createdAt && (
-            <span className="ml-4">
-              (Edited{" "}
-              {formatDistanceToNow(new Date(post.updatedAt), {
-                addSuffix: true,
-              })}
-              )
-            </span>
-          )}
         </div>
 
         {post.action && (
@@ -244,7 +250,7 @@ const PostDetailPage: React.FC = () => {
                       </span>
                     </div>
 
-                    {reply.author.email === user?.email && (
+                    {user && reply.author.email === user.email && (
                       <button
                         onClick={() => handleDeleteReply(reply.id)}
                         className="text-red-600 hover:underline"

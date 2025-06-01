@@ -21,7 +21,6 @@ export class RefreshTokenGuard implements CanActivate {
       this.extractTokenFromHeader(request);
 
     if (!token) {
-      console.log('missing token');
       throw new UnauthorizedException('Missing refresh token');
     }
 

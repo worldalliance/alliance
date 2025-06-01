@@ -27,14 +27,12 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
         style={CardStyle.White}
         onClick={() => navigate(`/action/${id}`)}
       >
-        <div className="flex items-center justify-start w-[100%] space-x-3">
-          <p className="font-bold">{name}</p>
-          <Badge>{category}</Badge>
+        <Badge>{category}</Badge>
+        <div className="w-[100%] space-x-3">
+          <p className="font-bold text-lg">{name}</p>
+          <p className="text-gray-500">{description}</p>
         </div>
         {liveCount !== undefined && <p>Count: {liveCount}</p>}
-        <div className="flex items-center justify-between ">
-          <p>{description}</p>
-        </div>
       </Card>
     </div>
   );
