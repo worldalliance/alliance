@@ -1,0 +1,8 @@
+{
+  "eslint.workingDirectories": [
+    "apps/frontend",
+    "apps/admin",
+    "apps/mobile",
+    "server"
+  ]
+}
