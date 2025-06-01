@@ -18,7 +18,6 @@ import {
 import { ActionsService } from './actions.service';
 import {
   ActionDto,
-  ActionEventDto,
   ActionWithRelationDto,
   CreateActionDto,
   UpdateActionDto,
@@ -188,6 +187,7 @@ export class ActionsController {
 
   @Post('create')
   @UseGuards(AdminGuard)
+  @UsePipes(new ValidationPipe())
   @ApiOkResponse({ type: ActionDto })
   create(@Body() createActionDto: CreateActionDto) {
     return this.actionsService.create(createActionDto);
@@ -204,18 +204,18 @@ export class ActionsController {
 
   @Delete(':id')
   @UseGuards(AdminGuard)
-  remove(@Param('id') id: string) {
-    return this.actionsService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.actionsService.remove(id);
   }
 
-  @Post(':id/events')
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionDto })
-  async addEvent(
+  @Get('completed/:id')
+  @ApiOkResponse({ type: [ActionWithRelationDto] })
+  @ApiOperation({
+    summary: 'Get all completed actions for a user',
+  })
+  async findCompletedForUser(
     @Param('id', ParseIntPipe) id: number,
-    @Body() actionEventDto: ActionEventDto,
-  ): Promise<ActionDto> {
-    return this.actionsService.addEvent(id, actionEventDto);
+  ): Promise<ActionWithRelationDto[]> {
+    return this.actionsService.findCompletedForUser(+id);
   }
-
 }

@@ -14,7 +14,6 @@ import {
 } from "../../../shared/client";
 import { useRouter } from "expo-router";
 import { client } from "@alliance/shared/client/client.gen";
-import { getApiUrl } from "./config";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -65,7 +64,7 @@ export const AuthProvider: React.FC<
     return await tokenStore.getItem(REFRESH_KEY);
   }, [tokenStore]);
 
-  const logout = useCallback(async () => {
+  const logout = useCallback(() => {
     authLogout();
     clearTokens();
     setUser(undefined);
@@ -143,12 +142,9 @@ export const AuthProvider: React.FC<
       }
 
       const userProfile = await authMe();
-      if (!userProfile.data) {
-        throw new Error("Failed to fetch user profile");
+      if (userProfile.data) {
+        setUser(userProfile.data);
       }
-
-      setUser(userProfile.data);
-
       console.log("saving tokens");
       console.log("access token: ", response.data.access_token);
       console.log("refresh token: ", response.data.refresh_token);

@@ -1,6 +1,5 @@
 import * as request from 'supertest';
-import { Action } from '../src/actions/entities/action.entity';
-import { ActionStatus } from '../src/actions/entities/action-event.entity';
+import { Action, ActionStatus } from '../src/actions/entities/action.entity';
 import { CreatePostDto } from '../src/forum/dto/post.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { ForumModule } from '../src/forum/forum.module';

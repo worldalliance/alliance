@@ -64,7 +64,6 @@ export class UserService {
     await this.userRepository.update(id, { admin });
   }
 
-
   /* ───────────────────────────────
    *  Friend-request helpers
    * ─────────────────────────────── */

@@ -2,6 +2,7 @@ import {
   Column,
   Entity,
   PrimaryGeneratedColumn,
+  JoinTable,
   CreateDateColumn,
   OneToMany,
   UpdateDateColumn,
@@ -10,33 +11,39 @@ import { UserAction, UserActionRelation } from './user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsNotEmpty } from 'class-validator';
-import { ActionEvent, ActionStatus } from './action-event.entity';
+
+export enum ActionStatus {
+  Active = 'active',
+  Upcoming = 'upcoming',
+  Past = 'past',
+  Draft = 'draft',
+}
 
 @Entity()
 export class Action {
   @PrimaryGeneratedColumn()
-  @ApiProperty({ description: 'Unique identifier for the action' })
+  @ApiProperty()
   id: number;
 
   @Column()
-  @ApiProperty({ description: 'Name of the action' })
+  @ApiProperty()
   @IsNotEmpty()
   name: string;
 
   @Column()
-  @ApiProperty({ description: 'Category of the action' })
+  @ApiProperty()
   category: string;
 
   @Column()
-  @ApiProperty({ description: 'Reason to join the action' })
+  @ApiProperty()
   whyJoin: string;
 
   @Column({ nullable: true })
-  @ApiProperty({ description: 'Image URL for the action', nullable: true })
+  @ApiProperty()
   image: string;
 
   @Column()
-  @ApiProperty({ description: 'Description of the action' })
+  @ApiProperty()
   @IsNotEmpty()
   description: string;
 
@@ -45,40 +52,24 @@ export class Action {
   timeEstimate: string;
 
   @Column()
-  @ApiProperty({
-    description: 'Current status of the action',
-    enum: ActionStatus,
-  })
+  @ApiProperty({ enum: Object.keys(ActionStatus) })
   @IsNotEmpty()
   status: ActionStatus;
 
   @CreateDateColumn()
-  @ApiProperty({ description: 'Timestamp when the action was created' })
+  @ApiProperty()
   createdAt: Date;
 
   @UpdateDateColumn()
-  @ApiProperty({ description: 'Timestamp when the action was last updated' })
+  @ApiProperty()
   updatedAt: Date;
 
   @OneToMany(() => UserAction, (userAction) => userAction.action)
-  @ApiProperty({
-    description: 'Relations between users and the action',
-    type: () => [UserAction],
-  })
+  @JoinTable()
   userRelations: UserAction[];
 
-  @OneToMany(() => ActionEvent, (event) => event.action)
-  @ApiProperty({
-    description: 'Events associated with the action',
-    type: () => [ActionEvent],
-  })
-  events: ActionEvent[];
-
   @Expose()
-  @ApiProperty({
-    description: 'Number of users who have joined the action',
-    example: 5,
-  })
+  @ApiProperty()
   get usersJoined(): number {
     return (
       this.userRelations?.filter(

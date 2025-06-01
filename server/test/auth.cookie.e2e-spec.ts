@@ -3,39 +3,11 @@ import { Repository } from 'typeorm';
 import { User } from '../src/user/user.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import * as request from 'supertest';
-import { AuthModule } from '../src/auth/auth.module';
-import { UserModule } from '../src/user/user.module';
-import { AuthController } from '../src/auth/auth.controller';
-import { User } from '../src/user/user.entity';
-import { Action } from '../src/actions/entities/action.entity';
-import { UserAction } from '../src/actions/entities/user-action.entity';
-import { Image } from '../src/images/entities/image.entity';
-import { Communique } from '../src/communiques/entities/communique.entity';
-import { ActionEvent } from '../src/actions/entities/action-event.entity';
 
 describe('Auth via Http-Only cookies (e2e)', () => {
   let ctx: TestContext;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({
-          isGlobal: true,
-          envFilePath: '.env.test',
-        }),
-        TypeOrmModule.forFeature([User, Action, UserAction]),
-        AuthModule,
-        UserModule,
-        JwtModule, // JWT strategy still needed internally
-        TypeOrmModule.forRoot({
-          type: 'sqlite',
-          database: ':memory:',
-          entities: [User, Action, UserAction, Image, Communique, ActionEvent],
-          synchronize: true,
-        }),
-      ],
-      controllers: [AuthController],
-    }).compile();
     ctx = await createTestApp([]);
 
     await ctx.agent.post('/auth/register').send({
@@ -45,11 +17,6 @@ describe('Auth via Http-Only cookies (e2e)', () => {
       mode: 'cookie',
     });
   });
-
-  /** ------------------------------------------------------------------ *
-   *  Helper: create an agent that persists the server-managed cookies   *
-   * ------------------------------------------------------------------- */
-  const agent = () => request.agent(app.getHttpServer());
 
   it('rejects invalid login', () => {
     return ctx.agent
