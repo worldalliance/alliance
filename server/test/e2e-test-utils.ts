@@ -1,7 +1,7 @@
 import { INestApplication, Type, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { DataSource, Repository, useContainer } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { AuthModule } from '../src/auth/auth.module';
 import { ActionsModule } from '../src/actions/actions.module';
 import { UserModule } from '../src/user/user.module';
@@ -19,7 +19,6 @@ import { Friend } from '../src/user/friend.entity';
 import { Notification } from '../src/notifs/entities/notification.entity';
 import TestAgent from 'supertest/lib/agent';
 import * as supertest from 'supertest';
-import { AppModule } from '../src/app.module';
 import * as cookieParser from 'cookie-parser';
 import { ActionEvent } from '../src/actions/entities/action-event.entity';
 
@@ -36,9 +35,6 @@ export interface TestContext {
 export async function createTestApp(
   modules: Type<unknown>[],
 ): Promise<TestContext> {
-  // Increase Jest timeout
-  jest.setTimeout(30000);
-
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({
@@ -63,23 +59,7 @@ export async function createTestApp(
           Notification,
         ],
         synchronize: true,
-        logging: true
       }),
-      // Register all entities in a single forFeature call
-      // TypeOrmModule.forFeature([
-      //   User,
-      //   Action,
-      //   ActionEvent,
-      //   UserAction,
-      //   Image,
-      //   Communique,
-      //   Post,
-      //   Reply
-      // ]),
-      // AuthModule,
-      // ActionsModule,
-      // UserModule,
-      // ...modules,
       AuthModule,
       ActionsModule,
       UserModule,

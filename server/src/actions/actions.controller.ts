@@ -9,8 +9,6 @@ import {
   UseGuards,
   Request,
   UnauthorizedException,
-  ValidationPipe,
-  UsePipes,
   ParseIntPipe,
   Query,
   BadRequestException,

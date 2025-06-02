@@ -1,7 +1,7 @@
 import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Action } from '../entities/action.entity';
 import { UserAction, UserActionRelation } from '../entities/user-action.entity';
-import { ActionEvent } from '../entities/action-event.entity';
+import { ActionEvent, ActionStatus } from '../entities/action-event.entity';
 
 export class UserActionDto extends PickType(UserAction, [
   'status',

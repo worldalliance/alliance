@@ -31,13 +31,13 @@ describe('ActionsService', () => {
           useValue: {},
         },
         {
-<<<<<<< HEAD
           provide: getRepositoryToken(Friend),
-=======
-          provide: getRepositoryToken(ActionEvent),
->>>>>>> 091d21b (test entity fixes)
           useValue: {},
         },
+        {
+          provide: getRepositoryToken(ActionEvent),
+          useValue: {},
+        }
       ],
     }).compile();
 

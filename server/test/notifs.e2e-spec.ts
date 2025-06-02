@@ -1,8 +1,4 @@
-import * as request from 'supertest';
-import { Action, ActionStatus } from '../src/actions/entities/action.entity';
-import { CreateActionDto } from '../src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
-import { UserActionRelation } from '../src/actions/entities/user-action.entity';
 import { Notification } from '../src/notifs/entities/notification.entity';
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { Repository } from 'typeorm';
