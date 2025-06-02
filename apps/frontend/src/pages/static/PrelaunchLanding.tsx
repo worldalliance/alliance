@@ -19,7 +19,7 @@ const PrelaunchLandingPage: React.FC = () => {
     <div className="bg-red-100">
       <PrelaunchNavbar transparent={!scrolled} ref={navbarRef} />
       <div
-        className="flex flex-col items-center justify-center bg-gray-950 w-screen h-[100vh] overflow-hidden relative goob"
+        className="flex flex-col items-center justify-center bg-gray-950 w-screen h-[calc(100vh-0.5px)] overflow-hidden relative goob"
         style={{
           marginTop: `-${navbarHeight}px`,
         }}
