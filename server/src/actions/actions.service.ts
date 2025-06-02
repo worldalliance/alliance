@@ -4,9 +4,11 @@ import {
   ActionWithRelationDto,
   CreateActionDto,
   UpdateActionDto,
+  ActionEventDto
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Action, ActionStatus } from './entities/action.entity';
+import { Action } from './entities/action.entity';
+import { ActionEvent, ActionStatus } from './entities/action-event.entity';
 import { In, Not, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';
@@ -19,6 +21,8 @@ export class ActionsService {
   constructor(
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
+    @InjectRepository(ActionEvent)
+    private readonly actionEventRepository: Repository<ActionEvent>,
     @InjectRepository(UserAction)
     private readonly userActionRepository: Repository<UserAction>,
     private userService: UserService,
@@ -72,7 +76,7 @@ export class ActionsService {
   async findOne(id: number) {
     const action = await this.actionRepository.findOne({
       where: { id },
-      relations: ['userRelations'],
+      relations: ['userRelations', 'events'],
     });
     if (!action) {
       throw new NotFoundException('Action not found');
@@ -170,6 +174,25 @@ export class ActionsService {
   ): Promise<Action | null> {
     await this.actionRepository.update(id, updateActionDto);
     return this.findOne(id);
+  }
+
+  async addEvent(
+    id: number,
+    actionEventDto: ActionEventDto,
+  ): Promise<ActionDto> {
+    const action = await this.findOne(id);
+
+    const newEvent = this.actionEventRepository.create({
+      ...actionEventDto,
+      action,
+    });
+
+    await this.actionEventRepository.save(newEvent);
+
+    // re-fetch action from database to get the updated events
+    const newAction = await this.findOne(id);
+
+    return new ActionDto(newAction);
   }
 
   async remove(id: number) {

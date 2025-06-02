@@ -195,4 +195,5 @@ export class UserService {
     const user = await this.findOneOrFail(id);
     return 0;
   }
+  
 }

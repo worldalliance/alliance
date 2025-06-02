@@ -1,9 +1,11 @@
 import * as request from 'supertest';
-import { Action, ActionStatus } from '../src/actions/entities/action.entity';
-import { CreateActionDto } from '../src/actions/dto/action.dto';
+import { Action } from '../src/actions/entities/action.entity';
+import { ActionStatus } from '../src/actions/entities/action-event.entity';
+import { CreateActionDto, ActionEventDto } from '../src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { UserActionRelation } from '../src/actions/entities/user-action.entity';
 import { Repository } from 'typeorm';
+import { NotificationType } from 'src/actions/entities/action-event.entity';
 
 describe('Actions (e2e)', () => {
   let ctx: TestContext;
@@ -46,6 +48,7 @@ describe('Actions (e2e)', () => {
         whyJoin: '',
         image: '',
         timeEstimate: '1h',
+        events: []
       };
 
       const res = await request(ctx.app.getHttpServer())
@@ -58,6 +61,7 @@ describe('Actions (e2e)', () => {
 
       await actionRepo.query('DELETE FROM action WHERE id = ?', [res.body.id]);
     });
+
     it('action creation with missing data rejected', async () => {
       const res = await request(ctx.app.getHttpServer())
         .post('/actions/create')
@@ -152,6 +156,59 @@ describe('Actions (e2e)', () => {
       expect(res.status).toBe(200);
       expect(res.body.length).toBe(1);
     });
+
+    it('admin can add an event to an action', async () => {
+      const action = await actionRepo.findOneBy({
+        name: 'Test Action',
+      });
+
+      const newEvent: ActionEventDto = {
+        message: 'Test Event',
+        newStatus: ActionStatus.Active,
+        sendNotifsTo: NotificationType.All,
+        updateDate: new Date(),
+        showInTimeline: true,
+      };
+
+      const res = await request(ctx.app.getHttpServer())
+        .post(`/actions/${action!.id}/events`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send(newEvent);
+
+      expect(res.status).toBe(201);
+      expect(res.body.events.length).toBe(1);
+      expect(res.body.events[0].message).toBe('Test Event');
+    });
+
+    it('events are included in action details', async () => {
+      const action = await actionRepo.findOneBy({
+        name: 'Test Action',
+      });
+
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${action!.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.events.length).toBe(1);
+      expect(res.body.events[0].message).toBe('Test Event');
+    });
+  });
+  it('admin cannot add an event to an action with missing data', async () => {
+    const action = await actionRepo.findOneBy({
+      name: 'Test Action',
+    });
+
+    const incompleteEvent: Partial<ActionEventDto> = {
+      message: 'Incomplete Event',
+    };
+
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/actions/${action!.id}/events`)
+      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .send(incompleteEvent);
+
+    expect(res.status).toBe(400);
   });
 
   afterAll(async () => {

@@ -1,6 +1,3 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
-import { User } from '../src/user/user.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import * as request from 'supertest';
 

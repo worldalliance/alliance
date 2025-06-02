@@ -1,8 +1,7 @@
-// test-utils.ts
 import { INestApplication, Type, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { DataSource, Repository, useContainer } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { AuthModule } from '../src/auth/auth.module';
 import { ActionsModule } from '../src/actions/actions.module';
 import { UserModule } from '../src/user/user.module';
@@ -20,8 +19,8 @@ import { Friend } from '../src/user/friend.entity';
 import { Notification } from '../src/notifs/entities/notification.entity';
 import TestAgent from 'supertest/lib/agent';
 import * as supertest from 'supertest';
-import { AppModule } from '../src/app.module';
 import * as cookieParser from 'cookie-parser';
+import { ActionEvent } from '../src/actions/entities/action-event.entity';
 
 export interface TestContext {
   app: INestApplication;
@@ -50,6 +49,7 @@ export async function createTestApp(
         entities: [
           User,
           Action,
+          ActionEvent,
           UserAction,
           Image,
           Communique,
@@ -73,48 +73,41 @@ export async function createTestApp(
   await app.init();
 
   const dataSource = moduleFixture.get(DataSource);
+
+  // Initialize database
+  await dataSource.synchronize(true);
+
+  // Get repositories
   const userRepo = dataSource.getRepository(User);
   const jwtService = moduleFixture.get<JwtService>(JwtService);
 
-  // Create test user
-  const user = userRepo.create({
-    email: 'user@example.com',
-    password: 'pass',
-    name: 'User',
-  });
+  // Create test users
+  const user = await userRepo.save(
+    userRepo.create({
+      email: 'user@example.com',
+      password: 'pass',
+      name: 'User',
+    }),
+  );
 
-  await userRepo.save(user);
+  const adminUser = await userRepo.save(
+    userRepo.create({
+      email: 'admin@example.com',
+      password: 'pass',
+      name: 'Admin',
+      admin: true,
+    }),
+  );
 
-  const adminUser = userRepo.create({
-    email: 'admin@example.com',
-    password: 'pass',
-    name: 'Admin',
-    admin: true,
-  });
-
-  await userRepo.save(adminUser);
-
-  // Create auth token
+  // Generate tokens
   const accessToken = jwtService.sign(
-    {
-      sub: user.id,
-      email: user.email,
-      name: user.name,
-    },
-    {
-      secret: process.env.JWT_SECRET,
-    },
+    { sub: user.id, email: user.email, name: user.name },
+    { secret: process.env.JWT_SECRET },
   );
 
   const adminAccessToken = jwtService.sign(
-    {
-      sub: adminUser.id,
-      email: adminUser.email,
-      name: adminUser.name,
-    },
-    {
-      secret: process.env.JWT_SECRET,
-    },
+    { sub: adminUser.id, email: adminUser.email, name: adminUser.name },
+    { secret: process.env.JWT_SECRET },
   );
 
   const agent = supertest.agent(app.getHttpServer());

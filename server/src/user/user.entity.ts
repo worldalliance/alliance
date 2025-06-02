@@ -1,6 +1,5 @@
 import * as bcrypt from 'bcryptjs';
 import { Exclude } from 'class-transformer';
-
 import {
   Entity,
   PrimaryGeneratedColumn,

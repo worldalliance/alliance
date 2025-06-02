@@ -17,6 +17,7 @@ import { Image } from '../src/images/entities/image.entity';
 import { Communique } from '../src/communiques/entities/communique.entity';
 import { Friend } from '../src/user/friend.entity';
 import { Notification } from '../src/notifs/entities/notification.entity';
+import { ActionEvent } from '../src/actions/entities/action-event.entity';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication<App>;
@@ -43,6 +44,7 @@ describe('Auth (e2e)', () => {
             Communique,
             Friend,
             Notification,
+            ActionEvent,
           ],
           synchronize: true,
         }),

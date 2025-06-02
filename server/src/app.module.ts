@@ -21,6 +21,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { Friend } from './user/friend.entity';
 import { NotifsModule } from './notifs/notifs.module';
 import { Notification } from './notifs/entities/notification.entity';
+import { ActionEvent } from './actions/entities/action-event.entity';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { Notification } from './notifs/entities/notification.entity';
         Reply,
         Notification,
         Friend,
+        ActionEvent,
       ],
       synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'
