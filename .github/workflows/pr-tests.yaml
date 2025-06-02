@@ -1,6 +1,9 @@
 name: backend-tests
 
 on:
+  push:
+    branches: [main]
+
   # Fires for any activity that changes the pull-request’s HEAD commit
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
