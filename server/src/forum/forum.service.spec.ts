@@ -166,10 +166,12 @@ describe('ForumService', () => {
       const userId = 1;
       const createReplyDto = { content: 'Test reply', postId };
       const reply = { id: 1, ...createReplyDto, authorId: userId };
-      const post = { id: postId, authorId: userId };
+      const post = { id: postId, authorId: userId, author: { id: userId } };
 
     postRepository.findOne?.mockResolvedValue(post);
-    userRepository.findOne?.mockResolvedValue({ id: userId, name: 'Author' });
+    userRepository.findOne
+      ?.mockResolvedValueOnce({ id: post.authorId, name: 'Post Author' })
+      .mockResolvedValueOnce({ id: userId, name: 'Reply Author' });
     replyRepository.create?.mockReturnValue(reply);
     replyRepository.save?.mockResolvedValue(reply);
     replyRepository.findOne?.mockResolvedValue({
@@ -191,6 +193,12 @@ describe('ForumService', () => {
       });
       expect(postRepository.update).toHaveBeenCalled();
       expect(replyRepository.save).toHaveBeenCalledWith(reply);
+      expect(notifRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user: post.author,
+          message: 'Reply Author replied to your forum post',
+        }),
+      );
       expect(result).toEqual(
         expect.objectContaining({
           id: reply.id,
