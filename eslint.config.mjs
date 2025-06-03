@@ -10,9 +10,6 @@ export default tseslint.config([
 			"prefer-const": "warn",
 			"no-constant-binary-expression": "error",
 			"local-rules/enforce-foo-bar": "error",
-            "import/no-unresolved": ["error", {
-                ignore: ["react-router-dom"]
-            }],
             "@typescript-eslint/no-restricted-imports": [
                 "error",
                 {
