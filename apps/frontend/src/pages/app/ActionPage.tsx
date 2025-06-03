@@ -16,6 +16,7 @@ import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
 import { useAuth } from "../../lib/AuthContext";
 import ActionEventsPanel from "../../components/ActionEventsPanel";
+
 const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
   const navigate = useNavigate();
@@ -82,6 +83,8 @@ const ActionPage: React.FC = () => {
 
       if (response.error) {
         throw new Error("Failed to join action");
+      } else {
+        setUserRelation("joined");
       }
     } catch (err) {
       console.error("Error joining action:", err);
@@ -138,9 +141,7 @@ const ActionPage: React.FC = () => {
             </p>
           </Card>
         )}
-        {action && userRelation !== "none" && (
-          <ActionEventsPanel action={action} />
-        )}
+        {action && <ActionEventsPanel action={action} />}
         <h2 className="!mt-8">What you can do</h2>
         <p>
           {action?.description ||

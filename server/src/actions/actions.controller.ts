@@ -12,6 +12,7 @@ import {
   ParseIntPipe,
   Query,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
 import {
@@ -227,4 +228,24 @@ export class ActionsController {
     return this.actionsService.addEvent(id, actionEventDto);
   }
 
+  @Get('opengraph/:id')
+  @Public()
+  @ApiOkResponse({ type: String })
+  async opengraph(@Param('id', ParseIntPipe) id: number) {
+    const action = await this.actionsService.findOne(id);
+    if (!action) {
+      throw new NotFoundException('Action not found');
+    }
+    const html = `
+    <html prefix="og: https://ogp.me/ns#">
+        <head>
+        <title>${action.name}</title>
+            <meta property="og:title" content="${action.name}" />
+            <meta property="og:description" content="${action.description}" />
+            <meta property="og:type" content="website" />
+        </head>
+    </html>
+    `;
+    return html;
+  }
 }
