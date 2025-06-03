@@ -13,7 +13,8 @@
     "frontend:dev": "yarn workspace @alliance/frontend dev",
     "admin:dev": "yarn workspace @alliance/admin dev",
     "server:dev": "cd server && npm run start:dev",
-    "gen-api": "yarn workspace @alliance/shared gen-api"
+    "gen-api": "yarn workspace @alliance/shared gen-api",
+    "ssr:dev": "cd ssr-server && npm run dev"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

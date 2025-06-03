@@ -24,6 +24,10 @@ dev: `cd apps/frontend && yarn dev`
 
 storybook: `yarn workspace @alliance/frontend storybook`
 
+### ssr server
+
+dev: `yarn ssr:dev`
+
 ### server
 
 dev: `cd server && npm run start:dev`
