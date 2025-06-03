@@ -3,6 +3,8 @@ import { ForumService } from './forum.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Post } from './entities/post.entity';
 import { Reply } from './entities/reply.entity';
+import { Notification } from '../notifs/entities/notification.entity';
+import { User } from '../user/user.entity';
 import { ObjectLiteral, Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { CreatePostDto } from './dto/post.dto';
@@ -26,10 +28,14 @@ describe('ForumService', () => {
   let service: ForumService;
   let postRepository: MockRepository<Post>;
   let replyRepository: MockRepository<Reply>;
+  let notifRepository: MockRepository<Notification>;
+  let userRepository: MockRepository<User>;
 
   beforeEach(async () => {
     postRepository = createMockRepository<Post>();
     replyRepository = createMockRepository<Reply>();
+    notifRepository = createMockRepository<Notification>();
+    userRepository = createMockRepository<User>();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -41,6 +47,14 @@ describe('ForumService', () => {
         {
           provide: getRepositoryToken(Reply),
           useValue: replyRepository,
+        },
+        {
+          provide: getRepositoryToken(Notification),
+          useValue: notifRepository,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: userRepository,
         },
       ],
     }).compile();
@@ -151,17 +165,25 @@ describe('ForumService', () => {
       const postId = 1;
       const userId = 1;
       const createReplyDto = { content: 'Test reply', postId };
-      const reply = { ...createReplyDto, authorId: userId };
-      const post = { id: postId };
+      const reply = { id: 1, ...createReplyDto, authorId: userId };
+      const post = { id: postId, authorId: userId };
 
-      postRepository.findOne?.mockResolvedValue(post);
-      replyRepository.create?.mockReturnValue(reply);
-      replyRepository.save?.mockResolvedValue(reply);
+    postRepository.findOne?.mockResolvedValue(post);
+    userRepository.findOne?.mockResolvedValue({ id: userId, name: 'Author' });
+    replyRepository.create?.mockReturnValue(reply);
+    replyRepository.save?.mockResolvedValue(reply);
+    replyRepository.findOne?.mockResolvedValue({
+      id: reply.id,
+      content: reply.content,
+      post,
+      author: { id: userId },
+    });
 
       const result = await service.createReply(createReplyDto, userId);
 
       expect(postRepository.findOne).toHaveBeenCalledWith({
         where: { id: postId },
+        relations: ['author'],
       });
       expect(replyRepository.create).toHaveBeenCalledWith({
         ...createReplyDto,
@@ -169,7 +191,12 @@ describe('ForumService', () => {
       });
       expect(postRepository.update).toHaveBeenCalled();
       expect(replyRepository.save).toHaveBeenCalledWith(reply);
-      expect(result).toEqual(reply);
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: reply.id,
+          content: reply.content,
+        }),
+      );
     });
 
     it('should throw NotFoundException if post is not found', async () => {

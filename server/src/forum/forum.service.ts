@@ -5,8 +5,8 @@ import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
 import { CreateReplyDto, ReplyDto, UpdateReplyDto } from './dto/reply.dto';
 import { Post } from './entities/post.entity';
 import { Reply } from './entities/reply.entity';
-import { Notification } from 'src/notifs/entities/notification.entity';
-import { User } from 'src/user/user.entity';
+import { Notification } from '../notifs/entities/notification.entity';
+import { User } from '../user/user.entity';
 
 @Injectable()
 export class ForumService {
