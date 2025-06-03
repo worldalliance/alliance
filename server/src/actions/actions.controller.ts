@@ -174,6 +174,29 @@ export class ActionsController {
     return counters$;
   }
 
+  @Get('opengraph')
+  @Public()
+  @ApiOkResponse({ type: String })
+  async opengraph(@Query() query) {
+    const { url } = query;
+    const id = url.substring(url.lastIndexOf('/') + 1);
+    const action = await this.actionsService.findOne(+id);
+    if (!action) {
+      throw new NotFoundException('Action not found');
+    }
+    const html = `
+    <html prefix="og: https://ogp.me/ns#">
+        <head>
+        <title>Join the Alliance to participate in ${action.name}</title>
+            <meta property="og:title" content="${action.name}" />
+            <meta property="og:description" content="${action.description}" />
+            <meta property="og:type" content="website" />
+        </head>
+    </html>
+    `;
+    return html;
+  }
+
   @Get(':id')
   @Public()
   @ApiOkResponse({ type: ActionDto })
@@ -226,26 +249,5 @@ export class ActionsController {
     @Body() actionEventDto: ActionEventDto,
   ): Promise<ActionDto> {
     return this.actionsService.addEvent(id, actionEventDto);
-  }
-
-  @Get('opengraph/:id')
-  @Public()
-  @ApiOkResponse({ type: String })
-  async opengraph(@Param('id', ParseIntPipe) id: number) {
-    const action = await this.actionsService.findOne(id);
-    if (!action) {
-      throw new NotFoundException('Action not found');
-    }
-    const html = `
-    <html prefix="og: https://ogp.me/ns#">
-        <head>
-        <title>${action.name}</title>
-            <meta property="og:title" content="${action.name}" />
-            <meta property="og:description" content="${action.description}" />
-            <meta property="og:type" content="website" />
-        </head>
-    </html>
-    `;
-    return html;
   }
 }
