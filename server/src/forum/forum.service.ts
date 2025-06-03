@@ -121,10 +121,20 @@ export class ForumService {
       );
     }
 
+    // fetch reply author to include in notification message
+    const replyAuthor = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+    if (!replyAuthor) {
+      throw new NotFoundException(
+        `Reply author with ID "${userId}" not found`,
+      );
+    }
+
     // notify post author
     const notif = this.notifRepository.create({
       user: post.author,
-      message: `${postAuthor.name} replied to your forum post`,
+      message: `${replyAuthor.name} replied to your forum post`,
       category: 'forum',
       webAppLocation: `/forum/post/${post.id}`,
       mobileAppLocation: `/forum/post/${post.id}`, //TODO: mobile forum route,
