@@ -5,7 +5,7 @@ import {
   communiquesGetRead,
   CommuniqueDto,
 } from "@alliance/shared/client";
-import AnnouncementCard from "../../components/AnnoucementCard";
+import AnnouncementCard from "../../components/AnnouncementCard";
 import Button, { ButtonColor } from "../../components/system/Button";
 import { useAuth } from "../../lib/AuthContext";
 import { AdminOnly } from "../../lib/AdminOnly";

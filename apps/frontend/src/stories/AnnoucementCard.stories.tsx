@@ -1,5 +1,5 @@
 import { Meta, StoryObj } from "@storybook/react";
-import AnnouncementCard from "../components/AnnoucementCard";
+import AnnouncementCard from "../components/AnnouncementCard";
 
 const meta = {
   title: "Alliance/AnnouncementCard",
