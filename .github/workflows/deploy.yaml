@@ -90,34 +90,31 @@ jobs:
         run: corepack yarn workspace @alliance/frontend build
         working-directory: ./
 
+      - name: create output folder
+        run: |
+          rm -rf output
+          mkdir output
+          mv build output/build
+          cp server.js output/server.js
+          cp package.json output/package.json
+        working-directory: ./apps/frontend
+
       - name: Zip client + server
         run: |
-          cd build
-          zip -r react-client.zip client
-          zip -r react-server.zip server
+          zip -r react-build.zip output
         working-directory: ./apps/frontend
 
       - name: Move Build Artifacts
         run: |
-          mv apps/frontend/build/react-client.zip ./react-client.zip
-          mv apps/frontend/build/react-server.zip ./react-server.zip
+          mv apps/frontend/build/react-build.zip ./react-build.zip
 
-      - name: Upload React Client Build to EC2
+      - name: Upload React Build to EC2
         uses: appleboy/scp-action@v0.1.3
         with:
-          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          host: ${{ needs.cprovision-infrastructure.outputs.instance_ip }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "react-client.zip"
-          target: "~/"
-
-      - name: Upload React Server Build to EC2
-        uses: appleboy/scp-action@v0.1.3
-        with:
-          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "react-server.zip"
+          source: "react-build.zip"
           target: "~/"
 
   build-admin-frontend:
@@ -178,15 +175,15 @@ jobs:
             nvm use 20
             nvm alias default 20
 
-            unzip -o ~/react-client.zip -d ~/alliance-app
-            unzip -o ~/react-server.zip -d ~/alliance-app
+            cd ~/
 
-            cd ~/alliance-app/server
-            npm ci --omit=dev
+            unzip -o ~/react-build.zip
 
-            npm install -g pm2
+            cd ~/output
+            npm install --omit=dev
+
             pm2 delete client-ssr || true
-            pm2 start index.js --name client-ssr
+            pm2 start "npx react-router-serve build/server/index.js" --name client-ssr
             pm2 save
 
   deploy-admin-app:

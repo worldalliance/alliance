@@ -164,6 +164,8 @@ const ActionPage: React.FC = () => {
 
   return (
     <PublicAppRoute>
+      <meta name="og:title" content={action?.name} />
+      <meta name="og:description" content={action?.description} />
       <TwoColumnSplit
         left={mainContent}
         right={
