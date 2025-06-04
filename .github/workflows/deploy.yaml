@@ -181,8 +181,8 @@ jobs:
             unzip -o ~/react-client.zip -d ~/alliance-app/client
             unzip -o ~/react-server.zip -d ~/alliance-app/server
 
-            mv ~/alliance-app/server/server ~/alliance-app/server/
-            mv ~/alliance-app/client/client ~/alliance-app/client/
+            mv ~/alliance-app/server/server ~/alliance-app/
+            mv ~/alliance-app/client/client ~/alliance-app/
 
             cd ~/alliance-app/server
             npm ci --omit=dev
