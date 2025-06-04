@@ -90,7 +90,7 @@ jobs:
 
       - name: Zip client + server
         run: |
-          cd dist
+          cd build
           zip -r client.zip client
           zip -r server.zip server
         working-directory: ./apps/frontend
