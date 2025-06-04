@@ -64,6 +64,8 @@ jobs:
 
   build-react-app:
     runs-on: ubuntu-latest
+    needs:
+      - provision-infrastructure
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
