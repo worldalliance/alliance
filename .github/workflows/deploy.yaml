@@ -154,7 +154,12 @@ jobs:
       - name: Download React Build Artifact
         uses: actions/download-artifact@v4
         with:
-          name: react-ssr
+          name: react-client
+
+      - name: Download React Server Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: react-server
 
       - name: Upload React Build to EC2
         uses: appleboy/scp-action@v0.1.3
