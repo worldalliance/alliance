@@ -101,9 +101,8 @@ jobs:
           host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "react-client.zip"
+          source: "apps/frontend/build/react-client.zip"
           target: "~/"
-        working-directory: ./apps/frontend/build
 
       - name: Upload React Server Build to EC2
         uses: appleboy/scp-action@v0.1.3
@@ -111,9 +110,8 @@ jobs:
           host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "react-server.zip"
+          source: "apps/frontend/build/react-server.zip"
           target: "~/"
-        working-directory: ./apps/frontend/build
 
   build-admin-frontend:
     runs-on: ubuntu-latest
