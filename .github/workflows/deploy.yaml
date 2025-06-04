@@ -178,11 +178,8 @@ jobs:
             nvm use 20
             nvm alias default 20
 
-            unzip -o ~/react-client.zip -d ~/alliance-app/client
-            unzip -o ~/react-server.zip -d ~/alliance-app/server
-
-            mv ~/alliance-app/server/server ~/alliance-app/
-            mv ~/alliance-app/client/client ~/alliance-app/
+            unzip -o ~/react-client.zip -d ~/alliance-app
+            unzip -o ~/react-server.zip -d ~/alliance-app
 
             cd ~/alliance-app/server
             npm ci --omit=dev
@@ -232,7 +229,6 @@ jobs:
               server {
                 listen 80;
                 server_name admin.${{vars.DOMAIN_NAME}};
-                http2 on;
 
                 root /home/ec2-user/admin-app/dist;
                 index index.html;
