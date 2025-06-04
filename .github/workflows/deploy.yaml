@@ -95,12 +95,18 @@ jobs:
           zip -r react-server.zip server
         working-directory: ./apps/frontend
 
-      - name: Upload artifacts
+      - name: Upload client artifact
         uses: actions/upload-artifact@v4
         with:
-          name: react-ssr
+          name: react-client
           path: |
             apps/frontend/build/react-client.zip
+
+      - name: Upload server artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: react-server
+          path: |
             apps/frontend/build/react-server.zip
 
   build-admin-frontend:
