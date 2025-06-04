@@ -97,13 +97,18 @@ jobs:
           zip -r react-server.zip server
         working-directory: ./apps/frontend
 
+      - name: Move Build Artifacts
+        run: |
+          mv apps/frontend/build/client.zip ./react-client.zip
+          mv apps/frontend/build/server.zip ./react-server.zip
+
       - name: Upload React Client Build to EC2
         uses: appleboy/scp-action@v0.1.3
         with:
           host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "apps/frontend/build/react-client.zip"
+          source: "react-client.zip"
           target: "~/"
 
       - name: Upload React Server Build to EC2
@@ -112,7 +117,7 @@ jobs:
           host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "apps/frontend/build/react-server.zip"
+          source: "react-server.zip"
           target: "~/"
 
   build-admin-frontend:
