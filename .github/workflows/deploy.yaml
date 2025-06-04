@@ -161,6 +161,9 @@ jobs:
         with:
           name: react-server
 
+      - run: mv apps/frontend/build/react-client.zip ./client.zip
+      - run: mv apps/frontend/build/react-server.zip ./server.zip
+
       - name: Upload React Build to EC2
         uses: appleboy/scp-action@v0.1.3
         with:
