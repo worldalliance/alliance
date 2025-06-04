@@ -100,9 +100,8 @@ jobs:
         with:
           name: react-ssr
           path: |
-            dist/client.zip
-            dist/server.zip
-        working-directory: ./apps/frontend
+            apps/frontend/build/client.zip
+            apps/frontend/build/server.zip
 
   build-admin-frontend:
     runs-on: ubuntu-latest
