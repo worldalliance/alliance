@@ -1,5 +1,5 @@
 import React, { Suspense, useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import Card, { CardStyle } from "../../components/system/Card";
 import StatsCard from "../../components/StatsCard";
 import Globe from "../../components/Globe";
@@ -16,6 +16,7 @@ import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
 import { useAuth } from "../../lib/AuthContext";
 import ActionEventsPanel from "../../components/ActionEventsPanel";
+import { PublicAppRoute } from "../../RouteWrappers";
 
 const ActionPage: React.FC = () => {
   const { id: actionId } = useParams();
@@ -131,6 +132,8 @@ const ActionPage: React.FC = () => {
             </Button>
           )}
         </div>
+        {error && <div className="text-red-500">{error}</div>}
+        {loading && <div className="text-gray-500">Loading...</div>}
         {/* {userRelation === "joined" && <PokePanel />} */}
         {userRelation === "none" && (
           <Card style={CardStyle.Grey} className="mb-5">
@@ -160,33 +163,35 @@ const ActionPage: React.FC = () => {
   );
 
   return (
-    <TwoColumnSplit
-      left={mainContent}
-      right={
-        <div className="flex flex-col gap-y-5 p-6">
-          <Card
-            style={CardStyle.White}
-            className="items-center gap-y-5 aspect-square justify-center"
-          >
-            <div className="w-[180px] self-center">
-              <Suspense fallback={<div>Loading...</div>}>
-                <Globe people={action?.usersJoined || 0} colored />
-              </Suspense>
-              <p className="text-center pt-5 text-[11pt]">
-                {action?.usersJoined?.toLocaleString() || 0} people committed
-              </p>
-            </div>
-            {/* <div className="w-full border-t border-gray-300" />
+    <PublicAppRoute>
+      <TwoColumnSplit
+        left={mainContent}
+        right={
+          <div className="flex flex-col gap-y-5 p-6">
+            <Card
+              style={CardStyle.White}
+              className="items-center gap-y-5 aspect-square justify-center"
+            >
+              <div className="w-[180px] self-center">
+                <Suspense fallback={<div>Loading...</div>}>
+                  <Globe people={action?.usersJoined || 0} colored />
+                </Suspense>
+                <p className="text-center pt-5 text-[11pt]">
+                  {action?.usersJoined?.toLocaleString() || 0} people committed
+                </p>
+              </div>
+              {/* <div className="w-full border-t border-gray-300" />
             <UserBubbleRow />
             <p className="text-center pt-2 text-[11pt]">
               <b>6 friends</b> already joined this action!
             </p> */}
-          </Card>
-          <StatsCard />
-        </div>
-      }
-      coloredRight={true}
-    />
+            </Card>
+            <StatsCard />
+          </div>
+        }
+        coloredRight={true}
+      />
+    </PublicAppRoute>
   );
 };
 

@@ -1,8 +1,5 @@
 import { ActionDto } from "@alliance/shared/client";
 import TaskCard from "./TaskCard";
-import Button from "./system/Button";
-import { ButtonColor } from "./system/Button";
-import { useNavigate } from "react-router-dom";
 import { useCallback } from "react";
 
 export interface HomeTaskViewProps {
@@ -13,9 +10,7 @@ export interface HomeTaskViewProps {
 export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
   actions: initialActions,
   onTaskComplete,
-}) => {
-  const navigate = useNavigate();
-
+}: HomeTaskViewProps) => {
   const handleTaskComplete = useCallback(
     (actionId: number) => {
       if (onTaskComplete) {
@@ -27,7 +22,7 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
 
   return (
     <div className="flex flex-col gap-y-2">
-      <p className="text-gray-500 text-lg">Actions needing completion</p>
+      <p className="text-gray-600 text-lg">Actions needing completion</p>
       {initialActions.map((action) => (
         <TaskCard
           key={action.id}

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import HighResGlobe from "../../components/HighResGlobe";
+// import HighResGlobe from "../../components/HighResGlobe";
 import PlatformUIDemoCard from "../../components/PlatformUIDemoCard";
 import NewNavbar from "../../components/NewNavbar";
 import Footer from "../../components/Footer";
@@ -59,7 +59,7 @@ const NewLandingPage: React.FC = () => {
         }}
       >
         <div className="mb-[-40%]">
-          <HighResGlobe width={size} height={size} />
+          {/* <HighResGlobe width={size} height={size} /> */}
         </div>
         <div className="absolute top-0 left-0 right-0 bottom-0 grain"></div>
         <div

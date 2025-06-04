@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router";
 import { communiquesFindOne, communiquesRead } from "@alliance/shared/client";
 import { CommuniqueDto } from "@alliance/shared/client";
 import ReactMarkdown from "react-markdown";

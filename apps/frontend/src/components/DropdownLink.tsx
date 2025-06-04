@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import React, { useState } from "react";
 import dropDownArrow from "../assets/icons8-expand-arrow-96.png";
 import { platformSublinks } from "./Navbar";

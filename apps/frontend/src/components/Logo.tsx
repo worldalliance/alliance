@@ -1,6 +1,6 @@
 import React, { useCallback } from "react";
 import godImage from "../assets/god.png";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 interface LogoProps {
   href?: string;
@@ -21,7 +21,9 @@ const Logo: React.FC<LogoProps> = ({ href, className }) => {
       src={godImage}
       onClick={clickHandler}
       alt="logo"
-      className={`${href ? "cursor-pointer" : ""} ${className} aspect-square w-[30px] `}
+      className={`${
+        href ? "cursor-pointer" : ""
+      } ${className} aspect-square w-[30px] `}
     />
   );
 };

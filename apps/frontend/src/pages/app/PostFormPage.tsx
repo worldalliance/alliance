@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router";
 import { CreatePostDto, ActionDto, PostDto } from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import Card from "../../components/system/Card";
@@ -190,7 +190,7 @@ const PostFormPage: React.FC = () => {
                 value={actionId || ""}
                 onChange={(e) =>
                   setActionId(
-                    e.target.value ? Number(e.target.value) : undefined,
+                    e.target.value ? Number(e.target.value) : undefined
                   )
                 }
                 className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -223,8 +223,8 @@ const PostFormPage: React.FC = () => {
                 {isSubmitting
                   ? "Saving..."
                   : mode === "create"
-                    ? "Create Post"
-                    : "Save Changes"}
+                  ? "Create Post"
+                  : "Save Changes"}
               </button>
             </div>
           </form>

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import Card, { CardStyle } from "./system/Card";
 import { Status } from "./StatusIndicator";
 import StatusIndicator from "./StatusIndicator";
@@ -14,7 +14,7 @@ const ActionPromptCard: React.FC<ActionPromptCardProps> = ({
   title,
   description,
   id,
-}) => {
+}: ActionPromptCardProps) => {
   const navigate = useNavigate();
 
   return (
@@ -24,7 +24,7 @@ const ActionPromptCard: React.FC<ActionPromptCardProps> = ({
         style={CardStyle.Alert}
         className="block space-y-2 font-avenir"
         onClick={() => {
-          navigate(`/action/${id}`);
+          navigate(`/actions/${id}`);
         }}
       >
         <div className="flex items-center justify-start w-[100%] space-x-3">

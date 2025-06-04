@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 
 interface FooterProps {
   className?: string;
@@ -7,9 +7,7 @@ interface FooterProps {
 
 const Footer: React.FC<FooterProps> = ({ className }) => {
   return (
-    <footer
-      className={`w-full bg-stone-100 py-12 px-8 ${className}`}
-    >
+    <footer className={`w-full bg-stone-100 py-12 px-8 ${className}`}>
       <div className="container mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 hidden md:mb-0 md:block">
@@ -18,16 +16,10 @@ const Footer: React.FC<FooterProps> = ({ className }) => {
           <div className="flex flex-row gap-6 md:gap-10 text-base">
             <div className="flex flex-col gap-2">
               <p className="font-bold text-gray-800">Platform</p>
-              <Link
-                to="/issues"
-                className="text-gray-600 hover:text-black"
-              >
+              <Link to="/issues" className="text-gray-600 hover:text-black">
                 Issues
               </Link>
-              <Link
-                to="/forum"
-                className="text-gray-600 hover:text-black"
-              >
+              <Link to="/forum" className="text-gray-600 hover:text-black">
                 Forum
               </Link>
             </div>

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { destinations, links, NavbarProps } from "./Navbar";
 
 export type InnerNavbarProps = Pick<NavbarProps, "currentPage">;

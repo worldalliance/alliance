@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import {
   communiquesFindAll,
   communiquesGetRead,
@@ -43,7 +43,7 @@ const AnnouncementsListPage: React.FC = () => {
                 path: { id: announcement.id.toString() },
               });
               readStatusMap[announcement.id] = readResponse.data?.read ?? false;
-            }),
+            })
           );
 
           setUnreadStatus(readStatusMap);
@@ -61,11 +61,11 @@ const AnnouncementsListPage: React.FC = () => {
   }, [isAuthenticated]);
 
   const unreadAnnouncements = announcements.filter(
-    (announcement) => !unreadStatus[announcement.id],
+    (announcement) => !unreadStatus[announcement.id]
   );
 
   const readAnnouncements = announcements.filter(
-    (announcement) => unreadStatus[announcement.id],
+    (announcement) => unreadStatus[announcement.id]
   );
 
   return (

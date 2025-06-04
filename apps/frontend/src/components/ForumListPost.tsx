@@ -2,7 +2,7 @@ import { formatDistanceToNow } from "date-fns";
 import Card, { CardStyle } from "./system/Card";
 import { PostDto } from "@alliance/shared/client";
 import Badge from "./system/Badge";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 export interface ForumListPostProps {
   post: PostDto;
@@ -27,7 +27,9 @@ const ForumListPost = ({
   return (
     <Card
       key={post.id}
-      className={`rounded-none w-full mb-0 hover:z-20 ${first ? "rounded-t-lg" : ""} ${last ? "rounded-b-lg" : ""}`}
+      className={`rounded-none w-full mb-0 hover:z-20 ${
+        first ? "rounded-t-lg" : ""
+      } ${last ? "rounded-b-lg" : ""}`}
       onClick={() => handleViewPost(post.id)}
       style={CardStyle.White}
     >

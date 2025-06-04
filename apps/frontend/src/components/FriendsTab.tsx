@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import Card, { CardStyle } from "./system/Card";
 import Button, { ButtonColor } from "./system/Button";
 import UserBubble from "./UserBubble";
@@ -24,10 +24,10 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
   const [receivedRequests, setReceivedRequests] = useState<UserDto[]>([]);
   const [sentRequests, setSentRequests] = useState<UserDto[]>([]);
   const [activeTab, setActiveTab] = useState<"friends" | "received" | "sent">(
-    "friends",
+    "friends"
   );
   const [processingIds, setProcessingIds] = useState<Record<string, boolean>>(
-    {},
+    {}
   );
 
   const fetchData = useCallback(async () => {
@@ -85,7 +85,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
     try {
       await userDeclineFriendRequest({ path: { requesterId } });
       setReceivedRequests((prev) =>
-        prev.filter((req) => req.email !== userIdStr),
+        prev.filter((req) => req.email !== userIdStr)
       );
       fetchData();
     } catch (error) {
@@ -146,19 +146,31 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
 
       <div className="flex mb-4 border-b">
         <button
-          className={`px-4 py-2 ${activeTab === "friends" ? "border-b-2 border-black font-bold" : "text-stone-500"}`}
+          className={`px-4 py-2 ${
+            activeTab === "friends"
+              ? "border-b-2 border-black font-bold"
+              : "text-stone-500"
+          }`}
           onClick={() => setActiveTab("friends")}
         >
           Friends ({friends.length})
         </button>
         <button
-          className={`px-4 py-2 ${activeTab === "received" ? "border-b-2 border-black font-bold" : "text-stone-500"}`}
+          className={`px-4 py-2 ${
+            activeTab === "received"
+              ? "border-b-2 border-black font-bold"
+              : "text-stone-500"
+          }`}
           onClick={() => setActiveTab("received")}
         >
           Received Requests ({receivedRequests.length})
         </button>
         <button
-          className={`px-4 py-2 ${activeTab === "sent" ? "border-b-2 border-black font-bold" : "text-stone-500"}`}
+          className={`px-4 py-2 ${
+            activeTab === "sent"
+              ? "border-b-2 border-black font-bold"
+              : "text-stone-500"
+          }`}
           onClick={() => setActiveTab("sent")}
         >
           Sent Requests ({sentRequests.length})

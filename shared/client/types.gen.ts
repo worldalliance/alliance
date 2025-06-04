@@ -58,58 +58,180 @@ export type UserActionDto = {
     deadline: string;
 };
 
-export type ActionDto = {
-    id: number;
-    name: string;
-    category: string;
-    whyJoin: string;
-    image: string;
-    description: string;
-    timeEstimate: string;
-    status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
-    usersJoined: number;
-    myRelation: UserActionDto;
+export type ActionEventDto = {
+    /**
+     * Message describing the event
+     */
+    message: string;
+    /**
+     * New status of the action after the event
+     */
+    newStatus: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Notification type for the event
+     */
+    sendNotifsTo: 'all' | 'joined' | 'none';
+    /**
+     * Timestamp when the event was last updated
+     */
+    updateDate: string;
+    /**
+     * Indicates whether the event should be shown in the timeline
+     */
+    showInTimeline: boolean;
 };
 
-export type ActionEventDto = {
+export type ActionDto = {
+    /**
+     * Unique identifier for the action
+     */
     id: number;
+    /**
+     * Name of the action
+     */
     name: string;
-    date: string;
-    location?: string;
-    description?: string;
+    /**
+     * Category of the action
+     */
+    category: string;
+    /**
+     * Reason to join the action
+     */
+    whyJoin: string;
+    /**
+     * Image URL for the action
+     */
+    image: string | null;
+    /**
+     * Description of the action
+     */
+    description: string;
+    timeEstimate: string;
+    /**
+     * Current status of the action
+     */
+    status: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Number of users who have joined the action
+     */
+    usersJoined: number;
+    myRelation: UserActionDto;
+    events: Array<ActionEventDto>;
 };
 
 export type CreateActionDto = {
+    /**
+     * Name of the action
+     */
     name: string;
+    /**
+     * Category of the action
+     */
     category: string;
+    /**
+     * Reason to join the action
+     */
     whyJoin: string;
-    image: string;
+    /**
+     * Image URL for the action
+     */
+    image: string | null;
+    /**
+     * Description of the action
+     */
     description: string;
     timeEstimate: string;
-    status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
-    events?: ActionEventDto[];
+    /**
+     * Current status of the action
+     */
+    status: 'active' | 'upcoming' | 'past' | 'draft';
+    events: Array<ActionEventDto>;
 };
 
 export type UpdateActionDto = {
+    /**
+     * Name of the action
+     */
     name?: string;
+    /**
+     * Category of the action
+     */
     category?: string;
+    /**
+     * Reason to join the action
+     */
     whyJoin?: string;
-    image?: string;
+    /**
+     * Image URL for the action
+     */
+    image?: string | null;
+    /**
+     * Description of the action
+     */
     description?: string;
     timeEstimate?: string;
-    status?: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    /**
+     * Current status of the action
+     */
+    status?: 'active' | 'upcoming' | 'past' | 'draft';
+    events?: Array<ActionEventDto>;
+    /**
+     * Message describing the update
+     */
+    message: string;
+    /**
+     * The new status of the action
+     */
+    newStatus: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Who should receive notifications
+     */
+    sendNotifs: 'all' | 'joined' | 'none';
+    /**
+     * Date of the update
+     */
+    updateDate: string;
+    /**
+     * Whether the update should appear in the timeline
+     */
+    showInTimeline: boolean;
 };
 
 export type ActionWithRelationDto = {
+    /**
+     * Unique identifier for the action
+     */
     id: number;
+    /**
+     * Name of the action
+     */
     name: string;
+    /**
+     * Category of the action
+     */
     category: string;
+    /**
+     * Reason to join the action
+     */
     whyJoin: string;
-    image: string;
+    /**
+     * Image URL for the action
+     */
+    image: string | null;
+    /**
+     * Description of the action
+     */
     description: string;
     timeEstimate: string;
-    status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    /**
+     * Current status of the action
+     */
+    status: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Number of users who have joined the action
+     */
     usersJoined: number;
+    events: Array<ActionEventDto>;
     relation: UserActionDto;
 };
 
@@ -154,52 +276,103 @@ export type CreatePostDto = {
     actionId?: number;
 };
 
-export type Action = {
+export type UserAction = {
+    status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
+    dateCommitted: string;
+    dateCompleted: string;
+    deadline: string;
+};
+
+export type ActionEvent = {
+    /**
+     * Unique identifier for the action event
+     */
     id: number;
+    /**
+     * Message describing the event
+     */
+    message: string;
+    /**
+     * New status of the action after the event
+     */
+    newStatus: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Notification type for the event
+     */
+    sendNotifsTo: 'all' | 'joined' | 'none';
+    /**
+     * Timestamp when the event was last updated
+     */
+    updateDate: string;
+    /**
+     * Indicates whether the event should be shown in the timeline
+     */
+    showInTimeline: boolean;
+    /**
+     * The action associated with this event
+     */
+    action: Action;
+};
+
+export type Action = {
+    /**
+     * Unique identifier for the action
+     */
+    id: number;
+    /**
+     * Name of the action
+     */
     name: string;
+    /**
+     * Category of the action
+     */
     category: string;
+    /**
+     * Reason to join the action
+     */
     whyJoin: string;
-    image: string;
+    /**
+     * Image URL for the action
+     */
+    image: string | null;
+    /**
+     * Description of the action
+     */
     description: string;
     timeEstimate: string;
-    status: 'Active' | 'Upcoming' | 'Past' | 'Draft';
+    /**
+     * Current status of the action
+     */
+    status: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Timestamp when the action was created
+     */
     createdAt: string;
+    /**
+     * Timestamp when the action was last updated
+     */
     updatedAt: string;
+    /**
+     * Relations between users and the action
+     */
+    userRelations: Array<UserAction>;
+    /**
+     * Events associated with the action
+     */
+    events: Array<ActionEvent>;
+    /**
+     * Number of users who have joined the action
+     */
     usersJoined: number;
 };
 
-export type User = {
-    id: number;
-    name: string;
-    email: string;
-    password: string;
-    admin: boolean;
-    profilePicture: string | null;
-    profileDescription: string | null;
-};
-
-export type Post = {
-    id: number;
-    title: string;
-    content: string;
-    author: User;
-    authorId: number;
-    action?: Action;
-    actionId?: number;
-    replies: Array<Reply>;
-    createdAt: string;
-    updatedAt: string;
-};
-
-export type Reply = {
+export type ReplyDto = {
     id: number;
     content: string;
-    author: User;
-    authorId: number;
-    post: Post;
     postId: number;
     createdAt: string;
     updatedAt: string;
+    author: UserDto;
 };
 
 export type PostDto = {
@@ -209,10 +382,10 @@ export type PostDto = {
     authorId: number;
     action?: Action;
     actionId?: number;
-    replies: Array<Reply>;
     createdAt: string;
     updatedAt: string;
     author: UserDto;
+    replies: Array<ReplyDto>;
 };
 
 export type UpdatePostDto = {
@@ -224,15 +397,6 @@ export type UpdatePostDto = {
 export type CreateReplyDto = {
     content: string;
     postId: number;
-};
-
-export type ReplyDto = {
-    id: number;
-    content: string;
-    postId: number;
-    createdAt: string;
-    updatedAt: string;
-    author: UserDto;
 };
 
 export type UpdateReplyDto = {
@@ -639,6 +803,19 @@ export type ActionsLiveListResponses = {
     200: unknown;
 };
 
+export type ActionsOpengraphData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/opengraph';
+};
+
+export type ActionsOpengraphResponses = {
+    200: string;
+};
+
+export type ActionsOpengraphResponse = ActionsOpengraphResponses[keyof ActionsOpengraphResponses];
+
 export type ActionsRemoveData = {
     body?: never;
     path: {
@@ -711,6 +888,21 @@ export type ActionsFindCompletedForUserResponses = {
 };
 
 export type ActionsFindCompletedForUserResponse = ActionsFindCompletedForUserResponses[keyof ActionsFindCompletedForUserResponses];
+
+export type ActionsAddEventData = {
+    body: ActionEventDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/events';
+};
+
+export type ActionsAddEventResponses = {
+    200: ActionDto;
+};
+
+export type ActionsAddEventResponse = ActionsAddEventResponses[keyof ActionsAddEventResponses];
 
 export type CommuniquesFindAllData = {
     body?: never;

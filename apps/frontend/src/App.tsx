@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import HomePage from "./pages/app/HomePage";
 import IssuesListPage from "./pages/app/IssuesListPage";
 import IssuePage from "./pages/app/IssuePage";
@@ -114,7 +109,7 @@ const AppRoutes = () => {
           }
         />
         <Route
-          path="/action/:id"
+          path="/actions/:id"
           element={
             <PublicAppRoute>
               <ActionPage />
@@ -230,15 +225,7 @@ const AppRoutes = () => {
 };
 
 function App() {
-  return (
-    <Router>
-      <TempProdPassword>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
-      </TempProdPassword>
-    </Router>
-  );
+  return <AppRoutes />;
 }
 
 export default App;

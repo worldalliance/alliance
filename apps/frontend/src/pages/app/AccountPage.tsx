@@ -6,6 +6,7 @@ import FormInput from "../../components/system/FormInput";
 import { AdminOnly } from "../../lib/AdminOnly";
 import Badge from "../../components/system/Badge";
 import FriendsTab from "../../components/FriendsTab";
+import { ProtectedRoute } from "../../RouteWrappers";
 
 const AccountPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -40,52 +41,54 @@ const AccountPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-pagebg pt-20 px-8 md:px-16">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div className="flex flex-row items-center gap-2">
-            <h1 className="text-2xl font-sabon">Account</h1>
-            <AdminOnly>
-              <Badge className="!bg-yellow-600">Admin</Badge>
-            </AdminOnly>
+    <ProtectedRoute>
+      <div className="min-h-screen bg-pagebg pt-20 px-8 md:px-16">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-row items-center gap-2">
+              <h1 className="text-2xl font-sabon">Account</h1>
+              <AdminOnly>
+                <Badge className="!bg-yellow-600">Admin</Badge>
+              </AdminOnly>
+            </div>
+            <Button
+              onClick={handleLogout}
+              color={ButtonColor.Stone}
+              className="px-4"
+            >
+              Log Out
+            </Button>
           </div>
-          <Button
-            onClick={handleLogout}
-            color={ButtonColor.Stone}
-            className="px-4"
-          >
-            Log Out
-          </Button>
+
+          <Card style={CardStyle.White} className="p-8 mb-6">
+            <div className="mb-6">
+              <FormInput
+                label="Full Name"
+                name="name"
+                type="text"
+                value={user.name || ""}
+                onChange={() => {}}
+                disabled
+              />
+            </div>
+
+            <div className="mb-6">
+              <FormInput
+                label="Email Address"
+                name="email"
+                type="email"
+                value={user.email || ""}
+                onChange={() => {}}
+                disabled
+              />
+            </div>
+          </Card>
+
+          {/* The FriendsTab component handles all friend-related functionality */}
+          <FriendsTab userId={user.id} />
         </div>
-
-        <Card style={CardStyle.White} className="p-8 mb-6">
-          <div className="mb-6">
-            <FormInput
-              label="Full Name"
-              name="name"
-              type="text"
-              value={user.name || ""}
-              onChange={() => {}}
-              disabled
-            />
-          </div>
-
-          <div className="mb-6">
-            <FormInput
-              label="Email Address"
-              name="email"
-              type="email"
-              value={user.email || ""}
-              onChange={() => {}}
-              disabled
-            />
-          </div>
-        </Card>
-
-        {/* The FriendsTab component handles all friend-related functionality */}
-        <FriendsTab userId={user.id} />
       </div>
-    </div>
+    </ProtectedRoute>
   );
 };
 

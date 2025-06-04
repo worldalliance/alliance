@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router";
 import {
   communiquesCreate,
   communiquesFindOne,
@@ -163,7 +163,9 @@ const AnnouncementEditPage: React.FC = () => {
     } catch (err) {
       console.error("Error saving announcement:", err);
       setError(
-        `Failed to ${isEditing ? "update" : "create"} announcement. Please try again.`,
+        `Failed to ${
+          isEditing ? "update" : "create"
+        } announcement. Please try again.`
       );
     } finally {
       setIsSubmitting(false);
@@ -263,11 +265,11 @@ const AnnouncementEditPage: React.FC = () => {
                   ? uploadingImage
                     ? "Uploading Image..."
                     : isEditing
-                      ? "Updating..."
-                      : "Creating..."
+                    ? "Updating..."
+                    : "Creating..."
                   : isEditing
-                    ? "Update Announcement"
-                    : "Create Announcement"}
+                  ? "Update Announcement"
+                  : "Create Announcement"}
               </Button>
             </div>
           </form>

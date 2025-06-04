@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { PostDto } from "@alliance/shared/client";
 import { useAuth } from "../lib/AuthContext";
 import { formatDistanceToNow } from "date-fns";

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { PostDto } from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import { forumFindAllPosts } from "@alliance/shared/client";
 import Button, { ButtonColor } from "../../components/system/Button";
 import ForumListPost from "../../components/ForumListPost";
+import { ProtectedRoute } from "../../RouteWrappers";
 
 const ForumPage: React.FC = () => {
   const [posts, setPosts] = useState<PostDto[]>([]);
@@ -40,44 +41,46 @@ const ForumPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-pagebg items-center">
-      <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))] gap-y-3">
-        <div className="flex py-4 flex-row justify-between items-center w-full">
-          <h2 className="font-sabon text-xl text-left h-fit">Recent Posts</h2>
-          {isAuthenticated && (
-            <Button onClick={handleCreatePost} color={ButtonColor.Blue}>
-              Create Post
-            </Button>
+    <ProtectedRoute>
+      <div className="flex flex-col min-h-screen bg-pagebg items-center">
+        <div className="px-4 py-5 flex flex-col items-center w-[calc(min(800px,100%))] gap-y-3">
+          <div className="flex py-4 flex-row justify-between items-center w-full">
+            <h2 className="font-sabon text-xl text-left h-fit">Recent Posts</h2>
+            {isAuthenticated && (
+              <Button onClick={handleCreatePost} color={ButtonColor.Blue}>
+                Create Post
+              </Button>
+            )}
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center py-4">
+              <div className="loader">Loading...</div>
+            </div>
+          ) : error ? (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
+              {error}
+            </div>
+          ) : posts.length === 0 ? (
+            <div className="text-center py-4 text-gray-500 text-sm">
+              <p>No forum posts yet. Be the first to start a discussion!</p>
+            </div>
+          ) : (
+            <div className="w-full space-y-2">
+              {posts.map((post, index) => (
+                <ForumListPost
+                  key={post.id}
+                  post={post}
+                  handleViewPost={handleViewPost}
+                  first={index === 0}
+                  last={index === posts.length - 1}
+                />
+              ))}
+            </div>
           )}
         </div>
-
-        {isLoading ? (
-          <div className="flex justify-center py-4">
-            <div className="loader">Loading...</div>
-          </div>
-        ) : error ? (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded text-sm">
-            {error}
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="text-center py-4 text-gray-500 text-sm">
-            <p>No forum posts yet. Be the first to start a discussion!</p>
-          </div>
-        ) : (
-          <div className="w-full space-y-2">
-            {posts.map((post, index) => (
-              <ForumListPost
-                key={post.id}
-                post={post}
-                handleViewPost={handleViewPost}
-                first={index === 0}
-                last={index === posts.length - 1}
-              />
-            ))}
-          </div>
-        )}
       </div>
-    </div>
+    </ProtectedRoute>
   );
 };
 

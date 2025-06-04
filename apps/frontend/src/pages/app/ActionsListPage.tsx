@@ -8,13 +8,14 @@ import {
 import { ActionDto } from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import { FilterMode, filterActions } from "@alliance/shared/lib/actionUtils";
+import { ProtectedRoute } from "../../RouteWrappers";
 
 const ActionsListPage: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
-  const [liveCounts, setLiveCounts] = useState<Record<number, number>>({});
+  //   const [liveCounts, setLiveCounts] = useState<Record<number, number>>({});
 
   const { isAuthenticated } = useAuth();
 
@@ -46,46 +47,51 @@ const ActionsListPage: React.FC = () => {
     };
   }, [isAuthenticated]);
 
-  const filteredActions = useMemo(() => filterActions(actions, filterMode), [actions, filterMode]);
+  const filteredActions = useMemo(
+    () => filterActions(actions, filterMode),
+    [actions, filterMode],
+  );
 
   return (
-    <div className="flex flex-col min-h-screen bg-white items-center">
-      <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
-        <div className="flex py-8 flex-row justify-between items-center w-[90%]">
-          <p className="font-sabon text-xl text-left h-fit pt-2">Filter:</p>
-          <div className="flex flex-row gap-x-2 items-center">
-            {Object.values(FilterMode).map((mode) => (
-              <Button
-                key={mode}
-                color={
-                  filterMode === mode ? ButtonColor.Blue : ButtonColor.Light
-                }
-                onClick={() => setFilterMode(mode)}
-              >
-                {mode}
-              </Button>
-            ))}
+    <ProtectedRoute>
+      <div className="flex flex-col min-h-screen bg-white items-center">
+        <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
+          <div className="flex py-8 flex-row justify-between items-center w-[90%]">
+            <p className="font-sabon text-xl text-left h-fit pt-2">Filter:</p>
+            <div className="flex flex-row gap-x-2 items-center">
+              {Object.values(FilterMode).map((mode) => (
+                <Button
+                  key={mode}
+                  color={
+                    filterMode === mode ? ButtonColor.Blue : ButtonColor.Light
+                  }
+                  onClick={() => setFilterMode(mode)}
+                >
+                  {mode}
+                </Button>
+              ))}
+            </div>
           </div>
+
+          {loading && <p className="text-center py-4">Loading actions...</p>}
+
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
+
+          {filteredActions.map((action) => (
+            <ActionItemCard
+              key={action.id}
+              {...action}
+              className="w-full"
+              liveCount={/*liveCounts[action.id] ??*/ action.usersJoined}
+            />
+          ))}
         </div>
-
-        {loading && <p className="text-center py-4">Loading actions...</p>}
-
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
-
-        {filteredActions.map((action) => (
-          <ActionItemCard
-            key={action.id}
-            {...action}
-            className="w-full"
-            liveCount={liveCounts[action.id] ?? action.usersJoined}
-          />
-        ))}
       </div>
-    </div>
+    </ProtectedRoute>
   );
 };
 

@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import Card, { CardStyle } from "./system/Card";
 import bgImage from "../assets/fakebgimage.png";
 

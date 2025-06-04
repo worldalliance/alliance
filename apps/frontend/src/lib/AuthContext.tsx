@@ -94,13 +94,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
         logout,
         loading,
       }),
-      [user, loading, login, logout],
+      [user, loading, login, logout]
     );
 
     return (
       <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
     );
-  },
+  }
 );
 
 AuthProvider.displayName = "AuthProvider";

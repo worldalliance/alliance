@@ -65,6 +65,9 @@ export class ActionEvent {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'actionId' })
-  @ApiProperty({ description: 'The action associated with this event' })
+  @ApiProperty({
+    description: 'The action associated with this event',
+    type: () => Action,
+  })
   action: Action;
 }

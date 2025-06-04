@@ -1,7 +1,7 @@
 import React from "react";
 import Card from "./system/Card";
 import { CommuniqueDto } from "@alliance/shared/client";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import test_image from "../stories/test_image.jpg";
 import { getImageSource } from "../lib/config";
 import StatusIndicator, { Status } from "./StatusIndicator";

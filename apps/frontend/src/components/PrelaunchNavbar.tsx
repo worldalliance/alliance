@@ -1,7 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
-import Navbar, { platformSublinks } from "./Navbar";
+import { Link, useNavigate } from "react-router";
+import { platformSublinks } from "./Navbar";
 import DropdownLink from "./DropdownLink";
-
 
 enum NavbarPage {
   Names = "Names",
@@ -21,16 +20,21 @@ export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.Help]: "/help",
 };
 
-const PrelaunchNavbar: React.FC<{
+export interface PrelaunchNavbarProps {
   transparent?: boolean;
   ref?: React.RefObject<HTMLDivElement | null>;
-}> = ({ transparent = false, ref }) => {
+}
+
+const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
+  transparent = true,
+  ref,
+}: PrelaunchNavbarProps) => {
   const navigate = useNavigate();
   return (
     <div
       className={`
-      flex flex-col md:flex-row gap-y-4
-      w-screen justify-between items-center px-24 sticky top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300 ${
+      flex flex-col md:flex-row gap-y-4 absolute
+      w-screen justify-between items-center px-24 top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300 ${
         transparent
           ? "bg-transparent py-10 text-white"
           : "bg-black text-white py-6"
@@ -57,11 +61,21 @@ const PrelaunchNavbar: React.FC<{
             />
           ) : link == NavbarPage.Help ? (
             <Link to={destinations[link]} key={link}>
-              <p className={`${transparent ? "border border-white/100 hover:bg-white hover:text-black" : "border border-white hover:bg-white hover:text-black"} rounded-md py-1 px-4 whitespace-nowrap font-newsreader`}>Help</p>
+              <p
+                className={`${
+                  transparent
+                    ? "border border-white/100 hover:bg-white hover:text-black"
+                    : "border border-white hover:bg-white hover:text-black"
+                } rounded-md py-1 px-4 whitespace-nowrap font-newsreader`}
+              >
+                Help
+              </p>
             </Link>
           ) : (
             <Link to={destinations[link]} key={link}>
-              <p className="hover:underline whitespace-nowrap font-newsreader">{link}</p>
+              <p className="hover:underline whitespace-nowrap font-newsreader">
+                {link}
+              </p>
             </Link>
           )
         )}

@@ -5,7 +5,7 @@ import {
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 function getWebAppLocation(webAppLocation: string) {
   if (webAppLocation.startsWith("/")) {
@@ -29,10 +29,10 @@ const NotificationsIcon = () => {
         if (notifications) {
           setNotifications(notifications);
           setUnreadCount(
-            notifications.filter((notification) => !notification.read).length,
+            notifications.filter((notification) => !notification.read).length
           );
         }
-      },
+      }
     );
   }, [isAuthenticated]);
 
@@ -45,7 +45,7 @@ const NotificationsIcon = () => {
       notifsSetRead({ path: { id } });
       navigate(getWebAppLocation(webAppLocation));
     },
-    [navigate],
+    [navigate]
   );
 
   return (
@@ -68,7 +68,7 @@ const NotificationsIcon = () => {
               key={notification.id}
               onClick={handleNotifClick(
                 notification.id,
-                notification.webAppLocation,
+                notification.webAppLocation
               )}
               className={`text-black hover:bg-zinc-100 p-2 rounded-md ${
                 !notification.read ? "bg-red-50" : ""

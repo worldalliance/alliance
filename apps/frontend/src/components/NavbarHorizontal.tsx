@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import {
   destinations,
   links,
@@ -7,7 +7,6 @@ import {
   platformSublinks,
 } from "./Navbar";
 import DropdownLink from "./DropdownLink";
-import LandingNavbar from "./LandingNavbar";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../lib/config";
 import NotificationsIcon from "./NotificationsIcon";
@@ -15,10 +14,6 @@ import NotificationsIcon from "./NotificationsIcon";
 export type InnerNavbarProps = Pick<NavbarProps, "currentPage">;
 
 const NavbarHorizontal: React.FC<InnerNavbarProps> = () => {
-  if (document.location.href.endsWith("#/")) {
-    return <LandingNavbar />;
-  }
-
   const activeLinks = isFeatureEnabled(Features.Forum)
     ? links
     : links.filter((link) => link !== NavbarPage.Forum);
@@ -48,7 +43,7 @@ const NavbarHorizontal: React.FC<InnerNavbarProps> = () => {
             <Link to={destinations[link]} key={link} className="py-3">
               <p className="pt-1 whitespace-nowrap">{link}</p>
             </Link>
-          ),
+          )
         )}
       </div>
       <div className="absolute right-10">

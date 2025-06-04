@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
 import FormInput from "../../components/system/FormInput";
 import { useAuth } from "../../lib/AuthContext";
 import { appHealthCheck, SignInDto } from "@alliance/shared/client";
+import { LoggedOutOnlyRoute } from "../../RouteWrappers";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
@@ -50,76 +51,78 @@ const LoginPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-pagebg">
-      <div className="flex flex-col flex-grow items-center justify-center font-avenir">
-        <div className="w-full max-w-md px-8">
-          <h2 className="text-2xl font-sabon text-center mb-8">Log in</h2>
+    <LoggedOutOnlyRoute>
+      <div className="min-h-screen flex flex-col bg-pagebg">
+        <div className="flex flex-col flex-grow items-center justify-center font-avenir">
+          <div className="w-full max-w-md px-8">
+            <h2 className="text-2xl font-sabon text-center mb-8">Log in</h2>
 
-          {message && (
-            <Card style={CardStyle.Alert} className="mb-6">
-              <span className="block">{message}</span>
+            {message && (
+              <Card style={CardStyle.Alert} className="mb-6">
+                <span className="block">{message}</span>
+              </Card>
+            )}
+
+            {error && (
+              <Card
+                style={CardStyle.Alert}
+                className="!border-red-400 !bg-red-50 mb-6"
+              >
+                <span className="text-red-700">{error}</span>
+              </Card>
+            )}
+
+            <Card className="p-8" style={CardStyle.White}>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  <FormInput
+                    label="Email Address"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="your@email.com"
+                    required
+                    name="email"
+                    autoComplete="email"
+                  />
+                </div>
+                <div>
+                  <FormInput
+                    label="Password"
+                    type="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    autoComplete="current-password"
+                    required
+                    name="password"
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    color={ButtonColor.Stone}
+                    className="w-full flex justify-center text-center py-3 pb-2"
+                    type="submit"
+                    disabled={loading}
+                  >
+                    Log In
+                  </Button>
+                </div>
+              </form>
             </Card>
-          )}
 
-          {error && (
-            <Card
-              style={CardStyle.Alert}
-              className="!border-red-400 !bg-red-50 mb-6"
-            >
-              <span className="text-red-700">{error}</span>
-            </Card>
-          )}
-
-          <Card className="p-8" style={CardStyle.White}>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <FormInput
-                  label="Email Address"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="your@email.com"
-                  required
-                  name="email"
-                  autoComplete="email"
-                />
-              </div>
-              <div>
-                <FormInput
-                  label="Password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  autoComplete="current-password"
-                  required
-                  name="password"
-                />
-              </div>
-
-              <div className="pt-2">
-                <Button
-                  color={ButtonColor.Stone}
-                  className="w-full flex justify-center text-center py-3 pb-2"
-                  type="submit"
-                  disabled={loading}
-                >
-                  Log In
-                </Button>
-              </div>
-            </form>
-          </Card>
-
-          <div className="mt-6 text-center">
-            <p className="text-[11pt] text-stone-600">
-              Don&apos;t have an account?{" "}
-              <Link to="/signup" className="text-blue-600 hover:underline">
-                Register
-              </Link>
-            </p>
+            <div className="mt-6 text-center">
+              <p className="text-[11pt] text-stone-600">
+                Don&apos;t have an account?{" "}
+                <Link to="/signup" className="text-blue-600 hover:underline">
+                  Register
+                </Link>
+              </p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </LoggedOutOnlyRoute>
   );
 };
 

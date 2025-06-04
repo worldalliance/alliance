@@ -1,7 +1,7 @@
 import React from "react";
 import Badge from "./system/Badge";
 import Card, { CardStyle } from "./system/Card";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { ActionDto } from "@alliance/shared/client/types.gen";
 
 export interface ActionItemCardProps
@@ -25,7 +25,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
       <Card
         className="block bg-pagebg text-[11pt] font-avenir"
         style={CardStyle.White}
-        onClick={() => navigate(`/action/${id}`)}
+        onClick={() => navigate(`/actions/${id}`)}
       >
         <Badge>{category}</Badge>
         <div className="w-[100%] space-x-3">

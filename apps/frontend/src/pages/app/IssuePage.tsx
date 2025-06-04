@@ -2,7 +2,7 @@ import Navbar from "../../components/Navbar";
 import { NavbarPage } from "../../components/Navbar";
 import LandingNavbar from "../../components/LandingNavbar";
 import { useAuth } from "../../lib/AuthContext";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 
 const IssuePage: React.FC = () => {
   const { issue } = useParams();

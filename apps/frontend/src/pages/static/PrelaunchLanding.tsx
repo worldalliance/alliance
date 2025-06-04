@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import HighResGlobe from "../../components/HighResGlobe";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
+import HighResGlobe from "../../components/HighResGlobe";
 
 const PrelaunchLandingPage: React.FC = () => {
-  const size = 2 * Math.min(window.innerWidth, window.innerHeight);
+  const [size, setSize] = useState(500);
   const [navbarHeight, setNavbarHeight] = useState(0);
   const navbarRef = useRef<HTMLDivElement>(null);
   const [scrolled, _] = useState(false);
@@ -16,15 +16,15 @@ const PrelaunchLandingPage: React.FC = () => {
   const color2 = `hsl(305, 100%, 50%)`;
 
   return (
-    <div className="bg-red-100">
-      <PrelaunchNavbar transparent={!scrolled} ref={navbarRef} />
+    <div>
+      <PrelaunchNavbar transparent={true} />
       <div
-        className="flex flex-col items-center justify-center bg-gray-950 w-screen h-[calc(100vh-0.5px)] overflow-hidden relative goob"
+        className="flex flex-col items-center justify-center bg-gray-950 w-screen h-[calc(100vh)] overflow-hidden relative goob"
         style={{
           marginTop: `-${navbarHeight}px`,
         }}
       >
-        <div className="mb-[-40%]">
+        <div className="mb-[-40%]" suppressHydrationWarning={true}>
           <HighResGlobe width={size} height={size} />
         </div>
         <div className="absolute top-0 left-0 right-0 bottom-0 grain"></div>

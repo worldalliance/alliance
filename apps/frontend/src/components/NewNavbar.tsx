@@ -1,7 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import Navbar, { platformSublinks } from "./Navbar";
 import DropdownLink from "./DropdownLink";
-
 
 enum NavbarPage {
   Updates = "Updates",
@@ -57,11 +56,21 @@ const NewNavbar: React.FC<{
             />
           ) : link == NavbarPage.Join ? (
             <Link to={destinations[link]} key={link}>
-              <p className={`${transparent ? "border border-white/100 hover:bg-white hover:text-black" : "border border-white hover:bg-white hover:text-black"} rounded-md py-1 px-4 whitespace-nowrap font-newsreader`}>Join</p>
+              <p
+                className={`${
+                  transparent
+                    ? "border border-white/100 hover:bg-white hover:text-black"
+                    : "border border-white hover:bg-white hover:text-black"
+                } rounded-md py-1 px-4 whitespace-nowrap font-newsreader`}
+              >
+                Join
+              </p>
             </Link>
           ) : (
             <Link to={destinations[link]} key={link}>
-              <p className="hover:underline whitespace-nowrap font-newsreader">{link}</p>
+              <p className="hover:underline whitespace-nowrap font-newsreader">
+                {link}
+              </p>
             </Link>
           )
         )}

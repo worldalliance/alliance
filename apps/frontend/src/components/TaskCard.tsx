@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { CardStyle } from "./system/Card";
 import Badge from "./system/Badge";
 
 import Card from "./system/Card";
-import { ProgressCircle } from "./tremor/ProgressCircle";
 import { ActionDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "./system/Button";
 
@@ -28,11 +27,12 @@ enum TaskCardState {
   Closed = "closed",
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
+const TaskCard: React.FC<TaskCardProps> = ({
+  action,
+  onComplete,
+}: TaskCardProps) => {
   const navigate = useNavigate();
   const [state, setState] = useState<TaskCardState>(TaskCardState.Default);
-
-  console.log(state);
 
   const handleExpandClick = useCallback(
     (e: React.MouseEvent) => {
@@ -47,8 +47,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
   );
 
   const goToActionPage = useCallback(() => {
-    navigate("/action/1");
-  }, [navigate]);
+    navigate(`/actions/${action.id}`);
+  }, [navigate, action]);
 
   const handleCompleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -106,9 +106,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
               <div className="flex flex row text-gray-500">
                 {action.myRelation.deadline && (
                   <>
-                    <p className="">
-                      {timeRemaining}
-                    </p>
+                    <p className="">{timeRemaining}</p>
                   </>
                 )}
               </div>
@@ -116,10 +114,12 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
           </div>
         </div>
         <img
-            src={expandArrow}
-            alt="Expand"
-            className={`w-4 h-4 transition-transform ${state === TaskCardState.Expanded ? "rotate-180" : ""}`}
-          />
+          src={expandArrow}
+          alt="Expand"
+          className={`w-4 h-4 transition-transform ${
+            state === TaskCardState.Expanded ? "rotate-180" : ""
+          }`}
+        />
       </div>
 
       {state !== TaskCardState.Default && (
@@ -142,7 +142,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
         <div className="absolute top-0 left-0 bottom-0 right-0 bg-white flex justify-center items-center">
           <div className="bg-white p-4 rounded-md">
             <p className="mb-4 font-bold">
-              Just to confirm, you've fully completed this action?
+              Just to confirm, you&apos;ve fully completed this action?
             </p>
             <div className="flex flex-row gap-x-2">
               <Button color={ButtonColor.Blue} onClick={handleConfirmComplete}>
@@ -164,7 +164,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ action, onComplete }) => {
         >
           <p className={`font-bold text-[14pt]`}>Great work!</p>
           <p className="text-[12pt] ">
-            We'll let you know when we have results
+            We&apos;ll let you know when we have results
           </p>
         </div>
       )}

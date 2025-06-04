@@ -1,5 +1,5 @@
 import Button, { ButtonColor } from "./system/Button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import backArrow from "../../assets/icons8-expand-arrow-96.png";
 
 const BackButton = () => {
