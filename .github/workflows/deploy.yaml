@@ -106,7 +106,7 @@ jobs:
 
       - name: Move Build Artifacts
         run: |
-          mv apps/frontend/build/react-build.zip ./react-build.zip
+          mv apps/frontend/react-build.zip ./react-build.zip
 
       - name: Upload React Build to EC2
         uses: appleboy/scp-action@v0.1.3
@@ -185,6 +185,61 @@ jobs:
             pm2 delete client-ssr || true
             pm2 start "npx react-router-serve build/server/index.js" --name client-ssr
             pm2 save
+
+            if [ ! -f /etc/nginx/conf.d/alliance.conf ]; then
+              cat <<EOF | sudo tee /etc/nginx/conf.d/alliance.conf
+              server {
+                server_name ${vars.DOMAIN_NAME};
+
+                root /home/ec2-user/output/build/client;
+                index index.html;
+
+                location ^~ /assets/ {
+                  try_files $uri =404;
+                  access_log off;
+                  add_header Cache-Control "public, max-age=31536000, immutable";
+                }
+
+                location / {
+                  proxy_pass http://localhost:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+
+                }
+
+                location /api/ {
+                  proxy_pass http://localhost:3005/;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_cache_bypass $http_upgrade;
+                }
+
+                  listen 443 ssl; # managed by Certbot
+                  ssl_certificate /etc/letsencrypt/live/worldalliance.org/fullchain.pem; # managed by Certbot
+                  ssl_certificate_key /etc/letsencrypt/live/worldalliance.org/privkey.pem; # managed by Certbot
+                  include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+                  ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+              }
+              server {
+                  if ($host = worldalliance.org) {
+                      return 301 https://$host$request_uri;
+                  } # managed by Certbot
+
+
+                listen 80;
+                server_name worldalliance.org;
+                  return 404; # managed by Certbot
+
+
+              }
+            EOF
+            fi
+
+            sudo systemctl restart nginx
 
   deploy-admin-app:
     runs-on: ubuntu-latest
