@@ -95,19 +95,25 @@ jobs:
           zip -r react-server.zip server
         working-directory: ./apps/frontend
 
-      - name: Upload client artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload React Client Build to EC2
+        uses: appleboy/scp-action@v0.1.3
         with:
-          name: react-client
-          path: |
-            apps/frontend/build/react-client.zip
+          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "react-client.zip"
+          target: "~/"
+        working-directory: ./apps/frontend/build
 
-      - name: Upload server artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload React Server Build to EC2
+        uses: appleboy/scp-action@v0.1.3
         with:
-          name: react-server
-          path: |
-            apps/frontend/build/react-server.zip
+          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "react-server.zip"
+          target: "~/"
+        working-directory: ./apps/frontend/build
 
   build-admin-frontend:
     runs-on: ubuntu-latest
@@ -151,30 +157,6 @@ jobs:
       - provision-infrastructure
       - build-react-app
     steps:
-      - name: Download React Build Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: react-client
-
-      - name: Download React Server Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: react-server
-
-      - run: mv apps/frontend/build/react-client.zip ./react-client.zip
-      - run: mv apps/frontend/build/react-server.zip ./react-server.zip
-
-      - name: Upload React Build to EC2
-        uses: appleboy/scp-action@v0.1.3
-        with:
-          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
-          username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: |
-            react-client.zip
-            react-server.zip
-          target: "~/"
-
       - name: SSH and Deploy frontend SSR on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
