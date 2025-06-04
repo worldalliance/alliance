@@ -161,8 +161,8 @@ jobs:
         with:
           name: react-server
 
-      - run: mv apps/frontend/build/react-client.zip ./client.zip
-      - run: mv apps/frontend/build/react-server.zip ./server.zip
+      - run: mv apps/frontend/build/react-client.zip ./react-client.zip
+      - run: mv apps/frontend/build/react-server.zip ./react-server.zip
 
       - name: Upload React Build to EC2
         uses: appleboy/scp-action@v0.1.3
@@ -191,8 +191,8 @@ jobs:
             nvm use 20
             nvm alias default 20
 
-            unzip -o ~/client.zip -d ~/alliance-app/client
-            unzip -o ~/server.zip -d ~/alliance-app/server
+            unzip -o ~/react-client.zip -d ~/alliance-app/client
+            unzip -o ~/react-server.zip -d ~/alliance-app/server
 
             cd ~/alliance-app/server
             npm ci --omit=dev
