@@ -99,8 +99,8 @@ jobs:
 
       - name: Move Build Artifacts
         run: |
-          mv apps/frontend/build/client.zip ./react-client.zip
-          mv apps/frontend/build/server.zip ./react-server.zip
+          mv apps/frontend/build/react-client.zip ./react-client.zip
+          mv apps/frontend/build/react-server.zip ./react-server.zip
 
       - name: Upload React Client Build to EC2
         uses: appleboy/scp-action@v0.1.3
