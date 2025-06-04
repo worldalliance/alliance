@@ -91,8 +91,8 @@ jobs:
       - name: Zip client + server
         run: |
           cd build
-          zip -r client.zip client
-          zip -r server.zip server
+          zip -r react-client.zip client
+          zip -r react-server.zip server
         working-directory: ./apps/frontend
 
       - name: Upload artifacts
@@ -100,8 +100,8 @@ jobs:
         with:
           name: react-ssr
           path: |
-            apps/frontend/build/client.zip
-            apps/frontend/build/server.zip
+            apps/frontend/build/react-client.zip
+            apps/frontend/build/react-server.zip
 
   build-admin-frontend:
     runs-on: ubuntu-latest
@@ -157,8 +157,8 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           source: |
-            dist/client.zip
-            dist/server.zip
+            react-client.zip
+            react-server.zip
           target: "~/"
 
       - name: SSH and Deploy frontend SSR on EC2
