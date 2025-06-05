@@ -136,8 +136,8 @@ export default function SphereWebGL({
 
     /* ----------------------------- Geometry ----------------------------- */
     const createSphereBuffers = (radius: number) => {
-      const latBands = 128;
-      const lonBands = 128;
+      const latBands = 48;
+      const lonBands = 48;
       const positions: number[] = [];
       const uvs: number[] = [];
       const indices: number[] = [];
