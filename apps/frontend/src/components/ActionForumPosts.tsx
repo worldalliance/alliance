@@ -39,7 +39,7 @@ const ActionForumPosts: React.FC<ActionForumPostsProps> = ({
   }, [actionId]);
 
   const handleCreatePost = () => {
-    navigate(`/forum/new?actionId=${actionId}`);
+    navigate(`/forum/edit/new?actionId=${actionId}`);
   };
 
   const handleViewPost = (postId: number) => {

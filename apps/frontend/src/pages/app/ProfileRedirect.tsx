@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
-import { ProtectedRoute } from "../../RouteWrappers";
 import { useEffect } from "react";
 
 const ProfileRedirectInner = () => {
@@ -18,11 +17,7 @@ const ProfileRedirectInner = () => {
 };
 
 const ProfileRedirect = () => {
-  return (
-    <ProtectedRoute>
-      <ProfileRedirectInner />
-    </ProtectedRoute>
-  );
+  return <ProfileRedirectInner />;
 };
 
 export default ProfileRedirect;

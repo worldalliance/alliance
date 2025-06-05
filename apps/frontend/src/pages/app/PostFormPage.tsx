@@ -14,7 +14,7 @@ type FormMode = "create" | "edit";
 
 const PostFormPage: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();
-  const mode: FormMode = postId ? "edit" : "create";
+  const mode: FormMode = postId === "new" ? "create" : "edit";
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
