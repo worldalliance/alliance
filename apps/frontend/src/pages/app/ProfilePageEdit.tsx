@@ -4,7 +4,6 @@ import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
 import { useAuth } from "../../lib/AuthContext";
 import ProfileImage from "../../components/ProfileImage";
-import ReactMarkdown from "react-markdown";
 
 import {
   imagesUploadImage,

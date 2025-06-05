@@ -24,5 +24,5 @@ export default [
 
   route("forum", "pages/app/ForumPage.tsx"),
   route("forum/post/:id", "pages/app/PostDetailPage.tsx"),
-  route("forum/post/new", "pages/app/PostFormPage.tsx"),
+  route("forum/edit/:postId", "pages/app/PostFormPage.tsx"),
 ] satisfies RouteConfig;

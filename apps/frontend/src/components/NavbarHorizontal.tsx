@@ -10,9 +10,14 @@ const NavbarHorizontal: React.FC = () => {
     ? links
     : links.filter((link) => link !== NavbarPage.Forum);
 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) {
     return null;
+  }
+
+  let profileUrl = "/profile";
+  if (user?.id) {
+    profileUrl = `/user/${user.id}`;
   }
 
   return (
@@ -37,7 +42,11 @@ const NavbarHorizontal: React.FC = () => {
               inverted={false}
             />
           ) : (
-            <Link to={destinations[link]} key={link} className="py-3">
+            <Link
+              to={link === NavbarPage.Profile ? profileUrl : destinations[link]}
+              key={link}
+              className="py-3"
+            >
               <p className="pt-1 whitespace-nowrap">{link}</p>
             </Link>
           )
