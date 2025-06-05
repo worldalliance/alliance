@@ -36,7 +36,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
       flex flex-col md:flex-row gap-y-4 absolute
       w-screen justify-between items-center px-24 top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300 ${
         transparent
-          ? "bg-transparent py-10 text-white"
+          ? "bg-transparent py-6 text-white"
           : "bg-black text-white py-6"
       }`}
       ref={ref}
@@ -64,8 +64,8 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
               <p
                 className={`${
                   transparent
-                    ? "border border-white/100 hover:bg-white hover:text-black"
-                    : "border border-white hover:bg-white hover:text-black"
+                    ? " hover:bg-white hover:text-black"
+                    : " hover:bg-white hover:text-black"
                 } rounded-md py-1 px-4 whitespace-nowrap font-newsreader`}
               >
                 Help

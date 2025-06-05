@@ -44,7 +44,7 @@ export default function HighResGlobeClient({
             75,
             75
           ),
-          new THREE.MeshPhongMaterial({
+          new THREE.MeshBasicMaterial({
             map: cloudsTexture,
             transparent: true,
           })
