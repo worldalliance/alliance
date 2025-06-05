@@ -47,7 +47,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, format }) => {
       {format === "vertical" ? (
         <NavbarVertical currentPage={currentPage} />
       ) : (
-        <NavbarHorizontal currentPage={currentPage} />
+        <NavbarHorizontal />
       )}
     </div>
   );

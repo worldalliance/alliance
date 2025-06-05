@@ -1,5 +1,4 @@
 import NavbarHorizontal from "../components/NavbarHorizontal";
-import { NavbarPage } from "../components/Navbar";
 import { Navigate, Routes, Route, MemoryRouter } from "react-router";
 
 interface StoryRouterProps {
@@ -16,7 +15,7 @@ const StoryRouter = ({ children, initialEntry, path }: StoryRouterProps) => {
           path={path}
           element={
             <>
-              <NavbarHorizontal currentPage={NavbarPage.Dashboard} />
+              <NavbarHorizontal />
               {children}
             </>
           }

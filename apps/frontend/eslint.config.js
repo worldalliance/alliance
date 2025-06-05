@@ -14,7 +14,7 @@ export default defineConfig([
         'error', 
             {
             patterns: [
-                '../../../*',
+                '../../../shared',
             ],
         },
       ],

@@ -1,5 +1,5 @@
-import React, { Suspense, useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLoaderData, useNavigate, useParams } from "react-router";
 import Card, { CardStyle } from "../../components/system/Card";
 import StatsCard from "../../components/StatsCard";
 import Globe from "../../components/Globe";
@@ -14,72 +14,61 @@ import { getImageSource, isFeatureEnabled } from "../../lib/config";
 import ActionForumPosts from "../../components/ActionForumPosts";
 import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
-import { useAuth } from "../../lib/AuthContext";
 import ActionEventsPanel from "../../components/ActionEventsPanel";
-import { PublicAppRoute } from "../../RouteWrappers";
+import { Route } from "../../../.react-router/types/src/pages/app/+types/ActionPage";
+import NavbarHorizontal from "../../components/NavbarHorizontal";
+import { useAuth } from "../../lib/AuthContext";
 
-const ActionPage: React.FC = () => {
-  const { id: actionId } = useParams();
+export async function loader({
+  params,
+}: Route.LoaderArgs): Promise<ActionDto | undefined> {
+  if (!params.id || isNaN(parseInt(params.id))) {
+    return undefined;
+  }
+  const action = await actionsFindOne({
+    path: { id: parseInt(params.id) },
+  });
+
+  return action.data;
+}
+
+export default function ActionPage() {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [action, setAction] = useState<ActionDto | undefined>(undefined);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const { isAuthenticated } = useAuth();
+  const action = useLoaderData<typeof loader>();
+
+  const [error, setError] = useState<string | null>(null);
 
   const [userRelation, setUserRelation] = useState<
     UserActionDto["status"] | null
   >(null);
 
+  const { isAuthenticated } = useAuth();
+
   useEffect(() => {
-    const fetchAction = async () => {
-      if (!actionId) return;
-
-      try {
-        console.log("fetching action", actionId);
-        const response = await actionsFindOne({
-          path: { id: parseInt(actionId) },
-        });
-
-        console.log("response", response);
-
+    if (isAuthenticated && id) {
+      actionsMyStatus({
+        path: { id },
+      }).then((response) => {
+        console.log("userStatusResponse", response);
         if (response.error) {
-          throw new Error("Failed to fetch action");
+          console.error("Failed to fetch user status", response.error);
+          setError("Failed to fetch user status");
         }
-
-        setAction(response.data);
-
-        if (isAuthenticated) {
-          const userStatusResponse = await actionsMyStatus({
-            path: { id: actionId },
-          });
-
-          console.log("userStatusResponse", userStatusResponse);
-          if (userStatusResponse.error) {
-            throw new Error("Failed to fetch user status");
-          }
-          if (userStatusResponse.data) {
-            setUserRelation(userStatusResponse.data.status);
-          }
+        if (response.data) {
+          setUserRelation(response.data.status);
         }
-
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to load action details. Please try again later.");
-        setLoading(false);
-        console.error("Error fetching action:", err);
-      }
-    };
-
-    fetchAction();
-  }, [actionId, isAuthenticated]);
+      });
+    }
+  }, [isAuthenticated]);
 
   const onJoinAction = useCallback(async () => {
-    if (!actionId) return;
+    if (!id) return;
 
     try {
       const response = await actionsJoin({
-        path: { id: actionId },
+        path: { id },
       });
 
       if (response.error) {
@@ -91,7 +80,7 @@ const ActionPage: React.FC = () => {
       console.error("Error joining action:", err);
       setError("Failed to join this action. Please try again later.");
     }
-  }, [actionId]);
+  }, [id]);
 
   //   const evtSource = new EventSource(`${getApiUrl()}/actions/live/${actionId}`);
   //   evtSource.onmessage = (e) => {
@@ -101,69 +90,72 @@ const ActionPage: React.FC = () => {
   //     }
   //   };
 
-  const mainContent = (
-    <>
-      <div className="flex flex-col gap-y-3 flex-2 p-10 px-20">
-        {action?.image && (
-          <img
-            src={getImageSource(action.image)}
-            alt={action.name}
-            className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
-          />
-        )}
-        <div className="flex flex-row justify-between items-start my-5">
-          <div className="flex flex-col gap-y-3">
-            <h1>{action?.name}</h1>
-            <p className="text-gray-900 text-[12pt] mt-[-3px]">
-              Part of the{" "}
-              <a
-                className="text-blue-500 cursor-pointer"
-                onClick={() => {
-                  navigate("/issues/climate");
-                }}
-              >
-                Alliance Climate Program
-              </a>
-            </p>
+  const mainContent = useMemo(
+    () => (
+      <>
+        <div className="flex flex-col gap-y-3 flex-2 p-10 px-20">
+          {action?.image && (
+            <img
+              src={getImageSource(action.image)}
+              alt={action.name}
+              className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
+            />
+          )}
+          <div className="flex flex-row justify-between items-start my-5">
+            <div className="flex flex-col gap-y-3">
+              <h1>{action?.name}</h1>
+              <p className="text-gray-900 text-[12pt] mt-[-3px]">
+                Part of the{" "}
+                <a
+                  className="text-blue-500 cursor-pointer"
+                  onClick={() => {
+                    navigate("/issues/climate");
+                  }}
+                >
+                  Alliance Climate Program
+                </a>
+              </p>
+            </div>
+            {userRelation === "none" && id && (
+              <Button className="mt-2" onClick={onJoinAction}>
+                Commit to this action
+              </Button>
+            )}
           </div>
-          {userRelation === "none" && actionId && (
-            <Button className="mt-2" onClick={onJoinAction}>
-              Commit to this action
-            </Button>
+          {error && <div className="text-red-500">{error}</div>}
+          {/* {userRelation === "joined" && <PokePanel />} */}
+          {userRelation === "none" && (
+            <Card style={CardStyle.Grey} className="mb-5">
+              <h2>Why Join?</h2>
+              <p>
+                {action?.whyJoin ||
+                  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
+              </p>
+            </Card>
+          )}
+          {action && <ActionEventsPanel action={action} />}
+          <h2 className="!mt-8">What you can do</h2>
+          <p>
+            {action?.description ||
+              "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
+          </p>
+          <h2>FAQ</h2>
+          <p>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+            eiusmod tempor incididunt ut labore et dolore magna aliqua.
+          </p>
+          {isFeatureEnabled(Features.Forum) && (
+            <ActionForumPosts actionId={id} />
           )}
         </div>
-        {error && <div className="text-red-500">{error}</div>}
-        {loading && <div className="text-gray-500">Loading...</div>}
-        {/* {userRelation === "joined" && <PokePanel />} */}
-        {userRelation === "none" && (
-          <Card style={CardStyle.Grey} className="mb-5">
-            <h2>Why Join?</h2>
-            <p>
-              {action?.whyJoin ||
-                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
-            </p>
-          </Card>
-        )}
-        {action && <ActionEventsPanel action={action} />}
-        <h2 className="!mt-8">What you can do</h2>
-        <p>
-          {action?.description ||
-            "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
-        </p>
-        <h2>FAQ</h2>
-        <p>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-          eiusmod tempor incididunt ut labore et dolore magna aliqua.
-        </p>
-        {isFeatureEnabled(Features.Forum) && (
-          <ActionForumPosts actionId={actionId} />
-        )}
-      </div>
-    </>
+      </>
+    ),
+    [action, userRelation, id]
   );
 
   return (
-    <PublicAppRoute>
+    <>
+      <NavbarHorizontal />
       <meta name="og:title" content={action?.name} />
       <meta name="og:description" content={action?.description} />
       <TwoColumnSplit
@@ -175,9 +167,7 @@ const ActionPage: React.FC = () => {
               className="items-center gap-y-5 aspect-square justify-center"
             >
               <div className="w-[180px] self-center">
-                <Suspense fallback={<div>Loading...</div>}>
-                  <Globe people={action?.usersJoined || 0} colored />
-                </Suspense>
+                <Globe people={action?.usersJoined || 0} colored />
                 <p className="text-center pt-5 text-[11pt]">
                   {action?.usersJoined?.toLocaleString() || 0} people committed
                 </p>
@@ -193,8 +183,6 @@ const ActionPage: React.FC = () => {
         }
         coloredRight={true}
       />
-    </PublicAppRoute>
+    </>
   );
-};
-
-export default ActionPage;
+}

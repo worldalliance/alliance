@@ -1,22 +1,19 @@
 import { Link } from "react-router";
-import {
-  destinations,
-  links,
-  NavbarProps,
-  NavbarPage,
-  platformSublinks,
-} from "./Navbar";
+import { destinations, links, NavbarPage, platformSublinks } from "./Navbar";
 import DropdownLink from "./DropdownLink";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../lib/config";
 import NotificationsIcon from "./NotificationsIcon";
-
-export type InnerNavbarProps = Pick<NavbarProps, "currentPage">;
-
-const NavbarHorizontal: React.FC<InnerNavbarProps> = () => {
+import { useAuth } from "../lib/AuthContext";
+const NavbarHorizontal: React.FC = () => {
   const activeLinks = isFeatureEnabled(Features.Forum)
     ? links
     : links.filter((link) => link !== NavbarPage.Forum);
+
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div

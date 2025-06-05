@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
+    "serve": "react-router-serve build/server/index.js",
     "tsc": "yarn tsc -b",
     "lint": "eslint .",
     "preview": "vite preview",

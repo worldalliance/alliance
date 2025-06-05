@@ -3,10 +3,8 @@ import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import HighResGlobe from "../../components/HighResGlobe";
 
 const PrelaunchLandingPage: React.FC = () => {
-  const [size, setSize] = useState(500);
   const [navbarHeight, setNavbarHeight] = useState(0);
   const navbarRef = useRef<HTMLDivElement>(null);
-  const [scrolled, _] = useState(false);
 
   useEffect(() => {
     setNavbarHeight(navbarRef.current?.clientHeight || 0);
@@ -25,7 +23,7 @@ const PrelaunchLandingPage: React.FC = () => {
         }}
       >
         <div className="mb-[-40%]" suppressHydrationWarning={true}>
-          <HighResGlobe width={size} height={size} />
+          <HighResGlobe width={500} height={500} />
         </div>
         <div className="absolute top-0 left-0 right-0 bottom-0 grain"></div>
         <div
