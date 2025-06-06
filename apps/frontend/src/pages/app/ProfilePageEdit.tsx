@@ -17,12 +17,7 @@ import {
   PostDto,
   actionsFindCompletedForUser,
 } from "@alliance/shared/client";
-import { client } from "@alliance/shared/client/client.gen";
 import { getImageSource } from "../../lib/config";
-
-client.setConfig({
-  baseUrl: "http://localhost:3005",
-});
 
 const ProfileEditPage: React.FC = () => {
   const { user } = useAuth();
