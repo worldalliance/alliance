@@ -22,6 +22,7 @@ import { Friend } from './user/friend.entity';
 import { NotifsModule } from './notifs/notifs.module';
 import { Notification } from './notifs/entities/notification.entity';
 import { ActionEvent } from './actions/entities/action-event.entity';
+import { GeoModule } from './geo/geo.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { ActionEvent } from './actions/entities/action-event.entity';
     ImagesModule,
     ForumModule,
     NotifsModule,
+    GeoModule,
   ],
   controllers: [AppController],
   providers: [],

@@ -9,20 +9,21 @@ interface StoryRouterProps {
 
 const StoryRouter = ({ children, initialEntry, path }: StoryRouterProps) => {
   return (
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <Routes>
-        <Route
-          path={path}
-          element={
-            <>
-              <NavbarHorizontal />
-              {children}
-            </>
-          }
-        />
-        <Route path="*" element={<Navigate to={path} />} />
-      </Routes>
-    </MemoryRouter>
+    // <MemoryRouter initialEntries={[initialEntry]}>
+    //   <Routes>
+    //     <Route
+    //       path={path}
+    //       element={
+    //         <>
+    //           <NavbarHorizontal />
+    //           {children}
+    //         </>
+    //       }
+    //     />
+    //     <Route path="*" element={<Navigate to={path} />} />
+    //   </Routes>
+    // </MemoryRouter>
+    <>{children}</>
   );
 };
 

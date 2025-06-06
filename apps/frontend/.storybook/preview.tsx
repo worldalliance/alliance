@@ -1,3 +1,7 @@
+import {
+  withRouter,
+  reactRouterParameters,
+} from "storybook-addon-remix-react-router";
 import React from "react";
 import type { Preview } from "@storybook/react";
 import "../src/index.css";
@@ -29,9 +33,16 @@ const preview: Preview = {
     },
     layout: "fullscreen",
     msw: {},
+    reactRouter: reactRouterParameters({
+      location: {
+        pathParams: { userId: "42" },
+      },
+      routing: { path: "/users/:userId" },
+    }),
   },
   loaders: [mswLoader],
   decorators: [
+    withRouter,
     (Story: React.ComponentType) => (
       <MemoryRouter>
         <Story />

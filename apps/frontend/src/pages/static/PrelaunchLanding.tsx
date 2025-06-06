@@ -17,7 +17,7 @@ const PrelaunchLandingPage: React.FC = () => {
 
   const [size, setSize] = useState(0);
   useEffect(() => {
-    setSize(2 * Math.min(window.innerWidth, window.innerHeight));
+    setSize(2.2 * Math.min(window.innerWidth, window.innerHeight));
   }, []);
 
   return (

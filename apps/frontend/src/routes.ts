@@ -38,4 +38,7 @@ export default [
     route("/login", "pages/app/LoginPage.tsx"),
     route("/signup", "pages/app/SignupPage.tsx"),
   ]),
+  layout("./onboarding.tsx", [
+    route("/onboarding", "pages/app/OnboardingPage.tsx"),
+  ]),
 ] satisfies RouteConfig;

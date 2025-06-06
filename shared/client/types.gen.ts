@@ -415,6 +415,13 @@ export type NotificationDto = {
     updatedAt: string;
 };
 
+export type CitySearchDto = {
+    id: string;
+    name: string;
+    country: string;
+    region: string;
+};
+
 export type AppHealthCheckData = {
     body?: never;
     path?: never;
@@ -1216,6 +1223,21 @@ export type NotifsSetReadData = {
 export type NotifsSetReadResponses = {
     200: unknown;
 };
+
+export type GeoSearchCityData = {
+    body?: never;
+    path?: never;
+    query: {
+        query: string;
+    };
+    url: '/geo/search-city';
+};
+
+export type GeoSearchCityResponses = {
+    default: Array<CitySearchDto>;
+};
+
+export type GeoSearchCityResponse = GeoSearchCityResponses[keyof GeoSearchCityResponses];
 
 export type ClientOptions = {
     baseUrl: string;

@@ -20,6 +20,9 @@ const config: StorybookConfig = {
       },
     },
     getAbsolutePath("@storybook/addon-interactions"),
+    getAbsolutePath("@storybook/manager-api"),
+    getAbsolutePath("@storybook/theming"),
+    getAbsolutePath("storybook-addon-remix-react-router"),
   ],
   framework: {
     name: getAbsolutePath("@storybook/react-vite"),

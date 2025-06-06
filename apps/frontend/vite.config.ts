@@ -17,23 +17,23 @@ export default defineConfig({
         replacement: path.resolve(
           __dirname,
           "../../node_modules/globe.gl/node_modules/three/build/three.webgpu.js"
-        )
+        ),
       },
       {
         find: "three/tsl",
         replacement: path.resolve(
           __dirname,
           "../../node_modules/globe.gl/node_modules/three/build/three.tsl.js"
-        )
+        ),
       },
       {
         find: "three",
         replacement: path.resolve(
           __dirname,
           "../../node_modules/globe.gl/node_modules/three"
-        )
-      }
-    ]
+        ),
+      },
+    ],
   },
   server: {
     proxy: {
