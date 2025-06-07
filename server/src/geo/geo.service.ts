@@ -90,11 +90,29 @@ export class GeoService {
     return cities;
   }
 
-  async searchCity(query: string): Promise<CitySearchDto[]> {
-    const cities = await this.cityRepository.find({
+  async searchCity(
+    query: string,
+    latitude?: number,
+    longitude?: number,
+  ): Promise<CitySearchDto[]> {
+    let cities = await this.cityRepository.find({
       where: { name: ILike(`%${query}%`) },
     });
+    if (cities.length > 10) {
+      cities = cities.slice(0, 10);
+    }
 
+    if (latitude && longitude) {
+      cities = cities.sort((a, b) => {
+        const distanceA = Math.sqrt(
+          (a.latitude - latitude) ** 2 + (a.longitude - longitude) ** 2,
+        );
+        const distanceB = Math.sqrt(
+          (b.latitude - latitude) ** 2 + (b.longitude - longitude) ** 2,
+        );
+        return distanceA - distanceB;
+      });
+    }
     return cities;
   }
 }

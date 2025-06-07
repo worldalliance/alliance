@@ -11,12 +11,15 @@ export class GeoController {
 
   @Get('search-city')
   @ApiQuery({ name: 'query', type: String, required: true })
+  @ApiQuery({ name: 'latitude', type: Number, required: false })
+  @ApiQuery({ name: 'longitude', type: Number, required: false })
   @ApiResponse({ type: [CitySearchDto] })
   async searchCity(
     @Query('query') query: string,
-    // @Ip() ip: string,
+    @Query('latitude') latitude: number,
+    @Query('longitude') longitude: number,
   ): Promise<CitySearchDto[]> {
-    return this.geoService.searchCity(query);
+    return this.geoService.searchCity(query, latitude, longitude);
   }
 
   @Get('load-country-data')
@@ -26,7 +29,7 @@ export class GeoController {
 
   @Get('ip')
   async loadCityData(@Ip() ip: string, @Req() req: Request) {
-    const data = await fetch(`https://ipapi.co/${ip}/json/`).then((res) =>
+    const data = await fetch(`https://ip-api.com/json/${ip}`).then((res) =>
       res.json(),
     );
 
