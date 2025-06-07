@@ -1,35 +1,98 @@
-import { SearchBoxCore } from '@mapbox/search-js-core';
-import { SessionToken } from '@mapbox/search-js-core';
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable } from '@nestjs/common';
 import { CitySearchDto } from './city.dto';
+import { City } from './city.entity';
+import { ILike, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class GeoService {
-  private search: SearchBoxCore;
-  private sessionToken: SessionToken;
-  constructor() {
-    this.search = new SearchBoxCore({
-      accessToken: process.env.MAPBOX_ACCESS_TOKEN,
-    });
+  constructor(
+    @InjectRepository(City)
+    private cityRepository: Repository<City>,
+  ) {}
 
-    this.sessionToken = new SessionToken();
+  async loadCountryDataFromTxt(): Promise<Record<string, string>> {
+    const filePath = path.join(__dirname, 'countryInfo.txt');
+    const countries: Record<string, string> = {};
+    const data = fs.readFileSync(filePath, { encoding: 'utf-8' });
+    const lines = data.split('\n').filter((line) => !line.startsWith('#'));
+    for (const line of lines) {
+      const [ISO, ISO3, ISO_NUMERIC, fips, country] = line.split('\t', 5);
+      countries[ISO] = country;
+    }
+    return countries;
+  }
+
+  async loadCityDataFromTxt(): Promise<City[]> {
+    const filePath = path.join(__dirname, 'cities15000.txt');
+
+    const countries = await this.loadCountryDataFromTxt();
+
+    const cities: City[] = [];
+    const data = fs.readFileSync(filePath, { encoding: 'utf-8' });
+    const lines = data.split('\n').filter((line) => !line.startsWith('#'));
+    for (const line of lines) {
+      const [
+        geonameid,
+        name,
+        asciiname,
+        alternatenames,
+        latitude,
+        longitude,
+        featureClass,
+        featureCode,
+        countryCode,
+        cc2,
+        admin1,
+        admin2,
+        admin3,
+        admin4,
+        population,
+        elevation,
+        dem,
+        timezone,
+        modificationDate,
+      ] = line.split('\t');
+
+      if (!geonameid) continue;
+
+      console.log(
+        geonameid,
+        name,
+        countryCode,
+        admin1,
+        admin2,
+        latitude,
+        longitude,
+      );
+      console.log(countries[countryCode]);
+      cities.push({
+        id: parseInt(geonameid),
+        name: name,
+        countryCode: countryCode,
+        admin1: admin1,
+        admin2: admin2,
+        latitude: parseFloat(latitude),
+        longitude: parseFloat(longitude),
+        countryName: countries[countryCode],
+      });
+    }
+
+    for (let i = 0; i < cities.length; i += 500) {
+      await this.cityRepository.save(
+        cities.slice(i, Math.min(i + 500, cities.length)),
+      );
+    }
+
+    return cities;
   }
 
   async searchCity(query: string): Promise<CitySearchDto[]> {
-    const result = await this.search.suggest(query, {
-      sessionToken: this.sessionToken,
-      types: 'place',
-      limit: 10,
-    });
-    if (result.suggestions.length === 0) return [];
-
-    const cities: CitySearchDto[] = result.suggestions.map((suggestion) => {
-      return {
-        id: suggestion.mapbox_id,
-        name: suggestion.name,
-        country: suggestion.context.country?.name,
-        region: suggestion.context.region?.name,
-      } satisfies CitySearchDto;
+    const cities = await this.cityRepository.find({
+      where: { name: ILike(`%${query}%`) },
     });
 
     return cities;

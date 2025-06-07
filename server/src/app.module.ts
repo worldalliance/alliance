@@ -23,6 +23,7 @@ import { NotifsModule } from './notifs/notifs.module';
 import { Notification } from './notifs/entities/notification.entity';
 import { ActionEvent } from './actions/entities/action-event.entity';
 import { GeoModule } from './geo/geo.module';
+import { City } from './geo/city.entity';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { GeoModule } from './geo/geo.module';
         Notification,
         Friend,
         ActionEvent,
+        City,
       ],
       synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'

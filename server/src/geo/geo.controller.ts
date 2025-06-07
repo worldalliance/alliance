@@ -1,8 +1,9 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Ip, Query } from '@nestjs/common';
 import { GeoService } from './geo.service';
 import { ApiQuery } from '@nestjs/swagger';
 import { ApiResponse } from '@nestjs/swagger';
 import { CitySearchDto } from './city.dto';
+import { City } from './city.entity';
 
 @Controller('geo')
 export class GeoController {
@@ -16,5 +17,22 @@ export class GeoController {
     // @Ip() ip: string,
   ): Promise<CitySearchDto[]> {
     return this.geoService.searchCity(query);
+  }
+
+  @Get('load-country-data')
+  async loadCountryData(): Promise<City[]> {
+    return this.geoService.loadCityDataFromTxt();
+  }
+
+  @Get('ip')
+  async loadCityData(@Ip() ip: string) {
+    const data = await fetch(`https://ipapi.co/${ip}/json/`).then((res) =>
+      res.json(),
+    );
+
+    return {
+      ip,
+      data,
+    };
   }
 }

@@ -1,4 +1,5 @@
 import { PickType, ApiProperty } from '@nestjs/swagger';
+import { City } from './city.entity';
 
 export interface MapboxFeature {
   type: string;
@@ -46,9 +47,9 @@ export class UserCity {
   region?: string;
 }
 
-export class CitySearchDto extends PickType(UserCity, [
+export class CitySearchDto extends PickType(City, [
   'id',
   'name',
-  'country',
-  'region',
+  'countryName',
+  'admin1',
 ]) {}
