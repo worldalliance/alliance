@@ -51,5 +51,6 @@ export class CitySearchDto extends PickType(City, [
   'id',
   'name',
   'countryName',
+  'countryCode',
   'admin1',
 ]) {}

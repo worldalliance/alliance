@@ -416,7 +416,11 @@ export type NotificationDto = {
 };
 
 export type CitySearchDto = {
-    [key: string]: unknown;
+    id: number;
+    name: string;
+    admin1: string;
+    countryCode: string;
+    countryName: string;
 };
 
 export type AppHealthCheckData = {

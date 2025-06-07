@@ -95,24 +95,22 @@ export class GeoService {
     latitude?: number,
     longitude?: number,
   ): Promise<CitySearchDto[]> {
-    let cities = await this.cityRepository.find({
-      where: { name: ILike(`%${query}%`) },
-    });
-    if (cities.length > 20) {
-      cities = cities.slice(0, 10);
+    const qb = this.cityRepository
+      .createQueryBuilder('c')
+      .where('c.name ILIKE :name', { name: `%${query}%` });
+
+    if (latitude != null && longitude != null) {
+      // Euclidean distance in degrees – good enough for “nearby” ranking
+      qb.orderBy(
+        '( (c.latitude  - :lat) * (c.latitude  - :lat) ' +
+          '+ (c.longitude - :lon) * (c.longitude - :lon) )',
+        'ASC',
+      ).setParameters({ lat: latitude, lon: longitude });
+    } else {
+      qb.orderBy('c.name', 'ASC');
     }
 
-    if (latitude && longitude) {
-      cities = cities.sort((a, b) => {
-        const distanceA = Math.sqrt(
-          (a.latitude - latitude) ** 2 + (a.longitude - longitude) ** 2,
-        );
-        const distanceB = Math.sqrt(
-          (b.latitude - latitude) ** 2 + (b.longitude - longitude) ** 2,
-        );
-        return distanceA - distanceB;
-      });
-    }
+    const cities = await qb.limit(10).getMany();
     return cities;
   }
 }
