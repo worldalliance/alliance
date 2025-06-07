@@ -416,10 +416,7 @@ export type NotificationDto = {
 };
 
 export type CitySearchDto = {
-    id: string;
-    name: string;
-    country: string;
-    region: string;
+    [key: string]: unknown;
 };
 
 export type AppHealthCheckData = {
@@ -1229,6 +1226,8 @@ export type GeoSearchCityData = {
     path?: never;
     query: {
         query: string;
+        latitude?: number;
+        longitude?: number;
     };
     url: '/geo/search-city';
 };
@@ -1238,6 +1237,28 @@ export type GeoSearchCityResponses = {
 };
 
 export type GeoSearchCityResponse = GeoSearchCityResponses[keyof GeoSearchCityResponses];
+
+export type GeoLoadCountryDataData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/geo/load-country-data';
+};
+
+export type GeoLoadCountryDataResponses = {
+    200: unknown;
+};
+
+export type GeoLoadCityDataData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/geo/ip';
+};
+
+export type GeoLoadCityDataResponses = {
+    200: unknown;
+};
 
 export type ClientOptions = {
     baseUrl: string;

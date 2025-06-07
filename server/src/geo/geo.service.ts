@@ -98,7 +98,7 @@ export class GeoService {
     let cities = await this.cityRepository.find({
       where: { name: ILike(`%${query}%`) },
     });
-    if (cities.length > 10) {
+    if (cities.length > 20) {
       cities = cities.slice(0, 10);
     }
 

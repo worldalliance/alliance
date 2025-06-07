@@ -29,8 +29,8 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
   value = "",
   onSelect,
   placeholder = "Search a city …",
-  minLength = 2,
-  debounceMs = 300,
+  minLength = 1,
+  debounceMs = 100,
   className = "",
 }) => {
   const [query, setQuery] = useState(value);
@@ -39,6 +39,22 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
   const [highlighted, setHighlighted] = useState(-1);
   const [didSelect, setDidSelect] = useState(false);
   const ctrl = useRef<AbortController | null>(null);
+  const [latitude, setLatitude] = useState<number | undefined>(undefined);
+  const [longitude, setLongitude] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const res = await fetch("https://ipapi.co/json/");
+      const data = await res.json();
+      console.log(data);
+      if (data.latitude && data.longitude) {
+        console.log(data.latitude, data.longitude);
+        setLatitude(data.latitude);
+        setLongitude(data.longitude);
+      }
+    };
+    fetchData();
+  }, []);
 
   // ─────────────────────────────────── helpers ──────────────────────────────
   const fetchCities = useCallback(
@@ -50,7 +66,10 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
       ctrl.current?.abort();
       ctrl.current = new AbortController();
       try {
-        const res = await geoSearchCity({ query: { query: name } });
+        console.log("sending query", name, latitude, longitude);
+        const res = await geoSearchCity({
+          query: { query: name, latitude, longitude },
+        });
         if (!res.data) {
           console.log(res.error);
           throw new Error("Geo search failed");
@@ -63,7 +82,7 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
         if ((err as Error)?.name !== "AbortError") console.error(err);
       }
     },
-    [minLength]
+    [minLength, latitude, longitude]
   );
 
   // Debounce network calls
@@ -88,7 +107,7 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
     (city: CitySearchDto) => {
       onSelect(city);
       setDidSelect(true);
-      setQuery(`${city.name}, ${city.country}`);
+      setQuery(`${city.name}, ${city.countryName}`);
       setResults([]);
       setOpen(false);
     },
@@ -116,7 +135,8 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
       [open, results, highlighted, select]
     );
 
-  // ─────────────────────────────────── render ───────────────────────────────
+  console.log(results);
+
   return (
     <div ref={wrapperRef} className={`relative ${className} w-[400px]`}>
       <input
@@ -138,9 +158,9 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
 
       {open && results.length > 0 && (
         <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-gray-300 bg-white">
-          {results.map((city, idx) => (
+          {results.map((city: CitySearchDto, idx: number) => (
             <div
-              key={`${city.name}-${city.region}-${city.country}`}
+              key={`${city.name}-${city.admin1}-${city.countryCode}`}
               onMouseDown={() => select(city)}
               className={`cursor-pointer px-3 py-2 gap-2 flex flex-row ${
                 idx === highlighted ? "bg-gray-200 " : "hover:bg-gray-100"
@@ -148,8 +168,8 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
             >
               <p>{city.name}</p>
               <p className="text-gray-500">
-                {city.region ? `${city.region}, ` : ""}
-                {city.country}
+                {city.admin1 ? `${city.admin1}, ` : ""}
+                {city.countryName}
               </p>
             </div>
           ))}

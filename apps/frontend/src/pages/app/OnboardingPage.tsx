@@ -13,11 +13,7 @@ const OnboardingPage: React.FC = () => {
         okay with you.
       </p>
       <p className="font-bold">Whereabouts do you live?</p>
-      <CityAutosuggest
-        onSelect={() => {}}
-        placeholder="Enter a city"
-        minLength={3}
-      />
+      <CityAutosuggest onSelect={() => {}} placeholder="Enter a city" />
       <p className="mt-5 font-bold">Are you above 18 years old?</p>
       <div className="flex flex-row gap-x-2">
         <Button
