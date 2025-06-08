@@ -1,5 +1,8 @@
 import { createTestApp, TestContext } from './e2e-test-utils';
-import { Notification } from '../src/notifs/entities/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from '../src/notifs/entities/notification.entity';
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { Repository } from 'typeorm';
 import { User } from 'src/user/user.entity';
@@ -27,7 +30,7 @@ describe('Notifications (e2e)', () => {
     const testNotif = notifRepo.create({
       user: testUser,
       message: 'Test notification',
-      category: 'test',
+      category: NotificationType.FriendRequest,
       webAppLocation: 'test',
       mobileAppLocation: 'test',
     });
@@ -41,7 +44,7 @@ describe('Notifications (e2e)', () => {
   });
 
   it('user can mark notification as read', async () => {
-    const res = await ctx.agent.post(`/notifs/read/${notifId}`).expect(201);
+    await ctx.agent.post(`/notifs/read/${notifId}`).expect(201);
 
     const notifs = await ctx.agent.get('/notifs').expect(200);
     expect(notifs.body[0].read).toBe(true);

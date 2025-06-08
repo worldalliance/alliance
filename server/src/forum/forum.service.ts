@@ -124,25 +124,27 @@ export class ForumService {
       );
     }
 
-    // fetch reply author to include in notification message
-    const replyAuthor = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-    if (!replyAuthor) {
-      throw new NotFoundException(`Reply author with ID "${userId}" not found`);
+    if (postAuthor.id !== userId) {
+      const replyAuthor = await this.userRepository.findOne({
+        where: { id: userId },
+      });
+      if (!replyAuthor) {
+        throw new NotFoundException(
+          `Reply author with ID "${userId}" not found`,
+        );
+      }
+
+      // notify post author
+      const notif = this.notifRepository.create({
+        user: post.author,
+        message: `${replyAuthor.name} replied to your forum post`,
+        category: NotificationType.ForumReply,
+        webAppLocation: `/forum/post/${post.id}`,
+        mobileAppLocation: `/forum/post/${post.id}`, //TODO: mobile forum route,
+      });
+      await this.notifRepository.save(notif);
+      reply.notification = notif;
     }
-
-    // notify post author
-    const notif = this.notifRepository.create({
-      user: post.author,
-      message: `${replyAuthor.name} replied to your forum post`,
-      category: NotificationType.ForumReply,
-      webAppLocation: `/forum/post/${post.id}`,
-      mobileAppLocation: `/forum/post/${post.id}`, //TODO: mobile forum route,
-    });
-    await this.notifRepository.save(notif);
-
-    reply.notification = notif;
     await this.replyRepository.save(reply);
 
     const loadedReply = await this.replyRepository.findOne({

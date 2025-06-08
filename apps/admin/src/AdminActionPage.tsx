@@ -343,9 +343,6 @@ const AdminActionPage: React.FC = () => {
                 ref={fileInputRef}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="text-sm text-gray-500 mt-1">
-                Only JPEG images are accepted. Maximum size: 1MB
-              </p>
 
               {/* Show preview of newly selected image */}
               {imagePreview && (
@@ -406,8 +403,8 @@ const AdminActionPage: React.FC = () => {
                       ? "Uploading Image..."
                       : "Saving..."
                     : isNewAction
-                      ? "Create Action"
-                      : "Update Action"}
+                    ? "Create Action"
+                    : "Update Action"}
                 </button>
               </div>
             </div>

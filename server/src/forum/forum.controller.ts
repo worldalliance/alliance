@@ -91,9 +91,7 @@ export class ForumController {
     @Body() createReplyDto: CreateReplyDto,
     @ReqUser() user: JwtPayload,
   ): Promise<ReplyDto> {
-    const reply = await this.forumService.createReply(createReplyDto, user.sub);
-    console.log('reply', reply);
-    return reply;
+    return this.forumService.createReply(createReplyDto, user.sub);
   }
 
   @Patch('replies/:id')
