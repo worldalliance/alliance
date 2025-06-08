@@ -116,6 +116,7 @@ export class AuthController {
       name: profile.name,
       admin: profile.admin,
       id: profile.id,
+      onboardingComplete: profile.onboardingComplete,
     };
   }
 

@@ -8,6 +8,8 @@ import { UserAction } from '../actions/entities/user-action.entity';
 import { Communique } from '../communiques/entities/communique.entity';
 import { UserController } from './user.controller';
 import { Friend } from './friend.entity';
+import { City } from '../geo/city.entity';
+import { Notification } from '../notifs/entities/notification.entity';
 
 @Module({
   imports: [
@@ -16,6 +18,8 @@ import { Friend } from './friend.entity';
     TypeOrmModule.forFeature([UserAction]),
     TypeOrmModule.forFeature([Communique]),
     TypeOrmModule.forFeature([Friend]),
+    TypeOrmModule.forFeature([City]),
+    TypeOrmModule.forFeature([Notification]),
   ],
   controllers: [UserController],
   providers: [UserService, IsUserAlreadyExist],

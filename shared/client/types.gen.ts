@@ -27,6 +27,7 @@ export type UserDto = {
     name: string;
     email: string;
     admin: boolean;
+    onboardingComplete: boolean;
 };
 
 export type ProfileDto = {
@@ -36,6 +37,12 @@ export type ProfileDto = {
     admin: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
+};
+
+export type OnboardingDto = {
+    cityId: number;
+    over18: boolean;
+    makesMoney: boolean;
 };
 
 export type UpdateProfileDto = {
@@ -539,6 +546,23 @@ export type UserFindMeResponses = {
 };
 
 export type UserFindMeResponse = UserFindMeResponses[keyof UserFindMeResponses];
+
+export type UserOnboardingData = {
+    body: OnboardingDto;
+    path?: never;
+    query?: never;
+    url: '/user/onboarding';
+};
+
+export type UserOnboardingErrors = {
+    401: unknown;
+};
+
+export type UserOnboardingResponses = {
+    200: ProfileDto;
+};
+
+export type UserOnboardingResponse = UserOnboardingResponses[keyof UserOnboardingResponses];
 
 export type UserUpdateData = {
     body: UpdateProfileDto;

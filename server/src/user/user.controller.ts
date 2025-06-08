@@ -20,6 +20,7 @@ import { Public } from '../auth/public.decorator';
 import { UserService } from './user.service';
 import {
   FriendStatusDto,
+  OnboardingDto,
   ProfileDto,
   UpdateProfileDto,
   UserDto,
@@ -48,6 +49,17 @@ export class UserController {
       profileDescription: profile.profileDescription,
       profilePicture: profile.profilePicture,
     };
+  }
+
+  @Post('onboarding')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: ProfileDto })
+  @ApiUnauthorizedResponse()
+  async onboarding(
+    @Request() req: JwtRequest,
+    @Body() body: OnboardingDto,
+  ): Promise<ProfileDto> {
+    return this.userService.onboarding(req.user.sub, body);
   }
 
   @Post('update')

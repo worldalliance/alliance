@@ -8,13 +8,22 @@ import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { UserActionRelation } from '../actions/entities/user-action.entity';
 import { Friend, FriendStatus } from './friend.entity';
-import { UpdateProfileDto, UserDto } from './user.dto';
+import { OnboardingDto, UpdateProfileDto, UserDto } from './user.dto';
+import { City } from 'src/geo/city.entity';
+import {
+  NotificationType,
+  Notification,
+} from 'src/notifs/entities/notification.entity';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(City)
+    private cityRepository: Repository<City>,
+    @InjectRepository(Notification)
+    private notifRepository: Repository<Notification>,
     @InjectRepository(Friend)
     private readonly friendRepository: Repository<Friend>,
   ) {}
@@ -64,6 +73,26 @@ export class UserService {
     await this.userRepository.update(id, { admin });
   }
 
+  async onboarding(userId: number, body: OnboardingDto): Promise<User> {
+    const user = await this.findOneOrFail(userId);
+
+    const city = body.cityId
+      ? await this.cityRepository.findOne({
+          where: { id: body.cityId },
+        })
+      : null;
+
+    if (city) {
+      user.city = city;
+    }
+    if (body.over18 !== null) {
+      user.over18 = body.over18;
+    }
+
+    user.onboardingComplete = true;
+    return this.userRepository.save(user);
+  }
+
   /* ───────────────────────────────
    *  Friend-request helpers
    * ─────────────────────────────── */
@@ -86,10 +115,17 @@ export class UserService {
     if (rel) {
       rel.status = FriendStatus.Pending; // reset to pending / resend
     } else {
+      const notif = this.notifRepository.create({
+        user: addressee,
+        category: NotificationType.FriendRequest,
+        message: `${requester.name} wants to be friends`,
+      });
+
       rel = this.friendRepository.create({
         requester,
         addressee,
         status: FriendStatus.Pending,
+        sentNotif: notif,
       });
     }
     return this.friendRepository.save(rel);
@@ -115,7 +151,14 @@ export class UserService {
     }
 
     rel.status = status;
-    if (status === FriendStatus.Accepted) rel.acceptedAt = new Date();
+    if (status === FriendStatus.Accepted) {
+      rel.acceptedAt = new Date();
+      rel.acceptedNotif = this.notifRepository.create({
+        user: rel.requester,
+        category: NotificationType.FriendRequestAccepted,
+        message: `${rel.addressee.name} accepted your friend request`,
+      });
+    }
     return this.friendRepository.save(rel);
   }
 
@@ -192,8 +235,10 @@ export class UserService {
   }
 
   async countReferred(id: number): Promise<number> {
-    const user = await this.findOneOrFail(id);
-    return 0;
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['referredUsers'],
+    });
+    return user?.referredUsers.length ?? 0;
   }
-  
 }

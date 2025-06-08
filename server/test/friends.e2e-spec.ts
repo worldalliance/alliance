@@ -3,6 +3,7 @@ import { Friend, FriendStatus } from '../src/user/friend.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { Repository } from 'typeorm';
 import { User } from '../src/user/user.entity';
+import { NotificationType } from 'src/notifs/entities/notification.entity';
 
 describe('Friends (e2e)', () => {
   let ctx: TestContext;
@@ -38,15 +39,6 @@ describe('Friends (e2e)', () => {
     userBToken = ctx.jwtService.sign({ sub: userBId });
   });
 
-  it('User A can send a friend request to User B', async () => {
-    const res = await request(ctx.app.getHttpServer())
-      .post(`/user/friends/${userBId}`)
-      .set('Authorization', `Bearer ${userAToken}`);
-
-    expect([200, 201]).toContain(res.status);
-    expect(res.body.status).toBe(FriendStatus.Pending);
-  });
-
   it('can update user', async () => {
     const res = await request(ctx.app.getHttpServer())
       .post(`/user/update`)
@@ -58,6 +50,15 @@ describe('Friends (e2e)', () => {
       .set('Authorization', `Bearer ${userAToken}`);
 
     expect(res.status).toBe(201);
+  });
+
+  it('User A can send a friend request to User B', async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .post(`/user/friends/${userBId}`)
+      .set('Authorization', `Bearer ${userAToken}`);
+
+    expect([200, 201]).toContain(res.status);
+    expect(res.body.status).toBe(FriendStatus.Pending);
   });
 
   it('Request appears in the correct sent/received queues', async () => {
@@ -80,6 +81,16 @@ describe('Friends (e2e)', () => {
     expect(recv.body[0].id).toBe(userAId);
   });
 
+  it('user B has a notification for the friend request', async () => {
+    const notifs = await request(ctx.app.getHttpServer())
+      .get('/notifs')
+      .set('Authorization', `Bearer ${userBToken}`);
+
+    expect(notifs.status).toBe(200);
+    expect(notifs.body.length).toBe(1);
+    expect(notifs.body[0].category).toBe(NotificationType.FriendRequest);
+  });
+
   it('User B can accept the friend request', async () => {
     const res = await request(ctx.app.getHttpServer())
       .patch(`/user/friends/${userAId}/accept`)
@@ -87,6 +98,18 @@ describe('Friends (e2e)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe(FriendStatus.Accepted);
+  });
+
+  it('user A has a notification for the friend request being accepted', async () => {
+    const notifs = await request(ctx.app.getHttpServer())
+      .get('/notifs')
+      .set('Authorization', `Bearer ${userAToken}`);
+
+    expect(notifs.status).toBe(200);
+    expect(notifs.body.length).toBe(1);
+    expect(notifs.body[0].category).toBe(
+      NotificationType.FriendRequestAccepted,
+    );
   });
 
   it('Both users now appear in each other’s friend lists', async () => {

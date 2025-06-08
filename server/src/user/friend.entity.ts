@@ -6,10 +6,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   Unique,
+  OneToOne,
+  JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from './user.entity';
-
+import { Notification } from '../notifs/entities/notification.entity';
 export enum FriendStatus {
   Pending = 'pending',
   Accepted = 'accepted',
@@ -48,4 +50,22 @@ export class Friend {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToOne(() => Notification, {
+    cascade: true,
+    eager: true,
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn()
+  sentNotif: Notification | null;
+
+  @OneToOne(() => Notification, {
+    cascade: true,
+    eager: true,
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn()
+  acceptedNotif: Notification | null;
 }

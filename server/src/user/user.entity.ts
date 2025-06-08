@@ -10,6 +10,7 @@ import {
   BeforeUpdate,
   OneToMany,
   ManyToMany,
+  ManyToOne,
 } from 'typeorm';
 import { UserAction } from '../actions/entities/user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
@@ -18,6 +19,7 @@ import { IsNotEmpty } from 'class-validator';
 import { FriendStatus } from './friend.entity';
 import { Friend } from './friend.entity';
 import { Notification } from '../notifs/entities/notification.entity';
+import { City } from 'src/geo/city.entity';
 
 @Entity()
 export class User {
@@ -73,6 +75,12 @@ export class User {
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
 
+  @ManyToOne(() => User, (user) => user.referredUsers, { nullable: true })
+  referredBy: User | null;
+
+  @OneToMany(() => User, (user) => user.referredBy)
+  referredUsers: User[];
+
   get friends(): User[] {
     const sentAccepted =
       this.sentFriendRequests
@@ -101,4 +109,17 @@ export class User {
   async checkPassword(plainPassword: string): Promise<boolean> {
     return await bcrypt.compare(plainPassword, this.password);
   }
+
+  // -- onboarding info --
+
+  @ManyToOne(() => City)
+  city: City;
+
+  @Column({ nullable: true })
+  @ApiProperty({ nullable: true })
+  over18: boolean;
+
+  @Column({ default: false })
+  @ApiProperty()
+  onboardingComplete: boolean;
 }

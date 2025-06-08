@@ -5,6 +5,10 @@ const OnboardingPage: React.FC = () => {
   const [isOver18, setIsOver18] = useState<boolean | null>(null);
   const [makesMoney, setMakesMoney] = useState<boolean | null>(null);
 
+  const handleSubmit = () => {
+    console.log("submit");
+  };
+
   return (
     <div className="container flex flex-col justify-center h-screen min-w-[400px] max-w-[600px] justify-self-center gap-y-2">
       <p className="font-bold ">You&apos;re signed up! </p>
@@ -29,7 +33,7 @@ const OnboardingPage: React.FC = () => {
           No
         </Button>
       </div>
-      <p className="mt-5 font-bold">Do you make lots of money?</p>
+      <p className="mt-5 font-bold">Do you make a lot of money?</p>
       <div className="flex flex-row gap-x-2">
         <Button
           color={makesMoney === true ? ButtonColor.Blue : ButtonColor.Light}
@@ -44,13 +48,22 @@ const OnboardingPage: React.FC = () => {
           No
         </Button>
       </div>
-      <Button
-        color={ButtonColor.Green}
-        onClick={() => {}}
-        className="mt-5 self-center"
-      >
-        Get Started
-      </Button>
+      <div className="flex flex-row gap-x-2 mt-10">
+        <Button
+          color={ButtonColor.Green}
+          onClick={() => {}}
+          className="mt-5 self-center"
+        >
+          Get Started
+        </Button>
+        <Button
+          color={ButtonColor.Transparent}
+          onClick={() => {}}
+          className="mt-5 self-center text-gray-400"
+        >
+          I&apos;d rather not answer these questions
+        </Button>
+      </div>
     </div>
   );
 };

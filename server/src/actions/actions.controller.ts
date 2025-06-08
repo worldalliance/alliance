@@ -101,6 +101,11 @@ export class ActionsController {
     return this.actionsService.findPublic();
   }
 
+  @Get('userlocations/:id')
+  async userLocations(@Param('id', ParseIntPipe) id: number) {
+    return this.actionsService.userCoordinatesForAction(id);
+  }
+
   @Get('all')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [ActionDto] })

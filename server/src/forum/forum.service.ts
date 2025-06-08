@@ -5,7 +5,10 @@ import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
 import { CreateReplyDto, ReplyDto, UpdateReplyDto } from './dto/reply.dto';
 import { Post } from './entities/post.entity';
 import { Reply } from './entities/reply.entity';
-import { Notification } from '../notifs/entities/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from '../notifs/entities/notification.entity';
 import { User } from '../user/user.entity';
 
 @Injectable()
@@ -126,16 +129,14 @@ export class ForumService {
       where: { id: userId },
     });
     if (!replyAuthor) {
-      throw new NotFoundException(
-        `Reply author with ID "${userId}" not found`,
-      );
+      throw new NotFoundException(`Reply author with ID "${userId}" not found`);
     }
 
     // notify post author
     const notif = this.notifRepository.create({
       user: post.author,
       message: `${replyAuthor.name} replied to your forum post`,
-      category: 'forum',
+      category: NotificationType.ForumReply,
       webAppLocation: `/forum/post/${post.id}`,
       mobileAppLocation: `/forum/post/${post.id}`, //TODO: mobile forum route,
     });

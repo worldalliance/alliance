@@ -4,7 +4,7 @@ import {
   ActionWithRelationDto,
   CreateActionDto,
   UpdateActionDto,
-  ActionEventDto
+  ActionEventDto,
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
@@ -239,6 +239,25 @@ export class ActionsService {
       ...ua.action,
       relation: ua,
       usersJoined: ua.action.usersJoined,
+    }));
+  }
+
+  async userCoordinatesForAction(actionId: number): Promise<
+    {
+      latitude: number;
+      longitude: number;
+    }[]
+  > {
+    const userActions = await this.userActionRepository.find({
+      where: {
+        action: { id: actionId },
+        status: In([UserActionRelation.joined, UserActionRelation.completed]),
+      },
+      relations: ['user', 'user.city'],
+    });
+    return userActions.map((ua) => ({
+      latitude: ua.user.city.latitude,
+      longitude: ua.user.city.longitude,
     }));
   }
 }

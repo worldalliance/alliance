@@ -1,13 +1,17 @@
 // routes/root.tsx
 import { Outlet } from "react-router";
 import { useAuth } from "./lib/AuthContext";
-import NavbarHorizontal from "./components/NavbarHorizontal";
-import { geoSearchCity } from "@alliance/shared/client";
+import { Navigate } from "react-router";
+export default function Onboarding() {
+  const { isAuthenticated, user } = useAuth();
 
-export interface OnboardingState {}
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
 
-export default function AppLayout() {
-  const { isAuthenticated } = useAuth();
+  if (user?.onboardingComplete) {
+    return <Navigate to="/home" />;
+  }
 
   return (
     <>

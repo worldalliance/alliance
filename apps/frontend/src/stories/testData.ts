@@ -3,6 +3,7 @@ import {
   ActionWithRelationDto,
   PostDto,
   ProfileDto,
+  UserDto,
 } from "@alliance/shared/client";
 
 export const testActions: ActionDto[] = [
@@ -83,6 +84,14 @@ export const testUser2: ProfileDto = {
   profilePicture: "https://via.placeholder.com/150",
   profileDescription:
     "This is a test description of a user thats a sort of medium length. It isn't too long, but it also isn't that short. It has a sort of just right amount of length.",
+};
+
+export const testAuthUser: UserDto = {
+  id: 1,
+  name: "First Lastname",
+  email: "first.lastname@example.com",
+  admin: false,
+  onboardingComplete: false,
 };
 
 export const testFriends: ProfileDto[] = [testUser, testUser, testUser];

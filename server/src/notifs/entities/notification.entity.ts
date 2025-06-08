@@ -5,10 +5,17 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  JoinTable,
 } from 'typeorm';
 import { User } from '../../user/user.entity';
 import { ApiProperty } from '@nestjs/swagger';
+
+export enum NotificationType {
+  ActionEvent = 'action_event',
+  ForumReply = 'forum_reply',
+  ActionInvite = 'action_invite',
+  FriendRequest = 'friend_request',
+  FriendRequestAccepted = 'friend_request_accepted',
+}
 
 @Entity()
 export class Notification {
@@ -16,12 +23,14 @@ export class Notification {
   @ApiProperty()
   id: number;
 
-  @ManyToOne(() => User, (user) => user.notifications)
+  @ManyToOne(() => User, (user) => user.notifications, {
+    onDelete: 'CASCADE',
+  })
   user: User;
 
   @Column()
   @ApiProperty()
-  category: string;
+  category: NotificationType;
 
   @Column()
   @ApiProperty()

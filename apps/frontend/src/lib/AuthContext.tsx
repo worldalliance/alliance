@@ -16,7 +16,7 @@ import {
   UserDto,
 } from "@alliance/shared/client";
 
-import { testUser2 } from "../stories/testData";
+import { testAuthUser } from "../stories/testData";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -105,13 +105,13 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
 
 AuthProvider.displayName = "AuthProvider";
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const ctx = useContext(AuthContext);
 
   if (import.meta.env.STORYBOOK) {
     return {
       isAuthenticated: true,
-      user: testUser2,
+      user: testAuthUser,
       login: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       loading: false,
