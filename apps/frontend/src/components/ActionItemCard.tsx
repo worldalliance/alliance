@@ -5,7 +5,7 @@ import { useNavigate } from "react-router";
 import { ActionDto } from "@alliance/shared/client/types.gen";
 
 export interface ActionItemCardProps
-  extends Pick<ActionDto, "name" | "description" | "category" | "id"> {
+  extends Pick<ActionDto, "name" | "shortDescription" | "category" | "id"> {
   className?: string;
   liveCount?: number;
 }
@@ -13,7 +13,7 @@ export interface ActionItemCardProps
 const ActionItemCard: React.FC<ActionItemCardProps> = ({
   name,
   id,
-  description,
+  shortDescription,
   category,
   className,
   liveCount,
@@ -30,7 +30,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
         {/* <Badge>{category}</Badge> */}
         <div className="w-[100%] space-x-3">
           <p className="font-avenir font-bold">{name}</p>
-          <p className="text-gray-500">{description}</p>
+          <p className="text-gray-500">{shortDescription}</p>
         </div>
         {liveCount !== undefined && <p>Count: {liveCount}</p>}
       </Card>

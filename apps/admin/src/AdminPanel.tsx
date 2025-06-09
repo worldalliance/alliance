@@ -74,7 +74,7 @@ const AdminPanel: React.FC = () => {
                   <p className="text-sm text-gray-700 mb-2">
                     {action.category}
                   </p>
-                  <p className="text-sm">{action.description}</p>
+                  <p className="text-sm">{action.shortDescription}</p>
                 </div>
               </Card>
             ))
@@ -97,11 +97,11 @@ const AdminPanel: React.FC = () => {
             <div className="mt-2">
               <p>Total Actions: {actions.length}</p>
               <p>
-                Active: {actions.filter((a) => a.status === "Active").length}
+                Active: {actions.filter((a) => a.status === "active").length}
               </p>
-              <p>Draft: {actions.filter((a) => a.status === "Draft").length}</p>
+              <p>Draft: {actions.filter((a) => a.status === "draft").length}</p>
               <p>
-                Completed: {actions.filter((a) => a.status === "Past").length}
+                Completed: {actions.filter((a) => a.status === "past").length}
               </p>
             </div>
           </Card>

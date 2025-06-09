@@ -9,6 +9,7 @@ export default [
   route("/", "pages/static/PrelaunchLanding.tsx"),
   route("/landing", "pages/static/NewLandingPage.tsx"),
   route("/about", "pages/static/AboutPage.tsx"),
+  route("/issues", "pages/app/IssuesListPage.tsx"),
 
   layout("./applayout.tsx", [
     ...prefix("/actions", [
@@ -19,7 +20,6 @@ export default [
       route("/", "pages/app/AnnouncementListPage.tsx"),
       route(":id", "pages/app/AnnouncementPage.tsx"),
     ]),
-    route("/issues", "pages/app/IssuesListPage.tsx"),
     route("/issues/:id", "pages/app/IssuePage.tsx"),
     route("/profile", "pages/app/ProfileRedirect.tsx"),
     route("/editprofile", "pages/app/ProfilePageEdit.tsx"),

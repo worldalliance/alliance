@@ -48,7 +48,8 @@ describe('Actions (e2e)', () => {
         whyJoin: '',
         image: '',
         timeEstimate: '1h',
-        events: [],
+        shortDescription: 'Do something important',
+        howTo: 'Do something important',
       };
 
       const res = await request(ctx.app.getHttpServer())

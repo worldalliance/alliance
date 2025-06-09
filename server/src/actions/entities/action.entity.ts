@@ -41,6 +41,14 @@ export class Action {
   description: string;
 
   @Column({ nullable: true })
+  @ApiProperty({ description: 'Short description shown in cards' })
+  shortDescription: string;
+
+  @Column({ nullable: true })
+  @ApiProperty({ description: 'Steps to complete the action' })
+  howTo: string;
+
+  @Column({ nullable: true })
   @ApiProperty()
   timeEstimate: string;
 

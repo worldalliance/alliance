@@ -30,9 +30,11 @@ const AdminActionPage: React.FC = () => {
     category: "",
     whyJoin: "",
     description: "",
-    status: "Draft",
+    status: "draft",
     image: "",
     timeEstimate: "",
+    shortDescription: "",
+    howTo: "",
   });
 
   useEffect(() => {
@@ -63,6 +65,8 @@ const AdminActionPage: React.FC = () => {
           status: actionData.status,
           image: actionData.image || "",
           timeEstimate: actionData.timeEstimate,
+          shortDescription: actionData.shortDescription,
+          howTo: actionData.howTo,
         });
 
         setLoading(false);
@@ -285,6 +289,23 @@ const AdminActionPage: React.FC = () => {
                 value={form.description}
                 onChange={handleInputChange}
                 rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="shortDescription"
+                className="block font-medium text-gray-700"
+              >
+                Short Description
+              </label>
+              <textarea
+                id="shortDescription"
+                name="shortDescription"
+                value={form.shortDescription}
+                onChange={handleInputChange}
+                rows={2}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

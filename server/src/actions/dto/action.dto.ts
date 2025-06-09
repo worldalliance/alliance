@@ -1,7 +1,7 @@
 import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Action } from '../entities/action.entity';
 import { UserAction, UserActionRelation } from '../entities/user-action.entity';
-import { ActionEvent, ActionStatus } from '../entities/action-event.entity';
+import { ActionEvent } from '../entities/action-event.entity';
 
 export class UserActionDto extends PickType(UserAction, [
   'status',
@@ -56,6 +56,7 @@ export class CreateActionDto extends OmitType(ActionDto, [
   'id',
   'usersJoined',
   'myRelation',
+  'events',
 ]) {}
 
 export class ActionWithRelationDto extends PublicActionDto {
@@ -63,31 +64,7 @@ export class ActionWithRelationDto extends PublicActionDto {
   relation?: Omit<UserActionDto, 'action'> | null;
 }
 
-export class UpdateActionDto extends PartialType(CreateActionDto) {
-  @ApiProperty({ type: String, description: 'Message describing the update' })
-  message?: string;
-
-  @ApiProperty({
-    enum: ['active', 'upcoming', 'past', 'draft'],
-    description: 'The new status of the action',
-  })
-  newStatus?: ActionStatus;
-
-  @ApiProperty({
-    enum: ['all', 'joined', 'none'],
-    description: 'Who should receive notifications',
-  })
-  sendNotifs?: 'all' | 'joined' | 'none';
-
-  @ApiProperty({ type: Date, description: 'Date of the update' })
-  updateDate?: Date;
-
-  @ApiProperty({
-    type: Boolean,
-    description: 'Whether the update should appear in the timeline',
-  })
-  showInTimeline?: boolean;
-}
+export class UpdateActionDto extends PartialType(CreateActionDto) {}
 
 export class LatLonDto {
   @ApiProperty({ type: Number })

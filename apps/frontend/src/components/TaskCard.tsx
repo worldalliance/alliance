@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { CardStyle } from "./system/Card";
-import Badge from "./system/Badge";
 
 import Card from "./system/Card";
 import { ActionDto } from "@alliance/shared/client";
@@ -14,7 +13,12 @@ import { formatDistanceToNow } from "date-fns";
 export interface TaskCardProps {
   action: Pick<
     ActionDto,
-    "name" | "description" | "category" | "id" | "myRelation"
+    | "name"
+    | "description"
+    | "category"
+    | "id"
+    | "myRelation"
+    | "shortDescription"
   >;
   onComplete: (actionId: number) => void;
 }
@@ -125,7 +129,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       {state !== TaskCardState.Default && (
         <div className="mt-4 transition-all duration-300">
           <p className="text-gray-700">You committed 3 days ago.</p>
-          <p className="text-gray-700 mb-4">{action.description}</p>
+          <p className="text-gray-700 mb-4">{action.shortDescription}</p>
           <div className="flex justify-between items-center gap-x-2">
             <div className="flex flex-row gap-x-2">
               <Button color={ButtonColor.Light} onClick={goToActionPage}>

@@ -54,10 +54,6 @@ export type UpdateProfileDto = {
     profileDescription?: string | null;
 };
 
-export type FriendStatusDto = {
-    status: 'pending' | 'accepted' | 'declined' | 'none';
-};
-
 export type City = {
     id: number;
     name: string;
@@ -67,6 +63,10 @@ export type City = {
     countryName: string;
     latitude: number;
     longitude: number;
+};
+
+export type FriendStatusDto = {
+    status: 'pending' | 'accepted' | 'declined' | 'none';
 };
 
 export type UserActionDto = {
@@ -124,6 +124,14 @@ export type ActionDto = {
      * Description of the action
      */
     description: string;
+    /**
+     * Short description shown in cards
+     */
+    shortDescription: string;
+    /**
+     * Steps to complete the action
+     */
+    howTo: string;
     timeEstimate: string;
     /**
      * Current status of the action
@@ -163,12 +171,19 @@ export type CreateActionDto = {
      * Description of the action
      */
     description: string;
+    /**
+     * Short description shown in cards
+     */
+    shortDescription: string;
+    /**
+     * Steps to complete the action
+     */
+    howTo: string;
     timeEstimate: string;
     /**
      * Current status of the action
      */
     status: 'active' | 'upcoming' | 'past' | 'draft';
-    events: Array<ActionEventDto>;
 };
 
 export type UpdateActionDto = {
@@ -192,32 +207,19 @@ export type UpdateActionDto = {
      * Description of the action
      */
     description?: string;
+    /**
+     * Short description shown in cards
+     */
+    shortDescription?: string;
+    /**
+     * Steps to complete the action
+     */
+    howTo?: string;
     timeEstimate?: string;
     /**
      * Current status of the action
      */
     status?: 'active' | 'upcoming' | 'past' | 'draft';
-    events?: Array<ActionEventDto>;
-    /**
-     * Message describing the update
-     */
-    message: string;
-    /**
-     * The new status of the action
-     */
-    newStatus: 'active' | 'upcoming' | 'past' | 'draft';
-    /**
-     * Who should receive notifications
-     */
-    sendNotifs: 'all' | 'joined' | 'none';
-    /**
-     * Date of the update
-     */
-    updateDate: string;
-    /**
-     * Whether the update should appear in the timeline
-     */
-    showInTimeline: boolean;
 };
 
 export type ActionWithRelationDto = {
@@ -245,6 +247,14 @@ export type ActionWithRelationDto = {
      * Description of the action
      */
     description: string;
+    /**
+     * Short description shown in cards
+     */
+    shortDescription: string;
+    /**
+     * Steps to complete the action
+     */
+    howTo: string;
     timeEstimate: string;
     /**
      * Current status of the action
@@ -362,6 +372,14 @@ export type Action = {
      * Description of the action
      */
     description: string;
+    /**
+     * Short description shown in cards
+     */
+    shortDescription: string;
+    /**
+     * Steps to complete the action
+     */
+    howTo: string;
     timeEstimate: string;
     /**
      * Current status of the action
@@ -591,6 +609,19 @@ export type UserUpdateResponses = {
     201: unknown;
 };
 
+export type UserMyLocationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/mylocation';
+};
+
+export type UserMyLocationResponses = {
+    200: City;
+};
+
+export type UserMyLocationResponse = UserMyLocationResponses[keyof UserMyLocationResponses];
+
 export type UserFindOneData = {
     body?: never;
     path: {
@@ -744,19 +775,6 @@ export type UserCountReferredResponses = {
 };
 
 export type UserCountReferredResponse = UserCountReferredResponses[keyof UserCountReferredResponses];
-
-export type UserMyLocationData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/user/mylocation';
-};
-
-export type UserMyLocationResponses = {
-    200: City;
-};
-
-export type UserMyLocationResponse = UserMyLocationResponses[keyof UserMyLocationResponses];
 
 export type ActionsJoinData = {
     body?: never;
