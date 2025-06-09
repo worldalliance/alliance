@@ -27,9 +27,9 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
         style={CardStyle.White}
         onClick={() => navigate(`/actions/${id}`)}
       >
-        <Badge>{category}</Badge>
+        {/* <Badge>{category}</Badge> */}
         <div className="w-[100%] space-x-3">
-          <p className="font-bold text-lg">{name}</p>
+          <p className="font-avenir font-bold">{name}</p>
           <p className="text-gray-500">{description}</p>
         </div>
         {liveCount !== undefined && <p>Count: {liveCount}</p>}

@@ -100,9 +100,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
       <div className="flex flex-row justify-between gap-x-10">
         <div className="flex flex-row items-center gap-x-2">
           <div className="flex flex-col gap-y-2">
-            <Badge>{action.category}</Badge>
+            {/* <Badge>{action.category}</Badge> */}
             <div>
-              <p className="font-bold text-[12pt] pt-[1px]">{action.name}</p>
+              <p className="font-bold font-avenir">{action.name}</p>
               <div className="flex flex row text-gray-500">
                 {action.myRelation.deadline && (
                   <>
