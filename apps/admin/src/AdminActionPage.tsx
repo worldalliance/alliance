@@ -34,6 +34,7 @@ const AdminActionPage: React.FC = () => {
     image: "",
     timeEstimate: "",
     shortDescription: "",
+    shortAskBadge: "",
     howTo: "",
   });
 
@@ -67,6 +68,7 @@ const AdminActionPage: React.FC = () => {
           timeEstimate: actionData.timeEstimate,
           shortDescription: actionData.shortDescription,
           howTo: actionData.howTo,
+          shortAskBadge: actionData.shortAskBadge,
         });
 
         setLoading(false);
@@ -242,8 +244,8 @@ const AdminActionPage: React.FC = () => {
         )}
 
         <Card style={CardStyle.White}>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
+          <form onSubmit={handleSubmit} className="space-y-2">
+            <div className="space-y-1">
               <label htmlFor="name" className="block font-medium text-gray-700">
                 Name *
               </label>
@@ -258,7 +260,7 @@ const AdminActionPage: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <label
                 htmlFor="category"
                 className="block font-medium text-gray-700"
@@ -276,7 +278,25 @@ const AdminActionPage: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
+              <label
+                htmlFor="shortAskBadge"
+                className="block font-medium text-gray-700"
+              >
+                Short Ask Badge
+              </label>
+              <input
+                type="text"
+                id="shortAskBadge"
+                name="shortAskBadge"
+                value={form.shortAskBadge}
+                onChange={handleInputChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="space-y-1">
               <label
                 htmlFor="description"
                 className="block font-medium text-gray-700"
@@ -293,7 +313,7 @@ const AdminActionPage: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <label
                 htmlFor="shortDescription"
                 className="block font-medium text-gray-700"
@@ -310,7 +330,7 @@ const AdminActionPage: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <label
                 htmlFor="whyJoin"
                 className="block font-medium text-gray-700"
@@ -327,7 +347,7 @@ const AdminActionPage: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <label
                 htmlFor="status"
                 className="block font-medium text-gray-700"
@@ -348,7 +368,7 @@ const AdminActionPage: React.FC = () => {
               </select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <label
                 htmlFor="image"
                 className="block font-medium text-gray-700"

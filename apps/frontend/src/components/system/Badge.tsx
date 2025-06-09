@@ -4,10 +4,12 @@ interface BadgeProps extends PropsWithChildren {
   className?: string;
 }
 
-const Badge: React.FC<BadgeProps> = ({ children, className }) => {
+const Badge: React.FC<BadgeProps> = ({ children, className }: BadgeProps) => {
   return (
     <div
-      className={`${className ?? ""} px-2 self-start font-avenir uppercase font-semibold whitespace-nowrap rounded-md flex items-center justify-center text-[8pt] bg-slate-600 text-white py-1 pb-[2px] `}
+      className={`${
+        className ?? ""
+      } px-4 py-2 self-start font-avenir uppercase font-semibold whitespace-nowrap rounded-sm flex items-center justify-center text-[9pt] bg-[#636b75] text-white `}
     >
       {children}
     </div>

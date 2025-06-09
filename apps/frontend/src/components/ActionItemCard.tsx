@@ -1,5 +1,4 @@
 import React from "react";
-import Badge from "./system/Badge";
 import Card, { CardStyle } from "./system/Card";
 import { useNavigate } from "react-router";
 import { ActionDto } from "@alliance/shared/client/types.gen";
@@ -14,7 +13,6 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   name,
   id,
   shortDescription,
-  category,
   className,
   liveCount,
 }) => {

@@ -115,7 +115,7 @@ export default function ActionPage() {
           )}
           <div className="flex flex-row justify-between items-start my-5">
             <div className="flex flex-col gap-y-3">
-              <h1>{action?.name}</h1>
+              <h1 className="">{action?.name}</h1>
               <p className="text-gray-900 text-[12pt] mt-[-3px]">
                 Part of the{" "}
                 <a
@@ -129,8 +129,8 @@ export default function ActionPage() {
               </p>
             </div>
             {userRelation === "none" && id && (
-              <Button className="mt-2" onClick={onJoinAction}>
-                Commit to this action
+              <Button className="mt-2 text-xl" onClick={onJoinAction}>
+                Commit
               </Button>
             )}
           </div>

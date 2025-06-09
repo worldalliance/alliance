@@ -50,6 +50,7 @@ describe('Actions (e2e)', () => {
         timeEstimate: '1h',
         shortDescription: 'Do something important',
         howTo: 'Do something important',
+        shortAskBadge: 'Send letter',
       };
 
       const res = await request(ctx.app.getHttpServer())

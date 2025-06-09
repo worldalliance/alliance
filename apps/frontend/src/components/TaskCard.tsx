@@ -9,17 +9,11 @@ import Button, { ButtonColor } from "./system/Button";
 // Import the dropdown icon
 import expandArrow from "../assets/icons8-expand-arrow-96.png";
 import { formatDistanceToNow } from "date-fns";
+import UsersCompletedBar from "./UsersCompletedBar";
+import Badge from "./system/Badge";
 
 export interface TaskCardProps {
-  action: Pick<
-    ActionDto,
-    | "name"
-    | "description"
-    | "category"
-    | "id"
-    | "myRelation"
-    | "shortDescription"
-  >;
+  action: ActionDto;
   onComplete: (actionId: number) => void;
 }
 
@@ -84,9 +78,12 @@ const TaskCard: React.FC<TaskCardProps> = ({
     if (!action.myRelation?.deadline) return null;
     return (
       formatDistanceToNow(new Date(action.myRelation.deadline), {}) +
-      " to complete"
+      " left to complete"
     );
   }, [action.myRelation?.deadline]);
+
+  const usersJoined = 512;
+  const usersCompleted = 389;
 
   return (
     <Card
@@ -104,14 +101,12 @@ const TaskCard: React.FC<TaskCardProps> = ({
       <div className="flex flex-row justify-between gap-x-10">
         <div className="flex flex-row items-center gap-x-2">
           <div className="flex flex-col gap-y-2">
-            {/* <Badge>{action.category}</Badge> */}
-            <div>
+            <div className="flex flex-row items-center gap-x-3 justify-center">
+              {action.shortAskBadge && <Badge>{action.shortAskBadge}</Badge>}
               <p className="font-bold font-avenir">{action.name}</p>
-              <div className="flex flex row text-gray-500">
+              <div className="flex flex-row text-gray-500">
                 {action.myRelation.deadline && (
-                  <>
-                    <p className="">{timeRemaining}</p>
-                  </>
+                  <p className="font-avenir text-[0.93rem]">{timeRemaining}</p>
                 )}
               </div>
             </div>
@@ -127,16 +122,19 @@ const TaskCard: React.FC<TaskCardProps> = ({
       </div>
 
       {state !== TaskCardState.Default && (
-        <div className="mt-4 transition-all duration-300">
-          <p className="text-gray-700">You committed 3 days ago.</p>
-          <p className="text-gray-700 mb-4">{action.shortDescription}</p>
+        <div className="mt-2 transition-all duration-300 space-y-4">
+          <UsersCompletedBar
+            usersCompleted={usersCompleted}
+            totalUsers={usersJoined}
+          />
+          <p className="text-gray-700">{action.shortDescription}</p>
           <div className="flex justify-between items-center gap-x-2">
             <div className="flex flex-row gap-x-2">
               <Button color={ButtonColor.Light} onClick={goToActionPage}>
-                Details
+                Action Details
               </Button>
               <Button color={ButtonColor.Green} onClick={handleCompleteClick}>
-                Complete Task
+                Complete
               </Button>
             </div>
           </div>

@@ -45,6 +45,13 @@ export class Action {
   shortDescription: string;
 
   @Column({ nullable: true })
+  @ApiProperty({
+    description:
+      'short ask badge (shown next to title in card), e.g. "Sign Petition"',
+  })
+  shortAskBadge: string;
+
+  @Column({ nullable: true })
   @ApiProperty({ description: 'Steps to complete the action' })
   howTo: string;
 
