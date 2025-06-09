@@ -8,6 +8,8 @@ import {
   actionsFindOne,
   actionsJoin,
   actionsMyStatus,
+  actionsUserLocations,
+  LatLonDto,
 } from "@alliance/shared/client";
 import { ActionDto, UserActionDto } from "@alliance/shared/client";
 import { getImageSource, isFeatureEnabled } from "../../lib/config";
@@ -16,12 +18,13 @@ import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
 import ActionEventsPanel from "../../components/ActionEventsPanel";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/ActionPage";
-import NavbarHorizontal from "../../components/NavbarHorizontal";
 import { useAuth } from "../../lib/AuthContext";
 
 export async function loader({
   params,
-}: Route.LoaderArgs): Promise<ActionDto | undefined> {
+}: Route.LoaderArgs): Promise<
+  (ActionDto & { locations: LatLonDto[] }) | undefined
+> {
   if (!params.id || isNaN(parseInt(params.id))) {
     return undefined;
   }
@@ -29,7 +32,16 @@ export async function loader({
     path: { id: parseInt(params.id) },
   });
 
-  return action.data;
+  const locations = await actionsUserLocations({
+    path: { id: parseInt(params.id) },
+  });
+  if (!action.data) {
+    return undefined;
+  }
+
+  console.log("locations", locations);
+
+  return { ...action.data, locations: locations.data || [] };
 }
 
 export default function ActionPage() {
@@ -155,7 +167,6 @@ export default function ActionPage() {
 
   return (
     <>
-      <NavbarHorizontal />
       <meta name="og:title" content={action?.name} />
       <meta name="og:description" content={action?.description} />
       <TwoColumnSplit
@@ -167,7 +178,11 @@ export default function ActionPage() {
               className="items-center gap-y-5 aspect-square justify-center"
             >
               <div className="w-[180px] self-center">
-                <Globe people={action?.usersJoined || 0} colored />
+                <Globe
+                  people={action?.usersJoined || 0}
+                  colored
+                  locations={action?.locations || []}
+                />
                 <p className="text-center pt-5 text-[11pt]">
                   {action?.usersJoined?.toLocaleString() || 0} people committed
                 </p>

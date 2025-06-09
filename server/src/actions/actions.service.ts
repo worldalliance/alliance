@@ -5,6 +5,7 @@ import {
   CreateActionDto,
   UpdateActionDto,
   ActionEventDto,
+  LatLonDto,
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
@@ -242,12 +243,7 @@ export class ActionsService {
     }));
   }
 
-  async userCoordinatesForAction(actionId: number): Promise<
-    {
-      latitude: number;
-      longitude: number;
-    }[]
-  > {
+  async userCoordinatesForAction(actionId: number): Promise<LatLonDto[]> {
     const userActions = await this.userActionRepository.find({
       where: {
         action: { id: actionId },
@@ -255,9 +251,11 @@ export class ActionsService {
       },
       relations: ['user', 'user.city'],
     });
-    return userActions.map((ua) => ({
-      latitude: ua.user.city.latitude,
-      longitude: ua.user.city.longitude,
-    }));
+    return userActions
+      .filter((ua) => ua.user.city !== null)
+      .map((ua) => ({
+        latitude: ua.user.city.latitude,
+        longitude: ua.user.city.longitude,
+      }));
   }
 }

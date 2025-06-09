@@ -27,12 +27,12 @@ export class ProfileDto extends PickType(User, [
 export class UpdateProfileDto extends PartialType(ProfileDto) {}
 
 export class OnboardingDto {
-  @ApiProperty()
+  @ApiProperty({ type: Number, nullable: true })
   cityId: number | null;
 
-  @ApiProperty()
+  @ApiProperty({ type: Boolean, nullable: true })
   over18: boolean | null;
 
-  @ApiProperty()
+  @ApiProperty({ type: Boolean, nullable: true })
   makesMoney: boolean | null;
 }

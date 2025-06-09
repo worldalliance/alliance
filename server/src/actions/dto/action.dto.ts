@@ -40,16 +40,13 @@ export class ActionDto extends OmitType(Action, [
 
   constructor(action: Partial<Action>) {
     super();
-    this.myRelation = null; 
+    this.myRelation = null;
     this.usersJoined =
       action.userRelations?.filter(
         (ur) => ur.status === UserActionRelation.joined,
       ).length || 0;
     this.events =
-      action.events?.map(
-        (event) =>
-          new ActionEventDto({...event}),
-      ) || [];
+      action.events?.map((event) => new ActionEventDto({ ...event })) || [];
   }
 }
 
@@ -90,4 +87,12 @@ export class UpdateActionDto extends PartialType(CreateActionDto) {
     description: 'Whether the update should appear in the timeline',
   })
   showInTimeline?: boolean;
+}
+
+export class LatLonDto {
+  @ApiProperty({ type: Number })
+  latitude: number;
+
+  @ApiProperty({ type: Number })
+  longitude: number;
 }

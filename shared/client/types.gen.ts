@@ -40,9 +40,9 @@ export type ProfileDto = {
 };
 
 export type OnboardingDto = {
-    cityId: number;
-    over18: boolean;
-    makesMoney: boolean;
+    cityId: number | null;
+    over18: boolean | null;
+    makesMoney: boolean | null;
 };
 
 export type UpdateProfileDto = {
@@ -56,6 +56,17 @@ export type UpdateProfileDto = {
 
 export type FriendStatusDto = {
     status: 'pending' | 'accepted' | 'declined' | 'none';
+};
+
+export type City = {
+    id: number;
+    name: string;
+    admin1: string;
+    admin2: string;
+    countryCode: string;
+    countryName: string;
+    latitude: number;
+    longitude: number;
 };
 
 export type UserActionDto = {
@@ -124,6 +135,11 @@ export type ActionDto = {
     usersJoined: number;
     myRelation: UserActionDto;
     events: Array<ActionEventDto>;
+};
+
+export type LatLonDto = {
+    latitude: number;
+    longitude: number;
 };
 
 export type CreateActionDto = {
@@ -729,6 +745,19 @@ export type UserCountReferredResponses = {
 
 export type UserCountReferredResponse = UserCountReferredResponses[keyof UserCountReferredResponses];
 
+export type UserMyLocationData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/mylocation';
+};
+
+export type UserMyLocationResponses = {
+    200: City;
+};
+
+export type UserMyLocationResponse = UserMyLocationResponses[keyof UserMyLocationResponses];
+
 export type ActionsJoinData = {
     body?: never;
     path: {
@@ -795,6 +824,21 @@ export type ActionsFindAllPublicResponses = {
 };
 
 export type ActionsFindAllPublicResponse = ActionsFindAllPublicResponses[keyof ActionsFindAllPublicResponses];
+
+export type ActionsUserLocationsData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/userlocations/{id}';
+};
+
+export type ActionsUserLocationsResponses = {
+    200: Array<LatLonDto>;
+};
+
+export type ActionsUserLocationsResponse = ActionsUserLocationsResponses[keyof ActionsUserLocationsResponses];
 
 export type ActionsFindAllWithDraftsData = {
     body?: never;

@@ -48,7 +48,7 @@ describe('Actions (e2e)', () => {
         whyJoin: '',
         image: '',
         timeEstimate: '1h',
-        events: []
+        events: [],
       };
 
       const res = await request(ctx.app.getHttpServer())
@@ -81,6 +81,15 @@ describe('Actions (e2e)', () => {
       expect(action).not.toBeNull();
 
       await ctx.agent.post(`/actions/join/${action!.id}`).expect(201);
+    });
+
+    it('action will show locations of joined users', async () => {
+      const locations = await request(ctx.app.getHttpServer())
+        .get(`/actions/userlocations/${testAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+      expect(locations.status).toBe(200);
+      expect(locations.body.length).toBe(0); //todo city data in test
     });
 
     it('user is shown their own relation to an action', async () => {

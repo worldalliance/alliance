@@ -6,10 +6,14 @@ import FormInput from "../../components/system/FormInput";
 import { AdminOnly } from "../../lib/AdminOnly";
 import Badge from "../../components/system/Badge";
 import FriendsTab from "../../components/FriendsTab";
+import { City } from "@alliance/shared/client";
+import { userMyLocation } from "@alliance/shared/client";
 
 const AccountPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
+
+  const [location, setLocation] = useState<City | null>(null);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -19,6 +23,12 @@ const AccountPage: React.FC = () => {
     if (user) {
       setLoading(false);
     }
+    userMyLocation().then((location) => {
+      console.log(location);
+      if (location.data) {
+        setLocation(location.data);
+      }
+    });
   }, [user]);
 
   if (loading) {
@@ -76,6 +86,17 @@ const AccountPage: React.FC = () => {
               name="email"
               type="email"
               value={user.email || ""}
+              onChange={() => {}}
+              disabled
+            />
+          </div>
+
+          <div className="mb-6">
+            <FormInput
+              label="Location"
+              name="location"
+              type="text"
+              value={location?.name || ""}
               onChange={() => {}}
               disabled
             />

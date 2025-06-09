@@ -22,6 +22,7 @@ import {
   CreateActionDto,
   UpdateActionDto,
   UserActionDto,
+  LatLonDto,
 } from './dto/action.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -102,7 +103,10 @@ export class ActionsController {
   }
 
   @Get('userlocations/:id')
-  async userLocations(@Param('id', ParseIntPipe) id: number) {
+  @ApiOkResponse({ type: [LatLonDto] })
+  async userLocations(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<LatLonDto[]> {
     return this.actionsService.userCoordinatesForAction(id);
   }
 

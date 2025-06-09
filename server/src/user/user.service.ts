@@ -44,7 +44,10 @@ export class UserService {
   }
 
   findOne(id: number): Promise<User | null> {
-    return this.userRepository.findOneBy({ id });
+    return this.userRepository.findOne({
+      where: { id },
+      relations: ['city'],
+    });
   }
 
   async findOneByEmail(email: string): Promise<User | null> {
@@ -240,5 +243,16 @@ export class UserService {
       relations: ['referredUsers'],
     });
     return user?.referredUsers.length ?? 0;
+  }
+
+  async getUserLocation(userId: number): Promise<City> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['city'],
+    });
+    if (!user) {
+      throw new NotFoundException(`User ${userId} not found`);
+    }
+    return user.city;
   }
 }

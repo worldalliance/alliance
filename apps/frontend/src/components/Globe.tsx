@@ -6,11 +6,13 @@ interface Coordinate {
   longitude: number;
   latitude: number;
 }
+
 interface GlobeProps {
   spin?: boolean;
   people?: number;
   strokeWidth?: number;
   colored?: boolean;
+  locations?: Coordinate[];
 }
 
 const Globe: React.FC<GlobeProps> = ({
@@ -18,6 +20,7 @@ const Globe: React.FC<GlobeProps> = ({
   people = 0,
   strokeWidth = 0.5,
   colored = false,
+  locations,
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -119,10 +122,11 @@ const Globe: React.FC<GlobeProps> = ({
     /* --- drag behaviour ----------------------------------------------- */
     const k = sensitivity / projection.scale();
     svg.call(
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore typing mismatch
       d3.drag().on("drag", (event: d3.D3DragEvent) => {
         const r = projection.rotate();
-        projection.rotate([r[0] + event.dx * k, r[1] - event.dy * k]);
+        projection.rotate([r[0] + event.dx * k, 0]);
         mapG.selectAll("path").attr("d", pathRef.current as any);
         updateDotPositions(); // keeps dots glued to the surface
       })
@@ -164,11 +168,12 @@ const Globe: React.FC<GlobeProps> = ({
   useEffect(() => {
     if (!peopleGroupRef.current || !projectionRef.current) return;
 
-    // dummy coordinate generator (keep your own logic / geoContains etc.)
-    const coords: Coordinate[] = Array.from({ length: people }, () => ({
-      longitude: Math.random() * 360 - 180,
-      latitude: Math.random() * 180 - 90,
-    }));
+    const coords: Coordinate[] = locations
+      ? locations
+      : Array.from({ length: people }, () => ({
+          longitude: Math.random() * 360 - 180,
+          latitude: Math.random() * 180 - 90,
+        }));
 
     const dots = peopleGroupRef.current
       .selectAll<SVGCircleElement, Coordinate>("circle")
@@ -178,9 +183,9 @@ const Globe: React.FC<GlobeProps> = ({
     dots
       .enter()
       .append("circle")
-      .attr("r", 2)
+      .attr("r", 4)
       .attr("fill", "#349cf7")
-      .merge(dots as any) // ENTER + UPDATE
+      .merge(dots)
       .each(function (d) {
         // position immediately
         const [cx, cy] = projectionRef.current!([d.longitude, d.latitude])!;

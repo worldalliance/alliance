@@ -10,6 +10,7 @@ import {
   Patch,
   Delete,
   Body,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiOkResponse,
@@ -27,6 +28,7 @@ import {
 } from './user.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { FriendStatus } from './friend.entity';
+import { City } from 'src/geo/city.entity';
 
 @Controller('user')
 export class UserController {
@@ -59,7 +61,13 @@ export class UserController {
     @Request() req: JwtRequest,
     @Body() body: OnboardingDto,
   ): Promise<ProfileDto> {
-    return this.userService.onboarding(req.user.sub, body);
+    await this.userService.onboarding(req.user.sub, body);
+    const profile = await this.userService.findOne(req.user.sub);
+    console.log('profile', profile);
+    if (!profile) {
+      throw new NotFoundException('User not found');
+    }
+    return profile;
   }
 
   @Post('update')
@@ -69,6 +77,15 @@ export class UserController {
     @Request() req: JwtRequest,
   ) {
     return this.userService.update(req.user.sub, updateActionDto);
+  }
+
+  @Get('mylocation')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: City })
+  async myLocation(@Request() req: JwtRequest): Promise<City> {
+    console.log('myLocation', req.user.sub);
+    console.log(await this.userService.getUserLocation(req.user.sub));
+    return this.userService.getUserLocation(req.user.sub);
   }
 
   @Get(':id')

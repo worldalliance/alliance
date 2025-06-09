@@ -3,9 +3,9 @@ import { Outlet } from "react-router";
 import { useAuth } from "./lib/AuthContext";
 import { Navigate } from "react-router";
 export default function Onboarding() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !loading) {
     return <Navigate to="/login" />;
   }
 
