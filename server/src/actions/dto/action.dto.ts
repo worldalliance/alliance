@@ -1,6 +1,6 @@
 import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Action } from '../entities/action.entity';
-import { UserAction, UserActionRelation } from '../entities/user-action.entity';
+import { UserAction } from '../entities/user-action.entity';
 import { ActionEvent } from '../entities/action-event.entity';
 
 export class UserActionDto extends PickType(UserAction, [
@@ -35,16 +35,17 @@ export class ActionDto extends OmitType(Action, [
   @ApiProperty()
   usersJoined: number;
 
+  @ApiProperty()
+  usersCompleted: number;
+
   @ApiProperty({ type: [ActionEventDto] })
   events: ActionEventDto[];
 
   constructor(action: Partial<Action>) {
     super();
     this.myRelation = null;
-    this.usersJoined =
-      action.userRelations?.filter(
-        (ur) => ur.status === UserActionRelation.joined,
-      ).length || 0;
+    this.usersJoined = action.usersJoined || 0;
+    this.usersCompleted = action.usersCompleted || 0;
     this.events =
       action.events?.map((event) => new ActionEventDto({ ...event })) || [];
   }
@@ -57,6 +58,7 @@ export class CreateActionDto extends OmitType(ActionDto, [
   'usersJoined',
   'myRelation',
   'events',
+  'usersCompleted',
 ]) {}
 
 export class ActionWithRelationDto extends PublicActionDto {

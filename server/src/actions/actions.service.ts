@@ -16,6 +16,7 @@ import { UserAction, UserActionRelation } from './entities/user-action.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Observable } from 'rxjs';
 import { from } from 'rxjs';
+import { instanceToPlain } from 'class-transformer';
 
 @Injectable()
 export class ActionsService {
@@ -49,6 +50,7 @@ export class ActionsService {
         return actions.map((action) => ({
           ...action,
           usersJoined: action.usersJoined,
+          usersCompleted: action.usersCompleted,
         }));
       });
   }
@@ -71,10 +73,11 @@ export class ActionsService {
       ...action,
       myRelation: action.userRelations[0] ?? null, // length 1 since filtered for the user
       usersJoined: action.usersJoined,
+      usersCompleted: action.usersCompleted,
     }));
   }
 
-  async findOne(id: number) {
+  async findOne(id: number): Promise<Action> {
     const action = await this.actionRepository.findOne({
       where: { id },
       relations: ['userRelations', 'events'],
@@ -82,12 +85,7 @@ export class ActionsService {
     if (!action) {
       throw new NotFoundException('Action not found');
     }
-    const usersJoined = action?.userRelations?.filter(
-      (relation) =>
-        relation.status === UserActionRelation.joined ||
-        relation.status === UserActionRelation.completed,
-    ).length;
-    return { ...action, usersJoined };
+    return instanceToPlain(action) as Action;
   }
 
   async findOneWithRelation(
@@ -96,7 +94,12 @@ export class ActionsService {
   ): Promise<ActionDto | null> {
     const action = await this.findOne(id);
     const userAction = await this.getActionRelation(id, userId);
-    return { ...action, myRelation: userAction };
+    return {
+      ...action,
+      myRelation: userAction,
+      usersJoined: action.usersJoined,
+      usersCompleted: action.usersCompleted,
+    };
   }
 
   async setActionRelation(
@@ -240,6 +243,7 @@ export class ActionsService {
       ...ua.action,
       relation: ua,
       usersJoined: ua.action.usersJoined,
+      usersCompleted: ua.action.usersCompleted,
     }));
   }
 

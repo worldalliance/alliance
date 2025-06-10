@@ -142,9 +142,17 @@ export type ActionDto = {
      */
     status: 'active' | 'upcoming' | 'past' | 'draft';
     /**
+     * Type of the action
+     */
+    type: 'Funding' | 'Activity' | 'Ongoing';
+    /**
      * Number of users who have joined the action
      */
     usersJoined: number;
+    /**
+     * Number of users who have completed the action
+     */
+    usersCompleted: number;
     myRelation: UserActionDto;
     events: Array<ActionEventDto>;
 };
@@ -192,6 +200,10 @@ export type CreateActionDto = {
      * Current status of the action
      */
     status: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Type of the action
+     */
+    type: 'Funding' | 'Activity' | 'Ongoing';
 };
 
 export type UpdateActionDto = {
@@ -232,6 +244,10 @@ export type UpdateActionDto = {
      * Current status of the action
      */
     status?: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Type of the action
+     */
+    type?: 'Funding' | 'Activity' | 'Ongoing';
 };
 
 export type ActionWithRelationDto = {
@@ -277,9 +293,17 @@ export type ActionWithRelationDto = {
      */
     status: 'active' | 'upcoming' | 'past' | 'draft';
     /**
+     * Type of the action
+     */
+    type: 'Funding' | 'Activity' | 'Ongoing';
+    /**
      * Number of users who have joined the action
      */
     usersJoined: number;
+    /**
+     * Number of users who have completed the action
+     */
+    usersCompleted: number;
     events: Array<ActionEventDto>;
     relation: UserActionDto;
 };
@@ -406,6 +430,10 @@ export type Action = {
      */
     status: 'active' | 'upcoming' | 'past' | 'draft';
     /**
+     * Type of the action
+     */
+    type: 'Funding' | 'Activity' | 'Ongoing';
+    /**
      * Timestamp when the action was created
      */
     createdAt: string;
@@ -425,6 +453,10 @@ export type Action = {
      * Number of users who have joined the action
      */
     usersJoined: number;
+    /**
+     * Number of users who have completed the action
+     */
+    usersCompleted: number;
 };
 
 export type ReplyDto = {

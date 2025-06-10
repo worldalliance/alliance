@@ -82,9 +82,6 @@ const TaskCard: React.FC<TaskCardProps> = ({
     );
   }, [action.myRelation?.deadline]);
 
-  const usersJoined = 512;
-  const usersCompleted = 389;
-
   return (
     <Card
       style={CardStyle.White}
@@ -124,8 +121,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
       {state !== TaskCardState.Default && (
         <div className="mt-2 transition-all duration-300 space-y-4">
           <UsersCompletedBar
-            usersCompleted={usersCompleted}
-            totalUsers={usersJoined}
+            usersCompleted={action.usersCompleted}
+            totalUsers={action.usersJoined}
           />
           <p className="text-gray-700">{action.shortDescription}</p>
           <div className="flex justify-between items-center gap-x-2">

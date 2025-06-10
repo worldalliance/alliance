@@ -1,5 +1,5 @@
 import * as request from 'supertest';
-import { Action } from '../src/actions/entities/action.entity';
+import { Action, ActionTaskType } from '../src/actions/entities/action.entity';
 import { ActionStatus } from '../src/actions/entities/action-event.entity';
 import { CreateActionDto, ActionEventDto } from '../src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
@@ -51,6 +51,7 @@ describe('Actions (e2e)', () => {
         shortDescription: 'Do something important',
         howTo: 'Do something important',
         shortAskBadge: 'Send letter',
+        type: ActionTaskType.Activity,
       };
 
       const res = await request(ctx.app.getHttpServer())
@@ -83,6 +84,13 @@ describe('Actions (e2e)', () => {
       expect(action).not.toBeNull();
 
       await ctx.agent.post(`/actions/join/${action!.id}`).expect(201);
+    });
+
+    it('action will count joined users', async () => {
+      const action = await actionRepo.findOneBy({
+        name: 'Test Action',
+      });
+      expect(action).not.toBeNull();
     });
 
     it('action will show locations of joined users', async () => {

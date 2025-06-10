@@ -12,6 +12,12 @@ import { Expose } from 'class-transformer';
 import { IsNotEmpty } from 'class-validator';
 import { ActionEvent, ActionStatus } from './action-event.entity';
 
+export enum ActionTaskType {
+  Funding = 'Funding', //giving money to a particular cause
+  Activity = 'Activity', // one-time action taking a limited amount of time
+  Ongoing = 'Ongoing', // ongoing or recurring behavior change
+}
+
 @Entity()
 export class Action {
   @PrimaryGeneratedColumn()
@@ -67,6 +73,14 @@ export class Action {
   @IsNotEmpty()
   status: ActionStatus;
 
+  @Column({ default: ActionTaskType.Activity })
+  @ApiProperty({
+    description: 'Type of the action',
+    enum: ActionTaskType,
+  })
+  @IsNotEmpty()
+  type: ActionTaskType;
+
   @CreateDateColumn()
   @ApiProperty({ description: 'Timestamp when the action was created' })
   createdAt: Date;
@@ -100,6 +114,19 @@ export class Action {
         (ur) =>
           ur.status === UserActionRelation.joined ||
           ur.status === UserActionRelation.completed,
+      ).length || 0
+    );
+  }
+
+  @Expose()
+  @ApiProperty({
+    description: 'Number of users who have completed the action',
+    example: 5,
+  })
+  get usersCompleted(): number {
+    return (
+      this.userRelations?.filter(
+        (ur) => ur.status === UserActionRelation.completed,
       ).length || 0
     );
   }
