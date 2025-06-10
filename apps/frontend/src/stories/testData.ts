@@ -17,10 +17,10 @@ export const testActions: ActionDto[] = [
     image: "",
     status: "active",
     timeEstimate: "5 min",
-    usersJoined: 0,
+    usersJoined: 234,
     myRelation: {
       status: "joined",
-      deadline: new Date().toISOString(),
+      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
       dateCommitted: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
       dateCompleted: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     },
@@ -28,11 +28,11 @@ export const testActions: ActionDto[] = [
       "Gold mining companies are expressing interest in a highly biodiverse, unprotected area. We can outpace these companies by purchasing the land from the current owner, Susie.",
     howTo: "",
     type: "Funding",
-    usersCompleted: 0,
+    usersCompleted: 157,
     events: [],
   },
   {
-    name: "Doing something else (a task)",
+    name: "Make Target end stocking of Coca-Cola single-use plastic bottles",
     description:
       "This is a description of a task that is doing something else. It is a task that is doing something else. It is a task that is doing something else which is a task that is doing something else.",
     category: "Climate Change",
@@ -41,17 +41,18 @@ export const testActions: ActionDto[] = [
     image: "",
     status: "active",
     timeEstimate: "5 min",
-    usersJoined: 0,
+    usersJoined: 234,
     myRelation: {
       status: "joined",
       deadline: new Date().toISOString(),
       dateCommitted: new Date().toISOString(),
       dateCompleted: new Date().toISOString(),
     },
-    shortDescription: "",
+    shortDescription:
+      "Target has the power to stop millions of plastic bottles from polluting our planet. By applying pressure, we can make them stop stocking Coca-Cola single-use plastic bottles.",
     howTo: "",
     type: "Activity",
-    usersCompleted: 0,
+    usersCompleted: 57,
     events: [],
   },
 ];
@@ -132,6 +133,17 @@ export const testTodoActions: ActionDto[] = [
   },
   {
     ...testActions[1],
+    myRelation: {
+      status: "joined",
+      deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
+      dateCommitted: new Date().toISOString(),
+      dateCompleted: new Date().toISOString(),
+    },
+  },
+  {
+    ...testActions[1],
+    type: "Ongoing",
+    name: "Stop buying from Coca-Cola",
     myRelation: {
       status: "joined",
       deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),

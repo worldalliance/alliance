@@ -20,7 +20,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: () => {
     return (
-      <div className="flex flex-col w-[600px]">
+      <div className="flex flex-col w-[700px]">
         <HomeTaskView actions={testActions} />
       </div>
     );

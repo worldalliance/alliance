@@ -9,7 +9,7 @@ const Badge: React.FC<BadgeProps> = ({ children, className }: BadgeProps) => {
     <div
       className={`${
         className ?? ""
-      } px-4 py-2 self-start font-avenir uppercase font-semibold whitespace-nowrap rounded-sm flex items-center justify-center text-[9pt] bg-[#636b75] text-white `}
+      } px-3 py-1 self-start font-avenir uppercase text-sm font-semibold whitespace-nowrap rounded-sm flex items-center justify-center bg-stone-200 text-gray-800 `}
     >
       {children}
     </div>
