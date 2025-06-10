@@ -129,10 +129,6 @@ export type ActionDto = {
      */
     shortDescription: string;
     /**
-     * short ask badge (shown next to title in card), e.g. "Sign Petition"
-     */
-    shortAskBadge: string;
-    /**
      * Steps to complete the action
      */
     howTo: string;
@@ -188,10 +184,6 @@ export type CreateActionDto = {
      */
     shortDescription: string;
     /**
-     * short ask badge (shown next to title in card), e.g. "Sign Petition"
-     */
-    shortAskBadge: string;
-    /**
      * Steps to complete the action
      */
     howTo: string;
@@ -231,10 +223,6 @@ export type UpdateActionDto = {
      * Short description shown in cards
      */
     shortDescription?: string;
-    /**
-     * short ask badge (shown next to title in card), e.g. "Sign Petition"
-     */
-    shortAskBadge?: string;
     /**
      * Steps to complete the action
      */
@@ -279,10 +267,6 @@ export type ActionWithRelationDto = {
      * Short description shown in cards
      */
     shortDescription: string;
-    /**
-     * short ask badge (shown next to title in card), e.g. "Sign Petition"
-     */
-    shortAskBadge: string;
     /**
      * Steps to complete the action
      */
@@ -416,10 +400,6 @@ export type Action = {
      * Short description shown in cards
      */
     shortDescription: string;
-    /**
-     * short ask badge (shown next to title in card), e.g. "Sign Petition"
-     */
-    shortAskBadge: string;
     /**
      * Steps to complete the action
      */

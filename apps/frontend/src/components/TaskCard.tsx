@@ -18,8 +18,8 @@ export interface TaskCardProps {
 }
 
 enum TaskCardState {
+  Minified = "minified",
   Default = "default",
-  Expanded = "expanded",
   Confirming = "confirming",
   Completed = "completed",
   Closed = "closed",
@@ -32,21 +32,13 @@ const TaskCard: React.FC<TaskCardProps> = ({
   const navigate = useNavigate();
   const [state, setState] = useState<TaskCardState>(TaskCardState.Default);
 
-  const handleExpandClick = useCallback(
+  const goToActionPage = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      if (state === TaskCardState.Default) {
-        setState(TaskCardState.Expanded);
-      } else {
-        setState(TaskCardState.Default);
-      }
+      navigate(`/actions/${action.id}`);
     },
-    [state]
+    [navigate, action]
   );
-
-  const goToActionPage = useCallback(() => {
-    navigate(`/actions/${action.id}`);
-  }, [navigate, action]);
 
   const handleCompleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -60,7 +52,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 
   const handleCancelConfirm = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setState(TaskCardState.Expanded);
+    setState(TaskCardState.Default);
   }, []);
 
   useEffect(() => {
@@ -86,54 +78,40 @@ const TaskCard: React.FC<TaskCardProps> = ({
     <Card
       style={CardStyle.White}
       className={` transition-all duration-500 w-full overflow-hidden relative
-         ${state === TaskCardState.Expanded ? "pb-4" : ""}
+         ${state === TaskCardState.Minified ? "pb-4" : ""}
           ${state === TaskCardState.Closed ? "py-0 border-0" : ""}`}
       closed={state === TaskCardState.Closed}
-      onClick={
-        state === TaskCardState.Default || state === TaskCardState.Expanded
-          ? handleExpandClick
-          : undefined
-      }
     >
-      <div className="flex flex-row justify-between gap-x-10">
-        <div className="flex flex-row items-center gap-x-2">
-          <div className="flex flex-col gap-y-2">
-            <div className="flex flex-row items-center gap-x-3 justify-center">
-              {action.shortAskBadge && <Badge>{action.shortAskBadge}</Badge>}
-              <p className="font-bold font-avenir">{action.name}</p>
-              <div className="flex flex-row text-gray-500">
-                {action.myRelation.deadline && (
-                  <p className="font-avenir text-[0.93rem]">{timeRemaining}</p>
-                )}
-              </div>
-            </div>
-          </div>
+      <div className="flex flex-row justify-between gap-x-10 items-center">
+        <div className="flex flex-row items-center gap-x-3 justify-center">
+          {action.type === "Funding" && <Badge>$5 funding ask</Badge>}
+          {action.type === "Activity" && (
+            <Badge>takes {action.timeEstimate}</Badge>
+          )}
+          <p className="font-bold font-avenir">{action.name}</p>
+          {action.myRelation.deadline && (
+            <p className="font-avenir text-gray-500 text-[0.93rem]">
+              {timeRemaining}
+            </p>
+          )}
         </div>
         <img
           src={expandArrow}
           alt="Expand"
-          className={`w-4 h-4 transition-transform ${
-            state === TaskCardState.Expanded ? "rotate-180" : ""
-          }`}
+          className={`w-7 h-7 transition-transform rotate-270 hover:bg-gray-200 rounded-sm p-1`}
+          onClick={goToActionPage}
         />
       </div>
 
-      {state !== TaskCardState.Default && (
+      {state !== TaskCardState.Minified && (
         <div className="mt-2 transition-all duration-300 space-y-4">
+          <p className="text-gray-700">{action.shortDescription}</p>
           <UsersCompletedBar
             usersCompleted={action.usersCompleted}
             totalUsers={action.usersJoined}
           />
-          <p className="text-gray-700">{action.shortDescription}</p>
           <div className="flex justify-between items-center gap-x-2">
-            <div className="flex flex-row gap-x-2">
-              <Button color={ButtonColor.Light} onClick={goToActionPage}>
-                Action Details
-              </Button>
-              <Button color={ButtonColor.Green} onClick={handleCompleteClick}>
-                Complete
-              </Button>
-            </div>
+            <div className="flex flex-row gap-x-2"></div>
           </div>
         </div>
       )}

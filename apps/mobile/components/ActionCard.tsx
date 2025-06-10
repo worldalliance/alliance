@@ -22,7 +22,7 @@ export default function ActionCard({ action, onPress }: ActionCardProps) {
       </Text>
       <View style={styles.footer}>
         <Text style={styles.statusText}>
-          {action.status === "Active" ? "Ongoing" : action.status}
+          {action.status === "active" ? "Ongoing" : action.status}
         </Text>
         <View style={styles.detailsButton}>
           <Text style={styles.detailsText}>Details</Text>

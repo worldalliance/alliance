@@ -8,15 +8,15 @@ import {
 
 export const testActions: ActionDto[] = [
   {
-    name: "A task to do something specific",
+    name: "Save 2,500 acres of Ecuador cloud forest",
     description:
       "Acme. corp has been found to lorem over 160,00 ipsums every single year, causing untold devastation in the placeholder text industry.",
     category: "Climate Change",
     id: 1,
     whyJoin: "",
     image: "",
-    status: "Active",
-    timeEstimate: "1h",
+    status: "active",
+    timeEstimate: "5 min",
     usersJoined: 0,
     myRelation: {
       status: "joined",
@@ -24,6 +24,12 @@ export const testActions: ActionDto[] = [
       dateCommitted: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
       dateCompleted: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
     },
+    shortDescription:
+      "Gold mining companies are expressing interest in a highly biodiverse, unprotected area. We can outpace these companies by purchasing the land from the current owner, Susie.",
+    howTo: "",
+    type: "Funding",
+    usersCompleted: 0,
+    events: [],
   },
   {
     name: "Doing something else (a task)",
@@ -33,8 +39,8 @@ export const testActions: ActionDto[] = [
     id: 2,
     whyJoin: "",
     image: "",
-    status: "Active",
-    timeEstimate: "1h",
+    status: "active",
+    timeEstimate: "5 min",
     usersJoined: 0,
     myRelation: {
       status: "joined",
@@ -42,6 +48,11 @@ export const testActions: ActionDto[] = [
       dateCommitted: new Date().toISOString(),
       dateCompleted: new Date().toISOString(),
     },
+    shortDescription: "",
+    howTo: "",
+    type: "Activity",
+    usersCompleted: 0,
+    events: [],
   },
 ];
 
@@ -105,7 +116,7 @@ export const testForumPosts: PostDto[] = [
     replies: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    author: testUser,
+    author: testAuthUser,
   },
 ];
 

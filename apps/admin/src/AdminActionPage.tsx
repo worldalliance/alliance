@@ -34,8 +34,8 @@ const AdminActionPage: React.FC = () => {
     image: "",
     timeEstimate: "",
     shortDescription: "",
-    shortAskBadge: "",
     howTo: "",
+    type: "Activity",
   });
 
   useEffect(() => {
@@ -68,7 +68,7 @@ const AdminActionPage: React.FC = () => {
           timeEstimate: actionData.timeEstimate,
           shortDescription: actionData.shortDescription,
           howTo: actionData.howTo,
-          shortAskBadge: actionData.shortAskBadge,
+          type: actionData.type,
         });
 
         setLoading(false);
@@ -279,21 +279,21 @@ const AdminActionPage: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <label
-                htmlFor="shortAskBadge"
-                className="block font-medium text-gray-700"
-              >
-                Short Ask Badge
+              <label htmlFor="type" className="block font-medium text-gray-700">
+                Type
               </label>
-              <input
-                type="text"
-                id="shortAskBadge"
-                name="shortAskBadge"
-                value={form.shortAskBadge}
+              <select
+                id="type"
+                name="type"
+                value={form.type}
                 onChange={handleInputChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              >
+                <option value="Activity">Activity</option>
+                <option value="Funding">Funding</option>
+                <option value="Ongoing">Ongoing</option>
+              </select>
             </div>
 
             <div className="space-y-1">

@@ -41,14 +41,7 @@ const preview: Preview = {
     }),
   },
   loaders: [mswLoader],
-  decorators: [
-    withRouter,
-    (Story: React.ComponentType) => (
-      <MemoryRouter>
-        <Story />
-      </MemoryRouter>
-    ),
-  ],
+  decorators: [withRouter, (Story: React.ComponentType) => <Story />],
 };
 
 export default preview;
