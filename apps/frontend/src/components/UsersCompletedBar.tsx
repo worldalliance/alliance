@@ -13,7 +13,7 @@ const UsersCompletedBar: React.FC<UsersCompletedBarProps> = ({
 
   const percentage = (usersCompleted / totalUsers) * 100;
   return (
-    <div className="flex flex-col gap-x-2 flex-1 relative pr-3">
+    <div className="flex flex-col gap-x-2 flex-1 relative pr-32">
       <div
         className="w-full h-3 bg-gray-100 rounded-[3px]"
         onMouseEnter={() => setHover(true)}

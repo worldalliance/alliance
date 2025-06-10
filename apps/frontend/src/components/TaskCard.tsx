@@ -73,9 +73,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
     const text = action.type === "Funding" ? "Give" : "See steps";
     return (
       <Button
-        color={ButtonColor.Transparent}
+        color={"bg-zinc-700"}
         onClick={goToActionPage}
-        className="!w-32 rounded-md border border-gray-300"
+        className="!w-32 font-avenir rounded-md !text-white"
       >
         {text}
       </Button>
@@ -85,36 +85,36 @@ const TaskCard: React.FC<TaskCardProps> = ({
   return (
     <Card
       style={CardStyle.White}
-      className={` transition-all duration-500 w-full relative shadow-md/5 !rounded-lg
+      className={` transition-all duration-500 w-full relative !rounded-lg
          ${state === TaskCardState.Minified ? "pb-4" : ""}
           ${state === TaskCardState.Closed ? "py-0 border-0" : ""}`}
       closed={state === TaskCardState.Closed}
     >
       <div className="flex flex-row justify-between gap-x-10 items-center">
         <div className="flex flex-row items-center gap-x-3 justify-center">
-          <p className="font-bold font-newsreader text-lg text-black pt-0.5">
+          <p className="font-bold font-avenir text-black pt-0.5">
             {action.name}
           </p>
-          {action.type === "Funding" && <Badge>$5</Badge>}
+          {/* {action.type === "Funding" && <Badge>$5</Badge>}
           {action.type === "Activity" && !!action.timeEstimate && (
             <Badge>takes {action.timeEstimate}</Badge>
           )}
-          {action.type === "Ongoing" && <Badge>3 week commitment</Badge>}
+          {action.type === "Ongoing" && <Badge>3 week commitment</Badge>} */}
         </div>
         <img
           src={expandArrow}
           alt="Expand"
-          className={`w-7 h-7 transition-transform rotate-270 hover:bg-gray-200 rounded-sm p-1`}
+          className={`w-5 h-5 transition-transform rotate-270 border border-gray-200 hover:bg-gray-200 rounded-sm p-1`}
           onClick={goToActionPage}
         />
       </div>
 
       {state !== TaskCardState.Minified && (
-        <div className="mt-2 transition-all duration-300 space-y-4">
-          <p className="text-black font-newsreader pb-8">
+        <div className="transition-all duration-300 space-y-8">
+          <p className="text-stone-600 font-newsreader pb-8">
             {action.shortDescription}
           </p>
-          <div className="absolute bottom-0 left-0 right-0 flex flex-row items-end p-3">
+          <div className="absolute bottom-0 left-0 right-0 flex flex-row items-end p-4">
             <UsersCompletedBar
               usersCompleted={action.usersCompleted}
               totalUsers={action.usersJoined}

@@ -21,7 +21,7 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
   );
 
   return (
-    <div className="flex flex-col gap-y-2">
+    <div className="flex flex-col gap-y-4">
       <p className="text-gray-600 text-lg">Actions to complete</p>
       {initialActions.map((action) => (
         <TaskCard
