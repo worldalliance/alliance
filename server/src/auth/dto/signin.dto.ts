@@ -1,11 +1,11 @@
 import { ApiProperty, PickType } from '@nestjs/swagger';
 import { User } from '../../user/user.entity';
 
-export type RequestMode = 'cookie' | 'header';
+export type TokenMode = 'cookie' | 'header';
 
 export class SignInDto extends PickType(User, ['email', 'password']) {
   @ApiProperty({ enum: ['cookie', 'header'] })
-  mode: RequestMode;
+  mode: TokenMode;
 }
 
 export class SignInResponseDto {

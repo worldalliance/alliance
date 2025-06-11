@@ -18,11 +18,11 @@ import { ActionsService } from './actions.service';
 import {
   ActionDto,
   ActionWithRelationDto,
-  ActionEventDto,
   CreateActionDto,
   UpdateActionDto,
   UserActionDto,
   LatLonDto,
+  CreateActionEventDto,
 } from './dto/action.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -50,6 +50,7 @@ export class ActionsController {
       'action.delta',
     ).pipe(share());
   }
+
   @Post('join/:id')
   @UseGuards(AuthGuard)
   join(@Request() req: JwtRequest, @Param('id') id: string) {
@@ -255,7 +256,7 @@ export class ActionsController {
   @ApiOkResponse({ type: ActionDto })
   async addEvent(
     @Param('id', ParseIntPipe) id: number,
-    @Body() actionEventDto: ActionEventDto,
+    @Body() actionEventDto: CreateActionEventDto,
   ): Promise<ActionDto> {
     return this.actionsService.addEvent(id, actionEventDto);
   }

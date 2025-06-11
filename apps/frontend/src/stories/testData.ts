@@ -29,7 +29,24 @@ export const testActions: ActionDto[] = [
     howTo: "",
     type: "Funding",
     usersCompleted: 157,
-    events: [],
+    events: [
+      {
+        id: 1,
+        title: "Event 1",
+        description: "Event 1 description",
+        date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+        newStatus: "active",
+        showInTimeline: true,
+      },
+      {
+        id: 2,
+        title: "Event 2",
+        description: "Event 2 description",
+        date: new Date(Date.now() - 1000 * 60 * 60 * 49).toISOString(),
+        newStatus: "active",
+        showInTimeline: true,
+      },
+    ],
   },
   {
     name: "Make Target end stocking of Coca-Cola single-use plastic bottles",

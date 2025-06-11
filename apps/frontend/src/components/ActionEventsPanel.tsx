@@ -1,21 +1,26 @@
 import { ActionDto } from "@alliance/shared/client";
 import Timeline from "./system/Timeline";
 import TimelineItem from "./system/TimelineItem";
+import { formatDistance } from "date-fns";
 
-const ActionEventsPanel = ({ action }: { action: ActionDto }) => {
+export interface ActionEventsPanelProps {
+  events: ActionDto["events"];
+}
+
+const ActionEventsPanel = ({ events }: ActionEventsPanelProps) => {
   return (
     <div className="flex flex-col gap-y-3">
       <Timeline>
-        <TimelineItem
-          title="Action Created"
-          description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-          time="5:37 AM"
-        />
-        <TimelineItem
-          title="Action Created"
-          description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-          time="5:37 AM"
-        />
+        {events.map((event) => (
+          <TimelineItem
+            key={event.id}
+            title={event.title}
+            description={event.description}
+            time={formatDistance(event.date, new Date(), {
+              addSuffix: true,
+            })}
+          />
+        ))}
       </Timeline>
     </div>
   );

@@ -8,7 +8,7 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
   title,
   description,
   time,
-}) => {
+}: TimelineItemProps) => {
   return (
     <span>
       <div className="flex flex-row gap-x-2 items-center">

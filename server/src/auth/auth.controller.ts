@@ -11,13 +11,13 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
-import { SignUpDto } from './sign-up.dto';
+import { SignUpDto } from './dto/sign-up.dto';
 import {
   AuthGuard,
   extractRefreshTokenFromCookie,
   JwtRequest,
 } from './guards/auth.guard';
-import { RequestMode, SignInDto, SignInResponseDto } from './dto/signin.dto';
+import { TokenMode, SignInDto, SignInResponseDto } from './dto/signin.dto';
 import { RefreshTokenGuard } from './guards/refresh.guard';
 import {
   ApiBearerAuth,
@@ -74,16 +74,33 @@ export class AuthController {
     return { isAdmin: true };
   }
 
+  @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'User created successfully',
+    type: SignInResponseDto,
   })
   @ApiUnauthorizedResponse()
-  async register(@Body() signUp: SignUpDto): Promise<{ success: boolean }> {
+  async register(
+    @Body() signUp: SignUpDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<{
+    access_token?: string;
+    refresh_token?: string;
+    isAdmin: boolean;
+  }> {
     await this.authService.register(signUp);
-    return { success: true };
+
+    const { access_token, refresh_token, isAdmin } =
+      await this.authService.login(signUp.email, signUp.password);
+
+    this.authService.setAuthCookies(res, access_token, refresh_token);
+    if (signUp.mode === 'header') {
+      return { access_token, refresh_token, isAdmin };
+    }
+    return { isAdmin: true };
   }
 
   @Post('refresh')
@@ -96,7 +113,7 @@ export class AuthController {
   ) {
     const userId: number = req.user.sub;
     const access_token = await this.authService.refreshAccessToken(userId);
-    const mode: RequestMode = extractRefreshTokenFromCookie(req)
+    const mode: TokenMode = extractRefreshTokenFromCookie(req)
       ? 'cookie'
       : 'header';
     if (mode === 'cookie') {

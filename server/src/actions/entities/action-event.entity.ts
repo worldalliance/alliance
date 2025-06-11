@@ -31,8 +31,12 @@ export class ActionEvent {
 
   @IsNotEmpty()
   @Column()
-  @ApiProperty({ description: 'Message describing the event' })
-  message: string;
+  @ApiProperty({ description: 'Title of the event' })
+  title: string;
+
+  @Column()
+  @ApiProperty({ description: 'secondary text' })
+  description: string;
 
   @Column()
   @IsNotEmpty()
@@ -49,6 +53,10 @@ export class ActionEvent {
     enum: NotificationType,
   })
   sendNotifsTo: NotificationType;
+
+  @Column()
+  @ApiProperty({ description: 'time of the event (for display)' })
+  date: Date;
 
   @UpdateDateColumn()
   @ApiProperty({ description: 'Timestamp when the event was last updated' })

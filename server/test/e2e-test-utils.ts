@@ -23,6 +23,7 @@ import * as cookieParser from 'cookie-parser';
 import { ActionEvent } from '../src/actions/entities/action-event.entity';
 import { City } from 'src/geo/city.entity';
 import { NotifsModule } from 'src/notifs/notifs.module';
+import { PrefillUser } from 'src/user/prefill-user.entity';
 
 export interface TestContext {
   app: INestApplication;
@@ -60,6 +61,7 @@ export async function createTestApp(
           Friend,
           Notification,
           City,
+          PrefillUser,
         ],
         synchronize: true,
       }),

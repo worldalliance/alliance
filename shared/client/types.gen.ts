@@ -16,6 +16,7 @@ export type SignUpDto = {
     name: string;
     email: string;
     password: string;
+    mode: 'cookie' | 'header';
 };
 
 export type AccessToken = {
@@ -78,21 +79,25 @@ export type UserActionDto = {
 
 export type ActionEventDto = {
     /**
-     * Message describing the event
+     * Unique identifier for the action event
      */
-    message: string;
+    id: number;
+    /**
+     * Title of the event
+     */
+    title: string;
+    /**
+     * secondary text
+     */
+    description: string;
     /**
      * New status of the action after the event
      */
     newStatus: 'active' | 'upcoming' | 'past' | 'draft';
     /**
-     * Notification type for the event
+     * time of the event (for display)
      */
-    sendNotifsTo: 'all' | 'joined' | 'none';
-    /**
-     * Timestamp when the event was last updated
-     */
-    updateDate: string;
+    date: string;
     /**
      * Indicates whether the event should be shown in the timeline
      */
@@ -346,9 +351,13 @@ export type ActionEvent = {
      */
     id: number;
     /**
-     * Message describing the event
+     * Title of the event
      */
-    message: string;
+    title: string;
+    /**
+     * secondary text
+     */
+    description: string;
     /**
      * New status of the action after the event
      */
@@ -357,6 +366,10 @@ export type ActionEvent = {
      * Notification type for the event
      */
     sendNotifsTo: 'all' | 'joined' | 'none';
+    /**
+     * time of the event (for display)
+     */
+    date: string;
     /**
      * Timestamp when the event was last updated
      */
@@ -556,8 +569,10 @@ export type AuthRegisterResponses = {
     /**
      * User created successfully
      */
-    201: unknown;
+    201: SignInResponseDto;
 };
+
+export type AuthRegisterResponse = AuthRegisterResponses[keyof AuthRegisterResponses];
 
 export type AuthRefreshTokensData = {
     body?: never;

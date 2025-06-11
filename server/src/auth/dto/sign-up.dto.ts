@@ -1,6 +1,6 @@
-import { IsDefined, IsNotEmpty, IsEmail, Validate } from 'class-validator';
-import { IsUserAlreadyExist } from '../user/validators/user-already-exists.validator';
+import { IsDefined, IsNotEmpty, IsEmail } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { TokenMode } from './signin.dto';
 
 export class SignUpDto {
   @IsDefined()
@@ -18,4 +18,7 @@ export class SignUpDto {
   @IsNotEmpty()
   @ApiProperty()
   readonly password: string;
+
+  @ApiProperty({ enum: ['cookie', 'header'] })
+  mode: TokenMode;
 }

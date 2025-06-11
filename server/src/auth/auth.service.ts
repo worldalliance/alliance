@@ -6,7 +6,7 @@ import {
 import { UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../user/user.entity';
-import { SignUpDto } from './sign-up.dto';
+import { SignUpDto } from './dto/sign-up.dto';
 import { JWTTokenType, JwtPayload } from './guards/auth.guard';
 import { SignInResponseDto } from './dto/signin.dto';
 import { Response } from 'express';

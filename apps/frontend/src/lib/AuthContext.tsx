@@ -70,7 +70,10 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
         const { error } = await authLogin({
           body: { email, password, mode: "cookie" },
         });
-        if (error) throw new Error("Login failed");
+        if (error) {
+          console.error("login error", error);
+          throw new Error("Login failed");
+        }
 
         const { data } = await authMe();
         setUser(data);

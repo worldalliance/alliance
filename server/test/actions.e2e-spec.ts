@@ -1,11 +1,14 @@
 import * as request from 'supertest';
 import { Action, ActionTaskType } from '../src/actions/entities/action.entity';
 import { ActionStatus } from '../src/actions/entities/action-event.entity';
-import { CreateActionDto, ActionEventDto } from '../src/actions/dto/action.dto';
+import {
+  CreateActionDto,
+  ActionEventDto,
+  CreateActionEventDto,
+} from '../src/actions/dto/action.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { UserActionRelation } from '../src/actions/entities/user-action.entity';
 import { Repository } from 'typeorm';
-import { NotificationType } from 'src/actions/entities/action-event.entity';
 
 describe('Actions (e2e)', () => {
   let ctx: TestContext;
@@ -180,11 +183,11 @@ describe('Actions (e2e)', () => {
         name: 'Test Action',
       });
 
-      const newEvent: ActionEventDto = {
-        message: 'Test Event',
+      const newEvent: CreateActionEventDto = {
+        title: 'Test Event',
+        description: 'Test Event',
         newStatus: ActionStatus.Active,
-        sendNotifsTo: NotificationType.All,
-        updateDate: new Date(),
+        date: new Date(),
         showInTimeline: true,
       };
 
@@ -218,7 +221,7 @@ describe('Actions (e2e)', () => {
     });
 
     const incompleteEvent: Partial<ActionEventDto> = {
-      message: 'Incomplete Event',
+      title: 'Incomplete Event',
     };
 
     const res = await request(ctx.app.getHttpServer())

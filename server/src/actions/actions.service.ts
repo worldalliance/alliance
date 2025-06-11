@@ -4,8 +4,8 @@ import {
   ActionWithRelationDto,
   CreateActionDto,
   UpdateActionDto,
-  ActionEventDto,
   LatLonDto,
+  CreateActionEventDto,
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
@@ -181,10 +181,10 @@ export class ActionsService {
   }
 
   async addEvent(
-    id: number,
-    actionEventDto: ActionEventDto,
+    actionId: number,
+    actionEventDto: CreateActionEventDto,
   ): Promise<ActionDto> {
-    const action = await this.findOne(id);
+    const action = await this.findOne(actionId);
 
     const newEvent = this.actionEventRepository.create({
       ...actionEventDto,
@@ -194,7 +194,7 @@ export class ActionsService {
     await this.actionEventRepository.save(newEvent);
 
     // re-fetch action from database to get the updated events
-    const newAction = await this.findOne(id);
+    const newAction = await this.findOne(actionId);
 
     return new ActionDto(newAction);
   }

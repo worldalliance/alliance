@@ -1,6 +1,5 @@
 import { ActionDto } from "@alliance/shared/client";
 import Card, { CardStyle } from "./system/Card";
-import Button from "./system/Button";
 
 export interface ActionTaskPanelFundingProps {
   action: ActionDto;

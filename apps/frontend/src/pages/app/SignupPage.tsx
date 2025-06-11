@@ -1,61 +1,29 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import Card, { CardStyle } from "../../components/system/Card";
-import Button, { ButtonColor } from "../../components/system/Button";
-import FormInput from "../../components/system/FormInput";
-import { authRegister, SignUpDto } from "@alliance/shared/client";
+import { authMe, authRegister, SignUpDto } from "@alliance/shared/client";
+import SignupForm from "../../components/SignupForm";
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<SignUpDto>({
-    name: "",
-    email: "",
-    password: "",
-  });
+
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    // Clear field-specific errors when user types
-    if (fieldErrors[name]) {
-      setFieldErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (formData: SignUpDto) => {
     setError(null);
-    setFieldErrors({});
     setLoading(true);
-
-    // Basic validation
-    const newFieldErrors: Record<string, string> = {};
-    let hasErrors = false;
-
-    if (formData.password.length < 8) {
-      newFieldErrors.password = "Password must be at least 8 characters";
-      hasErrors = true;
-    }
-
-    if (hasErrors) {
-      setFieldErrors(newFieldErrors);
-      setLoading(false);
-      return;
-    }
 
     try {
       await authRegister({ body: formData });
-      // Registration successful, redirect to login
-      navigate("/login", {
-        state: { message: "Registration successful! Please log in." },
-      });
+
+      const checkAuth = await authMe();
+
+      if (checkAuth.response.ok) {
+        navigate("/home");
+      } else {
+        setError("please try again");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -81,56 +49,7 @@ const SignupPage: React.FC = () => {
           )}
 
           <Card className="p-8" style={CardStyle.White}>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <FormInput
-                  label="Full Name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="John Doe"
-                  required
-                  name="name"
-                  error={fieldErrors.name}
-                />
-              </div>
-
-              <div>
-                <FormInput
-                  label="Email Address"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="your@email.com"
-                  required
-                  name="email"
-                  error={fieldErrors.email}
-                />
-              </div>
-
-              <div>
-                <FormInput
-                  label="Password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  name="password"
-                  error={fieldErrors.password}
-                />
-              </div>
-
-              <div className="pt-2">
-                <Button
-                  color={ButtonColor.Stone}
-                  className="w-full flex justify-center text-center font-avenir justify-self-center pb-2"
-                  type="submit"
-                  disabled={loading}
-                >
-                  {loading ? "Creating account..." : "Register"}
-                </Button>
-              </div>
-            </form>
+            <SignupForm onSubmit={handleSubmit} loading={loading} />
           </Card>
 
           <div className="mt-6 text-center">

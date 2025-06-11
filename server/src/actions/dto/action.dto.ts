@@ -11,17 +11,20 @@ export class UserActionDto extends PickType(UserAction, [
 ]) {}
 
 export class ActionEventDto extends PickType(ActionEvent, [
-  'message',
+  'id',
+  'title',
+  'description',
   'newStatus',
-  'sendNotifsTo',
-  'updateDate',
   'showInTimeline',
+  'date',
 ]) {
   constructor(partial: Partial<ActionEventDto>) {
     super();
     Object.assign(this, partial);
   }
 }
+
+export class CreateActionEventDto extends OmitType(ActionEventDto, ['id']) {}
 
 export class ActionDto extends OmitType(Action, [
   'createdAt',
