@@ -24,6 +24,7 @@ import { ActionEvent } from '../src/actions/entities/action-event.entity';
 import { City } from 'src/geo/city.entity';
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { PrefillUser } from 'src/user/prefill-user.entity';
+import { Mail } from 'src/mail/mail.entity';
 
 export interface TestContext {
   app: INestApplication;
@@ -62,6 +63,7 @@ export async function createTestApp(
           Friend,
           Notification,
           City,
+          Mail,
           PrefillUser,
         ],
         synchronize: true,

@@ -28,6 +28,7 @@ import { MailModule } from './mail/mail.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
 import { MailService } from './mail/mail.service';
+import { Mail } from './mail/mail.entity';
 
 @Module({
   imports: [
@@ -43,9 +44,6 @@ import { MailService } from './mail/mail.service';
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASSWORD,
         },
-      },
-      preview: {
-        open: true,
       },
       defaults: {
         from: '"alliance" <no-reply@alliance.org>',
@@ -81,6 +79,7 @@ import { MailService } from './mail/mail.service';
         Friend,
         ActionEvent,
         City,
+        Mail,
       ],
       synchronize: true, //process.env.NODE_ENV !== 'production',
       ...(process.env.NODE_ENV === 'production'
