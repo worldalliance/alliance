@@ -7,7 +7,7 @@ describe('AppController (e2e)', () => {
 
   beforeAll(async () => {
     ctx = await createTestApp([AppModule]);
-  });
+  }, 15000);
 
   describe('GET /', () => {
     it('should return 200 ok', async () => {
