@@ -1,6 +1,9 @@
 import * as request from 'supertest';
 import { Action, ActionTaskType } from '../src/actions/entities/action.entity';
-import { ActionStatus } from '../src/actions/entities/action-event.entity';
+import {
+  ActionStatus,
+  NotificationType,
+} from '../src/actions/entities/action-event.entity';
 import {
   CreateActionDto,
   ActionEventDto,
@@ -189,6 +192,7 @@ describe('Actions (e2e)', () => {
         newStatus: ActionStatus.Active,
         date: new Date(),
         showInTimeline: true,
+        sendNotifsTo: NotificationType.All,
       };
 
       const res = await request(ctx.app.getHttpServer())
@@ -198,7 +202,7 @@ describe('Actions (e2e)', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.events.length).toBe(1);
-      expect(res.body.events[0].message).toBe('Test Event');
+      expect(res.body.events[0].title).toBe('Test Event');
     });
 
     it('events are included in action details', async () => {
@@ -212,7 +216,7 @@ describe('Actions (e2e)', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.events.length).toBe(1);
-      expect(res.body.events[0].message).toBe('Test Event');
+      expect(res.body.events[0].title).toBe('Test Event');
     });
   });
   it('admin cannot add an event to an action with missing data', async () => {

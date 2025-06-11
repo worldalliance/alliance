@@ -14,7 +14,6 @@ import { CreatePostDto, UpdatePostDto } from './dto/post.dto';
 import { CreateReplyDto, UpdateReplyDto } from './dto/reply.dto';
 import { AuthGuard, JwtPayload } from '../auth/guards/auth.guard';
 import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
-import { Reply } from './entities/reply.entity';
 import { ReqUser } from '../auth/user.decorator';
 import { PostDto } from './dto/post.dto';
 import { ReplyDto } from './dto/reply.dto';

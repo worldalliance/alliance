@@ -16,6 +16,7 @@ export class ActionEventDto extends PickType(ActionEvent, [
   'description',
   'newStatus',
   'showInTimeline',
+  'sendNotifsTo',
   'date',
 ]) {
   constructor(partial: Partial<ActionEventDto>) {
