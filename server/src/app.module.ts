@@ -24,11 +24,39 @@ import { Notification } from './notifs/entities/notification.entity';
 import { ActionEvent } from './actions/entities/action-event.entity';
 import { GeoModule } from './geo/geo.module';
 import { City } from './geo/city.entity';
+import { MailModule } from './mail/mail.module';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
+import { MailService } from './mail/mail.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    MailerModule.forRoot({
+      transport: {
+        host: 'email-smtp.us-west-2.amazonaws.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASSWORD,
+        },
+      },
+      preview: {
+        open: true,
+      },
+      defaults: {
+        from: '"alliance" <no-reply@alliance.org>',
+      },
+      template: {
+        dir: __dirname + '/mail/templates',
+        adapter: new PugAdapter(),
+        options: {
+          strict: true,
+        },
+      },
     }),
     MulterModule.register({}),
     EventEmitterModule.forRoot(),
@@ -68,12 +96,16 @@ import { City } from './geo/city.entity';
     ForumModule,
     NotifsModule,
     GeoModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [],
 })
 export class AppModule {
-  constructor(private userService: UserService) {
+  constructor(
+    private userService: UserService,
+    private mailService: MailService,
+  ) {
     void this.onModuleInit();
   }
 
