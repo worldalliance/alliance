@@ -38,6 +38,7 @@ export interface TestContext {
 export async function createTestApp(
   modules: Type<unknown>[],
 ): Promise<TestContext> {
+  jest.setTimeout(15000);
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({

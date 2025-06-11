@@ -3,7 +3,6 @@ import { useLoaderData, useNavigate, useParams } from "react-router";
 import Card, { CardStyle } from "../../components/system/Card";
 import StatsCard from "../../components/StatsCard";
 import Globe from "../../components/Globe";
-import Button from "../../components/system/Button";
 import {
   actionsFindOne,
   actionsJoin,
@@ -20,6 +19,7 @@ import ActionEventsPanel from "../../components/ActionEventsPanel";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/ActionPage";
 import { useAuth } from "../../lib/AuthContext";
 import ActionTaskPanel from "../../components/ActionTaskPanel";
+import ActionCommitButton from "../../components/ActionCommitButton";
 
 export async function loader({
   params,
@@ -47,7 +47,6 @@ export async function loader({
 
 export default function ActionPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
 
   const action = useLoaderData<typeof loader>();
 
@@ -105,46 +104,42 @@ export default function ActionPage() {
 
   const mainContent = useMemo(
     () => (
-      <>
-        <div className="flex flex-col gap-y-3 flex-2 p-10 px-15">
-          {action?.image && (
-            <img
-              src={getImageSource(action.image)}
-              alt={action.name}
-              className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
-            />
-          )}
-          <div className="flex flex-row justify-between items-start my-5">
-            <div className="flex flex-col gap-y-3">
-              <h1 className="">{action?.name}</h1>
-            </div>
-            {userRelation === "none" && id && (
-              <Button className="mt-2 text-xl" onClick={onJoinAction}>
-                Commit
-              </Button>
-            )}
+      <div className="flex flex-col gap-y-3 flex-2 p-10 px-15">
+        {action?.image && (
+          <img
+            src={getImageSource(action.image)}
+            alt={action.name}
+            className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
+          />
+        )}
+        <div className="flex flex-row justify-between items-start my-5">
+          <div className="flex flex-col gap-y-3">
+            <h1 className="">{action?.name}</h1>
           </div>
-          {error && <div className="text-red-500">{error}</div>}
-          {/* {userRelation === "joined" && <PokePanel />} */}
-          {userRelation === "none" && (
-            <Card style={CardStyle.Grey} className="mb-5">
-              <h2>Why Join?</h2>
-              <p>
-                {action?.whyJoin ||
-                  "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
-              </p>
-            </Card>
-          )}
-          {action && <ActionTaskPanel action={action} />}
-          {action && <ActionEventsPanel action={action} />}
-          <h2 className="!mt-4">Summary</h2>
-          <p>{action?.description}</p>
-
-          {isFeatureEnabled(Features.Forum) && (
-            <ActionForumPosts actionId={id} />
-          )}
+          <ActionCommitButton
+            committed={userRelation === "joined"}
+            isAuthenticated={isAuthenticated}
+            onCommit={onJoinAction}
+          />
         </div>
-      </>
+        {error && <div className="text-red-500">{error}</div>}
+        {/* {userRelation === "joined" && <PokePanel />} */}
+        {userRelation === "none" && (
+          <Card style={CardStyle.Grey} className="mb-5">
+            <h2>Why Join?</h2>
+            <p>
+              {action?.whyJoin ||
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
+            </p>
+          </Card>
+        )}
+        {action && <ActionTaskPanel action={action} />}
+        {action && <ActionEventsPanel events={action.events} />}
+        <h2 className="!mt-4">Summary</h2>
+        <p>{action?.description}</p>
+
+        {isFeatureEnabled(Features.Forum) && <ActionForumPosts actionId={id} />}
+      </div>
     ),
     [action, userRelation, id]
   );

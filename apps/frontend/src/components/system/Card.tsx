@@ -15,6 +15,7 @@ export interface CardProps extends PropsWithChildren {
   style?: CardStyle;
   bgImage?: string;
   closed?: boolean;
+  ref?: React.RefObject<HTMLDivElement | null>;
 }
 
 const Card: React.FC<CardProps> = ({
@@ -24,6 +25,7 @@ const Card: React.FC<CardProps> = ({
   style,
   bgImage,
   closed,
+  ref,
 }: CardProps) => {
   const cardStyle = style ?? CardStyle.White;
 
@@ -46,6 +48,7 @@ const Card: React.FC<CardProps> = ({
           ? "cursor-pointer hover:border-black transition-[border] duration-100"
           : ""
       } bg-cover bg-center`}
+      ref={ref}
       style={{
         backgroundImage: `url(${bgImage})`,
         height: closed ? "0px" : "calc-size(auto, size)",

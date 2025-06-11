@@ -8,11 +8,19 @@ import { ButtonColor } from "./system/Button";
 export interface SignupFormProps {
   onSubmit: (formData: SignUpDto) => void;
   loading: boolean;
+  submitButtonText?: string;
 }
-const SignupForm = ({ onSubmit, loading }: SignupFormProps) => {
-  const [formData, setFormData] = useState<SignUpDto>({
+const SignupForm = ({
+  onSubmit,
+  loading,
+  submitButtonText = "Register",
+}: SignupFormProps) => {
+  const [formData, setFormData] = useState<
+    SignUpDto & { confirmEmail: string }
+  >({
     name: "",
     email: "",
+    confirmEmail: "",
     password: "",
     mode: "cookie",
   });
@@ -22,6 +30,15 @@ const SignupForm = ({ onSubmit, loading }: SignupFormProps) => {
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+
+      if (formData.email !== formData.confirmEmail) {
+        setFieldErrors({
+          confirmEmail: "Emails do not match",
+        });
+        console.log("Emails do not match");
+        return;
+      }
+
       onSubmit(formData);
     },
     [onSubmit, formData]
@@ -34,7 +51,6 @@ const SignupForm = ({ onSubmit, loading }: SignupFormProps) => {
       [name]: value,
     }));
 
-    // Clear field-specific errors when user types
     if (fieldErrors[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -42,43 +58,48 @@ const SignupForm = ({ onSubmit, loading }: SignupFormProps) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <FormInput
-          label="Full Name"
-          type="text"
-          value={formData.name}
-          onChange={handleChange}
-          placeholder="John Doe"
-          required
-          name="name"
-          error={fieldErrors.name}
-        />
-      </div>
+      <FormInput
+        label="Full Name"
+        type="text"
+        value={formData.name}
+        onChange={handleChange}
+        placeholder="John Doe"
+        required
+        name="name"
+        error={fieldErrors.name}
+      />
 
-      <div>
-        <FormInput
-          label="Email Address"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-          placeholder="your@email.com"
-          required
-          name="email"
-          error={fieldErrors.email}
-        />
-      </div>
+      <FormInput
+        label="Email Address"
+        type="email"
+        value={formData.email}
+        onChange={handleChange}
+        placeholder="your@email.com"
+        required
+        name="email"
+        error={fieldErrors.email}
+      />
 
-      <div>
-        <FormInput
-          label="Password"
-          type="password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-          name="password"
-          error={fieldErrors.password}
-        />
-      </div>
+      <FormInput
+        label="Confirm email"
+        type="email"
+        value={formData.confirmEmail}
+        onChange={handleChange}
+        placeholder="your@email.com"
+        required
+        name="confirmEmail"
+        error={fieldErrors.confirmEmail}
+      />
+
+      <FormInput
+        label="Password"
+        type="password"
+        value={formData.password}
+        onChange={handleChange}
+        required
+        name="password"
+        error={fieldErrors.password}
+      />
 
       <div className="pt-2">
         <Button
@@ -87,7 +108,7 @@ const SignupForm = ({ onSubmit, loading }: SignupFormProps) => {
           type="submit"
           disabled={loading}
         >
-          {loading ? "Creating account..." : "Register"}
+          {loading ? "Creating account..." : submitButtonText}
         </Button>
       </div>
     </form>

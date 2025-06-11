@@ -67,6 +67,7 @@ const SignupScreen = () => {
           name,
           email,
           password,
+          mode: "header",
         },
       });
 

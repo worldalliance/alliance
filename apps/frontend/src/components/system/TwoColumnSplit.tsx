@@ -22,7 +22,7 @@ const TwoColumnSplit = ({
       <div
         className={`flex flex-col flex-2 ${
           border ? "sm:border-r border-stone-300" : ""
-        } items-center ${coloredLeft ? "bg-agreen" : "bg-white"}`}
+        } items-stretch ${coloredLeft ? "bg-agreen" : "bg-white"}`}
       >
         {left}
       </div>

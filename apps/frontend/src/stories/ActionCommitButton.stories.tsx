@@ -16,6 +16,19 @@ const meta = {
 } satisfies Meta<typeof ActionCommitButton>;
 
 export default meta;
+
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const Unauthenticated: Story = {
+  args: {
+    isAuthenticated: false,
+  },
+};
+
+export const Committed: Story = {
+  args: {
+    committed: true,
+  },
+};
