@@ -24,12 +24,12 @@ const Card: React.FC<CardProps> = ({
   style,
   bgImage,
   closed,
-}) => {
+}: CardProps) => {
   const cardStyle = style ?? CardStyle.White;
 
   const styleClasses = {
     [CardStyle.White]:
-      "bg-white border-stone-200 transition-[border] duration-100 border-box",
+      "bg-white border-gray-300 transition-[border] duration-100 border-box",
     [CardStyle.Alert]: "bg-sky-100 border-sky-300",
     [CardStyle.Outline]: "bg-transparent border-gray-300",
     [CardStyle.Grey]: "bg-stone-200/75 border-gray-300 border-[1.5px]",
@@ -39,7 +39,13 @@ const Card: React.FC<CardProps> = ({
 
   return (
     <div
-      className={`flex flex-col ${styleClasses[cardStyle]} gap-y-2 rounded p-4 border ${className} ${onClick ? "cursor-pointer hover:border-black transition-[border] duration-100" : ""} bg-cover bg-center`}
+      className={`flex flex-col ${
+        styleClasses[cardStyle]
+      } gap-y-2 rounded p-4 border ${className} ${
+        onClick
+          ? "cursor-pointer hover:border-black transition-[border] duration-100"
+          : ""
+      } bg-cover bg-center`}
       style={{
         backgroundImage: `url(${bgImage})`,
         height: closed ? "0px" : "calc-size(auto, size)",

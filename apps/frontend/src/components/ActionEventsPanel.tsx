@@ -5,7 +5,6 @@ import TimelineItem from "./system/TimelineItem";
 const ActionEventsPanel = ({ action }: { action: ActionDto }) => {
   return (
     <div className="flex flex-col gap-y-3">
-      <h2>Activity</h2>
       <Timeline>
         <TimelineItem
           title="Action Created"

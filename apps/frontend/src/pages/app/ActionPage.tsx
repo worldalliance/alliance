@@ -19,6 +19,7 @@ import { Features } from "@alliance/shared/lib/features";
 import ActionEventsPanel from "../../components/ActionEventsPanel";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/ActionPage";
 import { useAuth } from "../../lib/AuthContext";
+import ActionTaskPanel from "../../components/ActionTaskPanel";
 
 export async function loader({
   params,
@@ -105,7 +106,7 @@ export default function ActionPage() {
   const mainContent = useMemo(
     () => (
       <>
-        <div className="flex flex-col gap-y-3 flex-2 p-10 px-20">
+        <div className="flex flex-col gap-y-3 flex-2 p-10 px-15">
           {action?.image && (
             <img
               src={getImageSource(action.image)}
@@ -116,17 +117,6 @@ export default function ActionPage() {
           <div className="flex flex-row justify-between items-start my-5">
             <div className="flex flex-col gap-y-3">
               <h1 className="">{action?.name}</h1>
-              <p className="text-gray-900 text-[12pt] mt-[-3px]">
-                Part of the{" "}
-                <a
-                  className="text-blue-500 cursor-pointer"
-                  onClick={() => {
-                    navigate("/issues/climate");
-                  }}
-                >
-                  Alliance Climate Program
-                </a>
-              </p>
             </div>
             {userRelation === "none" && id && (
               <Button className="mt-2 text-xl" onClick={onJoinAction}>
@@ -145,12 +135,10 @@ export default function ActionPage() {
               </p>
             </Card>
           )}
+          {action && <ActionTaskPanel action={action} />}
           {action && <ActionEventsPanel action={action} />}
-          <h2 className="!mt-8">What you can do</h2>
-          <p>
-            {action?.description ||
-              "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
-          </p>
+          <h2 className="!mt-4">Summary</h2>
+          <p>{action?.description}</p>
 
           {isFeatureEnabled(Features.Forum) && (
             <ActionForumPosts actionId={id} />
@@ -171,9 +159,9 @@ export default function ActionPage() {
           <div className="flex flex-col gap-y-5 p-6">
             <Card
               style={CardStyle.White}
-              className="items-center gap-y-5 aspect-square justify-center"
+              className="items-center gap-y-5 aspect-square justify-center p-8"
             >
-              <div className="w-[180px] self-center">
+              <div className="w-[180px] self-center pb-5">
                 <Globe
                   people={action?.usersJoined || 0}
                   colored
@@ -188,11 +176,12 @@ export default function ActionPage() {
             <p className="text-center pt-2 text-[11pt]">
               <b>6 friends</b> already joined this action!
             </p> */}
+              <StatsCard />
             </Card>
-            <StatsCard />
           </div>
         }
-        coloredRight={true}
+        coloredRight={false}
+        border={false}
       />
     </>
   );

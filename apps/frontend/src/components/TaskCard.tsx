@@ -73,9 +73,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
     const text = action.type === "Funding" ? "Give" : "See steps";
     return (
       <Button
-        color={"bg-zinc-700"}
+        color={"bg-[#444]"}
         onClick={goToActionPage}
-        className="!w-32 font-avenir rounded-md !text-white"
+        className="!w-32 font-avenir rounded-md !text-white font-regular py-3"
       >
         {text}
       </Button>
@@ -104,7 +104,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
         <img
           src={expandArrow}
           alt="Expand"
-          className={`w-5 h-5 transition-transform rotate-270 border border-gray-200 hover:bg-gray-200 rounded-sm p-1`}
+          title="Go to action page"
+          className={`w-6 h-6 transition-transform rotate-270 border border-gray-200 hover:bg-gray-200 rounded-sm p-1 cursor-pointer`}
           onClick={goToActionPage}
         />
       </div>
