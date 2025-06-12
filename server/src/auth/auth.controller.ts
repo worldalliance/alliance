@@ -29,6 +29,7 @@ import {
 import { AccessToken } from './dto/authtokens.dto';
 import { Response } from 'express';
 import { UserDto } from '../user/user.dto';
+import ForgotPasswordDto, { ResetPasswordDto } from './dto/forgotpassword.dto';
 
 @ApiBearerAuth()
 @ApiCookieAuth()
@@ -141,6 +142,22 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async logout(@Res({ passthrough: true }) res: Response) {
     this.authService.clearAuthCookies(res);
+    return { success: true };
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() body: ForgotPasswordDto) {
+    await this.authService.forgotPassword(body.email);
+    return { success: true };
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() body: ResetPasswordDto) {
+    await this.authService.resetPassword(body.token, body.password);
     return { success: true };
   }
 }

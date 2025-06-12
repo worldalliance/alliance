@@ -23,6 +23,7 @@ export class MailService {
   async sendMail(
     recipient: string,
     emailType: EmailType,
+    subject: string,
     context: ISendMailOptions['context'],
   ): Promise<void> {
     const mail = await this.mailRepository.create({
@@ -61,8 +62,30 @@ export class MailService {
     recipient: string,
     name: string,
   ): Promise<void> {
-    await this.sendMail(recipient, EmailType.Welcome, {
-      name,
-    });
+    await this.sendMail(
+      recipient,
+      EmailType.Welcome,
+      'Welcome to the Alliance',
+      {
+        name,
+      },
+    );
+  }
+
+  public async sendPasswordResetEmail(
+    email: string,
+    name: string,
+    resetToken: string,
+  ): Promise<void> {
+    const url = `https://worldalliance.org/resetpassword?token=${resetToken}`; //todo: domain param
+    await this.sendMail(
+      email,
+      EmailType.PasswordReset,
+      'A link to reset your password',
+      {
+        name,
+        url,
+      },
+    );
   }
 }

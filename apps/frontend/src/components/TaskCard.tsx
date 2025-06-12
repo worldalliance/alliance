@@ -10,7 +10,6 @@ import Button, { ButtonColor } from "./system/Button";
 import expandArrow from "../assets/icons8-expand-arrow-96.png";
 import { formatDistanceToNow } from "date-fns";
 import UsersCompletedBar from "./UsersCompletedBar";
-import Badge from "./system/Badge";
 
 export interface TaskCardProps {
   action: ActionDto;

@@ -39,6 +39,11 @@ export class UserService {
     return this.findOneOrFail(id);
   }
 
+  async setPassword(id: number, password: string): Promise<User> {
+    await this.userRepository.update(id, { password });
+    return this.findOneOrFail(id);
+  }
+
   findAll(): Promise<User[]> {
     return this.userRepository.find();
   }

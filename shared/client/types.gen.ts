@@ -31,6 +31,15 @@ export type UserDto = {
     onboardingComplete: boolean;
 };
 
+export type ForgotPasswordDto = {
+    email: string;
+};
+
+export type ResetPasswordDto = {
+    token: string;
+    password: string;
+};
+
 export type ProfileDto = {
     id: number;
     name: string;
@@ -94,6 +103,10 @@ export type ActionEventDto = {
      * New status of the action after the event
      */
     newStatus: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Notification type for the event
+     */
+    sendNotifsTo: 'all' | 'joined' | 'none';
     /**
      * time of the event (for display)
      */
@@ -295,6 +308,33 @@ export type ActionWithRelationDto = {
     usersCompleted: number;
     events: Array<ActionEventDto>;
     relation: UserActionDto;
+};
+
+export type CreateActionEventDto = {
+    /**
+     * Title of the event
+     */
+    title: string;
+    /**
+     * secondary text
+     */
+    description: string;
+    /**
+     * New status of the action after the event
+     */
+    newStatus: 'active' | 'upcoming' | 'past' | 'draft';
+    /**
+     * Notification type for the event
+     */
+    sendNotifsTo: 'all' | 'joined' | 'none';
+    /**
+     * time of the event (for display)
+     */
+    date: string;
+    /**
+     * Indicates whether the event should be shown in the timeline
+     */
+    showInTimeline: boolean;
 };
 
 export type CreateCommuniqueDto = {
@@ -608,6 +648,28 @@ export type AuthLogoutData = {
 };
 
 export type AuthLogoutResponses = {
+    200: unknown;
+};
+
+export type AuthForgotPasswordData = {
+    body: ForgotPasswordDto;
+    path?: never;
+    query?: never;
+    url: '/auth/forgot-password';
+};
+
+export type AuthForgotPasswordResponses = {
+    200: unknown;
+};
+
+export type AuthResetPasswordData = {
+    body: ResetPasswordDto;
+    path?: never;
+    query?: never;
+    url: '/auth/reset-password';
+};
+
+export type AuthResetPasswordResponses = {
     200: unknown;
 };
 
@@ -1031,7 +1093,7 @@ export type ActionsFindCompletedForUserResponses = {
 export type ActionsFindCompletedForUserResponse = ActionsFindCompletedForUserResponses[keyof ActionsFindCompletedForUserResponses];
 
 export type ActionsAddEventData = {
-    body: ActionEventDto;
+    body: CreateActionEventDto;
     path: {
         id: number;
     };

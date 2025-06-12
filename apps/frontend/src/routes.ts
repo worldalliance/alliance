@@ -31,12 +31,13 @@ export default [
 
     layout("./authonly.tsx", [
       route("/home", "pages/app/HomePage.tsx"),
-      route("/settings", "pages/app/AccountPage.tsx"),
+      route("/settings", "pages/app/SettingsPage.tsx"),
     ]),
   ]),
   layout("./loggedoutonly.tsx", [
     route("/login", "pages/app/LoginPage.tsx"),
     route("/signup", "pages/app/SignupPage.tsx"),
+    route("/resetpassword", "pages/app/ResetPasswordPage.tsx"),
   ]),
   layout("./onboarding.tsx", [
     route("/onboarding", "pages/app/OnboardingPage.tsx"),

@@ -4,19 +4,26 @@ import Card, { CardStyle } from "../../components/system/Card";
 import Button, { ButtonColor } from "../../components/system/Button";
 import FormInput from "../../components/system/FormInput";
 import { useAuth } from "../../lib/AuthContext";
-import { appHealthCheck, SignInDto } from "@alliance/shared/client";
+import {
+  appHealthCheck,
+  authForgotPassword,
+  SignInDto,
+} from "@alliance/shared/client";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
-  const { login, loading } = useAuth();
+  const { login } = useAuth();
   const [formData, setFormData] = useState<SignInDto>({
     email: "",
     password: "",
     mode: "cookie",
   });
   const [error, setError] = useState<string | null>(null);
-
-  const message = location.state?.message || null;
+  const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [message, setMessage] = useState<string | null>(
+    location.state?.message || null
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -29,11 +36,13 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
+    setLoading(true);
     try {
       await login(formData.email, formData.password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+    } catch {
+      setError("Authentication failed.");
+      setShowForgotPassword(true);
+      setLoading(false);
     }
   };
 
@@ -48,6 +57,20 @@ const LoginPage: React.FC = () => {
     };
     checkHealth();
   }, []);
+
+  const handleForgotPasswordClick = async () => {
+    setError(null);
+    const resp = await authForgotPassword({
+      body: { email: formData.email },
+    });
+    if (!resp.response.ok) {
+      setError("There was an error sending the reset link.");
+    } else {
+      setMessage(
+        "A link to reset your password has been sent to your email address."
+      );
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-pagebg">
@@ -64,9 +87,17 @@ const LoginPage: React.FC = () => {
           {error && (
             <Card
               style={CardStyle.Alert}
-              className="!border-red-400 !bg-red-50 mb-6"
+              className="!border-red-400 !bg-red-50 mb-6 flex flex-row space-x-2"
             >
               <span className="text-red-700">{error}</span>
+              {showForgotPassword && (
+                <span
+                  className="text-blue-600 hover:underline cursor-pointer"
+                  onClick={handleForgotPasswordClick}
+                >
+                  Forgot password?
+                </span>
+              )}
             </Card>
           )}
 

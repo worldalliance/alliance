@@ -27,7 +27,6 @@ import { City } from './geo/city.entity';
 import { MailModule } from './mail/mail.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
-import { MailService } from './mail/mail.service';
 import { Mail } from './mail/mail.entity';
 
 @Module({
@@ -44,9 +43,6 @@ import { Mail } from './mail/mail.entity';
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASSWORD,
         },
-      },
-      defaults: {
-        from: '"alliance" <no-reply@alliance.org>',
       },
       template: {
         dir: __dirname + '/mail/templates',
@@ -101,10 +97,7 @@ import { Mail } from './mail/mail.entity';
   providers: [],
 })
 export class AppModule {
-  constructor(
-    private userService: UserService,
-    private mailService: MailService,
-  ) {
+  constructor(private userService: UserService) {
     void this.onModuleInit();
   }
 

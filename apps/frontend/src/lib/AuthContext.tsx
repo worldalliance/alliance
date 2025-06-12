@@ -66,22 +66,16 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
     // ---------- actions ----------
     const login = useCallback(async (email: string, password: string) => {
       setLoading(true);
-      try {
-        const { error } = await authLogin({
-          body: { email, password, mode: "cookie" },
-        });
-        if (error) {
-          console.error("login error", error);
-          throw new Error("Login failed");
-        }
-
-        const { data } = await authMe();
-        setUser(data);
-      } catch (error) {
+      const { error } = await authLogin({
+        body: { email, password, mode: "cookie" },
+      });
+      if (error) {
         console.error("login error", error);
-      } finally {
-        setLoading(false);
+        throw new Error("Login failed");
       }
+
+      const { data } = await authMe();
+      setUser(data);
     }, []);
 
     const logout = useCallback(async () => {

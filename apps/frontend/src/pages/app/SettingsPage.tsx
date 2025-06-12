@@ -9,7 +9,7 @@ import FriendsTab from "../../components/FriendsTab";
 import { City } from "@alliance/shared/client";
 import { userMyLocation } from "@alliance/shared/client";
 
-const AccountPage: React.FC = () => {
+const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
 
@@ -102,12 +102,10 @@ const AccountPage: React.FC = () => {
             />
           </div>
         </Card>
-
-        {/* The FriendsTab component handles all friend-related functionality */}
         <FriendsTab userId={user.id} />
       </div>
     </div>
   );
 };
 
-export default AccountPage;
+export default SettingsPage;

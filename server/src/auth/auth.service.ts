@@ -11,12 +11,19 @@ import { JWTTokenType, JwtPayload } from './guards/auth.guard';
 import { SignInResponseDto } from './dto/signin.dto';
 import { Response } from 'express';
 import { AuthTokens } from './dto/authtokens.dto';
+import { MailService } from '../mail/mail.service';
+
+export interface PWResetJwtPayload {
+  sub: number;
+  type: string;
+}
 
 @Injectable()
 export class AuthService {
   constructor(
     private usersService: UserService,
     private jwtService: JwtService,
+    private mailService: MailService,
   ) {}
 
   public static ACCESS_COOKIE = 'access_token';
@@ -117,5 +124,45 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return user;
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.usersService.findOneByEmail(email);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const payload: PWResetJwtPayload = { sub: user.id, type: 'password-reset' };
+
+    const token = this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: `1d`,
+    });
+
+    await this.mailService.sendPasswordResetEmail(user.email, user.name, token);
+    return user;
+  }
+
+  async resetPassword(token: string, password: string) {
+    let payload: PWResetJwtPayload;
+    try {
+      payload = this.jwtService.verify<PWResetJwtPayload>(token, {
+        secret: process.env.JWT_SECRET,
+      });
+    } catch (error) {
+      console.log('password reset jwt verification error: ', error);
+      throw new UnauthorizedException();
+    }
+
+    if (payload.type !== 'password-reset') {
+      throw new UnauthorizedException();
+    }
+
+    const user = await this.usersService.findOne(payload.sub);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    await this.usersService.setPassword(user.id, password);
   }
 }
