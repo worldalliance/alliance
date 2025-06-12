@@ -25,6 +25,8 @@ import { City } from 'src/geo/city.entity';
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { PrefillUser } from 'src/user/prefill-user.entity';
 import { Mail } from 'src/mail/mail.entity';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
 
 export interface TestContext {
   app: INestApplication;
@@ -45,6 +47,20 @@ export async function createTestApp(
       ConfigModule.forRoot({
         isGlobal: true,
         envFilePath: '.env.test',
+      }),
+      MailerModule.forRoot({
+        transport: {
+          host: 'localhost',
+          port: 1025,
+          secure: false,
+        },
+        template: {
+          dir: __dirname + '/mail/templates',
+          adapter: new PugAdapter(),
+          options: {
+            strict: true,
+          },
+        },
       }),
       EventEmitterModule.forRoot(),
       TypeOrmModule.forRoot({

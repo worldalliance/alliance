@@ -19,6 +19,7 @@ import { Friend } from '../src/user/friend.entity';
 import { Notification } from '../src/notifs/entities/notification.entity';
 import { ActionEvent } from '../src/actions/entities/action-event.entity';
 import { City } from 'src/geo/city.entity';
+import { MailerModule } from '@nestjs-modules/mailer';
 
 describe('Auth (e2e)', () => {
   let app: INestApplication<App>;
@@ -30,6 +31,13 @@ describe('Auth (e2e)', () => {
         ConfigModule.forRoot({
           isGlobal: true,
           envFilePath: '.env.test',
+        }),
+        MailerModule.forRoot({
+          transport: {
+            host: 'localhost',
+            port: 1025,
+            secure: false,
+          },
         }),
         AuthModule,
         JwtModule,
