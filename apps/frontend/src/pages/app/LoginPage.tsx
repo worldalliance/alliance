@@ -41,6 +41,7 @@ const LoginPage: React.FC = () => {
       await login(formData.email, formData.password);
     } catch {
       setError("Authentication failed.");
+      setMessage(null);
       setShowForgotPassword(true);
       setLoading(false);
     }
@@ -60,16 +61,12 @@ const LoginPage: React.FC = () => {
 
   const handleForgotPasswordClick = async () => {
     setError(null);
-    const resp = await authForgotPassword({
+    await authForgotPassword({
       body: { email: formData.email },
     });
-    if (!resp.response.ok) {
-      setError("There was an error sending the reset link.");
-    } else {
-      setMessage(
-        "A link to reset your password has been sent to your email address."
-      );
-    }
+    setMessage(
+      "A link to reset your password has been sent to your email address."
+    );
   };
 
   return (

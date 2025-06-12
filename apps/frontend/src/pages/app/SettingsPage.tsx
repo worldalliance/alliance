@@ -8,16 +8,19 @@ import Badge from "../../components/system/Badge";
 import FriendsTab from "../../components/FriendsTab";
 import { City } from "@alliance/shared/client";
 import { userMyLocation } from "@alliance/shared/client";
+import { useNavigate } from "react-router";
 
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
 
   const [location, setLocation] = useState<City | null>(null);
+  const navigate = useNavigate();
 
-  const handleLogout = useCallback(() => {
-    logout();
-  }, [logout]);
+  const handleLogout = useCallback(async () => {
+    await logout();
+    navigate("/login");
+  }, [logout, navigate]);
 
   useEffect(() => {
     if (user) {

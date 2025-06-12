@@ -129,7 +129,7 @@ export class AuthService {
   async forgotPassword(email: string) {
     const user = await this.usersService.findOneByEmail(email);
     if (!user) {
-      throw new UnauthorizedException();
+      return; // fail silently to avoid leaking emails
     }
 
     const payload: PWResetJwtPayload = { sub: user.id, type: 'password-reset' };
@@ -149,6 +149,7 @@ export class AuthService {
       payload = this.jwtService.verify<PWResetJwtPayload>(token, {
         secret: process.env.JWT_SECRET,
       });
+      console.log('payload', payload);
     } catch (error) {
       console.log('password reset jwt verification error: ', error);
       throw new UnauthorizedException();
@@ -163,6 +164,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    await this.usersService.setPassword(user.id, password);
+    const updatedUser = await this.usersService.setPassword(user.id, password);
+    console.log('updatedUser', updatedUser);
   }
 }

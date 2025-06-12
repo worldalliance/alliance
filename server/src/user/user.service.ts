@@ -40,8 +40,10 @@ export class UserService {
   }
 
   async setPassword(id: number, password: string): Promise<User> {
-    await this.userRepository.update(id, { password });
-    return this.findOneOrFail(id);
+    const user = await this.findOneOrFail(id);
+    user.password = password;
+    await user.hashPassword();
+    return this.userRepository.save(user);
   }
 
   findAll(): Promise<User[]> {
