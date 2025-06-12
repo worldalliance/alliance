@@ -5,11 +5,14 @@ import Button from "../../components/system/Button";
 import { authResetPassword } from "@alliance/shared/client";
 import { CardStyle } from "../../components/system/Card";
 import Card from "../../components/system/Card";
+import { useNavigate } from "react-router";
 
 const ResetPasswordPage = () => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("token");
@@ -42,7 +45,12 @@ const ResetPasswordPage = () => {
         "error resetting password. Please try again, or request a new token. "
       );
       setLoading(false);
+      return;
     }
+
+    navigate("/login", {
+      state: { message: "Password reset successful! Please log in." },
+    });
   };
 
   const [formData, setFormData] = useState<{ password: string }>({
