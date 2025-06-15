@@ -29,6 +29,7 @@ import {
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { FriendStatus } from './friend.entity';
 import { City } from 'src/geo/city.entity';
+import { PrefillUserDto } from './prefill-user.dto';
 
 @Controller('user')
 export class UserController {
@@ -86,14 +87,6 @@ export class UserController {
     console.log('myLocation', req.user.sub);
     console.log(await this.userService.getUserLocation(req.user.sub));
     return this.userService.getUserLocation(req.user.sub);
-  }
-
-  @Get(':id')
-  @Public()
-  @ApiOkResponse({ type: ProfileDto })
-  @ApiUnauthorizedResponse()
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<ProfileDto | null> {
-    return this.userService.findOne(id);
   }
 
   @Post('friends/:targetUserId')
@@ -178,6 +171,27 @@ export class UserController {
     return { status };
   }
 
+  @Get('prefill/:id')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: ProfileDto })
+  @ApiUnauthorizedResponse()
+  async prefill(
+    @Request() req: JwtRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<PrefillUserDto> {
+    const user = await this.userService.findOnePrefill(id);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      city: user.city,
+    };
+  }
+
   @Get('listfriends/:id')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [UserDto] })
@@ -197,5 +211,13 @@ export class UserController {
   @ApiOperation({ summary: 'Count the number of friends a user has referred' })
   async countReferred(@Param('id', ParseIntPipe) id: number): Promise<number> {
     return this.userService.countReferred(id);
+  }
+
+  @Get(':id')
+  @Public()
+  @ApiOkResponse({ type: ProfileDto })
+  @ApiUnauthorizedResponse()
+  findOne(@Param('id', ParseIntPipe) id: number): Promise<ProfileDto | null> {
+    return this.userService.findOne(id);
   }
 }

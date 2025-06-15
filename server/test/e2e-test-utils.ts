@@ -6,27 +6,16 @@ import { AuthModule } from '../src/auth/auth.module';
 import { ActionsModule } from '../src/actions/actions.module';
 import { UserModule } from '../src/user/user.module';
 import { User } from '../src/user/user.entity';
-import { Action } from '../src/actions/entities/action.entity';
-import { UserAction } from '../src/actions/entities/user-action.entity';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
-import { Communique } from '../src/communiques/entities/communique.entity';
-import { Image } from '../src/images/entities/image.entity';
-import { Post } from '../src/forum/entities/post.entity';
-import { Reply } from '../src/forum/entities/reply.entity';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { Friend } from '../src/user/friend.entity';
-import { Notification } from '../src/notifs/entities/notification.entity';
 import TestAgent from 'supertest/lib/agent';
 import * as supertest from 'supertest';
 import * as cookieParser from 'cookie-parser';
-import { ActionEvent } from '../src/actions/entities/action-event.entity';
-import { City } from 'src/geo/city.entity';
 import { NotifsModule } from 'src/notifs/notifs.module';
-import { PrefillUser } from 'src/user/prefill-user.entity';
-import { Mail } from 'src/mail/mail.entity';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
+import { testConnectionOptions } from 'src/datasources/dataSourceTest';
 
 export interface TestContext {
   app: INestApplication;
@@ -63,27 +52,7 @@ export async function createTestApp(
         },
       }),
       EventEmitterModule.forRoot(),
-      TypeOrmModule.forRoot({
-        type: 'sqlite',
-        database: ':memory:',
-        dropSchema: true,
-        entities: [
-          User,
-          Action,
-          ActionEvent,
-          UserAction,
-          Image,
-          Communique,
-          Post,
-          Reply,
-          Friend,
-          Notification,
-          City,
-          Mail,
-          PrefillUser,
-        ],
-        synchronize: true,
-      }),
+      TypeOrmModule.forRoot(testConnectionOptions()),
       AuthModule,
       ActionsModule,
       NotifsModule,

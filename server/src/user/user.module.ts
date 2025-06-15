@@ -10,6 +10,7 @@ import { UserController } from './user.controller';
 import { Friend } from './friend.entity';
 import { City } from '../geo/city.entity';
 import { Notification } from '../notifs/entities/notification.entity';
+import { PrefillUser } from './prefill-user.entity';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { Notification } from '../notifs/entities/notification.entity';
     TypeOrmModule.forFeature([Friend]),
     TypeOrmModule.forFeature([City]),
     TypeOrmModule.forFeature([Notification]),
+    TypeOrmModule.forFeature([PrefillUser]),
   ],
   controllers: [UserController],
   providers: [UserService, IsUserAlreadyExist],

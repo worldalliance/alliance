@@ -14,12 +14,15 @@ import {
   NotificationType,
   Notification,
 } from 'src/notifs/entities/notification.entity';
+import { PrefillUser } from './prefill-user.entity';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(PrefillUser)
+    private prefillUserRepository: Repository<PrefillUser>,
     @InjectRepository(City)
     private cityRepository: Repository<City>,
     @InjectRepository(Notification)
@@ -261,5 +264,15 @@ export class UserService {
       throw new NotFoundException(`User ${userId} not found`);
     }
     return user.city;
+  }
+
+  async findOnePrefill(id: number): Promise<PrefillUser> {
+    const user = await this.prefillUserRepository.findOne({
+      where: { id },
+    });
+    if (!user) {
+      throw new NotFoundException(`User ${id} not found`);
+    }
+    return user;
   }
 }
