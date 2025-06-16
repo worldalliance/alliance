@@ -67,7 +67,7 @@ describe('Auth (e2e)', () => {
 
     const dataSource = moduleFixture.get<DataSource>(DataSource);
     userRepository = dataSource.getRepository(User);
-  });
+  }, 50000);
 
   it('returns 401 for invalid login', () => {
     return request(app.getHttpServer())

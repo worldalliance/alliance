@@ -42,7 +42,7 @@ describe('Actions (e2e)', () => {
 
     await actionRepo.save(testAction);
     await actionRepo.save(testDraftAction);
-  });
+  }, 50000);
 
   describe('Actions', () => {
     it('admin can create a valid action', async () => {
@@ -67,7 +67,7 @@ describe('Actions (e2e)', () => {
       expect(res.status).toBe(201);
       expect(res.body.name).toBe('Test Action');
 
-      await actionRepo.query('DELETE FROM action WHERE id = ?', [res.body.id]);
+      await actionRepo.query('DELETE FROM action WHERE id = $1', [res.body.id]);
     });
 
     it('action creation with missing data rejected', async () => {

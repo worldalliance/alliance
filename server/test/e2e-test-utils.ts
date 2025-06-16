@@ -14,8 +14,6 @@ import * as supertest from 'supertest';
 import * as cookieParser from 'cookie-parser';
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { MailerModule } from '@nestjs-modules/mailer';
-import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
-import { testConnectionOptions } from 'src/datasources/dataSourceTest';
 
 export interface TestContext {
   app: INestApplication;
@@ -31,6 +29,7 @@ export async function createTestApp(
   modules: Type<unknown>[],
 ): Promise<TestContext> {
   jest.setTimeout(15000);
+  await startPostgres();
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({
@@ -39,20 +38,22 @@ export async function createTestApp(
       }),
       MailerModule.forRoot({
         transport: {
-          host: 'localhost',
-          port: 1025,
-          secure: false,
+          jsonTransport: true,
         },
-        template: {
-          dir: __dirname + '/mail/templates',
-          adapter: new PugAdapter(),
-          options: {
-            strict: true,
-          },
-        },
+        template: {},
       }),
       EventEmitterModule.forRoot(),
-      TypeOrmModule.forRoot(testConnectionOptions()),
+      TypeOrmModule.forRoot({
+        type: 'postgres',
+        host: pg.getHost(),
+        port: parseInt(process.env.DB_PORT || '5432'),
+        username: process.env.DB_USERNAME,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+        entities: [__dirname + '/../src/**/*.entity{.ts,.js}'],
+        synchronize: true,
+        dropSchema: true,
+      }),
       AuthModule,
       ActionsModule,
       NotifsModule,
@@ -123,3 +124,21 @@ export async function createTestApp(
     agent,
   };
 }
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { StartedTestContainer } from 'testcontainers';
+
+let pg: StartedTestContainer;
+
+export const startPostgres = async () => {
+  pg = await new PostgreSqlContainer('postgres:16-alpine')
+    .withDatabase(process.env.DB_NAME || 'testdb')
+    .withUsername(process.env.DB_USERNAME || 'test')
+    .withPassword(process.env.DB_PASSWORD || 'test')
+    .withReuse()
+    .start();
+  return pg;
+};
+
+export const stopPostgres = async () => {
+  if (pg) await pg.stop();
+};

@@ -24,7 +24,7 @@ describe('Images (e2e)', () => {
 
     testImagePath = join(__dirname, './test_image.jpg');
     uploadedFilename = null;
-  });
+  }, 50000);
 
   afterEach(async () => {
     await imageRepo.query('DELETE FROM image');

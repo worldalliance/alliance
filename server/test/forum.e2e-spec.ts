@@ -26,7 +26,7 @@ describe('Forum (e2e)', () => {
       status: ActionStatus.Active,
     });
     await actionRepo.save(testAction);
-  });
+  }, 50000);
 
   describe('Posts', () => {
     it('should create a post', async () => {

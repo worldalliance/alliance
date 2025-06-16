@@ -36,7 +36,7 @@ describe('Notifications (e2e)', () => {
     });
     await notifRepo.save(testNotif);
     notifId = testNotif.id;
-  });
+  }, 50000);
 
   it('user can list their notifications', async () => {
     const res = await ctx.agent.get('/notifs').expect(200);

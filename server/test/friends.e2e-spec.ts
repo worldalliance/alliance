@@ -37,7 +37,7 @@ describe('Friends (e2e)', () => {
     await userRepo.save(userB);
     userBId = userB.id;
     userBToken = ctx.jwtService.sign({ sub: userBId });
-  });
+  }, 50000);
 
   it('can update user', async () => {
     const res = await request(ctx.app.getHttpServer())
@@ -189,8 +189,6 @@ describe('Friends (e2e)', () => {
   /* ──────────────────────────────────────────────────────────── */
 
   afterAll(async () => {
-    await friendRepo.query('DELETE FROM friend');
-    await userRepo.query('DELETE FROM user');
     await ctx.app.close();
   });
 });

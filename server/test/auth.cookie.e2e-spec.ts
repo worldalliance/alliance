@@ -13,7 +13,7 @@ describe('Auth via Http-Only cookies (e2e)', () => {
       name: 'Cookie Tester',
       mode: 'cookie',
     });
-  });
+  }, 50000);
 
   it('rejects invalid login', () => {
     return ctx.agent

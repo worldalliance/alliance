@@ -6,7 +6,7 @@ describe.skip('Geo (e2e)', () => {
 
   beforeAll(async () => {
     ctx = await createTestApp([GeoModule]);
-  });
+  }, 50000);
 
   it('should search for cities', async () => {
     const cities = await request(ctx.app.getHttpServer())
