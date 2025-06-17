@@ -14,15 +14,22 @@ env:
 jobs:
   test-backend-e2e:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: sanity-check docker
-        run: |
-          docker info --format 'client=OK'
-          echo "JOB_PID=$$  HOSTNAME=$(hostname)"
-          cat /proc/1/cgroup | head -n 5
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -34,7 +41,7 @@ jobs:
         working-directory: ./server
 
       - name: Run Jest Tests
-        run: DEBUG=testcontainers* npm run test:e2e
+        run: npm run test:e2e
         working-directory: ./server
 
   provision-infrastructure:
