@@ -368,14 +368,7 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Install nvm and Node.js 20
-            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
-            nvm install 20
-            nvm use 20
-            nvm alias default 20
+            set -Eeuo pipefail   # fail fast and trigger the ERR trap
 
             export DB_HOST=${{ secrets.RDS_HOSTNAME }}
             export DB_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
@@ -391,19 +384,67 @@ jobs:
             export SMTP_USER=${{ secrets.SMTP_USER }}
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
 
-            mkdir -p ~/nest-backend
-            unzip -o ~/nest-build.zip -d ~/nest-backend
+            APP_DIR="$HOME/nest-backend"               # active release
+            BACKUP_DIR="$HOME/nest-backend_prev_$(date +%Y%m%d_%H%M%S)"
+            BUILD_ARCHIVE="$HOME/nest-build.zip"
 
-            cd ~/nest-backend
+            rollback() {
+              echo "🔴  Deployment failed – rolling back to previous version"
+              pm2 delete nest-app || true
+              if [ -d "$BACKUP_DIR" ]; then
+                rm -rf "$APP_DIR"
+                mv "$BACKUP_DIR" "$APP_DIR"
+                pm2 start "$APP_DIR/dist/main.js" --name nest-app
+                pm2 save
+              fi
+              exit 1    # propagate failure to GitHub Actions
+            }
+            trap rollback ERR
+
+            ##############################
+            # Install Node & global deps #
+            ##############################
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm install 20
+            nvm use 20
+            nvm alias default 20
+            npm install -g pm2
+
+            ##################
+            # Stop old app   #
+            ##################
+            pm2 stop nest-app || true
+
+            ##################
+            # Back-up old app#
+            ##################
+            if [ -d "$APP_DIR" ]; then
+              echo "📦  Backing up current release to $BACKUP_DIR"
+              mv "$APP_DIR" "$BACKUP_DIR"
+            fi
+
+            ##################
+            # Deploy new app #
+            ##################
+            mkdir -p "$APP_DIR"
+            unzip -o "$BUILD_ARCHIVE" -d "$APP_DIR"
+            cd "$APP_DIR"
+
+            echo "Installing production dependencies"
             npm install --production
 
+            echo "Running database migrations"
             npm run migration:run
 
-            npm install -g pm2
+            echo "Starting new version with PM2"
             pm2 delete nest-app || true
             pm2 start dist/main.js --name nest-app
             pm2 save
 
+            echo "Deployment succeeded - removing backup"
+            rm -rf "$BACKUP_DIR"
   verify-deployment:
     needs:
       - deploy-nest-backend
