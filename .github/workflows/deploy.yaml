@@ -380,7 +380,7 @@ jobs:
 
             rm -rf ~/nest-backend-deploy-backup || true
             mkdir ~/nest-backend-deploy-backup
-            cp -r ~/nest-backend ~/nest-backend-deploy-backup
+            cp -a ~/nest-backend ~/nest-backend-deploy-backup
 
             export DB_HOST=${{ secrets.RDS_HOSTNAME }}
             export DB_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
@@ -400,12 +400,11 @@ jobs:
               echo "Deployment failed - rolling back"
               cd ~/
               pm2 delete nest-app || true
-              if [ -d "~/nest-backend-deploy-backup" ]; then
-                rm -rf ~/nest-backend
-                mv ~/nest-backend-deploy-backup ~/nest-backend
-                cd ~/nest-backend
-                pm2 start dist/main.js --name nest-app
-              fi
+              
+              rm -rf ~/nest-backend
+              mv ~/nest-backend-deploy-backup ~/nest-backend
+              cd ~/nest-backend
+              pm2 start dist/main.js --name nest-app
               exit 1
             }
             trap rollback ERR
