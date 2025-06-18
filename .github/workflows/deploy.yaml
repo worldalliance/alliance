@@ -404,7 +404,7 @@ jobs:
                 rm -rf nest-backend
                 mv nest-backend-deploy-backup nest-backend
                 cd nest-backend
-                pm2 start dist/main.js --name nest-app
+                pm2 start dist/main.js --name nest-app || pm2 start dist/src/main.js --name nest-app
               fi
               exit 1
             }
@@ -422,7 +422,7 @@ jobs:
 
             npm install -g pm2
             pm2 delete nest-app || true
-            pm2 start dist/main.js --name nest-app
+            pm2 start dist/src/main.js --name nest-app
             pm2 save
 
   verify-deployment:
