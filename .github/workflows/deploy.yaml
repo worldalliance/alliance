@@ -332,7 +332,7 @@ jobs:
         working-directory: ./server
 
       - name: Zip Build Output
-        run: zip -r nest-build.zip dist package.json package-lock.json
+        run: zip -r nest-build.zip dist package.json package-lock.json migrations
         working-directory: ./server
 
       - name: Upload Artifact
@@ -396,6 +396,8 @@ jobs:
 
             cd ~/nest-backend
             npm install --production
+
+            npm run migration:run
 
             npm install -g pm2
             pm2 delete nest-app || true

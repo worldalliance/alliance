@@ -1,5 +1,5 @@
 import * as request from 'supertest';
-import { Friend, FriendStatus } from '../src/user/friend.entity';
+import { FriendStatus } from '../src/user/friend.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { Repository } from 'typeorm';
 import { User } from '../src/user/user.entity';
@@ -8,7 +8,6 @@ import { NotificationType } from 'src/notifs/entities/notification.entity';
 describe('Friends (e2e)', () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
-  let friendRepo: Repository<Friend>;
 
   let userAId: number;
   let userAToken: string;
@@ -18,7 +17,6 @@ describe('Friends (e2e)', () => {
   beforeAll(async () => {
     ctx = await createTestApp([]);
     userRepo = ctx.dataSource.getRepository(User);
-    friendRepo = ctx.dataSource.getRepository(Friend);
     const userA = userRepo.create({
       name: 'Friend A',
       email: 'frienda@example.com',

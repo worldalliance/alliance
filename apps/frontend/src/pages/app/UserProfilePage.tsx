@@ -211,7 +211,7 @@ const UserProfilePage: React.FC = () => {
             {isMe && (
               <Button
                 color={ButtonColor.Light}
-                className="rounded-full"
+                className=""
                 onClick={() => navigate(`/editprofile`)}
               >
                 Edit Profile

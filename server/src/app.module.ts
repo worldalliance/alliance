@@ -16,8 +16,7 @@ import { GeoModule } from './geo/geo.module';
 import { MailModule } from './mail/mail.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
-import { localConnectionOptions } from './datasources/dataSourceLocal';
-import { prodConnectionOptions } from './datasources/dataSourceProd';
+import { connectionOptions } from './datasources/dataSource';
 
 @Module({
   imports: [
@@ -46,11 +45,7 @@ import { prodConnectionOptions } from './datasources/dataSourceProd';
     EventEmitterModule.forRoot(),
     AuthModule,
     UserModule,
-    TypeOrmModule.forRoot(
-      process.env.NODE_ENV === 'production'
-        ? prodConnectionOptions()
-        : localConnectionOptions(),
-    ),
+    TypeOrmModule.forRoot(connectionOptions()),
     ActionsModule,
     CommuniquesModule,
     ImagesModule,
