@@ -24,7 +24,6 @@
     "migration:revert": "npm run typeorm -- migration:revert"
   },
   "dependencies": {
-    "@mapbox/search-js-core": "^1.1.0",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",

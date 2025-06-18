@@ -387,7 +387,6 @@ jobs:
             export DB_NAME="alliance"
             export ADMIN_USER=${{ secrets.ADMIN_USER }}
             export ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
-            export MAPBOX_ACCESS_TOKEN=${{ secrets.MAPBOX_ACCESS_TOKEN }}
             export SMTP_USER=${{ secrets.SMTP_USER }}
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
 
