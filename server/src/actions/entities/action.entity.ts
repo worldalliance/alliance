@@ -58,7 +58,7 @@ export class Action {
   @ApiProperty()
   timeEstimate: string;
 
-  @Column()
+  @Column({ type: 'enum', enum: ActionStatus, default: ActionStatus.Draft })
   @ApiProperty({
     description: 'Current status of the action',
     enum: ActionStatus,
@@ -66,7 +66,11 @@ export class Action {
   @IsNotEmpty()
   status: ActionStatus;
 
-  @Column({ default: ActionTaskType.Activity })
+  @Column({
+    type: 'enum',
+    enum: ActionTaskType,
+    default: ActionTaskType.Activity,
+  })
   @ApiProperty({
     description: 'Type of the action',
     enum: ActionTaskType,

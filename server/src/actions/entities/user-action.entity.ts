@@ -30,7 +30,8 @@ export class UserAction {
   action: Action;
 
   @Column({
-    type: 'varchar', // should be an enum but sqlite doesn't support it (which we use for e2e tests only)
+    type: 'enum',
+    enum: UserActionRelation,
     default: UserActionRelation.none,
   })
   @ApiProperty({ enum: Object.keys(UserActionRelation) })

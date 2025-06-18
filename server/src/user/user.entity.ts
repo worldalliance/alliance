@@ -60,10 +60,6 @@ export class User {
   @ApiProperty({ nullable: true })
   profileDescription: string;
 
-  @Column({ nullable: true })
-  @ApiProperty({ nullable: true })
-  testNewColumn: string;
-
   @ManyToMany(() => Communique, (communique) => communique.usersRead)
   communiquesRead: Communique[];
 

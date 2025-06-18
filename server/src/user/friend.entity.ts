@@ -37,8 +37,7 @@ export class Friend {
   })
   addressee: User;
 
-  //   @Column({ type: 'enum', enum: FriendStatus, default: FriendStatus.Pending })
-  @Column()
+  @Column({ type: 'enum', enum: FriendStatus, default: FriendStatus.None })
   @ApiProperty({ enum: FriendStatus })
   status: FriendStatus;
 

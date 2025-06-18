@@ -63,11 +63,9 @@ export async function createTestApp(
   // Initialize database
   await dataSource.synchronize(true);
 
-  // Get repositories
   const userRepo = dataSource.getRepository(User);
   const jwtService = moduleFixture.get<JwtService>(JwtService);
 
-  // Create test users
   const user = await userRepo.save(
     userRepo.create({
       email: 'user@example.com',
