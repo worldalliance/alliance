@@ -5,7 +5,7 @@ import NavbarHorizontal from "./components/NavbarHorizontal";
 import { useEffect, useState } from "react";
 
 export default function AppLayout() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   const [shouldGoToLogin, setShouldGoToLogin] = useState(false);
 
@@ -14,7 +14,11 @@ export default function AppLayout() {
       localStorage.setItem("was-logged-in", "true");
     }
     // prevent user from going into "logged out mode" if their session expires
-    if (!isAuthenticated && localStorage.getItem("was-logged-in") === "true") {
+    if (
+      !isAuthenticated &&
+      localStorage.getItem("was-logged-in") === "true" &&
+      !loading
+    ) {
       setShouldGoToLogin(true);
     }
   }, [isAuthenticated]);

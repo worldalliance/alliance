@@ -37,6 +37,9 @@ export class MailService {
         to: recipient,
         from: 'no-reply@worldalliance.org',
         subject: subject,
+        headers: {
+          'o:tag': emailType,
+        },
         template:
           __dirname + `/../../mail/templates/${this.templates[emailType]}`,
         context,
