@@ -378,9 +378,9 @@ jobs:
             nvm use 20
             nvm alias default 20
 
-            rm -rf ~/nest-backend-deploy-backup || true
-            mkdir ~/nest-backend-deploy-backup
-            cp -a ~/nest-backend/* ~/nest-backend-deploy-backup
+            cd ~/
+            rm -rf nest-backend-deploy-backup || true
+            mv nest-backend nest-backend-deploy-backup
 
             export DB_HOST=${{ secrets.RDS_HOSTNAME }}
             export DB_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
@@ -401,9 +401,9 @@ jobs:
               cd ~/
               pm2 delete nest-app || true
               
-              rm -rf ~/nest-backend
-              mv ~/nest-backend-deploy-backup ~/nest-backend
-              cd ~/nest-backend
+              rm -rf nest-backend
+              mv nest-backend-deploy-backup nest-backend
+              cd nest-backend
               pm2 start dist/main.js --name nest-app
               exit 1
             }
