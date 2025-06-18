@@ -25,7 +25,7 @@ import { connectionOptions } from './datasources/dataSource';
     }),
     MailerModule.forRoot({
       transport: {
-        host: 'email-smtp.us-west-2.amazonaws.com',
+        host: process.env.SMTP_HOST,
         port: 587,
         secure: false,
         auth: {
@@ -34,7 +34,7 @@ import { connectionOptions } from './datasources/dataSource';
         },
       },
       template: {
-        dir: __dirname + '/mail/templates',
+        dir: __dirname + '/templates',
         adapter: new PugAdapter(),
         options: {
           strict: true,

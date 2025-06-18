@@ -2,19 +2,24 @@
 import { Navigate, Outlet } from "react-router";
 import { useAuth } from "./lib/AuthContext";
 import NavbarHorizontal from "./components/NavbarHorizontal";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function AppLayout() {
   const { isAuthenticated } = useAuth();
+
+  const [shouldGoToLogin, setShouldGoToLogin] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
       localStorage.setItem("was-logged-in", "true");
     }
+    // prevent user from going into "logged out mode" if their session expires
+    if (!isAuthenticated && localStorage.getItem("was-logged-in") === "true") {
+      setShouldGoToLogin(true);
+    }
   }, [isAuthenticated]);
 
-  // prevent user from going into "logged out mode" if their session expires
-  if (!isAuthenticated && localStorage.getItem("was-logged-in") === "true") {
+  if (shouldGoToLogin) {
     return <Navigate to="/login" />;
   }
 

@@ -387,6 +387,7 @@ jobs:
             export DB_NAME="alliance"
             export ADMIN_USER=${{ secrets.ADMIN_USER }}
             export ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            export SMTP_HOST=${{ secrets.SMTP_HOST }}
             export SMTP_USER=${{ secrets.SMTP_USER }}
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
 

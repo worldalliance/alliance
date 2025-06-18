@@ -29,14 +29,16 @@ export class MailService {
     const mail = await this.mailRepository.create({
       to: recipient,
       emailType: emailType,
+      status: EmailStatus.Pending,
     });
 
     this.mailerService
       .sendMail({
-        to: 'casey@worldalliance.org',
+        to: recipient,
         from: 'no-reply@worldalliance.org',
-        subject: 'i am a very friendly email',
-        template: __dirname + `/templates/${this.templates[emailType]}`,
+        subject: subject,
+        template:
+          __dirname + `/../../mail/templates/${this.templates[emailType]}`,
         context,
       })
       .then((e: SentMessageInfo) => {
@@ -81,7 +83,7 @@ export class MailService {
     await this.sendMail(
       email,
       EmailType.PasswordReset,
-      'A link to reset your password',
+      'a link to reset your password',
       {
         name,
         url,
