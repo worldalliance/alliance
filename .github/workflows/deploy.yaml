@@ -368,7 +368,7 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -Eeuo pipefail   # fail fast and trigger the ERR trap
+            set -Eeuo pipefail
 
             export DB_HOST=${{ secrets.RDS_HOSTNAME }}
             export DB_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
@@ -386,10 +386,9 @@ jobs:
 
             APP_DIR="$HOME/nest-backend"               # active release
             BACKUP_DIR="$HOME/nest-backend_prev_$(date +%Y%m%d_%H%M%S)"
-            BUILD_ARCHIVE="$HOME/nest-build.zip"
 
             rollback() {
-              echo "🔴  Deployment failed – rolling back to previous version"
+              echo "Deployment failed - rolling back to previous version"
               pm2 delete nest-app || true
               if [ -d "$BACKUP_DIR" ]; then
                 rm -rf "$APP_DIR"
@@ -428,11 +427,10 @@ jobs:
             ##################
             # Deploy new app #
             ##################
-            mkdir -p "$APP_DIR"
-            unzip -o "$BUILD_ARCHIVE" -d "$APP_DIR"
-            cd "$APP_DIR"
+            mkdir -p ~/nest-backend
+            unzip -o ~/nest-build.zip -d ~/nest-backend
 
-            echo "Installing production dependencies"
+            cd ~/nest-backend
             npm install --production
 
             echo "Running database migrations"
@@ -445,6 +443,7 @@ jobs:
 
             echo "Deployment succeeded - removing backup"
             rm -rf "$BACKUP_DIR"
+
   verify-deployment:
     needs:
       - deploy-nest-backend
