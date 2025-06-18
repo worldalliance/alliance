@@ -418,8 +418,6 @@ jobs:
 
             npm run migration:run
 
-            false
-
             npm install -g pm2
             pm2 delete nest-app || true
             pm2 start dist/src/main.js --name nest-app
