@@ -412,8 +412,6 @@ jobs:
             cd ~/nest-backend
             npm install --production
 
-            false
-
             npm run migration:run
 
             npm install -g pm2
