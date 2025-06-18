@@ -1,83 +1,27 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { App } from 'supertest/types';
 import { User } from '../src/user/user.entity';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
-import { AuthModule } from '../src/auth/auth.module';
-import { UserModule } from '../src/user/user.module';
-import { JwtModule } from '@nestjs/jwt';
-import { ConfigModule } from '@nestjs/config';
+import { Repository } from 'typeorm';
 import { AuthTokens } from '../src/auth/dto/authtokens.dto';
-import { UserAction } from '../src/actions/entities/user-action.entity';
-import { Action } from '../src/actions/entities/action.entity';
-import { AuthController } from '../src/auth/auth.controller';
-import { Image } from '../src/images/entities/image.entity';
-import { Communique } from '../src/communiques/entities/communique.entity';
-import { Friend } from '../src/user/friend.entity';
-import { Notification } from '../src/notifs/entities/notification.entity';
-import { ActionEvent } from '../src/actions/entities/action-event.entity';
-import { City } from 'src/geo/city.entity';
-import { MailerModule } from '@nestjs-modules/mailer';
+import { createTestApp, TestContext } from './e2e-test-utils';
 
 describe('Auth (e2e)', () => {
-  let app: INestApplication<App>;
   let userRepository: Repository<User>;
+  let ctx: TestContext;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        ConfigModule.forRoot({
-          isGlobal: true,
-          envFilePath: '.env.test',
-        }),
-        MailerModule.forRoot({
-          transport: {
-            host: 'localhost',
-            port: 1025,
-            secure: false,
-          },
-        }),
-        AuthModule,
-        JwtModule,
-        UserModule,
-        TypeOrmModule.forRoot({
-          type: 'sqlite',
-          database: ':memory:',
-          entities: [
-            User,
-            Action,
-            UserAction,
-            Image,
-            Communique,
-            Friend,
-            Notification,
-            ActionEvent,
-            City,
-          ],
-          synchronize: true,
-        }),
-      ],
-      controllers: [AuthController],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    const dataSource = moduleFixture.get<DataSource>(DataSource);
-    userRepository = dataSource.getRepository(User);
+    ctx = await createTestApp([]);
+    userRepository = ctx.dataSource.getRepository(User);
   }, 50000);
 
   it('returns 401 for invalid login', () => {
-    return request(app.getHttpServer())
+    return request(ctx.app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'baduser@test.com', password: 'password' })
       .expect(401);
   });
 
   it('registers a new user', () => {
-    return request(app.getHttpServer())
+    return request(ctx.app.getHttpServer())
       .post('/auth/register')
       .send({
         email: 'newusertest@test.com',
@@ -95,7 +39,7 @@ describe('Auth (e2e)', () => {
     });
     await userRepository.save(user);
 
-    const response = await request(app.getHttpServer())
+    const response = await request(ctx.app.getHttpServer())
       .post('/auth/login')
       .send({
         email: 'newusertest@test.com',
@@ -112,7 +56,7 @@ describe('Auth (e2e)', () => {
 
   describe('token refresh', () => {
     it('returns 401 for invalid refresh token', () => {
-      return request(app.getHttpServer())
+      return request(ctx.app.getHttpServer())
         .post('/auth/refresh')
         .send({ refresh_token: 'invalid' })
         .expect(401);
@@ -126,7 +70,7 @@ describe('Auth (e2e)', () => {
       });
       await userRepository.save(user);
 
-      const loginResponse = await request(app.getHttpServer())
+      const loginResponse = await request(ctx.app.getHttpServer())
         .post('/auth/login')
         .send({
           email: 'newusertest@test.com',
@@ -137,7 +81,7 @@ describe('Auth (e2e)', () => {
 
       const loginBody = loginResponse.body as AuthTokens;
 
-      const refreshResponse = await request(app.getHttpServer())
+      const refreshResponse = await request(ctx.app.getHttpServer())
         .post('/auth/refresh')
         .set('Authorization', `Bearer ${loginBody.refresh_token}`)
         .expect(200);
@@ -152,10 +96,10 @@ describe('Auth (e2e)', () => {
   });
 
   afterEach(async () => {
-    await userRepository.query('DELETE FROM user');
+    await userRepository.query('DELETE FROM "user"');
   });
 
   afterAll(async () => {
-    await app.close();
+    await ctx.app.close();
   });
 });
