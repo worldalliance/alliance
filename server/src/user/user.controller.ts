@@ -16,6 +16,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiUnauthorizedResponse,
+  ApiBody,
 } from '@nestjs/swagger';
 import { Public } from '../auth/public.decorator';
 import { UserService } from './user.service';
@@ -25,6 +26,8 @@ import {
   ProfileDto,
   UpdateProfileDto,
   UserDto,
+  SavePushTokenDto,
+  RemovePushTokenDto
 } from './user.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { FriendStatus } from './friend.entity';
@@ -219,5 +222,26 @@ export class UserController {
   @ApiUnauthorizedResponse()
   findOne(@Param('id', ParseIntPipe) id: number): Promise<ProfileDto | null> {
     return this.userService.findOne(id);
+  }
+
+  @Post('pushToken')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Save push notification token for a user' })
+  @ApiBody({ type: SavePushTokenDto })
+  async savePushToken(@Request() req: JwtRequest, @Body() body: SavePushTokenDto) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    await this.userService.savePushToken(req.user.sub, body.token);
+    return { success: true };
+  }
+
+  @Post('removePushToken')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Remove push notification token for a user' })
+  @ApiBody({ type: RemovePushTokenDto })
+  async removePushToken(@Body() body: RemovePushTokenDto) {
+    await this.userService.removePushToken(body.userId, body.token);
+    return { success: true };
   }
 }

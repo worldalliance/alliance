@@ -275,4 +275,24 @@ export class UserService {
     }
     return user;
   }
+
+  async savePushToken(userId: number, token: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) return;
+
+    const tokens = user.pushTokens || [];
+    if (!tokens.includes(token)) {
+      tokens.push(token);
+      await this.userRepository.update(userId, { pushTokens: tokens });
+    }
+  }
+
+  async removePushToken(userId: number, token: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user || !user.pushTokens) return;
+
+    const updatedTokens = user.pushTokens.filter((t) => t !== token);
+    await this.userRepository.update(userId, { pushTokens: updatedTokens });
+  }
+  
 }

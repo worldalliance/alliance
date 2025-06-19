@@ -1,3 +1,4 @@
+
 import {
   Text,
   View,
@@ -8,13 +9,17 @@ import {
 } from "react-native";
 import { useAuth } from "../../../lib/AuthContext";
 import { useEffect, useMemo, useState } from "react";
-import { ActionDto, actionsFindAllWithStatus } from "../../../../../shared/client";
+import { ActionDto } from "../../../../../shared/client";
+import { actionsFindAllWithStatus } from "../../../../../shared/client";
 import ActionCard from "../../../components/ActionCard";
 import { router } from "expo-router";
+import usePushNotifications from "../../../lib/usePushNotifications";
 import { FilterMode, filterActions } from "../../../../../shared/lib/actionUtils";
+
 
 export default function HomeScreen() {
   const { user } = useAuth();
+  usePushNotifications(user);
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

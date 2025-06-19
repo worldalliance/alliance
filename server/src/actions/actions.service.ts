@@ -13,6 +13,7 @@ import { ActionEvent, ActionStatus } from './entities/action-event.entity';
 import { In, Not, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';
+import { Notification } from '../notifs/entities/notification.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Observable } from 'rxjs';
 import { from } from 'rxjs';
@@ -23,6 +24,8 @@ export class ActionsService {
   constructor(
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
+    @InjectRepository(Notification)
+    private notificationRepository: Repository<Notification>,
     @InjectRepository(ActionEvent)
     private readonly actionEventRepository: Repository<ActionEvent>,
     @InjectRepository(UserAction)
@@ -179,7 +182,6 @@ export class ActionsService {
     await this.actionRepository.update(id, updateActionDto);
     return this.findOne(id);
   }
-
   async addEvent(
     actionId: number,
     actionEventDto: CreateActionEventDto,

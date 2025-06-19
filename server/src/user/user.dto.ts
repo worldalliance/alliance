@@ -24,6 +24,17 @@ export class ProfileDto extends PickType(User, [
   'profileDescription',
 ]) {}
 
+
+export class SavePushTokenDto {
+  @ApiProperty({ description: 'Push token to save' })
+  token: string;
+}
+
+export class RemovePushTokenDto extends PickType(SavePushTokenDto, ['token'] as const) {
+  @ApiProperty({ description: 'User ID from which to remove token' })
+  userId: number;
+}
+
 export class UpdateProfileDto extends PartialType(ProfileDto) {}
 
 export class OnboardingDto {

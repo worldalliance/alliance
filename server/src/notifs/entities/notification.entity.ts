@@ -55,4 +55,8 @@ export class Notification {
   @UpdateDateColumn()
   @ApiProperty()
   updatedAt: Date;
+
+  @Column({ default: false })
+  @ApiProperty()
+  sent: boolean;
 }

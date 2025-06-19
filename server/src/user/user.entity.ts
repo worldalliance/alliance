@@ -80,6 +80,10 @@ export class User {
 
   @OneToMany(() => User, (user) => user.referredBy)
   referredUsers: User[];
+  
+  @Column("text", { array: true, default: () => "'{}'" })
+  @ApiProperty({ type: [String], description: 'List of device push tokens' })
+  pushTokens: string[];
 
   get friends(): User[] {
     const sentAccepted =

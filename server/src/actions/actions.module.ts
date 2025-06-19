@@ -7,6 +7,7 @@ import { UserModule } from '../user/user.module';
 import { User } from '../user/user.entity';
 import { UserAction } from './entities/user-action.entity';
 import { ActionEvent } from './entities/action-event.entity';
+import { Notification } from 'src/notifs/entities/notification.entity';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ActionEvent } from './entities/action-event.entity';
     TypeOrmModule.forFeature([Action]),
     TypeOrmModule.forFeature([UserAction]),
     TypeOrmModule.forFeature([ActionEvent]),
+    TypeOrmModule.forFeature([Notification]),
     UserModule,
   ],
   controllers: [ActionsController],

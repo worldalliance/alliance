@@ -6,15 +6,10 @@ import {
   UpdateDateColumn,
   JoinColumn,
 } from 'typeorm';
+import { UserActionRelation } from './user-action.entity';
 import { Action } from './action.entity';
 import { IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-
-export enum NotificationType {
-  All = 'all',
-  Joined = 'joined',
-  None = 'none',
-}
 
 export enum ActionStatus {
   Active = 'active',
@@ -50,9 +45,9 @@ export class ActionEvent {
   @IsNotEmpty()
   @ApiProperty({
     description: 'Notification type for the event',
-    enum: NotificationType,
+    enum: UserActionRelation,
   })
-  sendNotifsTo: NotificationType;
+  sendNotifsTo: UserActionRelation;
 
   @Column()
   @ApiProperty({ description: 'time of the event (for display)' })

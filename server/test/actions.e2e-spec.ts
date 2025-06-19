@@ -191,6 +191,7 @@ describe('Actions (e2e)', () => {
         description: 'Test Event',
         newStatus: ActionStatus.Active,
         date: new Date(),
+        sendNotifsTo: UserActionRelation.joined,
         showInTimeline: true,
         sendNotifsTo: NotificationType.All,
       };

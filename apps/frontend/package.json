@@ -51,6 +51,7 @@
     "tailwind-merge": "^3.3.0",
     "tailwind-variants": "^1.0.0",
     "three": "^0.176.0",
+    "vite-plugin-devtools-json": "^0.1.0",
     "web-vitals": "^4.2.4"
   },
   "devDependencies": {
