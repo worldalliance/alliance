@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { Outlet } from "react-router";
 
-const TempProdPassword: React.FC<React.PropsWithChildren> = ({ children }) => {
+export default function TempProdPassword() {
   const [password, setPassword] = useState("");
   const [putPassword, setPutPassword] = useState(false);
 
@@ -12,11 +13,14 @@ const TempProdPassword: React.FC<React.PropsWithChildren> = ({ children }) => {
   }, [password]);
 
   if (import.meta.env.MODE === "development") {
-    return <>{children}</>;
+    return <Outlet />;
   }
 
-  if (localStorage.getItem("prod-login")) {
-    return <>{children}</>;
+  if (
+    typeof localStorage !== "undefined" &&
+    localStorage.getItem("prod-login")
+  ) {
+    return <Outlet />;
   }
 
   if (!putPassword) {
@@ -33,7 +37,5 @@ const TempProdPassword: React.FC<React.PropsWithChildren> = ({ children }) => {
     );
   }
 
-  return <>{children}</>;
-};
-
-export default TempProdPassword;
+  return <Outlet />;
+}

@@ -1,7 +1,7 @@
-// routes/root.tsx
 import { Outlet } from "react-router";
 import { useAuth } from "./lib/AuthContext";
 import { Navigate } from "react-router";
+
 export default function Onboarding() {
   const { isAuthenticated, user, loading } = useAuth();
 
@@ -13,9 +13,5 @@ export default function Onboarding() {
     return <Navigate to="/home" />;
   }
 
-  return (
-    <>
-      <Outlet />
-    </>
-  );
+  return <Outlet />;
 }

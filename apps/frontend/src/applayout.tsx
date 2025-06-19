@@ -1,4 +1,3 @@
-// routes/root.tsx
 import { Navigate, Outlet } from "react-router";
 import { useAuth } from "./lib/AuthContext";
 import NavbarHorizontal from "./components/NavbarHorizontal";
@@ -30,7 +29,6 @@ export default function AppLayout() {
   return (
     <>
       {isAuthenticated && <NavbarHorizontal />}
-      {/* All child routes render here */}
       <Outlet />
     </>
   );

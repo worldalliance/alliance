@@ -1,6 +1,7 @@
 import React from "react";
 import { ActionDto } from "@alliance/shared/client";
 import ActionItemCard from "./ActionItemCard";
+
 export interface HomeNewActionsViewProps {
   actions: ActionDto[];
 }

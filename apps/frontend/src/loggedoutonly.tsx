@@ -1,4 +1,3 @@
-// routes/root.tsx
 import { Navigate, Outlet } from "react-router";
 import { useAuth } from "./lib/AuthContext";
 
