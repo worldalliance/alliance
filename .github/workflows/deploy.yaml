@@ -423,6 +423,10 @@ jobs:
             pm2 start dist/src/main.js --name nest-app
             pm2 save
 
+            sleep 10
+
+            curl --silent --fail --show-error "https://${{vars.DOMAIN_NAME}}/api/" > /dev/null
+
   verify-deployment:
     needs:
       - deploy-nest-backend
