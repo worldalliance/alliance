@@ -55,21 +55,6 @@ const LoginPage: React.FC = () => {
             <div className="border-red-400 bg-red-50 mb-6 rounded-md p-4">
               <div className="flex justify-between items-center">
                 <span className="text-red-700">{error}</span>
-                <button
-                  onClick={async () => {
-                    setCheckingServer(true);
-                    try {
-                      await appHealthCheck();
-                      setError(null);
-                    } finally {
-                      setCheckingServer(false);
-                    }
-                  }}
-                  className="px-3 py-1 bg-red-100 text-red-800 rounded-md hover:bg-red-200 text-sm"
-                  disabled={checkingServer}
-                >
-                  {checkingServer ? "Checking..." : "Retry"}
-                </button>
               </div>
             </div>
           )}

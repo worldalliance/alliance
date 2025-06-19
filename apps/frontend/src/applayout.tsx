@@ -21,7 +21,7 @@ export default function AppLayout() {
     ) {
       setShouldGoToLogin(true);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loading]);
 
   if (shouldGoToLogin) {
     return <Navigate to="/login" />;
