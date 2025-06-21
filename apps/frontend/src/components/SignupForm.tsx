@@ -9,11 +9,13 @@ export interface SignupFormProps {
   onSubmit: (formData: SignUpDto) => void;
   loading: boolean;
   submitButtonText?: string;
+  referralCode?: string | null;
 }
 const SignupForm = ({
   onSubmit,
   loading,
   submitButtonText = "Register",
+  referralCode,
 }: SignupFormProps) => {
   const [formData, setFormData] = useState<
     SignUpDto & { confirmEmail: string }
@@ -39,9 +41,13 @@ const SignupForm = ({
         return;
       }
 
-      onSubmit(formData);
+      const { confirmEmail, ...submitData } = formData;
+      onSubmit({
+        ...submitData,
+        referralCode: referralCode || undefined,
+      });
     },
-    [onSubmit, formData]
+    [onSubmit, formData, referralCode]
   );
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +64,13 @@ const SignupForm = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {referralCode && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4">
+          <p className="text-sm text-green-700">
+            Using your friend&apos;s referral code
+          </p>
+        </div>
+      )}
       <FormInput
         label="Full Name"
         type="text"

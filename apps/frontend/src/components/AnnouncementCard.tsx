@@ -6,7 +6,7 @@ import test_image from "../stories/test_image.jpg";
 import { getImageSource } from "../lib/config";
 import StatusIndicator, { Status } from "./StatusIndicator";
 
-interface AnnouncementCardProps {
+export interface AnnouncementCardProps {
   unread: boolean;
   data: CommuniqueDto;
   className?: string;

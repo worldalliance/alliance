@@ -144,7 +144,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
     <>
       <h2 className="text-xl font-sabon mb-4">Friends</h2>
 
-      <div className="flex mb-4 border-b">
+      <div className="flex mb-4">
         <button
           className={`px-4 py-2 ${
             activeTab === "friends"
@@ -177,19 +177,19 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
         </button>
       </div>
 
-      <Card style={CardStyle.White} className="p-6">
+      <Card style={CardStyle.White} className="p-6 border-none">
         {activeTab === "friends" && (
           <>
             {friends.length === 0 ? (
               <p className="text-center text-stone-500 py-4">
-                You don't have any friends yet.
+                You don&apos;t have any friends yet.
               </p>
             ) : (
               <div className="space-y-4">
                 {friends.map((friend) => (
                   <div
                     key={friend.email}
-                    className="flex items-center p-3 border rounded-lg"
+                    className="flex items-center p-3 border border-gray-300 rounded-lg"
                   >
                     <UserBubble className="w-12 h-12 mr-4" />
                     <div className="flex-grow">
@@ -199,7 +199,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
                     <div className="flex space-x-2">
                       <Button
                         onClick={() => navigate(`/user/${friend.id}`)}
-                        color={ButtonColor.Stone}
+                        color={ButtonColor.Light}
                       >
                         View Profile
                       </Button>
@@ -267,7 +267,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
           <>
             {sentRequests.length === 0 ? (
               <p className="text-center text-stone-500 py-4">
-                You haven't sent any friend requests.
+                You haven&apos;t sent any friend requests.
               </p>
             ) : (
               <div className="space-y-4">

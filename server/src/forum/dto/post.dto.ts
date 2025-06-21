@@ -1,22 +1,25 @@
 import { ApiProperty, PartialType, PickType } from '@nestjs/swagger';
 import { Post } from '../entities/post.entity';
-import { UserDto } from '../../user/user.dto';
+import { MinimalUserDto } from '../../user/user.dto';
 import { ReplyDto } from './reply.dto';
+import { ActionDto } from 'src/actions/dto/action.dto';
 
 // return object for get requests
 export class PostDto extends PickType(Post, [
   'id',
   'title',
   'content',
-  'action',
   'actionId',
   'authorId',
   'createdAt',
   'updatedAt',
 ]) {
   //redefine to use compacted dto types
-  @ApiProperty({ type: () => UserDto })
-  author: UserDto;
+  @ApiProperty({ type: () => ActionDto, required: false })
+  action: ActionDto | undefined;
+
+  @ApiProperty({ type: MinimalUserDto })
+  author: MinimalUserDto;
 
   @ApiProperty({ type: () => [ReplyDto] })
   replies: ReplyDto[];

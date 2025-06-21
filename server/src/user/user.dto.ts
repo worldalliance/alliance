@@ -8,6 +8,13 @@ export class UserDto extends PickType(User, [
   'admin',
   'id',
   'onboardingComplete',
+  'referralCode',
+]) {}
+
+export class MinimalUserDto extends PickType(UserDto, [
+  'id',
+  'name',
+  'email',
 ]) {}
 
 export class FriendStatusDto {
@@ -35,4 +42,9 @@ export class OnboardingDto {
 
   @ApiProperty({ type: Boolean, nullable: true })
   makesMoney: boolean | null;
+}
+
+export class ReferralDto {
+  @ApiProperty({ type: String })
+  referralCode: string;
 }

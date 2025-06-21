@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLoaderData, useNavigate, useParams } from "react-router";
+import { useLoaderData, useParams } from "react-router";
 import Card, { CardStyle } from "../../components/system/Card";
 import StatsCard from "../../components/StatsCard";
 import Globe from "../../components/Globe";
@@ -73,7 +73,7 @@ export default function ActionPage() {
         }
       });
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, id]);
 
   const onJoinAction = useCallback(async () => {
     if (!id) return;
@@ -141,7 +141,7 @@ export default function ActionPage() {
         {isFeatureEnabled(Features.Forum) && <ActionForumPosts actionId={id} />}
       </div>
     ),
-    [action, userRelation, id]
+    [action, userRelation, id, isAuthenticated, onJoinAction, error]
   );
 
   return (

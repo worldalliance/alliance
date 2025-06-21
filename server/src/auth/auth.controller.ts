@@ -135,6 +135,7 @@ export class AuthController {
       admin: profile.admin,
       id: profile.id,
       onboardingComplete: profile.onboardingComplete,
+      referralCode: profile.referralCode,
     };
   }
 

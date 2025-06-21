@@ -1,6 +1,6 @@
 import { ActionDto } from "@alliance/shared/client";
 import Card, { CardStyle } from "./system/Card";
-import Button, { ButtonColor } from "./system/Button";
+import Button from "./system/Button";
 import FormInput from "./system/FormInput";
 import { useEffect, useState } from "react";
 

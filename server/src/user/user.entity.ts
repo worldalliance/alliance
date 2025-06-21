@@ -81,6 +81,10 @@ export class User {
   @OneToMany(() => User, (user) => user.referredBy)
   referredUsers: User[];
 
+  @Column({ nullable: true })
+  @ApiProperty({ nullable: true })
+  referralCode: string;
+
   get friends(): User[] {
     const sentAccepted =
       this.sentFriendRequests
@@ -104,6 +108,11 @@ export class User {
     if (!/^\$2[abxy]?\$\d+\$/.test(this.password)) {
       this.password = await bcrypt.hash(this.password, salt);
     }
+  }
+
+  @BeforeInsert()
+  async generateReferralCode(): Promise<void> {
+    this.referralCode = Math.random().toString(36).substring(2, 15);
   }
 
   async checkPassword(plainPassword: string): Promise<boolean> {

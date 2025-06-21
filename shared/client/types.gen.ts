@@ -17,6 +17,7 @@ export type SignUpDto = {
     email: string;
     password: string;
     mode: 'cookie' | 'header';
+    referralCode?: string;
 };
 
 export type AccessToken = {
@@ -28,6 +29,7 @@ export type UserDto = {
     name: string;
     email: string;
     admin: boolean;
+    referralCode: string | null;
     onboardingComplete: boolean;
 };
 
@@ -378,118 +380,10 @@ export type CreatePostDto = {
     actionId?: number;
 };
 
-export type UserAction = {
-    status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
-    dateCommitted: string;
-    dateCompleted: string;
-    deadline: string;
-};
-
-export type ActionEvent = {
-    /**
-     * Unique identifier for the action event
-     */
+export type MinimalUserDto = {
     id: number;
-    /**
-     * Title of the event
-     */
-    title: string;
-    /**
-     * secondary text
-     */
-    description: string;
-    /**
-     * New status of the action after the event
-     */
-    newStatus: 'active' | 'upcoming' | 'past' | 'draft';
-    /**
-     * Notification type for the event
-     */
-    sendNotifsTo: 'all' | 'joined' | 'none';
-    /**
-     * time of the event (for display)
-     */
-    date: string;
-    /**
-     * Timestamp when the event was last updated
-     */
-    updateDate: string;
-    /**
-     * Indicates whether the event should be shown in the timeline
-     */
-    showInTimeline: boolean;
-    /**
-     * The action associated with this event
-     */
-    action: Action;
-};
-
-export type Action = {
-    /**
-     * Unique identifier for the action
-     */
-    id: number;
-    /**
-     * Name of the action
-     */
     name: string;
-    /**
-     * Category of the action
-     */
-    category: string;
-    /**
-     * Reason to join the action
-     */
-    whyJoin: string;
-    /**
-     * Image URL for the action
-     */
-    image: string | null;
-    /**
-     * Description of the action
-     */
-    description: string;
-    /**
-     * Short description shown in cards
-     */
-    shortDescription: string;
-    /**
-     * Steps to complete the action
-     */
-    howTo: string;
-    timeEstimate: string;
-    /**
-     * Current status of the action
-     */
-    status: 'active' | 'upcoming' | 'past' | 'draft';
-    /**
-     * Type of the action
-     */
-    type: 'Funding' | 'Activity' | 'Ongoing';
-    /**
-     * Timestamp when the action was created
-     */
-    createdAt: string;
-    /**
-     * Timestamp when the action was last updated
-     */
-    updatedAt: string;
-    /**
-     * Relations between users and the action
-     */
-    userRelations: Array<UserAction>;
-    /**
-     * Events associated with the action
-     */
-    events: Array<ActionEvent>;
-    /**
-     * Number of users who have joined the action
-     */
-    usersJoined: number;
-    /**
-     * Number of users who have completed the action
-     */
-    usersCompleted: number;
+    email: string;
 };
 
 export type ReplyDto = {
@@ -506,11 +400,11 @@ export type PostDto = {
     title: string;
     content: string;
     authorId: number;
-    action?: Action;
     actionId?: number;
     createdAt: string;
     updatedAt: string;
-    author: UserDto;
+    action?: ActionDto;
+    author: MinimalUserDto;
     replies: Array<ReplyDto>;
 };
 
@@ -731,25 +625,6 @@ export type UserMyLocationResponses = {
 
 export type UserMyLocationResponse = UserMyLocationResponses[keyof UserMyLocationResponses];
 
-export type UserFindOneData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/{id}';
-};
-
-export type UserFindOneErrors = {
-    401: unknown;
-};
-
-export type UserFindOneResponses = {
-    200: ProfileDto;
-};
-
-export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];
-
 export type UserRemoveFriendData = {
     body?: never;
     path: {
@@ -855,6 +730,25 @@ export type UserMyFriendRelationshipResponses = {
 
 export type UserMyFriendRelationshipResponse = UserMyFriendRelationshipResponses[keyof UserMyFriendRelationshipResponses];
 
+export type UserPrefillData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/prefill/{id}';
+};
+
+export type UserPrefillErrors = {
+    401: unknown;
+};
+
+export type UserPrefillResponses = {
+    200: ProfileDto;
+};
+
+export type UserPrefillResponse = UserPrefillResponses[keyof UserPrefillResponses];
+
 export type UserListFriendsData = {
     body?: never;
     path: {
@@ -884,6 +778,25 @@ export type UserCountReferredResponses = {
 };
 
 export type UserCountReferredResponse = UserCountReferredResponses[keyof UserCountReferredResponses];
+
+export type UserFindOneData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/{id}';
+};
+
+export type UserFindOneErrors = {
+    401: unknown;
+};
+
+export type UserFindOneResponses = {
+    200: ProfileDto;
+};
+
+export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];
 
 export type ActionsJoinData = {
     body?: never;

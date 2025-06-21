@@ -7,6 +7,7 @@ import {
 } from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import { HomeNewActionsView } from "../../components/HomeNewActionsView";
+import InviteMemberCard from "../../components/InviteMemberCard";
 
 const HomePage: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
@@ -49,7 +50,7 @@ const HomePage: React.FC = () => {
   return (
     <div className="flex flex-col w-full h-full items-center bg-white">
       <div className="flex flex-col py-16 w-[728px] gap-y-5 overflow-y-auto">
-        <h1 className="text-[#111] !text-4xl font-font">Your to-do</h1>
+        <h1 className="text-[#111] !text-2xl font-font">Your to-do</h1>
         {error && <p className="text-red-500">{error}</p>}
         <div className="flex flex-col gap-y-8">
           {todoActions.length > 0 && (
@@ -58,6 +59,7 @@ const HomePage: React.FC = () => {
               onTaskComplete={handleTaskComplete}
             />
           )}
+          <InviteMemberCard />
           <HomeNewActionsView actions={newActions} />
         </div>
       </div>

@@ -33,7 +33,6 @@ export class UserService {
 
   async create(data: Partial<User>): Promise<User> {
     const user = this.userRepository.create(data);
-
     return this.userRepository.save(user);
   }
 
@@ -62,6 +61,10 @@ export class UserService {
 
   async findOneByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOneBy({ email: email });
+  }
+
+  async findOneByReferralCode(referralCode: string): Promise<User | null> {
+    return this.userRepository.findOneBy({ referralCode });
   }
 
   async getActionRelation(
@@ -202,6 +205,25 @@ export class UserService {
     );
 
     return others;
+  }
+
+  /**
+   * Make two users friends without sending any notifications. Used sed when a user signs up with a referral code.
+   */
+  async makeFriendsAutomated(
+    requesterId: number,
+    addresseeId: number,
+  ): Promise<void> {
+    const requester = await this.findOneOrFail(requesterId);
+    const addressee = await this.findOneOrFail(addresseeId);
+
+    const rel = this.friendRepository.create({
+      requester,
+      addressee,
+      status: FriendStatus.Accepted,
+    });
+
+    await this.friendRepository.save(rel);
   }
 
   /** Pending sent / received requests as `UserDto[]`. */

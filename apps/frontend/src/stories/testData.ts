@@ -37,6 +37,7 @@ export const testActions: ActionDto[] = [
         date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
         newStatus: "active",
         showInTimeline: true,
+        sendNotifsTo: "all",
       },
       {
         id: 2,
@@ -45,6 +46,7 @@ export const testActions: ActionDto[] = [
         date: new Date(Date.now() - 1000 * 60 * 60 * 49).toISOString(),
         newStatus: "active",
         showInTimeline: true,
+        sendNotifsTo: "all",
       },
     ],
   },
@@ -121,6 +123,7 @@ export const testAuthUser: UserDto = {
   email: "first.lastname@example.com",
   admin: false,
   onboardingComplete: false,
+  referralCode: "1234567890",
 };
 
 export const testFriends: ProfileDto[] = [testUser, testUser, testUser];

@@ -1,14 +1,23 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router";
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router";
 import Card, { CardStyle } from "../../components/system/Card";
 import { authMe, authRegister, SignUpDto } from "@alliance/shared/client";
 import SignupForm from "../../components/SignupForm";
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();
-
+  const [searchParams] = useSearchParams();
+  
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    const refParam = searchParams.get('ref');
+    if (refParam) {
+      setReferralCode(refParam);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (formData: SignUpDto) => {
     setError(null);
@@ -49,7 +58,7 @@ const SignupPage: React.FC = () => {
           )}
 
           <Card className="p-8" style={CardStyle.White}>
-            <SignupForm onSubmit={handleSubmit} loading={loading} />
+            <SignupForm onSubmit={handleSubmit} loading={loading} referralCode={referralCode} />
           </Card>
 
           <div className="mt-6 text-center">

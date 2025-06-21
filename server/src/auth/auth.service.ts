@@ -58,7 +58,22 @@ export class AuthService {
     if (await this.usersService.findOneByEmail(signUp.email)) {
       throw new BadRequestException('User already exists');
     }
-    const user = await this.usersService.create(signUp);
+
+    let referredBy: User | null = null;
+    if (signUp.referralCode) {
+      referredBy = await this.usersService.findOneByReferralCode(
+        signUp.referralCode,
+      );
+    }
+
+    const user = await this.usersService.create({
+      ...signUp,
+      referredBy,
+    });
+
+    if (referredBy) {
+      await this.usersService.makeFriendsAutomated(referredBy.id, user.id);
+    }
     return user;
   }
 
