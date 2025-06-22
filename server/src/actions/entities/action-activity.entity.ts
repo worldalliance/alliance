@@ -28,7 +28,7 @@ export class ActionActivity {
   })
   type: ActionActivityType;
 
-  @ManyToOne(() => Action, { eager: false })
+  @ManyToOne(() => Action, { eager: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'actionId' })
   action: Action;
 
