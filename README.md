@@ -36,12 +36,12 @@ build: `yarn eas build --platform [ios|android]`
 
 ## Miscellaneous commands
 
-### Certbot
-
-`sudo dnf install -y certbot python3-certbot-nginx`
-
-`sudo certbot --nginx -d alliance-beta.xyz -d admin.alliance-beta.xyz`
-
 ### Openapi client gen:
 
-`yarn gen-api` (with dev server running)
+`yarn gen-api` (in top level folder, dev server must be running)
+
+### Server migrations
+
+generate migrations: `npm run migration:generate -- migrations/[name of migration]`
+
+run migrations `npm run migration:run`
