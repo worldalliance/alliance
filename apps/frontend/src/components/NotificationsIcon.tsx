@@ -6,6 +6,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import { useNavigate } from "react-router";
+import { formatDate } from "date-fns";
 
 function getWebAppLocation(webAppLocation: string) {
   if (webAppLocation.startsWith("/")) {
@@ -59,7 +60,7 @@ const NotificationsIcon = () => {
     >
       <p className="font-avenir font-bold text-sm">{unreadCount}</p>
       {isOpen && (
-        <div className="absolute top-8 shadow-lg/5 right-0 bg-white rounded border border-zinc-200 p-4 min-w-[280px] space-y-2">
+        <div className="absolute top-8 shadow-lg/5 right-0 bg-white rounded border border-zinc-200 p-4 min-w-[370px] space-y-2">
           {notifications.length === 0 && (
             <p className="text-zinc-500">No notifications</p>
           )}
@@ -70,10 +71,13 @@ const NotificationsIcon = () => {
                 notification.id,
                 notification.webAppLocation
               )}
-              className={`text-black hover:bg-zinc-100 p-2 rounded-md ${
+              className={`text-black hover:bg-zinc-100 p-2 rounded-md flex gap-x-4 items-center ${
                 !notification.read ? "bg-red-50" : ""
               }`}
             >
+              <p className="text-gray-500 text-xs">
+                {formatDate(notification.updatedAt, "MM/dd/yyyy")}
+              </p>
               {notification.message}
             </div>
           ))}
