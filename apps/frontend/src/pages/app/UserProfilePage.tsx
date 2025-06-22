@@ -102,6 +102,11 @@ const UserProfilePage: React.FC = () => {
     }
   }, [id, user]);
 
+  // reset tab on user change
+  useEffect(() => {
+    setSelectedTab(ProfileTabs.Activity);
+  }, [id]);
+
   useEffect(() => {
     if (!id) return;
     actionsFindCompletedForUser({ path: { id: parseInt(id) } }).then(
@@ -199,13 +204,13 @@ const UserProfilePage: React.FC = () => {
                   handleSendFriendRequest={handleSendFriendRequest}
                   handleRemoveFriend={handleRemoveFriend}
                 />
-                <Button
+                {/* <Button
                   color={ButtonColor.Light}
                   onClick={() => {}}
                   className="!p-[8px] rounded-full"
                 >
                   <img src={dots} alt="send" className="w-7 h-7" />
-                </Button>
+                </Button> */}
               </>
             )}
             {isMe && (

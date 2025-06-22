@@ -79,12 +79,12 @@ const TaskCard: React.FC<TaskCardProps> = ({
         {text}
       </Button>
     );
-  }, [action.type]);
+  }, [action.type, goToActionPage]);
 
   return (
     <Card
       style={CardStyle.White}
-      className={` transition-all duration-500 w-full relative !rounded-lg
+      className={` transition-all duration-500 w-full relative
          ${state === TaskCardState.Minified ? "pb-4" : ""}
           ${state === TaskCardState.Closed ? "py-0 border-0" : ""}`}
       closed={state === TaskCardState.Closed}

@@ -19,7 +19,7 @@ export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
       ))}
       {initialActions.length === 0 && (
         <p className="rounded border border-gray-200 text-center text-gray-500 py-5">
-          No actions need your attention right now!
+          No new actions to commit to
         </p>
       )}
     </div>

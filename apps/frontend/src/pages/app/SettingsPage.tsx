@@ -55,23 +55,23 @@ const SettingsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-pagebg pt-20 px-8 md:px-16">
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div className="gap-x-2">
-            <h1 className="text-2xl font-sabon">Account</h1>
-            <AdminOnly>
-              <Badge className="!bg-yellow-600 text-white">Admin</Badge>
-            </AdminOnly>
-          </div>
-          <Button
-            onClick={handleLogout}
-            color={ButtonColor.Stone}
-            className="px-4"
-          >
-            Log Out
-          </Button>
-        </div>
-
         <Card style={CardStyle.White} className="p-8 mb-6">
+          <div className="flex justify-between items-center mb-8">
+            <div className="gap-x-2">
+              <h1 className="text-2xl font-sabon">Account</h1>
+              <AdminOnly>
+                <Badge className="!bg-yellow-600 text-white">Admin</Badge>
+              </AdminOnly>
+            </div>
+            <Button
+              onClick={handleLogout}
+              color={ButtonColor.Stone}
+              className="px-4"
+            >
+              Log Out
+            </Button>
+          </div>
+
           <div className="mb-6">
             <FormInput
               label="Full Name"

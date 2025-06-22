@@ -189,28 +189,24 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
                 {friends.map((friend) => (
                   <div
                     key={friend.email}
-                    className="flex items-center p-3 border border-gray-300 rounded-lg"
+                    className="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:border-gray-500"
+                    onClick={() => navigate(`/user/${friend.id}`)}
                   >
                     <UserBubble className="w-12 h-12 mr-4" />
                     <div className="flex-grow">
                       <p className="font-medium">{friend.name}</p>
                       <p className="text-stone-500 text-sm">{friend.email}</p>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        onClick={() => navigate(`/user/${friend.id}`)}
-                        color={ButtonColor.Light}
-                      >
-                        View Profile
-                      </Button>
-                      <Button
-                        onClick={() => handleRemoveFriend(friend.id)}
-                        color={ButtonColor.Red}
-                        disabled={processingIds[friend.email]}
-                      >
-                        {processingIds[friend.email] ? "Removing..." : "Remove"}
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={() => handleRemoveFriend(friend.id)}
+                      color={ButtonColor.Red}
+                      disabled={processingIds[friend.email]}
+                      className="text-sm"
+                    >
+                      {processingIds[friend.email]
+                        ? "Removing..."
+                        : "Remove friend"}
+                    </Button>
                   </div>
                 ))}
               </div>

@@ -21,8 +21,9 @@ const ActionCommitButton = ({
     }
     if (isAuthenticated) {
       onCommit();
+    } else {
+      setPanelOpen(true);
     }
-    setPanelOpen(true);
   };
 
   const cardRef = useRef<HTMLDivElement>(null);

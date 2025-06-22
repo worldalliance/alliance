@@ -42,9 +42,9 @@ const FriendRequestButton = ({
   }
   return (
     <Button
-      color={ButtonColor.Green}
+      color={isHovered ? ButtonColor.Red : ButtonColor.Green}
       onClick={handleRemoveFriend}
-      className={`transition-all duration-300 min-w-36 ${isHovered ? "bg-red-700" : ""}`}
+      className={`min-w-36`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
