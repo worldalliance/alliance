@@ -178,6 +178,29 @@ export type LatLonDto = {
     longitude: number;
 };
 
+export type User = {
+    id: number;
+    name: string;
+    email: string;
+    password: string;
+    admin: boolean;
+    profilePicture: string | null;
+    profileDescription: string | null;
+    referralCode: string | null;
+    over18: boolean | null;
+    onboardingComplete: boolean;
+};
+
+export type ActionActivityDto = {
+    id: number;
+    /**
+     * Type of action activity
+     */
+    type: 'user_joined' | 'user_completed';
+    createdAt: string;
+    user: User;
+};
+
 export type CreateActionDto = {
     /**
      * Name of the action
@@ -879,6 +902,21 @@ export type ActionsUserLocationsResponses = {
 };
 
 export type ActionsUserLocationsResponse = ActionsUserLocationsResponses[keyof ActionsUserLocationsResponses];
+
+export type ActionsGetActionActivitiesData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/activities';
+};
+
+export type ActionsGetActionActivitiesResponses = {
+    200: Array<ActionActivityDto>;
+};
+
+export type ActionsGetActionActivitiesResponse = ActionsGetActionActivitiesResponses[keyof ActionsGetActionActivitiesResponses];
 
 export type ActionsFindAllWithDraftsData = {
     body?: never;

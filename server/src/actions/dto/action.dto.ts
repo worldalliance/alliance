@@ -2,6 +2,8 @@ import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Action } from '../entities/action.entity';
 import { UserAction } from '../entities/user-action.entity';
 import { ActionEvent } from '../entities/action-event.entity';
+import { ActionActivity } from '../entities/action-activity.entity';
+import { User } from '../../user/user.entity';
 
 export class UserActionDto extends PickType(UserAction, [
   'status',
@@ -78,4 +80,13 @@ export class LatLonDto {
 
   @ApiProperty({ type: Number })
   longitude: number;
+}
+
+export class ActionActivityDto extends PickType(ActionActivity, [
+  'id',
+  'type',
+  'createdAt',
+]) {
+  @ApiProperty({ type: () => User })
+  user: Pick<User, 'id' | 'name' | 'email'>;
 }

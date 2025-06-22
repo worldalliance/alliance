@@ -7,6 +7,7 @@ import { UserModule } from '../user/user.module';
 import { User } from '../user/user.entity';
 import { UserAction } from './entities/user-action.entity';
 import { ActionEvent } from './entities/action-event.entity';
+import { ActionActivity } from './entities/action-activity.entity';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ActionEvent } from './entities/action-event.entity';
     TypeOrmModule.forFeature([Action]),
     TypeOrmModule.forFeature([UserAction]),
     TypeOrmModule.forFeature([ActionEvent]),
+    TypeOrmModule.forFeature([ActionActivity]),
     UserModule,
   ],
   controllers: [ActionsController],

@@ -6,6 +6,7 @@ import {
   UpdateActionDto,
   LatLonDto,
   CreateActionEventDto,
+  ActionActivityDto,
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
@@ -13,6 +14,10 @@ import { ActionEvent, ActionStatus } from './entities/action-event.entity';
 import { In, Not, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';
+import {
+  ActionActivity,
+  ActionActivityType,
+} from './entities/action-activity.entity';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Observable } from 'rxjs';
 import { from } from 'rxjs';
@@ -27,6 +32,8 @@ export class ActionsService {
     private readonly actionEventRepository: Repository<ActionEvent>,
     @InjectRepository(UserAction)
     private readonly userActionRepository: Repository<UserAction>,
+    @InjectRepository(ActionActivity)
+    private readonly actionActivityRepository: Repository<ActionActivity>,
     private userService: UserService,
     public eventEmitter: EventEmitter2,
   ) {}
@@ -161,15 +168,32 @@ export class ActionsService {
     );
     this.eventEmitter.emit('action.delta', { actionId, delta: +1 });
 
+    // Create activity record for user joining
+    const activity = this.actionActivityRepository.create({
+      type: ActionActivityType.USER_JOINED,
+      actionId: actionId,
+      userId: userId,
+    });
+    await this.actionActivityRepository.save(activity);
     return this.userActionRepository.save(relation);
   }
 
   async completeAction(actionId: number, userId: number): Promise<UserAction> {
-    return this.setActionRelation(
+    const relation = await this.setActionRelation(
       actionId,
       userId,
       UserActionRelation.completed,
     );
+
+    // Create activity record for user completing
+    const activity = this.actionActivityRepository.create({
+      type: ActionActivityType.USER_COMPLETED,
+      actionId,
+      userId,
+    });
+    await this.actionActivityRepository.save(activity);
+
+    return relation;
   }
 
   async update(
@@ -261,5 +285,13 @@ export class ActionsService {
         latitude: ua.user.city.latitude,
         longitude: ua.user.city.longitude,
       }));
+  }
+
+  async getActionActivities(actionId: number): Promise<ActionActivityDto[]> {
+    return this.actionActivityRepository.find({
+      where: { actionId },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+    });
   }
 }

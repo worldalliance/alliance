@@ -23,6 +23,7 @@ import {
   UserActionDto,
   LatLonDto,
   CreateActionEventDto,
+  ActionActivityDto,
 } from './dto/action.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { AdminGuard } from '../auth/guards/admin.guard';
@@ -109,6 +110,16 @@ export class ActionsController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<LatLonDto[]> {
     return this.actionsService.userCoordinatesForAction(id);
+  }
+
+  @Get(':id/activities')
+  @Public()
+  @ApiOkResponse({ type: [ActionActivityDto] })
+  @ApiOperation({ summary: 'Get recent activities for an action' })
+  async getActionActivities(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ActionActivityDto[]> {
+    return this.actionsService.getActionActivities(id);
   }
 
   @Get('all')

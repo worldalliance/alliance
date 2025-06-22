@@ -20,6 +20,7 @@ import { Route } from "../../../.react-router/types/src/pages/app/+types/ActionP
 import { useAuth } from "../../lib/AuthContext";
 import ActionTaskPanel from "../../components/ActionTaskPanel";
 import ActionCommitButton from "../../components/ActionCommitButton";
+import ActionActivityList from "../../components/ActionActivityList";
 
 export async function loader({
   params,
@@ -172,6 +173,7 @@ export default function ActionPage() {
               <b>6 friends</b> already joined this action!
             </p> */}
               <StatsCard />
+              {action && <ActionActivityList actionId={action.id} />}
             </Card>
           </div>
         }
