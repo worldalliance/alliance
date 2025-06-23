@@ -395,6 +395,8 @@ jobs:
             export SMTP_HOST=${{ secrets.SMTP_HOST }}
             export SMTP_USER=${{ secrets.SMTP_USER }}
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            export STRIPE_ENDPOINT_SECRET=${{ secrets.STRIPE_ENDPOINT_SECRET }}
+            export STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
 
             rollback () {
               echo "Deployment failed - rolling back"
