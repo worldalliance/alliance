@@ -65,8 +65,12 @@ const ActionCommitButton = ({
   const [panelOpen, setPanelOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  if (committed) {
+    return null;
+  }
+
   return (
-    <div className="relative">
+    <div className="relative min-w-[130px]">
       <Button
         onClick={handleClick}
         disabled={committed}

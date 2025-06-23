@@ -71,6 +71,8 @@ __metadata:
     "@storybook/react-vite": "npm:^8.6.12"
     "@storybook/test": "npm:^8.6.12"
     "@storybook/theming": "npm:^8.6.14"
+    "@stripe/react-stripe-js": "npm:^3.7.0"
+    "@stripe/stripe-js": "npm:^7.3.1"
     "@tailwindcss/vite": "npm:^4.1.4"
     "@types/compression": "npm:^1"
     "@types/d3": "npm:^7.4.3"
@@ -4097,6 +4099,26 @@ __metadata:
   peerDependencies:
     storybook: ^8.2.0 || ^8.3.0-0 || ^8.4.0-0 || ^8.5.0-0 || ^8.6.0-0
   checksum: 10c0/765bfbfedcbdcdb719b164a14bb61b8ad60819c6124d0e1f243b6b45e62de877ec8dff6259092207a58d6c2771f4883650e9784a2be1aaf7e0ef0fe75465db0d
+  languageName: node
+  linkType: hard
+
+"@stripe/react-stripe-js@npm:^3.7.0":
+  version: 3.7.0
+  resolution: "@stripe/react-stripe-js@npm:3.7.0"
+  dependencies:
+    prop-types: "npm:^15.7.2"
+  peerDependencies:
+    "@stripe/stripe-js": ">=1.44.1 <8.0.0"
+    react: ">=16.8.0 <20.0.0"
+    react-dom: ">=16.8.0 <20.0.0"
+  checksum: 10c0/663e9176b0a710632abe64bb7efca63a22d8cf690942a4507d57ba1d4fb6328cd08e3cf9040ea95348540c47ed8dbc5250982b150b38eb9564861dc0ecd83d72
+  languageName: node
+  linkType: hard
+
+"@stripe/stripe-js@npm:^7.3.1":
+  version: 7.3.1
+  resolution: "@stripe/stripe-js@npm:7.3.1"
+  checksum: 10c0/5ff21220074cae1f07c3f17372280f7f4884b8dcc2ace06f7d4e581314b376c72fc1888135408324de277c3bef471d26660f82f46945e313a9892363d8d15727
   languageName: node
   linkType: hard
 
@@ -14532,7 +14554,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prop-types@npm:15, prop-types@npm:^15.6.2, prop-types@npm:^15.8.1":
+"prop-types@npm:15, prop-types@npm:^15.6.2, prop-types@npm:^15.7.2, prop-types@npm:^15.8.1":
   version: 15.8.1
   resolution: "prop-types@npm:15.8.1"
   dependencies:

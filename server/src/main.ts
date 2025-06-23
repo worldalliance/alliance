@@ -27,7 +27,9 @@ function validateEnv() {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   validateEnv();
   app.useGlobalPipes(new ValidationPipe());

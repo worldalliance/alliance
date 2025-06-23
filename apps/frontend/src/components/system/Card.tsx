@@ -7,6 +7,7 @@ export enum CardStyle {
   Grey = "grey",
   Black = "black",
   Image = "image",
+  Green = "green",
 }
 
 export interface CardProps extends PropsWithChildren {
@@ -37,6 +38,7 @@ const Card: React.FC<CardProps> = ({
     [CardStyle.Grey]: "bg-stone-200/75 border-gray-300 border-[1.5px]",
     [CardStyle.Black]: "bg-black border-gray-300 text-white",
     [CardStyle.Image]: "bg-transparent border-none",
+    [CardStyle.Green]: "bg-[#daedcc] border-[#5d9c2d] rounded-lg",
   };
 
   return (

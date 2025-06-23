@@ -88,6 +88,7 @@
     --color-hgreen: #3f5640;
     --pagebg: #ffffff;
     --color-agreen: #c4d8bf;
+    --color-bgreen: rgb(143, 190, 111);
 }
 
 html {
@@ -106,7 +107,7 @@ h2 {
     font-family: 'Newsreader';
     font-weight: bold;
     font-size: 20px;
-    margin-top: 4px;
+    margin-top: 6px;
 }
 
 p {
@@ -168,4 +169,12 @@ img {
 .coloroverlay {
     background: radial-gradient(circle at 20% 20%, #ff6700 10%, #95ff00 100%);
     opacity: 0.2;
+}
+
+.p-AccordionButton {
+    display: none !important;
+}
+
+.p-AccordionButtonContent {
+    display: none !important;
 }

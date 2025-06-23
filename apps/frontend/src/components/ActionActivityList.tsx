@@ -70,7 +70,7 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
           <div key={activity.id} className="flex items-start space-x-3">
             <div className="flex-shrink-0">
               {activity.type === "user_joined" ? (
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                <div className="w-2 h-2 bg-bgreen rounded-full mt-2"></div>
               ) : (
                 <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
               )}

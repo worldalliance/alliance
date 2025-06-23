@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLoaderData, useParams } from "react-router";
 import Card, { CardStyle } from "../../components/system/Card";
-import StatsCard from "../../components/StatsCard";
 import Globe from "../../components/Globe";
 import {
   actionsFindOne,
@@ -41,8 +40,6 @@ export async function loader({
     return undefined;
   }
 
-  console.log("locations", locations);
-
   return { ...action.data, locations: locations.data || [] };
 }
 
@@ -64,7 +61,6 @@ export default function ActionPage() {
       actionsMyStatus({
         path: { id },
       }).then((response) => {
-        console.log("userStatusResponse", response);
         if (response.error) {
           console.error("Failed to fetch user status", response.error);
           setError("Failed to fetch user status");
@@ -105,7 +101,7 @@ export default function ActionPage() {
 
   const mainContent = useMemo(
     () => (
-      <div className="flex flex-col gap-y-3 flex-2 p-10 px-15">
+      <div className="flex flex-col gap-y-3 flex-2 p-10 px-5">
         {action?.image && (
           <img
             src={getImageSource(action.image)}
@@ -117,15 +113,17 @@ export default function ActionPage() {
           <div className="flex flex-col gap-y-3">
             <h1 className="">{action?.name}</h1>
           </div>
-          <ActionCommitButton
-            committed={userRelation === "joined"}
-            isAuthenticated={isAuthenticated}
-            onCommit={onJoinAction}
-          />
+          {action?.type !== "Funding" && (
+            <ActionCommitButton
+              committed={userRelation === "joined"}
+              isAuthenticated={isAuthenticated}
+              onCommit={onJoinAction}
+            />
+          )}
         </div>
         {error && <div className="text-red-500">{error}</div>}
         {/* {userRelation === "joined" && <PokePanel />} */}
-        {userRelation === "none" && (
+        {/* {userRelation === "none" && (
           <Card style={CardStyle.Grey} className="mb-5">
             <h2>Why Join?</h2>
             <p>
@@ -133,8 +131,10 @@ export default function ActionPage() {
                 "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."}
             </p>
           </Card>
+        )} */}
+        {action && (
+          <ActionTaskPanel action={action} userRelation={userRelation} />
         )}
-        {action && <ActionTaskPanel action={action} />}
         {action && <ActionEventsPanel events={action.events} />}
         <h2 className="!mt-4">Summary</h2>
         <p>{action?.description}</p>
@@ -172,9 +172,12 @@ export default function ActionPage() {
             <p className="text-center pt-2 text-[11pt]">
               <b>6 friends</b> already joined this action!
             </p> */}
-              <StatsCard />
-              {action && <ActionActivityList actionId={action.id} />}
             </Card>
+            {action && (
+              <Card style={CardStyle.White} className="p-8">
+                <ActionActivityList actionId={action.id} />
+              </Card>
+            )}
           </div>
         }
         coloredRight={false}

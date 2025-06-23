@@ -20,5 +20,6 @@ import { ActionActivity } from './entities/action-activity.entity';
   ],
   controllers: [ActionsController],
   providers: [ActionsService],
+  exports: [ActionsService],
 })
 export class ActionsModule {}

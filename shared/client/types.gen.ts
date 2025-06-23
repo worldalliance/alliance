@@ -189,6 +189,7 @@ export type User = {
     referralCode: string | null;
     over18: boolean | null;
     onboardingComplete: boolean;
+    stripeCustomerId: string | null;
 };
 
 export type ActionActivityDto = {
@@ -464,6 +465,14 @@ export type CitySearchDto = {
     admin1: string;
     countryCode: string;
     countryName: string;
+};
+
+export type CreatePaymentIntentDto = {
+    actionId: number;
+};
+
+export type ClientSecretDto = {
+    clientSecret: string;
 };
 
 export type AppHealthCheckData = {
@@ -1408,6 +1417,43 @@ export type GeoLoadCityDataData = {
 
 export type GeoLoadCityDataResponses = {
     200: unknown;
+};
+
+export type PaymentsCreatePaymentIntentData = {
+    body: CreatePaymentIntentDto;
+    path?: never;
+    query?: never;
+    url: '/payments/create-payment-intent';
+};
+
+export type PaymentsCreatePaymentIntentResponses = {
+    200: ClientSecretDto;
+};
+
+export type PaymentsCreatePaymentIntentResponse = PaymentsCreatePaymentIntentResponses[keyof PaymentsCreatePaymentIntentResponses];
+
+export type PaymentsGetSessionStatusData = {
+    body?: never;
+    path?: never;
+    query: {
+        session_id: string;
+    };
+    url: '/payments/session-status';
+};
+
+export type PaymentsGetSessionStatusResponses = {
+    200: unknown;
+};
+
+export type PaymentsWebhookData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/payments/webhook';
+};
+
+export type PaymentsWebhookResponses = {
+    201: unknown;
 };
 
 export type ClientOptions = {

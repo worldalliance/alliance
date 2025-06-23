@@ -119,6 +119,10 @@ export class User {
     return await bcrypt.compare(plainPassword, this.password);
   }
 
+  @Column({ nullable: true, unique: true })
+  @ApiProperty({ nullable: true })
+  stripeCustomerId: string;
+
   // -- onboarding info --
 
   @ManyToOne(() => City)

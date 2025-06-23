@@ -17,6 +17,7 @@ import { MailModule } from './mail/mail.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
 import { connectionOptions } from './datasources/dataSource';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { connectionOptions } from './datasources/dataSource';
     NotifsModule,
     GeoModule,
     MailModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [],

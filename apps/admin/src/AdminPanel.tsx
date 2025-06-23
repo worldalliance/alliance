@@ -10,7 +10,11 @@ const AdminPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+
+  if (!user?.admin) {
+    logout();
+  }
 
   useEffect(() => {
     const loadActions = async () => {

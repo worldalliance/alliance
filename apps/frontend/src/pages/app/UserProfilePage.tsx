@@ -20,7 +20,7 @@ import {
 } from "@alliance/shared/client";
 import ProfileImage from "../../components/ProfileImage";
 import testImg from "../../assets/fakebgimage.png";
-import dots from "../../assets/dots.svg";
+// import dots from "../../assets/dots.svg";
 import UserActivityCard from "../../components/UserActivityCard";
 import ForumListPost from "../../components/ForumListPost";
 import FriendRequestButton from "../../components/FriendRequestButton";

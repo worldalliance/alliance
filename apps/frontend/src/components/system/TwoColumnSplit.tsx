@@ -15,7 +15,7 @@ const TwoColumnSplit = ({
 }: TwoColumnSplitProps) => {
   return (
     <div
-      className={`flex flex-row min-h-[calc(100vh-49px)] w-full h-full justify-center bg-pagebg ${
+      className={`flex flex-row min-h-[calc(100vh-49px)] w-full h-full justify-center bg-pagebg max-w-[1100px] mx-auto ${
         coloredRight ? "bg-agreen" : "bg-white"
       }`}
     >

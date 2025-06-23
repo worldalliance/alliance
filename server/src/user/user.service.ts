@@ -297,4 +297,12 @@ export class UserService {
     }
     return user;
   }
+
+  async findOneByStripeCustomerId(
+    stripeCustomerId: string,
+  ): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { stripeCustomerId: stripeCustomerId },
+    });
+  }
 }
