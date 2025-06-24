@@ -11,6 +11,7 @@ import { Friend } from './friend.entity';
 import { City } from '../geo/city.entity';
 import { Notification } from '../notifs/entities/notification.entity';
 import { PrefillUser } from './prefill-user.entity';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { PrefillUser } from './prefill-user.entity';
     TypeOrmModule.forFeature([City]),
     TypeOrmModule.forFeature([Notification]),
     TypeOrmModule.forFeature([PrefillUser]),
+    JwtModule,
   ],
   controllers: [UserController],
   providers: [UserService, IsUserAlreadyExist],

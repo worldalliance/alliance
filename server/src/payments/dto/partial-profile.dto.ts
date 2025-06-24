@@ -1,15 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { PickType } from '@nestjs/swagger';
+import { PaymentUserDataToken } from '../entities/payment-token.entity';
 
-export class CreatePartialProfileDto {
-  @ApiProperty()
-  email: string;
-
-  @ApiProperty()
-  firstName: string;
-
-  @ApiProperty()
-  lastName: string;
-
-  @ApiProperty()
-  clientSecret: string;
-}
+export class CreatePartialProfileDto extends PickType(PaymentUserDataToken, [
+  'email',
+  'firstName',
+  'lastName',
+  'id',
+]) {}

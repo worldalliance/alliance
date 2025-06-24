@@ -8,6 +8,7 @@ import {
 export enum EmailType {
   Verification = 'verification',
   PasswordReset = 'password_reset',
+  PartialSignup = 'partial_signup',
   Welcome = 'welcome',
   Other = 'other',
 }

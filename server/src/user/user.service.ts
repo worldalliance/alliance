@@ -15,6 +15,13 @@ import {
   Notification,
 } from 'src/notifs/entities/notification.entity';
 import { PrefillUser } from './prefill-user.entity';
+import { PaymentUserDataToken } from 'src/payments/entities/payment-token.entity';
+import { JwtService } from '@nestjs/jwt';
+
+export interface PWResetJwtPayload {
+  sub: number;
+  type: string;
+}
 
 @Injectable()
 export class UserService {
@@ -29,6 +36,7 @@ export class UserService {
     private notifRepository: Repository<Notification>,
     @InjectRepository(Friend)
     private readonly friendRepository: Repository<Friend>,
+    private readonly jwtService: JwtService,
   ) {}
 
   async create(data: Partial<User>): Promise<User> {
@@ -303,6 +311,29 @@ export class UserService {
   ): Promise<User | null> {
     return this.userRepository.findOne({
       where: { stripeCustomerId: stripeCustomerId },
+    });
+  }
+
+  async generatePasswordResetToken(userId: number) {
+    const payload: PWResetJwtPayload = { sub: userId, type: 'password-reset' };
+    return this.jwtService.sign(payload, {
+      secret: process.env.JWT_SECRET,
+      expiresIn: `1d`,
+    });
+  }
+
+  async setStripeCustomerId(userId: number, stripeCustomerId: string) {
+    await this.userRepository.update(userId, { stripeCustomerId });
+  }
+
+  async createPartialProfile(
+    body: Pick<PaymentUserDataToken, 'email' | 'firstName' | 'lastName'>,
+  ): Promise<User> {
+    return this.create({
+      email: body.email,
+      name: body.firstName + ' ' + body.lastName,
+      password: Math.random().toString(36).substring(2, 15), //TODO: they have to reset this but maybe do something better
+      isNotSignedUpPartialProfile: true,
     });
   }
 }

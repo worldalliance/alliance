@@ -16,8 +16,9 @@ export class MailService {
   private readonly templates = {
     [EmailType.Welcome]: 'welcome',
     [EmailType.PasswordReset]: 'password-reset',
-    [EmailType.Verification]: 'verification',
-    [EmailType.Other]: 'other',
+    [EmailType.Verification]: '',
+    [EmailType.Other]: '',
+    [EmailType.PartialSignup]: 'partial-signup',
   };
 
   async sendMail(
@@ -77,18 +78,40 @@ export class MailService {
     );
   }
 
+  private getPasswordResetUrl(resetToken: string) {
+    return `https://worldalliance.org/resetpassword?token=${resetToken}`; //todo: domain param
+  }
+
   public async sendPasswordResetEmail(
     email: string,
     name: string,
     resetToken: string,
   ): Promise<void> {
-    const url = `https://worldalliance.org/resetpassword?token=${resetToken}`; //todo: domain param
+    const url = this.getPasswordResetUrl(resetToken);
     await this.sendMail(
       email,
       EmailType.PasswordReset,
       'a link to reset your password',
       {
         name,
+        url,
+      },
+    );
+  }
+
+  public async sendPartialSignupEmail(
+    email: string,
+    name: string,
+    resetToken: string,
+  ): Promise<void> {
+    const url = this.getPasswordResetUrl(resetToken);
+    await this.sendMail(
+      email,
+      EmailType.PartialSignup,
+      'Thanks for helping out! Want to do more?',
+      {
+        name,
+        email,
         url,
       },
     );

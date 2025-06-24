@@ -187,9 +187,10 @@ export type User = {
     profilePicture: string | null;
     profileDescription: string | null;
     referralCode: string | null;
+    stripeCustomerId: string | null;
+    isNotSignedUpPartialProfile: boolean;
     over18: boolean | null;
     onboardingComplete: boolean;
-    stripeCustomerId: string | null;
 };
 
 export type ActionActivityDto = {
@@ -473,6 +474,14 @@ export type CreatePaymentIntentDto = {
 
 export type ClientSecretDto = {
     clientSecret: string;
+    userToken: string;
+};
+
+export type CreatePartialProfileDto = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
 };
 
 export type AppHealthCheckData = {
@@ -1432,17 +1441,15 @@ export type PaymentsCreatePaymentIntentResponses = {
 
 export type PaymentsCreatePaymentIntentResponse = PaymentsCreatePaymentIntentResponses[keyof PaymentsCreatePaymentIntentResponses];
 
-export type PaymentsGetSessionStatusData = {
-    body?: never;
+export type PaymentsSetPartialProfileData = {
+    body: CreatePartialProfileDto;
     path?: never;
-    query: {
-        session_id: string;
-    };
-    url: '/payments/session-status';
+    query?: never;
+    url: '/payments/set-partial-profile';
 };
 
-export type PaymentsGetSessionStatusResponses = {
-    200: unknown;
+export type PaymentsSetPartialProfileResponses = {
+    201: unknown;
 };
 
 export type PaymentsWebhookData = {

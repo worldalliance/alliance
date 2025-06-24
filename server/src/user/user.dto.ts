@@ -31,7 +31,7 @@ export class ProfileDto extends PickType(User, [
   'profileDescription',
 ]) {}
 
-export class UpdateProfileDto extends PartialType(ProfileDto) {}
+export class UpdateProfileDto extends PartialType(User) {}
 
 export class OnboardingDto {
   @ApiProperty({ type: Number, nullable: true })

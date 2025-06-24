@@ -3,7 +3,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { UserService } from '../user/user.service';
+import { PWResetJwtPayload, UserService } from '../user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '../user/user.entity';
 import { SignUpDto } from './dto/sign-up.dto';
@@ -12,11 +12,6 @@ import { SignInResponseDto } from './dto/signin.dto';
 import { Response } from 'express';
 import { AuthTokens } from './dto/authtokens.dto';
 import { MailService } from '../mail/mail.service';
-
-export interface PWResetJwtPayload {
-  sub: number;
-  type: string;
-}
 
 @Injectable()
 export class AuthService {
@@ -147,13 +142,7 @@ export class AuthService {
       return; // fail silently to avoid leaking emails
     }
 
-    const payload: PWResetJwtPayload = { sub: user.id, type: 'password-reset' };
-
-    const token = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
-      expiresIn: `1d`,
-    });
-
+    const token = await this.usersService.generatePasswordResetToken(user.id);
     await this.mailService.sendPasswordResetEmail(user.email, user.name, token);
     return user;
   }
@@ -180,6 +169,11 @@ export class AuthService {
     }
 
     const updatedUser = await this.usersService.setPassword(user.id, password);
-    console.log('updatedUser', updatedUser);
+
+    if (updatedUser.isNotSignedUpPartialProfile) {
+      await this.usersService.update(updatedUser.id, {
+        isNotSignedUpPartialProfile: false,
+      });
+    }
   }
 }

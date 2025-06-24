@@ -123,6 +123,10 @@ export class User {
   @ApiProperty({ nullable: true })
   stripeCustomerId: string;
 
+  @Column({ default: false })
+  @ApiProperty()
+  isNotSignedUpPartialProfile: boolean;
+
   // -- onboarding info --
 
   @ManyToOne(() => City)

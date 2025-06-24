@@ -1,4 +1,4 @@
-import { ActionDto } from "@alliance/shared/client";
+import { ActionDto, paymentsSetPartialProfile } from "@alliance/shared/client";
 import Card, { CardStyle } from "./system/Card";
 import {
   PaymentElement,
@@ -11,6 +11,7 @@ import { usePaymentStatus } from "./PaymentStatus";
 import ActionTaskPanelCompleted from "./ActionTaskPanelCompleted";
 import { useAuth } from "../lib/AuthContext";
 import StripeStyleFormInput from "./StripeStyleFormInput";
+import { useStripeToken } from "./StripeWrapper";
 
 export interface ActionTaskPanelFundingProps {
   action: ActionDto;
@@ -26,12 +27,49 @@ const ActionTaskPanelFunding = ({ action }: ActionTaskPanelFundingProps) => {
   const [expanded, setExpanded] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const { token } = useStripeToken();
+
+  console.log("token", token);
+
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
 
       if (!stripe || !elements) {
         return;
+      }
+
+      // For unauthenticated users, create partial profile before payment
+      if (!isAuthenticated) {
+        const formData = new FormData(event.currentTarget);
+        const firstName = formData.get("firstName") as string;
+        const lastName = formData.get("lastName") as string;
+        const email = formData.get("email") as string;
+
+        if (!firstName || !lastName || !email) {
+          setErrorMessage("Please fill in all required fields");
+          return;
+        }
+
+        if (token) {
+          try {
+            await paymentsSetPartialProfile({
+              body: {
+                email,
+                firstName,
+                lastName,
+                id: token,
+              },
+            });
+          } catch (error) {
+            console.error("Failed to create partial profile:", error);
+            setErrorMessage("Failed to submit data");
+            return;
+          }
+        } else {
+          setErrorMessage("Payment setup error. Please try again.");
+          return;
+        }
       }
 
       const res = await stripe.confirmPayment({
@@ -45,7 +83,7 @@ const ActionTaskPanelFunding = ({ action }: ActionTaskPanelFundingProps) => {
         setErrorMessage(res.error.message ?? null);
       }
     },
-    [stripe, elements]
+    [stripe, elements, isAuthenticated, token]
   );
 
   if (status === "succeeded") {
