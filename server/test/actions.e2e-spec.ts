@@ -2,7 +2,6 @@ import * as request from 'supertest';
 import { Action, ActionTaskType } from '../src/actions/entities/action.entity';
 import {
   ActionStatus,
-  NotificationType,
 } from '../src/actions/entities/action-event.entity';
 import {
   CreateActionDto,
@@ -193,7 +192,6 @@ describe('Actions (e2e)', () => {
         date: new Date(),
         sendNotifsTo: UserActionRelation.joined,
         showInTimeline: true,
-        sendNotifsTo: NotificationType.All,
       };
 
       const res = await request(ctx.app.getHttpServer())

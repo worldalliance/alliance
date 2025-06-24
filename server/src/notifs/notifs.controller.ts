@@ -15,7 +15,7 @@ import { NotificationDto } from './dto/notification.dto';
 @Controller('notifs')
 export class NotifsController {
   constructor(private readonly notifsService: NotifsService) {}
-
+  
   @Get()
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [NotificationDto] })
