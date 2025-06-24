@@ -49,4 +49,43 @@ describe('Notifications (e2e)', () => {
     const notifs = await ctx.agent.get('/notifs').expect(200);
     expect(notifs.body[0].read).toBe(true);
   });
+
+  describe('Push Token Endpoints', () => {
+    const pushToken = 'test-push-token-123';
+
+    it('user can save a push token', async () => {
+      const res = await ctx.agent
+        .post('/user/pushToken')
+        .send({ token: pushToken })
+        .expect(201);
+
+      expect(res.body).toEqual({ success: true });
+
+      const userRepo = ctx.dataSource.getRepository(User);
+      const user = await userRepo.findOne({
+        where: { id: ctx.testUserId },
+      });
+      expect(user && user.pushTokens).toContain(pushToken);
+    });
+
+    it('user can remove a push token', async () => {
+      const userRepo = ctx.dataSource.getRepository(User);
+      const user = await userRepo.findOne({ where: { id: ctx.testUserId } });
+      if (user && (!user.pushTokens || !user.pushTokens.includes(pushToken))) {
+        user.pushTokens = [...(user.pushTokens || []), pushToken];
+        await userRepo.save(user);
+      }
+
+      const res = await ctx.agent
+        .post('/user/removePushToken')
+        .send({ userId: ctx.testUserId, token: pushToken })
+        .expect(201);
+
+      expect(res.body).toEqual({ success: true });
+
+      const updatedUser = await userRepo.findOne({ where: { id: ctx.testUserId } });
+      expect(updatedUser && updatedUser.pushTokens).not.toContain(pushToken);
+    });
+
+  });
 });
