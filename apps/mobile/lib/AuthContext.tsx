@@ -10,7 +10,7 @@ import {
   authLogout,
   authMe,
   authRefreshTokens,
-  ProfileDto,
+  UserDto,
 } from "../../../shared/client";
 import { useRouter } from "expo-router";
 import { client } from "@alliance/shared/client/client.gen";
@@ -18,7 +18,7 @@ import { getApiUrl } from "./config";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: ProfileDto | undefined;
+  user: UserDto | undefined;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
@@ -40,7 +40,7 @@ export const AuthProvider: React.FC<
     tokenStore: AuthTokenStore;
   }>
 > = ({ children, tokenStore }) => {
-  const [user, setUser] = useState<ProfileDto | undefined>(undefined);
+  const [user, setUser] = useState<UserDto | undefined>(undefined);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const router = useRouter();
@@ -142,13 +142,6 @@ export const AuthProvider: React.FC<
         throw new Error("Login failed");
       }
 
-      const userProfile = await authMe();
-      if (!userProfile.data) {
-        throw new Error("Failed to fetch user profile");
-      }
-
-      setUser(userProfile.data);
-
       console.log("saving tokens");
       console.log("access token: ", response.data.access_token);
       console.log("refresh token: ", response.data.refresh_token);
@@ -165,6 +158,15 @@ export const AuthProvider: React.FC<
         response.data.refresh_token
       );
       await saveTokens(response.data.access_token, response.data.refresh_token);
+
+      const userProfile = await authMe();
+      if (!userProfile.data) {
+        throw new Error("Failed to fetch user profile");
+      }
+
+      console.log("userProfile", userProfile.data);
+
+      setUser(userProfile.data);
 
       router.replace("/");
     } catch (error) {
