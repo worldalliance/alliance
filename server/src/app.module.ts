@@ -63,20 +63,20 @@ export class AppModule {
   }
 
   async onModuleInit() {
-    if (process.env.ADMIN_USER) {
-      const user = await this.userService.findOneByEmail(
-        process.env.ADMIN_USER,
-      );
-      if (user) {
-        await this.userService.setAdmin(user.id, true);
-      } else {
-        await this.userService.create({
-          email: process.env.ADMIN_USER,
-          password: process.env.ADMIN_PASSWORD,
-          name: 'Admin',
-          admin: true,
-        });
-      }
-    }
+    // if (process.env.ADMIN_USER) {
+    //   const user = await this.userService.findOneByEmail(
+    //     process.env.ADMIN_USER,
+    //   );
+    //   if (user) {
+    //     await this.userService.setAdmin(user.id, true);
+    //   } else {
+    //     await this.userService.create({
+    //       email: process.env.ADMIN_USER,
+    //       password: process.env.ADMIN_PASSWORD,
+    //       name: 'Admin',
+    //       admin: true,
+    //     });
+    //   }
+    // }
   }
 }
