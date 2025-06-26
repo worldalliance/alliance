@@ -5,13 +5,16 @@ import {
     StyleSheet,
     ScrollView,
     ActivityIndicator,
+    TouchableOpacity,
 } from "react-native";
 import { FontAwesome } from "@expo/vector-icons";
 import { notifsFindAll, notifsSetRead } from "../../../../../shared/client";
 import { useAuth } from "../../../lib/AuthContext";
+import { useRouter } from "expo-router";
 
 export default function NotificationsScreen() {
     const { user } = useAuth();
+    const router = useRouter();
     const [notifications, setNotifications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -63,6 +66,12 @@ export default function NotificationsScreen() {
         });
     };
 
+    const handleNotificationPress = (notif: any) => {
+        if (notif.actionId) {
+            router.push(`/action/${notif.actionId}`);
+        }
+    };
+
     if (!user) {
         return (
             <View style={styles.container}>
@@ -86,29 +95,34 @@ export default function NotificationsScreen() {
                     <Text style={styles.emptyText}>No notifications</Text>
                 ) : (
                     notifications.map((notif, idx) => (
-                        <View
+                        <TouchableOpacity
                             key={notif.id}
-                            style={[
-                                styles.notificationItem,
-                                (notif.read || readIds.has(notif.id)) && styles.notificationRead,
-                            ]}
+                            onPress={() => handleNotificationPress(notif)}
+                            activeOpacity={0.7}
                         >
-                            <FontAwesome
-                                name={notif.read || readIds.has(notif.id) ? "envelope-open" : "envelope"}
-                                size={22}
-                                color={notif.read || readIds.has(notif.id) ? "#aaa" : "#0D1B2A"}
-                                style={styles.menuIcon}
-                            />
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.notificationTitle}>{notif.title || "Notification"}</Text>
-                                <Text style={styles.notificationBody}>{notif.body || notif.message}</Text>
-                                <Text style={styles.notificationDate}>
-                                    {notif.createdAt
-                                        ? new Date(notif.createdAt).toLocaleString()
-                                        : ""}
-                                </Text>
+                            <View
+                                style={[
+                                    styles.notificationItem,
+                                    (notif.read || readIds.has(notif.id)) && styles.notificationRead,
+                                ]}
+                            >
+                                <FontAwesome
+                                    name={notif.read || readIds.has(notif.id) ? "envelope-open" : "envelope"}
+                                    size={22}
+                                    color={notif.read || readIds.has(notif.id) ? "#aaa" : "#0D1B2A"}
+                                    style={styles.menuIcon}
+                                />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.notificationTitle}>{notif.title || "Notification"}</Text>
+                                    <Text style={styles.notificationBody}>{notif.body || notif.message}</Text>
+                                    <Text style={styles.notificationDate}>
+                                        {notif.createdAt
+                                            ? new Date(notif.createdAt).toLocaleString()
+                                            : ""}
+                                    </Text>
+                                </View>
                             </View>
-                        </View>
+                        </TouchableOpacity>
                     ))
                 )}
             </ScrollView>
