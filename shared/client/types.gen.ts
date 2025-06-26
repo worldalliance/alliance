@@ -79,6 +79,24 @@ export type FriendStatusDto = {
     status: 'pending' | 'accepted' | 'declined' | 'none';
 };
 
+export type SavePushTokenDto = {
+    /**
+     * Push token to save
+     */
+    token: string;
+};
+
+export type RemovePushTokenDto = {
+    /**
+     * Push token to save
+     */
+    token: string;
+    /**
+     * User ID from which to remove token
+     */
+    userId: number;
+};
+
 export type UserActionDto = {
     status: 'completed' | 'joined' | 'seen' | 'declined' | 'none';
     dateCommitted: string;
@@ -106,7 +124,7 @@ export type ActionEventDto = {
     /**
      * Notification type for the event
      */
-    sendNotifsTo: 'all' | 'joined' | 'none';
+    sendNotifsTo: string;
     /**
      * time of the event (for display)
      */
@@ -326,7 +344,7 @@ export type CreateActionEventDto = {
     /**
      * Notification type for the event
      */
-    sendNotifsTo: 'all' | 'joined' | 'none';
+    sendNotifsTo: string;
     /**
      * time of the event (for display)
      */
@@ -405,7 +423,7 @@ export type ActionEvent = {
     /**
      * Notification type for the event
      */
-    sendNotifsTo: 'all' | 'joined' | 'none';
+    sendNotifsTo: string;
     /**
      * time of the event (for display)
      */
@@ -731,25 +749,6 @@ export type UserMyLocationResponses = {
 
 export type UserMyLocationResponse = UserMyLocationResponses[keyof UserMyLocationResponses];
 
-export type UserFindOneData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/user/{id}';
-};
-
-export type UserFindOneErrors = {
-    401: unknown;
-};
-
-export type UserFindOneResponses = {
-    200: ProfileDto;
-};
-
-export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];
-
 export type UserRemoveFriendData = {
     body?: never;
     path: {
@@ -855,6 +854,25 @@ export type UserMyFriendRelationshipResponses = {
 
 export type UserMyFriendRelationshipResponse = UserMyFriendRelationshipResponses[keyof UserMyFriendRelationshipResponses];
 
+export type UserPrefillData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/prefill/{id}';
+};
+
+export type UserPrefillErrors = {
+    401: unknown;
+};
+
+export type UserPrefillResponses = {
+    200: ProfileDto;
+};
+
+export type UserPrefillResponse = UserPrefillResponses[keyof UserPrefillResponses];
+
 export type UserListFriendsData = {
     body?: never;
     path: {
@@ -884,6 +902,47 @@ export type UserCountReferredResponses = {
 };
 
 export type UserCountReferredResponse = UserCountReferredResponses[keyof UserCountReferredResponses];
+
+export type UserFindOneData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/{id}';
+};
+
+export type UserFindOneErrors = {
+    401: unknown;
+};
+
+export type UserFindOneResponses = {
+    200: ProfileDto;
+};
+
+export type UserFindOneResponse = UserFindOneResponses[keyof UserFindOneResponses];
+
+export type UserSavePushTokenData = {
+    body: SavePushTokenDto;
+    path?: never;
+    query?: never;
+    url: '/user/pushToken';
+};
+
+export type UserSavePushTokenResponses = {
+    201: unknown;
+};
+
+export type UserRemovePushTokenData = {
+    body: RemovePushTokenDto;
+    path?: never;
+    query?: never;
+    url: '/user/removePushToken';
+};
+
+export type UserRemovePushTokenResponses = {
+    201: unknown;
+};
 
 export type ActionsJoinData = {
     body?: never;

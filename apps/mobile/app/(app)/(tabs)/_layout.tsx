@@ -9,6 +9,16 @@ export default function TabLayout() {
     >
       <Tabs>
         <Tabs.Screen
+          name="profile"
+          options={{
+            headerShown: false,
+            title: "Profile",
+            tabBarIcon: ({ color }) => (
+              <FontAwesome size={28} name="user" color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
           name="index"
           options={{
             headerShown: false,
@@ -19,12 +29,12 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
-          name="profile"
+          name="notifications"
           options={{
             headerShown: false,
-            title: "Profile",
+            title: "Notifications",
             tabBarIcon: ({ color }) => (
-              <FontAwesome size={28} name="user" color={color} />
+              <FontAwesome size={28} name="bell" color={color} />
             ),
           }}
         />

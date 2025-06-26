@@ -1,9 +1,7 @@
-
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { useEffect } from "react";
-import { getApiUrl } from "../lib/config";
-
+import { userSavePushToken } from "../../../shared/client";
 
 export default function usePushNotifications(user: any) {
   useEffect(() => {
@@ -22,11 +20,8 @@ export default function usePushNotifications(user: any) {
 
         if (finalStatus === "granted") {
           const token = (await Notifications.getExpoPushTokenAsync()).data;
-          const apiUrl = getApiUrl();
-          await fetch(`${apiUrl}/users/push-token`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: user.id, token }),
+          await userSavePushToken({
+            body: { token }
           });
         }
       }
@@ -35,4 +30,3 @@ export default function usePushNotifications(user: any) {
     register();
   }, [user]);
 }
-
