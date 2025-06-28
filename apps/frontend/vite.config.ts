@@ -12,6 +12,9 @@ const isStorybook =
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [!isStorybook && reactRouter(), tailwindcss()],
+  ssr: {
+    noExternal: ["posthog-js", "posthog-js/react"],
+  },
   resolve: {
     preserveSymlinks: true,
     alias: [

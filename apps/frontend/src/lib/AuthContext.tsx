@@ -76,6 +76,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
 
       const { data } = await authMe();
       setUser(data);
+      setLoading(false);
     }, []);
 
     const logout = useCallback(async () => {

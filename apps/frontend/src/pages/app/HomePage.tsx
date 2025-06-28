@@ -14,7 +14,7 @@ const HomePage: React.FC = () => {
   const [todoActions, setTodoActions] = useState<ActionDto[]>([]);
   const [newActions, setNewActions] = useState<ActionDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, isAuthenticated } = useAuth();
 
   const updateActions = useCallback((actions: ActionDto[]) => {
     setActions(actions);
@@ -29,7 +29,7 @@ const HomePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || !isAuthenticated) return;
 
     actionsFindAllWithStatus()
       .then(({ data }) => {
@@ -39,7 +39,7 @@ const HomePage: React.FC = () => {
         }
       })
       .catch(() => setError("Failed to load actions"));
-  }, [authLoading, updateActions]);
+  }, [authLoading, isAuthenticated, updateActions]);
 
   const handleTaskComplete = (actionId: number) => {
     actionsComplete({ path: { id: actionId.toString() } }).then(() => {

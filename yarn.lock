@@ -103,6 +103,7 @@ __metadata:
     msw-storybook-addon: "npm:^2.0.4"
     pm2: "npm:^6.0.6"
     postcss: "npm:^8.5.3"
+    posthog-js: "npm:^1.255.1"
     react: "npm:^19.1.0"
     react-dom: "npm:^19.1.0"
     react-globe.gl: "npm:^2.33.2"
@@ -7283,6 +7284,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"core-js@npm:^3.38.1":
+  version: 3.43.0
+  resolution: "core-js@npm:3.43.0"
+  checksum: 10c0/9d4ad66296e60380777de51d019b5c3e6cce023b7999750a5094f9a4b0ea53bf3600beb4ef11c56548f2c8791d43d4056e270d1cf55ba87273011aa7d4597871
+  languageName: node
+  linkType: hard
+
 "cosmiconfig@npm:^5.0.5":
   version: 5.2.1
   resolution: "cosmiconfig@npm:5.2.1"
@@ -9740,6 +9748,13 @@ __metadata:
   version: 4.1.1
   resolution: "fetch-retry@npm:4.1.1"
   checksum: 10c0/f55cdc82d096e8ef92f92218a8379a01d56cc01726a0ac554845eb943758ceca8be2619682678adfbff88ecb4d97269375200af7ca94a726a8195781aa4c2f49
+  languageName: node
+  linkType: hard
+
+"fflate@npm:^0.4.8":
+  version: 0.4.8
+  resolution: "fflate@npm:0.4.8"
+  checksum: 10c0/29d1eddaaa5deab61b1c6b0d21282adacadbc4d2c01e94d8b1ee784398151673b9c563e53f97a801bc410a1ae55e8de5378114a743430e643e7a0644ba8e5a42
   languageName: node
   linkType: hard
 
@@ -14434,10 +14449,37 @@ __metadata:
   languageName: node
   linkType: hard
 
+"posthog-js@npm:^1.255.1":
+  version: 1.255.1
+  resolution: "posthog-js@npm:1.255.1"
+  dependencies:
+    core-js: "npm:^3.38.1"
+    fflate: "npm:^0.4.8"
+    preact: "npm:^10.19.3"
+    web-vitals: "npm:^4.2.4"
+  peerDependencies:
+    "@rrweb/types": 2.0.0-alpha.17
+    rrweb-snapshot: 2.0.0-alpha.17
+  peerDependenciesMeta:
+    "@rrweb/types":
+      optional: true
+    rrweb-snapshot:
+      optional: true
+  checksum: 10c0/313c9df0cabbc2025db4a7aa9bffdd1006e29c2f04331a9176c7237035a5d64ae8f40541fd8e322abbf09bf84470f067dbfd6329684e0644f03fcd099cd1ef13
+  languageName: node
+  linkType: hard
+
 "preact@npm:10":
   version: 10.26.8
   resolution: "preact@npm:10.26.8"
   checksum: 10c0/83b6a38af15386c0d93bbaf12996d624354f9c511f79d188f0d673b8f91740849b0603c207da1f10450b07a8659333864a3735d3b5fe23a790ef6cb85d1107c8
+  languageName: node
+  linkType: hard
+
+"preact@npm:^10.19.3":
+  version: 10.26.9
+  resolution: "preact@npm:10.26.9"
+  checksum: 10c0/15f187e3278ae749b70e887f88bb01be63ebcc2eea46ffa86be69180716db40b8b4304e9768767fd68a5910ef5fd1f9ea6389e17cd25e950be76574d568e8fc3
   languageName: node
   linkType: hard
 
