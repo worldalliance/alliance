@@ -18,6 +18,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
 import { connectionOptions } from './datasources/dataSource';
 import { PaymentsModule } from './payments/payments.module';
+import { AdminViewerModule } from './admin-viewer/admin-viewer.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { PaymentsModule } from './payments/payments.module';
     GeoModule,
     MailModule,
     PaymentsModule,
+    AdminViewerModule,
   ],
   controllers: [AppController],
   providers: [],

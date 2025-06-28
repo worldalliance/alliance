@@ -61,9 +61,15 @@ export type UpdateProfileDto = {
     id?: number;
     name?: string;
     email?: string;
+    password?: string;
     admin?: boolean;
     profilePicture?: string | null;
     profileDescription?: string | null;
+    referralCode?: string | null;
+    stripeCustomerId?: string | null;
+    isNotSignedUpPartialProfile?: boolean;
+    over18?: boolean | null;
+    onboardingComplete?: boolean;
 };
 
 export type City = {
@@ -482,6 +488,81 @@ export type CreatePartialProfileDto = {
     firstName: string;
     lastName: string;
     email: string;
+};
+
+export type TableMetadataDto = {
+    name: string;
+    entityName: string;
+    recordCount: number;
+    primaryKey: string;
+};
+
+export type TableListDto = {
+    tables: Array<TableMetadataDto>;
+};
+
+export type ColumnMetadataDto = {
+    /**
+     * Column name in the database
+     */
+    name: string;
+    /**
+     * Semantic data type of the column
+     */
+    dataType: 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'json' | 'uuid' | 'enum' | 'relation' | 'unknown';
+    /**
+     * Raw TypeORM column type
+     */
+    rawType: string;
+    /**
+     * Whether this is a primary key column
+     */
+    isPrimary: boolean;
+    /**
+     * Whether this column can contain null values
+     */
+    isNullable: boolean;
+    /**
+     * Target table name for relation columns
+     */
+    relationTarget?: string;
+    /**
+     * Type of relation if this is a relation column
+     */
+    relationType?: 'one-to-one' | 'one-to-many' | 'many-to-one' | 'many-to-many';
+    /**
+     * Possible values for enum columns
+     */
+    enumValues?: Array<string>;
+};
+
+export type TableDataDto = {
+    /**
+     * Column metadata for the table
+     */
+    columns: Array<ColumnMetadataDto>;
+    /**
+     * Table rows data - each row is an array of values corresponding to columns
+     */
+    rows: Array<Array<string | number | boolean | {
+        [key: string]: unknown;
+    } | unknown>>;
+    /**
+     * Total number of records in the table (before pagination)
+     */
+    totalCount: number;
+    /**
+     * Current page number
+     */
+    page: number;
+    /**
+     * Number of records per page
+     */
+    limit: number;
+    /**
+     * Total number of pages
+     */
+    totalPages: number;
 };
 
 export type AppHealthCheckData = {
@@ -1462,6 +1543,69 @@ export type PaymentsWebhookData = {
 export type PaymentsWebhookResponses = {
     201: unknown;
 };
+
+export type AdminViewerGetTablesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/admin-viewer/tables';
+};
+
+export type AdminViewerGetTablesResponses = {
+    200: TableListDto;
+};
+
+export type AdminViewerGetTablesResponse = AdminViewerGetTablesResponses[keyof AdminViewerGetTablesResponses];
+
+export type AdminViewerGetTableDataData = {
+    body?: never;
+    path: {
+        /**
+         * Name of the database table
+         */
+        tableName: string;
+    };
+    query?: {
+        /**
+         * Page number for pagination
+         */
+        page?: number;
+        /**
+         * Number of records per page
+         */
+        limit?: number;
+        /**
+         * Column name to sort by
+         */
+        sortBy?: string;
+        /**
+         * Sort order
+         */
+        sortOrder?: 'ASC' | 'DESC';
+        /**
+         * Search term to filter results
+         */
+        search?: string;
+    };
+    url: '/admin-viewer/tables/{tableName}/data';
+};
+
+export type AdminViewerGetTableDataErrors = {
+    /**
+     * Invalid query parameters
+     */
+    400: unknown;
+    /**
+     * Table not found
+     */
+    404: unknown;
+};
+
+export type AdminViewerGetTableDataResponses = {
+    200: TableDataDto;
+};
+
+export type AdminViewerGetTableDataResponse = AdminViewerGetTableDataResponses[keyof AdminViewerGetTableDataResponses];
 
 export type ClientOptions = {
     baseUrl: string;

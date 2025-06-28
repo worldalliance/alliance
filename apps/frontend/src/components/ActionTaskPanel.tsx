@@ -12,6 +12,8 @@ const ActionTaskPanel = ({ action, userRelation }: ActionTaskPanelProps) => {
     return <ActionTaskPanelCompleted />;
   }
 
+  console.log(userRelation);
+
   if (action.type === "Funding") {
     return (
       <StripeWrapper>

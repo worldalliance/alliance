@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Card, { CardStyle } from "./Card";
-import { CreateActionDto } from "../../../shared/client";
+import { CreateActionDto } from "@alliance/shared/client";
 import {
   actionsCreate,
   actionsFindOne,
   actionsRemove,
   actionsUpdate,
   imagesUploadImage,
-} from "../../../shared/client";
+} from "@alliance/shared/client";
 import { getApiUrl } from "./config";
 
 const AdminActionPage: React.FC = () => {

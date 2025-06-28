@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { ActionActivityDto } from "@alliance/shared/client";
 import { actionsGetActionActivities } from "@alliance/shared/client";
+import { CardStyle } from "./system/Card";
+import Card from "./system/Card";
 
 interface ActionActivityListProps {
   actionId: number;
@@ -63,30 +65,34 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
   }
 
   return (
-    <div className="space-y-3 w-full">
-      <h3 className="font-semibold text-gray-900">Recent Activity</h3>
-      <div className="space-y-2">
-        {activities.map((activity) => (
-          <div key={activity.id} className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              {activity.type === "user_joined" ? (
-                <div className="w-2 h-2 bg-bgreen rounded-full mt-2"></div>
-              ) : (
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-              )}
+    <Card style={CardStyle.White} className="p-8">
+      <div className="space-y-3 w-full">
+        <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+        <div className="space-y-2">
+          {activities.map((activity) => (
+            <div key={activity.id} className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                {activity.type === "user_joined" ? (
+                  <div className="w-2 h-2 bg-bgreen rounded-full mt-2"></div>
+                ) : (
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-900">
+                  {formatActivityMessage(activity)}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {formatDistanceToNow(new Date(activity.createdAt), {
+                    addSuffix: true,
+                  })}
+                </p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-gray-900">{formatActivityMessage(activity)}</p>
-              <p className="text-xs text-gray-500">
-                {formatDistanceToNow(new Date(activity.createdAt), {
-                  addSuffix: true,
-                })}
-              </p>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
+    </Card>
   );
 };
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
-import { appHealthCheck, SignInDto } from "../../../shared/client";
+import { appHealthCheck, SignInDto } from "@alliance/shared/client";
 
 const LoginPage: React.FC = () => {
   const { login, loading } = useAuth();

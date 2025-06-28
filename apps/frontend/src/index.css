@@ -112,6 +112,8 @@ h2 {
 
 p {
     font-family: 'Newsreader';
+    padding-top: 1px;
+    margin-bottom: -1px;
 }
 
 img {

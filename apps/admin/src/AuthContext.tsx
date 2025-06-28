@@ -13,8 +13,8 @@ import {
   authMe,
   authRefreshTokens,
   UserDto,
-} from "../../../shared/client";
-import { authAdminLogin } from "../../../shared/client";
+} from "@alliance/shared/client";
+import { authAdminLogin } from "@alliance/shared/client";
 
 interface AuthContextType {
   isAuthenticated: boolean;

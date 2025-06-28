@@ -21,6 +21,13 @@ import ActionTaskPanel from "../../components/ActionTaskPanel";
 import ActionCommitButton from "../../components/ActionCommitButton";
 import ActionActivityList from "../../components/ActionActivityList";
 
+const ActionStatusDescriptions: Record<ActionDto["status"], string> = {
+  active: "Collecting commitments",
+  upcoming: "Upcoming",
+  past: "Past",
+  draft: "Draft",
+};
+
 export async function loader({
   params,
 }: Route.LoaderArgs): Promise<
@@ -61,6 +68,7 @@ export default function ActionPage() {
       actionsMyStatus({
         path: { id },
       }).then((response) => {
+        console.log("response", response);
         if (response.error) {
           console.error("Failed to fetch user status", response.error);
           setError("Failed to fetch user status");
@@ -109,9 +117,14 @@ export default function ActionPage() {
             className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
           />
         )}
-        <div className="flex flex-row justify-between items-start my-5">
+        <div className="flex flex-row justify-between items-start my-3">
           <div className="flex flex-col gap-y-3">
-            <h1 className="">{action?.name}</h1>
+            <h1 className="">
+              {action?.name}
+              <span className="text-gray-800 text-sm bg-gray-100 rounded-sm p-3 align-middle mx-3">
+                {ActionStatusDescriptions[action?.status ?? "active"]}
+              </span>
+            </h1>
           </div>
           {action?.type !== "Funding" && (
             <ActionCommitButton
@@ -173,11 +186,7 @@ export default function ActionPage() {
               <b>6 friends</b> already joined this action!
             </p> */}
             </Card>
-            {action && (
-              <Card style={CardStyle.White} className="p-8">
-                <ActionActivityList actionId={action.id} />
-              </Card>
-            )}
+            {action && <ActionActivityList actionId={action.id} />}
           </div>
         }
         coloredRight={false}

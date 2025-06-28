@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Card, { CardStyle } from "./Card";
 import { useNavigate } from "react-router-dom";
-import { ActionDto, actionsFindAllWithDrafts } from "../../../shared/client";
+import { ActionDto, actionsFindAllWithDrafts } from "@alliance/shared/client";
 import { useAuth } from "./AuthContext";
 
 const AdminPanel: React.FC = () => {
@@ -35,13 +35,20 @@ const AdminPanel: React.FC = () => {
     loadActions();
   }, []);
 
-  const handleCreateAction = () => {
+  const handleCreateAction = useCallback(() => {
     navigate("/action/new");
-  };
+  }, [navigate]);
 
-  const handleEditAction = (id: number) => {
-    navigate(`/action/${id}`);
-  };
+  const handleEditAction = useCallback(
+    (id: number) => {
+      navigate(`/action/${id}`);
+    },
+    [navigate]
+  );
+
+  const handleDatabaseViewer = useCallback(() => {
+    navigate("/database");
+  }, [navigate]);
 
   return (
     <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-pagebg">
@@ -93,6 +100,12 @@ const AdminPanel: React.FC = () => {
                 className="w-full bg-stone-600 hover:bg-stone-700 text-white px-4 py-2 rounded-md text-sm font-medium"
               >
                 Create New Action
+              </button>
+              <button
+                onClick={handleDatabaseViewer}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+              >
+                Database Viewer
               </button>
             </div>
           </Card>

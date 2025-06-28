@@ -3,18 +3,19 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import LoginPage from "./LoginPage";
 import AdminActionPage from "./AdminActionPage";
+import DatabaseViewer from "./DatabaseViewer";
 import { getApiUrl } from "./config";
-import { client } from "../../../shared/client/client.gen";
+import { client } from "@alliance/shared/client/client.gen";
 import AdminPanel from "./AdminPanel";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   console.log("isAuthenticated", isAuthenticated);
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !loading) {
     return <Navigate to="/login" />;
   }
 
@@ -63,6 +64,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <AdminActionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/database"
+          element={
+            <ProtectedRoute>
+              <DatabaseViewer />
             </ProtectedRoute>
           }
         />

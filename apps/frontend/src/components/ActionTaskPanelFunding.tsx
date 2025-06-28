@@ -11,7 +11,7 @@ import { usePaymentStatus } from "./PaymentStatus";
 import ActionTaskPanelCompleted from "./ActionTaskPanelCompleted";
 import { useAuth } from "../lib/AuthContext";
 import StripeStyleFormInput from "./StripeStyleFormInput";
-import { useStripeToken } from "./StripeWrapper";
+import { usePaymentIntentData } from "./StripeWrapper";
 
 export interface ActionTaskPanelFundingProps {
   action: ActionDto;
@@ -27,7 +27,7 @@ const ActionTaskPanelFunding = ({ action }: ActionTaskPanelFundingProps) => {
   const [expanded, setExpanded] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { token } = useStripeToken();
+  const { token, savedPaymentMethod, clientSecret } = usePaymentIntentData();
 
   console.log("token", token);
 
@@ -86,17 +86,50 @@ const ActionTaskPanelFunding = ({ action }: ActionTaskPanelFundingProps) => {
     [stripe, elements, isAuthenticated, token]
   );
 
+  const titleText = "Join this action by giving $5";
+
+  const handleContributeClicked = useCallback(() => {
+    if (!savedPaymentMethod) {
+      setExpanded(true);
+      return;
+    }
+    if (!stripe || !elements || !clientSecret) {
+      return;
+    }
+    console.log("savedPaymentMethod", savedPaymentMethod);
+    if (savedPaymentMethod) {
+      stripe?.confirmCardPayment(clientSecret, {
+        payment_method: savedPaymentMethod.stripeId,
+        return_url: window.location.href,
+      });
+    }
+  }, [stripe, elements, savedPaymentMethod, clientSecret]);
+
   if (status === "succeeded") {
     return <ActionTaskPanelCompleted />;
   }
 
-  const titleText = "Join this action by giving $5";
-
   if (!expanded) {
     return (
-      <Card style={CardStyle.White} className="flex flex-row justify-between">
-        <h2 className="">{titleText}</h2>
-        <Button onClick={() => setExpanded(true)}>Contribute</Button>
+      <Card
+        style={CardStyle.White}
+        className="flex flex-row justify-between items-center"
+      >
+        <div>
+          <h2 className="">{titleText}</h2>
+          {savedPaymentMethod?.last4 && (
+            <p className="text-sm text-gray-500">
+              Paying immediately with your saved card ending in
+              {" " + savedPaymentMethod.last4} •
+              <a href="/settings" className="text-blue-500">
+                {" "}
+                Manage
+              </a>
+            </p>
+          )}
+        </div>
+
+        <Button onClick={handleContributeClicked}>Contribute</Button>
       </Card>
     );
   }
