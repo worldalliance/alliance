@@ -21,5 +21,8 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.33.0"
   },
-  "packageManager": "yarn@4.9.1"
+  "packageManager": "yarn@4.9.1",
+  "dependencies": {
+    "socket.io-client": "^4.8.1"
+  }
 }

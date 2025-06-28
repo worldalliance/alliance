@@ -1,4 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useAdminWebSocket } from "./hooks/useAdminWebSocket";
+import "./index.css";
 import type {
   TableDataDto,
   ColumnMetadataDto,
@@ -18,6 +21,7 @@ interface TableDataQueryDto {
 }
 
 const DatabaseViewer: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tables, setTables] = useState<TableMetadataDto[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [tableData, setTableData] = useState<TableDataDto | null>(null);
@@ -33,10 +37,15 @@ const DatabaseViewer: React.FC = () => {
   });
   const [searchInput, setSearchInput] = useState("");
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [newRows, setNewRows] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    loadTables();
-  }, []);
+  // WebSocket connection for live updates
+  const {
+    isConnected,
+    subscribeToTable,
+    unsubscribeFromTable,
+    setEventHandlers,
+  } = useAdminWebSocket();
 
   const loadTableData = useCallback(async () => {
     if (!selectedTable) return;
@@ -96,6 +105,67 @@ const DatabaseViewer: React.FC = () => {
     }
   }, [selectedTable, query, selectedRow, tableData]);
 
+  // Set up event handlers
+  useEffect(() => {
+    setEventHandlers({
+      onRowInserted: (event) => {
+        if (event.tableName === selectedTable && tableData) {
+          console.log("New row inserted:", event.entity);
+
+          // Extract primary key from the new entity
+          const primaryKeyColumn = tableData.columns.find(
+            (col) => col.isPrimary
+          );
+          if (primaryKeyColumn && event.entity) {
+            const primaryKeyValue = event.entity[primaryKeyColumn.name];
+            if (primaryKeyValue) {
+              // Add to new rows set for highlighting
+              setNewRows((prev) => new Set(prev).add(String(primaryKeyValue)));
+
+              // Remove highlight after 3 seconds
+              setTimeout(() => {
+                setNewRows((prev) => {
+                  const newSet = new Set(prev);
+                  newSet.delete(String(primaryKeyValue));
+                  return newSet;
+                });
+              }, 3000);
+
+              // Refresh table data to show the new row
+              loadTableData();
+            }
+          }
+        }
+      },
+      onRowUpdated: (event) => {
+        if (event.tableName === selectedTable) {
+          console.log("Row updated:", event.entity);
+          // Refresh table data to show updates
+          loadTableData();
+        }
+      },
+      onRowDeleted: (event) => {
+        if (event.tableName === selectedTable) {
+          console.log("Row deleted:", event.entityId);
+          // Refresh table data to reflect deletion
+          loadTableData();
+        }
+      },
+    });
+  }, [selectedTable, tableData, loadTableData, setEventHandlers]);
+
+  // Initialize selected table from URL params
+  useEffect(() => {
+    const tableFromUrl = searchParams.get("table");
+    if (tableFromUrl) {
+      setSelectedTable(tableFromUrl);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    loadTables();
+  }, []);
+
   useEffect(() => {
     if (selectedTable) {
       loadTableData();
@@ -154,9 +224,22 @@ const DatabaseViewer: React.FC = () => {
     };
   }, []);
 
+  const handleTableSelect = useCallback(
+    (tableName: string) => {
+      setSelectedTable(tableName);
+      // Update URL params
+      setSearchParams((prev) => {
+        const newParams = new URLSearchParams(prev);
+        newParams.set("table", tableName);
+        return newParams;
+      });
+    },
+    [setSearchParams]
+  );
+
   const navigateToRelatedRow = (tableName: string, rowId: string | number) => {
     setSelectedRow({ tableName, rowId });
-    setSelectedTable(tableName);
+    handleTableSelect(tableName);
     setQuery((prev) => ({ ...prev, page: 1, search: undefined }));
   };
 
@@ -164,8 +247,22 @@ const DatabaseViewer: React.FC = () => {
   useEffect(() => {
     setTableData(null);
     setSearchInput("");
+    setNewRows(new Set()); // Clear new row highlights
     setQuery((prev) => ({ ...prev, search: undefined, page: 1 }));
   }, [selectedTable]);
+
+  // Subscribe to WebSocket updates for the current table
+  useEffect(() => {
+    if (selectedTable && isConnected) {
+      subscribeToTable(selectedTable);
+    }
+
+    return () => {
+      if (selectedTable) {
+        unsubscribeFromTable(selectedTable);
+      }
+    };
+  }, [selectedTable, isConnected, subscribeToTable, unsubscribeFromTable]);
 
   // Helper function to get the primary key value for a row
   const getRowPrimaryKey = (row: unknown[], columns: ColumnMetadataDto[]) => {
@@ -262,13 +359,23 @@ const DatabaseViewer: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-80  border-r border-gray-200 flex flex-col">
         {/* Sidebar Header */}
         <div className="p-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-gray-900">Database Viewer</h1>
           <p className="text-sm text-gray-600 mt-1">
             {tables.length} tables available
           </p>
+          <div className="flex items-center space-x-2 mt-2">
+            <div
+              className={`w-2 h-2 rounded-full ${
+                isConnected ? "bg-green-500" : "bg-red-500"
+              }`}
+            ></div>
+            <span className="text-xs text-gray-500">
+              {isConnected ? "Live updates active" : "Disconnected"}
+            </span>
+          </div>
         </div>
 
         {/* Tables List */}
@@ -286,7 +393,7 @@ const DatabaseViewer: React.FC = () => {
               {tables.map((table) => (
                 <button
                   key={table.name}
-                  onClick={() => setSelectedTable(table.name)}
+                  onClick={() => handleTableSelect(table.name)}
                   className={`w-full text-left p-3 rounded-lg transition-colors ${
                     selectedTable === table.name
                       ? "bg-blue-50 border border-blue-200 text-blue-900"
@@ -440,9 +547,13 @@ const DatabaseViewer: React.FC = () => {
                                 <span className="font-medium">
                                   {column.dataType}
                                 </span>
-                                <span className="text-gray-300 ml-1">
-                                  ({column.rawType})
-                                </span>
+                                {column.rawType &&
+                                  column.rawType.toLowerCase() !==
+                                    column.dataType.toLowerCase() && (
+                                    <span className="text-gray-300 ml-1">
+                                      ({column.rawType})
+                                    </span>
+                                  )}
                                 {column.relationTarget && (
                                   <span className="text-blue-400">
                                     {" "}
@@ -471,6 +582,10 @@ const DatabaseViewer: React.FC = () => {
                             rowPrimaryKey !== null &&
                             String(rowPrimaryKey) === String(selectedRow.rowId);
 
+                          const isNewRow =
+                            rowPrimaryKey !== null &&
+                            newRows.has(String(rowPrimaryKey));
+
                           // Use primary key if available, otherwise use page and row index for uniqueness
                           const uniqueKey =
                             rowPrimaryKey !== null
@@ -481,11 +596,15 @@ const DatabaseViewer: React.FC = () => {
                             <tr
                               key={uniqueKey}
                               className={`${
-                                isSelectedRow
+                                isNewRow
+                                  ? "new-row-fade"
+                                  : isSelectedRow
                                   ? "bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
                                   : "hover:bg-gray-50"
                               } ${
-                                isSelectedRow
+                                isNewRow
+                                  ? "border-l-4 border-l-green-500"
+                                  : isSelectedRow
                                   ? "border-l-4 border-l-yellow-400"
                                   : ""
                               }`}
