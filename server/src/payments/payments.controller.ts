@@ -28,6 +28,12 @@ class ClientSecretDto {
 
   @ApiProperty()
   userToken?: string;
+
+  @ApiProperty()
+  savedPaymentMethodId?: string;
+
+  @ApiProperty()
+  savedPaymentMethodLast4?: string;
 }
 
 @Controller('payments')
@@ -50,16 +56,30 @@ export class PaymentsController {
     @Request() req: JwtRequest,
     @Body() body: CreatePaymentIntentDto,
   ): Promise<ClientSecretDto> {
-    let customerId: string | undefined;
+    let customer: Stripe.Customer | undefined;
     if (req.user) {
-      customerId = await this.paymentsService.getOrCreateCustomer(
+      customer = await this.paymentsService.getOrCreateCustomer(
         req.user.sub,
         req.user.email,
       );
     }
     let token: string | undefined;
-    if (!customerId) {
+    if (!customer) {
       token = await this.paymentsService.createPaymentUserDataToken();
+    }
+
+    let paymentMethod: Stripe.PaymentMethod | undefined;
+    if (customer) {
+      const paymentMethods = await this.stripe.customers.listPaymentMethods(
+        customer.id,
+      );
+      if (
+        paymentMethods.data.length > 0 &&
+        paymentMethods.data[0].type === 'card'
+      ) {
+        //TODO: support multiple payment methods
+        paymentMethod = paymentMethods.data[0];
+      }
     }
 
     const paymentIntent = await this.stripe.paymentIntents.create({
@@ -68,9 +88,10 @@ export class PaymentsController {
       automatic_payment_methods: {
         enabled: false,
       },
+      payment_method: paymentMethod?.id,
       setup_future_usage: 'on_session',
       payment_method_types: ['card'],
-      customer: customerId,
+      customer: customer?.id,
       metadata: {
         actionId: body.actionId.toString(),
         ...(token && { token }),
@@ -94,6 +115,10 @@ export class PaymentsController {
     return {
       clientSecret: paymentIntent.client_secret,
       userToken: token,
+      ...(paymentMethod && {
+        savedPaymentMethodId: paymentMethod.id,
+        savedPaymentMethodLast4: paymentMethod.card?.last4,
+      }),
     };
   }
 

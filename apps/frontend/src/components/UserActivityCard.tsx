@@ -23,13 +23,13 @@ const UserActivityCard = ({ action }: UserActivityCardProps) => {
         style={CardStyle.White}
       >
         <div className="flex items-center justify-start w-[100%] space-x-3">
-          <Badge className="!bg-[#5d9c2d]">
+          <Badge className="!bg-[#5d9c2d] text-white">
             Completed {action.relation.dateCompleted ? timeSinceCompleted : ""}
           </Badge>
           <p className="font-bold">{action.name}</p>
         </div>
         <div className="flex items-center justify-between ">
-          <p>{action.description}</p>
+          <p>{action.shortDescription}</p>
         </div>
       </Card>
     </div>

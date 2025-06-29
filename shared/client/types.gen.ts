@@ -481,6 +481,8 @@ export type CreatePaymentIntentDto = {
 export type ClientSecretDto = {
     clientSecret: string;
     userToken: string;
+    savedPaymentMethodId: string;
+    savedPaymentMethodLast4: string;
 };
 
 export type CreatePartialProfileDto = {

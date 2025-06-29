@@ -80,6 +80,10 @@ export default function ActionPage() {
     }
   }, [isAuthenticated, id]);
 
+  const handleCompleteAction = useCallback(() => {
+    setUserRelation("completed");
+  }, []);
+
   const onJoinAction = useCallback(async () => {
     if (!id) return;
 
@@ -146,7 +150,11 @@ export default function ActionPage() {
           </Card>
         )} */}
         {action && (
-          <ActionTaskPanel action={action} userRelation={userRelation} />
+          <ActionTaskPanel
+            action={action}
+            userRelation={userRelation}
+            onCompleteAction={handleCompleteAction}
+          />
         )}
         {action && <ActionEventsPanel events={action.events} />}
         <h2 className="!mt-4">Summary</h2>
@@ -176,7 +184,7 @@ export default function ActionPage() {
                   colored
                   locations={action?.locations || []}
                 />
-                <p className="text-center pt-5 text-[11pt]">
+                <p className="text-center !pt-5 text-[11pt]">
                   {action?.usersJoined?.toLocaleString() || 0} people committed
                 </p>
               </div>

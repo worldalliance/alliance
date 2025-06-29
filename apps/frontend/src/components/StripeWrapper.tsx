@@ -7,7 +7,6 @@ import {
 } from "@stripe/stripe-js";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import "../index.css";
-import Card, { CardStyle } from "./system/Card";
 
 export const stripePromise = loadStripe(
   "pk_test_51RcteKQ3i6almwvvqvNwXcL1mZik72XFgovP6SzDeP7WDVfC0mXXbxpxbJWmY2kGIy5l1SYAQNmyznRfFP5lKt6O00EeWgC6mr"
@@ -28,7 +27,11 @@ const StripeWrapperContext = createContext<
   StripeWrapperContextType | undefined
 >(undefined);
 
-export const StripeWrapper = ({ children }: { children: React.ReactNode }) => {
+export interface StripeWrapperProps extends React.PropsWithChildren {
+  actionId: number;
+}
+
+export const StripeWrapper = ({ children, actionId }: StripeWrapperProps) => {
   const [clientSecret, setClientSecret] = useState<string | undefined>();
   const [token, setToken] = useState<string | undefined>();
   const [savedPaymentMethod, setSavedPaymentMethod] = useState<
@@ -38,7 +41,7 @@ export const StripeWrapper = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     paymentsCreatePaymentIntent({
       body: {
-        actionId: 1,
+        actionId,
       },
     }).then((res) => {
       if (!res.data?.clientSecret) {
@@ -56,7 +59,7 @@ export const StripeWrapper = ({ children }: { children: React.ReactNode }) => {
         });
       }
     });
-  }, []);
+  }, [actionId]);
 
   const value = useMemo<StripeWrapperContextType>(
     () => ({

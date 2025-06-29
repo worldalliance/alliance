@@ -1,4 +1,4 @@
-import { ActionDto, paymentsSetPartialProfile } from "@alliance/shared/client";
+import { paymentsSetPartialProfile } from "@alliance/shared/client";
 import Card, { CardStyle } from "./system/Card";
 import {
   PaymentElement,
@@ -12,16 +12,22 @@ import ActionTaskPanelCompleted from "./ActionTaskPanelCompleted";
 import { useAuth } from "../lib/AuthContext";
 import StripeStyleFormInput from "./StripeStyleFormInput";
 import { usePaymentIntentData } from "./StripeWrapper";
+import { PaymentIntent } from "@stripe/stripe-js";
 
 export interface ActionTaskPanelFundingProps {
-  action: ActionDto;
+  onPaymentSuccess: () => unknown;
 }
 
-const ActionTaskPanelFunding = ({ action }: ActionTaskPanelFundingProps) => {
+const ActionTaskPanelFunding = ({
+  onPaymentSuccess,
+}: ActionTaskPanelFundingProps) => {
   const stripe = useStripe();
   const elements = useElements();
 
-  const { status } = usePaymentStatus();
+  const { status: initialStatus } = usePaymentStatus();
+  const [status, setStatus] = useState<PaymentIntent.Status | null>(
+    initialStatus
+  );
   const { isAuthenticated } = useAuth();
 
   const [expanded, setExpanded] = useState(false);
@@ -88,7 +94,7 @@ const ActionTaskPanelFunding = ({ action }: ActionTaskPanelFundingProps) => {
 
   const titleText = "Join this action by giving $5";
 
-  const handleContributeClicked = useCallback(() => {
+  const handleContributeClicked = useCallback(async () => {
     if (!savedPaymentMethod) {
       setExpanded(true);
       return;
@@ -98,12 +104,16 @@ const ActionTaskPanelFunding = ({ action }: ActionTaskPanelFundingProps) => {
     }
     console.log("savedPaymentMethod", savedPaymentMethod);
     if (savedPaymentMethod) {
-      stripe?.confirmCardPayment(clientSecret, {
+      const res = await stripe?.confirmCardPayment(clientSecret, {
         payment_method: savedPaymentMethod.stripeId,
         return_url: window.location.href,
       });
+      if (res.paymentIntent?.status === "succeeded") {
+        onPaymentSuccess();
+        setStatus("succeeded");
+      }
     }
-  }, [stripe, elements, savedPaymentMethod, clientSecret]);
+  }, [stripe, elements, savedPaymentMethod, clientSecret, onPaymentSuccess]);
 
   if (status === "succeeded") {
     return <ActionTaskPanelCompleted />;

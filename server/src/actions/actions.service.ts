@@ -124,6 +124,8 @@ export class ActionsService {
       relations: ['user', 'action'],
     });
 
+    console.log('found userAction', userAction);
+
     if (!userAction) {
       userAction = this.userActionRepository.create({
         user,
@@ -133,6 +135,8 @@ export class ActionsService {
     } else {
       userAction.status = status;
     }
+
+    console.log('saving userAction', userAction);
 
     return await this.userActionRepository.save(userAction);
   }
@@ -145,6 +149,7 @@ export class ActionsService {
       where: { action: { id: actionId }, user: { id: userId } },
     });
     if (!userAction) {
+      console.log('no userAction found, setting to none');
       userAction = await this.setActionRelation(
         actionId,
         userId,

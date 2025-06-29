@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useStripe } from "@stripe/react-stripe-js";
+import { PaymentIntent } from "@stripe/stripe-js";
 
 export const usePaymentStatus = () => {
   const stripe = useStripe();
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<PaymentIntent.Status | null>(null);
 
   useEffect(() => {
     if (!stripe) {

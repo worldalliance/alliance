@@ -30,14 +30,25 @@ export class PaymentsService {
     });
   }
 
-  async getOrCreateCustomer(userId: number, email?: string): Promise<string> {
+  async getOrCreateCustomer(
+    userId: number,
+    email?: string,
+  ): Promise<Stripe.Customer> {
     const user = await this.userService.findOne(userId);
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
 
     if (user.stripeCustomerId) {
-      return user.stripeCustomerId;
+      const customer = await this.stripe.customers.retrieve(
+        user.stripeCustomerId,
+      );
+      if (customer.deleted) {
+        throw new NotFoundException(
+          `Customer ${user.stripeCustomerId} is deleted`,
+        );
+      }
+      return customer;
     }
 
     const customer = await this.stripe.customers.create({
@@ -48,7 +59,7 @@ export class PaymentsService {
     user.stripeCustomerId = customer.id;
     await this.userService.update(userId, user);
 
-    return customer.id;
+    return customer;
   }
 
   async createPaymentUserDataToken(): Promise<string> {

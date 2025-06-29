@@ -6,18 +6,21 @@ import ActionTaskPanelCompleted from "./ActionTaskPanelCompleted";
 export interface ActionTaskPanelProps {
   action: ActionDto;
   userRelation: UserActionDto["status"] | null;
+  onCompleteAction: () => void;
 }
-const ActionTaskPanel = ({ action, userRelation }: ActionTaskPanelProps) => {
+const ActionTaskPanel = ({
+  action,
+  userRelation,
+  onCompleteAction,
+}: ActionTaskPanelProps) => {
   if (userRelation === "completed") {
     return <ActionTaskPanelCompleted />;
   }
 
-  console.log(userRelation);
-
   if (action.type === "Funding") {
     return (
-      <StripeWrapper>
-        <ActionTaskPanelFunding action={action} />
+      <StripeWrapper actionId={action.id}>
+        <ActionTaskPanelFunding onPaymentSuccess={onCompleteAction} />
       </StripeWrapper>
     );
   }
