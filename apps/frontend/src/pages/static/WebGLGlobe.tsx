@@ -111,7 +111,8 @@ export default function SphereWebGL({
       varying vec2 vUV;
       uniform sampler2D uTexture;
       void main() {
-        gl_FragColor = texture2D(uTexture, vUV);
+        gl_FragColor = texture2D(uTexture, vUV) * 1.1;
+        gl_FragColor.a = 1.1 * gl_FragColor.a;
       }
     `;
     const compile = (type: number, src: string) => {

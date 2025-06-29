@@ -12,8 +12,8 @@ const PrelaunchLandingPage: React.FC = () => {
     setNavbarHeight(navbarRef.current?.clientHeight || 0);
   }, [navbarRef]);
 
-  const color1 = `hsl(125, 100%, 50%)`;
-  const color2 = `hsl(305, 100%, 50%)`;
+  const color1 = `hsl(35, 100%, 50%)`;
+  const color2 = `hsl(105, 100%, 50%)`;
 
   const [size, setSize] = useState(0);
   useEffect(() => {
@@ -37,7 +37,7 @@ const PrelaunchLandingPage: React.FC = () => {
             width={size}
             height={size}
             baseSpeed={-0.00006}
-            overlaySpeed={-0.00004}
+            overlaySpeed={-0.00005}
             pixelRatio={2}
           />
         </div>
