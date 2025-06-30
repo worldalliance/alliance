@@ -68,7 +68,7 @@ const DatabaseViewer: React.FC = () => {
     const isInitialLoad = !tableData;
 
     try {
-      // Only show loading for initial load
+      // Only show loading for initial load or when no table data exists
       if (isInitialLoad) {
         setLoading(true);
       }
@@ -116,7 +116,9 @@ const DatabaseViewer: React.FC = () => {
     } catch (error) {
       console.error("Failed to load table data:", error);
     } finally {
-      setLoading(false);
+      if (isInitialLoad) {
+        setLoading(false);
+      }
     }
   }, [selectedTable, query, selectedRow, tableData]);
 
@@ -349,23 +351,25 @@ const DatabaseViewer: React.FC = () => {
 
   // Clear table data when changing tables to avoid showing stale data
   useEffect(() => {
-    setTableData(null);
     setSearchInput("");
     setNewRows(new Set()); // Clear new row highlights
     setQuery((prev) => ({ ...prev, search: undefined, page: 1 }));
+    // Don't clear tableData immediately to prevent flashing
   }, [selectedTable]);
 
   // Subscribe to WebSocket updates for the current table
   useEffect(() => {
-    if (selectedTable && isConnected) {
-      subscribeToTable(selectedTable);
-    }
-
-    return () => {
-      if (selectedTable) {
-        unsubscribeFromTable(selectedTable);
+    if (selectedTable) {
+      if (isConnected) {
+        subscribeToTable(selectedTable);
       }
-    };
+      
+      return () => {
+        if (isConnected) {
+          unsubscribeFromTable(selectedTable);
+        }
+      };
+    }
   }, [selectedTable, isConnected, subscribeToTable, unsubscribeFromTable]);
 
   // Helper function to get the primary key value for a row
@@ -656,7 +660,7 @@ const DatabaseViewer: React.FC = () => {
 
             {/* Table Content */}
             <div className="flex-1 overflow-hidden">
-              {loading ? (
+              {loading && !tableData ? (
                 <div className="flex justify-center items-center h-64">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
@@ -680,15 +684,6 @@ const DatabaseViewer: React.FC = () => {
                                 {column.dataType === "relation" && (
                                   <span className="text-blue-500">🔗</span>
                                 )}
-                                {!column.isPrimary &&
-                                  column.dataType !== "relation" && (
-                                    <span
-                                      className="text-green-500 text-xs"
-                                      title="Editable column"
-                                    >
-                                      ✏️
-                                    </span>
-                                  )}
                                 {query.sortBy === column.name && (
                                   <span>
                                     {query.sortOrder === "ASC" ? "↑" : "↓"}
@@ -770,8 +765,15 @@ const DatabaseViewer: React.FC = () => {
                                 return (
                                   <td
                                     key={cellIndex}
-                                    className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${
+                                    className={`whitespace-nowrap text-sm text-gray-900 ${
                                       isEditable ? "hover:bg-gray-50" : ""
+                                    }r
+                                    ${
+                                      editingCell &&
+                                      editingCell.rowIndex === rowIndex &&
+                                      editingCell.columnIndex === cellIndex
+                                        ? "px-4 py-2"
+                                        : "px-6 py-4"
                                     }`}
                                     onClick={() =>
                                       isEditable

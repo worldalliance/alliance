@@ -66,13 +66,11 @@ export const useAdminWebSocket = () => {
   const subscribeToTable = useCallback(
     (tableName: string) => {
       if (!socketRef.current || !isConnected) {
-        console.warn("Cannot subscribe: socket not connected");
-        return;
+        return; // Silently fail when not connected to avoid console spam
       }
 
       if (currentSubscription === tableName) {
-        console.log(`Already subscribed to table: ${tableName}`);
-        return;
+        return; // Already subscribed
       }
 
       // Subscribe to new table

@@ -245,7 +245,7 @@ const UserProfilePage: React.FC = () => {
             </div>
           ))}
         </div>
-        <div className="pt-3">
+        <div className="py-3">
           {selectedTab === ProfileTabs.Activity && (
             <div className="space-y-2">
               {completedActions.length === 0 && (

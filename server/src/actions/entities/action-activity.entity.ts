@@ -21,7 +21,7 @@ export class ActionActivity {
   @ApiProperty()
   id: number;
 
-  @Column()
+  @Column({ type: 'enum', enum: ActionActivityType })
   @ApiProperty({
     description: 'Type of action activity',
     enum: ActionActivityType,

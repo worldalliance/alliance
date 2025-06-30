@@ -3,12 +3,20 @@ import { CardStyle } from "./system/Card";
 import Card from "./system/Card";
 import Badge from "./system/Badge";
 import { formatDistanceToNow } from "date-fns";
+import { useNavigate } from "react-router";
+import { useCallback } from "react";
 
 interface UserActivityCardProps {
   action: ActionWithRelationDto;
 }
 
 const UserActivityCard = ({ action }: UserActivityCardProps) => {
+  const navigate = useNavigate();
+
+  const handleClick = useCallback(() => {
+    navigate(`/actions/${action.id}`);
+  }, [action.id, navigate]);
+
   const timeSinceCompleted = formatDistanceToNow(
     new Date(action.relation.dateCompleted),
     {
@@ -21,6 +29,7 @@ const UserActivityCard = ({ action }: UserActivityCardProps) => {
       <Card
         className="block bg-pagebg text-[11pt] font-avenir flex-1 border-b"
         style={CardStyle.White}
+        onClick={handleClick}
       >
         <div className="flex items-center justify-start w-[100%] space-x-3">
           <Badge className="!bg-[#5d9c2d] text-white">
