@@ -53,6 +53,27 @@ export class Action {
   @ApiProperty({ description: 'Image URL for the action', nullable: true })
   image: string;
 
+  @Column({ nullable: true })
+  @ApiProperty({
+    description: 'Number of commitments needed to start the action',
+    nullable: true,
+  })
+  commitmentThreshold?: number;
+
+  @Column({ nullable: true })
+  @ApiProperty({
+    description: 'Amount of money committed needed to start the action',
+    nullable: true,
+  })
+  donationThreshold?: number;
+
+  @Column({ default: 500, nullable: true })
+  @ApiProperty({
+    description: 'Suggested donation amount (cents)',
+    nullable: true,
+  })
+  donationAmount?: number;
+
   @Column()
   @ApiProperty({ description: 'Description of the action' })
   @IsNotEmpty()

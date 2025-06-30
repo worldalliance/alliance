@@ -883,7 +883,6 @@ const DatabaseViewer: React.FC = () => {
         )}
       </div>
 
-      {/* Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!pendingUpdate}
         title="Confirm Update"

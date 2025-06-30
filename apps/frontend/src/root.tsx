@@ -27,12 +27,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        <PostHogProvider
-          apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
-          options={options}
-        >
+        {import.meta.env.PROD ? (
+          <PostHogProvider
+            apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
+            options={options}
+          >
+            <AuthProvider>{children}</AuthProvider>
+          </PostHogProvider>
+        ) : (
           <AuthProvider>{children}</AuthProvider>
-        </PostHogProvider>
+        )}
         <ScrollRestoration />
         <Scripts />
       </body>
