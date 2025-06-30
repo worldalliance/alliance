@@ -1,12 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsNumber, Min, Max, IsIn, IsString } from 'class-validator';
+import {
+  IsOptional,
+  IsNumber,
+  Min,
+  Max,
+  IsIn,
+  IsString,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ColumnMetadataDto } from './column-metadata.dto';
-import { CellValueDto } from './cell-value.dto';
 
 export class TableDataQueryDto {
-  @ApiProperty({ 
-    required: false, 
+  @ApiProperty({
+    required: false,
     default: 1,
     description: 'Page number for pagination',
     minimum: 1,
@@ -17,8 +23,8 @@ export class TableDataQueryDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiProperty({ 
-    required: false, 
+  @ApiProperty({
+    required: false,
     default: 50,
     description: 'Number of records per page',
     minimum: 1,
@@ -31,7 +37,7 @@ export class TableDataQueryDto {
   @Max(1000)
   limit?: number = 50;
 
-  @ApiProperty({ 
+  @ApiProperty({
     required: false,
     description: 'Column name to sort by',
   })
@@ -39,9 +45,9 @@ export class TableDataQueryDto {
   @IsString()
   sortBy?: string;
 
-  @ApiProperty({ 
-    required: false, 
-    enum: ['ASC', 'DESC'], 
+  @ApiProperty({
+    required: false,
+    enum: ['ASC', 'DESC'],
     default: 'ASC',
     description: 'Sort order',
   })
@@ -49,7 +55,7 @@ export class TableDataQueryDto {
   @IsIn(['ASC', 'DESC'])
   sortOrder?: 'ASC' | 'DESC' = 'ASC';
 
-  @ApiProperty({ 
+  @ApiProperty({
     required: false,
     description: 'Search term to filter results',
   })
@@ -59,7 +65,7 @@ export class TableDataQueryDto {
 }
 
 export class TableDataDto {
-  @ApiProperty({ 
+  @ApiProperty({
     type: [ColumnMetadataDto],
     description: 'Column metadata for the table',
   })
@@ -67,19 +73,20 @@ export class TableDataDto {
 
   @ApiProperty({
     type: 'array',
-    items: { 
-      type: 'array', 
-      items: { 
+    items: {
+      type: 'array',
+      items: {
         oneOf: [
           { type: 'string' },
           { type: 'number' },
           { type: 'boolean' },
           { type: 'object' },
           { type: 'null' },
-        ]
-      }
+        ],
+      },
     },
-    description: 'Table rows data - each row is an array of values corresponding to columns',
+    description:
+      'Table rows data - each row is an array of values corresponding to columns',
   })
   rows: (string | number | boolean | object | null)[][];
 

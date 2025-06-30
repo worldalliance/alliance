@@ -19,7 +19,7 @@ const samplePost: PostDto = {
     whyJoin: "",
     image: "",
     description: "",
-    status: "active",
+    status: "upcoming",
     usersJoined: 0,
     timeEstimate: "",
     shortDescription: "",

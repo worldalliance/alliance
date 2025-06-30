@@ -1,5 +1,4 @@
 import { ProgressCircle } from "./tremor/ProgressCircle";
-import Card, { CardStyle } from "./system/Card";
 
 const StatsCard = () => {
   return (

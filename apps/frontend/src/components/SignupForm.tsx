@@ -41,9 +41,8 @@ const SignupForm = ({
         return;
       }
 
-      const { confirmEmail, ...submitData } = formData;
       onSubmit({
-        ...submitData,
+        ...formData,
         referralCode: referralCode || undefined,
       });
     },

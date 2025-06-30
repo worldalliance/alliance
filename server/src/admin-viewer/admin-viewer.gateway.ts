@@ -11,11 +11,6 @@ import { Server, Socket } from 'socket.io';
 import { Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-interface TableSubscription {
-  socketId: string;
-  tableName: string;
-}
-
 @WebSocketGateway({
   cors: {
     origin: true,
@@ -34,9 +29,18 @@ export class AdminViewerGateway
 
   constructor(private eventEmitter: EventEmitter2) {
     // Listen for database change events
-    this.eventEmitter.on('database.insert', this.handleDatabaseInsert.bind(this));
-    this.eventEmitter.on('database.update', this.handleDatabaseUpdate.bind(this));
-    this.eventEmitter.on('database.delete', this.handleDatabaseDelete.bind(this));
+    this.eventEmitter.on(
+      'database.insert',
+      this.handleDatabaseInsert.bind(this),
+    );
+    this.eventEmitter.on(
+      'database.update',
+      this.handleDatabaseUpdate.bind(this),
+    );
+    this.eventEmitter.on(
+      'database.delete',
+      this.handleDatabaseDelete.bind(this),
+    );
   }
 
   handleConnection(client: Socket) {
@@ -60,7 +64,7 @@ export class AdminViewerGateway
     @ConnectedSocket() client: Socket,
   ) {
     const { tableName } = data;
-    
+
     // Remove client from all existing subscriptions
     this.subscriptions.forEach((socketIds) => {
       socketIds.delete(client.id);
@@ -73,7 +77,7 @@ export class AdminViewerGateway
     this.subscriptions.get(tableName)!.add(client.id);
 
     this.logger.log(`Client ${client.id} subscribed to table: ${tableName}`);
-    
+
     return { status: 'subscribed', tableName };
   }
 
@@ -83,7 +87,7 @@ export class AdminViewerGateway
     @ConnectedSocket() client: Socket,
   ) {
     const { tableName } = data;
-    
+
     if (this.subscriptions.has(tableName)) {
       this.subscriptions.get(tableName)!.delete(client.id);
       if (this.subscriptions.get(tableName)!.size === 0) {
@@ -91,33 +95,42 @@ export class AdminViewerGateway
       }
     }
 
-    this.logger.log(`Client ${client.id} unsubscribed from table: ${tableName}`);
-    
+    this.logger.log(
+      `Client ${client.id} unsubscribed from table: ${tableName}`,
+    );
+
     return { status: 'unsubscribed', tableName };
   }
 
-  private handleDatabaseInsert(event: { tableName: string; entity: any }) {
+  private handleDatabaseInsert(event: { tableName: string; entity: unknown }) {
     this.emitToTableSubscribers(event.tableName, 'row-inserted', {
       tableName: event.tableName,
       entity: event.entity,
     });
   }
 
-  private handleDatabaseUpdate(event: { tableName: string; entity: any }) {
+  private handleDatabaseUpdate(event: { tableName: string; entity: unknown }) {
     this.emitToTableSubscribers(event.tableName, 'row-updated', {
       tableName: event.tableName,
       entity: event.entity,
     });
   }
 
-  private handleDatabaseDelete(event: { tableName: string; entityId: any }) {
+  private handleDatabaseDelete(event: {
+    tableName: string;
+    entityId: unknown;
+  }) {
     this.emitToTableSubscribers(event.tableName, 'row-deleted', {
       tableName: event.tableName,
       entityId: event.entityId,
     });
   }
 
-  private emitToTableSubscribers(tableName: string, event: string, data: any) {
+  private emitToTableSubscribers(
+    tableName: string,
+    event: string,
+    data: unknown,
+  ) {
     const subscribers = this.subscriptions.get(tableName);
     if (subscribers) {
       subscribers.forEach((socketId) => {

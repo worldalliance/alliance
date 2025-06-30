@@ -7,6 +7,7 @@ export interface ActionItemCardProps
   extends Pick<ActionDto, "name" | "shortDescription" | "category" | "id"> {
   className?: string;
   liveCount?: number;
+  showDescription?: boolean;
 }
 
 const ActionItemCard: React.FC<ActionItemCardProps> = ({
@@ -15,6 +16,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   shortDescription,
   className,
   liveCount,
+  showDescription = true,
 }) => {
   const navigate = useNavigate();
 
@@ -28,7 +30,9 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
         {/* <Badge>{category}</Badge> */}
         <div className="w-[100%] space-x-3">
           <p className="font-avenir font-bold">{name}</p>
-          <p className="text-gray-500">{shortDescription}</p>
+          {showDescription && (
+            <p className="text-gray-500">{shortDescription}</p>
+          )}
         </div>
         {liveCount !== undefined && <p>Count: {liveCount}</p>}
       </Card>

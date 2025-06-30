@@ -1,11 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Repository } from 'typeorm';
 import * as request from 'supertest';
 import { User } from '../src/user/user.entity';
-import { Action } from '../src/actions/entities/action.entity';
+import { Action, ActionStatus } from '../src/actions/entities/action.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { AdminViewerModule } from '../src/admin-viewer/admin-viewer.module';
 import { TableMetadataDto } from 'src/admin-viewer/dto/table-list.dto';
-import { ActionStatus } from 'src/actions/entities/action-event.entity';
 import { ColumnMetadataDto } from 'src/admin-viewer/dto/column-metadata.dto';
 
 describe('AdminViewer (e2e)', () => {
@@ -78,7 +78,7 @@ describe('AdminViewer (e2e)', () => {
         category: 'Test',
         whyJoin: 'For testing',
         description: 'Test action for forum tests',
-        status: ActionStatus.Active,
+        status: ActionStatus.GatheringCommitments,
       });
 
       await actionRepository.save(testAction);
@@ -298,8 +298,8 @@ describe('AdminViewer (e2e)', () => {
 
       if (numberColumn) {
         expect(
-          ['int', 'integer', 'bigint', 'decimal', 'numeric', 'number'].some((type) =>
-            numberColumn.rawType.toLowerCase().includes(type),
+          ['int', 'integer', 'bigint', 'decimal', 'numeric', 'number'].some(
+            (type) => numberColumn.rawType.toLowerCase().includes(type),
           ),
         ).toBe(true);
       }

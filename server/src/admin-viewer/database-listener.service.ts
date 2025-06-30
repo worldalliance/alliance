@@ -1,10 +1,19 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { DataSource, EntitySubscriberInterface, EventSubscriber, InsertEvent, UpdateEvent, RemoveEvent } from 'typeorm';
+import {
+  DataSource,
+  EntitySubscriberInterface,
+  EventSubscriber,
+  InsertEvent,
+  UpdateEvent,
+  RemoveEvent,
+} from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 @EventSubscriber()
-export class DatabaseListenerService implements EntitySubscriberInterface, OnModuleInit {
+export class DatabaseListenerService
+  implements EntitySubscriberInterface, OnModuleInit
+{
   constructor(
     private dataSource: DataSource,
     private eventEmitter: EventEmitter2,
@@ -15,45 +24,32 @@ export class DatabaseListenerService implements EntitySubscriberInterface, OnMod
     this.dataSource.subscribers.push(this);
   }
 
-  /**
-   * Called after entity insertion.
-   */
-  afterInsert(event: InsertEvent<any>) {
+  afterInsert(event: InsertEvent<unknown>) {
     const tableName = event.metadata.tableName;
     const entity = event.entity;
-    
-    console.log(`Database insert detected in table: ${tableName}`);
-    
+
     this.eventEmitter.emit('database.insert', {
       tableName,
       entity,
     });
   }
 
-  /**
-   * Called after entity update.
-   */
-  afterUpdate(event: UpdateEvent<any>) {
+  afterUpdate(event: UpdateEvent<unknown>) {
     const tableName = event.metadata.tableName;
     const entity = event.entity;
-    
-    console.log(`Database update detected in table: ${tableName}`);
-    
+
     this.eventEmitter.emit('database.update', {
       tableName,
       entity,
     });
   }
 
-  /**
-   * Called after entity removal.
-   */
-  afterRemove(event: RemoveEvent<any>) {
+  afterRemove(event: RemoveEvent<unknown>) {
     const tableName = event.metadata.tableName;
     const entityId = event.entityId;
-    
+
     console.log(`Database delete detected in table: ${tableName}`);
-    
+
     this.eventEmitter.emit('database.delete', {
       tableName,
       entityId,

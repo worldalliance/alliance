@@ -4,13 +4,17 @@ import { getApiUrl } from "../config";
 
 interface DatabaseEvent {
   tableName: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   entity?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   entityId?: any;
 }
 
 export const useAdminWebSocket = () => {
   const [isConnected, setIsConnected] = useState(false);
-  const [currentSubscription, setCurrentSubscription] = useState<string | null>(null);
+  const [currentSubscription, setCurrentSubscription] = useState<string | null>(
+    null
+  );
   const socketRef = useRef<Socket | null>(null);
   const eventHandlersRef = useRef<{
     onRowInserted?: (event: DatabaseEvent) => void;
@@ -59,44 +63,53 @@ export const useAdminWebSocket = () => {
     };
   }, []); // No dependencies - only connect once
 
-  const subscribeToTable = useCallback((tableName: string) => {
-    if (!socketRef.current || !isConnected) {
-      console.warn("Cannot subscribe: socket not connected");
-      return;
-    }
+  const subscribeToTable = useCallback(
+    (tableName: string) => {
+      if (!socketRef.current || !isConnected) {
+        console.warn("Cannot subscribe: socket not connected");
+        return;
+      }
 
-    if (currentSubscription === tableName) {
-      console.log(`Already subscribed to table: ${tableName}`);
-      return;
-    }
+      if (currentSubscription === tableName) {
+        console.log(`Already subscribed to table: ${tableName}`);
+        return;
+      }
 
-    // Subscribe to new table
-    socketRef.current.emit("subscribe-table", { tableName });
-    setCurrentSubscription(tableName);
-    console.log(`Subscribed to table: ${tableName}`);
-  }, [isConnected, currentSubscription]);
+      // Subscribe to new table
+      socketRef.current.emit("subscribe-table", { tableName });
+      setCurrentSubscription(tableName);
+      console.log(`Subscribed to table: ${tableName}`);
+    },
+    [isConnected, currentSubscription]
+  );
 
-  const unsubscribeFromTable = useCallback((tableName: string) => {
-    if (!socketRef.current) {
-      return;
-    }
+  const unsubscribeFromTable = useCallback(
+    (tableName: string) => {
+      if (!socketRef.current) {
+        return;
+      }
 
-    socketRef.current.emit("unsubscribe-table", { tableName });
+      socketRef.current.emit("unsubscribe-table", { tableName });
 
-    if (currentSubscription === tableName) {
-      setCurrentSubscription(null);
-    }
+      if (currentSubscription === tableName) {
+        setCurrentSubscription(null);
+      }
 
-    console.log(`Unsubscribed from table: ${tableName}`);
-  }, [currentSubscription]);
+      console.log(`Unsubscribed from table: ${tableName}`);
+    },
+    [currentSubscription]
+  );
 
-  const setEventHandlers = useCallback((handlers: {
-    onRowInserted?: (event: DatabaseEvent) => void;
-    onRowUpdated?: (event: DatabaseEvent) => void;
-    onRowDeleted?: (event: DatabaseEvent) => void;
-  }) => {
-    eventHandlersRef.current = handlers;
-  }, []);
+  const setEventHandlers = useCallback(
+    (handlers: {
+      onRowInserted?: (event: DatabaseEvent) => void;
+      onRowUpdated?: (event: DatabaseEvent) => void;
+      onRowDeleted?: (event: DatabaseEvent) => void;
+    }) => {
+      eventHandlersRef.current = handlers;
+    },
+    []
+  );
 
   return {
     isConnected,

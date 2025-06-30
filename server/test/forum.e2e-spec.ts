@@ -1,6 +1,5 @@
 import * as request from 'supertest';
-import { Action } from '../src/actions/entities/action.entity';
-import { ActionStatus } from '../src/actions/entities/action-event.entity';
+import { Action, ActionStatus } from '../src/actions/entities/action.entity';
 import { CreatePostDto } from '../src/forum/dto/post.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { ForumModule } from '../src/forum/forum.module';
@@ -23,7 +22,7 @@ describe('Forum (e2e)', () => {
       category: 'Test',
       whyJoin: 'For testing',
       description: 'Test action for forum tests',
-      status: ActionStatus.Active,
+      status: ActionStatus.GatheringCommitments,
     });
     await actionRepo.save(testAction);
   }, 50000);

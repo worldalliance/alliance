@@ -1,9 +1,10 @@
 import * as request from 'supertest';
-import { Action, ActionTaskType } from '../src/actions/entities/action.entity';
 import {
+  Action,
   ActionStatus,
-  NotificationType,
-} from '../src/actions/entities/action-event.entity';
+  ActionTaskType,
+} from '../src/actions/entities/action.entity';
+import { NotificationType } from '../src/actions/entities/action-event.entity';
 import {
   CreateActionDto,
   ActionEventDto,
@@ -29,7 +30,7 @@ describe('Actions (e2e)', () => {
       category: 'Test',
       whyJoin: 'For testing',
       description: 'Test action for forum tests',
-      status: ActionStatus.Active,
+      status: ActionStatus.MemberAction,
     });
 
     testDraftAction = actionRepo.create({
@@ -49,7 +50,7 @@ describe('Actions (e2e)', () => {
       const newAction: CreateActionDto = {
         name: 'Test Action',
         description: 'Do something important',
-        status: ActionStatus.Active,
+        status: ActionStatus.GatheringCommitments,
         category: '',
         whyJoin: '',
         image: '',
@@ -189,7 +190,7 @@ describe('Actions (e2e)', () => {
       const newEvent: CreateActionEventDto = {
         title: 'Test Event',
         description: 'Test Event',
-        newStatus: ActionStatus.Active,
+        newStatus: ActionStatus.GatheringCommitments,
         date: new Date(),
         showInTimeline: true,
         sendNotifsTo: NotificationType.All,

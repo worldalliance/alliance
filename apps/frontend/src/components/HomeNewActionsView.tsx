@@ -11,14 +11,16 @@ export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
 }: HomeNewActionsViewProps) => {
   return (
     <div className="flex flex-col gap-y-2">
-      <div className="flex flex-row items-center gap-x-2 justify-between w-full">
-        <p className="text-gray-600 text-lg">Actions needing commitment</p>
-      </div>
+      <p className="text-gray-700 text-lg">
+        <span className="font-bold text-black">
+          {initialActions.length} actions awaiting your commitment
+        </span>
+      </p>
       {initialActions.map((action) => (
         <ActionItemCard key={action.id} {...action} />
       ))}
       {initialActions.length === 0 && (
-        <p className="rounded border border-gray-200 text-center text-gray-500 py-5">
+        <p className="rounded border border-gray-200 text-center text-gray-500 !py-5">
           No new actions to commit to
         </p>
       )}

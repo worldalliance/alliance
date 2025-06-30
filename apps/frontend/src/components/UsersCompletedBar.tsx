@@ -16,7 +16,7 @@ const UsersCompletedBar: React.FC<UsersCompletedBarProps> = ({
           style={{ width: `${percentage}%` }}
         ></div>
       </div>
-      <p className="text-gray-800 font-avenir text-sm p-1 pb-0">
+      <p className="text-gray-800 font-avenir text-sm p-1 pb-0 !pt-2">
         {usersCompleted} members completed, out of {totalUsers} committed
       </p>
     </div>

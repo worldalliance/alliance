@@ -20,7 +20,7 @@ type ButtonProps = React.PropsWithChildren & {
   >;
 
 export enum ButtonColor {
-  Stone = "bg-stone-700",
+  Stone = "bg-[#444]",
   Green = "bg-[#5d9c2d]",
   Red = "bg-red-100 !text-red-500",
   Light = "bg-stone-200",

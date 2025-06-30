@@ -15,7 +15,7 @@ export const testActions: ActionDto[] = [
     id: 1,
     whyJoin: "",
     image: "",
-    status: "active",
+    status: "gathering-commitments",
     timeEstimate: "5 min",
     usersJoined: 234,
     myRelation: {
@@ -58,7 +58,7 @@ export const testActions: ActionDto[] = [
     id: 2,
     whyJoin: "",
     image: "",
-    status: "active",
+    status: "gathering-commitments",
     timeEstimate: "5 min",
     usersJoined: 234,
     myRelation: {
@@ -144,6 +144,7 @@ export const testForumPosts: PostDto[] = [
 export const testTodoActions: ActionDto[] = [
   {
     ...testActions[0],
+    status: "member-action",
     myRelation: {
       status: "joined",
       deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
@@ -153,6 +154,7 @@ export const testTodoActions: ActionDto[] = [
   },
   {
     ...testActions[1],
+    status: "member-action",
     myRelation: {
       status: "joined",
       deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
@@ -162,6 +164,7 @@ export const testTodoActions: ActionDto[] = [
   },
   {
     ...testActions[1],
+    status: "member-action",
     type: "Ongoing",
     name: "Stop buying from Coca-Cola",
     myRelation: {

@@ -10,12 +10,24 @@ import { UserAction, UserActionRelation } from './user-action.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsNotEmpty } from 'class-validator';
-import { ActionEvent, ActionStatus } from './action-event.entity';
+import { ActionEvent } from './action-event.entity';
 
 export enum ActionTaskType {
   Funding = 'Funding', //giving money to a particular cause
   Activity = 'Activity', // one-time action taking a limited amount of time
   Ongoing = 'Ongoing', // ongoing or recurring behavior change
+}
+
+export enum ActionStatus {
+  Draft = 'draft',
+  Upcoming = 'upcoming',
+  GatheringCommitments = 'gathering-commitments',
+  CommitmentsReached = 'commitments-reached', // all commitments have been reached, actions not yet started
+  MemberAction = 'member-action', // all committed members start doing the action
+  Resolution = 'resolution', // member action done, office working on resolution
+  Completed = 'completed', // resolution done
+  Failed = 'failed', // resolution failed
+  Abandoned = 'abandoned', // process aborted
 }
 
 @Entity()

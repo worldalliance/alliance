@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   JoinColumn,
 } from 'typeorm';
-import { Action } from './action.entity';
+import { Action, ActionStatus } from './action.entity';
 import { IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -14,13 +14,6 @@ export enum NotificationType {
   All = 'all',
   Joined = 'joined',
   None = 'none',
-}
-
-export enum ActionStatus {
-  Active = 'active',
-  Upcoming = 'upcoming',
-  Past = 'past',
-  Draft = 'draft',
 }
 
 @Entity()

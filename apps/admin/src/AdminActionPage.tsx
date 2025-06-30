@@ -363,8 +363,16 @@ const AdminActionPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="draft">Draft</option>
-                <option value="active">Active</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="gathering-commitments">
+                  Gathering Commitments
+                </option>
+                <option value="commitments-reached">Commitments Reached</option>
+                <option value="member-action">Member Action</option>
+                <option value="resolution">Resolution</option>
                 <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="abandoned">Abandoned</option>
               </select>
             </div>
 

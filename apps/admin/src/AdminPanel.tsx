@@ -114,11 +114,12 @@ const AdminPanel: React.FC = () => {
             <div className="mt-2">
               <p>Total Actions: {actions.length}</p>
               <p>
-                Active: {actions.filter((a) => a.status === "active").length}
+                Active: {actions.filter((a) => a.status === "upcoming").length}
               </p>
               <p>Draft: {actions.filter((a) => a.status === "draft").length}</p>
               <p>
-                Completed: {actions.filter((a) => a.status === "past").length}
+                Completed:{" "}
+                {actions.filter((a) => a.status === "completed").length}
               </p>
             </div>
           </Card>

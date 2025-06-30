@@ -9,8 +9,8 @@ import {
   ActionActivityDto,
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Action } from './entities/action.entity';
-import { ActionEvent, ActionStatus } from './entities/action-event.entity';
+import { Action, ActionStatus } from './entities/action.entity';
+import { ActionEvent } from './entities/action-event.entity';
 import { In, Not, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';

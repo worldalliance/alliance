@@ -22,10 +22,15 @@ import ActionCommitButton from "../../components/ActionCommitButton";
 import ActionActivityList from "../../components/ActionActivityList";
 
 const ActionStatusDescriptions: Record<ActionDto["status"], string> = {
-  active: "Collecting commitments",
-  upcoming: "Upcoming",
-  past: "Past",
+  "gathering-commitments": "Collecting commitments",
+  "commitments-reached": "Commitments reached",
+  "member-action": "Member action",
+  resolution: "Resolution",
+  completed: "Completed",
+  failed: "Failed",
+  abandoned: "Abandoned",
   draft: "Draft",
+  upcoming: "Upcoming",
 };
 
 export async function loader({
@@ -123,12 +128,14 @@ export default function ActionPage() {
         )}
         <div className="flex flex-row justify-between items-start my-3">
           <div className="flex flex-col gap-y-3">
-            <h1 className="">
-              {action?.name}
-              <span className="text-gray-800 text-sm bg-gray-100 rounded-sm p-3 align-middle mx-3">
-                {ActionStatusDescriptions[action?.status ?? "active"]}
-              </span>
-            </h1>
+            {action !== undefined && (
+              <h1>
+                {action.name}
+                <span className="text-gray-800 text-sm bg-gray-100 rounded-sm p-3 align-middle mx-3">
+                  {ActionStatusDescriptions[action.status]}
+                </span>
+              </h1>
+            )}
           </div>
           {action?.type !== "Funding" && (
             <ActionCommitButton
@@ -163,7 +170,15 @@ export default function ActionPage() {
         {isFeatureEnabled(Features.Forum) && <ActionForumPosts actionId={id} />}
       </div>
     ),
-    [action, userRelation, id, isAuthenticated, onJoinAction, error]
+    [
+      action,
+      userRelation,
+      id,
+      isAuthenticated,
+      onJoinAction,
+      error,
+      handleCompleteAction,
+    ]
   );
 
   return (

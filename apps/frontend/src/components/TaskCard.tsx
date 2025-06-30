@@ -5,10 +5,7 @@ import { CardStyle } from "./system/Card";
 import Card from "./system/Card";
 import { ActionDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "./system/Button";
-
-// Import the dropdown icon
 import expandArrow from "../assets/icons8-expand-arrow-96.png";
-import { formatDistanceToNow } from "date-fns";
 import UsersCompletedBar from "./UsersCompletedBar";
 
 export interface TaskCardProps {
@@ -60,19 +57,19 @@ const TaskCard: React.FC<TaskCardProps> = ({
     }
   }, [state, action, onComplete]);
 
-  const timeRemaining = useMemo(() => {
-    if (!action.myRelation?.deadline) return null;
-    return (
-      formatDistanceToNow(new Date(action.myRelation.deadline), {}) +
-      " to complete"
-    );
-  }, [action.myRelation?.deadline]);
+  //   const timeRemaining = useMemo(() => {
+  //     if (!action.myRelation?.deadline) return null;
+  //     return (
+  //       formatDistanceToNow(new Date(action.myRelation.deadline), {}) +
+  //       " to complete"
+  //     );
+  //   }, [action.myRelation?.deadline]);
 
   const actionButton = useMemo(() => {
     const text = action.type === "Funding" ? "Give" : "See steps";
     return (
       <Button
-        color={"bg-[#444]"}
+        color={ButtonColor.Stone}
         onClick={goToActionPage}
         className="!w-32 font-avenir rounded-md !text-white font-regular py-3"
       >
@@ -111,10 +108,10 @@ const TaskCard: React.FC<TaskCardProps> = ({
 
       {state !== TaskCardState.Minified && (
         <div className="transition-all duration-300 space-y-8">
-          <p className="text-stone-600 font-newsreader pb-8">
+          <p className="text-stone-600 font-newsreader pb-2">
             {action.shortDescription}
           </p>
-          <div className="absolute bottom-0 left-0 right-0 flex flex-row items-end p-4">
+          <div className="bottom-0 left-0 right-0 flex flex-row items-end">
             <UsersCompletedBar
               usersCompleted={action.usersCompleted}
               totalUsers={action.usersJoined}

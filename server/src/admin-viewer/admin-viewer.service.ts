@@ -70,7 +70,7 @@ export class AdminViewerService {
     try {
       // Build base query
       let baseQuery = `SELECT * FROM "${tableName}"`;
-      const params: any[] = [];
+      const params: (string | number)[] = [];
 
       // Add search functionality
       if (search) {
@@ -108,7 +108,7 @@ export class AdminViewerService {
 
       // Get total count
       let countQuery = `SELECT COUNT(*) as count FROM "${tableName}"`;
-      const countParams: any[] = [];
+      const countParams: (string | number)[] = [];
 
       if (search) {
         const searchableColumns = columns
@@ -131,7 +131,7 @@ export class AdminViewerService {
       const totalCount = parseInt(countResult[0].count);
 
       // Convert rows to array format
-      const rowsArray = rows.map((row: any) =>
+      const rowsArray = rows.map((row: unknown[]) =>
         columns.map((col) => row[col.name]),
       );
 
@@ -167,9 +167,14 @@ export class AdminViewerService {
 
     // String types
     if (
-      ['varchar', 'text', 'char', 'character', 'character varying', 'citext'].includes(
-        type,
-      )
+      [
+        'varchar',
+        'text',
+        'char',
+        'character',
+        'character varying',
+        'citext',
+      ].includes(type)
     ) {
       return ColumnDataType.STRING;
     }
@@ -179,7 +184,7 @@ export class AdminViewerService {
       [
         'int',
         'int2',
-        'int4', 
+        'int4',
         'int8',
         'integer',
         'bigint',
@@ -213,7 +218,17 @@ export class AdminViewerService {
 
     // DateTime types
     if (
-      ['timestamp', 'timestamptz', 'timestamp without time zone', 'timestamp with time zone', 'datetime', 'time', 'timetz', 'time without time zone', 'time with time zone'].includes(type)
+      [
+        'timestamp',
+        'timestamptz',
+        'timestamp without time zone',
+        'timestamp with time zone',
+        'datetime',
+        'time',
+        'timetz',
+        'time without time zone',
+        'time with time zone',
+      ].includes(type)
     ) {
       return ColumnDataType.DATETIME;
     }
@@ -241,10 +256,9 @@ export class AdminViewerService {
 
     // Add regular columns
     for (const column of metadata.columns) {
-      
       // Handle different types of column.type values
       let rawType: string;
-      
+
       if (typeof column.type === 'function') {
         // Handle constructor functions like Number, String, Boolean
         rawType = column.type.name.toLowerCase();
@@ -254,7 +268,7 @@ export class AdminViewerService {
         // Fallback for other types
         rawType = String(column.type);
       }
-      
+
       const dataType = this.mapColumnType(rawType);
 
       columns.push({

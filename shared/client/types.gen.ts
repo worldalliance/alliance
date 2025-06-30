@@ -110,7 +110,7 @@ export type ActionEventDto = {
     /**
      * New status of the action after the event
      */
-    newStatus: 'active' | 'upcoming' | 'past' | 'draft';
+    newStatus: string;
     /**
      * Notification type for the event
      */
@@ -162,7 +162,7 @@ export type ActionDto = {
     /**
      * Current status of the action
      */
-    status: 'active' | 'upcoming' | 'past' | 'draft';
+    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
     /**
      * Type of the action
      */
@@ -242,7 +242,7 @@ export type CreateActionDto = {
     /**
      * Current status of the action
      */
-    status: 'active' | 'upcoming' | 'past' | 'draft';
+    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
     /**
      * Type of the action
      */
@@ -282,7 +282,7 @@ export type UpdateActionDto = {
     /**
      * Current status of the action
      */
-    status?: 'active' | 'upcoming' | 'past' | 'draft';
+    status?: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
     /**
      * Type of the action
      */
@@ -326,7 +326,7 @@ export type ActionWithRelationDto = {
     /**
      * Current status of the action
      */
-    status: 'active' | 'upcoming' | 'past' | 'draft';
+    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
     /**
      * Type of the action
      */
@@ -355,7 +355,7 @@ export type CreateActionEventDto = {
     /**
      * New status of the action after the event
      */
-    newStatus: 'active' | 'upcoming' | 'past' | 'draft';
+    newStatus: string;
     /**
      * Notification type for the event
      */
