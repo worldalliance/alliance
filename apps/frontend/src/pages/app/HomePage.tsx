@@ -14,17 +14,32 @@ const HomePage: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [todoActions, setTodoActions] = useState<ActionDto[]>([]);
   const [newActions, setNewActions] = useState<ActionDto[]>([]);
+  const [committedActions, setCommittedActions] = useState<ActionDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { loading: authLoading, isAuthenticated } = useAuth();
 
   const updateActions = useCallback((actions: ActionDto[]) => {
     setActions(actions);
     setTodoActions(
-      actions.filter((action) => action.myRelation?.status === "joined")
+      actions.filter(
+        (action) =>
+          action.myRelation?.status === "joined" &&
+          action.status === "member-action"
+      )
     );
     setNewActions(
       actions.filter(
-        (action) => !action.myRelation || action.myRelation.status === "none"
+        (action) =>
+          !action.myRelation ||
+          (action.myRelation.status === "none" &&
+            action.status === "gathering-commitments")
+      )
+    );
+    setCommittedActions(
+      actions.filter(
+        (action) =>
+          action.myRelation?.status === "joined" &&
+          action.status === "gathering-commitments"
       )
     );
   }, []);

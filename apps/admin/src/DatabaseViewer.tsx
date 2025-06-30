@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAdminWebSocket } from "./hooks/useAdminWebSocket";
+import ConfirmDialog from "./components/ConfirmDialog";
+import CellEditor from "./components/CellEditor";
 import "./index.css";
 import type {
   TableDataDto,
@@ -10,6 +12,7 @@ import type {
 import {
   adminViewerGetTableData,
   adminViewerGetTables,
+  adminViewerUpdateRecord,
 } from "@alliance/shared/client";
 
 interface TableDataQueryDto {
@@ -38,6 +41,18 @@ const DatabaseViewer: React.FC = () => {
   const [searchInput, setSearchInput] = useState("");
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [newRows, setNewRows] = useState<Set<string>>(new Set());
+  const [editingCell, setEditingCell] = useState<{
+    rowIndex: number;
+    columnIndex: number;
+    originalValue: any;
+  } | null>(null);
+  const [pendingUpdate, setPendingUpdate] = useState<{
+    tableName: string;
+    primaryKeyValue: string | number;
+    columnName: string;
+    newValue: any;
+    originalValue: any;
+  } | null>(null);
 
   // WebSocket connection for live updates
   const {
@@ -243,6 +258,95 @@ const DatabaseViewer: React.FC = () => {
     setQuery((prev) => ({ ...prev, page: 1, search: undefined }));
   };
 
+  const handleCellClick = (
+    rowIndex: number,
+    columnIndex: number,
+    cellValue: any,
+    column: ColumnMetadataDto
+  ) => {
+    // Don't allow editing primary keys or relation columns
+    if (column.isPrimary || column.dataType === "relation") {
+      return;
+    }
+
+    setEditingCell({
+      rowIndex,
+      columnIndex,
+      originalValue: cellValue,
+    });
+  };
+
+  const handleCellSave = async (newValue: any) => {
+    if (!editingCell || !tableData) return;
+
+    const { rowIndex, columnIndex } = editingCell;
+    const column = tableData.columns[columnIndex];
+    const row = tableData.rows[rowIndex];
+    const primaryKeyColumn = tableData.columns.find((col) => col.isPrimary);
+
+    if (!primaryKeyColumn) {
+      alert("Cannot update: No primary key found");
+      setEditingCell(null);
+      return;
+    }
+
+    const primaryKeyIndex = tableData.columns.findIndex((col) => col.isPrimary);
+    const primaryKeyValue = row[primaryKeyIndex];
+
+    // Check if value actually changed
+    if (newValue === editingCell.originalValue) {
+      setEditingCell(null);
+      return;
+    }
+
+    // Set up pending update for confirmation
+    setPendingUpdate({
+      tableName: selectedTable,
+      primaryKeyValue,
+      columnName: column.name,
+      newValue,
+      originalValue: editingCell.originalValue,
+    });
+
+    setEditingCell(null);
+  };
+
+  const handleCellCancel = () => {
+    setEditingCell(null);
+  };
+
+  const confirmUpdate = async () => {
+    if (!pendingUpdate) return;
+
+    try {
+      const response = await adminViewerUpdateRecord({
+        path: { tableName: pendingUpdate.tableName },
+        body: {
+          primaryKeyValue: pendingUpdate.primaryKeyValue,
+          updates: {
+            [pendingUpdate.columnName]: pendingUpdate.newValue,
+          },
+        },
+      });
+
+      if (response.data?.success) {
+        // Refresh table data to show the update
+        loadTableData();
+      } else {
+        alert(`Update failed: ${response.data?.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Update failed:", error);
+      alert(`Update failed: ${error.message || "Unknown error"}`);
+    } finally {
+      setPendingUpdate(null);
+    }
+  };
+
+  const cancelUpdate = () => {
+    setPendingUpdate(null);
+  };
+
   // Clear table data when changing tables to avoid showing stale data
   useEffect(() => {
     setTableData(null);
@@ -274,9 +378,38 @@ const DatabaseViewer: React.FC = () => {
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const formatCellValue = (value: any, column: ColumnMetadataDto) => {
+  const formatCellValue = (
+    value: any,
+    column: ColumnMetadataDto,
+    rowIndex?: number,
+    columnIndex?: number
+  ) => {
+    // If this cell is being edited, show the editor
+    if (
+      editingCell &&
+      rowIndex !== undefined &&
+      columnIndex !== undefined &&
+      editingCell.rowIndex === rowIndex &&
+      editingCell.columnIndex === columnIndex
+    ) {
+      return (
+        <CellEditor
+          value={value}
+          column={column}
+          onSave={handleCellSave}
+          onCancel={handleCellCancel}
+        />
+      );
+    }
+
+    // Add edit cursor for editable cells
+    const isEditable = !column.isPrimary && column.dataType !== "relation";
+    const baseClassName = isEditable
+      ? "cursor-pointer hover:bg-gray-100 p-1 rounded"
+      : "";
+
     if (value === null || value === undefined) {
-      return <span className="text-gray-400">null</span>;
+      return <span className={`text-gray-400 ${baseClassName}`}>null</span>;
     }
 
     switch (column.dataType) {
@@ -292,35 +425,39 @@ const DatabaseViewer: React.FC = () => {
 
       case "boolean":
         return (
-          <span className={value ? "text-green-600" : "text-red-600"}>
+          <span
+            className={`${
+              value ? "text-green-600" : "text-red-600"
+            } ${baseClassName}`}
+          >
             {value ? "true" : "false"}
           </span>
         );
 
       case "number":
         return (
-          <span className="text-blue-800 font-mono">
+          <span className={`text-blue-800 font-mono ${baseClassName}`}>
             {typeof value === "number" ? value.toLocaleString() : value}
           </span>
         );
 
       case "date":
         return (
-          <span className="text-purple-600">
+          <span className={`text-purple-600 ${baseClassName}`}>
             {new Date(value).toLocaleDateString()}
           </span>
         );
 
       case "datetime":
         return (
-          <span className="text-purple-600">
+          <span className={`text-purple-600 ${baseClassName}`}>
             {new Date(value).toLocaleString()}
           </span>
         );
 
       case "json":
         return (
-          <div className="max-w-xs">
+          <div className={`max-w-xs ${baseClassName}`}>
             <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto">
               {typeof value === "object"
                 ? JSON.stringify(value, null, 2)
@@ -330,11 +467,17 @@ const DatabaseViewer: React.FC = () => {
         );
 
       case "uuid":
-        return <span className="font-mono text-xs text-gray-600">{value}</span>;
+        return (
+          <span className={`font-mono text-xs text-gray-600 ${baseClassName}`}>
+            {value}
+          </span>
+        );
 
       case "enum":
         return (
-          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+          <span
+            className={`bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs ${baseClassName}`}
+          >
             {value}
           </span>
         );
@@ -344,14 +487,14 @@ const DatabaseViewer: React.FC = () => {
         const stringValue = String(value);
         if (stringValue.length > 100) {
           return (
-            <div className="max-w-xs">
+            <div className={`max-w-xs ${baseClassName}`}>
               <div className="truncate" title={stringValue}>
                 {stringValue}
               </div>
             </div>
           );
         }
-        return stringValue;
+        return <span className={baseClassName}>{stringValue}</span>;
       }
     }
   };
@@ -537,6 +680,15 @@ const DatabaseViewer: React.FC = () => {
                                 {column.dataType === "relation" && (
                                   <span className="text-blue-500">🔗</span>
                                 )}
+                                {!column.isPrimary &&
+                                  column.dataType !== "relation" && (
+                                    <span
+                                      className="text-green-500 text-xs"
+                                      title="Editable column"
+                                    >
+                                      ✏️
+                                    </span>
+                                  )}
                                 {query.sortBy === column.name && (
                                   <span>
                                     {query.sortOrder === "ASC" ? "↑" : "↓"}
@@ -609,17 +761,38 @@ const DatabaseViewer: React.FC = () => {
                                   : ""
                               }`}
                             >
-                              {row.map((cell, cellIndex) => (
-                                <td
-                                  key={cellIndex}
-                                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                                >
-                                  {formatCellValue(
-                                    cell,
-                                    tableData.columns[cellIndex]
-                                  )}
-                                </td>
-                              ))}
+                              {row.map((cell, cellIndex) => {
+                                const column = tableData.columns[cellIndex];
+                                const isEditable =
+                                  !column.isPrimary &&
+                                  column.dataType !== "relation";
+
+                                return (
+                                  <td
+                                    key={cellIndex}
+                                    className={`px-6 py-4 whitespace-nowrap text-sm text-gray-900 ${
+                                      isEditable ? "hover:bg-gray-50" : ""
+                                    }`}
+                                    onClick={() =>
+                                      isEditable
+                                        ? handleCellClick(
+                                            rowIndex,
+                                            cellIndex,
+                                            cell,
+                                            column
+                                          )
+                                        : undefined
+                                    }
+                                  >
+                                    {formatCellValue(
+                                      cell,
+                                      column,
+                                      rowIndex,
+                                      cellIndex
+                                    )}
+                                  </td>
+                                );
+                              })}
                             </tr>
                           );
                         })}
@@ -709,6 +882,22 @@ const DatabaseViewer: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!pendingUpdate}
+        title="Confirm Update"
+        message={
+          pendingUpdate
+            ? `Are you sure you want to update "${pendingUpdate.columnName}" from "${pendingUpdate.originalValue}" to "${pendingUpdate.newValue}"?`
+            : ""
+        }
+        confirmText="Update"
+        cancelText="Cancel"
+        onConfirm={confirmUpdate}
+        onCancel={cancelUpdate}
+        isLoading={false}
+      />
     </div>
   );
 };

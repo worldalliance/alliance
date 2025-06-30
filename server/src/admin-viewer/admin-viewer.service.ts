@@ -5,6 +5,7 @@ import { TableListDto, TableMetadataDto } from './dto/table-list.dto';
 import { TableDataDto, TableDataQueryDto } from './dto/table-data.dto';
 import { ColumnMetadataDto } from './dto/column-metadata.dto';
 import { ColumnDataType } from './dto/column-type.enum';
+import { UpdateRecordDto, UpdateRecordResponseDto } from './dto/update-record.dto';
 
 @Injectable()
 export class AdminViewerService {
@@ -145,6 +146,170 @@ export class AdminViewerService {
       };
     } finally {
       await queryRunner.release();
+    }
+  }
+
+  async updateRecord(
+    tableName: string,
+    updateData: UpdateRecordDto,
+  ): Promise<UpdateRecordResponseDto> {
+    const metadata = this.dataSource.entityMetadatas.find(
+      (m) => m.tableName === tableName,
+    );
+
+    if (!metadata) {
+      throw new NotFoundException(`Table ${tableName} not found`);
+    }
+
+    const columns = this.getColumnMetadata(metadata);
+    const primaryKeyColumn = metadata.primaryColumns[0];
+    
+    if (!primaryKeyColumn) {
+      throw new NotFoundException(`No primary key found for table ${tableName}`);
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    
+    try {
+      // Start transaction
+      await queryRunner.startTransaction();
+
+      // First, verify the record exists
+      const existingRecord = await queryRunner.query(
+        `SELECT * FROM "${tableName}" WHERE "${primaryKeyColumn.databaseName}" = $1`,
+        [updateData.primaryKeyValue],
+      );
+
+      if (!existingRecord || existingRecord.length === 0) {
+        throw new NotFoundException(`Record with ID ${updateData.primaryKeyValue} not found in table ${tableName}`);
+      }
+
+      // Validate and sanitize the updates
+      const sanitizedUpdates: Record<string, any> = {};
+      const updateColumns: string[] = [];
+      const updateValues: any[] = [];
+      let paramIndex = 1;
+
+      for (const [columnName, value] of Object.entries(updateData.updates)) {
+        // Find column metadata
+        const columnMeta = columns.find(col => col.name === columnName);
+        
+        if (!columnMeta) {
+          throw new Error(`Column ${columnName} not found in table ${tableName}`);
+        }
+
+        // Skip primary key updates
+        if (columnMeta.isPrimary) {
+          continue;
+        }
+
+        // Skip relation columns for now
+        if (columnMeta.dataType === ColumnDataType.RELATION) {
+          continue;
+        }
+
+        // Validate and convert value based on data type
+        const convertedValue = this.convertValueForDatabase(value, columnMeta);
+        
+        if (convertedValue !== undefined) {
+          updateColumns.push(`"${columnName}" = $${paramIndex}`);
+          updateValues.push(convertedValue);
+          sanitizedUpdates[columnName] = convertedValue;
+          paramIndex++;
+        }
+      }
+
+      if (updateColumns.length === 0) {
+        return {
+          success: false,
+          message: 'No valid columns to update',
+        };
+      }
+
+      // Add primary key for WHERE clause
+      updateValues.push(updateData.primaryKeyValue);
+
+      // Build and execute update query
+      const updateQuery = `
+        UPDATE "${tableName}" 
+        SET ${updateColumns.join(', ')} 
+        WHERE "${primaryKeyColumn.databaseName}" = $${paramIndex}
+        RETURNING *
+      `;
+
+      const result = await queryRunner.query(updateQuery, updateValues);
+      
+      // Commit transaction
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        message: 'Record updated successfully',
+        updatedRecord: result[0],
+      };
+    } catch (error) {
+      // Rollback transaction on error
+      await queryRunner.rollbackTransaction();
+      
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      
+      throw new Error(`Failed to update record: ${error.message}`);
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  private convertValueForDatabase(value: any, columnMeta: ColumnMetadataDto): any {
+    // Handle null values
+    if (value === null || value === undefined || value === '') {
+      return columnMeta.isNullable ? null : undefined;
+    }
+
+    switch (columnMeta.dataType) {
+      case ColumnDataType.STRING:
+      case ColumnDataType.UUID:
+        return String(value);
+
+      case ColumnDataType.NUMBER:
+        const numValue = Number(value);
+        return isNaN(numValue) ? undefined : numValue;
+
+      case ColumnDataType.BOOLEAN:
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+          const lower = value.toLowerCase();
+          if (lower === 'true' || lower === '1') return true;
+          if (lower === 'false' || lower === '0') return false;
+        }
+        return Boolean(value);
+
+      case ColumnDataType.DATE:
+      case ColumnDataType.DATETIME:
+        if (value instanceof Date) return value;
+        const dateValue = new Date(value);
+        return isNaN(dateValue.getTime()) ? undefined : dateValue;
+
+      case ColumnDataType.JSON:
+        if (typeof value === 'string') {
+          try {
+            return JSON.parse(value);
+          } catch {
+            return undefined;
+          }
+        }
+        return value;
+
+      case ColumnDataType.ENUM:
+        // Validate enum value
+        if (columnMeta.enumValues && !columnMeta.enumValues.includes(value)) {
+          throw new Error(`Invalid enum value "${value}" for column ${columnMeta.name}. Valid values: ${columnMeta.enumValues.join(', ')}`);
+        }
+        return String(value);
+
+      default:
+        return value;
     }
   }
 

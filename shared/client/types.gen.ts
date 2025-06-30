@@ -567,6 +567,38 @@ export type TableDataDto = {
     totalPages: number;
 };
 
+export type UpdateRecordDto = {
+    /**
+     * The primary key value of the record to update
+     */
+    primaryKeyValue: {
+        [key: string]: unknown;
+    };
+    /**
+     * Object containing column names and their new values
+     */
+    updates: {
+        [key: string]: unknown;
+    };
+};
+
+export type UpdateRecordResponseDto = {
+    /**
+     * Whether the update was successful
+     */
+    success: boolean;
+    /**
+     * Success or error message
+     */
+    message: string;
+    /**
+     * The updated record data
+     */
+    updatedRecord?: {
+        [key: string]: unknown;
+    };
+};
+
 export type AppHealthCheckData = {
     body?: never;
     path?: never;
@@ -1608,6 +1640,35 @@ export type AdminViewerGetTableDataResponses = {
 };
 
 export type AdminViewerGetTableDataResponse = AdminViewerGetTableDataResponses[keyof AdminViewerGetTableDataResponses];
+
+export type AdminViewerUpdateRecordData = {
+    body: UpdateRecordDto;
+    path: {
+        /**
+         * Name of the database table
+         */
+        tableName: string;
+    };
+    query?: never;
+    url: '/admin-viewer/tables/{tableName}/records';
+};
+
+export type AdminViewerUpdateRecordErrors = {
+    /**
+     * Invalid update data or validation failed
+     */
+    400: unknown;
+    /**
+     * Table or record not found
+     */
+    404: unknown;
+};
+
+export type AdminViewerUpdateRecordResponses = {
+    200: UpdateRecordResponseDto;
+};
+
+export type AdminViewerUpdateRecordResponse = AdminViewerUpdateRecordResponses[keyof AdminViewerUpdateRecordResponses];
 
 export type ClientOptions = {
     baseUrl: string;

@@ -1,9 +1,10 @@
-import { Controller, Get, Param, Query, UseGuards, ValidationPipe, UsePipes } from '@nestjs/common';
-import { ApiTags, ApiOkResponse, ApiParam, ApiQuery, ApiBadRequestResponse, ApiNotFoundResponse } from '@nestjs/swagger';
+import { Controller, Get, Put, Param, Query, Body, UseGuards, ValidationPipe, UsePipes } from '@nestjs/common';
+import { ApiTags, ApiOkResponse, ApiParam, ApiQuery, ApiBadRequestResponse, ApiNotFoundResponse, ApiBody } from '@nestjs/swagger';
 import { AdminViewerService } from './admin-viewer.service';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { TableListDto } from './dto/table-list.dto';
 import { TableDataDto, TableDataQueryDto } from './dto/table-data.dto';
+import { UpdateRecordDto, UpdateRecordResponseDto } from './dto/update-record.dto';
 
 @ApiTags('admin-viewer')
 @Controller('admin-viewer')
@@ -33,5 +34,19 @@ export class AdminViewerController {
     @Query() query: TableDataQueryDto,
   ): Promise<TableDataDto> {
     return this.adminViewerService.getTableData(tableName, query);
+  }
+
+  @Put('tables/:tableName/records')
+  @ApiParam({ name: 'tableName', description: 'Name of the database table' })
+  @ApiBody({ type: UpdateRecordDto })
+  @ApiOkResponse({ type: UpdateRecordResponseDto })
+  @ApiBadRequestResponse({ description: 'Invalid update data or validation failed' })
+  @ApiNotFoundResponse({ description: 'Table or record not found' })
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  updateRecord(
+    @Param('tableName') tableName: string,
+    @Body() updateData: UpdateRecordDto,
+  ): Promise<UpdateRecordResponseDto> {
+    return this.adminViewerService.updateRecord(tableName, updateData);
   }
 }
