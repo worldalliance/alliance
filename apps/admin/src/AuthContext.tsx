@@ -44,16 +44,18 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
           }
         } catch {
           try {
-            console.log("AuthContext", "refreshing tokens");
-            const response = await authRefreshTokens();
-            console.log("AuthContext", "refresh response", response);
+            await authRefreshTokens();
             const { data } = await authMe();
-            if (!cancelled) setUser(data);
-          } catch {
-            console.log("AuthContext", "refresh failed");
+            if (data && !cancelled) {
+              setUser(data);
+            }
+          } catch (error) {
+            console.log("AuthContext", "refresh failed", error);
           }
         } finally {
-          if (!cancelled) setLoading(false);
+          if (!cancelled) {
+            setLoading(false);
+          }
         }
       };
 
@@ -65,16 +67,22 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
 
     // ---------- actions ----------
     const login = useCallback(async (email: string, password: string) => {
-      console.log("login", email, password);
       setLoading(true);
       try {
-        const response = await authAdminLogin({
+        const { error } = await authAdminLogin({
           body: { email, password, mode: "cookie" },
         });
-        if (response.error) throw new Error("Login failed");
-        console.log("login:", response.data);
-        const { data } = await authMe(); // guaranteed by fresh cookie
-        setUser(data);
+        if (error) {
+          console.error("login error", error);
+          throw new Error("Login failed");
+        }
+
+        const { data } = await authMe();
+        if (data) {
+          setUser(data);
+        } else {
+          throw new Error("Failed to get user data after login");
+        }
       } finally {
         setLoading(false);
       }
@@ -85,7 +93,6 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
       setUser(undefined);
     }, []);
 
-    console.log("user", user);
 
     const value = useMemo<AuthContextType>(
       () => ({

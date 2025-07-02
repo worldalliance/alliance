@@ -7,32 +7,34 @@ import ActionDashboard from "./ActionDashboard";
 
 const AdminPanel: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [actionsLoading, setActionsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { logout, user } = useAuth();
+  const { logout, user, loading: authLoading } = useAuth();
 
   // Get current view state from URL params
   const selectedActionId = searchParams.get('action');
   const isCreatingNew = searchParams.get('new') === 'true';
 
-  if (!user?.admin) {
-    logout();
-  }
+  // Only check admin status after loading is complete and we have a user
+  useEffect(() => {
+    if (!authLoading && user && !user.admin) {
+      logout();
+    }
+  }, [authLoading, user, logout]);
 
   const loadActions = useCallback(async () => {
     try {
       const response = await actionsFindAllWithDrafts();
-      console.log(response.data);
       if (response.data) {
         setActions(response.data);
       }
-      setLoading(false);
+      setActionsLoading(false);
     } catch (err) {
       setError("Failed to load actions");
-      setLoading(false);
+      setActionsLoading(false);
       console.error(err);
     }
   }, []);
@@ -103,7 +105,7 @@ const AdminPanel: React.FC = () => {
                 Actions List
               </h1>
 
-              {loading ? (
+              {actionsLoading ? (
                 <p>Loading actions...</p>
               ) : error ? (
                 <p className="text-red-500">{error}</p>
