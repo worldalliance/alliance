@@ -43,45 +43,56 @@ export class ActionsService {
     return this.actionRepository.save(action);
   }
 
-  findAll(): Promise<Action[]> {
-    return this.actionRepository.find();
+  findAll(): Promise<ActionDto[]> {
+    return this.actionRepository
+      .find({
+        relations: ['userRelations', 'events'],
+      })
+      .then((actions) => {
+        return actions.map((action) => this.entityToDto(action));
+      });
+  }
+
+  entityToDto(action: Action): ActionDto {
+    return {
+      ...action,
+      usersJoined: action.usersJoined,
+      usersCompleted: action.usersCompleted,
+      status: action.status,
+    };
   }
 
   findPublic(): Promise<ActionDto[]> {
     return this.actionRepository
       .find({
-        where: { status: Not(ActionStatus.Draft) },
-        relations: ['userRelations'],
+        relations: ['userRelations', 'events'],
       })
       .then((actions) => {
-        return actions.map((action) => ({
-          ...action,
-          usersJoined: action.usersJoined,
-          usersCompleted: action.usersCompleted,
-        }));
+        return actions
+          .filter((action) => action.status !== ActionStatus.Draft)
+          .map((action) => this.entityToDto(action));
       });
   }
 
   async findPublicWithRelation(userId: number): Promise<ActionDto[]> {
     const qb = this.actionRepository
       .createQueryBuilder('action')
-      .where('action.status <> :draft', { draft: ActionStatus.Draft });
-
-    qb.leftJoinAndSelect(
-      'action.userRelations',
-      'ua',
-      userId ? 'ua.userId = :userId' : '1=0', // 1=0 prevents a cartesian join when unauthenticated
-      { userId },
-    );
+      .leftJoinAndSelect('action.events', 'events')
+      .leftJoinAndSelect(
+        'action.userRelations',
+        'ua',
+        userId ? 'ua.userId = :userId' : '1=0', // 1=0 prevents a cartesian join when unauthenticated
+        { userId },
+      );
 
     const actions = await qb.getMany();
 
-    return actions.map((action) => ({
-      ...action,
-      myRelation: action.userRelations[0] ?? null, // length 1 since filtered for the user
-      usersJoined: action.usersJoined,
-      usersCompleted: action.usersCompleted,
-    }));
+    return actions
+      .filter((action) => action.status !== ActionStatus.Draft)
+      .map((action) => ({
+        ...this.entityToDto(action),
+        myRelation: action.userRelations[0] ?? null, // length 1 since filtered for the user
+      }));
   }
 
   async findOne(id: number): Promise<Action> {
@@ -102,10 +113,8 @@ export class ActionsService {
     const action = await this.findOne(id);
     const userAction = await this.getActionRelation(id, userId);
     return {
-      ...action,
+      ...this.entityToDto(action),
       myRelation: userAction,
-      usersJoined: action.usersJoined,
-      usersCompleted: action.usersCompleted,
     };
   }
 
@@ -124,8 +133,6 @@ export class ActionsService {
       relations: ['user', 'action'],
     });
 
-    console.log('found userAction', userAction);
-
     if (!userAction) {
       userAction = this.userActionRepository.create({
         user,
@@ -135,8 +142,6 @@ export class ActionsService {
     } else {
       userAction.status = status;
     }
-
-    console.log('saving userAction', userAction);
 
     return await this.userActionRepository.save(userAction);
   }
@@ -273,6 +278,7 @@ export class ActionsService {
       relation: ua,
       usersJoined: ua.action.usersJoined,
       usersCompleted: ua.action.usersCompleted,
+      status: ua.action.status,
     }));
   }
 
@@ -299,4 +305,23 @@ export class ActionsService {
       order: { createdAt: 'DESC' },
     });
   }
+
+  //   async processActionStatus(actionId: number) {
+  //     const action = await this.findOne(actionId);
+
+  //     if (action.status === ActionStatus.GatheringCommitments) {
+  //       if (
+  //         action.commitmentThreshold &&
+  //         action.usersJoined >= action.commitmentThreshold
+  //       ) {
+  //         action.status = ActionStatus.MemberAction;
+  //       }
+  //     }
+
+  //     if (action.status === ActionStatus.MemberAction) {
+  //       if (action.usersCompleted >= action.usersJoined) {
+  //         action.status = ActionStatus.Resolution;
+  //       }
+  //     }
+  //   }
 }

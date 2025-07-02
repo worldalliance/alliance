@@ -11,6 +11,7 @@ import {
   Res,
   StreamableFile,
   Param,
+  BadRequestException,
 } from '@nestjs/common';
 import { ImagesService } from './images.service';
 import {
@@ -32,6 +33,25 @@ import { createReadStream, existsSync } from 'fs';
 import { Response } from 'express';
 import { ImageMimeTypeValidator } from './image-validator.pipe';
 
+const allowedTypes = [
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/gif',
+  'image/webp',
+];
+
+function imageFileFilter(
+  _req: Request,
+  file: Express.Multer.File,
+  callback: (error: Error | null, accept: boolean) => void,
+) {
+  if (allowedTypes.includes(file.mimetype)) {
+    return callback(null, true);
+  }
+  callback(new BadRequestException('Unsupported file type'), false); // reject
+}
+
 @Controller('images')
 export class ImagesController {
   constructor(private readonly imagesService: ImagesService) {}
@@ -48,6 +68,7 @@ export class ImagesController {
           callback(null, filename);
         },
       }),
+      fileFilter: imageFileFilter,
     }),
   )
   @ApiCreatedResponse({ type: ImageResponseDto })
@@ -68,13 +89,7 @@ export class ImagesController {
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 1000 * 1000 * 1000 }),
-          new ImageMimeTypeValidator([
-            'image/png',
-            'image/jpeg',
-            'image/jpg',
-            'image/gif',
-            'image/webp',
-          ]),
+          new ImageMimeTypeValidator(allowedTypes),
         ],
       }),
     )

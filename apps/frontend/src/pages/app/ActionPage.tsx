@@ -21,7 +21,7 @@ import ActionTaskPanel from "../../components/ActionTaskPanel";
 import ActionCommitButton from "../../components/ActionCommitButton";
 import ActionActivityList from "../../components/ActionActivityList";
 
-const ActionStatusDescriptions: Record<ActionDto["status"], string> = {
+const actionStatusDescriptions: Record<ActionDto["status"], string> = {
   "gathering-commitments": "Collecting commitments",
   "commitments-reached": "Commitments reached",
   "member-action": "Member action",
@@ -131,8 +131,8 @@ export default function ActionPage() {
             {action !== undefined && (
               <h1>
                 {action.name}
-                <span className="text-gray-800 text-sm bg-gray-100 rounded-sm p-3 align-middle mx-3">
-                  {ActionStatusDescriptions[action.status]}
+                <span className="text-gray-800 text-sm bg-gray-100 rounded-sm !p-3 align-middle mx-3 text-nowrap">
+                  {actionStatusDescriptions[action.status]}
                 </span>
               </h1>
             )}

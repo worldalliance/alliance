@@ -4,7 +4,6 @@ import {
   ActionStatus,
   ActionTaskType,
 } from '../src/actions/entities/action.entity';
-import { NotificationType } from '../src/actions/entities/action-event.entity';
 import {
   CreateActionDto,
   ActionEventDto,
@@ -13,24 +12,29 @@ import {
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { UserActionRelation } from '../src/actions/entities/user-action.entity';
 import { Repository } from 'typeorm';
+import {
+  ActionEvent,
+  NotificationType,
+} from '../src/actions/entities/action-event.entity';
 
 describe('Actions (e2e)', () => {
   let ctx: TestContext;
   let testAction: Action;
   let testDraftAction: Action;
   let actionRepo: Repository<Action>;
+  let eventRepo: Repository<ActionEvent>;
 
   beforeAll(async () => {
     ctx = await createTestApp([]);
     actionRepo = ctx.dataSource.getRepository(Action);
+    eventRepo = ctx.dataSource.getRepository(ActionEvent);
 
-    // Create test action
+    // Create test action with MemberAction status
     testAction = actionRepo.create({
       name: 'Test Action',
       category: 'Test',
       whyJoin: 'For testing',
       description: 'Test action for forum tests',
-      status: ActionStatus.MemberAction,
     });
 
     testDraftAction = actionRepo.create({
@@ -38,11 +42,24 @@ describe('Actions (e2e)', () => {
       category: 'Test',
       whyJoin: 'For testing',
       description: 'Test action for forum tests',
-      status: ActionStatus.Draft,
     });
 
     await actionRepo.save(testAction);
     await actionRepo.save(testDraftAction);
+
+    // Create events to set status for testAction to MemberAction
+    const memberActionEvent = eventRepo.create({
+      title: 'Action Started',
+      description: 'Action is now in member action phase',
+      newStatus: ActionStatus.MemberAction,
+      sendNotifsTo: NotificationType.All,
+      date: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
+      showInTimeline: true,
+      action: testAction,
+    });
+    await eventRepo.save(memberActionEvent);
+
+    // testDraftAction has no events, so it defaults to Draft status
   }, 50000);
 
   describe('Actions', () => {
@@ -50,7 +67,6 @@ describe('Actions (e2e)', () => {
       const newAction: CreateActionDto = {
         name: 'Test Action',
         description: 'Do something important',
-        status: ActionStatus.GatheringCommitments,
         category: '',
         whyJoin: '',
         image: '',
@@ -202,8 +218,8 @@ describe('Actions (e2e)', () => {
         .send(newEvent);
 
       expect(res.status).toBe(201);
-      expect(res.body.events.length).toBe(1);
-      expect(res.body.events[0].title).toBe('Test Event');
+      expect(res.body.events.length).toBe(2);
+      expect(res.body.events[1].title).toBe('Test Event');
     });
 
     it('events are included in action details', async () => {
@@ -216,8 +232,284 @@ describe('Actions (e2e)', () => {
         .set('Authorization', `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body.events.length).toBe(1);
-      expect(res.body.events[0].title).toBe('Test Event');
+      expect(res.body.events.length).toBe(2);
+      expect(res.body.events[1].title).toBe('Test Event');
+    });
+
+    describe('Computed Status Tests', () => {
+      it('new action with no events should have Draft status', async () => {
+        const newAction = actionRepo.create({
+          name: 'Status Test Action',
+          category: 'Test',
+          whyJoin: 'For status testing',
+          description: 'Test action for status computation',
+        });
+        await actionRepo.save(newAction);
+
+        const res = await request(ctx.app.getHttpServer())
+          .get(`/actions/${newAction.id}`)
+          .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe(ActionStatus.Draft);
+        expect(res.body.events.length).toBe(0);
+
+        // Cleanup
+        await actionRepo.delete(newAction.id);
+      });
+
+      it('adding first event should change status from Draft to new status', async () => {
+        const newAction = actionRepo.create({
+          name: 'Status Transition Test',
+          category: 'Test',
+          whyJoin: 'For status testing',
+          description: 'Test action for status transitions',
+        });
+        await actionRepo.save(newAction);
+
+        // Verify initial draft status
+        let res = await request(ctx.app.getHttpServer())
+          .get(`/actions/${newAction.id}`)
+          .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+        expect(res.body.status).toBe(ActionStatus.Draft);
+
+        // Add event to change status
+        const newEvent: CreateActionEventDto = {
+          title: 'Launch Event',
+          description: 'Action is now gathering commitments',
+          newStatus: ActionStatus.GatheringCommitments,
+          date: new Date(Date.now() - 1000), // 1 second ago
+          showInTimeline: true,
+          sendNotifsTo: NotificationType.All,
+        };
+
+        res = await request(ctx.app.getHttpServer())
+          .post(`/actions/${newAction.id}/events`)
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send(newEvent);
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe(ActionStatus.GatheringCommitments);
+        expect(res.body.events.length).toBe(1);
+
+        // Cleanup
+        await actionRepo.delete(newAction.id);
+      });
+
+      it('status should reflect most recent past event when multiple events exist', async () => {
+        const newAction = actionRepo.create({
+          name: 'Multi Event Test',
+          category: 'Test',
+          whyJoin: 'For multi-event testing',
+          description: 'Test action for multiple events',
+        });
+        await actionRepo.save(newAction);
+
+        // Add first event (older)
+        const firstEvent: CreateActionEventDto = {
+          title: 'Launch',
+          description: 'Action launched',
+          newStatus: ActionStatus.GatheringCommitments,
+          date: new Date(Date.now() - 3600000), // 1 hour ago
+          showInTimeline: true,
+          sendNotifsTo: NotificationType.All,
+        };
+
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/${newAction.id}/events`)
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send(firstEvent);
+
+        // Add second event (more recent)
+        const secondEvent: CreateActionEventDto = {
+          title: 'Commitments Reached',
+          description: 'Action now in member action phase',
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1800000), // 30 minutes ago
+          showInTimeline: true,
+          sendNotifsTo: NotificationType.All,
+        };
+
+        const res = await request(ctx.app.getHttpServer())
+          .post(`/actions/${newAction.id}/events`)
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send(secondEvent);
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe(ActionStatus.MemberAction);
+        expect(res.body.events.length).toBe(2);
+
+        // Verify by fetching the action
+        const getRes = await request(ctx.app.getHttpServer())
+          .get(`/actions/${newAction.id}`)
+          .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+        expect(getRes.body.status).toBe(ActionStatus.MemberAction);
+
+        // Cleanup
+        await actionRepo.delete(newAction.id);
+      });
+
+      it('future events should not affect current status', async () => {
+        const newAction = actionRepo.create({
+          name: 'Future Event Test',
+          category: 'Test',
+          whyJoin: 'For future event testing',
+          description: 'Test action for future events',
+        });
+        await actionRepo.save(newAction);
+
+        // Add past event
+        const pastEvent: CreateActionEventDto = {
+          title: 'Launch',
+          description: 'Action launched',
+          newStatus: ActionStatus.GatheringCommitments,
+          date: new Date(Date.now() - 3600000), // 1 hour ago
+          showInTimeline: true,
+          sendNotifsTo: NotificationType.All,
+        };
+
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/${newAction.id}/events`)
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send(pastEvent);
+
+        // Add future event
+        const futureEvent: CreateActionEventDto = {
+          title: 'Future Completion',
+          description: 'Action will be completed',
+          newStatus: ActionStatus.Completed,
+          date: new Date(Date.now() + 3600000), // 1 hour from now
+          showInTimeline: true,
+          sendNotifsTo: NotificationType.All,
+        };
+
+        const res = await request(ctx.app.getHttpServer())
+          .post(`/actions/${newAction.id}/events`)
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send(futureEvent);
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe(ActionStatus.GatheringCommitments); // Should still be the past event's status
+        expect(res.body.events.length).toBe(2);
+
+        // Cleanup
+        await actionRepo.delete(newAction.id);
+      });
+
+      it('events on same date should use chronological order by event creation', async () => {
+        const newAction = actionRepo.create({
+          name: 'Same Date Test',
+          category: 'Test',
+          whyJoin: 'For same date testing',
+          description: 'Test action for events on same date',
+        });
+        await actionRepo.save(newAction);
+
+        const eventDate = new Date(Date.now() - 3600000); // 1 hour ago
+
+        // Add first event
+        const firstEvent: CreateActionEventDto = {
+          title: 'First Event',
+          description: 'First event on this date',
+          newStatus: ActionStatus.GatheringCommitments,
+          date: eventDate,
+          showInTimeline: true,
+          sendNotifsTo: NotificationType.All,
+        };
+
+        await request(ctx.app.getHttpServer())
+          .post(`/actions/${newAction.id}/events`)
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send(firstEvent);
+
+        // Add second event with same date
+        const secondEvent: CreateActionEventDto = {
+          title: 'Second Event',
+          description: 'Second event on same date',
+          newStatus: ActionStatus.MemberAction,
+          date: eventDate,
+          showInTimeline: true,
+          sendNotifsTo: NotificationType.All,
+        };
+
+        const res = await request(ctx.app.getHttpServer())
+          .post(`/actions/${newAction.id}/events`)
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send(secondEvent);
+
+        expect(res.status).toBe(201);
+        expect(res.body.status).toBe(ActionStatus.MemberAction);
+        expect(res.body.events.length).toBe(2);
+
+        // Cleanup
+        await actionRepo.delete(newAction.id);
+      });
+
+      it('status computation should handle complex timeline scenarios', async () => {
+        const newAction = actionRepo.create({
+          name: 'Complex Timeline Test',
+          category: 'Test',
+          whyJoin: 'For complex timeline testing',
+          description: 'Test action for complex status timeline',
+        });
+        await actionRepo.save(newAction);
+
+        const now = Date.now();
+
+        // Add events in non-chronological order to test sorting
+        const events = [
+          {
+            title: 'Future Resolution',
+            newStatus: ActionStatus.Resolution,
+            date: new Date(now + 7200000), // 2 hours from now
+          },
+          {
+            title: 'Launch',
+            newStatus: ActionStatus.GatheringCommitments,
+            date: new Date(now - 14400000), // 4 hours ago
+          },
+          {
+            title: 'Member Action Start',
+            newStatus: ActionStatus.MemberAction,
+            date: new Date(now - 3600000), // 1 hour ago (most recent past)
+          },
+          {
+            title: 'Commitments Reached',
+            newStatus: ActionStatus.CommitmentsReached,
+            date: new Date(now - 7200000), // 2 hours ago
+          },
+        ];
+
+        for (const event of events) {
+          const eventDto: CreateActionEventDto = {
+            title: event.title,
+            description: `Event: ${event.title}`,
+            newStatus: event.newStatus,
+            date: event.date,
+            showInTimeline: true,
+            sendNotifsTo: NotificationType.All,
+          };
+
+          await request(ctx.app.getHttpServer())
+            .post(`/actions/${newAction.id}/events`)
+            .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+            .send(eventDto);
+        }
+
+        // Get final action state
+        const res = await request(ctx.app.getHttpServer())
+          .get(`/actions/${newAction.id}`)
+          .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe(ActionStatus.MemberAction); // Most recent past event
+        expect(res.body.events.length).toBe(4);
+
+        // Cleanup
+        await actionRepo.delete(newAction.id);
+      });
     });
   });
   it('admin cannot add an event to an action with missing data', async () => {

@@ -1,0 +1,1010 @@
+import React, { useEffect, useState, useRef } from "react";
+import Card, { CardStyle } from "./Card";
+import { CreateActionDto, ActionDto, CreateActionEventDto } from "@alliance/shared/client";
+import {
+  actionsCreate,
+  actionsFindOne,
+  actionsRemove,
+  actionsUpdate,
+  actionsAddEvent,
+  imagesUploadImage,
+} from "@alliance/shared/client";
+import { getApiUrl } from "./config";
+
+// Status color mapping
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'draft': return 'bg-gray-100 text-gray-800';
+    case 'upcoming': return 'bg-blue-100 text-blue-800';
+    case 'gathering-commitments': return 'bg-yellow-100 text-yellow-800';
+    case 'commitments-reached': return 'bg-orange-100 text-orange-800';
+    case 'member-action': return 'bg-purple-100 text-purple-800';
+    case 'resolution': return 'bg-indigo-100 text-indigo-800';
+    case 'completed': return 'bg-green-100 text-green-800';
+    case 'failed': return 'bg-red-100 text-red-800';
+    case 'abandoned': return 'bg-gray-100 text-gray-600';
+    default: return 'bg-gray-100 text-gray-800';
+  }
+};
+
+// Format status for display
+const formatStatus = (status: string) => {
+  return status
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+// Status options for event creation
+const statusOptions = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'gathering-commitments', label: 'Gathering Commitments' },
+  { value: 'commitments-reached', label: 'Commitments Reached' },
+  { value: 'member-action', label: 'Member Action' },
+  { value: 'resolution', label: 'Resolution' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'failed', label: 'Failed' },
+  { value: 'abandoned', label: 'Abandoned' },
+];
+
+interface ActionDashboardProps {
+  actionId: string;
+  isNew?: boolean;
+  onActionCreated?: (action: ActionDto) => void;
+  onActionUpdated?: (action: ActionDto) => void;
+  onActionDeleted?: () => void;
+  onCancel?: () => void;
+}
+
+const ActionDashboard: React.FC<ActionDashboardProps> = ({
+  actionId,
+  isNew = false,
+  onActionCreated,
+  onActionUpdated,
+  onActionDeleted,
+  onCancel,
+}) => {
+  const [action, setAction] = useState<ActionDto | null>(null);
+  const [loading, setLoading] = useState<boolean>(!isNew);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'events'>('overview');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Form state for basic action details (excluding status)
+  const [form, setForm] = useState<CreateActionDto>({
+    name: "",
+    category: "",
+    whyJoin: "",
+    description: "",
+    image: "",
+    timeEstimate: "",
+    shortDescription: "",
+    howTo: "",
+    type: "Activity",
+  });
+
+  // Event creation form state
+  const [eventForm, setEventForm] = useState<CreateActionEventDto>({
+    title: "",
+    description: "",
+    newStatus: "gathering-commitments",
+    date: new Date().toISOString().slice(0, 16), // Format for datetime-local input
+    showInTimeline: true,
+    sendNotifsTo: "all",
+  });
+
+  const [creatingEvent, setCreatingEvent] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isNew) {
+      return;
+    }
+
+    const loadAction = async () => {
+      try {
+        const response = await actionsFindOne({
+          path: { id: parseInt(actionId) },
+        });
+        const actionData = response.data;
+        if (!actionData) {
+          throw new Error("Action not found");
+        }
+        setAction(actionData);
+        setForm({
+          name: actionData.name,
+          category: actionData.category,
+          whyJoin: actionData.whyJoin,
+          description: actionData.description,
+          image: actionData.image || "",
+          timeEstimate: actionData.timeEstimate,
+          shortDescription: actionData.shortDescription,
+          howTo: actionData.howTo,
+          type: actionData.type,
+        });
+
+        setLoading(false);
+      } catch (err) {
+        setError("Failed to load action");
+        setLoading(false);
+        console.error(err);
+      }
+    };
+
+    loadAction();
+  }, [actionId, isNew]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleEventInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value, type, checked } = e.target;
+    setEventForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!imageFile) return null;
+
+    try {
+      setUploadingImage(true);
+      setError(null);
+
+      const response = await imagesUploadImage({
+        body: { image: imageFile },
+      });
+
+      if (!response.data) {
+        throw new Error("Failed to upload image");
+      }
+      return response.data.filename;
+    } catch (err) {
+      console.error("Error uploading image:", err);
+      setError("Failed to upload image. Please try again.");
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    try {
+      let imageFilename = null;
+      if (imageFile) {
+        imageFilename = await uploadImage();
+        if (!imageFilename) {
+          throw new Error("Failed to upload image");
+        }
+      }
+
+      const formData = {
+        ...form,
+        ...(imageFilename && { image: imageFilename }),
+      };
+
+      if (isNew) {
+        const response = await actionsCreate({
+          body: formData,
+        });
+        const newAction = response.data;
+        if (!newAction) {
+          throw new Error("Failed to create action");
+        }
+        if (onActionCreated) {
+          onActionCreated(newAction);
+        }
+      } else {
+        const response = await actionsUpdate({
+          path: { id: parseInt(actionId) },
+          body: formData,
+        });
+        const updatedAction = response.data;
+        if (!updatedAction) {
+          throw new Error("Failed to update action");
+        }
+        // Reload the action to get updated data
+        const reloadResponse = await actionsFindOne({
+          path: { id: parseInt(actionId) },
+        });
+        if (reloadResponse.data) {
+          setAction(reloadResponse.data);
+          if (onActionUpdated) {
+            onActionUpdated(reloadResponse.data);
+          }
+        }
+      }
+      setSaving(false);
+    } catch (err) {
+      setError("Failed to save action");
+      setSaving(false);
+      console.error(err);
+    }
+  };
+
+  const handleAddEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!action) return;
+
+    setCreatingEvent(true);
+    setError(null);
+
+    try {
+      const eventData = {
+        ...eventForm,
+        date: new Date(eventForm.date),
+      };
+
+      const response = await actionsAddEvent({
+        path: { id: parseInt(actionId) },
+        body: eventData,
+      });
+
+      if (response.data) {
+        setAction(response.data);
+        if (onActionUpdated) {
+          onActionUpdated(response.data);
+        }
+        // Reset form
+        setEventForm({
+          title: "",
+          description: "",
+          newStatus: "gathering-commitments",
+          date: new Date().toISOString().slice(0, 16),
+          showInTimeline: true,
+          sendNotifsTo: "all",
+        });
+      }
+    } catch (err) {
+      setError("Failed to add event");
+      console.error(err);
+    } finally {
+      setCreatingEvent(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (isNew) return;
+
+    if (
+      window.confirm(
+        "Are you sure you want to delete this action? This cannot be undone."
+      )
+    ) {
+      try {
+        setLoading(true);
+        const response = await actionsRemove({
+          path: { id: parseInt(actionId) },
+        });
+        if (response.error) {
+          throw new Error("Failed to delete action");
+        }
+        if (onActionDeleted) {
+          onActionDeleted();
+        }
+      } catch (err) {
+        setError("Failed to delete action");
+        setLoading(false);
+        console.error(err);
+      }
+    }
+  };
+
+  if (loading) {
+    return <div className="p-8">Loading action...</div>;
+  }
+
+  const baseUrl = getApiUrl();
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-[#111] text-[16pt] font-bold font-sabon">
+          {isNew ? "Create New Action" : `Action: ${action?.name}`}
+        </h1>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+          >
+            ← Back to List
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
+      {isNew ? (
+        // New Action Creation Form
+        <Card style={CardStyle.White}>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <h2 className="text-lg font-semibold mb-4">Create New Action</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="name" className="block font-medium text-gray-700 mb-1">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={form.name}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="category" className="block font-medium text-gray-700 mb-1">
+                  Category *
+                </label>
+                <input
+                  type="text"
+                  id="category"
+                  name="category"
+                  value={form.category}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="type" className="block font-medium text-gray-700 mb-1">
+                  Type
+                </label>
+                <select
+                  id="type"
+                  name="type"
+                  value={form.type}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Activity">Activity</option>
+                  <option value="Funding">Funding</option>
+                  <option value="Ongoing">Ongoing</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="timeEstimate" className="block font-medium text-gray-700 mb-1">
+                  Time Estimate
+                </label>
+                <input
+                  type="text"
+                  id="timeEstimate"
+                  name="timeEstimate"
+                  value={form.timeEstimate}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="description" className="block font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={form.description}
+                onChange={handleInputChange}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="shortDescription" className="block font-medium text-gray-700 mb-1">
+                Short Description
+              </label>
+              <textarea
+                id="shortDescription"
+                name="shortDescription"
+                value={form.shortDescription}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="whyJoin" className="block font-medium text-gray-700 mb-1">
+                Why Join
+              </label>
+              <textarea
+                id="whyJoin"
+                name="whyJoin"
+                value={form.whyJoin}
+                onChange={handleInputChange}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="howTo" className="block font-medium text-gray-700 mb-1">
+                How To
+              </label>
+              <textarea
+                id="howTo"
+                name="howTo"
+                value={form.howTo}
+                onChange={handleInputChange}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="image" className="block font-medium text-gray-700 mb-1">
+                Image
+              </label>
+              <input
+                type="file"
+                id="image"
+                name="image"
+                accept="image/*"
+                onChange={handleImageChange}
+                ref={fileInputRef}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {imagePreview && (
+                <div className="mt-2">
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    Image Preview:
+                  </p>
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full max-w-md h-auto rounded-md border border-gray-300"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              {onCancel && (
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  disabled={saving}
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                disabled={saving || uploadingImage}
+              >
+                {saving || uploadingImage
+                  ? uploadingImage
+                    ? "Uploading Image..."
+                    : "Creating..."
+                  : "Create Action"}
+              </button>
+            </div>
+          </form>
+        </Card>
+      ) : (
+        // Existing Action Dashboard
+        <div className="space-y-4 flex-1 min-h-0">
+          {/* Tab Navigation */}
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              {[
+                { key: 'overview', label: 'Status Overview' },
+                { key: 'details', label: 'Action Details' },
+                { key: 'events', label: 'Event Management' },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key as any)}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.key
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* Tab Content */}
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'overview' && action && (
+              <div className="space-y-4">
+                {/* Current Status */}
+                <Card style={CardStyle.White}>
+                  <h2 className="text-lg font-semibold mb-4">Current Status</h2>
+                  <div className="space-y-4">
+                    <div>
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(action.status)}`}>
+                        {formatStatus(action.status)}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="text-sm text-gray-600">
+                        <strong>Users Joined:</strong> {action.usersJoined}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <strong>Users Completed:</strong> {action.usersCompleted}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        <strong>Action ID:</strong> {action.id}
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        onClick={() => window.open(`/database?table=action&search=${action.id}`, '_blank')}
+                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 1.79 4 4 4h8c0-1.1-.9-2-2-2H8c-1.1 0-2-.9-2-2V7c0-1.1.9-2 2-2h8c1.1 0 2-.9 2 2v10c0 2.21-1.79 4-4 4H8c-2.21 0-4-1.79-4-4V7z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H11a2 2 0 01-2-2V5z" />
+                        </svg>
+                        View in Database
+                      </button>
+                    </div>
+
+                    {action.image && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-2">
+                          Action Image:
+                        </p>
+                        <img
+                          src={`${baseUrl}/images/${action.image}`}
+                          alt={action.name}
+                          className="w-full max-w-sm h-auto rounded-md border border-gray-300"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Events Timeline */}
+                <Card style={CardStyle.White}>
+                  <h2 className="text-lg font-semibold mb-4">Status Timeline</h2>
+                  <div className="space-y-3">
+                    {action.events && action.events.length > 0 ? (
+                      action.events
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .map((event, index) => (
+                          <div key={event.id} className="flex items-start space-x-3">
+                            <div className="flex-shrink-0">
+                              <div className={`w-3 h-3 rounded-full ${index === 0 ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm">
+                                <span className="font-medium">{event.title}</span>
+                                <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(event.newStatus)}`}>
+                                  {formatStatus(event.newStatus)}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {new Date(event.date).toLocaleString()}
+                              </div>
+                              {event.description && (
+                                <div className="text-xs text-gray-600 mt-1">
+                                  {event.description}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      <div className="text-sm text-gray-500">
+                        No events yet. This action is in Draft status by default.
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {activeTab === 'details' && (
+              <Card style={CardStyle.White}>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-lg font-semibold">Action Details</h2>
+                    {!isNew && (
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                        disabled={saving}
+                      >
+                        Delete Action
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label htmlFor="name" className="block font-medium text-gray-700 mb-1">
+                        Name *
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={form.name}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="category" className="block font-medium text-gray-700 mb-1">
+                        Category *
+                      </label>
+                      <input
+                        type="text"
+                        id="category"
+                        name="category"
+                        value={form.category}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="type" className="block font-medium text-gray-700 mb-1">
+                          Type
+                        </label>
+                        <select
+                          id="type"
+                          name="type"
+                          value={form.type}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="Activity">Activity</option>
+                          <option value="Funding">Funding</option>
+                          <option value="Ongoing">Ongoing</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label htmlFor="timeEstimate" className="block font-medium text-gray-700 mb-1">
+                          Time Estimate
+                        </label>
+                        <input
+                          type="text"
+                          id="timeEstimate"
+                          name="timeEstimate"
+                          value={form.timeEstimate}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="description" className="block font-medium text-gray-700 mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        id="description"
+                        name="description"
+                        value={form.description}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="shortDescription" className="block font-medium text-gray-700 mb-1">
+                        Short Description
+                      </label>
+                      <textarea
+                        id="shortDescription"
+                        name="shortDescription"
+                        value={form.shortDescription}
+                        onChange={handleInputChange}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="whyJoin" className="block font-medium text-gray-700 mb-1">
+                        Why Join
+                      </label>
+                      <textarea
+                        id="whyJoin"
+                        name="whyJoin"
+                        value={form.whyJoin}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="howTo" className="block font-medium text-gray-700 mb-1">
+                        How To
+                      </label>
+                      <textarea
+                        id="howTo"
+                        name="howTo"
+                        value={form.howTo}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="image" className="block font-medium text-gray-700 mb-1">
+                        Image
+                      </label>
+                      <input
+                        type="file"
+                        id="image"
+                        name="image"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        ref={fileInputRef}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+
+                      {imagePreview && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium text-gray-700 mb-1">
+                            New Image Preview:
+                          </p>
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-full max-w-md h-auto rounded-md border border-gray-300"
+                          />
+                        </div>
+                      )}
+
+                      {!imagePreview && form.image && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium text-gray-700 mb-1">
+                            Current Image:
+                          </p>
+                          <img
+                            src={`${baseUrl}/images/${form.image}`}
+                            alt="Current"
+                            className="w-full max-w-md h-auto rounded-md border border-gray-300"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        disabled={saving || uploadingImage}
+                      >
+                        {saving || uploadingImage
+                          ? uploadingImage
+                            ? "Uploading Image..."
+                            : "Saving..."
+                          : "Update Action"}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </Card>
+            )}
+
+            {activeTab === 'events' && action && (
+              <div className="space-y-4">
+                {/* Add New Event */}
+                <Card style={CardStyle.White}>
+                  <h2 className="text-lg font-semibold mb-4">Add New Event</h2>
+                  <form onSubmit={handleAddEvent} className="space-y-4">
+                    <div>
+                      <label htmlFor="eventTitle" className="block font-medium text-gray-700 mb-1">
+                        Event Title *
+                      </label>
+                      <input
+                        type="text"
+                        id="eventTitle"
+                        name="title"
+                        value={eventForm.title}
+                        onChange={handleEventInputChange}
+                        required
+                        placeholder="e.g., Launch Event, Commitments Reached"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="eventDescription" className="block font-medium text-gray-700 mb-1">
+                        Description
+                      </label>
+                      <textarea
+                        id="eventDescription"
+                        name="description"
+                        value={eventForm.description}
+                        onChange={handleEventInputChange}
+                        rows={2}
+                        placeholder="Describe what happened or what this event represents"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="newStatus" className="block font-medium text-gray-700 mb-1">
+                          New Status *
+                        </label>
+                        <select
+                          id="newStatus"
+                          name="newStatus"
+                          value={eventForm.newStatus}
+                          onChange={handleEventInputChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          {statusOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label htmlFor="eventDate" className="block font-medium text-gray-700 mb-1">
+                          Event Date & Time *
+                        </label>
+                        <input
+                          type="datetime-local"
+                          id="eventDate"
+                          name="date"
+                          value={eventForm.date}
+                          onChange={handleEventInputChange}
+                          required
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="sendNotifsTo" className="block font-medium text-gray-700 mb-1">
+                          Send Notifications To
+                        </label>
+                        <select
+                          id="sendNotifsTo"
+                          name="sendNotifsTo"
+                          value={eventForm.sendNotifsTo}
+                          onChange={handleEventInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="all">All Users</option>
+                          <option value="joined">Joined Users Only</option>
+                          <option value="none">No Notifications</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id="showInTimeline"
+                          name="showInTimeline"
+                          checked={eventForm.showInTimeline}
+                          onChange={handleEventInputChange}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor="showInTimeline" className="ml-2 block text-sm text-gray-700">
+                          Show in public timeline
+                        </label>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={creatingEvent}
+                      className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
+                    >
+                      {creatingEvent ? "Adding Event..." : "Add Event"}
+                    </button>
+                  </form>
+                </Card>
+
+                {/* All Events List */}
+                <Card style={CardStyle.White}>
+                  <h2 className="text-lg font-semibold mb-4">All Events</h2>
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {action.events && action.events.length > 0 ? (
+                      action.events
+                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                        .map((event) => (
+                          <div key={event.id} className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex justify-between items-start mb-2">
+                              <h3 className="font-medium text-gray-900 text-sm">{event.title}</h3>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(event.newStatus)}`}>
+                                {formatStatus(event.newStatus)}
+                              </span>
+                            </div>
+                            
+                            {event.description && (
+                              <p className="text-sm text-gray-600 mb-2">{event.description}</p>
+                            )}
+                            
+                            <div className="text-xs text-gray-500 space-y-1">
+                              <div>Date: {new Date(event.date).toLocaleString()}</div>
+                              <div>Notifications: {event.sendNotifsTo} | Timeline: {event.showInTimeline ? 'Visible' : 'Hidden'}</div>
+                            </div>
+                          </div>
+                        ))
+                    ) : (
+                      <div className="text-sm text-gray-500 text-center py-4">
+                        No events created yet. Add an event to change the action status.
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ActionDashboard;

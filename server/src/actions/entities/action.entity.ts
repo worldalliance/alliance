@@ -91,14 +91,6 @@ export class Action {
   @ApiProperty()
   timeEstimate: string;
 
-  @Column({ type: 'enum', enum: ActionStatus, default: ActionStatus.Draft })
-  @ApiProperty({
-    description: 'Current status of the action',
-    enum: ActionStatus,
-  })
-  @IsNotEmpty()
-  status: ActionStatus;
-
   @Column({
     type: 'enum',
     enum: ActionTaskType,
@@ -150,6 +142,24 @@ export class Action {
 
   @Expose()
   @ApiProperty({
+    description: 'Number of users who have joined the action',
+    example: 5,
+  })
+  get status(): ActionStatus {
+    if (!this.events) {
+      return ActionStatus.Draft;
+    }
+    const pastEvents = this.events
+      .filter((e) => e.date < new Date())
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+    if (pastEvents.length === 0) {
+      return ActionStatus.Draft;
+    }
+    return pastEvents[pastEvents.length - 1].newStatus;
+  }
+
+  @Expose()
+  @ApiProperty({
     description: 'Number of users who have completed the action',
     example: 5,
   })
@@ -160,4 +170,19 @@ export class Action {
       ).length || 0
     );
   }
+
+  @Column({ nullable: true })
+  @ApiProperty({
+    description:
+      'Timestamp when the action is launched for commitment gathering',
+    nullable: true,
+  })
+  commitmentLaunchTime?: Date;
+
+  @Column({ nullable: true })
+  @ApiProperty({
+    description: 'Timestamp when the action is launched for member completion',
+    nullable: true,
+  })
+  completionLaunchTime?: Date;
 }

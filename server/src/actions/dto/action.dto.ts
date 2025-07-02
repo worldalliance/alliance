@@ -1,5 +1,5 @@
 import { ApiProperty, OmitType, PartialType, PickType } from '@nestjs/swagger';
-import { Action } from '../entities/action.entity';
+import { Action, ActionStatus } from '../entities/action.entity';
 import { UserAction } from '../entities/user-action.entity';
 import { ActionEvent } from '../entities/action-event.entity';
 import { ActionActivity } from '../entities/action-activity.entity';
@@ -47,11 +47,16 @@ export class ActionDto extends OmitType(Action, [
   @ApiProperty({ type: [ActionEventDto] })
   events: ActionEventDto[];
 
+  @ApiProperty({ enum: ActionStatus })
+  status: ActionStatus;
+
   constructor(action: Partial<Action>) {
     super();
+    Object.assign(this, action);
     this.myRelation = null;
     this.usersJoined = action.usersJoined || 0;
     this.usersCompleted = action.usersCompleted || 0;
+    this.status = action.status || ActionStatus.Draft;
     this.events =
       action.events?.map((event) => new ActionEventDto({ ...event })) || [];
   }
@@ -65,6 +70,7 @@ export class CreateActionDto extends OmitType(ActionDto, [
   'myRelation',
   'events',
   'usersCompleted',
+  'status',
 ]) {}
 
 export class ActionWithRelationDto extends PublicActionDto {

@@ -2,7 +2,6 @@ import React from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./AuthContext";
 import LoginPage from "./LoginPage";
-import AdminActionPage from "./AdminActionPage";
 import DatabaseViewer from "./DatabaseViewer";
 import { getApiUrl } from "./config";
 import { client } from "@alliance/shared/client/client.gen";
@@ -56,14 +55,6 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute>
               <AdminPanel />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/action/:id"
-          element={
-            <ProtectedRoute>
-              <AdminActionPage />
             </ProtectedRoute>
           }
         />

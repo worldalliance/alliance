@@ -147,6 +147,18 @@ export type ActionDto = {
      */
     image: string | null;
     /**
+     * Number of commitments needed to start the action
+     */
+    commitmentThreshold: number | null;
+    /**
+     * Amount of money committed needed to start the action
+     */
+    donationThreshold: number | null;
+    /**
+     * Suggested donation amount (cents)
+     */
+    donationAmount: number | null;
+    /**
      * Description of the action
      */
     description: string;
@@ -160,10 +172,6 @@ export type ActionDto = {
     howTo: string;
     timeEstimate: string;
     /**
-     * Current status of the action
-     */
-    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
-    /**
      * Type of the action
      */
     type: 'Funding' | 'Activity' | 'Ongoing';
@@ -172,9 +180,21 @@ export type ActionDto = {
      */
     usersJoined: number;
     /**
+     * Number of users who have joined the action
+     */
+    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
+    /**
      * Number of users who have completed the action
      */
     usersCompleted: number;
+    /**
+     * Timestamp when the action is launched for commitment gathering
+     */
+    commitmentLaunchTime: string | null;
+    /**
+     * Timestamp when the action is launched for member completion
+     */
+    completionLaunchTime: string | null;
     myRelation: UserActionDto;
     events: Array<ActionEventDto>;
 };
@@ -227,6 +247,18 @@ export type CreateActionDto = {
      */
     image: string | null;
     /**
+     * Number of commitments needed to start the action
+     */
+    commitmentThreshold: number | null;
+    /**
+     * Amount of money committed needed to start the action
+     */
+    donationThreshold: number | null;
+    /**
+     * Suggested donation amount (cents)
+     */
+    donationAmount: number | null;
+    /**
      * Description of the action
      */
     description: string;
@@ -240,13 +272,17 @@ export type CreateActionDto = {
     howTo: string;
     timeEstimate: string;
     /**
-     * Current status of the action
-     */
-    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
-    /**
      * Type of the action
      */
     type: 'Funding' | 'Activity' | 'Ongoing';
+    /**
+     * Timestamp when the action is launched for commitment gathering
+     */
+    commitmentLaunchTime: string | null;
+    /**
+     * Timestamp when the action is launched for member completion
+     */
+    completionLaunchTime: string | null;
 };
 
 export type UpdateActionDto = {
@@ -267,6 +303,18 @@ export type UpdateActionDto = {
      */
     image?: string | null;
     /**
+     * Number of commitments needed to start the action
+     */
+    commitmentThreshold?: number | null;
+    /**
+     * Amount of money committed needed to start the action
+     */
+    donationThreshold?: number | null;
+    /**
+     * Suggested donation amount (cents)
+     */
+    donationAmount?: number | null;
+    /**
      * Description of the action
      */
     description?: string;
@@ -280,13 +328,17 @@ export type UpdateActionDto = {
     howTo?: string;
     timeEstimate?: string;
     /**
-     * Current status of the action
-     */
-    status?: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
-    /**
      * Type of the action
      */
     type?: 'Funding' | 'Activity' | 'Ongoing';
+    /**
+     * Timestamp when the action is launched for commitment gathering
+     */
+    commitmentLaunchTime?: string | null;
+    /**
+     * Timestamp when the action is launched for member completion
+     */
+    completionLaunchTime?: string | null;
 };
 
 export type ActionWithRelationDto = {
@@ -311,6 +363,18 @@ export type ActionWithRelationDto = {
      */
     image: string | null;
     /**
+     * Number of commitments needed to start the action
+     */
+    commitmentThreshold: number | null;
+    /**
+     * Amount of money committed needed to start the action
+     */
+    donationThreshold: number | null;
+    /**
+     * Suggested donation amount (cents)
+     */
+    donationAmount: number | null;
+    /**
      * Description of the action
      */
     description: string;
@@ -324,10 +388,6 @@ export type ActionWithRelationDto = {
     howTo: string;
     timeEstimate: string;
     /**
-     * Current status of the action
-     */
-    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
-    /**
      * Type of the action
      */
     type: 'Funding' | 'Activity' | 'Ongoing';
@@ -336,9 +396,21 @@ export type ActionWithRelationDto = {
      */
     usersJoined: number;
     /**
+     * Number of users who have joined the action
+     */
+    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
+    /**
      * Number of users who have completed the action
      */
     usersCompleted: number;
+    /**
+     * Timestamp when the action is launched for commitment gathering
+     */
+    commitmentLaunchTime: string | null;
+    /**
+     * Timestamp when the action is launched for member completion
+     */
+    completionLaunchTime: string | null;
     events: Array<ActionEventDto>;
     relation: UserActionDto;
 };

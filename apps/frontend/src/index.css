@@ -110,7 +110,7 @@ h2 {
     margin-top: 6px;
 }
 
-p {
+p, span {
     font-family: 'Newsreader';
     padding-top: 1px;
     margin-bottom: -1px;
