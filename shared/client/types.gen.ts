@@ -187,14 +187,6 @@ export type ActionDto = {
      * Number of users who have completed the action
      */
     usersCompleted: number;
-    /**
-     * Timestamp when the action is launched for commitment gathering
-     */
-    commitmentLaunchTime: string | null;
-    /**
-     * Timestamp when the action is launched for member completion
-     */
-    completionLaunchTime: string | null;
     myRelation: UserActionDto;
     events: Array<ActionEventDto>;
 };
@@ -275,14 +267,6 @@ export type CreateActionDto = {
      * Type of the action
      */
     type: 'Funding' | 'Activity' | 'Ongoing';
-    /**
-     * Timestamp when the action is launched for commitment gathering
-     */
-    commitmentLaunchTime: string | null;
-    /**
-     * Timestamp when the action is launched for member completion
-     */
-    completionLaunchTime: string | null;
 };
 
 export type UpdateActionDto = {
@@ -331,14 +315,6 @@ export type UpdateActionDto = {
      * Type of the action
      */
     type?: 'Funding' | 'Activity' | 'Ongoing';
-    /**
-     * Timestamp when the action is launched for commitment gathering
-     */
-    commitmentLaunchTime?: string | null;
-    /**
-     * Timestamp when the action is launched for member completion
-     */
-    completionLaunchTime?: string | null;
 };
 
 export type ActionWithRelationDto = {
@@ -403,14 +379,6 @@ export type ActionWithRelationDto = {
      * Number of users who have completed the action
      */
     usersCompleted: number;
-    /**
-     * Timestamp when the action is launched for commitment gathering
-     */
-    commitmentLaunchTime: string | null;
-    /**
-     * Timestamp when the action is launched for member completion
-     */
-    completionLaunchTime: string | null;
     events: Array<ActionEventDto>;
     relation: UserActionDto;
 };

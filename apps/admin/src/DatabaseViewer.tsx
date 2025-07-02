@@ -381,7 +381,7 @@ const DatabaseViewer: React.FC = () => {
     return primaryKeyIndex >= 0 ? row[primaryKeyIndex] : null;
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const formatCellValue = (
     value: any,
     column: ColumnMetadataDto,

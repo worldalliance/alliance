@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ActionDto, actionsFindAllWithDrafts } from "@alliance/shared/client";
 import { useAuth } from "./AuthContext";
 import ActionDashboard from "./ActionDashboard";
+import ActionProgressBar from "./components/ActionProgressBar";
 
 const AdminPanel: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
@@ -15,8 +16,8 @@ const AdminPanel: React.FC = () => {
   const { logout, user, loading: authLoading } = useAuth();
 
   // Get current view state from URL params
-  const selectedActionId = searchParams.get('action');
-  const isCreatingNew = searchParams.get('new') === 'true';
+  const selectedActionId = searchParams.get("action");
+  const isCreatingNew = searchParams.get("new") === "true";
 
   // Only check admin status after loading is complete and we have a user
   useEffect(() => {
@@ -44,7 +45,7 @@ const AdminPanel: React.FC = () => {
   }, [loadActions]);
 
   const handleCreateAction = useCallback(() => {
-    setSearchParams({ new: 'true' });
+    setSearchParams({ new: "true" });
   }, [setSearchParams]);
 
   const handleEditAction = useCallback(
@@ -58,12 +59,15 @@ const AdminPanel: React.FC = () => {
     setSearchParams({});
   }, [setSearchParams]);
 
-  const handleActionCreated = useCallback((action: ActionDto) => {
-    setSearchParams({ action: action.id.toString() });
-    loadActions(); // Refresh the list
-  }, [setSearchParams, loadActions]);
+  const handleActionCreated = useCallback(
+    (action: ActionDto) => {
+      setSearchParams({ action: action.id.toString() });
+      loadActions(); // Refresh the list
+    },
+    [setSearchParams, loadActions]
+  );
 
-  const handleActionUpdated = useCallback((action: ActionDto) => {
+  const handleActionUpdated = useCallback(() => {
     loadActions(); // Refresh the list
   }, [loadActions]);
 
@@ -90,7 +94,7 @@ const AdminPanel: React.FC = () => {
             // Show Action Dashboard
             <div className="flex-1 min-h-0">
               <ActionDashboard
-                actionId={selectedActionId || 'new'}
+                actionId={selectedActionId || "new"}
                 isNew={isCreatingNew}
                 onActionCreated={handleActionCreated}
                 onActionUpdated={handleActionUpdated}
@@ -120,15 +124,24 @@ const AdminPanel: React.FC = () => {
                         className="cursor-pointer"
                       >
                         <div className="flex justify-between mb-2">
-                          <h2 className="font-bold">{action.name}</h2>
+                          <h2 className="font-bold text-sm">{action.name}</h2>
                           <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
                             {action.status}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-700 mb-2">
-                          {action.category}
+                        <p className="text-xs mb-3">
+                          {action.shortDescription}
                         </p>
-                        <p className="text-sm">{action.shortDescription}</p>
+
+                        {/* Progress bar for relevant statuses */}
+                        <ActionProgressBar
+                          status={action.status}
+                          usersJoined={action.usersJoined}
+                          usersCompleted={action.usersCompleted}
+                          commitmentThreshold={
+                            action.commitmentThreshold || undefined
+                          }
+                        />
                       </div>
                     </Card>
                   ))}
@@ -171,9 +184,16 @@ const AdminPanel: React.FC = () => {
               <div className="flex justify-between">
                 <span>Active:</span>
                 <span className="font-medium text-blue-600">
-                  {actions.filter((a) => 
-                    ["upcoming", "gathering-commitments", "commitments-reached", "member-action"].includes(a.status)
-                  ).length}
+                  {
+                    actions.filter((a) =>
+                      [
+                        "upcoming",
+                        "gathering-commitments",
+                        "commitments-reached",
+                        "member-action",
+                      ].includes(a.status)
+                    ).length
+                  }
                 </span>
               </div>
               <div className="flex justify-between">
@@ -191,7 +211,11 @@ const AdminPanel: React.FC = () => {
               <div className="flex justify-between">
                 <span>Failed/Abandoned:</span>
                 <span className="font-medium text-red-600">
-                  {actions.filter((a) => ["failed", "abandoned"].includes(a.status)).length}
+                  {
+                    actions.filter((a) =>
+                      ["failed", "abandoned"].includes(a.status)
+                    ).length
+                  }
                 </span>
               </div>
             </div>

@@ -170,19 +170,4 @@ export class Action {
       ).length || 0
     );
   }
-
-  @Column({ nullable: true })
-  @ApiProperty({
-    description:
-      'Timestamp when the action is launched for commitment gathering',
-    nullable: true,
-  })
-  commitmentLaunchTime?: Date;
-
-  @Column({ nullable: true })
-  @ApiProperty({
-    description: 'Timestamp when the action is launched for member completion',
-    nullable: true,
-  })
-  completionLaunchTime?: Date;
 }
