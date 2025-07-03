@@ -26,13 +26,15 @@ export default function TempProdPassword() {
   if (!putPassword) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
-        <input
-          className="p-2 rounded-md border-2 border-gray-300"
-          type="password"
-          placeholder="Enter password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <form>
+          <input
+            className="p-2 rounded-md border-2 border-gray-300"
+            type="password"
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </form>
       </div>
     );
   }

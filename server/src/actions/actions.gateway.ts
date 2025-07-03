@@ -17,7 +17,6 @@ import { Logger } from '@nestjs/common';
     origin: true,
     credentials: true,
   },
-  namespace: '/actions',
 })
 export class ActionsGateway
   implements OnGatewayConnection, OnGatewayDisconnect
