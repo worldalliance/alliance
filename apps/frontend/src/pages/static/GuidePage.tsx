@@ -13,10 +13,20 @@ const GuidePage: React.FC = () => {
           <h1 className="text-black font-avenir !text-4xl">
             Guide to the Alliance
           </h1>
-          <p className="font-serif text-xl">
-            The Alliance is a global polity with a mission to unlock the
-            collective potential of humanity.
-          </p>
+
+          <MarkdownWrapper
+            markdownContent="
+
+The Alliance is a global group of people cooperating to resolve global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development. Our mission is to build a civilization that serves all individuals in their pursuit of life, liberty, and happiness – a world in which we can take pride.
+
+The Alliance establishes a common identity, culture, and community that fills a global gap in representation of shared human interests. We aim to unlock the collective potential of millions to billions of people to build a better world.
+
+Our key strength is our structure, which allows us to wield collective power precisely and strategically. We each commit a small amount of our time and resources to the Alliance. In turn, we are served by a strategic office that plans and optimizes collective actions that use these reliable resources.
+
+As a result of our structure, our collective actions are far more complex and effective than standard mass actions, such as petitions and protests. The Alliance can plan in advance, wield verifiable leverage, act proactively rather than reactively, and learn from experience.
+
+"
+          />
         </div>
         <div className="flex flex-col gap-y-4 mt-10">
           <Expandable title="Principles">
@@ -128,8 +138,6 @@ The Alliance’s overall portfolio of actions will be democratically determined 
             "
             />
           </Expandable>
-
-          <Expandable title="Governance"></Expandable>
         </div>
       </div>
       <Footer />
