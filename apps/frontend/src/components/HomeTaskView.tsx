@@ -41,7 +41,7 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
         />
       ))}
       {actions.length === 0 && (
-        <p className="rounded border border-gray-200 text-center text-gray-500 py-5">
+        <p className="rounded border border-gray-200 text-center text-gray-500 !py-5">
           Nothing to do right now!
         </p>
       )}

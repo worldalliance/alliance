@@ -529,6 +529,201 @@ describe('Actions (e2e)', () => {
     expect(res.status).toBe(400);
   });
 
+  describe('Automatic State Transitions', () => {
+    it('should automatically transition from GatheringCommitments to CommitmentsReached when threshold is met', async () => {
+      // Create action with commitment threshold
+      const newAction = actionRepo.create({
+        name: 'Auto Transition Test - Commitments',
+        category: 'Test',
+        whyJoin: 'For auto transition testing',
+        description: 'Test action for automatic commitment transitions',
+        commitmentThreshold: 2, // Need 2 users to reach threshold
+      });
+      await actionRepo.save(newAction);
+
+      // Set action to GatheringCommitments status
+      const gatheringEvent: CreateActionEventDto = {
+        title: 'Start Gathering Commitments',
+        description: 'Action is now gathering commitments',
+        newStatus: ActionStatus.GatheringCommitments,
+        date: new Date(Date.now() - 1000), // 1 second ago
+        showInTimeline: true,
+        sendNotifsTo: NotificationType.All,
+      };
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/${newAction.id}/events`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send(gatheringEvent);
+
+      // Verify status is GatheringCommitments
+      let res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+      
+      expect(res.body.status).toBe(ActionStatus.GatheringCommitments);
+      expect(res.body.events.length).toBe(1);
+
+      // First user joins - should not trigger transition yet
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/join/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+      res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+      
+      expect(res.body.status).toBe(ActionStatus.GatheringCommitments);
+      expect(res.body.usersJoined).toBe(1);
+      expect(res.body.events.length).toBe(1); // No automatic transition yet
+
+      // Second user joins - should trigger automatic transition
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/join/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+
+      res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+      
+      expect(res.body.status).toBe(ActionStatus.CommitmentsReached);
+      expect(res.body.usersJoined).toBe(2);
+      expect(res.body.events.length).toBe(2); // Automatic transition event created
+      
+      // Check the automatic event details
+      const automaticEvent = res.body.events.find((e: any) => e.title === 'Commitment threshold reached');
+      expect(automaticEvent).toBeDefined();
+      expect(automaticEvent.description).toContain('2 people have committed');
+      expect(automaticEvent.newStatus).toBe(ActionStatus.CommitmentsReached);
+      expect(automaticEvent.sendNotifsTo).toBe(NotificationType.Joined);
+
+      // Cleanup
+      await actionRepo.delete(newAction.id);
+    });
+
+    it('should automatically transition from MemberAction to Resolution when all members complete', async () => {
+      // Create action for testing completion transitions
+      const newAction = actionRepo.create({
+        name: 'Auto Transition Test - Completion',
+        category: 'Test',
+        whyJoin: 'For auto completion testing',
+        description: 'Test action for automatic completion transitions',
+      });
+      await actionRepo.save(newAction);
+
+      // Set action to MemberAction status
+      const memberActionEvent: CreateActionEventDto = {
+        title: 'Member Action Started',
+        description: 'Members can now complete the action',
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - 1000), // 1 second ago
+        showInTimeline: true,
+        sendNotifsTo: NotificationType.All,
+      };
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/${newAction.id}/events`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send(memberActionEvent);
+
+      // Two users join the action
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/join/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/join/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+
+      // Verify initial state
+      let res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+      
+      expect(res.body.status).toBe(ActionStatus.MemberAction);
+      expect(res.body.usersJoined).toBe(2);
+      expect(res.body.usersCompleted).toBe(0);
+      expect(res.body.events.length).toBe(1);
+
+      // First user completes - should not trigger transition yet
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/complete/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+      res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+      
+      expect(res.body.status).toBe(ActionStatus.MemberAction);
+      expect(res.body.usersJoined).toBe(2);
+      expect(res.body.usersCompleted).toBe(1);
+      expect(res.body.events.length).toBe(1); // No automatic transition yet
+
+      // Second user completes - should trigger automatic transition
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/complete/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+
+      res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+      
+      expect(res.body.status).toBe(ActionStatus.Resolution);
+      expect(res.body.usersJoined).toBe(2);
+      expect(res.body.usersCompleted).toBe(2);
+      expect(res.body.events.length).toBe(2); // Automatic transition event created
+      
+      // Check the automatic event details
+      const automaticEvent = res.body.events.find((e: any) => e.title === 'All members completed action');
+      expect(automaticEvent).toBeDefined();
+      expect(automaticEvent.description).toContain('All 2 committed members have completed');
+      expect(automaticEvent.newStatus).toBe(ActionStatus.Resolution);
+      expect(automaticEvent.sendNotifsTo).toBe(NotificationType.Joined);
+
+      // Cleanup
+      await actionRepo.delete(newAction.id);
+    });
+
+    it('should not transition to Resolution if no users have joined', async () => {
+      // Create action with no users joined
+      const newAction = actionRepo.create({
+        name: 'Auto Transition Test - No Users',
+        category: 'Test',
+        whyJoin: 'For testing edge case',
+        description: 'Test action with no users joined',
+      });
+      await actionRepo.save(newAction);
+
+      // Set action to MemberAction status
+      const memberActionEvent: CreateActionEventDto = {
+        title: 'Member Action Started',
+        description: 'Members can now complete the action',
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - 1000),
+        showInTimeline: true,
+        sendNotifsTo: NotificationType.All,
+      };
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/${newAction.id}/events`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send(memberActionEvent);
+
+      // Verify no automatic transition occurs with 0 users
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${newAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+      
+      expect(res.body.status).toBe(ActionStatus.MemberAction);
+      expect(res.body.usersJoined).toBe(0);
+      expect(res.body.usersCompleted).toBe(0);
+      expect(res.body.events.length).toBe(1); // Only the initial event
+
+      // Cleanup
+      await actionRepo.delete(newAction.id);
+    });
+  });
+
   afterAll(async () => {
     await actionRepo.query('DELETE FROM action');
     await ctx.app.close();

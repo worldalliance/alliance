@@ -10,8 +10,8 @@ import {
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action, ActionStatus } from './entities/action.entity';
-import { ActionEvent } from './entities/action-event.entity';
-import { In, Not, Repository } from 'typeorm';
+import { ActionEvent, NotificationType } from './entities/action-event.entity';
+import { In, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';
 import {
@@ -185,7 +185,12 @@ export class ActionsService {
       userId: userId,
     });
     await this.actionActivityRepository.save(activity);
-    return this.userActionRepository.save(relation);
+
+    const result = await this.userActionRepository.save(relation);
+
+    await this.checkAndProcessAutomaticTransitions(actionId);
+
+    return result;
   }
 
   async completeAction(actionId: number, userId: number): Promise<UserAction> {
@@ -202,6 +207,8 @@ export class ActionsService {
       userId,
     });
     await this.actionActivityRepository.save(activity);
+
+    await this.checkAndProcessAutomaticTransitions(actionId);
 
     return relation;
   }
@@ -306,22 +313,62 @@ export class ActionsService {
     });
   }
 
-  //   async processActionStatus(actionId: number) {
-  //     const action = await this.findOne(actionId);
+  async checkAndProcessAutomaticTransitions(actionId: number) {
+    const action = await this.findOne(actionId);
 
-  //     if (action.status === ActionStatus.GatheringCommitments) {
-  //       if (
-  //         action.commitmentThreshold &&
-  //         action.usersJoined >= action.commitmentThreshold
-  //       ) {
-  //         action.status = ActionStatus.MemberAction;
-  //       }
-  //     }
+    // Check if we should transition from GatheringCommitments to CommitmentsReached
+    if (action.status === ActionStatus.GatheringCommitments) {
+      if (
+        action.commitmentThreshold &&
+        action.usersJoined >= action.commitmentThreshold
+      ) {
+        await this.createAutomaticTransitionEvent(
+          actionId,
+          ActionStatus.CommitmentsReached,
+          'Commitment threshold reached',
+          `${action.usersJoined} people have committed to this action, meeting the threshold of ${action.commitmentThreshold}.`,
+        );
+      }
+    }
 
-  //     if (action.status === ActionStatus.MemberAction) {
-  //       if (action.usersCompleted >= action.usersJoined) {
-  //         action.status = ActionStatus.Resolution;
-  //       }
-  //     }
-  //   }
+    // Check if we should transition from MemberAction to Resolution
+    if (action.status === ActionStatus.MemberAction) {
+      if (
+        action.usersJoined > 0 &&
+        action.usersCompleted >= action.usersJoined
+      ) {
+        await this.createAutomaticTransitionEvent(
+          actionId,
+          ActionStatus.Resolution,
+          'All members completed action',
+          `All ${action.usersJoined} committed members have completed the action.`,
+        );
+      }
+    }
+  }
+
+  private async createAutomaticTransitionEvent(
+    actionId: number,
+    newStatus: ActionStatus,
+    title: string,
+    description: string,
+  ): Promise<void> {
+    const action = await this.findOne(actionId);
+
+    const eventData: CreateActionEventDto = {
+      title,
+      description,
+      newStatus,
+      sendNotifsTo: NotificationType.Joined, // Notify users who joined the action
+      date: new Date(), // Set to current time for immediate transition
+      showInTimeline: true,
+    };
+
+    const newEvent = this.actionEventRepository.create({
+      ...eventData,
+      action,
+    });
+
+    await this.actionEventRepository.save(newEvent);
+  }
 }
