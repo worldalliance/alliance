@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import { getApiUrl } from "../config";
+import { getWebSocketUrl } from "../config";
 
 interface DatabaseEvent {
   tableName: string;
@@ -24,7 +24,7 @@ export const useAdminWebSocket = () => {
 
   useEffect(() => {
     // Initialize WebSocket connection only once
-    const socket = io(getApiUrl() + "/admin-viewer", {
+    const socket = io(getWebSocketUrl() + "/admin-viewer", {
       withCredentials: true,
       autoConnect: true,
     });

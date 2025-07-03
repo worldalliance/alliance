@@ -1,5 +1,6 @@
 import { prod_api_url } from "@alliance/shared/lib/config";
 import { Features, isEnabled } from "@alliance/shared/lib/features";
+import { getWebSocketUrl as getWebSocketUrlShared } from "@alliance/shared/lib/config";
 
 export const getApiUrl = (): string => {
   if (import.meta.env.MODE === "development") {
@@ -10,11 +11,7 @@ export const getApiUrl = (): string => {
 };
 
 export const getWebSocketUrl = (): string => {
-  if (import.meta.env.MODE === "development") {
-    return "http://localhost:3005";
-  } else {
-    return "https://worldalliance.org";
-  }
+  return getWebSocketUrlShared(import.meta.env.MODE);
 };
 
 export const getSingleActionSSEUrl = (actionId: number) => {

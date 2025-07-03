@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import { getApiUrl, getWebSocketUrl } from "./config";
+import { getWebSocketUrl } from "./config";
 
 interface ActionCount {
   actionId: number;
