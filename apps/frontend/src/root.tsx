@@ -24,13 +24,19 @@ const options: Partial<PostHogConfig> = {
 };
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  if (import.meta.env.PROD) {
+  if (!import.meta.env.PROD) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         {error instanceof Error && (
           <p className="text-red-500">{error.message}</p>
         )}
-        <p>Please try again</p>
+        {isRouteErrorResponse(error) ? (
+          <p>
+            {error.status} {error.statusText}
+          </p>
+        ) : (
+          <p>Please try again</p>
+        )}
       </div>
     );
   }
