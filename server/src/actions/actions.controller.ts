@@ -15,6 +15,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
+import { ActionStatus } from './entities/action.entity';
+import { JwtService } from '@nestjs/jwt';
 import {
   ActionDto,
   ActionWithRelationDto,
@@ -37,6 +39,8 @@ import { Sse, MessageEvent } from '@nestjs/common';
 import { Observable, fromEvent, from, merge } from 'rxjs';
 import { map, filter, scan, share, bufferTime } from 'rxjs/operators';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AuthOptionalGuard } from 'src/auth/guards/authoptional.guard';
+import { UserService } from 'src/user/user.service';
 
 @Controller('actions')
 export class ActionsController {
@@ -44,6 +48,7 @@ export class ActionsController {
   constructor(
     private readonly actionsService: ActionsService,
     private readonly eventEmitter: EventEmitter2,
+    private userService: UserService,
   ) {
     /* ONE listener no matter how many clients */
     this.delta$ = fromEvent<{ actionId: number; delta: number }>(
@@ -205,6 +210,11 @@ export class ActionsController {
     if (!action) {
       throw new NotFoundException('Action not found');
     }
+
+    // Don't allow opengraph for draft actions
+    if (action.status === ActionStatus.Draft) {
+      throw new NotFoundException('Action not found');
+    }
     const html = `
     <html prefix="og: https://ogp.me/ns#">
         <head>
@@ -219,14 +229,29 @@ export class ActionsController {
   }
 
   @Get(':id')
-  @Public()
+  @UseGuards(AuthOptionalGuard)
   @ApiOkResponse({ type: ActionDto })
   @ApiUnauthorizedResponse()
-  findOne(
+  async findOne(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<ActionDto | null> {
-    return this.actionsService.findOneWithRelation(id, req.user?.sub);
+    const action = await this.actionsService.findOneWithRelation(
+      id,
+      req.user?.sub,
+    );
+
+    if (!action) {
+      throw new NotFoundException('Action not found');
+    }
+
+    if (action.status === ActionStatus.Draft) {
+      if (!req.user || !(await this.userService.isAdmin(req.user.sub))) {
+        throw new NotFoundException('Action not found');
+      }
+    }
+
+    return action;
   }
 
   @Post('create')

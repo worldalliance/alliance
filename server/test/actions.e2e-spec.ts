@@ -191,6 +191,31 @@ describe('Actions (e2e)', () => {
       expect(res.body[1].status).toBe(ActionStatus.Draft);
     });
 
+    it('unauthenticated user cannot access individual draft action', async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${testDraftAction.id}`);
+
+      expect(res.status).toBe(404);
+    });
+
+    it('authenticated non-admin user cannot access individual draft action', async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${testDraftAction.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+      expect(res.status).toBe(404);
+    });
+
+    it('admin can access individual draft action', async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/${testDraftAction.id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe(ActionStatus.Draft);
+      expect(res.body.name).toBe('Test Draft Action');
+    });
+
     it('unauthenticated user can see actions', async () => {
       const res = await request(ctx.app.getHttpServer()).get('/actions');
 
@@ -246,9 +271,10 @@ describe('Actions (e2e)', () => {
         });
         await actionRepo.save(newAction);
 
+        // Use admin token to access draft action
         const res = await request(ctx.app.getHttpServer())
           .get(`/actions/${newAction.id}`)
-          .set('Authorization', `Bearer ${ctx.accessToken}`);
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
 
         expect(res.status).toBe(200);
         expect(res.body.status).toBe(ActionStatus.Draft);
@@ -267,10 +293,10 @@ describe('Actions (e2e)', () => {
         });
         await actionRepo.save(newAction);
 
-        // Verify initial draft status
+        // Verify initial draft status using admin token
         let res = await request(ctx.app.getHttpServer())
           .get(`/actions/${newAction.id}`)
-          .set('Authorization', `Bearer ${ctx.accessToken}`);
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
 
         expect(res.body.status).toBe(ActionStatus.Draft);
 

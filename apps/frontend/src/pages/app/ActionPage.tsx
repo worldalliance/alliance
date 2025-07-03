@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLoaderData, useParams } from "react-router";
+import {
+  data,
+  isRouteErrorResponse,
+  useLoaderData,
+  useParams,
+} from "react-router";
 import Card, { CardStyle } from "../../components/system/Card";
 import Globe from "../../components/Globe";
 import {
@@ -33,6 +38,22 @@ const actionStatusDescriptions: Record<ActionDto["status"], string> = {
   upcoming: "Upcoming",
 };
 
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  console.error(error);
+  return (
+    <div className="flex flex-col items-center justify-center h-screen">
+      <div>
+        <p className="font-bold pb-2">Could not load action</p>
+        <p>
+          {isRouteErrorResponse(error) && error.status === 404
+            ? "Not found"
+            : "API server is not responding. Please try again later."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export async function loader({
   params,
 }: Route.LoaderArgs): Promise<
@@ -49,7 +70,7 @@ export async function loader({
     path: { id: parseInt(params.id) },
   });
   if (!action.data) {
-    return undefined;
+    throw data("Record Not Found", { status: 404 });
   }
 
   return { ...action.data, locations: locations.data || [] };

@@ -97,6 +97,11 @@ export class UserService {
     await this.userRepository.update(id, { admin });
   }
 
+  async isAdmin(id: number): Promise<boolean> {
+    const user = await this.findOneOrFail(id);
+    return user.admin;
+  }
+
   async onboarding(userId: number, body: OnboardingDto): Promise<User> {
     const user = await this.findOneOrFail(userId);
 
