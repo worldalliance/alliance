@@ -5,10 +5,7 @@ enum NavbarPage {
   Guide = "Guide",
 }
 
-export const links: NavbarPage[] = [
-  NavbarPage.People,
-  NavbarPage.Guide,
-];
+export const links: NavbarPage[] = [NavbarPage.People, NavbarPage.Guide];
 
 export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.People]: "/people",
@@ -30,7 +27,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
   return (
     <div
       className={`
-      flex flex-col md:flex-row gap-y-4 ${absolute ? "absolute" : "relative"}
+      flex flex-col sm:flex-row gap-y-4 ${absolute ? "absolute" : "relative"}
       w-screen justify-between items-center px-24 top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300 ${
         transparent
           ? "bg-transparent py-6 text-white"
@@ -39,7 +36,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
       ref={ref}
     >
       <h1
-        className="font-bold font-berlingske text-[24pt] cursor-pointer"
+        className="font-bold font-berlingske text-[24pt] cursor-pointer text-nowrap"
         onClick={() => {
           navigate("/");
         }}
@@ -47,7 +44,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
         THE ALLIANCE
       </h1>
       <div className="flex flex-row items-center gap-x-10">
-        {links.map((link) =>
+        {links.map((link) => (
           // link == NavbarPage.Guide ? (
           //   <Link to={destinations[link]} key={link}>
           //     <p
@@ -61,13 +58,12 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
           //     </p>
           //   </Link>
           // ) : (
-            <Link to={destinations[link]} key={link}>
-              <p className="hover:underline whitespace-nowrap font-avenir">
-                {link}
-              </p>
-            </Link>
-          )
-        }
+          <Link to={destinations[link]} key={link}>
+            <p className="hover:underline whitespace-nowrap font-avenir">
+              {link}
+            </p>
+          </Link>
+        ))}
       </div>
     </div>
   );

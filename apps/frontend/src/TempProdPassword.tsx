@@ -30,6 +30,7 @@ export default function TempProdPassword() {
           <input
             className="p-2 rounded-md border-2 border-gray-300"
             type="password"
+            autoComplete="on"
             placeholder="Enter password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
