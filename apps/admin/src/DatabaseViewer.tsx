@@ -62,6 +62,22 @@ const DatabaseViewer: React.FC = () => {
     setEventHandlers,
   } = useAdminWebSocket();
 
+  const setDefaultSorting = useCallback(async (tableData: TableDataDto) => {
+    if (tableData.columns.some((col) => col.name === "updatedAt")) {
+      setQuery((prev) => ({
+        ...prev,
+        sortBy: "updatedAt",
+        sortOrder: "DESC", // Most recent first
+      }));
+    } else if (tableData.columns.some((col) => col.name === "createdAt")) {
+      setQuery((prev) => ({
+        ...prev,
+        sortBy: "createdAt",
+        sortOrder: "DESC", // Most recent first
+      }));
+    }
+  }, []);
+
   const loadTableData = useCallback(async () => {
     if (!selectedTable) return;
 
@@ -79,6 +95,7 @@ const DatabaseViewer: React.FC = () => {
 
       if (response.data) {
         setTableData(response.data);
+        setDefaultSorting(response.data);
 
         // If we have a selected row for this table and it's not visible on this page,
         // try to find it by searching for it
@@ -343,7 +360,13 @@ const DatabaseViewer: React.FC = () => {
   useEffect(() => {
     setSearchInput("");
     setNewRows(new Set()); // Clear new row highlights
-    setQuery((prev) => ({ ...prev, search: undefined, page: 1 }));
+    setQuery((prev) => ({
+      ...prev,
+      search: undefined,
+      page: 1,
+      sortBy: undefined,
+      sortOrder: "ASC",
+    }));
     // Don't clear tableData immediately to prevent flashing
   }, [selectedTable]);
 
@@ -526,33 +549,41 @@ const DatabaseViewer: React.FC = () => {
             </div>
           ) : (
             <div className="p-4 space-y-1">
-              {tables.map((table) => (
-                <button
-                  key={table.name}
-                  onClick={() => handleTableSelect(table.name)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors ${
-                    selectedTable === table.name
-                      ? "bg-blue-50 border border-blue-200 text-blue-900"
-                      : "hover:bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">
-                        {table.name}
+              {tables
+                .sort((a, b) => {
+                  // Sort by record count: non-empty tables first, then empty tables
+                  if (a.recordCount === 0 && b.recordCount > 0) return 1;
+                  if (a.recordCount > 0 && b.recordCount === 0) return -1;
+                  // If both have records or both are empty, sort alphabetically
+                  return a.name.localeCompare(b.name);
+                })
+                .map((table) => (
+                  <button
+                    key={table.name}
+                    onClick={() => handleTableSelect(table.name)}
+                    className={`w-full text-left p-3 rounded-lg transition-colors ${
+                      selectedTable === table.name
+                        ? "bg-blue-50 border border-blue-200 text-blue-900"
+                        : "hover:bg-gray-50 text-gray-700"
+                    }`}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">
+                          {table.name}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {table.entityName}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {table.entityName}
+                      <div className="ml-2 flex-shrink-0">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          {table.recordCount.toLocaleString()}
+                        </span>
                       </div>
                     </div>
-                    <div className="ml-2 flex-shrink-0">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        {table.recordCount.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))}
             </div>
           )}
         </div>

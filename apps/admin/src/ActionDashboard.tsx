@@ -461,13 +461,13 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                           {action.donationThreshold && (
                             <div className="text-sm text-gray-600">
                               <strong>Donation Threshold:</strong> $
-                              {action.donationThreshold}
+                              {(action.donationThreshold || 0) / 100}
                             </div>
                           )}
                           {action.donationAmount && (
                             <div className="text-sm text-gray-600">
                               <strong>Suggested Donation:</strong> $
-                              {action.donationAmount}
+                              {action.donationAmount / 100}
                             </div>
                           )}
                         </>
@@ -548,7 +548,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                         .map((event, index) => (
                           <div
                             key={event.id}
-                            className="flex items-start space-x-3"
+                            className="flex items-center space-x-3"
                           >
                             <div className="flex-shrink-0">
                               <div

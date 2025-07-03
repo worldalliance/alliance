@@ -53,7 +53,7 @@ export class ActionEvent {
 
   @UpdateDateColumn()
   @ApiProperty({ description: 'Timestamp when the event was last updated' })
-  updateDate: Date;
+  updatedAt: Date;
 
   @Column({ default: false })
   @ApiProperty({

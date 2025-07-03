@@ -123,9 +123,9 @@ const AdminPanel: React.FC = () => {
                         onClick={() => handleEditAction(action.id)}
                         className="cursor-pointer"
                       >
-                        <div className="flex justify-between mb-2">
+                        <div className="flex justify-between mb-2 items-start">
                           <h2 className="font-bold text-sm">{action.name}</h2>
-                          <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+                          <span className="p-2 px-3 bg-gray-200 text-gray-800 text-xs rounded-full text-nowrap">
                             {action.status}
                           </span>
                         </div>
@@ -141,6 +141,11 @@ const AdminPanel: React.FC = () => {
                           commitmentThreshold={
                             action.commitmentThreshold || undefined
                           }
+                          actionType={action.type}
+                          donationThreshold={
+                            action.donationThreshold || undefined
+                          }
+                          donationAmount={action.donationAmount || undefined}
                         />
                       </div>
                     </Card>
@@ -225,7 +230,7 @@ const AdminPanel: React.FC = () => {
               className="w-full bg-stone-600 hover:bg-stone-700 text-white px-4 py-2 rounded-md text-sm font-medium"
               onClick={logout}
             >
-              Logout
+              Log out
             </button>
           </Card>
         </div>

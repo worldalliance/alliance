@@ -3,7 +3,11 @@ import { CreateActionDto } from "@alliance/shared/client";
 
 interface ActionFormProps {
   form: CreateActionDto;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
+  onInputChange: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => void;
   onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   saving: boolean;
@@ -50,7 +54,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label htmlFor="name" className="block font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="name"
+            className="block font-medium text-gray-700 mb-1"
+          >
             Name *
           </label>
           <input
@@ -65,7 +72,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
         </div>
 
         <div>
-          <label htmlFor="category" className="block font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="category"
+            className="block font-medium text-gray-700 mb-1"
+          >
             Category *
           </label>
           <input
@@ -80,7 +90,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
         </div>
 
         <div>
-          <label htmlFor="type" className="block font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="type"
+            className="block font-medium text-gray-700 mb-1"
+          >
             Type
           </label>
           <select
@@ -98,7 +111,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
         </div>
 
         <div>
-          <label htmlFor="timeEstimate" className="block font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="timeEstimate"
+            className="block font-medium text-gray-700 mb-1"
+          >
             Time Estimate
           </label>
           <input
@@ -116,8 +132,11 @@ const ActionForm: React.FC<ActionFormProps> = ({
       {form.type === "Funding" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="donationThreshold" className="block font-medium text-gray-700 mb-1">
-              Donation Threshold ($)
+            <label
+              htmlFor="donationThreshold"
+              className="block font-medium text-gray-700 mb-1"
+            >
+              Donation Threshold (cents)
             </label>
             <input
               type="number"
@@ -133,8 +152,11 @@ const ActionForm: React.FC<ActionFormProps> = ({
           </div>
 
           <div>
-            <label htmlFor="donationAmount" className="block font-medium text-gray-700 mb-1">
-              Suggested Donation ($)
+            <label
+              htmlFor="donationAmount"
+              className="block font-medium text-gray-700 mb-1"
+            >
+              Suggested Donation (cents)
             </label>
             <input
               type="number"
@@ -151,7 +173,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
         </div>
       ) : (
         <div>
-          <label htmlFor="commitmentThreshold" className="block font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="commitmentThreshold"
+            className="block font-medium text-gray-700 mb-1"
+          >
             Commitment Threshold
           </label>
           <input
@@ -168,7 +193,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
       )}
 
       <div>
-        <label htmlFor="description" className="block font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="description"
+          className="block font-medium text-gray-700 mb-1"
+        >
           Description
         </label>
         <textarea
@@ -182,7 +210,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
       </div>
 
       <div>
-        <label htmlFor="shortDescription" className="block font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="shortDescription"
+          className="block font-medium text-gray-700 mb-1"
+        >
           Short Description
         </label>
         <textarea
@@ -196,7 +227,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
       </div>
 
       <div>
-        <label htmlFor="whyJoin" className="block font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="whyJoin"
+          className="block font-medium text-gray-700 mb-1"
+        >
           Why Join
         </label>
         <textarea

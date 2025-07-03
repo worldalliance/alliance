@@ -104,8 +104,6 @@ export class PaymentsController {
       });
     }
 
-    console.log('paymentIntent created with token', token);
-
     if (!paymentIntent.client_secret) {
       throw new HttpException(
         'Failed to create payment intent',
