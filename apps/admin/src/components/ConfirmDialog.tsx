@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect } from "react";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -21,6 +21,31 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onCancel,
   isLoading = false,
 }) => {
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!isOpen) return;
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        onConfirm();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        onCancel();
+      }
+    },
+    [onConfirm, onCancel, isOpen]
+  );
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        document.addEventListener("keydown", handleKeyDown);
+      }, 10);
+    }
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, handleKeyDown]);
+
   if (!isOpen) return null;
 
   return (
@@ -30,14 +55,14 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         <div className="p-6 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">{title}</h3>
         </div>
-        
+
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="text-sm text-gray-600 whitespace-pre-wrap break-words">
             {message}
           </div>
         </div>
-        
+
         {/* Fixed footer with buttons */}
         <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg">
           <div className="flex justify-end space-x-3">

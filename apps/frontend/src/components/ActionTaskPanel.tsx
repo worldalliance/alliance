@@ -3,9 +3,10 @@ import ActionTaskPanelFunding from "./ActionTaskPanelFunding";
 import { StripeWrapper } from "./StripeWrapper";
 import ActionTaskPanelCompleted from "./ActionTaskPanelCompleted";
 import { isRouteErrorResponse, useOutletContext } from "react-router";
-import Card from "./system/Card";
+import Card, { CardStyle } from "./system/Card";
 import { loader as actionLoader } from "../pages/app/ActionPage";
 import { Route } from "../../.react-router/types/src/components/+types/ActionTaskPanel";
+import ActionCommitButton from "./ActionCommitButton";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   console.error(error);
@@ -26,12 +27,13 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
 export type ParentContext = {
   handleCompleteAction: () => void;
+  handleJoinAction: () => void;
   action?: ActionDto;
   userRelation: UserActionDto["status"] | null;
 };
 
 const ActionTaskPanel = ({ matches }: { matches: { data: unknown }[] }) => {
-  const { handleCompleteAction, userRelation } =
+  const { handleCompleteAction, handleJoinAction, userRelation } =
     useOutletContext<ParentContext>();
 
   const action = matches[3]!.data as Awaited<ReturnType<typeof actionLoader>>; //TODO: rrv7 type safety best practices?
@@ -44,12 +46,40 @@ const ActionTaskPanel = ({ matches }: { matches: { data: unknown }[] }) => {
     return <ActionTaskPanelCompleted />;
   }
 
-  if (action.type === "Funding") {
-    return (
-      <StripeWrapper actionId={action.id}>
-        <ActionTaskPanelFunding onPaymentSuccess={handleCompleteAction} />
-      </StripeWrapper>
-    );
+  if (action.status === "gathering-commitments") {
+    if (userRelation === "joined") {
+      return (
+        <Card style={CardStyle.Green}>
+          <p>
+            <b>Joined </b>- We&apos;ll notify you when it&apos;s time to act.
+          </p>
+        </Card>
+      );
+    } else {
+      return (
+        <Card
+          style={CardStyle.White}
+          className="flex-row items-center gap-x-2 justify-between"
+        >
+          <span className="text-gray-800">Ready to join?</span>
+          <ActionCommitButton
+            committed={false}
+            isAuthenticated={true}
+            onCommit={handleJoinAction}
+          />
+        </Card>
+      );
+    }
+  }
+
+  if (action.status === "member-action") {
+    if (action.type === "Funding") {
+      return (
+        <StripeWrapper actionId={action.id}>
+          <ActionTaskPanelFunding onPaymentSuccess={handleCompleteAction} />
+        </StripeWrapper>
+      );
+    }
   }
   return null;
 };

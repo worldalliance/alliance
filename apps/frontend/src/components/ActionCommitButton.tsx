@@ -70,7 +70,7 @@ const ActionCommitButton = ({
   }
 
   return (
-    <div className="relative min-w-[130px]">
+    <div className="relative">
       <Button
         onClick={handleClick}
         disabled={committed}

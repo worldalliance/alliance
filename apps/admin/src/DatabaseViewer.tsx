@@ -62,21 +62,25 @@ const DatabaseViewer: React.FC = () => {
     setEventHandlers,
   } = useAdminWebSocket();
 
-  const setDefaultSorting = useCallback(async (tableData: TableDataDto) => {
-    if (tableData.columns.some((col) => col.name === "updatedAt")) {
-      setQuery((prev) => ({
-        ...prev,
-        sortBy: "updatedAt",
-        sortOrder: "DESC", // Most recent first
-      }));
-    } else if (tableData.columns.some((col) => col.name === "createdAt")) {
-      setQuery((prev) => ({
-        ...prev,
-        sortBy: "createdAt",
-        sortOrder: "DESC", // Most recent first
-      }));
-    }
-  }, []);
+  const setDefaultSorting = useCallback(
+    async (tableData: TableDataDto) => {
+      if (query.sortBy) return;
+      if (tableData.columns.some((col) => col.name === "updatedAt")) {
+        setQuery((prev) => ({
+          ...prev,
+          sortBy: "updatedAt",
+          sortOrder: "DESC",
+        }));
+      } else if (tableData.columns.some((col) => col.name === "createdAt")) {
+        setQuery((prev) => ({
+          ...prev,
+          sortBy: "createdAt",
+          sortOrder: "DESC",
+        }));
+      }
+    },
+    [query]
+  );
 
   const loadTableData = useCallback(async () => {
     if (!selectedTable) return;
@@ -127,7 +131,7 @@ const DatabaseViewer: React.FC = () => {
     } catch (error) {
       console.error("Failed to load table data:", error);
     }
-  }, [selectedTable, query, selectedRow]);
+  }, [selectedTable, query, selectedRow, setDefaultSorting]);
 
   //   Set up event handlers
   useEffect(() => {

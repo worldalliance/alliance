@@ -154,13 +154,6 @@ export default function ActionPage() {
               </h1>
             )}
           </div>
-          {action?.type !== "Funding" && (
-            <ActionCommitButton
-              committed={userRelation === "joined"}
-              isAuthenticated={isAuthenticated}
-              onCommit={onJoinAction}
-            />
-          )}
         </div>
         {error && <div className="text-red-500">{error}</div>}
         {/* {userRelation === "joined" && <PokePanel />} */}
@@ -179,6 +172,7 @@ export default function ActionPage() {
               handleCompleteAction,
               action,
               userRelation,
+              handleJoinAction: onJoinAction,
             } satisfies ActionTaskPanelParentContext
           }
         />
@@ -188,15 +182,7 @@ export default function ActionPage() {
         {isFeatureEnabled(Features.Forum) && <ActionForumPosts actionId={id} />}
       </div>
     ),
-    [
-      action,
-      userRelation,
-      id,
-      isAuthenticated,
-      onJoinAction,
-      error,
-      handleCompleteAction,
-    ]
+    [action, userRelation, id, onJoinAction, error, handleCompleteAction]
   );
 
   return (
@@ -206,7 +192,7 @@ export default function ActionPage() {
       <TwoColumnSplit
         left={mainContent}
         right={
-          <div className="flex flex-col gap-y-5 p-6">
+          <div className="flex flex-col gap-y-4 p-6 py-10">
             <Card
               style={CardStyle.White}
               className="items-center gap-y-5 aspect-square justify-center p-8"
