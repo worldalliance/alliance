@@ -32,7 +32,7 @@ const ActionTaskPanelFunding = ({
 
   const [expanded, setExpanded] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
+  const [loading, setLoading] = useState(false);
   const { token, savedPaymentMethod, clientSecret } = usePaymentIntentData();
 
   console.log("token", token);
@@ -99,6 +99,7 @@ const ActionTaskPanelFunding = ({
       setExpanded(true);
       return;
     }
+    setLoading(true);
     if (!stripe || !elements || !clientSecret) {
       return;
     }
@@ -113,6 +114,7 @@ const ActionTaskPanelFunding = ({
         setStatus("succeeded");
       }
     }
+    setLoading(false);
   }, [stripe, elements, savedPaymentMethod, clientSecret, onPaymentSuccess]);
 
   if (status === "succeeded") {
@@ -139,7 +141,9 @@ const ActionTaskPanelFunding = ({
           )}
         </div>
 
-        <Button onClick={handleContributeClicked}>Contribute</Button>
+        <Button onClick={handleContributeClicked} disabled={loading}>
+          {loading ? "Processing..." : "Contribute"}
+        </Button>
       </Card>
     );
   }

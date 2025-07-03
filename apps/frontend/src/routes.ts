@@ -1,5 +1,6 @@
 import {
   type RouteConfig,
+  index,
   layout,
   prefix,
   route,
@@ -16,7 +17,9 @@ export default [
     layout("applayout.tsx", [
       ...prefix("/actions", [
         route("/", "pages/app/ActionsListPage.tsx"),
-        route(":id", "pages/app/ActionPage.tsx"),
+        route(":id", "pages/app/ActionPage.tsx", [
+          index("components/ActionTaskPanel.tsx"),
+        ]),
       ]),
       ...prefix("/announcements", [
         route("/", "pages/app/AnnouncementListPage.tsx"),

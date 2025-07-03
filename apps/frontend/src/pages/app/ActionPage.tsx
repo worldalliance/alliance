@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   data,
   isRouteErrorResponse,
+  Outlet,
   useLoaderData,
   useParams,
 } from "react-router";
@@ -23,7 +24,7 @@ import { Features } from "@alliance/shared/lib/features";
 import ActionEventsPanel from "../../components/ActionEventsPanel";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/ActionPage";
 import { useAuth } from "../../lib/AuthContext";
-import ActionTaskPanel from "../../components/ActionTaskPanel";
+import { ParentContext as ActionTaskPanelParentContext } from "../../components/ActionTaskPanel";
 import ActionCommitButton from "../../components/ActionCommitButton";
 import ActionActivityList from "../../components/ActionActivityList";
 
@@ -172,13 +173,15 @@ export default function ActionPage() {
             </p>
           </Card>
         )} */}
-        {action && (
-          <ActionTaskPanel
-            action={action}
-            userRelation={userRelation}
-            onCompleteAction={handleCompleteAction}
-          />
-        )}
+        <Outlet
+          context={
+            {
+              handleCompleteAction,
+              action,
+              userRelation,
+            } satisfies ActionTaskPanelParentContext
+          }
+        />
         {action && <ActionEventsPanel events={action.events} />}
         <h2 className="!mt-4">Summary</h2>
         <p>{action?.description}</p>
