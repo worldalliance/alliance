@@ -182,7 +182,6 @@ export default function ActionPage() {
             } satisfies ActionTaskPanelParentContext
           }
         />
-        {action && <ActionEventsPanel events={action.events} />}
         <h2 className="!mt-4">Summary</h2>
         <p>{action?.description}</p>
 
@@ -230,6 +229,11 @@ export default function ActionPage() {
               <b>6 friends</b> already joined this action!
             </p> */}
             </Card>
+            {action && (
+              <Card style={CardStyle.White}>
+                <ActionEventsPanel events={action.events} />
+              </Card>
+            )}
             {action && <ActionActivityList actionId={action.id} />}
           </div>
         }

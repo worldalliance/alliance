@@ -9,7 +9,7 @@ export interface ActionEventsPanelProps {
 
 const ActionEventsPanel = ({ events }: ActionEventsPanelProps) => {
   return (
-    <div className="flex flex-col gap-y-3">
+    <div className="flex flex-col gap-y-3 p-2">
       <p className="text-lg font-bold">Timeline</p>
       <Timeline>
         {events.map((event) => (

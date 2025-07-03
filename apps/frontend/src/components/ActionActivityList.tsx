@@ -12,6 +12,7 @@ interface ActionActivityListProps {
 const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
   const [activities, setActivities] = useState<ActionActivityDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     const fetchActivities = async () => {
@@ -63,19 +64,25 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
   if (!activities.length) {
     return null;
   }
+  const defaultMaxActivities = 8;
+
+  const displayedActivities = showAll
+    ? activities
+    : activities.slice(0, defaultMaxActivities);
+  const hasMore = activities.length > defaultMaxActivities;
 
   return (
-    <Card style={CardStyle.White} className="p-8">
+    <Card style={CardStyle.White} className="p-7">
       <div className="space-y-3 w-full">
-        <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+        <h3 className="text-lg font-bold">Recent Activity</h3>
         <div className="space-y-2">
-          {activities.map((activity) => (
+          {displayedActivities.map((activity) => (
             <div key={activity.id} className="flex items-start space-x-3">
               <div className="flex-shrink-0">
                 {activity.type === "user_joined" ? (
                   <div className="w-2 h-2 bg-bgreen rounded-full mt-2"></div>
                 ) : (
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div className="w-2 h-2 bg-[#318dde] rounded-full mt-2"></div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -91,6 +98,14 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
             </div>
           ))}
         </div>
+        {hasMore && !showAll && (
+          <button
+            onClick={() => setShowAll(true)}
+            className="text-[#318dde] hover:text-blue-800 text-sm font-medium cursor-pointer"
+          >
+            See all ({activities.length})
+          </button>
+        )}
       </div>
     </Card>
   );
