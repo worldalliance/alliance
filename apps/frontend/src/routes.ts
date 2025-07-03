@@ -9,8 +9,8 @@ export default [
   layout("TempProdPassword.tsx", [
     route("/", "pages/static/PrelaunchLanding.tsx"),
     route("/landing", "pages/static/NewLandingPage.tsx"),
-    route("/about", "pages/static/AboutPage.tsx"),
     route("/issues", "pages/app/IssuesListPage.tsx"),
+    route("/guide", "pages/static/GuidePage.tsx"),
 
     layout("applayout.tsx", [
       ...prefix("/actions", [

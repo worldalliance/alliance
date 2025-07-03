@@ -1,39 +1,36 @@
 import { Link, useNavigate } from "react-router";
-import { platformSublinks } from "./Navbar";
-import DropdownLink from "./DropdownLink";
 
 enum NavbarPage {
-  Names = "Names",
-  Platform = "Platform",
-  Help = "Help",
+  People = "People",
+  Guide = "Guide",
 }
 
 export const links: NavbarPage[] = [
-  NavbarPage.Names,
-  NavbarPage.Platform,
-  NavbarPage.Help,
+  NavbarPage.People,
+  NavbarPage.Guide,
 ];
 
 export const destinations: Record<NavbarPage, string> = {
-  [NavbarPage.Names]: "/names",
-  [NavbarPage.Platform]: "/about",
-  [NavbarPage.Help]: "/help",
+  [NavbarPage.People]: "/people",
+  [NavbarPage.Guide]: "/guide",
 };
 
 export interface PrelaunchNavbarProps {
   transparent?: boolean;
+  absolute?: boolean;
   ref?: React.RefObject<HTMLDivElement | null>;
 }
 
 const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
   transparent = true,
+  absolute = true,
   ref,
 }: PrelaunchNavbarProps) => {
   const navigate = useNavigate();
   return (
     <div
       className={`
-      flex flex-col md:flex-row gap-y-4 absolute
+      flex flex-col md:flex-row gap-y-4 ${absolute ? "absolute" : "relative"}
       w-screen justify-between items-center px-24 top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300 ${
         transparent
           ? "bg-transparent py-6 text-white"
@@ -49,36 +46,28 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
       >
         THE ALLIANCE
       </h1>
-      <div className="flex flex-row items-center gap-x-14">
+      <div className="flex flex-row items-center gap-x-10">
         {links.map((link) =>
-          link === NavbarPage.Platform ? (
-            <DropdownLink
-              key={link}
-              text={link}
-              to={"/resources"}
-              inverted={!transparent}
-              sublinks={platformSublinks}
-            />
-          ) : link == NavbarPage.Help ? (
+          // link == NavbarPage.Guide ? (
+          //   <Link to={destinations[link]} key={link}>
+          //     <p
+          //       className={`${
+          //         transparent
+          //           ? " hover:bg-white hover:text-black"
+          //           : " hover:bg-white hover:text-black"
+          //       } rounded-md py-1 px-4 whitespace-nowrap font-avenir`}
+          //     >
+          //       {link}
+          //     </p>
+          //   </Link>
+          // ) : (
             <Link to={destinations[link]} key={link}>
-              <p
-                className={`${
-                  transparent
-                    ? " hover:bg-white hover:text-black"
-                    : " hover:bg-white hover:text-black"
-                } rounded-md py-1 px-4 whitespace-nowrap font-newsreader`}
-              >
-                Help
-              </p>
-            </Link>
-          ) : (
-            <Link to={destinations[link]} key={link}>
-              <p className="hover:underline whitespace-nowrap font-newsreader">
+              <p className="hover:underline whitespace-nowrap font-avenir">
                 {link}
               </p>
             </Link>
           )
-        )}
+        }
       </div>
     </div>
   );

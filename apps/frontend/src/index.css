@@ -1,182 +1,189 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: 'Font';
-  src: url('/assets/fonts/font.woff2') format('woff2');
+  font-family: "Font";
+  src: url("/assets/fonts/font.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: 'Berlingske';
-  src: url('/assets/fonts/BerlingskeSerif-Blk.woff2') format('woff2');
+  font-family: "Berlingske";
+  src: url("/assets/fonts/BerlingskeSerif-Blk.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: 'ITC';
-  src: url('/assets/fonts/ITCAvantGardePro-Bk.otf') format('opentype');
+  font-family: "ITC";
+  src: url("/assets/fonts/ITCAvantGardePro-Bk.otf") format("opentype");
 }
 
 @font-face {
-  font-family: 'Toledo';
-  src: url('/assets/fonts/Toledo-Serial\ Regular.ttf') format('truetype');
+  font-family: "Toledo";
+  src: url("/assets/fonts/Toledo-Serial\ Regular.ttf") format("truetype");
 }
 
 @font-face {
-  font-family: 'Public';
-  src: url('/assets/fonts/PublicSans-VariableFont_wght.ttf') format('woff2');
+  font-family: "Public";
+  src: url("/assets/fonts/PublicSans-VariableFont_wght.ttf") format("woff2");
 }
 
 @font-face {
-  font-family: 'EB-Garamond';
-  src: url('/assets/fonts/EBGaramond-VariableFont_wght.ttf') format('truetype');
+  font-family: "EB-Garamond";
+  src: url("/assets/fonts/EBGaramond-VariableFont_wght.ttf") format("truetype");
 }
 
 @font-face {
-  font-family: 'Garamond';
-  src: url('/assets/fonts/Adobe\ Garamond\ Pro\ Regular.ttf') format('truetype');
+  font-family: "Garamond";
+  src: url("/assets/fonts/Adobe\ Garamond\ Pro\ Regular.ttf") format("truetype");
 }
 
 @font-face {
-  font-family: 'Bueno';
-  src: url('/assets/fonts/bueno-regular.ttf') format('truetype');
+  font-family: "Bueno";
+  src: url("/assets/fonts/bueno-regular.ttf") format("truetype");
 }
 
 @font-face {
-  font-family: 'ITC';
-  src: url('/assets/fonts/ITCAvantGardePro-Md.otf') format('opentype');
+  font-family: "ITC";
+  src: url("/assets/fonts/ITCAvantGardePro-Md.otf") format("opentype");
   font-weight: bold;
 }
 
 @font-face {
-  font-family: 'Sabon';
-  src: url('/assets/fonts/sabon-regular.ttf') format('truetype');
+  font-family: "Sabon";
+  src: url("/assets/fonts/sabon-regular.ttf") format("truetype");
 }
 
 @font-face {
-    font-family: 'Sabon';
-    src: url('/assets/fonts/sabon-bold.ttf') format('truetype');
-    font-weight: bold;
+  font-family: "Sabon";
+  src: url("/assets/fonts/sabon-bold.ttf") format("truetype");
+  font-weight: bold;
 }
 
 @font-face {
-    font-family: 'Avenir';
-    src: url('/assets/fonts/Avenir_Next_W00_400.woff2') format('woff2');
-    font-weight: 400;
+  font-family: "Avenir";
+  src: url("/assets/fonts/Avenir_Next_W00_400.woff2") format("woff2");
+  font-weight: 400;
 }
 
 @font-face {
-    font-family: 'Avenir';
-        src: url('/assets/fonts/Avenir_Next_W00_600.woff2') format('woff2');
-    font-weight: 600;
+  font-family: "Avenir";
+  src: url("/assets/fonts/Avenir_Next_W00_600.woff2") format("woff2");
+  font-weight: 600;
 }
 
 @font-face {
-    font-family: 'Roboto';
-    src: url('/assets/fonts/Roboto-VariableFont_wdth\,wght.ttf') format('truetype');
+  font-family: "Roboto";
+  src: url("/assets/fonts/Roboto-VariableFont_wdth\,wght.ttf")
+    format("truetype");
 }
 
 @font-face {
-    font-family: 'Newsreader';
-    src: url('/assets/fonts/Newsreader-VariableFont_opsz\,wght.ttf') format('truetype');
+  font-family: "Newsreader";
+  src: url("/assets/fonts/Newsreader-VariableFont_opsz\,wght.ttf")
+    format("truetype");
 }
 
 @font-face {
-    font-family: 'Playfair';
-    src: url('/assets/fonts/PlayfairDisplay-VariableFont_wght.ttf') format('truetype');
+  font-family: "Playfair";
+  src: url("/assets/fonts/PlayfairDisplay-VariableFont_wght.ttf")
+    format("truetype");
 }
 
 @theme {
-    --color-hgreen: #3f5640;
-    --pagebg: #ffffff;
-    --color-agreen: #c4d8bf;
-    --color-bgreen: rgb(143, 190, 111);
+  --color-hgreen: #3f5640;
+  --pagebg: #ffffff;
+  --color-agreen: #c4d8bf;
+  --color-bgreen: rgb(143, 190, 111);
 }
 
 html {
-    overflow-x: hidden;
-    font-family: 'Newsreader';
-    font-size: 11pt;
+  overflow-x: hidden;
+  font-family: "Newsreader";
+  font-size: 11pt;
 }
 
 h1 {
-    font-family: 'Berlingske';
-    font-weight: bold;
-    font-size: 30px;
+  font-family: "Berlingske";
+  font-weight: bold;
+  font-size: 30px;
 }
 
 h2 {
-    font-family: 'Newsreader';
-    font-weight: bold;
-    font-size: 20px;
-    margin-top: 6px;
+  font-family: "Newsreader";
+  font-weight: bold;
+  font-size: 20px;
+  margin-top: 6px;
 }
 
-p, span {
-    font-family: 'Newsreader';
-    padding-top: 1px;
-    margin-bottom: -1px;
+p,
+span {
+  font-family: "Newsreader";
+  padding-top: 1px;
+  margin-bottom: -1px;
 }
 
 img {
-    user-select: none;
+  user-select: none;
+}
+
+.font-serif {
+  font-family: "georgia", serif;
 }
 
 .font-sabon {
-    font-family: 'Sabon';
+  font-family: "Sabon";
 }
 
-
 .font-berlingske {
-    font-family: 'Berlingske';
+  font-family: "Berlingske";
 }
 
 .font-itc {
-    font-family: 'ITC';
+  font-family: "ITC";
 }
 
 .font-toledo {
-    font-family: 'Toledo';
+  font-family: "Toledo";
 }
 
 .font-avenir {
-    font-family: 'Avenir';
+  font-family: "Avenir";
 }
 
 .font-public {
-    font-family: 'Public';
+  font-family: "Public";
 }
 .font-font {
-    font-family: 'Font';
+  font-family: "Font";
 }
 
 .goob {
-    background: radial-gradient(
+  background: radial-gradient(
     circle at 50% 80%,
     #000000 0%,
     #17243b 30%,
     #030b13 70%,
     #000308 100%
-    );
+  );
 }
 
 .grain {
-    background-image: url('./assets/noise.png');
-    background-size: 300px;
-    background-position: center;
-    background-repeat: repeat;
-    opacity: 0.6;
-    filter: saturate(0);
-    mix-blend-mode: soft-light;
+  background-image: url("./assets/noise.png");
+  background-size: 300px;
+  background-position: center;
+  background-repeat: repeat;
+  opacity: 0.6;
+  filter: saturate(0);
+  mix-blend-mode: soft-light;
 }
 
 .coloroverlay {
-    background: radial-gradient(circle at 20% 20%, #ff6700 10%, #95ff00 100%);
-    opacity: 0.2;
+  background: radial-gradient(circle at 20% 20%, #ff6700 10%, #95ff00 100%);
+  opacity: 0.2;
 }
 
 .p-AccordionButton {
-    display: none !important;
+  display: none !important;
 }
 
 .p-AccordionButtonContent {
-    display: none !important;
+  display: none !important;
 }

@@ -37,3 +37,5 @@ server/uploads/
 uploads/
 
 *.log
+
+.yarn/*

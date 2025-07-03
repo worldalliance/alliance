@@ -50,9 +50,13 @@ const PrelaunchLandingPage: React.FC = () => {
         ></div>
         <div className="absolute top-0 left-0 right-0 bottom-0 bg-linear-to-t from-black to-transparent opacity-50"></div>
 
-        <h2 className="lg:w-1/2 text-center absolute bottom-85 text-white !text-3xl font-sabon drop-shadow-black/50 drop-shadow-xl">
-          People uniting for a conscionable world.
+        <h2 className="w-1/2 absolute bottom-25 text-white !text-7xl font-sabon">
+          Humanity acting as one for a conscionable world.
         </h2>
+
+        {/* <h2 className="lg:w-1/2 text-center absolute bottom-25 text-white !text-3xl font-sabon drop-shadow-black/50 drop-shadow-xl">
+          Humanity acting as one for a conscionable world.
+        </h2> */}
         {/* <img
           src={dropDownArrow}
           alt="arrow down"

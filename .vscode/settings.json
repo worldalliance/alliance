@@ -4,5 +4,7 @@
     "apps/admin",
     "apps/mobile",
     "server"
-  ]
+  ],
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true
 }
