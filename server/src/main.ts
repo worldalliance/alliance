@@ -34,7 +34,7 @@ class SocketIoAdapter extends IoAdapter {
       ...options,
       cors: {
         origin: [
-          'http://localhost:5173',
+          'http://localhost:5173', //TODO: any localhost in dev
           'http://localhost:5174',
           'https://worldalliance.org',
           'https://admin.worldalliance.org',

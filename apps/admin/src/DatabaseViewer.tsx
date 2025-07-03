@@ -48,7 +48,7 @@ const DatabaseViewer: React.FC = () => {
   } | null>(null);
   const [pendingUpdate, setPendingUpdate] = useState<{
     tableName: string;
-    primaryKeyValue: string | number;
+    primaryKeyValue: any;
     columnName: string;
     newValue: any;
     originalValue: any;
@@ -65,14 +65,7 @@ const DatabaseViewer: React.FC = () => {
   const loadTableData = useCallback(async () => {
     if (!selectedTable) return;
 
-    const isInitialLoad = !tableData;
-
     try {
-      // Only show loading for initial load or when no table data exists
-      if (isInitialLoad) {
-        setLoading(true);
-      }
-
       const response = await adminViewerGetTableData({
         path: { tableName: selectedTable },
         query: {
@@ -83,6 +76,7 @@ const DatabaseViewer: React.FC = () => {
           search: query.search,
         },
       });
+
       if (response.data) {
         setTableData(response.data);
 
@@ -109,20 +103,16 @@ const DatabaseViewer: React.FC = () => {
               search: String(selectedRow.rowId),
               page: 1,
             }));
-            return; // This will trigger another loadTableData call
+            return;
           }
         }
       }
     } catch (error) {
       console.error("Failed to load table data:", error);
-    } finally {
-      if (isInitialLoad) {
-        setLoading(false);
-      }
     }
-  }, [selectedTable, query, selectedRow, tableData]);
+  }, [selectedTable, query, selectedRow]);
 
-  // Set up event handlers
+  //   Set up event handlers
   useEffect(() => {
     setEventHandlers({
       onRowInserted: (event) => {
@@ -363,7 +353,7 @@ const DatabaseViewer: React.FC = () => {
       if (isConnected) {
         subscribeToTable(selectedTable);
       }
-      
+
       return () => {
         if (isConnected) {
           unsubscribeFromTable(selectedTable);
@@ -381,7 +371,6 @@ const DatabaseViewer: React.FC = () => {
     return primaryKeyIndex >= 0 ? row[primaryKeyIndex] : null;
   };
 
-   
   const formatCellValue = (
     value: any,
     column: ColumnMetadataDto,
