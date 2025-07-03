@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ActionsService } from './actions.service';
 import { ActionsController } from './actions.controller';
+import { ActionsGateway } from './actions.gateway';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
 import { UserModule } from '../user/user.module';
@@ -19,7 +20,7 @@ import { ActionActivity } from './entities/action-activity.entity';
     UserModule,
   ],
   controllers: [ActionsController],
-  providers: [ActionsService],
+  providers: [ActionsService, ActionsGateway],
   exports: [ActionsService],
 })
 export class ActionsModule {}

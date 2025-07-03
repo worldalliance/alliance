@@ -16,6 +16,7 @@ import {
 } from "@alliance/shared/client";
 import { ActionDto, UserActionDto } from "@alliance/shared/client";
 import { getImageSource, isFeatureEnabled } from "../../lib/config";
+import { useActionCount } from "../../lib/useActionWebSocket";
 import ActionForumPosts from "../../components/ActionForumPosts";
 import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { Features } from "@alliance/shared/lib/features";
@@ -89,6 +90,9 @@ export default function ActionPage() {
 
   const { isAuthenticated } = useAuth();
 
+  const actionId = action?.id || 0;
+  const liveUserCount = useActionCount(actionId);
+
   useEffect(() => {
     if (isAuthenticated && id) {
       actionsMyStatus({
@@ -129,28 +133,19 @@ export default function ActionPage() {
     }
   }, [id]);
 
-  //   const evtSource = new EventSource(`${getApiUrl()}/actions/live/${actionId}`);
-  //   evtSource.onmessage = (e) => {
-  //     const newUserCount = Number(e.data);
-  //     if (newUserCount !== action?.usersJoined && action) {
-  //       setAction({ ...action, usersJoined: newUserCount });
-  //     }
-  //   };
-
   const mainContent = useMemo(
     () => (
       <div className="flex flex-col gap-y-3 flex-2 p-10 px-5">
         {action?.image && (
           <img
             src={getImageSource(action.image)}
-            alt={action.name}
             className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover"
           />
         )}
         <div className="flex flex-row justify-between items-start my-3">
           <div className="flex flex-col gap-y-3">
             {action !== undefined && (
-              <h1>
+              <h1 className="font-avenir font-extrabold">
                 {action.name}
                 <span className="text-gray-800 text-sm bg-gray-100 rounded-sm !p-3 align-middle mx-3 text-nowrap">
                   {actionStatusDescriptions[action.status]}
@@ -216,12 +211,14 @@ export default function ActionPage() {
             >
               <div className="w-[180px] self-center pb-5">
                 <Globe
-                  people={action?.usersJoined || 0}
+                  people={liveUserCount ?? (action?.usersJoined || 0)}
                   colored
                   locations={action?.locations || []}
                 />
                 <p className="text-center !pt-5 text-[11pt]">
-                  {action?.usersJoined?.toLocaleString() || 0} people committed
+                  {(liveUserCount ?? action?.usersJoined)?.toLocaleString() ||
+                    0}{" "}
+                  people committed
                 </p>
               </div>
               {/* <div className="w-full border-t border-gray-300" />

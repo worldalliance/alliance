@@ -5,6 +5,8 @@ import { useContainer } from 'class-validator';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import { ServerOptions } from 'socket.io';
 
 function validateEnv() {
   const requiredVars = [
@@ -26,6 +28,24 @@ function validateEnv() {
   }
 }
 
+class SocketIoAdapter extends IoAdapter {
+  createIOServer(port: number, options?: ServerOptions) {
+    return super.createIOServer(port, {
+      ...options,
+      cors: {
+        origin: [
+          'http://localhost:5173',
+          'http://localhost:5174',
+          'https://worldalliance.org',
+          'https://admin.worldalliance.org',
+        ],
+        methods: ['GET', 'POST'],
+        credentials: true,
+      },
+    });
+  }
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
@@ -40,6 +60,7 @@ async function bootstrap() {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
+  app.useWebSocketAdapter(new SocketIoAdapter(app));
   app.set('trust proxy', 'loopback');
 
   if (process.env.NODE_ENV !== 'production') {

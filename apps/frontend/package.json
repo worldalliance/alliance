@@ -49,6 +49,7 @@
     "react-markdown": "^10.1.0",
     "react-router": "^7.6.2",
     "recharts": "^2.15.3",
+    "socket.io-client": "^4.8.1",
     "storybook": "^8.6.12",
     "tailwind-merge": "^3.3.0",
     "tailwind-variants": "^1.0.0",

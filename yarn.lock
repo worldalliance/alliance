@@ -108,6 +108,7 @@ __metadata:
     react-markdown: "npm:^10.1.0"
     react-router: "npm:^7.6.2"
     recharts: "npm:^2.15.3"
+    socket.io-client: "npm:^4.8.1"
     storybook: "npm:^8.6.12"
     storybook-addon-remix-react-router: "npm:^4"
     tailwind-merge: "npm:^3.3.0"

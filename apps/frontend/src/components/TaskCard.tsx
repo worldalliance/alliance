@@ -7,6 +7,7 @@ import { ActionDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "./system/Button";
 import expandArrow from "../assets/icons8-expand-arrow-96.png";
 import UsersCompletedBar from "./UsersCompletedBar";
+import { useActionCount } from "../lib/useActionWebSocket";
 
 export interface TaskCardProps {
   action: ActionDto;
@@ -27,6 +28,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
 }: TaskCardProps) => {
   const navigate = useNavigate();
   const [state, setState] = useState<TaskCardState>(TaskCardState.Default);
+  const liveUserCount = useActionCount(action.id);
 
   const goToActionPage = useCallback(
     (e: React.MouseEvent) => {
@@ -114,7 +116,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
           <div className="bottom-0 left-0 right-0 flex flex-row items-end">
             <UsersCompletedBar
               usersCompleted={action.usersCompleted}
-              totalUsers={action.usersJoined}
+              totalUsers={liveUserCount ?? action.usersJoined}
             />
             {actionButton}
           </div>

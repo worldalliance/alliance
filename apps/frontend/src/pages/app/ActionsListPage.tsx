@@ -8,18 +8,20 @@ import {
 import { ActionDto } from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import { FilterMode, filterActions } from "@alliance/shared/lib/actionUtils";
+import { useActionCounts } from "../../lib/useActionWebSocket";
 
 const ActionsListPage: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
-  //   const [liveCounts, setLiveCounts] = useState<Record<number, number>>({});
 
   const { isAuthenticated } = useAuth();
+  
+  const actionIds = useMemo(() => actions.map(a => a.id), [actions]);
+  const liveCounts = useActionCounts(actionIds);
 
   useEffect(() => {
-    // let evtSource: EventSource | null = null;
     const req = isAuthenticated
       ? actionsFindAllWithStatus
       : actionsFindAllPublic;
@@ -27,23 +29,11 @@ const ActionsListPage: React.FC = () => {
     req().then((response) => {
       if (response.data) {
         setActions(response.data || []);
-
-        // const ids = response.data.map((a) => a.id);
-
-        // evtSource = new EventSource(getBulkActionSSEUrl(ids));
-
-        // evtSource.onmessage = (e) => {
-        //   const counts = JSON.parse(e.data);
-        //   setLiveCounts(counts);
-        // };
       } else {
         setError("Failed to load actions");
       }
       setLoading(false);
     });
-    return () => {
-      //   evtSource?.close();
-    };
   }, [isAuthenticated]);
 
   const filteredActions = useMemo(
@@ -84,7 +74,7 @@ const ActionsListPage: React.FC = () => {
             key={action.id}
             {...action}
             className="w-full"
-            liveCount={/*liveCounts[action.id] ??*/ action.usersJoined}
+            liveCount={liveCounts[action.id] ?? action.usersJoined}
           />
         ))}
       </div>
