@@ -9,6 +9,14 @@ export const getApiUrl = (): string => {
   }
 };
 
+export const getWebSocketUrl = (): string => {
+  if (import.meta.env.MODE === "development") {
+    return "http://localhost:3005";
+  } else {
+    return "https://worldalliance.org";
+  }
+};
+
 export const getSingleActionSSEUrl = (actionId: number) => {
   return `${getApiUrl()}/actions/live/${actionId}`;
 };

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
-import { getApiUrl } from "./config";
+import { getApiUrl, getWebSocketUrl } from "./config";
 
 interface ActionCount {
   actionId: number;
@@ -30,7 +30,7 @@ export function useActionWebSocket(): UseActionWebSocketReturn {
   const initializeSocket = useCallback(() => {
     if (socketRef.current) return;
 
-    const socket = io(getApiUrl() + '/actions', {
+    const socket = io(getWebSocketUrl() + "/actions", {
       transports: ["websocket"],
       forceNew: true,
     });
