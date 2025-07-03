@@ -30,7 +30,7 @@ export function useActionWebSocket(): UseActionWebSocketReturn {
   const initializeSocket = useCallback(() => {
     if (socketRef.current) return;
 
-    const socket = io(getApiUrl(), {
+    const socket = io(getApiUrl() + '/actions', {
       transports: ["websocket"],
       forceNew: true,
     });
