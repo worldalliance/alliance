@@ -1,13 +1,16 @@
 export enum Features {
   Forum = "forum",
+  PublicSignup = "public_signup",
 }
 
 export const PROD_FLAGS: Record<Features, boolean> = {
   [Features.Forum]: true,
+  [Features.PublicSignup]: false,
 };
 
 export const DEV_FLAGS: Record<Features, boolean> = {
   [Features.Forum]: true,
+  [Features.PublicSignup]: false,
 };
 
 export const isEnabled = (feature: Features, env: string) => {

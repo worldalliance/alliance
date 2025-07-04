@@ -2,6 +2,8 @@ import Card from "./system/Card";
 import { useAuth } from "../lib/AuthContext";
 import Button from "./system/Button";
 import { useCallback } from "react";
+import { Features } from "@alliance/shared/lib/features";
+import { isFeatureEnabled } from "../lib/config";
 
 const InviteMemberCard = () => {
   const { user } = useAuth();
@@ -12,6 +14,12 @@ const InviteMemberCard = () => {
       navigator.clipboard.writeText(referralLink);
     }
   }, [user]);
+
+  if (!isFeatureEnabled(Features.PublicSignup)) {
+    if (!user?.admin) {
+      return null;
+    }
+  }
 
   if (!user?.referralCode) return null;
 

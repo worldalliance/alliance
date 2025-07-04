@@ -9,6 +9,8 @@ import {
   authForgotPassword,
   SignInDto,
 } from "@alliance/shared/client";
+import { isFeatureEnabled } from "../../lib/config";
+import { Features } from "@alliance/shared/lib/features";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
@@ -68,6 +70,8 @@ const LoginPage: React.FC = () => {
       "A link to reset your password has been sent to your email address."
     );
   };
+
+  const showRegisterLink = isFeatureEnabled(Features.PublicSignup);
 
   return (
     <div className="min-h-screen flex flex-col bg-pagebg">
@@ -137,14 +141,16 @@ const LoginPage: React.FC = () => {
             </form>
           </Card>
 
-          <div className="mt-6 text-center">
-            <p className="text-[11pt] text-stone-600">
-              Don&apos;t have an account?{" "}
-              <Link to="/signup" className="text-blue-600 hover:underline">
-                Register
-              </Link>
-            </p>
-          </div>
+          {showRegisterLink && (
+            <div className="mt-6 text-center">
+              <p className="text-[11pt] text-stone-600">
+                Don&apos;t have an account?{" "}
+                <Link to="/signup" className="text-blue-600 hover:underline">
+                  Register
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -25,7 +25,6 @@ import UserActivityCard from "../../components/UserActivityCard";
 import ForumListPost from "../../components/ForumListPost";
 import FriendRequestButton from "../../components/FriendRequestButton";
 import { getImageSource } from "../../lib/config";
-import ImpactPanel from "../../components/ImpactPanel";
 
 enum ProfileTabs {
   Activity = "Activity",
@@ -191,7 +190,7 @@ const UserProfilePage: React.FC = () => {
             </p>
             <p onClick={() => setSelectedTab(ProfileTabs.Friends)}>
               <b>{friends.length} </b>
-              Friends
+              friends
             </p>
           </div>
           <p className="my-6">{profileUser.profileDescription}</p>
@@ -226,11 +225,11 @@ const UserProfilePage: React.FC = () => {
           {/* <div className="absolute -left-20 top-0 p-5">
           <BackButton />
           </div> */}
-          <ImpactPanel
+          {/* <ImpactPanel
             completedActions={completedActions}
             isMe={isMe}
             referredCount={referredCount}
-          />
+          /> */}
         </div>
         <div className="flex flex-row w-full justify-evenly">
           {[ProfileTabs.Activity, ProfileTabs.Forum].map((tab) => (

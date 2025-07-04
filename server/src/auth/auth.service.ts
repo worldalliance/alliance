@@ -60,6 +60,9 @@ export class AuthService {
         signUp.referralCode,
       );
     }
+    if (!referredBy) {
+      throw new UnauthorizedException('invalid referral code'); //TODO: feature flag
+    }
 
     const user = await this.usersService.create({
       ...signUp,

@@ -1,7 +1,4 @@
 import { ActionWithRelationDto } from "@alliance/shared/client";
-import Card from "./system/Card";
-import { chartdata } from "../stories/testData";
-import { AreaChart } from "./tremor/AreaChart";
 import { LineChart } from "./tremor/LineChart";
 
 interface ImpactPanelProps {
@@ -32,7 +29,7 @@ const ImpactPanel: React.FC<ImpactPanelProps> = ({
   completedActions,
   isMe,
   referredCount,
-}) => {
+}: ImpactPanelProps) => {
   return (
     // <Card className="px-8">
     <div className="flex flex-col gap-3 bg-stone-100 rounded-md p-3 px-5">

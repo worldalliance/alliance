@@ -65,7 +65,7 @@ const HomePage: React.FC = () => {
 
   return (
     <div className="flex flex-col w-full h-full items-center bg-white">
-      <div className="flex flex-col py-16 w-[728px] gap-y-5 overflow-y-auto">
+      <div className="flex flex-col py-16 max-w-[728px] gap-y-5 overflow-y-auto px-3">
         {/* <h1 className="text-[#111] !text-2xl font-font">Your to-do</h1> */}
         {error && <p className="text-red-500">{error}</p>}
         <div className="flex flex-col gap-y-8">

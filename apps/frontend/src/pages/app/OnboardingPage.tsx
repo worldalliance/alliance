@@ -47,7 +47,7 @@ const OnboardingPage: React.FC = () => {
     <div className="container flex flex-col justify-center h-screen min-w-[400px] max-w-[600px] justify-self-center gap-y-2">
       <p className="font-bold text-lg">Welcome to the Alliance! </p>
       <p className="!mb-5">
-        We're going to have a bit of onboarding text here. Maybe some
+        We&apos;re going to have a bit of onboarding text here. Maybe some
         instructions on what to do, links to informational material, or other
         stuff like that. We also have a couple questions before you can get
         started, if thats okay with you.
