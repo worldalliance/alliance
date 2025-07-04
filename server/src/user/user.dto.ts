@@ -9,7 +9,11 @@ export class UserDto extends PickType(User, [
   'id',
   'onboardingComplete',
   'referralCode',
-]) {}
+  'anonymous',
+]) {
+  @ApiProperty()
+  cityId?: number | null;
+}
 
 export class MinimalUserDto extends PickType(UserDto, [
   'id',
@@ -31,17 +35,14 @@ export class ProfileDto extends PickType(User, [
   'profileDescription',
 ]) {}
 
-export class UpdateProfileDto extends PartialType(User) {}
+export class UpdateProfileDto extends PartialType(User) {
+  @ApiProperty({ type: Number, nullable: true })
+  cityId?: number | null;
+}
 
-export class OnboardingDto {
+export class OnboardingDto extends PickType(User, ['over18', 'anonymous']) {
   @ApiProperty({ type: Number, nullable: true })
   cityId: number | null;
-
-  @ApiProperty({ type: Boolean, nullable: true })
-  over18: boolean | null;
-
-  @ApiProperty({ type: Boolean, nullable: true })
-  makesMoney: boolean | null;
 }
 
 export class ReferralDto {

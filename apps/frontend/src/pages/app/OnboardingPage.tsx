@@ -8,6 +8,7 @@ const OnboardingPage: React.FC = () => {
   const [isOver18, setIsOver18] = useState<boolean | null>(null);
   const [makesMoney, setMakesMoney] = useState<boolean | null>(null);
   const [city, setCity] = useState<number | null>(null);
+  const [anonymous, setAnonymous] = useState<boolean | null>(null);
 
   const navigate = useNavigate();
 
@@ -16,24 +17,13 @@ const OnboardingPage: React.FC = () => {
       body: {
         cityId: city,
         over18: isOver18,
-        makesMoney: makesMoney,
+        anonymous: anonymous ?? false,
       },
     });
     if (response.response.ok) {
       navigate("/home");
       window.location.reload(); //TODO: fix state reload
     }
-  };
-
-  const handleDecline = async () => {
-    await userOnboarding({
-      body: {
-        cityId: null,
-        over18: null,
-        makesMoney: null,
-      },
-    });
-    navigate("/home");
   };
 
   const handleCitySelect = useCallback(
@@ -44,7 +34,7 @@ const OnboardingPage: React.FC = () => {
   );
 
   return (
-    <div className="container flex flex-col justify-center h-screen min-w-[400px] max-w-[600px] justify-self-center gap-y-2">
+    <div className="container flex flex-col justify-center h-screen min-w-[400px] max-w-[600px] justify-self-center gap-y-2 px-3">
       <p className="font-bold text-lg">Welcome to the Alliance! </p>
       <p className="!mb-5">
         We&apos;re going to have a bit of onboarding text here. Maybe some
@@ -65,6 +55,23 @@ const OnboardingPage: React.FC = () => {
         <Button
           color={isOver18 === false ? ButtonColor.Blue : ButtonColor.Light}
           onClick={() => setIsOver18(false)}
+        >
+          No
+        </Button>
+      </div>
+      <p className="mt-5 font-bold">
+        Would you like to participate anonymously?
+      </p>
+      <div className="flex flex-row gap-x-2">
+        <Button
+          color={anonymous === true ? ButtonColor.Blue : ButtonColor.Light}
+          onClick={() => setAnonymous(true)}
+        >
+          Yes
+        </Button>
+        <Button
+          color={anonymous === false ? ButtonColor.Blue : ButtonColor.Light}
+          onClick={() => setAnonymous(false)}
         >
           No
         </Button>
@@ -91,13 +98,6 @@ const OnboardingPage: React.FC = () => {
           className="mt-5 self-center"
         >
           Get Started
-        </Button>
-        <Button
-          color={ButtonColor.Transparent}
-          onClick={handleDecline}
-          className="mt-5 self-center text-gray-400"
-        >
-          I&apos;d rather not answer these questions
         </Button>
       </div>
     </div>

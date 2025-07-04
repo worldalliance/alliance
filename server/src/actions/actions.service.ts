@@ -298,7 +298,7 @@ export class ActionsService {
       relations: ['user', 'user.city'],
     });
     return userActions
-      .filter((ua) => ua.user.city !== null)
+      .filter((ua): ua is typeof ua & { user: { city: NonNullable<typeof ua.user.city> } } => ua.user.city !== null)
       .map((ua) => ({
         latitude: ua.user.city.latitude,
         longitude: ua.user.city.longitude,

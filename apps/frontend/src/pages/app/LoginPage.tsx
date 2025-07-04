@@ -77,8 +77,6 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-pagebg">
       <div className="flex flex-col flex-grow items-center justify-center font-avenir">
         <div className="w-full max-w-md px-8">
-          <h2 className="text-2xl font-sabon text-center mb-8">Log in</h2>
-
           {message && (
             <Card style={CardStyle.Alert} className="mb-6">
               <span className="block">{message}</span>

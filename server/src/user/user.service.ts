@@ -45,8 +45,29 @@ export class UserService {
   }
 
   async update(id: number, data: UpdateProfileDto): Promise<User> {
-    await this.userRepository.update(id, data);
-    return this.findOneOrFail(id);
+    const user = await this.findOneOrFail(id);
+
+    if (data.cityId !== undefined) {
+      const city =
+        (data.cityId
+          ? await this.cityRepository.findOne({
+              where: { id: data.cityId },
+            })
+          : undefined) ?? undefined;
+
+      if (data.cityId && !city) {
+        throw new BadRequestException('City not found');
+      }
+
+      user.city = city;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { cityId, ...updateData } = data;
+
+    Object.assign(user, updateData);
+
+    return this.userRepository.save(user);
   }
 
   async setPassword(id: number, password: string): Promise<User> {
@@ -116,6 +137,9 @@ export class UserService {
     }
     if (body.over18 !== null) {
       user.over18 = body.over18;
+    }
+    if (body.anonymous !== null) {
+      user.anonymous = body.anonymous;
     }
 
     user.onboardingComplete = true;
@@ -290,7 +314,7 @@ export class UserService {
     return user?.referredUsers.length ?? 0;
   }
 
-  async getUserLocation(userId: number): Promise<City> {
+  async getUserLocation(userId: number): Promise<City | undefined> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
       relations: ['city'],

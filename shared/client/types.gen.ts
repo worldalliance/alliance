@@ -31,6 +31,10 @@ export type UserDto = {
     admin: boolean;
     referralCode: string | null;
     onboardingComplete: boolean;
+    anonymous: boolean;
+    cityId: {
+        [key: string]: unknown;
+    };
 };
 
 export type ForgotPasswordDto = {
@@ -52,9 +56,9 @@ export type ProfileDto = {
 };
 
 export type OnboardingDto = {
-    cityId: number | null;
     over18: boolean | null;
-    makesMoney: boolean | null;
+    anonymous: boolean;
+    cityId: number | null;
 };
 
 export type UpdateProfileDto = {
@@ -70,6 +74,8 @@ export type UpdateProfileDto = {
     isNotSignedUpPartialProfile?: boolean;
     over18?: boolean | null;
     onboardingComplete?: boolean;
+    anonymous?: boolean;
+    cityId: number | null;
 };
 
 export type City = {
@@ -139,10 +145,6 @@ export type ActionDto = {
      */
     category: string;
     /**
-     * Reason to join the action
-     */
-    whyJoin: string;
-    /**
      * Image URL for the action
      */
     image: string | null;
@@ -159,17 +161,17 @@ export type ActionDto = {
      */
     donationAmount: number | null;
     /**
-     * Description of the action
+     * markdown page body
      */
-    description: string;
+    body: string;
+    /**
+     * markdown contents for activity task card (instructions)
+     */
+    taskContents: string | null;
     /**
      * Short description shown in cards
      */
     shortDescription: string;
-    /**
-     * Steps to complete the action
-     */
-    howTo: string;
     timeEstimate: string;
     /**
      * Type of the action
@@ -182,7 +184,7 @@ export type ActionDto = {
     /**
      * Number of users who have joined the action
      */
-    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
+    status: 'draft' | 'upcoming' | 'gathering_commitments' | 'commitments_reached' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
     /**
      * Number of users who have completed the action
      */
@@ -209,6 +211,7 @@ export type User = {
     isNotSignedUpPartialProfile: boolean;
     over18: boolean | null;
     onboardingComplete: boolean;
+    anonymous: boolean;
 };
 
 export type ActionActivityDto = {
@@ -231,10 +234,6 @@ export type CreateActionDto = {
      */
     category: string;
     /**
-     * Reason to join the action
-     */
-    whyJoin: string;
-    /**
      * Image URL for the action
      */
     image: string | null;
@@ -251,17 +250,17 @@ export type CreateActionDto = {
      */
     donationAmount: number | null;
     /**
-     * Description of the action
+     * markdown page body
      */
-    description: string;
+    body: string;
+    /**
+     * markdown contents for activity task card (instructions)
+     */
+    taskContents: string | null;
     /**
      * Short description shown in cards
      */
     shortDescription: string;
-    /**
-     * Steps to complete the action
-     */
-    howTo: string;
     timeEstimate: string;
     /**
      * Type of the action
@@ -279,10 +278,6 @@ export type UpdateActionDto = {
      */
     category?: string;
     /**
-     * Reason to join the action
-     */
-    whyJoin?: string;
-    /**
      * Image URL for the action
      */
     image?: string | null;
@@ -299,17 +294,17 @@ export type UpdateActionDto = {
      */
     donationAmount?: number | null;
     /**
-     * Description of the action
+     * markdown page body
      */
-    description?: string;
+    body?: string;
+    /**
+     * markdown contents for activity task card (instructions)
+     */
+    taskContents?: string | null;
     /**
      * Short description shown in cards
      */
     shortDescription?: string;
-    /**
-     * Steps to complete the action
-     */
-    howTo?: string;
     timeEstimate?: string;
     /**
      * Type of the action
@@ -331,10 +326,6 @@ export type ActionWithRelationDto = {
      */
     category: string;
     /**
-     * Reason to join the action
-     */
-    whyJoin: string;
-    /**
      * Image URL for the action
      */
     image: string | null;
@@ -351,17 +342,17 @@ export type ActionWithRelationDto = {
      */
     donationAmount: number | null;
     /**
-     * Description of the action
+     * markdown page body
      */
-    description: string;
+    body: string;
+    /**
+     * markdown contents for activity task card (instructions)
+     */
+    taskContents: string | null;
     /**
      * Short description shown in cards
      */
     shortDescription: string;
-    /**
-     * Steps to complete the action
-     */
-    howTo: string;
     timeEstimate: string;
     /**
      * Type of the action
@@ -374,7 +365,7 @@ export type ActionWithRelationDto = {
     /**
      * Number of users who have joined the action
      */
-    status: 'draft' | 'upcoming' | 'gathering-commitments' | 'commitments-reached' | 'member-action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
+    status: 'draft' | 'upcoming' | 'gathering_commitments' | 'commitments_reached' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
     /**
      * Number of users who have completed the action
      */
@@ -805,8 +796,10 @@ export type UserUpdateData = {
 };
 
 export type UserUpdateResponses = {
-    201: unknown;
+    200: ProfileDto;
 };
+
+export type UserUpdateResponse = UserUpdateResponses[keyof UserUpdateResponses];
 
 export type UserMyLocationData = {
     body?: never;

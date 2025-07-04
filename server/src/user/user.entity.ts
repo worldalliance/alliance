@@ -129,8 +129,8 @@ export class User {
 
   // -- onboarding info --
 
-  @ManyToOne(() => City)
-  city: City;
+  @ManyToOne(() => City, { nullable: true })
+  city?: City;
 
   @Column({ nullable: true })
   @ApiProperty({ nullable: true })
@@ -139,4 +139,8 @@ export class User {
   @Column({ default: false })
   @ApiProperty()
   onboardingComplete: boolean;
+
+  @Column({ default: false })
+  @ApiProperty()
+  anonymous: boolean;
 }

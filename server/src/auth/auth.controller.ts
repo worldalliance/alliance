@@ -136,6 +136,7 @@ export class AuthController {
       id: profile.id,
       onboardingComplete: profile.onboardingComplete,
       referralCode: profile.referralCode,
+      anonymous: profile.anonymous,
     };
   }
 

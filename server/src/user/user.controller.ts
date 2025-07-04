@@ -64,7 +64,6 @@ export class UserController {
   ): Promise<ProfileDto> {
     await this.userService.onboarding(req.user.sub, body);
     const profile = await this.userService.findOne(req.user.sub);
-    console.log('profile', profile);
     if (!profile) {
       throw new NotFoundException('User not found');
     }
@@ -73,19 +72,18 @@ export class UserController {
 
   @Post('update')
   @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: ProfileDto })
   update(
     @Body() updateActionDto: UpdateProfileDto,
     @Request() req: JwtRequest,
-  ) {
+  ): Promise<ProfileDto> {
     return this.userService.update(req.user.sub, updateActionDto);
   }
 
   @Get('mylocation')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: City })
-  async myLocation(@Request() req: JwtRequest): Promise<City> {
-    console.log('myLocation', req.user.sub);
-    console.log(await this.userService.getUserLocation(req.user.sub));
+  async myLocation(@Request() req: JwtRequest): Promise<City | undefined> {
     return this.userService.getUserLocation(req.user.sub);
   }
 

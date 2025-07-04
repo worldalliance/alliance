@@ -46,9 +46,7 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
     const fetchData = async () => {
       const res = await fetch("https://ipapi.co/json/");
       const data = await res.json();
-      console.log(data);
       if (data.latitude && data.longitude) {
-        console.log(data.latitude, data.longitude);
         setLatitude(data.latitude);
         setLongitude(data.longitude);
       }
@@ -135,10 +133,8 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
       [open, results, highlighted, select]
     );
 
-  console.log(results);
-
   return (
-    <div ref={wrapperRef} className={`relative ${className} w-[400px]`}>
+    <div ref={wrapperRef} className={`relative ${className}`}>
       <input
         type="text"
         value={query}
