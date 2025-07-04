@@ -108,7 +108,7 @@ const CellEditor: React.FC<CellEditorProps> = ({
       onKeyDown: handleKeyDown,
       onBlur: handleBlur,
       className:
-        "w-full px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500",
+        "w-full text-sm border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500",
     };
 
     switch (column.dataType) {
@@ -205,9 +205,9 @@ const CellEditor: React.FC<CellEditorProps> = ({
   };
 
   return (
-    <div className="relative">
+    <div className="absolute top-0">
       {renderInput()}
-      <div className="absolute -bottom-6 left-0 text-xs text-gray-500">
+      <div className="absolute -bottom-6 left-0 text-xs text-gray-700 bg-white">
         Press Enter to save, Esc to cancel
       </div>
     </div>

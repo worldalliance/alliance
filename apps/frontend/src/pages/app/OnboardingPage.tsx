@@ -19,8 +19,9 @@ const OnboardingPage: React.FC = () => {
         makesMoney: makesMoney,
       },
     });
-    if (response.response.status === 201) {
+    if (response.response.ok) {
       navigate("/home");
+      window.location.reload(); //TODO: fix state reload
     }
   };
 
@@ -44,10 +45,12 @@ const OnboardingPage: React.FC = () => {
 
   return (
     <div className="container flex flex-col justify-center h-screen min-w-[400px] max-w-[600px] justify-self-center gap-y-2">
-      <p className="font-bold ">You&apos;re signed up! </p>
-      <p className="mb-5">
-        We just have a couple questions before you can get started, if thats
-        okay with you.
+      <p className="font-bold text-lg">Welcome to the Alliance! </p>
+      <p className="!mb-5">
+        We're going to have a bit of onboarding text here. Maybe some
+        instructions on what to do, links to informational material, or other
+        stuff like that. We also have a couple questions before you can get
+        started, if thats okay with you.
       </p>
       <p className="font-bold">Whereabouts do you live?</p>
       <CityAutosuggest onSelect={handleCitySelect} placeholder="Enter a city" />
@@ -66,7 +69,7 @@ const OnboardingPage: React.FC = () => {
           No
         </Button>
       </div>
-      <p className="mt-5 font-bold">Do you make a lot of money?</p>
+      {/* <p className="mt-5 font-bold">Do you make a lot of money?</p>
       <div className="flex flex-row gap-x-2">
         <Button
           color={makesMoney === true ? ButtonColor.Blue : ButtonColor.Light}
@@ -80,8 +83,8 @@ const OnboardingPage: React.FC = () => {
         >
           No
         </Button>
-      </div>
-      <div className="flex flex-row gap-x-2 mt-10">
+      </div> */}
+      <div className="flex flex-row gap-x-2 mt-2">
         <Button
           color={ButtonColor.Green}
           onClick={handleSubmit}

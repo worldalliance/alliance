@@ -16,7 +16,6 @@ import {
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
 import { ActionStatus } from './entities/action.entity';
-import { JwtService } from '@nestjs/jwt';
 import {
   ActionDto,
   ActionWithRelationDto,
@@ -220,7 +219,7 @@ export class ActionsController {
         <head>
         <title>Join the Alliance to participate in ${action.name}</title>
             <meta property="og:title" content="${action.name}" />
-            <meta property="og:description" content="${action.description}" />
+            <meta property="og:description" content="${action.shortDescription}" />
             <meta property="og:type" content="website" />
         </head>
     </html>

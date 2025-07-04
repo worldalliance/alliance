@@ -21,9 +21,9 @@ export enum ActionTaskType {
 export enum ActionStatus {
   Draft = 'draft',
   Upcoming = 'upcoming',
-  GatheringCommitments = 'gathering-commitments',
-  CommitmentsReached = 'commitments-reached', // all commitments have been reached, actions not yet started
-  MemberAction = 'member-action', // all committed members start doing the action
+  GatheringCommitments = 'gathering_commitments',
+  CommitmentsReached = 'commitments_reached', // all commitments have been reached, actions not yet started
+  MemberAction = 'member_action', // all committed members start doing the action
   Resolution = 'resolution', // member action done, office working on resolution
   Completed = 'completed', // resolution done
   Failed = 'failed', // resolution failed
@@ -44,10 +44,6 @@ export class Action {
   @Column()
   @ApiProperty({ description: 'Category of the action' })
   category: string;
-
-  @Column()
-  @ApiProperty({ description: 'Reason to join the action' })
-  whyJoin: string;
 
   @Column({ nullable: true })
   @ApiProperty({ description: 'Image URL for the action', nullable: true })
@@ -75,17 +71,20 @@ export class Action {
   donationAmount?: number;
 
   @Column()
-  @ApiProperty({ description: 'Description of the action' })
+  @ApiProperty({ description: 'markdown page body' })
   @IsNotEmpty()
-  description: string;
+  body: string;
+
+  @Column({ nullable: true })
+  @ApiProperty({
+    description: 'markdown contents for activity task card (instructions)',
+    nullable: true,
+  })
+  taskContents?: string;
 
   @Column({ nullable: true })
   @ApiProperty({ description: 'Short description shown in cards' })
   shortDescription: string;
-
-  @Column({ nullable: true })
-  @ApiProperty({ description: 'Steps to complete the action' })
-  howTo: string;
 
   @Column({ nullable: true })
   @ApiProperty()

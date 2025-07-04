@@ -25,8 +25,8 @@ import ActionEventsPanel from "../../components/ActionEventsPanel";
 import { Route } from "../../../.react-router/types/src/pages/app/+types/ActionPage";
 import { useAuth } from "../../lib/AuthContext";
 import { ParentContext as ActionTaskPanelParentContext } from "../../components/ActionTaskPanel";
-import ActionCommitButton from "../../components/ActionCommitButton";
 import ActionActivityList from "../../components/ActionActivityList";
+import ReactMarkdown from "react-markdown";
 
 const actionStatusDescriptions: Record<ActionDto["status"], string> = {
   "gathering-commitments": "Collecting commitments",
@@ -176,8 +176,7 @@ export default function ActionPage() {
             } satisfies ActionTaskPanelParentContext
           }
         />
-        <h2 className="!mt-4">Summary</h2>
-        <p>{action?.description}</p>
+        <ReactMarkdown>{action?.body}</ReactMarkdown>
 
         {isFeatureEnabled(Features.Forum) && <ActionForumPosts actionId={id} />}
       </div>

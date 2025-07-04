@@ -404,7 +404,8 @@ const DatabaseViewer: React.FC = () => {
     rowIndex?: number,
     columnIndex?: number
   ) => {
-    // If this cell is being edited, show the editor
+    let editor: React.ReactNode | null = null;
+
     if (
       editingCell &&
       rowIndex !== undefined &&
@@ -412,7 +413,7 @@ const DatabaseViewer: React.FC = () => {
       editingCell.rowIndex === rowIndex &&
       editingCell.columnIndex === columnIndex
     ) {
-      return (
+      editor = (
         <CellEditor
           value={value}
           column={column}
@@ -428,95 +429,111 @@ const DatabaseViewer: React.FC = () => {
       ? "cursor-pointer hover:bg-gray-100 p-1 rounded"
       : "";
 
+    let element: React.ReactNode | null = null;
     if (value === null || value === undefined) {
-      return <span className={`text-gray-400 ${baseClassName}`}>null</span>;
-    }
+      element = <span className={`text-gray-400 ${baseClassName}`}>null</span>;
+    } else {
+      switch (column.dataType) {
+        case "relation":
+          element = (
+            <button
+              onClick={() =>
+                navigateToRelatedRow(column.relationTarget!, value)
+              }
+              className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+            >
+              {value}
+            </button>
+          );
+          break;
 
-    switch (column.dataType) {
-      case "relation":
-        return (
-          <button
-            onClick={() => navigateToRelatedRow(column.relationTarget!, value)}
-            className="text-blue-600 hover:text-blue-800 underline cursor-pointer"
-          >
-            {value}
-          </button>
-        );
+        case "boolean":
+          element = (
+            <span
+              className={`${
+                value ? "text-green-600" : "text-red-600"
+              } ${baseClassName}`}
+            >
+              {value ? "true" : "false"}
+            </span>
+          );
+          break;
 
-      case "boolean":
-        return (
-          <span
-            className={`${
-              value ? "text-green-600" : "text-red-600"
-            } ${baseClassName}`}
-          >
-            {value ? "true" : "false"}
-          </span>
-        );
-
-      case "number":
-        return (
-          <span className={`text-blue-800 font-mono ${baseClassName}`}>
-            {typeof value === "number" ? value.toLocaleString() : value}
-          </span>
-        );
-
-      case "date":
-        return (
-          <span className={`text-purple-600 ${baseClassName}`}>
-            {new Date(value).toLocaleDateString()}
-          </span>
-        );
-
-      case "datetime":
-        return (
-          <span className={`text-purple-600 ${baseClassName}`}>
-            {new Date(value).toLocaleString()}
-          </span>
-        );
-
-      case "json":
-        return (
-          <div className={`max-w-xs ${baseClassName}`}>
-            <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto">
-              {typeof value === "object"
-                ? JSON.stringify(value, null, 2)
-                : value}
-            </pre>
-          </div>
-        );
-
-      case "uuid":
-        return (
-          <span className={`font-mono text-xs text-gray-600 ${baseClassName}`}>
-            {value}
-          </span>
-        );
-
-      case "enum":
-        return (
-          <span
-            className={`bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs ${baseClassName}`}
-          >
-            {value}
-          </span>
-        );
-
-      case "string":
-      default: {
-        const stringValue = String(value);
-        if (stringValue.length > 100) {
-          return (
+        case "number":
+          element = (
+            <span className={`text-blue-800 font-mono ${baseClassName}`}>
+              {typeof value === "number" ? value.toLocaleString() : value}
+            </span>
+          );
+          break;
+        case "date":
+          element = (
+            <span className={`text-purple-600 ${baseClassName}`}>
+              {new Date(value).toLocaleDateString()}
+            </span>
+          );
+          break;
+        case "datetime":
+          element = (
+            <span className={`text-purple-600 ${baseClassName}`}>
+              {new Date(value).toLocaleString()}
+            </span>
+          );
+          break;
+        case "json":
+          element = (
             <div className={`max-w-xs ${baseClassName}`}>
-              <div className="truncate" title={stringValue}>
-                {stringValue}
-              </div>
+              <pre className="text-xs bg-gray-100 p-2 rounded overflow-auto">
+                {typeof value === "object"
+                  ? JSON.stringify(value, null, 2)
+                  : value}
+              </pre>
             </div>
           );
+          break;
+        case "uuid":
+          element = (
+            <span
+              className={`font-mono text-xs text-gray-600 ${baseClassName}`}
+            >
+              {value}
+            </span>
+          );
+          break;
+
+        case "enum":
+          element = (
+            <span
+              className={`bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs ${baseClassName}`}
+            >
+              {value}
+            </span>
+          );
+          break;
+
+        case "string":
+        default: {
+          const stringValue = String(value);
+          if (stringValue.length > 100) {
+            element = (
+              <div className={`max-w-xs ${baseClassName}`}>
+                <div className="truncate" title={stringValue}>
+                  {stringValue}
+                </div>
+              </div>
+            );
+          }
+          element = <span className={baseClassName}>{stringValue}</span>;
         }
-        return <span className={baseClassName}>{stringValue}</span>;
       }
     }
+
+    return (
+      <div className="relative min-w-10">
+        <div className={`${editor && "opacity-0"}`}>{element}</div>
+        {editor}
+      </div>
+    );
   };
 
   return (

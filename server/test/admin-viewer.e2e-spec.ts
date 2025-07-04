@@ -76,8 +76,7 @@ describe('AdminViewer (e2e)', () => {
       const testAction = actionRepository.create({
         name: 'Test Action',
         category: 'Test',
-        whyJoin: 'For testing',
-        description: 'Test action for forum tests',
+        body: 'Test action for forum tests',
         status: ActionStatus.GatheringCommitments,
       });
 

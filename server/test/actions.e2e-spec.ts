@@ -33,15 +33,14 @@ describe('Actions (e2e)', () => {
     testAction = actionRepo.create({
       name: 'Test Action',
       category: 'Test',
-      whyJoin: 'For testing',
-      description: 'Test action for forum tests',
+      body: 'Test action for forum tests',
+      taskContents: 'Test action for forum tests',
     });
 
     testDraftAction = actionRepo.create({
       name: 'Test Draft Action',
       category: 'Test',
-      whyJoin: 'For testing',
-      description: 'Test action for forum tests',
+      body: 'Test action for forum tests',
     });
 
     await actionRepo.save(testAction);
@@ -66,13 +65,12 @@ describe('Actions (e2e)', () => {
     it('admin can create a valid action', async () => {
       const newAction: CreateActionDto = {
         name: 'Test Action',
-        description: 'Do something important',
+        body: 'Do something important',
         category: '',
-        whyJoin: '',
         image: '',
         timeEstimate: '1h',
         shortDescription: 'Do something important',
-        howTo: 'Do something important',
+        taskContents: 'Do something important',
         type: ActionTaskType.Activity,
       };
 
@@ -192,8 +190,9 @@ describe('Actions (e2e)', () => {
     });
 
     it('unauthenticated user cannot access individual draft action', async () => {
-      const res = await request(ctx.app.getHttpServer())
-        .get(`/actions/${testDraftAction.id}`);
+      const res = await request(ctx.app.getHttpServer()).get(
+        `/actions/${testDraftAction.id}`,
+      );
 
       expect(res.status).toBe(404);
     });
@@ -266,8 +265,7 @@ describe('Actions (e2e)', () => {
         const newAction = actionRepo.create({
           name: 'Status Test Action',
           category: 'Test',
-          whyJoin: 'For status testing',
-          description: 'Test action for status computation',
+          body: 'Test action for status computation',
         });
         await actionRepo.save(newAction);
 
@@ -288,8 +286,8 @@ describe('Actions (e2e)', () => {
         const newAction = actionRepo.create({
           name: 'Status Transition Test',
           category: 'Test',
-          whyJoin: 'For status testing',
-          description: 'Test action for status transitions',
+          body: 'Test action for status transitions',
+          taskContents: 'Test action for status transitions',
         });
         await actionRepo.save(newAction);
 
@@ -327,8 +325,8 @@ describe('Actions (e2e)', () => {
         const newAction = actionRepo.create({
           name: 'Multi Event Test',
           category: 'Test',
-          whyJoin: 'For multi-event testing',
-          description: 'Test action for multiple events',
+          body: 'Test action for multiple events',
+          taskContents: 'Test action for multiple events',
         });
         await actionRepo.save(newAction);
 
@@ -381,8 +379,8 @@ describe('Actions (e2e)', () => {
         const newAction = actionRepo.create({
           name: 'Future Event Test',
           category: 'Test',
-          whyJoin: 'For future event testing',
-          description: 'Test action for future events',
+          body: 'Test action for future events',
+          taskContents: 'Test action for future events',
         });
         await actionRepo.save(newAction);
 
@@ -428,8 +426,7 @@ describe('Actions (e2e)', () => {
         const newAction = actionRepo.create({
           name: 'Same Date Test',
           category: 'Test',
-          whyJoin: 'For same date testing',
-          description: 'Test action for events on same date',
+          body: 'Test action for events on same date',
         });
         await actionRepo.save(newAction);
 
@@ -477,8 +474,7 @@ describe('Actions (e2e)', () => {
         const newAction = actionRepo.create({
           name: 'Complex Timeline Test',
           category: 'Test',
-          whyJoin: 'For complex timeline testing',
-          description: 'Test action for complex status timeline',
+          body: 'Test action for complex status timeline',
         });
         await actionRepo.save(newAction);
 
@@ -561,8 +557,7 @@ describe('Actions (e2e)', () => {
       const newAction = actionRepo.create({
         name: 'Auto Transition Test - Commitments',
         category: 'Test',
-        whyJoin: 'For auto transition testing',
-        description: 'Test action for automatic commitment transitions',
+        body: 'Test action for automatic commitment transitions',
         commitmentThreshold: 2, // Need 2 users to reach threshold
       });
       await actionRepo.save(newAction);
@@ -586,7 +581,7 @@ describe('Actions (e2e)', () => {
       let res = await request(ctx.app.getHttpServer())
         .get(`/actions/${newAction.id}`)
         .set('Authorization', `Bearer ${ctx.accessToken}`);
-      
+
       expect(res.body.status).toBe(ActionStatus.GatheringCommitments);
       expect(res.body.events.length).toBe(1);
 
@@ -598,7 +593,7 @@ describe('Actions (e2e)', () => {
       res = await request(ctx.app.getHttpServer())
         .get(`/actions/${newAction.id}`)
         .set('Authorization', `Bearer ${ctx.accessToken}`);
-      
+
       expect(res.body.status).toBe(ActionStatus.GatheringCommitments);
       expect(res.body.usersJoined).toBe(1);
       expect(res.body.events.length).toBe(1); // No automatic transition yet
@@ -611,13 +606,15 @@ describe('Actions (e2e)', () => {
       res = await request(ctx.app.getHttpServer())
         .get(`/actions/${newAction.id}`)
         .set('Authorization', `Bearer ${ctx.accessToken}`);
-      
+
       expect(res.body.status).toBe(ActionStatus.CommitmentsReached);
       expect(res.body.usersJoined).toBe(2);
       expect(res.body.events.length).toBe(2); // Automatic transition event created
-      
+
       // Check the automatic event details
-      const automaticEvent = res.body.events.find((e: any) => e.title === 'Commitment threshold reached');
+      const automaticEvent = res.body.events.find(
+        (e: ActionEventDto) => e.title === 'Commitment threshold reached',
+      );
       expect(automaticEvent).toBeDefined();
       expect(automaticEvent.description).toContain('2 people have committed');
       expect(automaticEvent.newStatus).toBe(ActionStatus.CommitmentsReached);
@@ -632,8 +629,7 @@ describe('Actions (e2e)', () => {
       const newAction = actionRepo.create({
         name: 'Auto Transition Test - Completion',
         category: 'Test',
-        whyJoin: 'For auto completion testing',
-        description: 'Test action for automatic completion transitions',
+        body: 'Test action for automatic completion transitions',
       });
       await actionRepo.save(newAction);
 
@@ -665,7 +661,7 @@ describe('Actions (e2e)', () => {
       let res = await request(ctx.app.getHttpServer())
         .get(`/actions/${newAction.id}`)
         .set('Authorization', `Bearer ${ctx.accessToken}`);
-      
+
       expect(res.body.status).toBe(ActionStatus.MemberAction);
       expect(res.body.usersJoined).toBe(2);
       expect(res.body.usersCompleted).toBe(0);
@@ -679,7 +675,7 @@ describe('Actions (e2e)', () => {
       res = await request(ctx.app.getHttpServer())
         .get(`/actions/${newAction.id}`)
         .set('Authorization', `Bearer ${ctx.accessToken}`);
-      
+
       expect(res.body.status).toBe(ActionStatus.MemberAction);
       expect(res.body.usersJoined).toBe(2);
       expect(res.body.usersCompleted).toBe(1);
@@ -693,16 +689,20 @@ describe('Actions (e2e)', () => {
       res = await request(ctx.app.getHttpServer())
         .get(`/actions/${newAction.id}`)
         .set('Authorization', `Bearer ${ctx.accessToken}`);
-      
+
       expect(res.body.status).toBe(ActionStatus.Resolution);
       expect(res.body.usersJoined).toBe(2);
       expect(res.body.usersCompleted).toBe(2);
       expect(res.body.events.length).toBe(2); // Automatic transition event created
-      
+
       // Check the automatic event details
-      const automaticEvent = res.body.events.find((e: any) => e.title === 'All members completed action');
+      const automaticEvent = res.body.events.find(
+        (e: ActionEventDto) => e.title === 'All members completed action',
+      );
       expect(automaticEvent).toBeDefined();
-      expect(automaticEvent.description).toContain('All 2 committed members have completed');
+      expect(automaticEvent.description).toContain(
+        'All 2 committed members have completed',
+      );
       expect(automaticEvent.newStatus).toBe(ActionStatus.Resolution);
       expect(automaticEvent.sendNotifsTo).toBe(NotificationType.Joined);
 
@@ -715,8 +715,7 @@ describe('Actions (e2e)', () => {
       const newAction = actionRepo.create({
         name: 'Auto Transition Test - No Users',
         category: 'Test',
-        whyJoin: 'For testing edge case',
-        description: 'Test action with no users joined',
+        body: 'Test action with no users joined',
       });
       await actionRepo.save(newAction);
 
@@ -739,7 +738,7 @@ describe('Actions (e2e)', () => {
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/${newAction.id}`)
         .set('Authorization', `Bearer ${ctx.accessToken}`);
-      
+
       expect(res.body.status).toBe(ActionStatus.MemberAction);
       expect(res.body.usersJoined).toBe(0);
       expect(res.body.usersCompleted).toBe(0);

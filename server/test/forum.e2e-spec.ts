@@ -20,8 +20,7 @@ describe('Forum (e2e)', () => {
     testAction = actionRepo.create({
       name: 'Test Action',
       category: 'Test',
-      whyJoin: 'For testing',
-      description: 'Test action for forum tests',
+      body: 'Test action for forum tests',
       status: ActionStatus.GatheringCommitments,
     });
     await actionRepo.save(testAction);
