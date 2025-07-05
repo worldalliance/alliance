@@ -24,7 +24,7 @@ const NavbarHorizontal: React.FC = () => {
     <div
       className="
       flex flex-row border-stone-300 border-b
-    w-screen text-left space-x-10 items-center pl-10 sticky justify-center"
+    w-screen text-left space-x-10 items-center pl-10 sticky justify-center z-10"
     >
       {/* <Link to="/">
         <h1 className="font-bold font-berlingske !text-[16pt] cursor-pointer">

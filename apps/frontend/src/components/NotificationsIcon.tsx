@@ -44,9 +44,18 @@ const NotificationsIcon = () => {
   const handleNotifClick = useCallback(
     (id: number, webAppLocation: string) => () => {
       notifsSetRead({ path: { id } });
+      setNotifications(
+        notifications.map((notification) => ({
+          ...notification,
+          read: notification.id === id ? true : notification.read,
+        }))
+      );
+      setUnreadCount(
+        notifications.filter((notification) => !notification.read).length
+      );
       navigate(getWebAppLocation(webAppLocation));
     },
-    [navigate]
+    [navigate, notifications]
   );
 
   return (
