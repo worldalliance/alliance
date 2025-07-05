@@ -20,8 +20,6 @@ const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  console.log("user", user);
-
   const [location, setLocation] = useState<City | null>(null);
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
   const [anonymous, setAnonymous] = useState<boolean>(false);
