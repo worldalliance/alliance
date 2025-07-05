@@ -17,6 +17,7 @@
     "react-is": "^19.0.0"
   },
   "dependencies": {
+    "@alliance/shared": "workspace:*",
     "@hey-api/client-fetch": "^0.12.0",
     "@hey-api/openapi-ts": "^0.67.3",
     "@react-router/dev": "^7.6.2",

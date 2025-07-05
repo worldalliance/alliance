@@ -193,10 +193,10 @@ jobs:
             unzip -o ~/react-build.zip
 
             cd ~/output
-            npm install --omit=dev
+            yarn install --omit=dev
 
             pm2 delete client-ssr || true
-            pm2 start "npx react-router-serve build/server/index.js" --name client-ssr
+            pm2 start "yarn react-router-serve build/server/index.js" --name client-ssr
             pm2 save
 
             if [ ! -f /etc/nginx/conf.d/alliance.conf ]; then
