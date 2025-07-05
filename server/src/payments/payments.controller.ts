@@ -13,12 +13,14 @@ import {
 import Stripe from 'stripe';
 import { PaymentsService } from './payments.service';
 import { JwtRequest } from 'src/auth/guards/auth.guard';
-import { ApiOkResponse, ApiProperty } from '@nestjs/swagger';
+import { ApiBody, ApiOkResponse, ApiProperty } from '@nestjs/swagger';
 import { AuthOptionalGuard } from 'src/auth/guards/authoptional.guard';
 import { CreatePartialProfileDto } from './dto/partial-profile.dto';
+import { IsNotEmpty } from 'class-validator';
 
 class CreatePaymentIntentDto {
   @ApiProperty()
+  @IsNotEmpty()
   actionId: number;
 }
 
@@ -51,12 +53,14 @@ export class PaymentsController {
 
   @UseGuards(AuthOptionalGuard)
   @Post('create-payment-intent')
+  @ApiBody({ type: CreatePaymentIntentDto })
   @ApiOkResponse({ type: ClientSecretDto })
   async createPaymentIntent(
     @Request() req: JwtRequest,
     @Body() body: CreatePaymentIntentDto,
   ): Promise<ClientSecretDto> {
     let customer: Stripe.Customer | undefined;
+    console.log('body', body);
     if (req.user) {
       customer = await this.paymentsService.getOrCreateCustomer(
         req.user.sub,

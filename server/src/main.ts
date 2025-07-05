@@ -52,7 +52,7 @@ async function bootstrap() {
   });
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   validateEnv();
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.use(cookieParser());
   //   app.enableCors();
   app.enableCors({

@@ -1,5 +1,6 @@
 import React from "react";
 import { ActionDto } from "@alliance/shared/client";
+
 export interface ActionProgressBarProps {
   status: ActionDto["status"];
   usersJoined: number;
@@ -10,6 +11,37 @@ export interface ActionProgressBarProps {
   donationAmount?: number;
   className?: string;
 }
+
+interface ProgressBarWrapperProps {
+  className?: string;
+  children: React.ReactNode;
+}
+
+interface ProgressBarProps {
+  percentage: number;
+  barColor: string;
+  label: string;
+}
+
+// Reusable wrapper component
+const ProgressBarWrapper: React.FC<ProgressBarWrapperProps> = ({ className, children }) => (
+  <div className={`flex flex-col gap-y-1 flex-1 ${className || ""}`}>
+    {children}
+  </div>
+);
+
+// Reusable progress bar component
+const ProgressBar: React.FC<ProgressBarProps> = ({ percentage, barColor, label }) => (
+  <>
+    <div className="w-full h-2 bg-gray-100 rounded-[2px]">
+      <div
+        className={`h-2 rounded-[2px] ${barColor}`}
+        style={{ width: `${Math.min(percentage, 100)}%` }}
+      />
+    </div>
+    <p className="text-gray-600 text-xs">{label}</p>
+  </>
+);
 
 const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
   status,
@@ -28,110 +60,59 @@ const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
 
   // Gathering Commitments: Show progress towards commitment threshold
   if (status === "gathering_commitments") {
-    // Handle funding type actions differently
     if (actionType === "Funding") {
-      const donationGoal = (donationThreshold || 1000) / 100; // Default if not set
-      const suggestedAmount = donationAmount || 50; // Default if not set
+      const donationGoal = (donationThreshold || 1000) / 100;
+      const suggestedAmount = donationAmount || 50;
       const currentAmount = (usersJoined * suggestedAmount) / 100;
-      const percentage = Math.min((currentAmount / donationGoal) * 100, 100);
+      const percentage = (currentAmount / donationGoal) * 100;
       const isComplete = currentAmount >= donationGoal;
+      const barColor = isComplete ? "bg-green-500" : "bg-yellow-500";
 
       return (
-        <div className={`flex flex-col gap-y-1 flex-1 ${className}`}>
-          <div className="w-full h-2 bg-gray-100 rounded-[2px]">
-            <div
-              className={`h-2 rounded-[2px] ${
-                isComplete ? "bg-green-500" : "bg-yellow-500"
-              }`}
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          <p className="text-gray-600 text-xs">
-            ${currentAmount} / ${donationGoal} committed
-          </p>
-        </div>
+        <ProgressBarWrapper className={className}>
+          <ProgressBar
+            percentage={percentage}
+            barColor={barColor}
+            label={`$${currentAmount} / $${donationGoal} committed`}
+          />
+        </ProgressBarWrapper>
       );
     } else {
-      // Activity type actions
-      const threshold = commitmentThreshold || 10; // Default threshold if not set
-      const percentage = Math.min((usersJoined / threshold) * 100, 100);
+      const threshold = commitmentThreshold || 10;
+      const percentage = (usersJoined / threshold) * 100;
       const isComplete = usersJoined >= threshold;
+      const barColor = isComplete ? "bg-green-500" : "bg-yellow-500";
 
       return (
-        <div className="flex flex-col gap-y-1 flex-1">
-          <div className="w-full h-2 bg-gray-100 rounded-[2px]">
-            <div
-              className={`h-2 rounded-[2px] ${
-                isComplete ? "bg-green-500" : "bg-yellow-500"
-              }`}
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          <p className="text-gray-600 text-xs">
-            {usersJoined} / {threshold} commitments
-          </p>
-        </div>
+        <ProgressBarWrapper className={className}>
+          <ProgressBar
+            percentage={percentage}
+            barColor={barColor}
+            label={`${usersJoined} / ${threshold} commitments`}
+          />
+        </ProgressBarWrapper>
       );
     }
   }
 
-  // Member Action: Show completion progress
-  if (status === "member_action") {
-    const percentage =
-      usersJoined > 0 ? (usersCompleted / usersJoined) * 100 : 0;
+  // Completion progress for various statuses
+  const completionStatuses = ["member_action", "commitments_reached", "resolution"];
+  if (completionStatuses.includes(status)) {
+    const percentage = usersJoined > 0 ? (usersCompleted / usersJoined) * 100 : 0;
+    const statusColors = {
+      member_action: "bg-purple-500",
+      commitments_reached: "bg-orange-500",
+      resolution: "bg-indigo-500",
+    } as const;
 
     return (
-      <div className="flex flex-col gap-y-1 flex-1">
-        <div className="w-full h-2 bg-gray-100 rounded-[2px]">
-          <div
-            className="h-2 bg-purple-500 rounded-[2px]"
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-        <p className="text-gray-600 text-xs">
-          {usersCompleted} / {usersJoined} completed
-        </p>
-      </div>
-    );
-  }
-
-  // Commitments Reached: Show completion progress
-  if (status === "commitments_reached") {
-    const percentage =
-      usersJoined > 0 ? (usersCompleted / usersJoined) * 100 : 0;
-
-    return (
-      <div className="flex flex-col gap-y-1 flex-1">
-        <div className="w-full h-2 bg-gray-100 rounded-[2px]">
-          <div
-            className="h-2 bg-orange-500 rounded-[2px]"
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-        <p className="text-gray-600 text-xs">
-          {usersCompleted} / {usersJoined} completed
-        </p>
-      </div>
-    );
-  }
-
-  // Resolution: Show completion progress (all should be completed)
-  if (status === "resolution") {
-    const percentage =
-      usersJoined > 0 ? (usersCompleted / usersJoined) * 100 : 0;
-
-    return (
-      <div className="flex flex-col gap-y-1 flex-1">
-        <div className="w-full h-2 bg-gray-100 rounded-[2px]">
-          <div
-            className="h-2 bg-indigo-500 rounded-[2px]"
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-        <p className="text-gray-600 text-xs">
-          {usersCompleted} / {usersJoined} completed
-        </p>
-      </div>
+      <ProgressBarWrapper className={className}>
+        <ProgressBar
+          percentage={percentage}
+          barColor={statusColors[status as keyof typeof statusColors]}
+          label={`${usersCompleted} / ${usersJoined} completed`}
+        />
+      </ProgressBarWrapper>
     );
   }
 
@@ -140,28 +121,24 @@ const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
     const percentage = (usersCompleted / usersJoined) * 100;
 
     return (
-      <div className="flex flex-col gap-y-1 flex-1">
-        <div className="w-full h-2 bg-gray-100 rounded-[2px]">
-          <div
-            className="h-2 bg-blue-500 rounded-[2px]"
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-        <p className="text-gray-600 text-xs">
-          {usersCompleted} / {usersJoined} completed
-        </p>
-      </div>
+      <ProgressBarWrapper className={className}>
+        <ProgressBar
+          percentage={percentage}
+          barColor="bg-blue-500"
+          label={`${usersCompleted} / ${usersJoined} completed`}
+        />
+      </ProgressBarWrapper>
     );
   }
 
   // For statuses with no users, show basic stats
   return (
-    <div className="flex flex-col gap-y-1 flex-1">
+    <ProgressBarWrapper className={className}>
       <div className="flex justify-between text-xs text-gray-600">
         <span>Joined: {usersJoined}</span>
         <span>Completed: {usersCompleted}</span>
       </div>
-    </div>
+    </ProgressBarWrapper>
   );
 };
 

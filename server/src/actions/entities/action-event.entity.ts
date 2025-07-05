@@ -7,7 +7,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Action } from './action.entity';
-import { IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum NotificationType {
@@ -41,6 +41,7 @@ export class ActionEvent {
 
   @Column()
   @ApiProperty({ description: 'secondary text' })
+  @IsOptional()
   description: string;
 
   @Column({ type: 'enum', enum: ActionStatus, default: ActionStatus.Draft })
@@ -61,6 +62,7 @@ export class ActionEvent {
 
   @Column()
   @ApiProperty({ description: 'time of the event (for display)' })
+  @IsNotEmpty()
   date: Date;
 
   @UpdateDateColumn()
@@ -72,6 +74,7 @@ export class ActionEvent {
     description: 'Indicates whether the event should be shown in the timeline',
     default: false,
   })
+  @IsNotEmpty()
   showInTimeline: boolean;
 
   @ManyToOne(() => Action, (action) => action.events, {

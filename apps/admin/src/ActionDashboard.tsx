@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import Card, { CardStyle } from "./Card";
 import ActionForm from "./components/ActionForm";
 import {
@@ -90,21 +90,15 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<Tab>("overview");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form state for basic action details (excluding status)
   const [form, setForm] = useState<CreateActionDto>({
     name: "",
     category: "",
     image: "",
     body: "",
     timeEstimate: "",
-    taskContents: undefined,
     shortDescription: "",
     type: "Activity",
-    commitmentThreshold: undefined,
-    donationThreshold: undefined,
-    donationAmount: undefined,
   });
 
   // Event creation form state
@@ -112,7 +106,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
     title: "",
     description: "",
     newStatus: "gathering_commitments",
-    date: new Date().toISOString().slice(0, 16), // Format for datetime-local input
+    date: new Date().toISOString().slice(0, 16),
     showInTimeline: true,
     sendNotifsTo: "all",
   });
@@ -128,12 +122,8 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
         image: "",
         body: "",
         timeEstimate: "",
-        taskContents: undefined,
         shortDescription: "",
         type: "Activity",
-        commitmentThreshold: undefined,
-        donationThreshold: undefined,
-        donationAmount: undefined,
       });
       setImageFile(null);
       setImagePreview(null);
@@ -157,17 +147,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
         }
         setAction(actionData);
         setForm({
-          name: actionData.name,
-          category: actionData.category,
-          image: actionData.image || "",
-          body: actionData.body,
-          taskContents: actionData.taskContents,
-          timeEstimate: actionData.timeEstimate,
-          shortDescription: actionData.shortDescription,
-          type: actionData.type,
-          commitmentThreshold: actionData.commitmentThreshold,
-          donationThreshold: actionData.donationThreshold,
-          donationAmount: actionData.donationAmount,
+          ...actionData,
         });
 
         setLoading(false);

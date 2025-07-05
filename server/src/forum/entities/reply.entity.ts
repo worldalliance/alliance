@@ -12,6 +12,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { User } from '../../user/user.entity';
 import { Post } from './post.entity';
 import { Notification } from '../../notifs/entities/notification.entity';
+import { IsNotEmpty } from 'class-validator';
 
 @Entity()
 export class Reply {
@@ -21,6 +22,7 @@ export class Reply {
 
   @Column('text')
   @ApiProperty()
+  @IsNotEmpty()
   content: string;
 
   @ManyToOne(() => User)
@@ -39,6 +41,7 @@ export class Reply {
 
   @Column()
   @ApiProperty()
+  @IsNotEmpty()
   postId: number;
 
   @CreateDateColumn()

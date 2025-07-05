@@ -38,8 +38,8 @@ export class User {
   email: string;
 
   @Column()
-  @Exclude()
   @ApiProperty()
+  @IsNotEmpty()
   password: string;
 
   @CreateDateColumn()

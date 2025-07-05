@@ -198,7 +198,10 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
                       <p className="text-stone-500 text-sm">{friend.email}</p>
                     </div>
                     <Button
-                      onClick={() => handleRemoveFriend(friend.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFriend(friend.id);
+                      }}
                       color={ButtonColor.Red}
                       disabled={processingIds[friend.email]}
                       className="text-sm"

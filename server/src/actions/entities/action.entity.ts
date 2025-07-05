@@ -9,7 +9,7 @@ import {
 import { UserAction, UserActionRelation } from './user-action.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import { IsNotEmpty } from 'class-validator';
+import { IsNotEmpty, IsOptional } from 'class-validator';
 import { ActionEvent, ActionStatus } from './action-event.entity';
 
 export enum ActionTaskType {
@@ -31,28 +31,33 @@ export class Action {
 
   @Column()
   @ApiProperty({ description: 'Category of the action' })
+  @IsNotEmpty()
   category: string;
 
   @Column({ nullable: true })
   @ApiProperty({ description: 'Image URL for the action', nullable: true })
+  @IsOptional()
   image: string;
 
   @Column({ nullable: true })
   @ApiPropertyOptional({
     description: 'Number of commitments needed to start the action',
   })
+  @IsOptional()
   commitmentThreshold?: number;
 
   @Column({ nullable: true })
   @ApiPropertyOptional({
     description: 'Amount of money committed needed to start the action',
   })
+  @IsOptional()
   donationThreshold?: number;
 
   @Column({ default: 500, nullable: true })
   @ApiPropertyOptional({
     description: 'Suggested donation amount (cents)',
   })
+  @IsOptional()
   donationAmount?: number;
 
   @Column()
@@ -64,14 +69,17 @@ export class Action {
   @ApiPropertyOptional({
     description: 'markdown contents for activity task card (instructions)',
   })
+  @IsOptional()
   taskContents?: string;
 
   @Column({ nullable: true })
   @ApiProperty({ description: 'Short description shown in cards' })
+  @IsNotEmpty()
   shortDescription: string;
 
   @Column({ nullable: true })
   @ApiProperty()
+  @IsOptional()
   timeEstimate: string;
 
   @Column({
