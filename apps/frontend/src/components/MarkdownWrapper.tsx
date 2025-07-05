@@ -20,7 +20,7 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
           ),
           h2: ({ ...props }) => (
             <h2
-              className="font-newsreader !font-semibold !text-xl !mt-4"
+              className="font-newsreader !font-bold !text-xl !mt-4"
               {...props}
             />
           ),
