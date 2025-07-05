@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   JoinColumn,
 } from 'typeorm';
-import { Action, ActionStatus } from './action.entity';
+import { Action } from './action.entity';
 import { IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -14,6 +14,18 @@ export enum NotificationType {
   All = 'all',
   Joined = 'joined',
   None = 'none',
+}
+
+export enum ActionStatus {
+  Draft = 'draft',
+  Upcoming = 'upcoming',
+  GatheringCommitments = 'gathering_commitments',
+  CommitmentsReached = 'commitments_reached', // all commitments have been reached, actions not yet started
+  MemberAction = 'member_action', // all committed members start doing the action
+  Resolution = 'resolution', // member action done, office working on resolution
+  Completed = 'completed', // resolution done
+  Failed = 'failed', // resolution failed
+  Abandoned = 'abandoned', // process aborted
 }
 
 @Entity()
@@ -31,7 +43,7 @@ export class ActionEvent {
   @ApiProperty({ description: 'secondary text' })
   description: string;
 
-  @Column()
+  @Column({ type: 'enum', enum: ActionStatus, default: ActionStatus.Draft })
   @IsNotEmpty()
   @ApiProperty({
     description: 'New status of the action after the event',

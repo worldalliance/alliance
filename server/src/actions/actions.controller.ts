@@ -15,7 +15,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ActionsService } from './actions.service';
-import { ActionStatus } from './entities/action.entity';
 import {
   ActionDto,
   ActionWithRelationDto,
@@ -40,6 +39,7 @@ import { map, filter, scan, share, bufferTime } from 'rxjs/operators';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthOptionalGuard } from 'src/auth/guards/authoptional.guard';
 import { UserService } from 'src/user/user.service';
+import { ActionStatus } from './entities/action-event.entity';
 
 @Controller('actions')
 export class ActionsController {

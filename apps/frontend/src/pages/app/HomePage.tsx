@@ -24,7 +24,7 @@ const HomePage: React.FC = () => {
       actions.filter(
         (action) =>
           action.myRelation?.status === "joined" &&
-          action.status === "member-action"
+          action.status === "member_action"
       )
     );
     setNewActions(
@@ -32,14 +32,14 @@ const HomePage: React.FC = () => {
         (action) =>
           !action.myRelation ||
           (action.myRelation.status === "none" &&
-            action.status === "gathering-commitments")
+            action.status === "gathering_commitments")
       )
     );
     setCommittedActions(
       actions.filter(
         (action) =>
           action.myRelation?.status === "joined" &&
-          action.status === "gathering-commitments"
+          action.status === "gathering_commitments"
       )
     );
   }, []);

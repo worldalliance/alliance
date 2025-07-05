@@ -1,10 +1,11 @@
 import * as request from 'supertest';
-import { Action, ActionStatus } from '../src/actions/entities/action.entity';
+import { Action } from '../src/actions/entities/action.entity';
 import { CreatePostDto } from '../src/forum/dto/post.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { ForumModule } from '../src/forum/forum.module';
 import { Repository } from 'typeorm';
 import { User } from 'src/user/user.entity';
+import { ActionStatus } from 'src/actions/entities/action-event.entity';
 
 describe('Forum (e2e)', () => {
   let ctx: TestContext;

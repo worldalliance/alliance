@@ -2,11 +2,12 @@
 import { Repository } from 'typeorm';
 import * as request from 'supertest';
 import { User } from '../src/user/user.entity';
-import { Action, ActionStatus } from '../src/actions/entities/action.entity';
+import { Action } from '../src/actions/entities/action.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { AdminViewerModule } from '../src/admin-viewer/admin-viewer.module';
 import { TableMetadataDto } from 'src/admin-viewer/dto/table-list.dto';
 import { ColumnMetadataDto } from 'src/admin-viewer/dto/column-metadata.dto';
+import { ActionStatus } from 'src/actions/entities/action-event.entity';
 
 describe('AdminViewer (e2e)', () => {
   let ctx: TestContext;

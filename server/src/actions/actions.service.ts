@@ -9,8 +9,12 @@ import {
   ActionActivityDto,
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Action, ActionStatus } from './entities/action.entity';
-import { ActionEvent, NotificationType } from './entities/action-event.entity';
+import { Action } from './entities/action.entity';
+import {
+  ActionEvent,
+  NotificationType,
+  ActionStatus,
+} from './entities/action-event.entity';
 import { In, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import { UserAction, UserActionRelation } from './entities/user-action.entity';
@@ -298,7 +302,13 @@ export class ActionsService {
       relations: ['user', 'user.city'],
     });
     return userActions
-      .filter((ua): ua is typeof ua & { user: { city: NonNullable<typeof ua.user.city> } } => ua.user.city !== null)
+      .filter(
+        (
+          ua,
+        ): ua is typeof ua & {
+          user: { city: NonNullable<typeof ua.user.city> };
+        } => ua.user.city !== null,
+      )
       .map((ua) => ({
         latitude: ua.user.city.latitude,
         longitude: ua.user.city.longitude,

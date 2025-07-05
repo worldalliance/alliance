@@ -1,9 +1,5 @@
 import * as request from 'supertest';
-import {
-  Action,
-  ActionStatus,
-  ActionTaskType,
-} from '../src/actions/entities/action.entity';
+import { Action, ActionTaskType } from '../src/actions/entities/action.entity';
 import {
   CreateActionDto,
   ActionEventDto,
@@ -14,6 +10,7 @@ import { UserActionRelation } from '../src/actions/entities/user-action.entity';
 import { Repository } from 'typeorm';
 import {
   ActionEvent,
+  ActionStatus,
   NotificationType,
 } from '../src/actions/entities/action-event.entity';
 
