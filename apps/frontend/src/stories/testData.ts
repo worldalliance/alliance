@@ -9,13 +9,11 @@ import {
 export const testActions: ActionDto[] = [
   {
     name: "Save 2,500 acres of Ecuador cloud forest",
-    description:
-      "Acme. corp has been found to lorem over 160,00 ipsums every single year, causing untold devastation in the placeholder text industry.",
+    body: "Acme. corp has been found to lorem over 160,00 ipsums every single year, causing untold devastation in the placeholder text industry.",
     category: "Climate Change",
     id: 1,
-    whyJoin: "",
     image: "",
-    status: "gathering-commitments",
+    status: "gathering_commitments",
     timeEstimate: "5 min",
     usersJoined: 234,
     myRelation: {
@@ -26,7 +24,6 @@ export const testActions: ActionDto[] = [
     },
     shortDescription:
       "Gold mining companies are expressing interest in a highly biodiverse, unprotected area. We can outpace these companies by purchasing the land from the current owner, Susie.",
-    howTo: "",
     type: "Funding",
     usersCompleted: 157,
     events: [
@@ -35,7 +32,7 @@ export const testActions: ActionDto[] = [
         title: "Event 1",
         description: "Event 1 description",
         date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-        newStatus: "active",
+        newStatus: "member_action",
         showInTimeline: true,
         sendNotifsTo: "all",
       },
@@ -44,7 +41,7 @@ export const testActions: ActionDto[] = [
         title: "Event 2",
         description: "Event 2 description",
         date: new Date(Date.now() - 1000 * 60 * 60 * 49).toISOString(),
-        newStatus: "active",
+        newStatus: "member_action",
         showInTimeline: true,
         sendNotifsTo: "all",
       },
@@ -52,13 +49,11 @@ export const testActions: ActionDto[] = [
   },
   {
     name: "Make Target end stocking of Coca-Cola single-use plastic bottles",
-    description:
-      "This is a description of a task that is doing something else. It is a task that is doing something else. It is a task that is doing something else which is a task that is doing something else.",
+    body: "This is a description of a task that is doing something else. It is a task that is doing something else. It is a task that is doing something else which is a task that is doing something else.",
     category: "Climate Change",
     id: 2,
-    whyJoin: "",
     image: "",
-    status: "gathering-commitments",
+    status: "gathering_commitments",
     timeEstimate: "5 min",
     usersJoined: 234,
     myRelation: {
@@ -69,7 +64,6 @@ export const testActions: ActionDto[] = [
     },
     shortDescription:
       "Target has the power to stop millions of plastic bottles from polluting our planet. By applying pressure, we can make them stop stocking Coca-Cola single-use plastic bottles.",
-    howTo: "",
     type: "Activity",
     usersCompleted: 57,
     events: [],
@@ -124,6 +118,7 @@ export const testAuthUser: UserDto = {
   admin: false,
   onboardingComplete: false,
   referralCode: "1234567890",
+  anonymous: false,
 };
 
 export const testFriends: ProfileDto[] = [testUser, testUser, testUser];
@@ -144,7 +139,7 @@ export const testForumPosts: PostDto[] = [
 export const testTodoActions: ActionDto[] = [
   {
     ...testActions[0],
-    status: "member-action",
+    status: "member_action",
     myRelation: {
       status: "joined",
       deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
@@ -154,7 +149,7 @@ export const testTodoActions: ActionDto[] = [
   },
   {
     ...testActions[1],
-    status: "member-action",
+    status: "member_action",
     myRelation: {
       status: "joined",
       deadline: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
@@ -164,7 +159,7 @@ export const testTodoActions: ActionDto[] = [
   },
   {
     ...testActions[1],
-    status: "member-action",
+    status: "member_action",
     type: "Ongoing",
     name: "Stop buying from Coca-Cola",
     myRelation: {

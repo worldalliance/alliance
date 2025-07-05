@@ -1,4 +1,9 @@
-import { ApiProperty, PartialType, PickType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  PartialType,
+  PickType,
+} from '@nestjs/swagger';
 import { User } from './user.entity';
 import { FriendStatus } from './friend.entity';
 
@@ -11,8 +16,8 @@ export class UserDto extends PickType(User, [
   'referralCode',
   'anonymous',
 ]) {
-  @ApiProperty()
-  cityId?: number | null;
+  @ApiPropertyOptional()
+  cityId?: number;
 }
 
 export class MinimalUserDto extends PickType(UserDto, [
@@ -22,7 +27,7 @@ export class MinimalUserDto extends PickType(UserDto, [
 ]) {}
 
 export class FriendStatusDto {
-  @ApiProperty({ enum: FriendStatus })
+  @ApiProperty({ enum: FriendStatus, nullable: true })
   status: FriendStatus;
 }
 

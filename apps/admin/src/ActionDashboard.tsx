@@ -72,6 +72,8 @@ interface ActionDashboardProps {
   onCancel?: () => void;
 }
 
+type Tab = "overview" | "details" | "events";
+
 const ActionDashboard: React.FC<ActionDashboardProps> = ({
   actionId,
   isNew = false,
@@ -87,9 +89,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "details" | "events">(
-    "overview"
-  );
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state for basic action details (excluding status)
@@ -99,12 +99,12 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
     image: "",
     body: "",
     timeEstimate: "",
-    taskContents: null,
+    taskContents: undefined,
     shortDescription: "",
     type: "Activity",
-    commitmentThreshold: null,
-    donationThreshold: null,
-    donationAmount: null,
+    commitmentThreshold: undefined,
+    donationThreshold: undefined,
+    donationAmount: undefined,
   });
 
   // Event creation form state
@@ -118,6 +118,28 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
   });
 
   const [creatingEvent, setCreatingEvent] = useState<boolean>(false);
+
+  // Reset form when switching to new action mode
+  useEffect(() => {
+    if (isNew) {
+      setForm({
+        name: "",
+        category: "",
+        image: "",
+        body: "",
+        timeEstimate: "",
+        taskContents: undefined,
+        shortDescription: "",
+        type: "Activity",
+        commitmentThreshold: undefined,
+        donationThreshold: undefined,
+        donationAmount: undefined,
+      });
+      setImageFile(null);
+      setImagePreview(null);
+      setError(null);
+    }
+  }, [isNew]);
 
   useEffect(() => {
     if (isNew) {
@@ -178,10 +200,19 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
         [name]: numValue,
       }));
     } else {
-      setForm((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
+      setForm((prev) => {
+        const newForm = {
+          ...prev,
+          [name]: value,
+        };
+
+        // Clear taskContents when type changes to Funding
+        if (name === "type" && value === "Funding") {
+          newForm.taskContents = undefined;
+        }
+
+        return newForm;
+      });
     }
   };
 
@@ -365,6 +396,12 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
 
   const baseUrl = getApiUrl();
 
+  const tabData: { key: Tab; label: string }[] = [
+    { key: "overview", label: "Status Overview" },
+    { key: "details", label: "Action Details" },
+    { key: "events", label: "Event Management" },
+  ];
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
@@ -374,9 +411,9 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
         {onCancel && (
           <button
             onClick={onCancel}
-            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 text-nowrap"
           >
-            ← Back to List
+            ← Back
           </button>
         )}
       </div>
@@ -408,14 +445,10 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
           {/* Tab Navigation */}
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
-              {[
-                { key: "overview", label: "Status Overview" },
-                { key: "details", label: "Action Details" },
-                { key: "events", label: "Event Management" },
-              ].map((tab) => (
+              {tabData.map((tab) => (
                 <button
                   key={tab.key}
-                  onClick={() => setActiveTab(tab.key as any)}
+                  onClick={() => setActiveTab(tab.key)}
                   className={`py-2 px-1 border-b-2 font-medium text-sm ${
                     activeTab === tab.key
                       ? "border-blue-500 text-blue-600"
@@ -496,20 +529,12 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                           className="w-4 h-4 mr-2"
                           fill="none"
                           stroke="currentColor"
+                          strokeWidth={2}
                           viewBox="0 0 24 24"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 7v10c0 2.21 1.79 4 4 4h8c0-1.1-.9-2-2-2H8c-1.1 0-2-.9-2-2V7c0-1.1.9-2 2-2h8c1.1 0 2-.9 2 2v10c0 2.21-1.79 4-4 4H8c-2.21 0-4-1.79-4-4V7z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H11a2 2 0 01-2-2V5z"
-                          />
+                          <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                          <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"></path>
+                          <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"></path>
                         </svg>
                         Edit in Database
                       </button>
@@ -721,7 +746,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                           name="showInTimeline"
                           checked={eventForm.showInTimeline}
                           onChange={handleEventInputChange}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ml-10"
                         />
                         <label
                           htmlFor="showInTimeline"
@@ -802,19 +827,16 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                                   fill="none"
                                   stroke="currentColor"
                                   viewBox="0 0 24 24"
+                                  strokeWidth={2}
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4 7v10c0 2.21 1.79 4 4 4h8c0-1.1-.9-2-2-2H8c-1.1 0-2-.9-2-2V7c0-1.1.9-2 2-2h8c1.1 0 2-.9 2 2v10c0 2.21-1.79 4-4 4H8c-2.21 0-4-1.79-4-4V7z"
-                                  />
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H11a2 2 0 01-2-2V5z"
-                                  />
+                                  <ellipse
+                                    cx="12"
+                                    cy="5"
+                                    rx="9"
+                                    ry="3"
+                                  ></ellipse>
+                                  <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"></path>
+                                  <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"></path>
                                 </svg>
                                 Edit in Database
                               </button>

@@ -42,11 +42,13 @@ const ActionTaskPanel = ({ matches }: { matches: { data: unknown }[] }) => {
     return null;
   }
 
+  console.log("userRelation:", userRelation);
+
   if (userRelation === "completed") {
     return <ActionTaskPanelCompleted />;
   }
 
-  if (action.status === "gathering-commitments") {
+  if (action.status === "gathering_commitments") {
     if (userRelation === "joined") {
       return (
         <Card style={CardStyle.Green}>
@@ -72,7 +74,7 @@ const ActionTaskPanel = ({ matches }: { matches: { data: unknown }[] }) => {
     }
   }
 
-  if (action.status === "member-action") {
+  if (action.status === "member_action") {
     if (action.type === "Funding") {
       return (
         <StripeWrapper actionId={action.id}>

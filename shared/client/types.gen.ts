@@ -32,9 +32,7 @@ export type UserDto = {
     referralCode: string | null;
     onboardingComplete: boolean;
     anonymous: boolean;
-    cityId: {
-        [key: string]: unknown;
-    };
+    cityId?: number;
 };
 
 export type ForgotPasswordDto = {
@@ -100,6 +98,11 @@ export type UserActionDto = {
     deadline: string;
 };
 
+/**
+ * Number of users who have joined the action
+ */
+export type ActionStatus = 'draft' | 'upcoming' | 'gathering_commitments' | 'commitments_reached' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
+
 export type ActionEventDto = {
     /**
      * Unique identifier for the action event
@@ -151,15 +154,15 @@ export type ActionDto = {
     /**
      * Number of commitments needed to start the action
      */
-    commitmentThreshold: number | null;
+    commitmentThreshold?: number;
     /**
      * Amount of money committed needed to start the action
      */
-    donationThreshold: number | null;
+    donationThreshold?: number;
     /**
      * Suggested donation amount (cents)
      */
-    donationAmount: number | null;
+    donationAmount?: number;
     /**
      * markdown page body
      */
@@ -167,7 +170,7 @@ export type ActionDto = {
     /**
      * markdown contents for activity task card (instructions)
      */
-    taskContents: string | null;
+    taskContents?: string;
     /**
      * Short description shown in cards
      */
@@ -184,7 +187,7 @@ export type ActionDto = {
     /**
      * Number of users who have joined the action
      */
-    status: 'draft' | 'upcoming' | 'gathering_commitments' | 'commitments_reached' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
+    status: ActionStatus;
     /**
      * Number of users who have completed the action
      */
@@ -240,15 +243,15 @@ export type CreateActionDto = {
     /**
      * Number of commitments needed to start the action
      */
-    commitmentThreshold: number | null;
+    commitmentThreshold?: number;
     /**
      * Amount of money committed needed to start the action
      */
-    donationThreshold: number | null;
+    donationThreshold?: number;
     /**
      * Suggested donation amount (cents)
      */
-    donationAmount: number | null;
+    donationAmount?: number;
     /**
      * markdown page body
      */
@@ -256,7 +259,7 @@ export type CreateActionDto = {
     /**
      * markdown contents for activity task card (instructions)
      */
-    taskContents: string | null;
+    taskContents?: string;
     /**
      * Short description shown in cards
      */
@@ -284,15 +287,15 @@ export type UpdateActionDto = {
     /**
      * Number of commitments needed to start the action
      */
-    commitmentThreshold?: number | null;
+    commitmentThreshold?: number;
     /**
      * Amount of money committed needed to start the action
      */
-    donationThreshold?: number | null;
+    donationThreshold?: number;
     /**
      * Suggested donation amount (cents)
      */
-    donationAmount?: number | null;
+    donationAmount?: number;
     /**
      * markdown page body
      */
@@ -300,7 +303,7 @@ export type UpdateActionDto = {
     /**
      * markdown contents for activity task card (instructions)
      */
-    taskContents?: string | null;
+    taskContents?: string;
     /**
      * Short description shown in cards
      */
@@ -332,15 +335,15 @@ export type ActionWithRelationDto = {
     /**
      * Number of commitments needed to start the action
      */
-    commitmentThreshold: number | null;
+    commitmentThreshold?: number;
     /**
      * Amount of money committed needed to start the action
      */
-    donationThreshold: number | null;
+    donationThreshold?: number;
     /**
      * Suggested donation amount (cents)
      */
-    donationAmount: number | null;
+    donationAmount?: number;
     /**
      * markdown page body
      */
@@ -348,7 +351,7 @@ export type ActionWithRelationDto = {
     /**
      * markdown contents for activity task card (instructions)
      */
-    taskContents: string | null;
+    taskContents?: string;
     /**
      * Short description shown in cards
      */
@@ -365,7 +368,7 @@ export type ActionWithRelationDto = {
     /**
      * Number of users who have joined the action
      */
-    status: 'draft' | 'upcoming' | 'gathering_commitments' | 'commitments_reached' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
+    status: ActionStatus;
     /**
      * Number of users who have completed the action
      */

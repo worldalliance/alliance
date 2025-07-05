@@ -47,7 +47,7 @@ export class ActionDto extends OmitType(Action, [
   @ApiProperty({ type: [ActionEventDto] })
   events: ActionEventDto[];
 
-  @ApiProperty({ enum: ActionStatus })
+  @ApiProperty({ enum: ActionStatus, enumName: 'ActionStatus' })
   status: ActionStatus;
 
   constructor(action: Partial<Action>) {

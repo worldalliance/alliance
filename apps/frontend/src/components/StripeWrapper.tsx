@@ -38,6 +38,8 @@ export const StripeWrapper = ({ children, actionId }: StripeWrapperProps) => {
     PaymentMethodData | undefined
   >();
 
+  console.log("clientSecret", clientSecret);
+
   useEffect(() => {
     paymentsCreatePaymentIntent({
       body: {

@@ -76,7 +76,7 @@ const PostFormPage: React.FC = () => {
       const postData: CreatePostDto = {
         title,
         content,
-        actionId: actionId || undefined,
+        actionId,
       };
 
       let response: { data: PostDto | undefined };

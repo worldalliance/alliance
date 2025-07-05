@@ -1,13 +1,14 @@
 import React from "react";
-
+import { ActionDto } from "@alliance/shared/client";
 export interface ActionProgressBarProps {
-  status: string;
+  status: ActionDto["status"];
   usersJoined: number;
   usersCompleted: number;
   commitmentThreshold?: number;
   actionType?: string;
   donationThreshold?: number;
   donationAmount?: number;
+  className?: string;
 }
 
 const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
@@ -18,6 +19,7 @@ const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
   actionType,
   donationThreshold,
   donationAmount,
+  className,
 }) => {
   // Don't show progress bars for draft actions
   if (status === "draft") {
@@ -35,7 +37,7 @@ const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
       const isComplete = currentAmount >= donationGoal;
 
       return (
-        <div className="flex flex-col gap-y-1 flex-1">
+        <div className={`flex flex-col gap-y-1 flex-1 ${className}`}>
           <div className="w-full h-2 bg-gray-100 rounded-[2px]">
             <div
               className={`h-2 rounded-[2px] ${
@@ -74,7 +76,7 @@ const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
   }
 
   // Member Action: Show completion progress
-  if (status === "member-action") {
+  if (status === "member_action") {
     const percentage =
       usersJoined > 0 ? (usersCompleted / usersJoined) * 100 : 0;
 
@@ -94,7 +96,7 @@ const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
   }
 
   // Commitments Reached: Show completion progress
-  if (status === "commitments-reached") {
+  if (status === "commitments_reached") {
     const percentage =
       usersJoined > 0 ? (usersCompleted / usersJoined) * 100 : 0;
 

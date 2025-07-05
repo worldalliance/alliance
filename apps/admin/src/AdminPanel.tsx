@@ -83,7 +83,7 @@ const AdminPanel: React.FC = () => {
   return (
     <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-pagebg">
       <div className="flex flex-row py-12 justify-center w-full gap-x-6 px-3">
-        <div className="flex flex-col border-r border-gray-300 pr-6 w-[600px] gap-y-5 min-h-0">
+        <div className="flex flex-col border-r border-gray-300 pr-6 w-[800px] gap-y-5 min-h-0">
           <div className="flex justify-between items-center">
             <h1 className="text-[#111] text-[14pt] font-bold font-sabon">
               Alliance Admin
@@ -131,19 +131,15 @@ const AdminPanel: React.FC = () => {
                         </div>
                         <p className="text-xs">{action.shortDescription}</p>
 
-                        {/* Progress bar for relevant statuses */}
                         <ActionProgressBar
                           status={action.status}
                           usersJoined={action.usersJoined}
                           usersCompleted={action.usersCompleted}
-                          commitmentThreshold={
-                            action.commitmentThreshold || undefined
-                          }
+                          commitmentThreshold={action.commitmentThreshold}
                           actionType={action.type}
-                          donationThreshold={
-                            action.donationThreshold || undefined
-                          }
-                          donationAmount={action.donationAmount || undefined}
+                          donationThreshold={action.donationThreshold}
+                          donationAmount={action.donationAmount}
+                          className="mt-2"
                         />
                       </div>
                     </Card>
@@ -180,40 +176,55 @@ const AdminPanel: React.FC = () => {
               </div>
               <div className="flex justify-between">
                 <span>Draft:</span>
-                <span className="font-medium text-gray-600">
+                <span className="font-medium">
                   {actions.filter((a) => a.status === "draft").length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Active:</span>
-                <span className="font-medium text-blue-600">
+                <span>Upcoming:</span>
+                <span className="font-medium">
+                  {actions.filter((a) => a.status === "upcoming").length}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Gathering Commitments:</span>
+                <span className="font-medium ">
                   {
-                    actions.filter((a) =>
-                      [
-                        "upcoming",
-                        "gathering_commitments",
-                        "commitments_reached",
-                        "member_action",
-                      ].includes(a.status)
-                    ).length
+                    actions.filter((a) => a.status === "gathering_commitments")
+                      .length
                   }
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>In Progress:</span>
-                <span className="font-medium text-purple-600">
+                <span>Commitments Reached:</span>
+                <span className="font-medium ">
+                  {
+                    actions.filter((a) => a.status === "commitments_reached")
+                      .length
+                  }
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Member Action:</span>
+                <span className="font-medium ">
+                  {actions.filter((a) => a.status === "member_action").length}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Resolution:</span>
+                <span className="font-medium ">
                   {actions.filter((a) => a.status === "resolution").length}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Completed:</span>
-                <span className="font-medium text-green-600">
+                <span className="font-medium ">
                   {actions.filter((a) => a.status === "completed").length}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span>Failed/Abandoned:</span>
-                <span className="font-medium text-red-600">
+                <span className="font-medium ">
                   {
                     actions.filter((a) =>
                       ["failed", "abandoned"].includes(a.status)

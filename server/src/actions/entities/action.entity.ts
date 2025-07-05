@@ -7,7 +7,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { UserAction, UserActionRelation } from './user-action.entity';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { IsNotEmpty } from 'class-validator';
 import { ActionEvent, ActionStatus } from './action-event.entity';
@@ -38,23 +38,20 @@ export class Action {
   image: string;
 
   @Column({ nullable: true })
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Number of commitments needed to start the action',
-    nullable: true,
   })
   commitmentThreshold?: number;
 
   @Column({ nullable: true })
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Amount of money committed needed to start the action',
-    nullable: true,
   })
   donationThreshold?: number;
 
   @Column({ default: 500, nullable: true })
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Suggested donation amount (cents)',
-    nullable: true,
   })
   donationAmount?: number;
 
@@ -64,9 +61,8 @@ export class Action {
   body: string;
 
   @Column({ nullable: true })
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'markdown contents for activity task card (instructions)',
-    nullable: true,
   })
   taskContents?: string;
 

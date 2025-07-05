@@ -194,15 +194,15 @@ const ActionForm: React.FC<ActionFormProps> = ({
 
       <div>
         <label
-          htmlFor="description"
+          htmlFor="body"
           className="block font-medium text-gray-700 mb-1"
         >
-          Description
+          Body
         </label>
         <textarea
-          id="description"
-          name="description"
-          value={form.description}
+          id="body"
+          name="body"
+          value={form.body}
           onChange={onInputChange}
           rows={3}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -226,36 +226,21 @@ const ActionForm: React.FC<ActionFormProps> = ({
         />
       </div>
 
-      <div>
-        <label
-          htmlFor="whyJoin"
-          className="block font-medium text-gray-700 mb-1"
-        >
-          Why Join
-        </label>
-        <textarea
-          id="whyJoin"
-          name="whyJoin"
-          value={form.whyJoin}
-          onChange={onInputChange}
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      <div>
-        <label htmlFor="howTo" className="block font-medium text-gray-700 mb-1">
-          How To
-        </label>
-        <textarea
-          id="howTo"
-          name="howTo"
-          value={form.howTo}
-          onChange={onInputChange}
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
+      {form.type !== "Funding" && (
+        <div>
+          <label htmlFor="taskContents" className="block font-medium text-gray-700 mb-1">
+            Task Contents
+          </label>
+          <textarea
+            id="taskContents"
+            name="taskContents"
+            value={form.taskContents || ""}
+            onChange={onInputChange}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
 
       <div>
         <label htmlFor="image" className="block font-medium text-gray-700 mb-1">
