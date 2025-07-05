@@ -7,6 +7,8 @@ import {
 } from "@stripe/stripe-js";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import "../index.css";
+import Card from "./system/Card";
+import { CardStyle } from "./system/Card";
 
 export const stripePromise = loadStripe(
   "pk_test_51RcteKQ3i6almwvvqvNwXcL1mZik72XFgovP6SzDeP7WDVfC0mXXbxpxbJWmY2kGIy5l1SYAQNmyznRfFP5lKt6O00EeWgC6mr"
@@ -99,17 +101,25 @@ export const StripeWrapper = ({ children, actionId }: StripeWrapperProps) => {
     labels: "floating",
   };
 
-  const options: StripeElementsOptions = {
-    clientSecret,
-    appearance,
-  };
-
-  return (
-    <Elements stripe={stripePromise} options={options}>
+  return clientSecret ? (
+    <Elements
+      stripe={stripePromise}
+      options={{
+        clientSecret,
+        appearance,
+      }}
+    >
       <StripeWrapperContext.Provider value={value}>
         {children}
       </StripeWrapperContext.Provider>
     </Elements>
+  ) : (
+    <Card
+      style={CardStyle.White}
+      className="animate-pulse items-center justify-center"
+    >
+      <p className="!p-5">Loading payment</p>
+    </Card>
   );
 };
 
