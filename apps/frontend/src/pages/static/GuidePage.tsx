@@ -6,9 +6,9 @@ import MarkdownWrapper from "../../components/MarkdownWrapper";
 
 const GuidePage: React.FC = () => {
   return (
-    <div>
+    <div className="min-h-screen flex flex-col">
       <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="container mx-auto pt-24 pb-42 flex flex-col px-5 max-w-4xl">
+      <div className="flex-1 container mx-auto pt-24 pb-42 flex flex-col px-5 max-w-3xl">
         <div className="flex flex-col gap-5">
           <h1 className="text-black font-avenir !text-4xl">
             Guide to the Alliance
@@ -16,9 +16,7 @@ const GuidePage: React.FC = () => {
 
           <MarkdownWrapper
             markdownContent="
-
-The Alliance is a global group of people cooperating to resolve global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development. Our mission is to build a civilization that serves all individuals in their pursuit of life, liberty, and happiness – a world in which we can take pride.
-
+            
 The Alliance establishes a common identity, culture, and community that fills a global gap in representation of shared human interests. We aim to unlock the collective potential of millions to billions of people to build a better world.
 
 Our key strength is our structure, which allows us to wield collective power precisely and strategically. We each commit a small amount of our time and resources to the Alliance. In turn, we are served by a strategic office that plans and optimizes collective actions that use these reliable resources.
@@ -125,7 +123,7 @@ Therefore, **you are expected to engage with every action for which the Office d
 You are not expected to participate in every action, but you are expected to either participate or provide feedback to help the Office produce a portfolio of actions that all members find acceptable.
 
 ## Persistence through Disagreement
-Cooperation is not about attaining some idealistic harmony: it is about working through disagreement and other conflicts in order to reach a common goal. It is impossible to create a future that is perfect from the perspective of every individual; our common goal is rather to create a future that all members agree is better than the future that would occur without the Alliance.
+Cooperation is not about attaining some idealistic harmony: it is about working through disagreement and other conflicts in order to reach a common goal. It is impossible to create a future that is perfect from the perspective of every individual; our common goal is rather to create a future that all members agree is better than the future that would occur otherwise.
 
 That means that the success of the Alliance depends on member commitment to the general process that governs the use of its collective power, and not to any particular collective action. Similarly, a lawful society depends on citizens following every democratically determined law, not only the laws they agree with. 
 

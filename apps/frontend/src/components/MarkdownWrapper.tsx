@@ -13,17 +13,36 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
       <ReactMarkdown
         components={{
           h1: ({ node, ...props }) => (
-            <h1 className="font-avenir !text-xl" {...props} />
+            <h1
+              className="font-newsreader !font-semibold !text-xl"
+              {...props}
+            />
           ),
           h2: ({ node, ...props }) => (
-            <h2 className="font-avenir !text-lg !mt-4" {...props} />
+            <h2
+              className="font-newsreader !font-semibold !text-lg !mt-4"
+              {...props}
+            />
           ),
           p: ({ node, ...props }) => (
-            <p className="font-serif my-4 !text-lg" {...props} />
+            <p className="font-newsreader !text-xl my-4" {...props} />
           ),
           ol: ({ node, ...props }) => (
             <ol
-              className="font-serif !text-lg list-decimal list-inside my-2 pl-4"
+              className="font-newsreader !text-xl list-decimal list-inside my-4 pl-4"
+              {...props}
+            />
+          ),
+          ul: ({ node, ...props }) => (
+            <ul
+              className="font-newsreader !text-xl list-disc list-inside my-4 pl-4"
+              {...props}
+            />
+          ),
+          li: ({ node, ...props }) => <li className="my-2" {...props} />,
+          a: ({ node, ...props }) => (
+            <a
+              className="text-blue-600 hover:text-blue-800 underline"
               {...props}
             />
           ),

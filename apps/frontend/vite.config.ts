@@ -12,6 +12,19 @@ const isStorybook =
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [!isStorybook && reactRouter(), tailwindcss()],
+  server: {
+    watch: {
+      usePolling: true,
+      interval: 100,
+    },
+    proxy: {
+      "/api": {
+        target: "http://localhost:3005",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   ssr: {
     noExternal: ["posthog-js", "posthog-js/react"],
   },
@@ -40,14 +53,5 @@ export default defineConfig({
         ),
       },
     ],
-  },
-  server: {
-    proxy: {
-      "/api": {
-        target: "http://localhost:3005",
-        changeOrigin: true,
-        secure: false,
-      },
-    },
   },
 });
