@@ -25,7 +25,7 @@ const ActionProgressBar: React.FC<ActionProgressBarProps> = ({
   }
 
   // Gathering Commitments: Show progress towards commitment threshold
-  if (status === "gathering-commitments") {
+  if (status === "gathering_commitments") {
     // Handle funding type actions differently
     if (actionType === "Funding") {
       const donationGoal = (donationThreshold || 1000) / 100; // Default if not set

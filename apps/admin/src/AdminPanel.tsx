@@ -125,13 +125,11 @@ const AdminPanel: React.FC = () => {
                       >
                         <div className="flex justify-between mb-2 items-start">
                           <h2 className="font-bold text-sm">{action.name}</h2>
-                          <span className="p-2 px-3 bg-gray-200 text-gray-800 text-xs rounded-full text-nowrap">
+                          <span className="p-2 px-3 ml-2 bg-gray-200 text-gray-800 text-xs rounded-full text-nowrap">
                             {action.status}
                           </span>
                         </div>
-                        <p className="text-xs mb-3">
-                          {action.shortDescription}
-                        </p>
+                        <p className="text-xs">{action.shortDescription}</p>
 
                         {/* Progress bar for relevant statuses */}
                         <ActionProgressBar
@@ -193,9 +191,9 @@ const AdminPanel: React.FC = () => {
                     actions.filter((a) =>
                       [
                         "upcoming",
-                        "gathering-commitments",
-                        "commitments-reached",
-                        "member-action",
+                        "gathering_commitments",
+                        "commitments_reached",
+                        "member_action",
                       ].includes(a.status)
                     ).length
                   }

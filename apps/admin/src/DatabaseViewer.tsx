@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAdminWebSocket } from "./hooks/useAdminWebSocket";
 import ConfirmDialog from "./components/ConfirmDialog";
 import CellEditor from "./components/CellEditor";
@@ -25,6 +25,7 @@ interface TableDataQueryDto {
 
 const DatabaseViewer: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [tables, setTables] = useState<TableMetadataDto[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [tableData, setTableData] = useState<TableDataDto | null>(null);
@@ -182,11 +183,15 @@ const DatabaseViewer: React.FC = () => {
     });
   }, [selectedTable, tableData, loadTableData, setEventHandlers]);
 
-  // Initialize selected table from URL params
+  // Initialize selected table and row from URL params
   useEffect(() => {
     const tableFromUrl = searchParams.get("table");
+    const rowIdFromUrl = searchParams.get("id");
     if (tableFromUrl) {
       setSelectedTable(tableFromUrl);
+    }
+    if (rowIdFromUrl && tableFromUrl) {
+      setSelectedRow({ tableName: tableFromUrl, rowId: rowIdFromUrl });
     }
   }, [searchParams]);
 
@@ -259,16 +264,27 @@ const DatabaseViewer: React.FC = () => {
       setSearchParams((prev) => {
         const newParams = new URLSearchParams(prev);
         newParams.set("table", tableName);
+        // Clear id param when switching tables unless it's the same table
+        if (selectedTable !== tableName) {
+          newParams.delete("id");
+        }
         return newParams;
       });
     },
-    [setSearchParams]
+    [setSearchParams, selectedTable]
   );
 
   const navigateToRelatedRow = (tableName: string, rowId: string | number) => {
     setSelectedRow({ tableName, rowId });
     handleTableSelect(tableName);
     setQuery((prev) => ({ ...prev, page: 1, search: undefined }));
+    // Update URL params to include the row ID
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set("table", tableName);
+      newParams.set("id", String(rowId));
+      return newParams;
+    });
   };
 
   const handleCellClick = (
@@ -539,14 +555,33 @@ const DatabaseViewer: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <div className="w-80  border-r border-gray-200 flex flex-col">
+      <div className="w-75  border-r border-gray-200 flex flex-col">
         {/* Sidebar Header */}
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Database Viewer</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            {tables.length} tables available
-          </p>
+        <div className="p-6 border-b border-gray-200 bg-white">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate("/")}
+              className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+              title="Back to Admin Panel"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <h1 className="text-xl font-bold text-gray-900">Database Viewer</h1>
+          </div>
           <div className="flex items-center space-x-2 mt-2">
+            <p className="text-sm text-gray-600 mr-4">{tables.length} tables</p>
             <div
               className={`w-2 h-2 rounded-full ${
                 isConnected ? "bg-green-500" : "bg-red-500"
@@ -564,7 +599,7 @@ const DatabaseViewer: React.FC = () => {
             <div className="p-6">
               <div className="animate-pulse space-y-3">
                 {[...Array(8)].map((_, i) => (
-                  <div key={i} className="h-12 bg-gray-200 rounded"></div>
+                  <div key={i} className="h-14 bg-gray-200 rounded"></div>
                 ))}
               </div>
             </div>
@@ -636,6 +671,12 @@ const DatabaseViewer: React.FC = () => {
                               search: undefined,
                               page: 1,
                             }));
+                            // Remove id parameter from URL
+                            setSearchParams((prev) => {
+                              const newParams = new URLSearchParams(prev);
+                              newParams.delete("id");
+                              return newParams;
+                            });
                           }}
                           className="text-gray-400 hover:text-gray-600"
                           title="Clear selection"
@@ -806,7 +847,7 @@ const DatabaseViewer: React.FC = () => {
                                 return (
                                   <td
                                     key={cellIndex}
-                                    className={`whitespace-nowrap text-sm text-gray-900 ${
+                                    className={`whitespace-nowrap text-sm text-gray-900 max-w-[300px] overflow-x-clip ${
                                       isEditable ? "hover:bg-gray-50" : ""
                                     }r
                                     ${

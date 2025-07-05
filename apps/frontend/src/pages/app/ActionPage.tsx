@@ -29,9 +29,9 @@ import ActionActivityList from "../../components/ActionActivityList";
 import ReactMarkdown from "react-markdown";
 
 const actionStatusDescriptions: Record<ActionDto["status"], string> = {
-  "gathering-commitments": "Collecting commitments",
-  "commitments-reached": "Commitments reached",
-  "member-action": "Member action",
+  gathering_commitments: "Collecting commitments",
+  commitments_reached: "Commitments reached",
+  member_action: "Member action",
   resolution: "Resolution",
   completed: "Completed",
   failed: "Failed",
@@ -187,7 +187,7 @@ export default function ActionPage() {
   return (
     <>
       <meta name="og:title" content={action?.name} />
-      <meta name="og:description" content={action?.description} />
+      <meta name="og:description" content={action?.shortDescription} />
       <TwoColumnSplit
         left={mainContent}
         right={

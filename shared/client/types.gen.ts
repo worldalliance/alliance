@@ -116,7 +116,7 @@ export type ActionEventDto = {
     /**
      * New status of the action after the event
      */
-    newStatus: string;
+    newStatus: 'draft' | 'upcoming' | 'gathering_commitments' | 'commitments_reached' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
     /**
      * Notification type for the event
      */
@@ -386,7 +386,7 @@ export type CreateActionEventDto = {
     /**
      * New status of the action after the event
      */
-    newStatus: string;
+    newStatus: 'draft' | 'upcoming' | 'gathering_commitments' | 'commitments_reached' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
     /**
      * Notification type for the event
      */

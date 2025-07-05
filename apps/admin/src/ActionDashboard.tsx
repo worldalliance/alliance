@@ -17,17 +17,17 @@ import {
 import { getApiUrl } from "./config";
 
 // Status color mapping
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: ActionDto["status"]) => {
   switch (status) {
     case "draft":
       return "bg-gray-100 text-gray-800";
     case "upcoming":
       return "bg-blue-100 text-blue-800";
-    case "gathering-commitments":
+    case "gathering_commitments":
       return "bg-yellow-100 text-yellow-800";
-    case "commitments-reached":
+    case "commitments_reached":
       return "bg-orange-100 text-orange-800";
-    case "member-action":
+    case "member_action":
       return "bg-purple-100 text-purple-800";
     case "resolution":
       return "bg-indigo-100 text-indigo-800";
@@ -96,12 +96,11 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
   const [form, setForm] = useState<CreateActionDto>({
     name: "",
     category: "",
-    whyJoin: "",
-    description: "",
     image: "",
+    body: "",
     timeEstimate: "",
+    taskContents: null,
     shortDescription: "",
-    howTo: "",
     type: "Activity",
     commitmentThreshold: null,
     donationThreshold: null,
@@ -112,7 +111,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
   const [eventForm, setEventForm] = useState<CreateActionEventDto>({
     title: "",
     description: "",
-    newStatus: "gathering-commitments",
+    newStatus: "gathering_commitments",
     date: new Date().toISOString().slice(0, 16), // Format for datetime-local input
     showInTimeline: true,
     sendNotifsTo: "all",
@@ -138,12 +137,11 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
         setForm({
           name: actionData.name,
           category: actionData.category,
-          whyJoin: actionData.whyJoin,
-          description: actionData.description,
           image: actionData.image || "",
+          body: actionData.body,
+          taskContents: actionData.taskContents,
           timeEstimate: actionData.timeEstimate,
           shortDescription: actionData.shortDescription,
-          howTo: actionData.howTo,
           type: actionData.type,
           commitmentThreshold: actionData.commitmentThreshold,
           donationThreshold: actionData.donationThreshold,
@@ -303,7 +301,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
     try {
       const eventData = {
         ...eventForm,
-        date: new Date(eventForm.date),
+        date: new Date(eventForm.date).toISOString(),
       };
 
       const response = await actionsAddEvent({
@@ -320,7 +318,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
         setEventForm({
           title: "",
           description: "",
-          newStatus: "gathering-commitments",
+          newStatus: "gathering_commitments",
           date: new Date().toISOString().slice(0, 16),
           showInTimeline: true,
           sendNotifsTo: "all",
@@ -488,7 +486,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                       <button
                         onClick={() =>
                           window.open(
-                            `/database?table=action&search=${action.id}`,
+                            `/database?table=action&id=${action.id}`,
                             "_blank"
                           )
                         }
@@ -513,7 +511,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                             d="M9 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H11a2 2 0 01-2-2V5z"
                           />
                         </svg>
-                        View in Database
+                        Edit in Database
                       </button>
                     </div>
 
@@ -787,6 +785,39 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                                 Notifications: {event.sendNotifsTo} | Timeline:{" "}
                                 {event.showInTimeline ? "Visible" : "Hidden"}
                               </div>
+                            </div>
+
+                            <div className="pt-2 mt-2 border-t border-gray-100">
+                              <button
+                                onClick={() =>
+                                  window.open(
+                                    `/database?table=action_event&id=${event.id}`,
+                                    "_blank"
+                                  )
+                                }
+                                className="inline-flex items-center px-2 py-1 border border-gray-300 shadow-sm text-xs leading-4 font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              >
+                                <svg
+                                  className="w-3 h-3 mr-1"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 7v10c0 2.21 1.79 4 4 4h8c0-1.1-.9-2-2-2H8c-1.1 0-2-.9-2-2V7c0-1.1.9-2 2-2h8c1.1 0 2-.9 2 2v10c0 2.21-1.79 4-4 4H8c-2.21 0-4-1.79-4-4V7z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H11a2 2 0 01-2-2V5z"
+                                  />
+                                </svg>
+                                Edit in Database
+                              </button>
                             </div>
                           </div>
                         ))
