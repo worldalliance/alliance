@@ -11,7 +11,7 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
   maxWidth = "max-w-3xl",
 }) => {
   return (
-    <div className={`markdown-wrapper mx-auto ${maxWidth}`}>
+    <div className={`markdown-wrapper w-full mx-auto ${maxWidth}`}>
       <ReactMarkdown
         components={{
           h1: ({ ...props }) => (

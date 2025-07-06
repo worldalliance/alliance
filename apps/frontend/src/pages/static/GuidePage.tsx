@@ -9,9 +9,9 @@ const GuidePage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="flex-1 container mx-auto pt-36 pb-56 flex flex-col px-5">
+      <div className="flex-1 container mx-auto pt-20 md:pt-36 pb-56 flex flex-col px-5">
         <div className="flex flex-col">
-          <h2 className="mx-auto !font-sabon !font-semibold !text-5xl text-center mb-4 max-w-3xl">
+          <h2 className="mx-auto !font-sabon !font-semibold !text-4xl md:!text-5xl text-center mb-4 max-w-3xl">
             Guide to the Alliance
           </h2>
 
