@@ -111,8 +111,6 @@ export class ForumService {
       authorId: userId,
     });
 
-    console.log(createReplyDto);
-
     await this.postRepository.update(createReplyDto.postId, {
       updatedAt: new Date(),
     });

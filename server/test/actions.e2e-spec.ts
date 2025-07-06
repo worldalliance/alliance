@@ -63,7 +63,7 @@ describe('Actions (e2e)', () => {
       const newAction: CreateActionDto = {
         name: 'Test Action',
         body: 'Do something important',
-        category: '',
+        category: 'category',
         image: '',
         timeEstimate: '1h',
         shortDescription: 'Do something important',
