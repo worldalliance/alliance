@@ -3,14 +3,15 @@ import Footer from "../../components/Footer";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import Expandable from "../../components/Expandable";
 import MarkdownWrapper from "../../components/MarkdownWrapper";
+import ExampleActionCategoryCard from "../../components/ExampleActionCategoryCard";
 
 const GuidePage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="flex-1 container mx-auto pt-36 pb-48 flex flex-col px-5 max-w-3xl">
-        <div className="flex flex-col gap-4">
-          <h2 className="!font-sabon !font-semibold !text-6xl">
+      <div className="flex-1 container mx-auto pt-36 pb-56 flex flex-col px-5">
+        <div className="flex flex-col">
+          <h2 className="mx-auto !font-sabon !font-semibold !text-5xl text-center mb-4 max-w-3xl">
             Guide to the Alliance
           </h2>
 
@@ -25,12 +26,41 @@ Our key strength is our structure, which makes our collective action strategic a
 1. **Membership is commitment-based.** We each dependably make a small amount of our time and resources available to the Alliance.
 2. **Strategy is centralized.** We are served by a strategic office that uses data and expertise to plan and optimize collective actions that reflect our common interests.
 
-As a result of our structure, the people are endowed with the same cooperative power that is available to corporations, unions, governments, and other formal organizations. We can coordinate in novel, complex, and highly effective ways. We can plan in advance, wield verifiable leverage, act proactively rather than reactively, and learn from experience.
+As a result of our structure, the people are endowed with the same cooperative power that makes corporations, unions, governments, and other formal organizations highly effective. We can coordinate in novel, flexible, and complex ways. We can plan in advance, wield verifiable leverage, act proactively rather than reactively, and learn from experience.
+
+The possibilities for collective action are endless. A few broad categories of actions we can take together include:
 
 "
           />
+
+          <div className="grid grid-cols-3 gap-4 mt-10 w-full max-w-6xl mx-auto">
+            <ExampleActionCategoryCard
+              title="Collective funding"
+              description="We pool funding for specific initiatives and projects within the Alliance and with our partners."
+            />
+            <ExampleActionCategoryCard
+              title="Economic pressure"
+              description="We coordinate shifts in our consumer behavior to encourage ethical practices and discourage harmful practices."
+            />
+            <ExampleActionCategoryCard
+              title="Social pressure"
+              description="We target messages at decision-makers and direct public attention to important issues."
+            />
+            <ExampleActionCategoryCard
+              title="Synced communication"
+              description="We learn from and deliberate with one another through a central channel that builds a base of common knowledge."
+            />
+            <ExampleActionCategoryCard
+              title="Community support"
+              description="We share what resources we can to help one another in our personal and professional lives."
+            />
+            <ExampleActionCategoryCard
+              title="Collective governance"
+              description="We maintain and improve the Alliance by participating in polls, feedback, and other internal processes."
+            />
+          </div>
         </div>
-        <div className="flex flex-col gap-y-8 mt-10">
+        <div className="w-full max-w-3xl mx-auto flex flex-col gap-y-8 mt-10">
           <Expandable title="Principles">
             <div className="flex flex-col gap-y-5">
               <MarkdownWrapper

@@ -31,7 +31,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
       w-screen justify-between items-center px-24 top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300 ${
         transparent
           ? "bg-transparent py-6 text-white"
-          : "bg-black text-white py-6"
+          : "bg-white text-black py-6"
       }`}
       ref={ref}
     >

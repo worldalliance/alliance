@@ -3,20 +3,22 @@ import ReactMarkdown from "react-markdown";
 
 interface MarkdownWrapperProps {
   markdownContent: string;
+  maxWidth?: string;
 }
 
 const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
   markdownContent,
+  maxWidth = "max-w-3xl",
 }) => {
   return (
-    <div className="markdown-wrapper">
+    <div className={`markdown-wrapper mx-auto ${maxWidth}`}>
       <ReactMarkdown
         components={{
           h1: ({ ...props }) => (
             <h1 className="font-ibm !font-semibold !text-xl" {...props} />
           ),
           h2: ({ ...props }) => (
-            <h2 className="font-ibm !font-bold !text-xl !mt-4" {...props} />
+            <h2 className="font-ibm !font-medium !text-2xl !mt-6" {...props} />
           ),
           p: ({ ...props }) => (
             <p className="font-ibm !text-xl my-4" {...props} />

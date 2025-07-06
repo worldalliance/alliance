@@ -23,16 +23,18 @@ const Expandable: React.FC<ExpandableProps> = ({
       } rounded-lg py-4 w-full`}
     >
       <div
-        className={`${
-          isExpanded ? "border-b border-zinc-200 pb-4" : ""
+        className={`group ${
+          isExpanded
+            ? "border-b border-zinc-200 hover:border-zinc-500 pb-4"
+            : ""
         } flex items-center justify-between cursor-pointer`}
         onClick={toggleExpand}
       >
-        <h2 className="font-sans !font-normal !text-3xl !my-1">{title}</h2>
+        <h2 className="font-ibm !font-medium !text-3xl !my-1">{title}</h2>
         <div className="text-sm text-gray-500">
           <svg
-            className={`-mr-1 size-5 text-gray-400 transition ${
-              isExpanded ? "rotate-180" : ""
+            className={`-mr-1 size-6 text-zinc-300 group-hover:text-black transition group-hover:-rotate-90 ${
+              isExpanded ? "-rotate-180" : ""
             }`}
             viewBox="0 0 20 20"
             fill="currentColor"

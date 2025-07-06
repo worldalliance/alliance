@@ -7,23 +7,17 @@ interface FooterProps {
 
 const Footer: React.FC<FooterProps> = ({ className }) => {
   return (
-    <footer className={`w-full bg-zinc-100 py-12 px-8 ${className}`}>
+    <footer className={`w-full bg-black text-white py-12 px-8 ${className}`}>
       <div className="container mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-4 hidden md:mb-0 md:block">
             <p className="text-2xl font-berlingske uppercase">The Alliance</p>
           </div>
           <div className="flex flex-row gap-6 md:gap-10 text-base">
-            <Link
-              to="/people"
-              className="font-ibm text-lg text-zinc-600 hover:text-black"
-            >
+            <Link to="/people" className="font-ibm text-lg">
               People
             </Link>
-            <Link
-              to="/guide"
-              className="font-ibm text-lg text-zinc-600 hover:text-black"
-            >
+            <Link to="/guide" className="font-ibm text-lg">
               Guide
             </Link>
 
