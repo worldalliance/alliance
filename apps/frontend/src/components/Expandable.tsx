@@ -17,17 +17,10 @@ const Expandable: React.FC<ExpandableProps> = ({
   };
 
   return (
-    <div
-      className={`transition ${
-        !isExpanded ? "border-b border-zinc-200 hover:border-zinc-500" : ""
-      } rounded-lg py-4 w-full`}
-    >
+    <div className={`transition w-full`}>
       <div
-        className={`group ${
-          isExpanded
-            ? "border-b border-zinc-200 hover:border-zinc-500 pb-4"
-            : ""
-        } flex items-center justify-between cursor-pointer`}
+        className={`group py-4 
+            border-b border-zinc-200 hover:border-zinc-500 pb-4 flex items-center justify-between cursor-pointer`}
         onClick={toggleExpand}
       >
         <h2 className="font-ibm !font-medium !text-3xl !my-1">{title}</h2>
