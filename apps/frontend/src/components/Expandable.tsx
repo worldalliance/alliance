@@ -18,17 +18,17 @@ const Expandable: React.FC<ExpandableProps> = ({
 
   return (
     <div
-      className={`border border-zinc-200 transition ${
-        !isExpanded ? "hover:bg-zinc-100" : ""
-      } rounded-lg py-3 px-4 w-full`}
+      className={`transition ${
+        !isExpanded ? "border-b border-zinc-200 hover:border-zinc-500" : ""
+      } rounded-lg py-4 w-full`}
     >
       <div
         className={`${
-          isExpanded ? "border-b border-zinc-200 pb-3" : ""
+          isExpanded ? "border-b border-zinc-200 pb-4" : ""
         } flex items-center justify-between cursor-pointer`}
         onClick={toggleExpand}
       >
-        <h2 className="font-avenir !font-semibold !text-xl !my-1">{title}</h2>
+        <h2 className="font-sans !font-normal !text-3xl !my-1">{title}</h2>
         <div className="text-sm text-gray-500">
           <svg
             className={`-mr-1 size-5 text-gray-400 transition ${
@@ -47,7 +47,7 @@ const Expandable: React.FC<ExpandableProps> = ({
           </svg>
         </div>
       </div>
-      {isExpanded && <div className="mt-2">{children}</div>}
+      {isExpanded && <div className="mt-6">{children}</div>}
     </div>
   );
 };

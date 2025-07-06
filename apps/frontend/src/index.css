@@ -87,6 +87,12 @@
     format("truetype");
 }
 
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/assets/fonts/IBMPlexSans-VariableFont_wdth,wght.ttf")
+    format("truetype");
+}
+
 @theme {
   --color-hgreen: #3f5640;
   --pagebg: #ffffff;
@@ -128,12 +134,24 @@ img {
   font-family: "georgia", serif;
 }
 
+.font-ibm {
+  font-family: "IBM Plex Sans";
+}
+
+.font-sans {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
 .font-sabon {
   font-family: "Sabon";
 }
 
 .font-berlingske {
   font-family: "Berlingske";
+}
+
+.font-roboto {
+  font-family: "Roboto";
 }
 
 .font-itc {

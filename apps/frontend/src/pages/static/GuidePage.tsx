@@ -8,25 +8,29 @@ const GuidePage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="flex-1 container mx-auto pt-24 pb-42 flex flex-col px-5 max-w-3xl">
-        <div className="flex flex-col gap-5">
-          <h1 className="text-black font-avenir !text-4xl">
+      <div className="flex-1 container mx-auto pt-36 pb-48 flex flex-col px-5 max-w-3xl">
+        <div className="flex flex-col gap-4">
+          <h2 className="!font-sabon !font-semibold !text-6xl">
             Guide to the Alliance
-          </h1>
+          </h2>
 
           <MarkdownWrapper
             markdownContent="
-            
-The Alliance establishes a common identity, culture, and community that fills a global gap in representation of shared human interests. We aim to unlock the collective potential of millions to billions of people to build a better world.
 
-Our key strength is our structure, which allows us to wield collective power precisely and strategically. We each commit a small amount of our time and resources to the Alliance. In turn, we are served by a strategic office that plans and optimizes collective actions that use these reliable resources.
+The Alliance is a global group of people that abide by a process which governs the use of our collective power. We seek to unite millions to billions of people into one cooperative force that represents humanity's collective interests.
 
-As a result of our structure, our collective actions are far more complex and effective than standard mass actions, such as petitions and protests. The Alliance can plan in advance, wield verifiable leverage, act proactively rather than reactively, and learn from experience.
+Our mission is to build a civilization that serves all individuals in their pursuit of life, liberty, and happiness – a world in which we can take pride. Most pressingly, we seek to resolve ongoing global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development.
+
+Our key strength is our structure, which makes our collective action strategic and sustained.
+1. **Membership is commitment-based.** We each dependably make a small amount of our time and resources available to the Alliance.
+2. **Strategy is centralized.** We are served by a strategic office that uses data and expertise to plan and optimize collective actions that reflect our common interests.
+
+As a result of our structure, the people are endowed with the same cooperative power that is available to corporations, unions, governments, and other formal organizations. We can coordinate in novel, complex, and highly effective ways. We can plan in advance, wield verifiable leverage, act proactively rather than reactively, and learn from experience.
 
 "
           />
         </div>
-        <div className="flex flex-col gap-y-4 mt-10">
+        <div className="flex flex-col gap-y-8 mt-10">
           <Expandable title="Principles">
             <div className="flex flex-col gap-y-5">
               <MarkdownWrapper
@@ -87,9 +91,10 @@ We accept the inevitability of imperfections and will seek to minimize their har
           </Expandable>
 
           <Expandable title="What does it mean to be a member?">
-            <MarkdownWrapper
-              markdownContent="
-
+            <div className="flex flex-col gap-y-5">
+              <MarkdownWrapper
+                markdownContent="
+              
 ## Overview
 Alliance members are individuals that have committed to cooperate with one another to build a better future for all.
 
@@ -98,7 +103,7 @@ The Alliance embodies the most general form of cooperation it can accommodate: n
 Therefore, membership is an agreement to abide by a general process that governs how the Alliance uses its collective power. This process is embodied by the Alliance Strategic Office, which plans collective actions according to need and ability, and requires that members dependably engage with actions assigned to them.
 
 ## Required Investment            
-The Office will limit the total time and resources required by members to **below 1 hour/month** and **$10/month**.
+The Office will limit the total time and resources required by members to *below 1 hour/month* and *$10/month*.
 
 Once membership reaches a critical size, the Office will democratically determine time and resource commitments for different cohorts of members.
 
@@ -115,7 +120,7 @@ Early members will participate in experiments and other work to help shape the A
 ## Dependability
 Member dependability is a cornerstone of Alliance strategy. Dependability allows the Office to plan in advance, learn from mistakes, wield verifiable leverage, respond rapidly to events, and create complex action plans that go far beyond petitions, untargeted boycotts, and other standard mass actions.
 
-Therefore, **you are expected to engage with every action for which the Office determines you are needed**. Engaging with an action means:
+Therefore, *you are expected to engage with every action for which the Office determines you are needed*. Engaging with an action means:
 1. Participating in the action, or
 2. Telling the Office why you cannot take the action, or
 3. Telling the Office why you find the action morally reprehensible (not mildly disagree with or fail to understand).
@@ -129,12 +134,13 @@ That means that the success of the Alliance depends on member commitment to the 
 
 If members only participate in actions they agree with, the Alliance will always have to satisfy the lowest common denominator. This selective participation will make it much more difficult to make progress, or result in a homogenous Alliance composed of members with exactly the same perspectives.
 
-That means **we expect you to participate in actions you may not perfectly understand or agree with**. In return, other members will participate in actions that you care about even if they do not understand or agree.
+That means *you are expected to participate in actions you may not perfectly understand or agree with*. In return, other members will participate in actions that you care about even if they do not understand or agree.
 
 The Alliance’s overall portfolio of actions will be democratically determined such that in practice, all members will agree that most actions are beneficial. The Office will build this portfolio around member values and feedback, balance actions across member interests, and conduct polls and host deliberations in advance of actions that it expects to be controversial.
 
             "
-            />
+              />
+            </div>
           </Expandable>
         </div>
       </div>
