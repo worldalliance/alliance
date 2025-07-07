@@ -49,7 +49,7 @@ const Button: React.FC<ButtonProps> = ({
         disabled
           ? "opacity-50 cursor-not-allowed"
           : "cursor-pointer hover:bg-${ButtonColorClasses[color]}-100"
-      } font-newsreader ${
+      } ${
         color === ButtonColor.Transparent
           ? "bg-transparent text-black hover:bg-black/10"
           : "text-white"

@@ -9,9 +9,9 @@ const GuidePage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="flex-1 container mx-auto pt-20 md:pt-36 pb-56 flex flex-col px-5">
+      <div className="flex-1 container mx-auto pt-20 md:pt-28 pb-56 flex flex-col px-5">
         <div className="flex flex-col">
-          <h2 className="mx-auto !font-garamond !font-semibold !text-4xl md:!text-5xl text-center mb-4 max-w-3xl">
+          <h2 className="mx-auto !font-garamond !font-semibold !text-4xl md:!text-5xl text-center mb-6 max-w-3xl">
             Guide to the Alliance
           </h2>
 
@@ -20,15 +20,17 @@ const GuidePage: React.FC = () => {
 
 The Alliance is a global group of people that abide by a process which governs the use of our collective power. We seek to unite millions to billions of people into one cooperative force that represents humanity's collective interests.
 
-Our mission is to build a civilization that serves all individuals in their pursuit of life, liberty, and happiness – a world in which we can take pride. Most pressingly, we seek to resolve ongoing global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development.
+Our mission is to build a civilization that serves all individuals in their pursuit of life, liberty, and happiness – a world in which we can take pride. Most pressingly, we seek to resolve ongoing global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development. It is our aim to **end these crises in their entirety** in the coming years, not to make incremental improvements.
 
-Our key strength is our structure, which makes our collective action strategic and sustained.
+Effective organizations require **tight, complex cooperation.** We achieve such cooperation with a two-part structure:
 1. **Membership is commitment-based.** We each dependably make a small amount of our time and resources available to the Alliance.
 2. **Strategy is centralized.** We are served by a strategic office that uses data and expertise to plan and optimize collective actions that reflect our common interests.
 
-As a result of our structure, the people are endowed with the same cooperative power that makes corporations, unions, governments, and other formal organizations highly effective. We can coordinate in novel, flexible, and complex ways. We can plan in advance, wield verifiable leverage, act proactively rather than reactively, and learn from experience.
+This structure makes our action **strategic and sustained**. We can coordinate flexibly, plan in advance, wield verifiable leverage, act proactively rather than reactively, and learn from experience.
 
-The possibilities for collective action are endless. A few broad categories of actions we can take together include:
+Our structure endows us with the same cooperative power that makes corporations, governments, and other formal organizations highly effective—and allows us to hold them accountable.
+
+We are capable of working together in any arrangement for any purpose. A few broad categories of collective actions we can take together include:
 
 "
           />
@@ -40,7 +42,7 @@ The possibilities for collective action are endless. A few broad categories of a
             />
             <ExampleActionCategoryCard
               title="Economic pressure"
-              description="We coordinate shifts in our consumer behavior to encourage ethical practices and discourage harmful practices."
+              description="We coordinate shifts in our consumer behavior to encourage ethical practices and eliminate harmful practices."
             />
             <ExampleActionCategoryCard
               title="Social pressure"
@@ -76,8 +78,6 @@ The Alliance is more like a country than a political party: it has no platform s
 
 It is the broadest aim of the Alliance to free individuals from servitude to civilization and build a civilization whose chief purpose is to serve individuals in their pursuit of fulfillment and happiness. This means that every individual has equal opportunity, people work as much as is necessary to meet the basic needs of all, the planet begins to heal, the most important facets of life are determined democratically, and there is no threat from political or economic instability.
 
-Over the next few decades, the Alliance aims to comprehensively resolve – not marginally improve, but end in their entirety – ongoing global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development.
-
 We do not pursue any particular realization of this world, such as via a unitary state. The future must be democratically determined and will take decades to build. We treat diverging perspectives on solutions as beliefs that can and must be resolved with deliberation and education.
 
 As far as it must affect our foreseeable strategy, however, we believe that:
@@ -105,7 +105,7 @@ We plan actions at the intersection of:
 
 We expect nearly complete overlap between these two categories. However, we will not pursue specific member interests that we perceive to negatively impact humanity at large, and we will not pursue general human interests to which a majority of members are opposed. 
 
-Actions that advance member interests will not necessarily be the most effective ways to do good for all of humanity. This is fair because members deserve to see personal rewards for their efforts. This is also practical because we can and will obtain high-quality data on members’ preferences by running polls and deliberations, soliciting proposals, and so on.
+Actions that advance member interests will not necessarily be the most effective ways to do good for all of humanity. We believe this is fair because members deserve to see personal rewards for their efforts. This is also practical because we can and will obtain high-quality data on members’ preferences by running polls and deliberations, soliciting proposals, and so on.
 
 We will adjust in response to feedback such that our broad portfolio of actions is approved by all members.
 

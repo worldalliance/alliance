@@ -102,7 +102,7 @@
 
 html {
   overflow-x: hidden;
-  font-family: "Newsreader";
+  font-family: "IBM Plex Sans", sans-serif;
   font-size: 11pt;
 }
 
@@ -112,18 +112,17 @@ h1 {
   font-size: 30px;
 }
 
-h2 {
+/* h2 {
   font-family: "Newsreader";
   font-weight: bold;
   font-size: 20px;
   margin-top: 6px;
 }
+  */
 
 p,
 span {
-  font-family: "Newsreader";
-  padding-top: 1px;
-  margin-bottom: -1px;
+  font-family: "IBM Plex Sans";
 }
 
 img {
