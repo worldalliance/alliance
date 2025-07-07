@@ -189,7 +189,21 @@ export class ActionsService {
       actionId: actionId,
       userId: userId,
     });
-    await this.actionActivityRepository.save(activity);
+    const savedActivity = await this.actionActivityRepository.save(activity);
+
+    // Emit activity event for real-time updates
+    const user = await this.userService.findOne(userId);
+    if (user) {
+      const activityDto = new ActionActivityDto();
+      activityDto.id = savedActivity.id;
+      activityDto.type = savedActivity.type;
+      activityDto.createdAt = savedActivity.createdAt;
+      activityDto.user = new ProfileDto(user);
+      this.eventEmitter.emit('action.activity', {
+        actionId,
+        activity: activityDto,
+      });
+    }
 
     const result = await this.userActionRepository.save(relation);
 
@@ -211,7 +225,21 @@ export class ActionsService {
       actionId,
       userId,
     });
-    await this.actionActivityRepository.save(activity);
+    const savedActivity = await this.actionActivityRepository.save(activity);
+
+    // Emit activity event for real-time updates
+    const user = await this.userService.findOne(userId);
+    if (user) {
+      const activityDto = new ActionActivityDto();
+      activityDto.id = savedActivity.id;
+      activityDto.type = savedActivity.type;
+      activityDto.createdAt = savedActivity.createdAt;
+      activityDto.user = new ProfileDto(user);
+      this.eventEmitter.emit('action.activity', {
+        actionId,
+        activity: activityDto,
+      });
+    }
 
     await this.checkAndProcessAutomaticTransitions(actionId);
 
@@ -325,6 +353,22 @@ export class ActionsService {
     return activities.map((activity) => ({
       ...activity,
       user: new ProfileDto(activity.user),
+    }));
+  }
+
+  async getActivityFeed(
+    limit: number = 50,
+  ): Promise<(ActionActivityDto & { actionId: number; actionName: string })[]> {
+    const activities = await this.actionActivityRepository.find({
+      relations: ['user', 'action'],
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+    return activities.map((activity) => ({
+      ...activity,
+      user: new ProfileDto(activity.user),
+      actionId: activity.actionId,
+      actionName: activity.action.name,
     }));
   }
 

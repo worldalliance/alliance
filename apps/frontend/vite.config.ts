@@ -12,6 +12,7 @@ const isStorybook =
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [!isStorybook && reactRouter(), tailwindcss()],
+  optimizeDeps: { exclude: ["@alliance/shared"] },
   server: {
     watch: {
       usePolling: true,

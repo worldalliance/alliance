@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { ActionsService } from './actions.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Logger } from '@nestjs/common';
+import { ActionActivityDto } from './dto/action.dto';
 
 @WebSocketGateway({
   cors: {
@@ -27,22 +28,28 @@ export class ActionsGateway
 
   private logger = new Logger('ActionsGateway');
   private clientSubscriptions = new Map<string, Set<number>>();
+  private clientActivitySubscriptions = new Map<string, Set<number>>();
+  private clientFeedSubscriptions = new Set<string>();
 
   constructor(
     private readonly actionsService: ActionsService,
     private readonly eventEmitter: EventEmitter2,
   ) {
     this.eventEmitter.on('action.delta', this.handleActionDelta.bind(this));
+    this.eventEmitter.on('action.activity', this.handleActionActivity.bind(this));
   }
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
     this.clientSubscriptions.set(client.id, new Set());
+    this.clientActivitySubscriptions.set(client.id, new Set());
   }
 
   handleDisconnect(client: Socket) {
     this.logger.log(`Client disconnected: ${client.id}`);
     this.clientSubscriptions.delete(client.id);
+    this.clientActivitySubscriptions.delete(client.id);
+    this.clientFeedSubscriptions.delete(client.id);
   }
 
   @SubscribeMessage('subscribe-action')
@@ -156,6 +163,62 @@ export class ActionsGateway
     );
   }
 
+  @SubscribeMessage('subscribe-action-activity')
+  async handleSubscribeActionActivity(
+    @MessageBody() data: { actionId: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { actionId } = data;
+
+    if (!actionId || typeof actionId !== 'number') {
+      client.emit('error', { message: 'Invalid actionId' });
+      return;
+    }
+
+    const clientActivitySubs = this.clientActivitySubscriptions.get(client.id) || new Set();
+    clientActivitySubs.add(actionId);
+    this.clientActivitySubscriptions.set(client.id, clientActivitySubs);
+
+    client.join(`action-activity-${actionId}`);
+
+    this.logger.log(`Client ${client.id} subscribed to activity for action ${actionId}`);
+  }
+
+  @SubscribeMessage('unsubscribe-action-activity')
+  handleUnsubscribeActionActivity(
+    @MessageBody() data: { actionId: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const { actionId } = data;
+
+    if (!actionId || typeof actionId !== 'number') {
+      client.emit('error', { message: 'Invalid actionId' });
+      return;
+    }
+
+    const clientActivitySubs = this.clientActivitySubscriptions.get(client.id);
+    if (clientActivitySubs) {
+      clientActivitySubs.delete(actionId);
+    }
+
+    client.leave(`action-activity-${actionId}`);
+    this.logger.log(`Client ${client.id} unsubscribed from activity for action ${actionId}`);
+  }
+
+  @SubscribeMessage('subscribe-feed')
+  handleSubscribeFeed(@ConnectedSocket() client: Socket) {
+    this.clientFeedSubscriptions.add(client.id);
+    client.join('activity-feed');
+    this.logger.log(`Client ${client.id} subscribed to activity feed`);
+  }
+
+  @SubscribeMessage('unsubscribe-feed')
+  handleUnsubscribeFeed(@ConnectedSocket() client: Socket) {
+    this.clientFeedSubscriptions.delete(client.id);
+    client.leave('activity-feed');
+    this.logger.log(`Client ${client.id} unsubscribed from activity feed`);
+  }
+
   private async handleActionDelta(data: { actionId: number; delta: number }) {
     const { actionId, delta } = data;
 
@@ -173,6 +236,26 @@ export class ActionsGateway
 
     this.logger.log(
       `Action ${actionId} count updated: ${currentCount} (delta: ${delta})`,
+    );
+  }
+
+  private async handleActionActivity(data: { actionId: number; activity: ActionActivityDto }) {
+    const { actionId, activity } = data;
+
+    // Emit to clients subscribed to this specific action's activity
+    this.server.to(`action-activity-${actionId}`).emit('action-activity', {
+      actionId,
+      activity,
+    });
+
+    // Emit to clients subscribed to the overall feed
+    this.server.to('activity-feed').emit('feed-activity', {
+      actionId,
+      activity,
+    });
+
+    this.logger.log(
+      `Action ${actionId} activity: ${activity.type} by user ${activity.user.id}`,
     );
   }
 }

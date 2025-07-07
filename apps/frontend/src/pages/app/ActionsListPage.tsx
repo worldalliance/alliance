@@ -17,8 +17,8 @@ const ActionsListPage: React.FC = () => {
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
 
   const { isAuthenticated } = useAuth();
-  
-  const actionIds = useMemo(() => actions.map(a => a.id), [actions]);
+
+  const actionIds = useMemo(() => actions.map((a) => a.id), [actions]);
   const liveCounts = useActionCounts(actionIds);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ const ActionsListPage: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-white items-center">
       <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
-        <div className="flex py-8 flex-row justify-between items-center w-[90%]">
+        <div className="flex py-8 flex-row justify-between items-center w-[90%] gap-x-2">
           <p className="font-sabon text-xl text-left h-fit pt-2">Filter:</p>
           <div className="flex flex-row gap-x-2 items-center">
             {Object.values(FilterMode).map((mode) => (
@@ -54,6 +54,7 @@ const ActionsListPage: React.FC = () => {
                   filterMode === mode ? ButtonColor.Blue : ButtonColor.Light
                 }
                 onClick={() => setFilterMode(mode)}
+                className="text-nowrap"
               >
                 {mode}
               </Button>

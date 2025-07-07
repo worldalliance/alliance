@@ -16,7 +16,6 @@ import {
   PostDto,
   forumFindPostsByUser,
   userRemoveFriend,
-  userCountReferred,
 } from "@alliance/shared/client";
 import ProfileImage from "../../components/ProfileImage";
 import testImg from "../../assets/fakebgimage.png";
@@ -48,7 +47,6 @@ const UserProfilePage: React.FC = () => {
   >([]);
   const [forumPosts, setForumPosts] = useState<PostDto[]>([]);
   const [friends, setFriends] = useState<UserDto[]>([]);
-  const [referredCount, setReferredCount] = useState<number>(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,12 +81,6 @@ const UserProfilePage: React.FC = () => {
         });
         if (forumPostsData) {
           setForumPosts(forumPostsData);
-        }
-        const { data: referredCountData } = await userCountReferred({
-          path: { id: userId },
-        });
-        if (referredCountData) {
-          setReferredCount(referredCountData);
         }
       } catch (error) {
         console.error("Error fetching user data:", error);

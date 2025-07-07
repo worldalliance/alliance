@@ -116,6 +116,17 @@ export class ActionsController {
     return this.actionsService.userCoordinatesForAction(id);
   }
 
+  @Get('activities/feed')
+  @Public()
+  @ApiOkResponse({ type: [ActionActivityDto] })
+  @ApiOperation({ summary: 'Get recent activities from all actions for the feed' })
+  async getActivityFeed(
+    @Query('limit') limit?: string,
+  ): Promise<ActionActivityDto[]> {
+    const limitNum = limit ? parseInt(limit) : 50;
+    return this.actionsService.getActivityFeed(limitNum);
+  }
+
   @Get(':id/activities')
   @Public()
   @ApiOkResponse({ type: [ActionActivityDto] })

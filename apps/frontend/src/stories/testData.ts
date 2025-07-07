@@ -93,7 +93,7 @@ export const testActionsWithRelation: ActionWithRelationDto[] = [
 
 export const testUser: ProfileDto = {
   id: 1,
-  name: "First Lastname",
+  displayName: "First Lastname",
   email: "first.lastname@example.com",
   admin: false,
   profilePicture: "https://via.placeholder.com/150",
@@ -103,7 +103,7 @@ export const testUser: ProfileDto = {
 
 export const testUser2: ProfileDto = {
   id: 2,
-  name: "Seconduser Lastname",
+  displayName: "Seconduser Lastname",
   email: "seconduser.lastname@example.com",
   admin: false,
   profilePicture: "https://via.placeholder.com/150",

@@ -1056,6 +1056,21 @@ export type ActionsUserLocationsResponses = {
 
 export type ActionsUserLocationsResponse = ActionsUserLocationsResponses[keyof ActionsUserLocationsResponses];
 
+export type ActionsGetActivityFeedData = {
+    body?: never;
+    path?: never;
+    query: {
+        limit: string;
+    };
+    url: '/actions/activities/feed';
+};
+
+export type ActionsGetActivityFeedResponses = {
+    200: Array<ActionActivityDto>;
+};
+
+export type ActionsGetActivityFeedResponse = ActionsGetActivityFeedResponses[keyof ActionsGetActivityFeedResponses];
+
 export type ActionsGetActionActivitiesData = {
     body?: never;
     path: {

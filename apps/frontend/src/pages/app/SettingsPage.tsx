@@ -123,7 +123,6 @@ const SettingsPage: React.FC = () => {
               Log Out
             </Button>
           </div>
-
           <div>
             <p className="mb-1">
               Name{" "}

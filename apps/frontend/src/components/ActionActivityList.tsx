@@ -4,15 +4,19 @@ import { ActionActivityDto } from "@alliance/shared/client";
 import { actionsGetActionActivities } from "@alliance/shared/client";
 import { CardStyle } from "./system/Card";
 import Card from "./system/Card";
+import { useActionActivity } from "../lib/useActionActivityWebSocket";
 
 interface ActionActivityListProps {
   actionId: number;
 }
 
 const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
-  const [activities, setActivities] = useState<ActionActivityDto[]>([]);
+  const [initialActivities, setInitialActivities] = useState<
+    ActionActivityDto[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
+  const { activities: liveActivities } = useActionActivity(actionId);
 
   useEffect(() => {
     const fetchActivities = async () => {
@@ -24,7 +28,7 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
         if (!response.data) {
           throw new Error();
         }
-        setActivities(response.data);
+        setInitialActivities(response.data);
       } catch (err) {
         console.error("Error fetching activities:", err);
       } finally {
@@ -34,6 +38,17 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
 
     fetchActivities();
   }, [actionId]);
+
+  // Combine initial activities with live activities, avoiding duplicates
+  const allActivities = [...liveActivities, ...initialActivities]
+    .filter(
+      (activity, index, self) =>
+        self.findIndex((a) => a.id === activity.id) === index
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
   const formatActivityMessage = useCallback((activity: ActionActivityDto) => {
     const userName = activity.user.displayName || "Someone";
@@ -61,15 +76,15 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
     );
   }
 
-  if (!activities.length) {
+  if (!allActivities.length) {
     return null;
   }
   const defaultMaxActivities = 8;
 
   const displayedActivities = showAll
-    ? activities
-    : activities.slice(0, defaultMaxActivities);
-  const hasMore = activities.length > defaultMaxActivities;
+    ? allActivities
+    : allActivities.slice(0, defaultMaxActivities);
+  const hasMore = allActivities.length > defaultMaxActivities;
 
   return (
     <Card style={CardStyle.White} className="p-7">
@@ -103,7 +118,7 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
             onClick={() => setShowAll(true)}
             className="text-[#318dde] hover:text-blue-800 text-sm font-medium cursor-pointer"
           >
-            See all ({activities.length})
+            See all ({allActivities.length})
           </button>
         )}
       </div>
