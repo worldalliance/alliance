@@ -124,14 +124,23 @@ const SettingsPage: React.FC = () => {
             </Button>
           </div>
 
-          <FormInput
-            label="Full Name"
-            name="name"
-            type="text"
-            value={user.name || ""}
-            onChange={() => {}}
-            disabled
-          />
+          <div>
+            <p className="mb-1">
+              Name{" "}
+              {user.anonymous ? (
+                <i className="text-gray-500">(Not shown)</i>
+              ) : (
+                ""
+              )}
+            </p>
+            <FormInput
+              name="name"
+              type="text"
+              value={user.name || ""}
+              onChange={() => {}}
+              disabled
+            />
+          </div>
 
           <FormInput
             label="Email Address"

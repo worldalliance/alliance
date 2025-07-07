@@ -36,7 +36,7 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
   }, [actionId]);
 
   const formatActivityMessage = useCallback((activity: ActionActivityDto) => {
-    const userName = activity.user.name || "Someone";
+    const userName = activity.user.displayName || "Someone";
     switch (activity.type) {
       case "user_joined":
         return `${userName} joined.`;

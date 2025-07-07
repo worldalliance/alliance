@@ -32,13 +32,43 @@ export class FriendStatusDto {
 }
 
 export class ProfileDto extends PickType(User, [
-  'name',
   'email',
   'admin',
   'id',
   'profilePicture',
   'profileDescription',
-]) {}
+]) {
+  @ApiProperty()
+  displayName: string;
+
+  constructor(
+    user: Pick<
+      User,
+      | 'id'
+      | 'name'
+      | 'email'
+      | 'anonymous'
+      | 'profilePicture'
+      | 'profileDescription'
+    >,
+  ) {
+    super();
+    Object.assign(this, user);
+    if (user.anonymous) {
+      this.displayName = 'Someone';
+    } else {
+      this.displayName = user.name;
+    }
+  }
+}
+
+// used instead of constructor to propagate nulls (TODO? ugly but maybe fine)
+export function userToDto(user: User | null): ProfileDto | null {
+  if (!user) {
+    return null;
+  }
+  return new ProfileDto(user);
+}
 
 export class UpdateProfileDto extends PartialType(User) {
   @ApiProperty({ type: Number, nullable: true })

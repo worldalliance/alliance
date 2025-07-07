@@ -64,7 +64,8 @@ const UserProfilePage: React.FC = () => {
         if (userData) {
           setProfileUser(userData);
         }
-        setIsMe(userData?.email === user?.email);
+        console.log(userData?.id, user?.id);
+        setIsMe(userData?.id === user?.id);
 
         const { data: friendsData } = await userListFriends({
           path: { id: userId },
@@ -176,7 +177,7 @@ const UserProfilePage: React.FC = () => {
             className="mt-[-55px]"
           />
           <div className="flex gap-2">
-            <h1>{profileUser.name}</h1>
+            <h1>{profileUser.displayName}</h1>
           </div>
           {/* stats row */}
           <div className="flex flex-row gap-5 cursor-pointer">

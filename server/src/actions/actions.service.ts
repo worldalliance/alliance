@@ -26,6 +26,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Observable } from 'rxjs';
 import { from } from 'rxjs';
 import { instanceToPlain } from 'class-transformer';
+import { ProfileDto } from 'src/user/user.dto';
 
 @Injectable()
 export class ActionsService {
@@ -316,11 +317,15 @@ export class ActionsService {
   }
 
   async getActionActivities(actionId: number): Promise<ActionActivityDto[]> {
-    return this.actionActivityRepository.find({
+    const activities = await this.actionActivityRepository.find({
       where: { actionId },
       relations: ['user'],
       order: { createdAt: 'DESC' },
     });
+    return activities.map((activity) => ({
+      ...activity,
+      user: new ProfileDto(activity.user),
+    }));
   }
 
   async checkAndProcessAutomaticTransitions(actionId: number) {

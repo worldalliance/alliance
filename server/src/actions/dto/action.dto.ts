@@ -3,7 +3,7 @@ import { Action } from '../entities/action.entity';
 import { UserAction } from '../entities/user-action.entity';
 import { ActionEvent, ActionStatus } from '../entities/action-event.entity';
 import { ActionActivity } from '../entities/action-activity.entity';
-import { User } from '../../user/user.entity';
+import { ProfileDto } from 'src/user/user.dto';
 
 export class UserActionDto extends PickType(UserAction, [
   'status',
@@ -93,6 +93,6 @@ export class ActionActivityDto extends PickType(ActionActivity, [
   'type',
   'createdAt',
 ]) {
-  @ApiProperty({ type: () => User })
-  user: Pick<User, 'id' | 'name' | 'email'>;
+  @ApiProperty({ type: () => ProfileDto })
+  user: ProfileDto;
 }

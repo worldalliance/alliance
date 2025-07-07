@@ -1,7 +1,7 @@
 import React from "react";
 
 interface FormInputProps {
-  label: string;
+  label?: string;
   type: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -27,9 +27,11 @@ const FormInput: React.FC<FormInputProps> = ({
 }) => {
   return (
     <div className="flex flex-col gap-1 w-full">
-      <label className="font-newsreader mb-1 text-black" htmlFor={name}>
-        {label}
-      </label>
+      {label && (
+        <label className="font-newsreader mb-1 text-black" htmlFor={name}>
+          {label}
+        </label>
+      )}
       <input
         id={name}
         name={name}

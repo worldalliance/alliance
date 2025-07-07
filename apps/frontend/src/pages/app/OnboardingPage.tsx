@@ -59,7 +59,7 @@ const OnboardingPage: React.FC = () => {
           No
         </Button>
       </div>
-      <p className="mt-5 font-bold">
+      {/* <p className="mt-5 font-bold">
         Would you like to participate anonymously?
       </p>
       <div className="flex flex-row gap-x-2">
@@ -75,7 +75,7 @@ const OnboardingPage: React.FC = () => {
         >
           No
         </Button>
-      </div>
+      </div> */}
       {/* <p className="mt-5 font-bold">Do you make a lot of money?</p>
       <div className="flex flex-row gap-x-2">
         <Button

@@ -46,11 +46,11 @@ export type ResetPasswordDto = {
 
 export type ProfileDto = {
     id: number;
-    name: string;
     email: string;
     admin: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
+    displayName: string;
 };
 
 export type OnboardingDto = {
@@ -201,22 +201,6 @@ export type LatLonDto = {
     longitude: number;
 };
 
-export type User = {
-    id: number;
-    name: string;
-    email: string;
-    password: string;
-    admin: boolean;
-    profilePicture: string | null;
-    profileDescription: string | null;
-    referralCode: string | null;
-    stripeCustomerId: string | null;
-    isNotSignedUpPartialProfile: boolean;
-    over18: boolean | null;
-    onboardingComplete: boolean;
-    anonymous: boolean;
-};
-
 export type ActionActivityDto = {
     id: number;
     /**
@@ -224,7 +208,7 @@ export type ActionActivityDto = {
      */
     type: 'user_joined' | 'user_completed';
     createdAt: string;
-    user: User;
+    user: ProfileDto;
 };
 
 export type CreateActionDto = {

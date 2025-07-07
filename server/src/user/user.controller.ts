@@ -25,6 +25,7 @@ import {
   ProfileDto,
   UpdateProfileDto,
   UserDto,
+  userToDto,
 } from './user.dto';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { FriendStatus } from './friend.entity';
@@ -44,14 +45,7 @@ export class UserController {
     if (!profile) {
       throw new UnauthorizedException();
     }
-    return {
-      email: profile.email,
-      name: profile.name,
-      admin: profile.admin,
-      id: profile.id,
-      profileDescription: profile.profileDescription,
-      profilePicture: profile.profilePicture,
-    };
+    return new ProfileDto(profile);
   }
 
   @Post('onboarding')
@@ -67,17 +61,19 @@ export class UserController {
     if (!profile) {
       throw new NotFoundException('User not found');
     }
-    return profile;
+    return new ProfileDto(profile);
   }
 
   @Post('update')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ProfileDto })
-  update(
+  async update(
     @Body() updateActionDto: UpdateProfileDto,
     @Request() req: JwtRequest,
   ): Promise<ProfileDto> {
-    return this.userService.update(req.user.sub, updateActionDto);
+    return new ProfileDto(
+      await this.userService.update(req.user.sub, updateActionDto),
+    );
   }
 
   @Get('mylocation')
@@ -215,7 +211,9 @@ export class UserController {
   @Public()
   @ApiOkResponse({ type: ProfileDto })
   @ApiUnauthorizedResponse()
-  findOne(@Param('id', ParseIntPipe) id: number): Promise<ProfileDto | null> {
-    return this.userService.findOne(id);
+  async findOne(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ProfileDto | null> {
+    return userToDto(await this.userService.findOne(id));
   }
 }
