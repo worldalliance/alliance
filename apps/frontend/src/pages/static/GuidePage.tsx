@@ -35,7 +35,7 @@ We are capable of working together in any arrangement for any purpose. A few bro
 "
           />
 
-          <div className="grid grid-cols-3 gap-4 mt-10 w-full max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-10 w-full max-w-6xl mx-auto">
             <ExampleActionCategoryCard
               title="Collective funding"
               description="We pool funding for specific initiatives and projects within the Alliance and with our partners."

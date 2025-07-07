@@ -112,6 +112,10 @@ h1 {
   font-size: 30px;
 }
 
+h2 {
+  font-family: "Sabon";
+}
+
 /* h2 {
   font-family: "Newsreader";
   font-weight: bold;

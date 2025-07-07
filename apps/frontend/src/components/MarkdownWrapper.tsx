@@ -18,20 +18,23 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
             <h1 className="font-ibm !font-semibold !text-xl" {...props} />
           ),
           h2: ({ ...props }) => (
-            <h2 className="font-ibm !font-medium !text-2xl !mt-6" {...props} />
+            <h2
+              className="font-ibm !font-medium text-xl md:text-2xl !mt-6"
+              {...props}
+            />
           ),
           p: ({ ...props }) => (
-            <p className="font-ibm !text-xl my-4" {...props} />
+            <p className="font-ibm text-lg md:text-xl my-4" {...props} />
           ),
           ol: ({ ...props }) => (
             <ol
-              className="font-ibm !text-xl list-decimal list-inside my-4 pl-4"
+              className="font-ibm text-lg md:text-xl list-decimal list-inside my-4 pl-4"
               {...props}
             />
           ),
           ul: ({ ...props }) => (
             <ul
-              className="font-ibm text-xl list-disc list-inside my-4 pl-4"
+              className="font-ibm text-lg md:text-xl list-disc list-inside my-4 pl-4"
               {...props}
             />
           ),
