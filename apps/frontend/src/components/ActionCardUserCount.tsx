@@ -3,7 +3,7 @@ import usersIcon from "../assets/icons8-user-account-24.png";
 const ActionCardUserCount = ({ count }: { count: number }) => {
   return (
     <div
-      className="flex flex-row items-center gap-x-1 absolute top-5 right-4"
+      className="flex flex-row items-center gap-x-1 pt-1"
       title={`${count} members joined`}
     >
       <img

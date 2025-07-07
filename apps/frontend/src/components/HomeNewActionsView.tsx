@@ -19,11 +19,6 @@ export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
       {initialActions.map((action) => (
         <ActionItemCard key={action.id} {...action} />
       ))}
-      {initialActions.length === 0 && (
-        <p className="rounded border border-gray-200 text-center text-gray-500 !py-5">
-          No new actions to commit to
-        </p>
-      )}
     </div>
   );
 };

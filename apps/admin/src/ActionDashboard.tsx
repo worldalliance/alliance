@@ -5,6 +5,7 @@ import {
   CreateActionDto,
   ActionDto,
   CreateActionEventDto,
+  ActionStatus,
 } from "@alliance/shared/client";
 import {
   actionsCreate,
@@ -51,17 +52,17 @@ const formatStatus = (status: string) => {
 };
 
 // Status options for event creation
-const statusOptions = [
-  { value: "draft", label: "Draft" },
-  { value: "upcoming", label: "Upcoming" },
-  { value: "gathering-commitments", label: "Gathering Commitments" },
-  { value: "commitments-reached", label: "Commitments Reached" },
-  { value: "member-action", label: "Member Action" },
-  { value: "resolution", label: "Resolution" },
-  { value: "completed", label: "Completed" },
-  { value: "failed", label: "Failed" },
-  { value: "abandoned", label: "Abandoned" },
-];
+const statusOptions: Record<ActionStatus, string> = {
+  draft: "Draft",
+  upcoming: "Upcoming",
+  gathering_commitments: "Gathering Commitments",
+  commitments_reached: "Commitments Reached",
+  member_action: "Member Action",
+  resolution: "Resolution",
+  completed: "Completed",
+  failed: "Failed",
+  abandoned: "Abandoned",
+};
 
 interface ActionDashboardProps {
   actionId: string;
@@ -201,7 +202,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    const { name, value, type, checked } = e.target;
+    const { name, value, type, checked } = e.target as HTMLInputElement;
     setEventForm((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -307,7 +308,6 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
     if (!action) return;
 
     setCreatingEvent(true);
-    setError(null);
 
     try {
       const eventData = {
@@ -334,6 +334,8 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
           showInTimeline: true,
           sendNotifsTo: "all",
         });
+      } else {
+        setError("Failed to add event");
       }
     } catch (err) {
       setError("Failed to add event");
@@ -447,18 +449,21 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
               <div className="space-y-4">
                 {/* Current Status */}
                 <Card style={CardStyle.White}>
-                  <h2 className="text-lg font-semibold mb-4">Current Status</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(
-                          action.status
-                        )}`}
-                      >
-                        {formatStatus(action.status)}
-                      </span>
-                    </div>
+                  <h2 className="text-lg font-semibold mb-0">
+                    Current Status:{" "}
+                    <span
+                      className={`inline-flex items-center px-3 py-1 rounded-full cursor-pointer text-[14px] font-medium ${getStatusColor(
+                        action.status
+                      )}`}
+                      onClick={() => {
+                        setActiveTab("events");
+                      }}
+                    >
+                      {formatStatus(action.status)}
+                    </span>
+                  </h2>
 
+                  <div className="space-y-4">
                     <div className="space-y-2">
                       <div className="text-sm text-gray-600">
                         <strong>Users Joined:</strong> {action.usersJoined}
@@ -503,7 +508,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                             "_blank"
                           )
                         }
-                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        className="inline-flex cursor-pointer items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                       >
                         <svg
                           className="w-4 h-4 mr-2"
@@ -671,9 +676,9 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                           required
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          {statusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
+                          {Object.entries(statusOptions).map(([key, label]) => (
+                            <option key={key} value={key}>
+                              {label}
                             </option>
                           ))}
                         </select>
@@ -750,7 +755,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                 {/* All Events List */}
                 <Card style={CardStyle.White}>
                   <h2 className="text-lg font-semibold mb-4">All Events</h2>
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                  <div className="space-y-3">
                     {action.events && action.events.length > 0 ? (
                       action.events
                         .sort(

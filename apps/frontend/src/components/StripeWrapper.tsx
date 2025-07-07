@@ -1,10 +1,6 @@
 import { paymentsCreatePaymentIntent } from "@alliance/shared/client";
 import { Elements } from "@stripe/react-stripe-js";
-import {
-  Appearance,
-  loadStripe,
-  StripeElementsOptions,
-} from "@stripe/stripe-js";
+import { Appearance, loadStripe } from "@stripe/stripe-js";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import "../index.css";
 import Card from "./system/Card";

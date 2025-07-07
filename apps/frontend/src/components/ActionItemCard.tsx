@@ -28,10 +28,14 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
         style={CardStyle.White}
         onClick={() => navigate(`/actions/${id}`)}
       >
-        {liveCount !== undefined && <ActionCardUserCount count={liveCount} />}
         {/* <Badge>{category}</Badge> */}
         <div className="w-[100%] space-x-3">
-          <p className="font-avenir font-bold">{name}</p>
+          <div className="flex flex-row justify-between items-start mr-0">
+            <p className="font-avenir font-bold">{name}</p>
+            {liveCount !== undefined && (
+              <ActionCardUserCount count={liveCount} />
+            )}
+          </div>
           {showDescription && (
             <p className="text-gray-500">{shortDescription}</p>
           )}

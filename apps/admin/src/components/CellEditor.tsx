@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useRef } from "react";
 import type { ColumnMetadataDto } from "@alliance/shared/client/types.gen";
 

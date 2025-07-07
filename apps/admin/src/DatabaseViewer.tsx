@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAdminWebSocket } from "./hooks/useAdminWebSocket";
@@ -366,7 +367,11 @@ const DatabaseViewer: React.FC = () => {
       }
     } catch (error) {
       console.error("Update failed:", error);
-      alert(`Update failed: ${error.message || "Unknown error"}`);
+      alert(
+        `Update failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
       setPendingUpdate(null);
     }
@@ -620,7 +625,7 @@ const DatabaseViewer: React.FC = () => {
                     className={`w-full text-left p-3 rounded-lg transition-colors ${
                       selectedTable === table.name
                         ? "bg-blue-50 border border-blue-200 text-blue-900"
-                        : "hover:bg-gray-50 text-gray-700"
+                        : "hover:bg-gray-100 text-gray-700"
                     }`}
                   >
                     <div className="flex justify-between items-start">
@@ -750,7 +755,7 @@ const DatabaseViewer: React.FC = () => {
                 <div className="h-full flex flex-col">
                   <div className="flex-1 overflow-auto">
                     <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 sticky top-0">
+                      <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr>
                           {tableData.columns.map((column, columnIndex) => (
                             <th

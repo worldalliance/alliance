@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { useEffect, useState } from "react";
 import {
   ActionActivityDto,
   actionsGetActivityFeed,
 } from "@alliance/shared/client";
 import { useActionActivityWebSocket } from "../../lib/useActionActivityWebSocket";
-import { Link } from "react-router";
-import ActivityFeedItem from "../../components/ActivityFeedItem";
+import ActivityFeedItem, {
+  FeedActivity,
+} from "../../components/ActivityFeedItem";
 
 const ActivityFeedPage = () => {
   const [initialActivities, setInitialActivities] = useState<FeedActivity[]>(
@@ -73,17 +73,6 @@ const ActivityFeedPage = () => {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-  const getActivityColor = useCallback((type: string) => {
-    switch (type) {
-      case "user_joined":
-        return "bg-green-500";
-      case "user_completed":
-        return "bg-blue-500";
-      default:
-        return "bg-gray-500";
-    }
-  }, []);
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -94,13 +83,6 @@ const ActivityFeedPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <div className="mb-6 flex flex-row items-center gap-x-4">
-        {isConnected && (
-          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-        )}
-        <p className="!text-4xl font-bold font-font text-gray-900 mb-2">Feed</p>
-      </div>
-
       <div className="space-y-4 w-full flex flex-col justify-stretch">
         {allActivities.map((activity) => (
           <ActivityFeedItem key={activity.id} activity={activity} />

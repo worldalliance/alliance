@@ -28,7 +28,7 @@ const ActivityFeedItem = ({ activity }: ActivityFeedItemProps) => {
           <span className="text-gray-600"> {verb}</span>
           <span className="font-semibold"> {activity.actionName}</span>
         </p>
-        <p className="text-gray-500 text-right">
+        <p className="text-gray-500 text-right text-nowrap">
           {formatDistanceToNow(new Date(activity.createdAt), {
             addSuffix: true,
           })}{" "}

@@ -75,7 +75,7 @@ const HomePage: React.FC = () => {
             />
           )}
           <HomeNewActionsView actions={newActions} />
-          <GatheringCommitmentsView actions={newActions} />
+          <GatheringCommitmentsView actions={committedActions} />
           <InviteMemberCard />
         </div>
       </div>

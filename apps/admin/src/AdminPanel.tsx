@@ -151,7 +151,6 @@ const AdminPanel: React.FC = () => {
         </div>
         <div className="flex flex-col gap-y-5 w-[320px]">
           <Card style={CardStyle.White}>
-            <h1 className="font-bold pb-0">Admin Actions</h1>
             <div className="flex flex-col gap-y-3 mt-4">
               <button
                 onClick={handleCreateAction}
@@ -165,29 +164,35 @@ const AdminPanel: React.FC = () => {
               >
                 Database Viewer
               </button>
+              <button
+                className="w-full bg-stone-600 hover:bg-stone-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                onClick={logout}
+              >
+                Log out
+              </button>
             </div>
           </Card>
           <Card style={CardStyle.White}>
             <h1 className="font-bold pb-0">Status Overview</h1>
             <div className="mt-2 space-y-2">
               <div className="flex justify-between">
-                <span>Total Actions:</span>
+                <span>Total Actions</span>
                 <span className="font-medium">{actions.length}</span>
               </div>
               <div className="flex justify-between">
-                <span>Draft:</span>
+                <span>Draft</span>
                 <span className="font-medium">
                   {actions.filter((a) => a.status === "draft").length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Upcoming:</span>
+                <span>Upcoming</span>
                 <span className="font-medium">
                   {actions.filter((a) => a.status === "upcoming").length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Gathering Commitments:</span>
+                <span>Gathering Commitments</span>
                 <span className="font-medium ">
                   {
                     actions.filter((a) => a.status === "gathering_commitments")
@@ -196,7 +201,7 @@ const AdminPanel: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Commitments Reached:</span>
+                <span>Commitments Reached</span>
                 <span className="font-medium ">
                   {
                     actions.filter((a) => a.status === "commitments_reached")
@@ -205,25 +210,25 @@ const AdminPanel: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Member Action:</span>
+                <span>Member Action</span>
                 <span className="font-medium ">
                   {actions.filter((a) => a.status === "member_action").length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Resolution:</span>
+                <span>Resolution</span>
                 <span className="font-medium ">
                   {actions.filter((a) => a.status === "resolution").length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Completed:</span>
+                <span>Completed</span>
                 <span className="font-medium ">
                   {actions.filter((a) => a.status === "completed").length}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>Failed/Abandoned:</span>
+                <span>Failed/Abandoned</span>
                 <span className="font-medium ">
                   {
                     actions.filter((a) =>
@@ -233,14 +238,6 @@ const AdminPanel: React.FC = () => {
                 </span>
               </div>
             </div>
-          </Card>
-          <Card style={CardStyle.White}>
-            <button
-              className="w-full bg-stone-600 hover:bg-stone-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-              onClick={logout}
-            >
-              Log out
-            </button>
           </Card>
         </div>
       </div>
