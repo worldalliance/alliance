@@ -142,7 +142,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({ userId }) => {
 
   return (
     <>
-      <h2 className="text-xl font-sabon mb-4">Friends</h2>
+      <h2 className="text-xl mb-4">Friends</h2>
 
       <div className="flex mb-4">
         <button

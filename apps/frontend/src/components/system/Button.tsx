@@ -56,7 +56,6 @@ const Button: React.FC<ButtonProps> = ({
       }  ${color} ${color === ButtonColor.Light ? "!text-stone-800" : ""}`}
       onClick={onClick}
       disabled={disabled}
-      style={{ fontWeight: 450 }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >

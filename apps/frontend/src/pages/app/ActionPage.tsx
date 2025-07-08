@@ -147,7 +147,7 @@ export default function ActionPage() {
           <div className="flex flex-col gap-y-3">
             {action !== undefined && (
               <div>
-                <h1 className="font-extrabold">
+                <h1>
                   {action.name}
                   <span className="text-gray-800 text-base bg-gray-100 rounded-lg p-3 px-4 align-middle mx-3 text-nowrap">
                     {actionStatusDescriptions[action.status]}
@@ -201,7 +201,7 @@ export default function ActionPage() {
               style={CardStyle.White}
               className="items-center gap-y-5 aspect-square justify-center p-8"
             >
-              <div className="w-[180px] self-center pb-5">
+              <div className="w-[180px] self-center">
                 <Globe
                   people={liveUserCount ?? (action?.usersJoined || 0)}
                   colored

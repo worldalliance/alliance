@@ -114,7 +114,7 @@ export const StripeWrapper = ({ children, actionId }: StripeWrapperProps) => {
       style={CardStyle.White}
       className="animate-pulse items-center justify-center"
     >
-      <p className="!p-5">Loading payment</p>
+      <p className="!p-2">Loading payment</p>
     </Card>
   );
 };

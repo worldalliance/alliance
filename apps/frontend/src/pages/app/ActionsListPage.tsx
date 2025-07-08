@@ -45,7 +45,7 @@ const ActionsListPage: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-white items-center">
       <div className="px-4 py-5 flex flex-col items-center w-[calc(min(600px,100%))] gap-y-3">
         <div className="flex py-8 flex-row justify-center items-center w-[90%] gap-x-4">
-          <p className="font-sabon text-lg text-left h-fit">Filter:</p>
+          <p className="text-lg text-left h-fit">Filter:</p>
           <div className="flex flex-row gap-x-2 items-center">
             {Object.values(FilterMode).map((mode) => (
               <Button

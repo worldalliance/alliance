@@ -99,6 +99,22 @@
     format("truetype");
 }
 
+@font-face {
+  font-family: "Inter";
+  src: url("/assets/fonts/Inter-VariableFont_opsz,wght.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Freight Sans";
+  src: url("/assets/fonts/freight_sans_medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Freight Sans";
+  src: url("/assets/fonts/freight_sans_bold.woff2") format("woff2");
+  font-weight: bold;
+}
+
 @theme {
   --color-hgreen: #3f5640;
   --pagebg: #ffffff;
@@ -123,7 +139,7 @@ ul,
 span,
 label,
 button {
-  font-family: "Hanken Grotesk", sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 img {
