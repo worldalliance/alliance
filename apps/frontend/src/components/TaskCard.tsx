@@ -80,6 +80,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
     );
   }, [action.type, goToActionPage]);
 
+  console.log(action);
+
   return (
     <Card
       style={CardStyle.White}

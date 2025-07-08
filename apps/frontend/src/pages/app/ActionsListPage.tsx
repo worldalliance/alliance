@@ -51,7 +51,7 @@ const ActionsListPage: React.FC = () => {
               <Button
                 key={mode}
                 color={
-                  filterMode === mode ? ButtonColor.Blue : ButtonColor.Light
+                  filterMode === mode ? ButtonColor.Blue : ButtonColor.Outline
                 }
                 onClick={() => setFilterMode(mode)}
                 className="text-nowrap"

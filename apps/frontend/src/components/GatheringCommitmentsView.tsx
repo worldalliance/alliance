@@ -14,12 +14,10 @@ export const GatheringCommitmentsView: React.FC<
   }
   return (
     <div className="flex flex-col gap-y-2">
-      <div className="my-2">
-        <span className=" text-black text-lg">
-          {actions.length} action{actions.length === 1 ? "" : "s"} you&apos;ve
-          committed to still gathering commitments from other members
+      <div className="my-2 pl-4">
+        <span className="font-bold">
+          Still gathering commitments from other members ({actions.length})
         </span>
-        <p className="text-gray-500 text-lg ">(no action needed right now)</p>
       </div>
       {actions.map((action) => (
         <ActionItemCard key={action.id} {...action} showDescription={false} />

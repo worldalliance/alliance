@@ -23,9 +23,7 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
   return (
     <div className="flex flex-col gap-y-4">
       {actions.length > 0 ? (
-        <p className="font-bold text-zinc-700">
-          Awaiting Completion ({actions.length})
-        </p>
+        <p className="font-bold pl-4">Awaiting Completion ({actions.length})</p>
       ) : (
         <p className="text-gray-600 text-lg">No actions to complete.</p>
       )}

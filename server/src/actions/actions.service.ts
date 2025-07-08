@@ -83,12 +83,8 @@ export class ActionsService {
     const qb = this.actionRepository
       .createQueryBuilder('action')
       .leftJoinAndSelect('action.events', 'events')
-      .leftJoinAndSelect(
-        'action.userRelations',
-        'ua',
-        userId ? 'ua.userId = :userId' : '1=0', // 1=0 prevents a cartesian join when unauthenticated
-        { userId },
-      );
+      .leftJoinAndSelect('action.userRelations', 'userRelations')
+      .leftJoinAndSelect('userRelations.user', 'user');
 
     const actions = await qb.getMany();
 
@@ -96,7 +92,8 @@ export class ActionsService {
       .filter((action) => action.status !== ActionStatus.Draft)
       .map((action) => ({
         ...this.entityToDto(action),
-        myRelation: action.userRelations[0] ?? null, // length 1 since filtered for the user
+        myRelation:
+          action.userRelations.find((ur) => ur.user.id === userId) ?? null,
       }));
   }
 

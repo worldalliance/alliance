@@ -9,10 +9,13 @@ export interface HomeNewActionsViewProps {
 export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
   actions,
 }: HomeNewActionsViewProps) => {
+  if (actions.length === 0) {
+    return null;
+  }
   return (
     <div className="flex flex-col gap-y-2">
-      <p className="text-gray-700">
-        <span className="font-bold text-zinc-700">
+      <p className="text-gray-700 pl-4">
+        <span className="font-bold">
           Awaiting Commitment ({actions.length})
         </span>
       </p>

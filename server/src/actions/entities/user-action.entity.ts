@@ -21,6 +21,7 @@ export class UserAction {
 
   @ManyToOne(() => User, (user) => user.actionRelations, {
     onDelete: 'CASCADE',
+    eager: true,
   })
   user: User;
 
