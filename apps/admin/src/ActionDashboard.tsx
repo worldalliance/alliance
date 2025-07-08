@@ -387,7 +387,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-[#111] text-[16pt] font-bold font-sabon">
+        <h1 className="text-[#111] text-[16pt] font-bold">
           {isNew ? "Create New Action" : `Action: ${action?.name}`}
         </h1>
         {onCancel && (

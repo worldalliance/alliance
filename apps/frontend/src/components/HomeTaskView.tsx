@@ -23,12 +23,8 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
   return (
     <div className="flex flex-col gap-y-4">
       {actions.length > 0 ? (
-        <p className="text-gray-700 text-lg">
-          <span className="font-bold text-black">
-            {actions.length} action(s) you committed to are awaiting completion.
-          </span>{" "}
-          These actions have reached their commitment threshold, so are now
-          being completed by all committed members.
+        <p className="font-bold text-zinc-700">
+          Awaiting Completion ({actions.length})
         </p>
       ) : (
         <p className="text-gray-600 text-lg">No actions to complete.</p>

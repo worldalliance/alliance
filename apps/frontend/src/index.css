@@ -76,12 +76,6 @@
 }
 
 @font-face {
-  font-family: "Newsreader";
-  src: url("/assets/fonts/Newsreader-VariableFont_opsz\,wght.ttf")
-    format("truetype");
-}
-
-@font-face {
   font-family: "Playfair";
   src: url("/assets/fonts/PlayfairDisplay-VariableFont_wght.ttf")
     format("truetype");
@@ -124,7 +118,7 @@
 
 html {
   overflow-x: hidden;
-  font-size: 11pt;
+  font-size: 15px;
 }
 
 h1 {
@@ -139,7 +133,7 @@ ul,
 span,
 label,
 button {
-  font-family: "Inter", sans-serif;
+  font-family: "IBM Plex Sans", sans-serif;
 }
 
 img {

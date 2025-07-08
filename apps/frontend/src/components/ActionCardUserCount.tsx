@@ -9,7 +9,7 @@ const ActionCardUserCount = ({
 }) => {
   return (
     <div
-      className="flex flex-row items-center gap-x-1 pt-1"
+      className="flex flex-row items-center gap-x-1"
       title={`${joined} members joined`}
     >
       <img
@@ -18,8 +18,8 @@ const ActionCardUserCount = ({
         className="w-4 h-4"
         style={{ filter: "opacity(0.7)" }}
       />
-      <span className="text-[#555] font-bold  text-nowrap">
-        {completed !== undefined && `${completed} / `}
+      <span className="text-[#555] font-bold  text-nowrap font-ibm">
+        {completed !== undefined && `${completed} / `}
         {joined}
       </span>
     </div>

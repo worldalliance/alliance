@@ -149,13 +149,11 @@ export default function ActionPage() {
               <div>
                 <h1>
                   {action.name}
-                  <span className="text-gray-800 text-base bg-gray-100 rounded-lg p-3 px-4 align-middle mx-3 text-nowrap">
+                  <span className="text-gray-800 text-[15px] bg-gray-100 rounded-lg p-2 px-3 align-middle mx-3 text-nowrap">
                     {actionStatusDescriptions[action.status]}
                   </span>
                 </h1>
-                <p className="text-gray-800 text-lg mt-3">
-                  {action.shortDescription}
-                </p>
+                <p className="text-zinc-700 mt-3">{action.shortDescription}</p>
               </div>
             )}
           </div>
@@ -197,10 +195,7 @@ export default function ActionPage() {
         left={mainContent}
         right={
           <div className="flex flex-col gap-y-4 p-6 py-10">
-            <Card
-              style={CardStyle.White}
-              className="items-center gap-y-5 aspect-square justify-center p-8"
-            >
+            <Card style={CardStyle.White} className="items-center gap-y-5 ">
               <div className="w-[180px] self-center">
                 <Globe
                   people={liveUserCount ?? (action?.usersJoined || 0)}
@@ -218,12 +213,8 @@ export default function ActionPage() {
             <p className="text-center pt-2 text-[11pt]">
               <b>6 friends</b> already joined this action!
             </p> */}
+              {action && <ActionEventsPanel events={action.events} />}
             </Card>
-            {action && (
-              <Card style={CardStyle.White}>
-                <ActionEventsPanel events={action.events} />
-              </Card>
-            )}
             {action && <ActionActivityList actionId={action.id} />}
           </div>
         }

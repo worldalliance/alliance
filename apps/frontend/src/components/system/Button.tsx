@@ -45,7 +45,7 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <button
       type={type}
-      className={`px-4 py-[8px] pt-[10px] w-fit h-fit rounded flex items-center justify-center ${className} ${
+      className={`px-4 py-[8px] w-fit h-fit rounded flex items-center justify-center ${className} ${
         disabled
           ? "opacity-50 cursor-not-allowed"
           : "cursor-pointer hover:bg-${ButtonColorClasses[color]}-100"

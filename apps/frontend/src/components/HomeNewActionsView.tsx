@@ -7,16 +7,16 @@ export interface HomeNewActionsViewProps {
 }
 
 export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
-  actions: initialActions,
+  actions,
 }: HomeNewActionsViewProps) => {
   return (
     <div className="flex flex-col gap-y-2">
-      <p className="text-gray-700 text-lg">
-        <span className="font-bold text-black">
-          {initialActions.length} actions awaiting your commitment
+      <p className="text-gray-700">
+        <span className="font-bold text-zinc-700">
+          Awaiting Commitment ({actions.length})
         </span>
       </p>
-      {initialActions.map((action) => (
+      {actions.map((action) => (
         <ActionItemCard key={action.id} {...action} />
       ))}
     </div>

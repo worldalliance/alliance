@@ -90,7 +90,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
     >
       <div className="flex flex-row justify-between gap-x-10 items-center">
         <div className="flex flex-row items-center gap-x-3 justify-center">
-          <p className="font-bold  text-black pt-0.5">{action.name}</p>
+          <p className="font-bold font-freight text-black">{action.name}</p>
           {/* {action.type === "Funding" && <Badge>$5</Badge>}
           {action.type === "Activity" && !!action.timeEstimate && (
             <Badge>takes {action.timeEstimate}</Badge>
@@ -107,11 +107,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
       </div>
 
       {state !== TaskCardState.Minified && (
-        <div className="transition-all duration-300 space-y-8">
-          <p className="text-stone-600 font-newsreader pb-2">
-            {action.shortDescription}
-          </p>
-          <div className="bottom-0 left-0 right-0 flex flex-row items-end">
+        <div className="transition-all duration-300 space-y-2">
+          <p className="text-zinc-700 pb-2">{action.shortDescription}</p>
+          <div className="flex flex-row items-center pl-3">
             <UsersCompletedBar
               usersCompleted={action.usersCompleted}
               totalUsers={liveUserCount ?? action.usersJoined}

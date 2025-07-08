@@ -63,11 +63,11 @@ const NotificationsIcon = () => {
       className={`${
         unreadCount > 0
           ? "bg-red-500 text-white"
-          : "bg-white text-zinc-400 border-1 border-zinc-300"
+          : "bg-white text-zinc-600 border-1 border-zinc-500"
       } w-7 h-7 rounded-full flex items-center justify-center cursor-pointer`}
       onClick={toggle}
     >
-      <p className=" font-bold text-sm">{unreadCount}</p>
+      <p className="text-sm">{unreadCount}</p>
       {isOpen && (
         <div className="absolute top-8 shadow-lg/5 right-0 bg-white rounded border border-zinc-200 p-4 min-w-[370px] space-y-2">
           {notifications.length === 0 && (
@@ -84,7 +84,7 @@ const NotificationsIcon = () => {
                 !notification.read ? "bg-red-50" : ""
               }`}
             >
-              <p className="text-gray-500 text-xs">
+              <p className="text-gray-500 text-xs border-r border-zinc-200 pr-2">
                 {formatDate(notification.updatedAt, "MM/dd/yyyy")}
               </p>
               {notification.message}

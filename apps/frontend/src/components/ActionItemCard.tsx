@@ -33,7 +33,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
         {/* <Badge>{category}</Badge> */}
         <div className="w-[100%] space-x-3">
           <div className="flex flex-row justify-between items-start mr-0">
-            <p className=" font-bold">{name}</p>
+            <p className="font-bold mb-2">{name}</p>
             {joinedCount !== undefined && (
               <ActionCardUserCount
                 joined={joinedCount}
@@ -42,7 +42,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
             )}
           </div>
           {showDescription && (
-            <p className="text-gray-500">{shortDescription}</p>
+            <p className="text-zinc-700">{shortDescription}</p>
           )}
         </div>
       </Card>

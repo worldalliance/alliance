@@ -42,8 +42,6 @@ const ActionTaskPanel = ({ matches }: { matches: { data: unknown }[] }) => {
     return null;
   }
 
-  console.log("userRelation:", userRelation);
-
   if (userRelation === "completed") {
     return <ActionTaskPanelCompleted />;
   }

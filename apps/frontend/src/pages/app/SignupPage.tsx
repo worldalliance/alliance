@@ -64,9 +64,7 @@ const SignupPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-pagebg">
       <div className="flex flex-col flex-grow items-center justify-center ">
         <div className="w-full max-w-md px-8">
-          <h2 className="text-2xl font-sabon text-center mb-8">
-            Create an account
-          </h2>
+          <h2 className="text-2xl text-center mb-8">Create an account</h2>
 
           {error && (
             <Card

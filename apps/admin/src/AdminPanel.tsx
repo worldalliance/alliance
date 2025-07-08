@@ -85,7 +85,7 @@ const AdminPanel: React.FC = () => {
       <div className="flex flex-row py-12 justify-center w-full gap-x-6 px-3">
         <div className="flex flex-col border-r border-gray-300 pr-6 w-[800px] gap-y-5 min-h-0">
           <div className="flex justify-between items-center">
-            <h1 className="text-[#111] text-[14pt] font-bold font-sabon">
+            <h1 className="text-[#111] text-[14pt] font-bold">
               Alliance Admin
             </h1>
           </div>
