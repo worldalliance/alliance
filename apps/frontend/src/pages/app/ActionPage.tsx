@@ -147,13 +147,13 @@ export default function ActionPage() {
           <div className="flex flex-col gap-y-3">
             {action !== undefined && (
               <div>
-                <h1 className="font-avenir font-extrabold">
+                <h1 className="font-extrabold">
                   {action.name}
-                  <span className="text-gray-800 text-sm bg-gray-100 rounded-sm !p-3 align-middle mx-3 text-nowrap">
+                  <span className="text-gray-800 text-base bg-gray-100 rounded-lg p-3 px-4 align-middle mx-3 text-nowrap">
                     {actionStatusDescriptions[action.status]}
                   </span>
                 </h1>
-                <p className="text-gray-800 text-lg">
+                <p className="text-gray-800 text-lg mt-3">
                   {action.shortDescription}
                 </p>
               </div>

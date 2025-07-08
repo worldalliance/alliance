@@ -63,7 +63,7 @@ const ActionTaskPanel = ({ matches }: { matches: { data: unknown }[] }) => {
           style={CardStyle.White}
           className="flex-row items-center gap-x-2 justify-between"
         >
-          <span className="text-gray-800">Ready to join?</span>
+          <span>Ready to join?</span>
           <ActionCommitButton
             committed={false}
             isAuthenticated={true}

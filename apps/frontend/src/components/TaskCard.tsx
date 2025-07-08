@@ -73,7 +73,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       <Button
         color={ButtonColor.Stone}
         onClick={goToActionPage}
-        className="!w-32 font-avenir rounded-md !text-white font-regular py-3"
+        className="!w-32  rounded-md !text-white font-regular py-3"
       >
         {text}
       </Button>
@@ -90,9 +90,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
     >
       <div className="flex flex-row justify-between gap-x-10 items-center">
         <div className="flex flex-row items-center gap-x-3 justify-center">
-          <p className="font-bold font-avenir text-black pt-0.5">
-            {action.name}
-          </p>
+          <p className="font-bold  text-black pt-0.5">{action.name}</p>
           {/* {action.type === "Funding" && <Badge>$5</Badge>}
           {action.type === "Activity" && !!action.timeEstimate && (
             <Badge>takes {action.timeEstimate}</Badge>

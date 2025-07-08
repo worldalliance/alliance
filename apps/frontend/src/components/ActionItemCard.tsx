@@ -7,7 +7,8 @@ import ActionCardUserCount from "./ActionCardUserCount";
 export interface ActionItemCardProps
   extends Pick<ActionDto, "name" | "shortDescription" | "category" | "id"> {
   className?: string;
-  liveCount?: number;
+  joinedCount?: number;
+  completedCount?: number;
   showDescription?: boolean;
 }
 
@@ -16,7 +17,8 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   id,
   shortDescription,
   className,
-  liveCount,
+  joinedCount,
+  completedCount,
   showDescription = true,
 }) => {
   const navigate = useNavigate();
@@ -24,16 +26,19 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   return (
     <div className={`relative ${className}`}>
       <Card
-        className="block bg-pagebg text-[11pt] font-avenir"
+        className="block bg-pagebg text-[11pt] "
         style={CardStyle.White}
         onClick={() => navigate(`/actions/${id}`)}
       >
         {/* <Badge>{category}</Badge> */}
         <div className="w-[100%] space-x-3">
           <div className="flex flex-row justify-between items-start mr-0">
-            <p className="font-avenir font-bold">{name}</p>
-            {liveCount !== undefined && (
-              <ActionCardUserCount count={liveCount} />
+            <p className=" font-bold">{name}</p>
+            {joinedCount !== undefined && (
+              <ActionCardUserCount
+                joined={joinedCount}
+                completed={completedCount}
+              />
             )}
           </div>
           {showDescription && (

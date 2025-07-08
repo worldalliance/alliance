@@ -43,7 +43,7 @@ export interface NavbarProps {
 
 const Navbar: React.FC<NavbarProps> = ({ currentPage, format }) => {
   return (
-    <div className="font-avenir text-[11pt] bg-white sticky top-0 z-10">
+    <div className=" text-[11pt] bg-white sticky top-0 z-10">
       {format === "vertical" ? (
         <NavbarVertical currentPage={currentPage} />
       ) : (

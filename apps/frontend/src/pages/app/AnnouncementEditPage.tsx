@@ -220,7 +220,7 @@ const AnnouncementEditPage: React.FC = () => {
             <div className="flex flex-col gap-1 w-full">
               <label
                 htmlFor="headerImage"
-                className="font-avenir text-[11pt] text-stone-800 mb-1"
+                className=" text-[11pt] text-stone-800 mb-1"
               >
                 Header Image (optional)
               </label>
@@ -231,7 +231,7 @@ const AnnouncementEditPage: React.FC = () => {
                 accept="image/*"
                 onChange={handleImageChange}
                 ref={fileInputRef}
-                className="border border-gray-300 rounded-md px-3 py-2 w-full text-[11pt] font-avenir"
+                className="border border-gray-300 rounded-md px-3 py-2 w-full text-[11pt] "
               />
 
               {imagePreview && (

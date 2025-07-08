@@ -1,10 +1,16 @@
 import usersIcon from "../assets/icons8-user-account-24.png";
 
-const ActionCardUserCount = ({ count }: { count: number }) => {
+const ActionCardUserCount = ({
+  joined,
+  completed,
+}: {
+  joined: number;
+  completed?: number;
+}) => {
   return (
     <div
       className="flex flex-row items-center gap-x-1 pt-1"
-      title={`${count} members joined`}
+      title={`${joined} members joined`}
     >
       <img
         src={usersIcon}
@@ -12,7 +18,10 @@ const ActionCardUserCount = ({ count }: { count: number }) => {
         className="w-4 h-4"
         style={{ filter: "opacity(0.7)" }}
       />
-      <span className="text-gray-600 font-bold font-avenir -mt-1">{count}</span>
+      <span className="text-[#555] font-bold  text-nowrap">
+        {completed !== undefined && `${completed} / `}
+        {joined}
+      </span>
     </div>
   );
 };

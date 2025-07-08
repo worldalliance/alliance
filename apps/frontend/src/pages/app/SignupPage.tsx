@@ -48,7 +48,7 @@ const SignupPage: React.FC = () => {
   if (!isFeatureEnabled(Features.PublicSignup) && !referralCode) {
     return (
       <div className="min-h-screen flex flex-col bg-pagebg">
-        <div className="flex flex-col flex-grow items-center justify-center font-avenir">
+        <div className="flex flex-col flex-grow items-center justify-center ">
           <div className="w-full max-w-md px-8">
             <p className="font-bold !mb-2">
               The Alliance is currently invite-only.
@@ -62,7 +62,7 @@ const SignupPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-pagebg">
-      <div className="flex flex-col flex-grow items-center justify-center font-avenir">
+      <div className="flex flex-col flex-grow items-center justify-center ">
         <div className="w-full max-w-md px-8">
           <h2 className="text-2xl font-sabon text-center mb-8">
             Create an account

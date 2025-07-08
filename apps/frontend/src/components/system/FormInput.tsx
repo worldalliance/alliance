@@ -44,7 +44,7 @@ const FormInput: React.FC<FormInputProps> = ({
         className={`border ${
           error ? "border-red-500" : "border-gray-300"
         } rounded-md px-3 py-3 pb-2 bg-white focus:outline-none focus:ring-1 focus:ring-cyan-500 
-        text-[11pt] font-avenir transition-all duration-200 
+        text-[11pt]  transition-all duration-200 
         ${
           disabled
             ? "bg-pagebg text-stone-500 cursor-not-allowed"

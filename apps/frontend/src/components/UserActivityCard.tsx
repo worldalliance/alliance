@@ -27,7 +27,7 @@ const UserActivityCard = ({ action }: UserActivityCardProps) => {
   return (
     <div className="flex flex-row justify-stretch items-center space-x-4">
       <Card
-        className="block bg-pagebg text-[11pt] font-avenir flex-1 border-b"
+        className="block bg-pagebg text-[11pt]  flex-1 border-b"
         style={CardStyle.White}
         onClick={handleClick}
       >

@@ -93,6 +93,12 @@
     format("truetype");
 }
 
+@font-face {
+  font-family: "Hanken Grotesk";
+  src: url("/assets/fonts/HankenGrotesk-VariableFont_wght.ttf")
+    format("truetype");
+}
+
 @theme {
   --color-hgreen: #3f5640;
   --pagebg: #ffffff;
@@ -102,35 +108,28 @@
 
 html {
   overflow-x: hidden;
-  font-family: "IBM Plex Sans", sans-serif;
   font-size: 11pt;
 }
 
 h1 {
-  font-family: "Berlingske";
   font-weight: bold;
   font-size: 30px;
 }
 
-h2 {
-  font-family: "Sabon";
-}
-
-/* h2 {
-  font-family: "Newsreader";
-  font-weight: bold;
-  font-size: 20px;
-  margin-top: 6px;
-}
-  */
-
+h2,
 p,
-span {
-  font-family: "IBM Plex Sans";
+span,
+label,
+button {
+  font-family: "Hanken Grotesk", sans-serif;
 }
 
 img {
   user-select: none;
+}
+
+.font-hanken {
+  font-family: "Hanken Grotesk", sans-serif;
 }
 
 .font-serif {

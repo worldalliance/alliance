@@ -31,7 +31,7 @@ const StripeStyleFormInput: React.FC<FormInputProps> = ({
         className={`border ${
           error ? "border-red-500" : "border-none"
         } rounded-md px-3 py-4 bg-[#f1f1f1] focus:outline-none focus:ring-1 focus:ring-blue-500
-        text-[15px] font-avenir transition-all duration-200 text-black placeholder-[#222]
+        text-[15px]  transition-all duration-200 text-black placeholder-[#222]
         ${
           disabled
             ? "bg-pagebg text-stone-500 cursor-not-allowed"

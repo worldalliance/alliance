@@ -119,7 +119,6 @@ export class Action {
   @Expose()
   @ApiProperty({
     description: 'Number of users who have joined the action',
-    example: 5,
   })
   get usersJoined(): number {
     return (
@@ -152,7 +151,6 @@ export class Action {
   @Expose()
   @ApiProperty({
     description: 'Number of users who have completed the action',
-    example: 5,
   })
   get usersCompleted(): number {
     return (

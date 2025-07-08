@@ -52,14 +52,14 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
           //         transparent
           //           ? " hover:bg-white hover:text-black"
           //           : " hover:bg-white hover:text-black"
-          //       } rounded-md py-1 px-4 whitespace-nowrap font-avenir`}
+          //       } rounded-md py-1 px-4 whitespace-nowrap `}
           //     >
           //       {link}
           //     </p>
           //   </Link>
           // ) : (
           <Link to={destinations[link]} key={link}>
-            <p className="hover:underline whitespace-nowrap font-ibm">{link}</p>
+            <p className="hover:underline whitespace-nowrap">{link}</p>
           </Link>
         ))}
       </div>

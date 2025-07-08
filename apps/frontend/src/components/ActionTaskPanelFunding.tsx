@@ -128,7 +128,7 @@ const ActionTaskPanelFunding = ({
         className="flex flex-row justify-between items-center"
       >
         <div>
-          <h2 className="">{titleText}</h2>
+          <h2 className="font-bold">{titleText}</h2>
           {savedPaymentMethod?.last4 && (
             <p className="text-sm text-gray-500">
               Paying immediately with your saved card ending in

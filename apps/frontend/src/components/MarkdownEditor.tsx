@@ -33,7 +33,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       <div className="flex justify-between items-center">
         <label
           htmlFor="markdown-editor"
-          className="font-avenir text-[11pt] text-stone-800 mb-1"
+          className=" text-[11pt] text-stone-800 mb-1"
         >
           {label}
         </label>
@@ -94,7 +94,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               rows={minRows}
               className="w-full border border-gray-300 rounded-md px-3 py-3 pb-2 bg-white 
                 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500
-                text-[11pt] font-avenir transition-all duration-200 hover:border-gray-400"
+                text-[11pt]  transition-all duration-200 hover:border-gray-400"
             />
 
             {viewMode === "edit" && showSyntaxHelp && (

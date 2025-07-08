@@ -67,7 +67,7 @@ const NotificationsIcon = () => {
       } w-7 h-7 rounded-full flex items-center justify-center cursor-pointer`}
       onClick={toggle}
     >
-      <p className="font-avenir font-bold text-sm">{unreadCount}</p>
+      <p className=" font-bold text-sm">{unreadCount}</p>
       {isOpen && (
         <div className="absolute top-8 shadow-lg/5 right-0 bg-white rounded border border-zinc-200 p-4 min-w-[370px] space-y-2">
           {notifications.length === 0 && (

@@ -22,7 +22,7 @@ const ActionPromptCard: React.FC<ActionPromptCardProps> = ({
       <StatusIndicator status={Status.New} />
       <Card
         style={CardStyle.Alert}
-        className="block space-y-2 font-avenir"
+        className="block space-y-2 "
         onClick={() => {
           navigate(`/actions/${id}`);
         }}

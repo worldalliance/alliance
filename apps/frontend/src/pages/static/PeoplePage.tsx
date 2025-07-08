@@ -9,7 +9,7 @@ const PeoplePage: React.FC = () => {
       <PrelaunchNavbar transparent={false} absolute={false} />
       <div className="flex-1 container mx-auto pt-20 md:pt-28 pb-56 flex flex-col px-5">
         <div className="mx-auto w-full max-w-3xl flex flex-col gap-6">
-          <h2 className="!font-sabon !font-semibold !text-4xl md:!text-5xl text-center">
+          <h2 className="font-sabon !font-semibold !text-4xl md:!text-5xl text-center">
             People
           </h2>
 

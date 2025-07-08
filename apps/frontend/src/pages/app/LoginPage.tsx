@@ -75,7 +75,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-pagebg">
-      <div className="flex flex-col flex-grow items-center justify-center font-avenir">
+      <div className="flex flex-col flex-grow items-center justify-center ">
         <div className="w-full max-w-md px-8">
           {message && (
             <Card style={CardStyle.Alert} className="mb-6">

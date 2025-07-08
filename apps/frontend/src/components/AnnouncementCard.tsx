@@ -53,7 +53,7 @@ const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
     <div className="relative w-full">
       {unread && <StatusIndicator status={Status.Unread} />}
       <Card
-        className={`block bg-pagebg text-[11pt] font-avenir overflow-hidden !p-0 ${className} ${
+        className={`block bg-pagebg text-[11pt]  overflow-hidden !p-0 ${className} ${
           unread ? unreadStyles : readStyles
         }`}
         onClick={handleClick}

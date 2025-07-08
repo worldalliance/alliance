@@ -23,7 +23,7 @@ const Expandable: React.FC<ExpandableProps> = ({
             border-b border-zinc-200 hover:border-zinc-500 pb-4 flex items-center justify-between cursor-pointer`}
         onClick={toggleExpand}
       >
-        <h2 className="font-ibm !font-medium !text-3xl !my-1">{title}</h2>
+        <h2 className="!font-bold font-hanken !text-2xl !my-1">{title}</h2>
         <div className="text-sm text-gray-500">
           <svg
             className={`-mr-1 size-6 text-zinc-300 group-hover:text-black transition group-hover:-rotate-90 ${

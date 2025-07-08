@@ -89,7 +89,7 @@ const ResetPasswordPage = () => {
         <div className="pt-2">
           <Button
             color={ButtonColor.Stone}
-            className="w-full flex justify-center text-center font-avenir justify-self-center pb-2"
+            className="w-full flex justify-center text-center  justify-self-center pb-2"
             type="submit"
             disabled={loading}
           >
