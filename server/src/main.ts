@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { useContainer } from 'class-validator';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
+import * as bodyParser from 'body-parser';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ServerOptions } from 'socket.io';
@@ -49,9 +50,12 @@ class SocketIoAdapter extends IoAdapter {
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
+    bodyParser: false,
   });
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   validateEnv();
+  app.use(bodyParser.json({ limit: '50mb' }));
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
   app.use(cookieParser());
   //   app.enableCors();

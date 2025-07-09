@@ -43,13 +43,9 @@ export class AdminViewerGateway
     );
   }
 
-  handleConnection(client: Socket) {
-    this.logger.log(`Admin viewer client connected: ${client.id}`);
-  }
+  handleConnection() {}
 
   handleDisconnect(client: Socket) {
-    this.logger.log(`Admin viewer client disconnected: ${client.id}`);
-    // Clean up subscriptions for this client
     this.subscriptions.forEach((socketIds, tableName) => {
       socketIds.delete(client.id);
       if (socketIds.size === 0) {

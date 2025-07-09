@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 4.16"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.5"
+    }
   }
   required_version = ">= 1.2.0"
 }
@@ -78,6 +82,7 @@ resource "aws_instance" "app_server" {
   instance_type = "t2.micro"
   subnet_id = module.vpc.public_subnets[0]
   vpc_security_group_ids     = [aws_security_group.ec2_security_group.id]
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name  
   associate_public_ip_address = true
   key_name = "ssh-key"
 
@@ -173,4 +178,68 @@ resource "aws_db_instance" "alliance" {
   parameter_group_name   = aws_db_parameter_group.alliance.name
   publicly_accessible    = false
   skip_final_snapshot    = true
+}
+
+resource "random_id" "bucket_suffix" {
+  byte_length = 4        # 8-char hex string
+}
+
+resource "aws_s3_bucket" "assets" {
+  bucket        = "alliance-assets-${random_id.bucket_suffix.hex}"
+  force_destroy = true
+  tags = {
+    Name        = "alliance-assets"
+    Environment = "prod"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "assets" {
+  bucket                  = aws_s3_bucket.assets.id
+  block_public_policy     = true
+  restrict_public_buckets = true
+}
+
+
+resource "aws_s3_bucket_versioning" "assets" {
+  bucket = aws_s3_bucket.assets.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_iam_role" "ec2_role" {
+  name               = "alliance-ec2-role"
+  assume_role_policy = data.aws_iam_policy_document.ec2_assume.json
+}
+
+data "aws_iam_policy_document" "ec2_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "ec2_s3_policy" {
+  name = "ec2-s3-access"
+  role = aws_iam_role.ec2_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action   = ["s3:GetObject", "s3:PutObject", "s3:ListBucket"]
+      Effect   = "Allow"
+      Resource = [
+        aws_s3_bucket.assets.arn,
+        "${aws_s3_bucket.assets.arn}/*"
+      ]
+    }]
+  })
+}
+
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "alliance-ec2-profile"
+  role = aws_iam_role.ec2_role.name
 }

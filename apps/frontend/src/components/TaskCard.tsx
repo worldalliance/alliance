@@ -73,7 +73,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       <Button
         color={ButtonColor.Stone}
         onClick={goToActionPage}
-        className="!w-32  rounded-md !text-white font-regular py-3"
+        className="!w-32 rounded-md !text-white font-regular py-3"
       >
         {text}
       </Button>

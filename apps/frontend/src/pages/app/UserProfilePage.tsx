@@ -23,7 +23,6 @@ import testImg from "../../assets/fakebgimage.png";
 import UserActivityCard from "../../components/UserActivityCard";
 import ForumListPost from "../../components/ForumListPost";
 import FriendRequestButton from "../../components/FriendRequestButton";
-import { getImageSource } from "../../lib/config";
 
 enum ProfileTabs {
   Activity = "Activity",
@@ -161,11 +160,7 @@ const UserProfilePage: React.FC = () => {
         <div className="w-full h-[100px]"></div>
         <div className="px-8 relative space-y-2 border-stone-300 border rounded pb-8">
           <ProfileImage
-            src={
-              profileUser.profilePicture
-                ? getImageSource(profileUser.profilePicture)
-                : null
-            }
+            src={profileUser.profilePicture ? profileUser.profilePicture : null}
             className="mt-[-55px]"
           />
           <div className="flex gap-2">

@@ -24,3 +24,18 @@ output "rds_username" {
   value       = aws_db_instance.alliance.username
   #sensitive   = true
 }
+
+output "assets_bucket_name" {
+  description = "S3 bucket used for static assets and uploads"
+  value       = aws_s3_bucket.assets.bucket
+}
+
+output "dev_access_key_id" {
+  value = aws_iam_access_key.dev.id
+  sensitive   = true
+}
+
+output "dev_secret_access_key" {
+  value       = aws_iam_access_key.dev.secret
+  sensitive   = true
+}

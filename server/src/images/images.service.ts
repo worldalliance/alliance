@@ -15,11 +15,10 @@ export class ImagesService {
     return this.imageRepository.find();
   }
 
-  async createImage(image: Express.Multer.File): Promise<Image> {
-    const imageEntity = this.imageRepository.create({
-      filename: image.filename,
-    });
-    return this.imageRepository.save(imageEntity);
+  async createImage(
+    image: Pick<Image, 'key' | 'mime' | 'size'>,
+  ): Promise<Image> {
+    return this.imageRepository.save(image);
   }
 
   async getImage(id: number): Promise<Image | null> {
@@ -40,7 +39,7 @@ export class ImagesService {
       return false;
     }
     await this.imageRepository.delete(id);
-    await this.filesService.deleteFile(image.filename);
+    await this.filesService.deleteFile(image.key);
 
     return true;
   }

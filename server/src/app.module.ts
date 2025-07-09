@@ -19,6 +19,7 @@ import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
 import { connectionOptions } from './datasources/dataSource';
 import { PaymentsModule } from './payments/payments.module';
 import { AdminViewerModule } from './admin-viewer/admin-viewer.module';
+import { S3Module } from './s3/s3.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { AdminViewerModule } from './admin-viewer/admin-viewer.module';
         },
       },
     }),
+    S3Module,
     MulterModule.register({}),
     EventEmitterModule.forRoot(),
     AuthModule,

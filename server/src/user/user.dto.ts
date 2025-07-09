@@ -1,11 +1,13 @@
 import {
   ApiProperty,
   ApiPropertyOptional,
+  OmitType,
   PartialType,
   PickType,
 } from '@nestjs/swagger';
 import { User } from './user.entity';
 import { FriendStatus } from './friend.entity';
+import { IsOptional } from 'class-validator';
 
 export class UserDto extends PickType(User, [
   'name',
@@ -70,14 +72,16 @@ export function userToDto(user: User | null): ProfileDto | null {
   return new ProfileDto(user);
 }
 
-export class UpdateProfileDto extends PartialType(User) {
-  @ApiProperty({ type: Number, nullable: true })
-  cityId?: number | null;
+export class UpdateProfileDto extends PartialType(OmitType(User, ['city'])) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  cityId?: number;
 }
 
 export class OnboardingDto extends PickType(User, ['over18', 'anonymous']) {
-  @ApiProperty({ type: Number, nullable: true })
-  cityId: number | null;
+  @ApiPropertyOptional()
+  @IsOptional()
+  cityId?: number;
 }
 
 export class ReferralDto {

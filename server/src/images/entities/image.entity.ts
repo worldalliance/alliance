@@ -15,7 +15,15 @@ export class Image {
 
   @Column()
   @ApiProperty()
-  filename: string;
+  key: string;
+
+  @Column()
+  @ApiProperty()
+  mime: string;
+
+  @Column()
+  @ApiProperty()
+  size: number;
 
   @CreateDateColumn()
   dateCreated: Date;

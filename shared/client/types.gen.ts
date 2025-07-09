@@ -56,7 +56,7 @@ export type ProfileDto = {
 export type OnboardingDto = {
     over18: boolean | null;
     anonymous: boolean;
-    cityId: number | null;
+    cityId?: number;
 };
 
 export type UpdateProfileDto = {
@@ -73,7 +73,7 @@ export type UpdateProfileDto = {
     over18?: boolean | null;
     onboardingComplete?: boolean;
     anonymous?: boolean;
-    cityId: number | null;
+    cityId?: number;
 };
 
 export type City = {
@@ -416,11 +416,15 @@ export type ReadResultDto = {
 
 export type ImageResponseDto = {
     id: number;
-    filename: string;
+    key: string;
 };
 
-export type DeleteImageResponseDto = {
-    deleted: boolean;
+export type UploadImageDto = {
+    image: Blob | File;
+};
+
+export type StreamableFile = {
+    [key: string]: unknown;
 };
 
 export type CreatePostDto = {
@@ -1326,16 +1330,14 @@ export type CommuniquesReadResponses = {
 };
 
 export type ImagesUploadImageData = {
-    body: {
-        image?: Blob | File;
-    };
+    body: UploadImageDto;
     path?: never;
     query?: never;
     url: '/images/upload';
 };
 
 export type ImagesUploadImageResponses = {
-    201: ImageResponseDto;
+    200: string;
 };
 
 export type ImagesUploadImageResponse = ImagesUploadImageResponses[keyof ImagesUploadImageResponses];
@@ -1343,17 +1345,14 @@ export type ImagesUploadImageResponse = ImagesUploadImageResponses[keyof ImagesU
 export type ImagesGetImageData = {
     body?: never;
     path: {
-        filename: string;
+        key: string;
     };
     query?: never;
-    url: '/images/{filename}';
+    url: '/images/{key}';
 };
 
 export type ImagesGetImageResponses = {
-    /**
-     * Returns an image file
-     */
-    200: Blob | File;
+    200: StreamableFile;
 };
 
 export type ImagesGetImageResponse = ImagesGetImageResponses[keyof ImagesGetImageResponses];
@@ -1368,10 +1367,8 @@ export type ImagesDeleteImageData = {
 };
 
 export type ImagesDeleteImageResponses = {
-    200: DeleteImageResponseDto;
+    200: unknown;
 };
-
-export type ImagesDeleteImageResponse = ImagesDeleteImageResponses[keyof ImagesDeleteImageResponses];
 
 export type ForumFindAllPostsData = {
     body?: never;

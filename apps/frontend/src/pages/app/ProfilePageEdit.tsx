@@ -17,7 +17,6 @@ import {
   PostDto,
   actionsFindCompletedForUser,
 } from "@alliance/shared/client";
-import { getImageSource } from "../../lib/config";
 
 const ProfileEditPage: React.FC = () => {
   const { user } = useAuth();
@@ -37,21 +36,15 @@ const ProfileEditPage: React.FC = () => {
   const [forumPosts, setForumPosts] = useState<PostDto[]>([]);
   const [friends, setFriends] = useState<UserDto[]>([]);
 
-  // Error & submit state
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   /** initialise local state from user profile once available */
   useEffect(() => {
     async function loadProfile() {
       if (user) {
-        //full profiledto vs auth userdto
         const response = await userFindMe();
         if (!response.data) {
-          setError("Something went wrong while loading your profile.");
           return;
         }
-        setName(response.data.name || "");
+        setName(response.data.displayName || "");
         setBio(response.data.profileDescription || "");
         setAvatarUrl(response.data.profilePicture || null);
 
@@ -97,12 +90,10 @@ const ProfileEditPage: React.FC = () => {
 
     // Basic client‑side validation – you could add file‑type/size checks here
     if (!file.type.startsWith("image/")) {
-      setError("Please select an image file.");
       return;
     }
 
     setAvatarFile(file);
-    setError(null);
 
     // Show immediate preview
     const reader = new FileReader();
@@ -122,12 +113,8 @@ const ProfileEditPage: React.FC = () => {
     console.log("handleSave");
     if (!user) return;
 
-    setSubmitting(true);
-    setError(null);
-    console.log("handleSave 2");
-
     try {
-      let uploadedFilename: string | undefined = undefined;
+      let uploadedFile: string | undefined = undefined;
 
       if (avatarFile) {
         const response = await imagesUploadImage({
@@ -135,7 +122,7 @@ const ProfileEditPage: React.FC = () => {
         });
         console.log("got image upload response");
         if (response.data) {
-          uploadedFilename = response.data.filename;
+          uploadedFile = response.data;
         }
       }
 
@@ -144,7 +131,7 @@ const ProfileEditPage: React.FC = () => {
       const payload: UpdateProfileDto = {
         name,
         profileDescription: bio,
-        profilePicture: uploadedFilename ?? avatarUrl ?? undefined,
+        profilePicture: uploadedFile ?? avatarUrl ?? undefined,
       };
       const response = await userUpdate({
         body: payload,
@@ -155,9 +142,6 @@ const ProfileEditPage: React.FC = () => {
       navigate(`/user/${user.id}`);
     } catch (err: unknown) {
       console.error(err);
-      setError("Something went wrong while saving.");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -187,11 +171,7 @@ const ProfileEditPage: React.FC = () => {
         <div className="relative w-fit">
           <ProfileImage
             src={
-              avatarFile
-                ? URL.createObjectURL(avatarFile)
-                : avatarUrl
-                ? getImageSource(avatarUrl)
-                : null
+              avatarFile ? URL.createObjectURL(avatarFile) : avatarUrl ?? null
             }
             className="mt-[-55px]"
           />

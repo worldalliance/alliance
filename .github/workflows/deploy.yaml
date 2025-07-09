@@ -50,6 +50,7 @@ jobs:
       instance_ip: ${{ steps.tf_outputs.outputs.instance_ip }}
       rds_port: ${{ steps.tf_outputs.outputs.rds_port }}
       rds_username: ${{ steps.tf_outputs.outputs.rds_username }}
+      assets_bucket_name: ${{ steps.tf_outputs.outputs.assets_bucket_name }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -73,6 +74,7 @@ jobs:
           echo "instance_ip=$(terraform output -raw server_ip)" >> $GITHUB_OUTPUT
           echo "rds_port=$(terraform output -raw rds_port)" >> $GITHUB_OUTPUT
           echo "rds_username=$(terraform output -raw rds_username)" >> $GITHUB_OUTPUT
+          echo "assets_bucket_name=$(terraform output -raw assets_bucket_name)" >> $GITHUB_OUTPUT
         working-directory: ./terraform
 
   build-react-app:
@@ -413,6 +415,7 @@ jobs:
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             export STRIPE_ENDPOINT_SECRET=${{ secrets.STRIPE_ENDPOINT_SECRET }}
             export STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
+            export ASSETS_BUCKET_NAME=${{ needs.provision-infrastructure.outputs.assets_bucket_name }}
 
             rollback () {
               echo "Deployment failed - rolling back"
