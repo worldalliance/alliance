@@ -1,4 +1,4 @@
-name: Build, Terraform, and Deploy React App
+name: Build and Deploy React App
 
 on:
   push:
@@ -44,43 +44,8 @@ jobs:
         run: npm run test:e2e
         working-directory: ./server
 
-  provision-infrastructure:
-    runs-on: ubuntu-latest
-    outputs:
-      instance_ip: ${{ steps.tf_outputs.outputs.instance_ip }}
-      rds_port: ${{ steps.tf_outputs.outputs.rds_port }}
-      rds_username: ${{ steps.tf_outputs.outputs.rds_username }}
-      assets_bucket_name: ${{ steps.tf_outputs.outputs.assets_bucket_name }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.3.7
-
-      - name: Terraform Init
-        run: terraform init
-        working-directory: ./terraform
-
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
-        working-directory: ./terraform
-
-      - name: Set Terraform Outputs
-        id: tf_outputs
-        run: |
-          echo "instance_ip=$(terraform output -raw server_ip)" >> $GITHUB_OUTPUT
-          echo "rds_port=$(terraform output -raw rds_port)" >> $GITHUB_OUTPUT
-          echo "rds_username=$(terraform output -raw rds_username)" >> $GITHUB_OUTPUT
-          echo "assets_bucket_name=$(terraform output -raw assets_bucket_name)" >> $GITHUB_OUTPUT
-        working-directory: ./terraform
-
   build-react-app:
     runs-on: ubuntu-latest
-    needs:
-      - provision-infrastructure
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -126,7 +91,7 @@ jobs:
       - name: Upload React Build to EC2
         uses: appleboy/scp-action@v0.1.3
         with:
-          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "react-build.zip"
@@ -171,13 +136,12 @@ jobs:
   deploy-react-app:
     runs-on: ubuntu-latest
     needs:
-      - provision-infrastructure
       - build-react-app
     steps:
       - name: SSH and Deploy frontend SSR on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
@@ -275,7 +239,6 @@ jobs:
   deploy-admin-app:
     runs-on: ubuntu-latest
     needs:
-      - provision-infrastructure
       - build-admin-frontend
     steps:
       - name: Download Admin Build Artifact
@@ -286,7 +249,7 @@ jobs:
       - name: Upload Admin Build to EC2
         uses: appleboy/scp-action@v0.1.3
         with:
-          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "admin-build.zip"
@@ -295,7 +258,7 @@ jobs:
       - name: SSH and Deploy on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
@@ -362,7 +325,6 @@ jobs:
   deploy-nest-backend:
     runs-on: ubuntu-latest
     needs:
-      - provision-infrastructure
       - build-nest-backend
     steps:
       - name: Download NestJS Build Artifact
@@ -373,7 +335,7 @@ jobs:
       - name: Upload NestJS Build to EC2
         uses: appleboy/scp-action@v0.1.3
         with:
-          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "nest-build.zip"
@@ -382,7 +344,7 @@ jobs:
       - name: SSH and Deploy Backend on EC2
         uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ needs.provision-infrastructure.outputs.instance_ip }}
+          host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
@@ -401,8 +363,8 @@ jobs:
             mv nest-backend nest-backend-deploy-backup
 
             export DB_HOST=${{ secrets.RDS_HOSTNAME }}
-            export DB_PORT=${{ needs.provision-infrastructure.outputs.rds_port }}
-            export DB_USERNAME=${{ needs.provision-infrastructure.outputs.rds_username }}
+            export DB_PORT=${{ secrets.RDS_PORT }}
+            export DB_USERNAME=${{ secrets.RDS_USERNAME }}
             export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             export JWT_SECRET=${{ secrets.JWT_SECRET }}
             export JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
@@ -415,7 +377,7 @@ jobs:
             export SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             export STRIPE_ENDPOINT_SECRET=${{ secrets.STRIPE_ENDPOINT_SECRET }}
             export STRIPE_API_KEY=${{ secrets.STRIPE_API_KEY }}
-            export ASSETS_BUCKET_NAME=${{ needs.provision-infrastructure.outputs.assets_bucket_name }}
+            export ASSETS_BUCKET_NAME=${{ secrets.ASSETS_BUCKET_NAME }}
 
             rollback () {
               echo "Deployment failed - rolling back"
