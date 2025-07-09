@@ -5,7 +5,6 @@ import { CardStyle } from "./system/Card";
 import Card from "./system/Card";
 import { ActionDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "./system/Button";
-import expandArrow from "../assets/icons8-expand-arrow-96.png";
 import UsersCompletedBar from "./UsersCompletedBar";
 import { useActionCount } from "../lib/useActionWebSocket";
 
@@ -73,7 +72,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       <Button
         color={ButtonColor.Transparent}
         onClick={goToActionPage}
-        className="w-full font-medium text-sm rounded-md bg-green-600 text-white font-regular"
+        className="w-full font-medium text-sm rounded-md bg-blue-500 hover:bg-blue-600 text-white font-regular"
       >
         {text}
       </Button>
@@ -105,7 +104,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
           <Button
             color={ButtonColor.Transparent}
             onClick={goToActionPage}
-            className="w-full text-sm rounded-md border border-green-600 text-green-600 font-regular"
+            className="w-full text-sm rounded-md hover:bg-zinc-50 border border-zinc-200 text-black font-regular"
           >
             Details
           </Button>
