@@ -7,7 +7,6 @@ import {
 } from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import { HomeNewActionsView } from "../../components/HomeNewActionsView";
-import InviteMemberCard from "../../components/InviteMemberCard";
 import GatheringCommitmentsView from "../../components/GatheringCommitmentsView";
 
 const HomePage: React.FC = () => {
@@ -76,7 +75,6 @@ const HomePage: React.FC = () => {
           )}
           <HomeNewActionsView actions={newActions} />
           <GatheringCommitmentsView actions={committedActions} />
-          <InviteMemberCard />
         </div>
       </div>
     </div>
