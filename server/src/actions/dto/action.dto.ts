@@ -10,7 +10,16 @@ export class UserActionDto extends PickType(UserAction, [
   'deadline',
   'dateCommitted',
   'dateCompleted',
-]) {}
+]) {
+  @ApiProperty({ type: Number })
+  actionId: number;
+
+  constructor(userAction: UserAction) {
+    super();
+    Object.assign(this, userAction);
+    this.actionId = userAction.action.id;
+  }
+}
 
 export class ActionEventDto extends PickType(ActionEvent, [
   'id',
@@ -35,9 +44,6 @@ export class ActionDto extends OmitType(Action, [
   'userRelations',
   'events',
 ]) {
-  @ApiProperty({ type: UserActionDto })
-  myRelation?: Omit<UserActionDto, 'action'> | null;
-
   @ApiProperty()
   usersJoined: number;
 
@@ -53,7 +59,6 @@ export class ActionDto extends OmitType(Action, [
   constructor(action: Partial<Action>) {
     super();
     Object.assign(this, action);
-    this.myRelation = null;
     this.usersJoined = action.usersJoined || 0;
     this.usersCompleted = action.usersCompleted || 0;
     this.status = action.status || ActionStatus.Draft;
@@ -62,18 +67,15 @@ export class ActionDto extends OmitType(Action, [
   }
 }
 
-export class PublicActionDto extends OmitType(ActionDto, ['myRelation']) {}
-
 export class CreateActionDto extends OmitType(ActionDto, [
   'id',
   'usersJoined',
-  'myRelation',
   'events',
   'usersCompleted',
   'status',
 ]) {}
 
-export class ActionWithRelationDto extends PublicActionDto {
+export class ActionWithRelationDto extends ActionDto {
   @ApiProperty({ type: UserActionDto })
   relation?: Omit<UserActionDto, 'action'> | null;
 }

@@ -96,6 +96,7 @@ export type UserActionDto = {
     dateCommitted: string;
     dateCompleted: string;
     deadline: string;
+    actionId: number;
 };
 
 /**
@@ -192,7 +193,6 @@ export type ActionDto = {
      * Number of users who have completed the action
      */
     usersCompleted: number;
-    myRelation: UserActionDto;
     events: Array<ActionEventDto>;
 };
 
@@ -297,68 +297,6 @@ export type UpdateActionDto = {
      * Type of the action
      */
     type?: 'Funding' | 'Activity' | 'Ongoing';
-};
-
-export type ActionWithRelationDto = {
-    /**
-     * Unique identifier for the action
-     */
-    id: number;
-    /**
-     * Name of the action
-     */
-    name: string;
-    /**
-     * Category of the action
-     */
-    category: string;
-    /**
-     * Image URL for the action
-     */
-    image: string | null;
-    /**
-     * Number of commitments needed to start the action
-     */
-    commitmentThreshold?: number;
-    /**
-     * Amount of money committed needed to start the action
-     */
-    donationThreshold?: number;
-    /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
-     * markdown page body
-     */
-    body: string;
-    /**
-     * markdown contents for activity task card (instructions)
-     */
-    taskContents?: string;
-    /**
-     * Short description shown in cards
-     */
-    shortDescription: string;
-    timeEstimate: string;
-    /**
-     * Type of the action
-     */
-    type: 'Funding' | 'Activity' | 'Ongoing';
-    /**
-     * Number of users who have joined the action
-     */
-    usersJoined: number;
-    /**
-     * Number of users who have joined the action
-     */
-    status: ActionStatus;
-    /**
-     * Number of users who have completed the action
-     */
-    usersCompleted: number;
-    events: Array<ActionEventDto>;
-    relation: UserActionDto;
 };
 
 export type CreateActionEventDto = {
@@ -1019,31 +957,31 @@ export type ActionsMyStatusResponses = {
 
 export type ActionsMyStatusResponse = ActionsMyStatusResponses[keyof ActionsMyStatusResponses];
 
-export type ActionsFindAllWithStatusData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/actions/withStatus';
-};
-
-export type ActionsFindAllWithStatusResponses = {
-    200: Array<ActionDto>;
-};
-
-export type ActionsFindAllWithStatusResponse = ActionsFindAllWithStatusResponses[keyof ActionsFindAllWithStatusResponses];
-
-export type ActionsFindAllPublicData = {
+export type ActionsFindAllData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/actions';
 };
 
-export type ActionsFindAllPublicResponses = {
+export type ActionsFindAllResponses = {
     200: Array<ActionDto>;
 };
 
-export type ActionsFindAllPublicResponse = ActionsFindAllPublicResponses[keyof ActionsFindAllPublicResponses];
+export type ActionsFindAllResponse = ActionsFindAllResponses[keyof ActionsFindAllResponses];
+
+export type ActionsMyActionRelationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/myActionRelations';
+};
+
+export type ActionsMyActionRelationsResponses = {
+    200: Array<UserActionDto>;
+};
+
+export type ActionsMyActionRelationsResponse = ActionsMyActionRelationsResponses[keyof ActionsMyActionRelationsResponses];
 
 export type ActionsUserLocationsData = {
     body?: never;
@@ -1210,7 +1148,7 @@ export type ActionsFindCompletedForUserData = {
 };
 
 export type ActionsFindCompletedForUserResponses = {
-    200: Array<ActionWithRelationDto>;
+    200: Array<ActionDto>;
 };
 
 export type ActionsFindCompletedForUserResponse = ActionsFindCompletedForUserResponses[keyof ActionsFindCompletedForUserResponses];

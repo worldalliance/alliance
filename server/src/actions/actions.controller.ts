@@ -17,7 +17,6 @@ import {
 import { ActionsService } from './actions.service';
 import {
   ActionDto,
-  ActionWithRelationDto,
   CreateActionDto,
   UpdateActionDto,
   UserActionDto,
@@ -91,21 +90,22 @@ export class ActionsController {
       +id,
       req.user.sub,
     );
-    return userAction;
+    return userAction ? new UserActionDto(userAction) : null;
   }
 
-  @Get('withStatus')
-  @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: [ActionDto] })
-  async findAllWithStatus(@Request() req: JwtRequest) {
-    return this.actionsService.findPublicWithRelation(req.user?.sub);
-  }
-
+  //doesn't include drafts
   @Get()
   @Public()
   @ApiOkResponse({ type: [ActionDto] })
-  async findAllPublic(): Promise<ActionDto[]> {
+  async findAll(): Promise<ActionDto[]> {
     return this.actionsService.findPublic();
+  }
+
+  @Get('myActionRelations')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: [UserActionDto] })
+  async myActionRelations(@Request() req: JwtRequest) {
+    return this.actionsService.findMyActionRelations(req.user?.sub);
   }
 
   @Get('userlocations/:id')
@@ -248,10 +248,7 @@ export class ActionsController {
     @Param('id', ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<ActionDto | null> {
-    const action = await this.actionsService.findOneWithRelation(
-      id,
-      req.user?.sub,
-    );
+    const action = await this.actionsService.findOne(id);
 
     if (!action) {
       throw new NotFoundException('Action not found');
@@ -289,13 +286,13 @@ export class ActionsController {
   }
 
   @Get('completed/:id')
-  @ApiOkResponse({ type: [ActionWithRelationDto] })
+  @ApiOkResponse({ type: [ActionDto] })
   @ApiOperation({
     summary: 'Get all completed actions for a user',
   })
   async findCompletedForUser(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<ActionWithRelationDto[]> {
+  ): Promise<ActionDto[]> {
     return this.actionsService.findCompletedForUser(+id);
   }
 

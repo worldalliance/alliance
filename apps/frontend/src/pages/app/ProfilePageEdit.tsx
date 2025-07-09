@@ -13,9 +13,9 @@ import {
   forumFindPostsByUser,
   userListFriends,
   UserDto,
-  ActionWithRelationDto,
   PostDto,
   actionsFindCompletedForUser,
+  ActionDto,
 } from "@alliance/shared/client";
 
 const ProfileEditPage: React.FC = () => {
@@ -30,9 +30,7 @@ const ProfileEditPage: React.FC = () => {
   const [bio, setBio] = useState<string>("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [completedActions, setCompletedActions] = useState<
-    ActionWithRelationDto[]
-  >([]);
+  const [completedActions, setCompletedActions] = useState<ActionDto[]>([]);
   const [forumPosts, setForumPosts] = useState<PostDto[]>([]);
   const [friends, setFriends] = useState<UserDto[]>([]);
 

@@ -2,7 +2,11 @@ import { Navigate, Outlet } from "react-router";
 import { useAuth } from "./lib/AuthContext";
 import NavbarHorizontal from "./components/NavbarHorizontal";
 import { useEffect, useState } from "react";
-import { actionsFindAllWithStatus } from "@alliance/shared/client";
+import {
+  actionsFindAll,
+  actionsMyActionRelations,
+  UserActionDto,
+} from "@alliance/shared/client";
 import { ActionDto } from "@alliance/shared/client";
 import { Route } from "../.react-router/types/src/+types/applayout";
 
@@ -15,12 +19,25 @@ export interface RouteMatches {
   matches: RouteMatch[];
 }
 
-export async function clientLoader({}: Route.LoaderArgs): Promise<ActionDto[]> {
-  const actions = await actionsFindAllWithStatus();
-  return actions.data || [];
+export interface LoaderData {
+  actions: ActionDto[];
+  relations: UserActionDto[];
 }
 
-export function getActionDataFromMatches(
+export async function clientLoader({}: Route.LoaderArgs): Promise<LoaderData> {
+  const [actions, relations] = await Promise.all([
+    actionsFindAll(),
+    actionsMyActionRelations(),
+  ]);
+
+  console.log(relations);
+  return {
+    actions: actions.data!,
+    relations: relations.data!,
+  };
+}
+
+export function getLoadedActionData(
   matches: RouteMatch[]
 ): Awaited<ReturnType<typeof clientLoader>> {
   const actions = matches.filter((x) => x.id === "applayout")[0]!

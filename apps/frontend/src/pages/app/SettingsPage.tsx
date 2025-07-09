@@ -47,7 +47,7 @@ const SettingsPage: React.FC = () => {
     try {
       await userUpdate({
         body: {
-          cityId: selectedCityId,
+          cityId: selectedCityId || undefined,
           anonymous: anonymous,
         },
       });

@@ -12,10 +12,10 @@ import {
   FriendStatusDto,
   ProfileDto,
   actionsFindCompletedForUser,
-  ActionWithRelationDto,
   PostDto,
   forumFindPostsByUser,
   userRemoveFriend,
+  ActionDto,
 } from "@alliance/shared/client";
 import ProfileImage from "../../components/ProfileImage";
 import testImg from "../../assets/fakebgimage.png";
@@ -41,9 +41,7 @@ const UserProfilePage: React.FC = () => {
   const [isMe, setIsMe] = useState(false);
   const [selectedTab, setSelectedTab] = useState(ProfileTabs.Activity);
 
-  const [completedActions, setCompletedActions] = useState<
-    ActionWithRelationDto[]
-  >([]);
+  const [completedActions, setCompletedActions] = useState<ActionDto[]>([]);
   const [forumPosts, setForumPosts] = useState<PostDto[]>([]);
   const [friends, setFriends] = useState<UserDto[]>([]);
 
@@ -240,7 +238,7 @@ const UserProfilePage: React.FC = () => {
                   No actions completed yet
                 </p>
               )}
-              {completedActions?.map((action: ActionWithRelationDto) => (
+              {completedActions?.map((action) => (
                 <UserActivityCard action={action} key={action.id} />
               ))}
             </div>

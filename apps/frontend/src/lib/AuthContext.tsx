@@ -66,7 +66,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = memo(
     // ---------- actions ----------
     const login = useCallback(async (email: string, password: string) => {
       setLoading(true);
-      const { request, response, error } = await authLogin({
+      const { error } = await authLogin({
         body: { email, password, mode: "cookie" },
       });
       if (error) {

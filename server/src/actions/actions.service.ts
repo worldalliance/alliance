@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   ActionDto,
-  ActionWithRelationDto,
   CreateActionDto,
   UpdateActionDto,
   LatLonDto,
   CreateActionEventDto,
   ActionActivityDto,
+  UserActionDto,
 } from './dto/action.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Action } from './entities/action.entity';
@@ -79,24 +79,6 @@ export class ActionsService {
       });
   }
 
-  async findPublicWithRelation(userId: number): Promise<ActionDto[]> {
-    const qb = this.actionRepository
-      .createQueryBuilder('action')
-      .leftJoinAndSelect('action.events', 'events')
-      .leftJoinAndSelect('action.userRelations', 'userRelations')
-      .leftJoinAndSelect('userRelations.user', 'user');
-
-    const actions = await qb.getMany();
-
-    return actions
-      .filter((action) => action.status !== ActionStatus.Draft)
-      .map((action) => ({
-        ...this.entityToDto(action),
-        myRelation:
-          action.userRelations.find((ur) => ur.user.id === userId) ?? null,
-      }));
-  }
-
   async findOne(id: number): Promise<Action> {
     const action = await this.actionRepository.findOne({
       where: { id },
@@ -106,18 +88,6 @@ export class ActionsService {
       throw new NotFoundException('Action not found');
     }
     return instanceToPlain(action) as Action;
-  }
-
-  async findOneWithRelation(
-    id: number,
-    userId: number,
-  ): Promise<ActionDto | null> {
-    const action = await this.findOne(id);
-    const userAction = await this.getActionRelation(id, userId);
-    return {
-      ...this.entityToDto(action),
-      myRelation: userAction,
-    };
   }
 
   async setActionRelation(
@@ -323,7 +293,7 @@ export class ActionsService {
     return map;
   }
 
-  async findCompletedForUser(userId: number): Promise<ActionWithRelationDto[]> {
+  async findCompletedForUser(userId: number): Promise<ActionDto[]> {
     const userActions = await this.userActionRepository.find({
       where: { user: { id: userId }, status: UserActionRelation.completed },
       relations: ['action', 'user'],
@@ -466,5 +436,19 @@ export class ActionsService {
         await this.setActionRelation(action.id, id, UserActionRelation.joined);
       }
     }
+  }
+
+  async findMyActionRelations(userId: number): Promise<UserActionDto[]> {
+    let userActions = await this.userActionRepository.find({
+      where: {
+        user: { id: userId },
+        status: In(['joined', 'completed']),
+      },
+      relations: ['action', 'user', 'action.events'],
+    });
+    userActions = userActions.filter(
+      (ua) => ua.action.status !== ActionStatus.Draft,
+    );
+    return userActions.map((ua) => new UserActionDto(ua));
   }
 }

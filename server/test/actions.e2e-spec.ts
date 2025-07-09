@@ -131,21 +131,20 @@ describe('Actions (e2e)', () => {
       expect(res.status).toBe(201);
 
       const res2 = await request(ctx.app.getHttpServer())
-        .get(`/actions/${action!.id}`)
+        .get(`/actions/myStatus/${action!.id}`)
         .set('Authorization', `Bearer ${ctx.accessToken}`);
 
       expect(res2.status).toBe(200);
-      expect(res2.body.myRelation.status).toBe(UserActionRelation.joined);
+      expect(res2.body.status).toBe(UserActionRelation.joined);
     });
 
     it('user can see their relation to all actions', async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/withStatus')
+        .get('/actions/myActionRelations')
         .set('Authorization', `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
-      expect(res.body[0].myRelation.status).toBe(UserActionRelation.joined);
-      expect(res.body[0].usersJoined).toBe(1);
+      expect(res.body[0].status).toBe(UserActionRelation.joined);
     });
 
     it('can fetch all actions with status', async () => {
@@ -546,6 +545,14 @@ describe('Actions (e2e)', () => {
       .send(incompleteEvent);
 
     expect(res.status).toBe(400);
+  });
+
+  it('myActionRelations returns actions with user relation', async () => {
+    const res = await request(ctx.app.getHttpServer())
+      .get('/actions/myActionRelations')
+      .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+    expect(res.status).toBe(200);
   });
 
   describe('Automatic State Transitions', () => {

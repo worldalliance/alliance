@@ -9,6 +9,7 @@ import {
 import Card, { CardStyle } from "../../components/system/Card";
 import Globe from "../../components/Globe";
 import {
+  actionsComplete,
   actionsFindOne,
   actionsJoin,
   actionsMyStatus,
@@ -120,9 +121,12 @@ export default function ActionPage() {
     }
   }, [isAuthenticated, id]);
 
-  const handleCompleteAction = useCallback(() => {
+  const handleCompleteAction = useCallback(async () => {
     setUserRelation("completed");
-  }, []);
+    actionsComplete({
+      path: { id },
+    });
+  }, [id]);
 
   const onJoinAction = useCallback(async () => {
     if (!id) return;
