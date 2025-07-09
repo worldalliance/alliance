@@ -61,7 +61,10 @@ const Timeline: React.FC<TimelineProps> = ({
   return (
     <div className={`relative pl-2 ${className ?? ""}`}>
       {/* vertical line */}
-      <div className="absolute top-0 bottom-0" style={lineStyle} />
+      <div
+        className="absolute top-0 bottom-0 mt-[20px] -ml-[1px]"
+        style={lineStyle}
+      />
 
       <ul className="space-y-6">
         {React.Children.map(children, (child, index) => (
@@ -73,7 +76,7 @@ const Timeline: React.FC<TimelineProps> = ({
             {/* timeline dot */}
             <div
               style={{ ...dotBaseStyle }}
-              className="border-3 border-white flex items-center justify-center bg-[#318dde]"
+              className="border-3 border-white flex items-center justify-center bg-[#318dde] mt-[20px]"
             >
               <div className="w-2 h-2 bg-white rounded-full" />
             </div>

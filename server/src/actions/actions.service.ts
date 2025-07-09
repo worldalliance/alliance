@@ -145,7 +145,25 @@ export class ActionsService {
       userAction.status = status;
     }
 
-    return await this.userActionRepository.save(userAction);
+    try {
+      return await this.userActionRepository.save(userAction);
+    } catch (error) {
+      if (
+        //TODO
+        error.code === '23505' &&
+        error.constraint === 'UQ_649286366665d12427427df5439'
+      ) {
+        const existingUserAction = await this.userActionRepository.findOne({
+          where: { user: { id: userId }, action: { id: actionId } },
+          relations: ['user', 'action'],
+        });
+        if (existingUserAction) {
+          existingUserAction.status = status;
+          return await this.userActionRepository.save(existingUserAction);
+        }
+      }
+      throw error;
+    }
   }
 
   async getActionRelation(
@@ -426,5 +444,27 @@ export class ActionsService {
     });
 
     await this.actionEventRepository.save(newEvent);
+  }
+
+  async clearDb() {
+    if (process.env.NODE_ENV !== 'development') {
+      return;
+    }
+    // Clear in order to respect foreign key constraints
+    await this.actionActivityRepository.delete({});
+    await this.userActionRepository.delete({});
+    await this.actionEventRepository.delete({});
+    await this.actionRepository.delete({});
+  }
+
+  async setTestRelations(id: number) {
+    const actions = await this.actionRepository.find({
+      relations: ['userRelations', 'events'],
+    });
+    for (const action of actions) {
+      if (action.status === ActionStatus.MemberAction) {
+        await this.setActionRelation(action.id, id, UserActionRelation.joined);
+      }
+    }
   }
 }

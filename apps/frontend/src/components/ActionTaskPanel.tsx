@@ -7,6 +7,7 @@ import Card, { CardStyle } from "./system/Card";
 import { loader as actionLoader } from "../pages/app/ActionPage";
 import { Route } from "../../.react-router/types/src/components/+types/ActionTaskPanel";
 import ActionCommitButton from "./ActionCommitButton";
+import ActionTaskPanelActivity from "./ActionTaskPanelActivity";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   console.error(error);
@@ -72,12 +73,20 @@ const ActionTaskPanel = ({ matches }: { matches: { data: unknown }[] }) => {
     }
   }
 
-  if (action.status === "member_action") {
+  if (action.status === "member_action" && userRelation === "joined") {
     if (action.type === "Funding") {
       return (
         <StripeWrapper actionId={action.id}>
           <ActionTaskPanelFunding onPaymentSuccess={handleCompleteAction} />
         </StripeWrapper>
+      );
+    }
+    if (action.type === "Activity" || action.type === "Ongoing") {
+      return (
+        <ActionTaskPanelActivity
+          action={action}
+          onCompleteAction={handleCompleteAction}
+        />
       );
     }
   }

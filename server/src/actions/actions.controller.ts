@@ -119,7 +119,9 @@ export class ActionsController {
   @Get('activities/feed')
   @Public()
   @ApiOkResponse({ type: [ActionActivityDto] })
-  @ApiOperation({ summary: 'Get recent activities from all actions for the feed' })
+  @ApiOperation({
+    summary: 'Get recent activities from all actions for the feed',
+  })
   async getActivityFeed(
     @Query('limit') limit?: string,
   ): Promise<ActionActivityDto[]> {
@@ -305,5 +307,20 @@ export class ActionsController {
     @Body() actionEventDto: CreateActionEventDto,
   ): Promise<ActionDto> {
     return this.actionsService.addEvent(id, actionEventDto);
+  }
+
+  @Post('clearDb')
+  @UseGuards(AdminGuard)
+  clearDb() {
+    return this.actionsService.clearDb();
+  }
+
+  @Post('setTestRelations')
+  @UseGuards(AdminGuard)
+  setTestRelations(@Request() req: JwtRequest) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not found');
+    }
+    return this.actionsService.setTestRelations(req.user.sub);
   }
 }

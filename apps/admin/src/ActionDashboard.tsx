@@ -235,7 +235,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
       if (!response.data) {
         throw new Error("Failed to upload image");
       }
-      return response.data.filename;
+      return response.data;
     } catch (err) {
       console.error("Error uploading image:", err);
       setError("Failed to upload image. Please try again.");
@@ -531,7 +531,7 @@ const ActionDashboard: React.FC<ActionDashboardProps> = ({
                           Action Image:
                         </p>
                         <img
-                          src={`${baseUrl}/images/${action.image}`}
+                          src={action.image}
                           alt={action.name}
                           className="w-full max-w-sm h-auto rounded-md border border-gray-300"
                         />

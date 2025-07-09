@@ -1230,6 +1230,28 @@ export type ActionsAddEventResponses = {
 
 export type ActionsAddEventResponse = ActionsAddEventResponses[keyof ActionsAddEventResponses];
 
+export type ActionsClearDbData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/clearDb';
+};
+
+export type ActionsClearDbResponses = {
+    201: unknown;
+};
+
+export type ActionsSetTestRelationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/setTestRelations';
+};
+
+export type ActionsSetTestRelationsResponses = {
+    201: unknown;
+};
+
 export type CommuniquesFindAllData = {
     body?: never;
     path?: never;

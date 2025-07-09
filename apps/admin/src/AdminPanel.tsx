@@ -1,15 +1,26 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Card, { CardStyle } from "./Card";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ActionDto, actionsFindAllWithDrafts } from "@alliance/shared/client";
+import {
+  ActionDto,
+  actionsFindAllWithDrafts,
+  actionsCreate,
+  actionsAddEvent,
+  actionsClearDb,
+  actionsSetTestRelations,
+} from "@alliance/shared/client";
 import { useAuth } from "./AuthContext";
 import ActionDashboard from "./ActionDashboard";
 import ActionProgressBar from "./components/ActionProgressBar";
+import ConfirmDialog from "./components/ConfirmDialog";
+import { testActions } from "./testData";
 
 const AdminPanel: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
   const [actionsLoading, setActionsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPopulateConfirm, setShowPopulateConfirm] = useState(false);
+  const [isPopulating, setIsPopulating] = useState(false);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -79,6 +90,54 @@ const AdminPanel: React.FC = () => {
   const handleDatabaseViewer = useCallback(() => {
     navigate("/database");
   }, [navigate]);
+
+  const handlePopulateTestData = useCallback(async () => {
+    setIsPopulating(true);
+    try {
+      await actionsClearDb();
+      // Create each test action using the existing endpoint
+      for (let i = 0; i < testActions.length; i++) {
+        const testAction = testActions[i];
+        const response = await actionsCreate({ body: { ...testAction } });
+
+        if (response.data?.id) {
+          await actionsAddEvent({
+            path: { id: response.data.id },
+            body: {
+              title: "Action Launch",
+              description:
+                "Action is now live and gathering commitments from the community.",
+              newStatus: "gathering_commitments",
+              date: new Date(Date.now() - 86400000).toISOString(),
+              showInTimeline: true,
+              sendNotifsTo: "all",
+            },
+          });
+          if (i % 2 === 0) {
+            await actionsAddEvent({
+              path: { id: response.data.id },
+              body: {
+                title: "Commitments Reached",
+                description: "Enough people have committed! Time for action.",
+                newStatus: "member_action",
+                date: new Date(Date.now() - 26400000).toISOString(),
+                showInTimeline: true,
+                sendNotifsTo: "joined",
+              },
+            });
+          }
+        }
+      }
+      await loadActions();
+      await actionsSetTestRelations();
+    } catch (err) {
+      setError("Failed to populate test data");
+      console.error(err);
+    } finally {
+      setIsPopulating(false);
+      setShowPopulateConfirm(false);
+    }
+  }, [loadActions]);
 
   return (
     <div className="flex flex-row min-h-screen h-fitcontent flex-nowrap bg-pagebg">
@@ -164,6 +223,15 @@ const AdminPanel: React.FC = () => {
               >
                 Database Viewer
               </button>
+              {import.meta.env.MODE === "development" && (
+                <button
+                  onClick={() => setShowPopulateConfirm(true)}
+                  disabled={isPopulating}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  {isPopulating ? "Populating..." : "Populate Test Data"}
+                </button>
+              )}
               <button
                 className="w-full bg-stone-600 hover:bg-stone-700 text-white px-4 py-2 rounded-md text-sm font-medium"
                 onClick={logout}
@@ -241,6 +309,18 @@ const AdminPanel: React.FC = () => {
           </Card>
         </div>
       </div>
+
+      {showPopulateConfirm && (
+        <ConfirmDialog
+          isOpen={showPopulateConfirm}
+          onCancel={() => setShowPopulateConfirm(false)}
+          onConfirm={handlePopulateTestData}
+          title="Populate Test Data"
+          message={`This will clear all existing action data and replace it with test actions. Are you sure you want to proceed?`}
+          confirmText="Populate Data"
+          cancelText="Cancel"
+        />
+      )}
     </div>
   );
 };

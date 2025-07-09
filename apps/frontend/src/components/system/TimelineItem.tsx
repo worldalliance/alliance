@@ -11,11 +11,11 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
 }: TimelineItemProps) => {
   return (
     <span>
-      <div className="flex flex-row gap-x-2 items-center">
-        <p className=" text-gray-500">{time}</p>
+      <div className="flex flex-col gap-x-2">
+        <p className="text-gray-500 text-sm">{time}</p>
         <p className="font-bold">{title}</p>
       </div>
-      <p>{description}</p>
+      <p className="mt-1">{description}</p>
     </span>
   );
 };
