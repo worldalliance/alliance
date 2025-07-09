@@ -8,10 +8,13 @@ import {
 } from "react-native";
 import { useAuth } from "../../../lib/AuthContext";
 import { useEffect, useMemo, useState } from "react";
-import { ActionDto, actionsFindAllWithStatus } from "../../../../../shared/client";
+import { ActionDto, actionsFindAll } from "../../../../../shared/client";
 import ActionCard from "../../../components/ActionCard";
 import { router } from "expo-router";
-import { FilterMode, filterActions } from "../../../../../shared/lib/actionUtils";
+import {
+  FilterMode,
+  filterActions,
+} from "../../../../../shared/lib/actionUtils";
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -23,7 +26,7 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchActions = async () => {
       try {
-        const response = await actionsFindAllWithStatus();
+        const response = await actionsFindAll();
         if (response.error) {
           throw new Error("Failed to fetch actions");
         }
@@ -39,7 +42,10 @@ export default function HomeScreen() {
     fetchActions();
   }, []);
 
-  const filteredActions = useMemo(() => filterActions(actions, filterMode), [actions, filterMode]);
+  const filteredActions = useMemo(
+    () => filterActions(actions, filterMode),
+    [actions, filterMode]
+  );
 
   const navigateToAction = (actionId: number) => {
     router.push(`/action/${actionId}`);

@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router";
-import { CreatePostDto, ActionDto, PostDto } from "@alliance/shared/client";
+import {
+  CreatePostDto,
+  ActionDto,
+  PostDto,
+  actionsFindAll,
+} from "@alliance/shared/client";
 import { useAuth } from "../../lib/AuthContext";
 import Card from "../../components/system/Card";
 import {
-  actionsFindAllWithStatus,
   forumCreatePost,
   forumFindOnePost,
   forumUpdatePost,
@@ -37,7 +41,7 @@ const PostFormPage: React.FC = () => {
     const fetchData = async () => {
       try {
         // Fetch available actions for the dropdown
-        const actionsResponse = await actionsFindAllWithStatus();
+        const actionsResponse = await actionsFindAll();
         setActions(actionsResponse.data ?? []);
 
         if (mode === "edit" && postId) {
