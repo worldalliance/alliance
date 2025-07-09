@@ -1,4 +1,5 @@
 import {
+  ActionActivityDto,
   ActionDto,
   ActionWithRelationDto,
   PostDto,
@@ -9,7 +10,7 @@ import {
 export const testActions: ActionDto[] = [
   {
     name: "Save 2,500 acres of Ecuador cloud forest",
-    body: "Acme. corp has been found to lorem over 160,00 ipsums every single year, causing untold devastation in the placeholder text industry.",
+    body: "The Alliance is a global group of people that abide by a process which governs the use of our collective power. We seek to unite millions to billions of people into one cooperative force that represents humanity's collective interests. \n \n Our mission is to build a civilization that serves all individuals in their pursuit of life, liberty, and happiness – a world in which we can take pride. Most pressingly, we seek to resolve ongoing global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development. It is our aim to end these crises in their entirety in the coming years, not to make incremental improvements \n\n\n The Alliance is a global group of people that abide by a process which governs the use of our collective power. We seek to unite millions to billions of people into one cooperative force that represents humanity's collective interests. \n \n Our mission is to build a civilization that serves all individuals in their pursuit of life, liberty, and happiness – a world in which we can take pride. Most pressingly, we seek to resolve ongoing global crises, which include environmental destruction, extreme poverty, democratic dysfunction, and unsafe technological development. It is our aim to end these crises in their entirety in the coming years, not to make incremental improvements",
     category: "Climate Change",
     id: 1,
     image: "",
@@ -252,5 +253,34 @@ export const chartdata = [
     date: "Dec 24",
     SolarPanels: 3239,
     Inverters: 3736,
+  },
+];
+
+export const testActivities: ActionActivityDto[] = [
+  {
+    id: 1,
+    type: "user_joined",
+    createdAt: new Date().toISOString(),
+    user: {
+      id: 0,
+      email: "jo@example.com",
+      admin: false,
+      profilePicture: null,
+      profileDescription: null,
+      displayName: "John Doe",
+    },
+  },
+  {
+    id: 2,
+    type: "user_joined",
+    createdAt: new Date().toISOString(),
+    user: {
+      id: 1,
+      email: "jo@example.com",
+      admin: false,
+      profilePicture: null,
+      profileDescription: null,
+      displayName: "Some One",
+    },
   },
 ];

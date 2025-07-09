@@ -3,6 +3,7 @@ import HomePage from "../pages/app/HomePage";
 import { HttpResponse } from "msw";
 import { testNotJoinedActions, testTodoActions } from "./testData";
 import { http } from "msw";
+import NavbarHorizontal from "../components/NavbarHorizontal";
 
 const meta = {
   title: "Alliance/HomePage",
@@ -28,5 +29,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: {},
+  render: () => {
+    return (
+      <>
+        <NavbarHorizontal />
+        <HomePage />
+      </>
+    );
+  },
 };

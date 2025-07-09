@@ -27,6 +27,7 @@ import { useAuth } from "../../lib/AuthContext";
 import { ParentContext as ActionTaskPanelParentContext } from "../../components/ActionTaskPanel";
 import ActionActivityList from "../../components/ActionActivityList";
 import ReactMarkdown from "react-markdown";
+import { testActions } from "../../stories/testData";
 
 const actionStatusDescriptions: Record<ActionDto["status"], string> = {
   gathering_commitments: "Collecting commitments",
@@ -79,9 +80,17 @@ export async function loader({
 }
 
 export default function ActionPage() {
-  const { id } = useParams();
+  const { id: idParam } = useParams();
 
-  const action = useLoaderData<typeof loader>();
+  const loaderData = useLoaderData<typeof loader>();
+
+  const action = useMemo(() => {
+    if (import.meta.env.STORYBOOK) {
+      return { ...testActions[0], locations: [] };
+    }
+    return loaderData;
+  }, [loaderData]);
+  const id = idParam || String(action?.id);
 
   const [error, setError] = useState<string | null>(null);
 
