@@ -1,64 +1,41 @@
-import React, { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { HomeTaskView } from "../../components/HomeTaskView";
-import {
-  ActionDto,
-  actionsComplete,
-  actionsFindAllWithStatus,
-} from "@alliance/shared/client";
-import { useAuth } from "../../lib/AuthContext";
+import { actionsComplete } from "@alliance/shared/client";
 import { HomeNewActionsView } from "../../components/HomeNewActionsView";
 import GatheringCommitmentsView from "../../components/GatheringCommitmentsView";
+import { getActionDataFromMatches, RouteMatches } from "../../applayout";
 
-const HomePage: React.FC = () => {
-  const [actions, setActions] = useState<ActionDto[]>([]);
-  const [todoActions, setTodoActions] = useState<ActionDto[]>([]);
-  const [newActions, setNewActions] = useState<ActionDto[]>([]);
-  const [committedActions, setCommittedActions] = useState<ActionDto[]>([]);
+const HomePage = ({ matches }: RouteMatches) => {
   const [error, setError] = useState<string | null>(null);
-  const { loading: authLoading, isAuthenticated } = useAuth();
 
-  const updateActions = useCallback((actions: ActionDto[]) => {
-    setActions(actions);
-    setTodoActions(
-      actions.filter(
-        (action) =>
-          action.myRelation?.status === "joined" &&
-          action.status === "member_action"
-      )
-    );
-    setNewActions(
-      actions.filter(
-        (action) =>
-          !action.myRelation ||
-          (action.myRelation.status === "none" &&
-            action.status === "gathering_commitments")
-      )
-    );
-    setCommittedActions(
-      actions.filter(
-        (action) =>
-          action.myRelation?.status === "joined" &&
-          action.status === "gathering_commitments"
-      )
-    );
-  }, []);
+  const actions = getActionDataFromMatches(matches);
 
-  useEffect(() => {
-    if (authLoading || !isAuthenticated) return;
+  if (!actions) {
+    return <div>Error loading actions</div>;
+  }
 
-    actionsFindAllWithStatus()
-      .then(({ data }) => {
-        console.log(data);
-        if (data) {
-          updateActions(data);
-        }
-      })
-      .catch(() => setError("Failed to load actions"));
-  }, [authLoading, isAuthenticated, updateActions]);
+  const todoActions = actions.filter(
+    (action) =>
+      action.myRelation?.status === "joined" &&
+      action.status === "member_action"
+  );
+
+  const newActions = actions.filter(
+    (action) =>
+      !action.myRelation ||
+      (action.myRelation.status === "none" &&
+        action.status === "gathering_commitments")
+  );
+
+  const committedActions = actions.filter(
+    (action) =>
+      action.myRelation?.status === "joined" &&
+      action.status === "gathering_commitments"
+  );
 
   const handleTaskComplete = (actionId: number) => {
     actionsComplete({ path: { id: actionId.toString() } }).then(() => {
-      updateActions(actions.filter((action) => action.id !== actionId));
+      window.location.reload();
     });
   };
 

@@ -1,40 +1,16 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import ActionItemCard from "../../components/ActionItemCard";
 import Button, { ButtonColor } from "../../components/system/Button";
-import {
-  actionsFindAllPublic,
-  actionsFindAllWithStatus,
-} from "@alliance/shared/client";
-import { ActionDto } from "@alliance/shared/client";
-import { useAuth } from "../../lib/AuthContext";
 import { FilterMode, filterActions } from "@alliance/shared/lib/actionUtils";
 import { useActionCounts } from "../../lib/useActionWebSocket";
+import { getActionDataFromMatches, RouteMatches } from "../../applayout";
 
-const ActionsListPage: React.FC = () => {
-  const [actions, setActions] = useState<ActionDto[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+const ActionsListPage = ({ matches }: RouteMatches) => {
+  const actions = getActionDataFromMatches(matches);
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
-
-  const { isAuthenticated } = useAuth();
 
   const actionIds = useMemo(() => actions.map((a) => a.id), [actions]);
   const liveCounts = useActionCounts(actionIds);
-
-  useEffect(() => {
-    const req = isAuthenticated
-      ? actionsFindAllWithStatus
-      : actionsFindAllPublic;
-
-    req().then((response) => {
-      if (response.data) {
-        setActions(response.data || []);
-      } else {
-        setError("Failed to load actions");
-      }
-      setLoading(false);
-    });
-  }, [isAuthenticated]);
 
   const filteredActions = useMemo(
     () => filterActions(actions, filterMode),
@@ -61,14 +37,6 @@ const ActionsListPage: React.FC = () => {
             ))}
           </div>
         </div>
-
-        {loading && <p className="text-center py-4">Loading actions...</p>}
-
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
-          </div>
-        )}
 
         {filteredActions.map((action) => (
           <ActionItemCard
