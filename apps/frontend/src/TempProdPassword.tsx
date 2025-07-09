@@ -2,43 +2,41 @@ import { useEffect, useState } from "react";
 import { Outlet } from "react-router";
 
 export default function TempProdPassword() {
+  const [mounted, setMounted] = useState(false);
   const [password, setPassword] = useState("");
-  const [putPassword, setPutPassword] = useState(false);
+  const [granted, setGranted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
+    if (!mounted) return;
     if (password === "ally") {
-      setPutPassword(true);
+      setGranted(true);
       localStorage.setItem("prod-login", "true");
     }
-  }, [password]);
+  }, [password, mounted]);
 
-  if (import.meta.env.MODE === "development") {
-    return <Outlet />;
-  }
+  if (!mounted) return null;
 
-  if (
-    typeof localStorage !== "undefined" &&
-    localStorage.getItem("prod-login")
-  ) {
-    return <Outlet />;
-  }
+  const bypass =
+    import.meta.env.MODE === "development" ||
+    localStorage.getItem("prod-login") ||
+    granted;
 
-  if (!putPassword) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <form>
-          <input
-            className="p-2 rounded-md border-2 border-gray-300"
-            type="password"
-            autoComplete="on"
-            placeholder="Enter password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </form>
-      </div>
-    );
-  }
+  if (bypass) return <Outlet />;
 
-  return <Outlet />;
+  return (
+    <div className="flex flex-col items-center justify-center h-screen">
+      <form>
+        <input
+          className="p-2 rounded-md border-2 border-gray-300"
+          type="password"
+          placeholder="Enter password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+      </form>
+    </div>
+  );
 }
