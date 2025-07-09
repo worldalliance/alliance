@@ -13,7 +13,7 @@ export const GatheringCommitmentsView: React.FC<
     return null;
   }
   return (
-    <div className="flex flex-col gap-y-2">
+    <div className="flex flex-col gap-y-4">
       <div className="my-2 pl-4">
         <span className="font-bold">
           Still gathering commitments from other members ({actions.length})

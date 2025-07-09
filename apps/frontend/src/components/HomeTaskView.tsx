@@ -23,9 +23,11 @@ export const HomeTaskView: React.FC<HomeTaskViewProps> = ({
   return (
     <div className="flex flex-col gap-y-4">
       {actions.length > 0 ? (
-        <p className="font-bold pl-4">Awaiting Completion ({actions.length})</p>
+        <p className="text-zinc-500 font-medium text-lg pl-4">
+          Awaiting Completion ({actions.length})
+        </p>
       ) : (
-        <p className="text-gray-600 text-lg">No actions to complete.</p>
+        <p className="text-zinc-500 text-lg">No actions to complete.</p>
       )}
       {actions.map((action) => (
         <TaskCard

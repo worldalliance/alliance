@@ -13,9 +13,9 @@ export const HomeNewActionsView: React.FC<HomeNewActionsViewProps> = ({
     return null;
   }
   return (
-    <div className="flex flex-col gap-y-2">
-      <p className="pl-4">
-        <span className="font-bold">
+    <div className="flex flex-col gap-y-4">
+      <p className="text-zinc-500 pl-4">
+        <span className="font-medium text-lg">
           Awaiting Commitment ({actions.length})
         </span>
       </p>

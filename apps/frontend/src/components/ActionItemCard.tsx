@@ -26,14 +26,14 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   return (
     <div className={`relative ${className}`}>
       <Card
-        className="block bg-pagebg text-[11pt] "
+        className="block shadow text-[11pt] "
         style={CardStyle.White}
         onClick={() => navigate(`/actions/${id}`)}
       >
         {/* <Badge>{category}</Badge> */}
         <div className="w-[100%] space-x-3">
           <div className="flex flex-row justify-between items-start mr-0">
-            <p className="font-bold">{name}</p>
+            <p className="font-medium">{name}</p>
             {joinedCount !== undefined && (
               <ActionCardUserCount
                 joined={joinedCount}
@@ -42,7 +42,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
             )}
           </div>
           {showDescription && (
-            <p className="text-zinc-700 mt-2">{shortDescription}</p>
+            <p className="text-zinc-400">{shortDescription}</p>
           )}
         </div>
       </Card>

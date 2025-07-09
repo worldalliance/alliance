@@ -11,11 +11,11 @@ const UsersCompletedBar: React.FC<UsersCompletedBarProps> = ({
 }: UsersCompletedBarProps) => {
   const percentage = (usersCompleted / totalUsers) * 100;
   return (
-    <div className="flex flex-row gap-x-4 flex-1 relative pr-8 items-center">
+    <div className="flex flex-col flex-1 relative items-end">
       <ActionCardUserCount joined={totalUsers} completed={usersCompleted} />
-      <div className="w-full h-3 bg-gray-100 rounded-[3px] mt-1">
+      <div className="w-full h-3 bg-zinc-100 rounded-[3px] mt-1">
         <div
-          className="h-3 bg-[#5d9c2d] rounded-[3px]"
+          className="h-3 bg-green-600 rounded-[3px]"
           style={{ width: `${percentage}%` }}
         ></div>
       </div>

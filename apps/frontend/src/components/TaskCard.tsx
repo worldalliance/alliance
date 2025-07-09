@@ -71,9 +71,9 @@ const TaskCard: React.FC<TaskCardProps> = ({
     const text = action.type === "Funding" ? "Give" : "See steps";
     return (
       <Button
-        color={ButtonColor.Stone}
+        color={ButtonColor.Transparent}
         onClick={goToActionPage}
-        className="!w-32 rounded-md !text-white font-regular py-3"
+        className="w-full font-medium text-sm rounded-md bg-green-600 text-white font-regular"
       >
         {text}
       </Button>
@@ -85,38 +85,40 @@ const TaskCard: React.FC<TaskCardProps> = ({
   return (
     <Card
       style={CardStyle.White}
-      className={` transition-all duration-500 w-full relative
+      className={` transition-all shadow duration-500 w-full relative
          ${state === TaskCardState.Minified ? "pb-4" : ""}
           ${state === TaskCardState.Closed ? "py-0 border-0" : ""}`}
       closed={state === TaskCardState.Closed}
     >
-      <div className="flex flex-row justify-between gap-x-10 items-center">
-        <div className="flex flex-row items-center gap-x-3 justify-center">
-          <p className="font-bold font-freight text-black">{action.name}</p>
+      <div className="flex flex-row items-start gap-x-8">
+        <div className="flex-1 flex flex-col">
+          <p className="font-medium text-black">{action.name}</p>
+          <p className="text-zinc-400">{action.shortDescription}</p>
           {/* {action.type === "Funding" && <Badge>$5</Badge>}
           {action.type === "Activity" && !!action.timeEstimate && (
             <Badge>takes {action.timeEstimate}</Badge>
           )}
           {action.type === "Ongoing" && <Badge>3 week commitment</Badge>} */}
         </div>
-        <img
-          src={expandArrow}
-          alt="Expand"
-          title="Go to action page"
-          className={`w-6 h-6 transition-transform rotate-270 border border-gray-200 hover:bg-gray-200 rounded-sm p-1 cursor-pointer`}
-          onClick={goToActionPage}
-        />
+        <div className="w-24 flex flex-col gap-y-2">
+          {actionButton}
+          <Button
+            color={ButtonColor.Transparent}
+            onClick={goToActionPage}
+            className="w-full text-sm rounded-md border border-green-600 text-green-600 font-regular"
+          >
+            Details
+          </Button>
+        </div>
       </div>
 
       {state !== TaskCardState.Minified && (
-        <div className="transition-all duration-300 space-y-2">
-          <p className="text-zinc-700 pb-2">{action.shortDescription}</p>
-          <div className="flex flex-row items-center pl-3">
+        <div className="mt-2 transition-all duration-300">
+          <div className="flex flex-row items-center">
             <UsersCompletedBar
               usersCompleted={action.usersCompleted}
               totalUsers={liveUserCount ?? action.usersJoined}
             />
-            {actionButton}
           </div>
         </div>
       )}
