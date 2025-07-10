@@ -32,8 +32,8 @@ export async function clientLoader({}: Route.LoaderArgs): Promise<LoaderData> {
 
   console.log(relations);
   return {
-    actions: actions.data!,
-    relations: relations.data!,
+    actions: actions.data ?? [],
+    relations: relations.data ?? [],
   };
 }
 
