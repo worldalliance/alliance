@@ -6,34 +6,27 @@ import ActionItemCard from "../../components/ActionItemCard";
 const HomePage = ({ matches }: RouteMatches) => {
   const { actions, relations } = getLoadedActionData(matches);
 
-  const actionToRelationMap = new Map<number, UserActionDto["status"]>();
-  relations.forEach((relation) => {
-    actionToRelationMap.set(relation.actionId, relation.status);
-  });
-
   if (!actions) {
     return <div>Error loading actions</div>;
   }
 
   console.log(relations);
-  console.log(actionToRelationMap);
 
   const todoActions = actions.filter(
     (action) =>
-      actionToRelationMap.get(action.id) === "joined" &&
-      action.status === "member_action"
+      relations.get(action.id) === "joined" && action.status === "member_action"
   );
 
   const newActions = actions.filter(
     (action) =>
-      !actionToRelationMap.get(action.id) ||
-      (actionToRelationMap.get(action.id) === "none" &&
+      !relations.get(action.id) ||
+      (relations.get(action.id) === "none" &&
         action.status === "gathering_commitments")
   );
 
   const committedActions = actions.filter(
     (action) =>
-      actionToRelationMap.get(action.id) === "joined" &&
+      relations.get(action.id) === "joined" &&
       action.status === "gathering_commitments"
   );
 

@@ -21,7 +21,7 @@ export interface RouteMatches {
 
 export interface LoaderData {
   actions: ActionDto[];
-  relations: UserActionDto[];
+  relations: Map<number, UserActionDto["status"]>;
 }
 
 export async function clientLoader({}: Route.LoaderArgs): Promise<LoaderData> {
@@ -30,10 +30,15 @@ export async function clientLoader({}: Route.LoaderArgs): Promise<LoaderData> {
     actionsMyActionRelations(),
   ]);
 
-  console.log(relations);
+  const relationList = relations.data ?? [];
+  const actionToRelationMap = new Map<number, UserActionDto["status"]>();
+  relationList.forEach((relation) => {
+    actionToRelationMap.set(relation.actionId, relation.status);
+  });
+
   return {
     actions: actions.data ?? [],
-    relations: relations.data ?? [],
+    relations: actionToRelationMap,
   };
 }
 

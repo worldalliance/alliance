@@ -6,7 +6,7 @@ import { useActionCounts } from "../../lib/useActionWebSocket";
 import { getLoadedActionData, RouteMatches } from "../../applayout";
 
 const ActionsListPage = ({ matches }: RouteMatches) => {
-  const { actions } = getLoadedActionData(matches);
+  const { actions, relations } = getLoadedActionData(matches);
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
 
   const actionIds = useMemo(() => actions.map((a) => a.id), [actions]);
@@ -49,6 +49,7 @@ const ActionsListPage = ({ matches }: RouteMatches) => {
                 ? action.usersCompleted
                 : undefined
             }
+            userRelation={relations.get(action.id) ?? "none"}
           />
         ))}
       </div>

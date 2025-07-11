@@ -113,7 +113,13 @@
   --color-hgreen: #3f5640;
   --pagebg: #ffffff;
   --color-agreen: #c4d8bf;
+  --color-cardbutton: #333;
   --color-bgreen: rgb(143, 190, 111);
+  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.04), 0 2px 4px -2px rgb(0 0 0 / 0.08);
+}
+
+.none {
+  background-color: rgb(57, 125, 208);
 }
 
 html {
@@ -124,6 +130,11 @@ html {
 h1 {
   font-weight: bold;
   font-size: 30px;
+}
+
+h2 {
+  font-weight: bold;
+  font-size: 20px;
 }
 
 h2,

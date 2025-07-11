@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import Card, { CardStyle } from "./system/Card";
 import { useNavigate } from "react-router";
-import { ActionDto } from "@alliance/shared/client/types.gen";
+import { ActionDto, UserActionDto } from "@alliance/shared/client/types.gen";
 import ActionCardUserCount from "./ActionCardUserCount";
 import Button, { ButtonColor } from "./system/Button";
 
@@ -11,6 +11,7 @@ export interface ActionItemCardProps
   joinedCount?: number;
   completedCount?: number;
   showDescription?: boolean;
+  userRelation?: UserActionDto["status"];
 }
 
 const ActionItemCard: React.FC<ActionItemCardProps> = ({
@@ -21,8 +22,11 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   joinedCount,
   completedCount,
   showDescription = true,
+  userRelation,
 }) => {
   const navigate = useNavigate();
+
+  console.log(joinedCount, completedCount);
 
   const goToActionPage = useCallback(
     (e: React.MouseEvent) => {
@@ -42,13 +46,15 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
           </div>
           <div>
             <div className="w-24 flex flex-col gap-y-2">
-              <Button
-                color={ButtonColor.Transparent}
-                onClick={goToActionPage}
-                className="w-full text-sm rounded-md text-white font-medium bg-blue-500 hover:bg-blue-600 font-regular"
-              >
-                Commit
-              </Button>
+              {userRelation === "none" && (
+                <Button
+                  color={ButtonColor.Transparent}
+                  onClick={goToActionPage}
+                  className="w-full text-sm rounded-md text-white font-medium bg-cardbutton hover:brightness-90 font-regular"
+                >
+                  Commit
+                </Button>
+              )}
               <Button
                 color={ButtonColor.Transparent}
                 onClick={goToActionPage}

@@ -16,9 +16,9 @@ const ActionCardUserCount = ({
         src={usersIcon}
         alt="users"
         className="w-4 h-4"
-        style={{ filter: "opacity(0.2)" }}
+        style={{ filter: "opacity(0.4)" }}
       />
-      <span className="text-zinc-300 text-sm text-nowrap font-ibm">
+      <span className="text-zinc-500 text-sm text-nowrap font-ibm">
         {completed !== undefined && `${completed} / `}
         {joined}
       </span>

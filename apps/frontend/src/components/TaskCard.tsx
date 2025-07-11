@@ -72,7 +72,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
       <Button
         color={ButtonColor.Transparent}
         onClick={goToActionPage}
-        className="w-full font-medium text-sm rounded-md bg-blue-500 hover:bg-blue-600 text-white font-regular"
+        className="w-full font-medium text-sm rounded-md bg-cardbutton hover:brightness-90 text-white font-regular"
       >
         {text}
       </Button>
