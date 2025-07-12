@@ -41,18 +41,22 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
   const ctrl = useRef<AbortController | null>(null);
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
   const [longitude, setLongitude] = useState<number | undefined>(undefined);
+  const [geoFetched, setGeoFetched] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchGeolocation = useCallback(async () => {
+    if (geoFetched) return;
+    try {
       const res = await fetch("https://ipapi.co/json/");
       const data = await res.json();
       if (data.latitude && data.longitude) {
         setLatitude(data.latitude);
         setLongitude(data.longitude);
       }
-    };
-    fetchData();
-  }, []);
+    } catch (err) {
+      console.error("Failed to fetch geolocation:", err);
+    }
+    setGeoFetched(true);
+  }, [geoFetched]);
 
   // ─────────────────────────────────── helpers ──────────────────────────────
   const fetchCities = useCallback(
@@ -64,7 +68,6 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
       ctrl.current?.abort();
       ctrl.current = new AbortController();
       try {
-        console.log("sending query", name, latitude, longitude);
         const res = await geoSearchCity({
           query: { query: name, latitude, longitude },
         });
@@ -143,9 +146,10 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
           setQuery(e.target.value);
           setDidSelect(false);
         }}
-        onFocus={() =>
-          query.length >= minLength && results.length && setOpen(true)
-        }
+        onFocus={() => {
+          fetchGeolocation();
+          query.length >= minLength && results.length && setOpen(true);
+        }}
         onKeyDown={handleKeyDown}
         aria-autocomplete="list"
         autoComplete="off"

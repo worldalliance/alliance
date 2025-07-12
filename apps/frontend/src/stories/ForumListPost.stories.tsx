@@ -49,8 +49,6 @@ export const ManyPosts: Story = {
             key={index}
             post={samplePost}
             handleViewPost={() => {}}
-            first={index === 0}
-            last={index === 9}
           />
         ))}
       </div>

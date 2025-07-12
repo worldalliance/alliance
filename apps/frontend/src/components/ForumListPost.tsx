@@ -7,16 +7,9 @@ import { useNavigate } from "react-router";
 export interface ForumListPostProps {
   post: PostDto;
   handleViewPost: (id: number) => void;
-  first?: boolean;
-  last?: boolean;
 }
 
-const ForumListPost = ({
-  post,
-  handleViewPost,
-  first,
-  last,
-}: ForumListPostProps) => {
+const ForumListPost = ({ post, handleViewPost }: ForumListPostProps) => {
   const navigate = useNavigate();
 
   const authorClick = (e: React.MouseEvent) => {
@@ -27,9 +20,7 @@ const ForumListPost = ({
   return (
     <Card
       key={post.id}
-      className={`rounded-none w-full mb-0 hover:z-20 ${
-        first ? "rounded-t-lg" : ""
-      } ${last ? "rounded-b-lg" : ""}`}
+      className={`w-full mb-0 my-[4px] rounded-sm`}
       onClick={() => handleViewPost(post.id)}
       style={CardStyle.White}
     >
@@ -43,7 +34,12 @@ const ForumListPost = ({
             {post.author?.name || "Unknown user"}
           </p>
           {post.action?.name && (
-            <span className="text-blue-600 ml-1">{post.action.name}</span>
+            <a
+              href={`/action/${post.action.id}`}
+              className="text-blue ml-1 hover:underline"
+            >
+              {post.action.name}
+            </a>
           )}
         </div>
         <div className="flex space-x-3">
