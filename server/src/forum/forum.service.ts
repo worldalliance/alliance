@@ -345,6 +345,19 @@ export class ForumService {
       throw new NotFoundException('You can only delete your own replies');
     }
 
+    // Clear notifications that point to this deleted reply
+    // For forum comments, the parentObjectId is the post ID when parentObjectType is 'post'
+    if (reply.parentObjectType === CommentParentObject.Post) {
+      const replyNotificationUrl = replyUrl(reply.parentObjectId, reply.id);
+      await this.notifRepository.update(
+        {
+          webAppLocation: replyNotificationUrl,
+          category: NotificationType.ForumReply,
+        },
+        { cleared: true },
+      );
+    }
+
     await this.commentRepository.update(id, { deleted: true });
   }
 
