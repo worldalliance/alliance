@@ -1,4 +1,4 @@
-import { UserActionDto } from "@alliance/shared/client";
+import { UserActionDto, ActionActivityDto } from "@alliance/shared/client";
 import ActionTaskPanelFunding from "./ActionTaskPanelFunding";
 import { StripeWrapper } from "./StripeWrapper";
 import ActionTaskPanelCompleted from "./ActionTaskPanelCompleted";
@@ -30,6 +30,9 @@ export type TaskPanelContext = {
   handleCompleteAction: () => void;
   handleJoinAction: () => void;
   userRelation: UserActionDto["status"] | null;
+  activities: ActionActivityDto[];
+  handleLikeActivity: (activityId: number) => Promise<void>;
+  setActivities: React.Dispatch<React.SetStateAction<ActionActivityDto[]>>;
 };
 
 const ActionTaskPanel = () => {

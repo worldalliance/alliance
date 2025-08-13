@@ -1,13 +1,7 @@
-import { useEffect, useState } from "react";
-import {
-  ActionActivityDto,
-  actionsLikeActivity,
-  actionsUnlikeActivity,
-} from "@alliance/shared/client";
-import { actionsGetActionActivities } from "@alliance/shared/client";
+import { useState } from "react";
+import { ActionActivityDto } from "@alliance/shared/client";
 import { CardStyle } from "./system/Card";
 import Card from "./system/Card";
-import { useActionActivity } from "../lib/useActionActivityWebSocket";
 import { formatTime } from "../lib/utils";
 import { useNavigate } from "react-router";
 import { formatActivityMessage } from "./ActionActivityDetail";
@@ -16,48 +10,27 @@ import { useAuth } from "../lib/AuthContext";
 
 interface ActionActivityListProps {
   actionId: number;
+  activities: ActionActivityDto[];
+  loading: boolean;
+  onLikeActivity: (activityId: number) => Promise<void>;
+  setActivities: React.Dispatch<React.SetStateAction<ActionActivityDto[]>>;
 }
 
-const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
-  const [initialActivities, setInitialActivities] = useState<
-    ActionActivityDto[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+const ActionActivityList = ({ 
+  actionId, 
+  activities, 
+  loading, 
+  onLikeActivity,
+  setActivities 
+}: ActionActivityListProps) => {
   const [showAll, setShowAll] = useState(false);
-  const { activities: liveActivities } = useActionActivity(actionId);
   const { user } = useAuth();
 
-  useEffect(() => {
-    const fetchActivities = async () => {
-      try {
-        setLoading(true);
-        const response = await actionsGetActionActivities({
-          path: { id: actionId },
-        });
-        if (!response.data) {
-          throw new Error();
-        }
-        setInitialActivities(response.data);
-      } catch (err) {
-        console.error("Error fetching activities:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchActivities();
-  }, [actionId]);
-
-  // Combine initial activities with live activities, avoiding duplicates
-  const allActivities = [...liveActivities, ...initialActivities]
-    .filter(
-      (activity, index, self) =>
-        self.findIndex((a) => a.id === activity.id) === index
-    )
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+  // Sort activities by creation date
+  const allActivities = [...activities].sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
 
   const navigate = useNavigate();
 
@@ -79,39 +52,7 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
     if (!user) {
       return;
     }
-    if (activity.likes.some((like) => like.id === user.id)) {
-      const response = await actionsUnlikeActivity({
-        path: { id: activity.id },
-      });
-      if (response.response.ok) {
-        setInitialActivities(
-          initialActivities.map((a) =>
-            a.id === activity.id
-              ? {
-                  ...a,
-                  likes: a.likes.filter((like) => like.id !== user.id),
-                }
-              : a
-          )
-        );
-      }
-    } else {
-      const response = await actionsLikeActivity({
-        path: { id: activity.id },
-      });
-      if (response.response.ok) {
-        setInitialActivities(
-          initialActivities.map((a) =>
-            a.id === activity.id
-              ? {
-                  ...a,
-                  likes: response.data?.likes || [],
-                }
-              : a
-          )
-        );
-      }
-    }
+    await onLikeActivity(activity.id);
   };
 
   if (!allActivities.length) {
@@ -169,11 +110,11 @@ const ActionActivityList = ({ actionId }: ActionActivityListProps) => {
                     <img
                       src={heart}
                       alt="Like"
-                      className={`w-4 h-4 ${
+                      className={`w-4 h-4 cursor-pointer transition-opacity ${
                         activity.likes.some((like) => like.id === user?.id)
-                          ? "opacity-60"
-                          : "opacity-20"
-                      }`}
+                          ? "opacity-80"
+                          : "opacity-30"
+                      } hover:opacity-50`}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleLike(activity);
