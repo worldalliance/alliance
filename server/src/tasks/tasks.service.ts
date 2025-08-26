@@ -116,4 +116,9 @@ export class TasksService {
         }) satisfies FormDto,
     );
   }
+
+  async deleteForm(formId: number): Promise<void> {
+    const form = await this.getForm(formId);
+    await this.formRepository.remove(form);
+  }
 }

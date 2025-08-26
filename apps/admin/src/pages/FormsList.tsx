@@ -1,4 +1,5 @@
 import { tasksListForms } from "@alliance/shared/client";
+import { client } from "@alliance/shared/client/client.gen";
 import { FormSchema, Page } from "@alliance/shared/forms/formschema";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import React, { useCallback, useEffect, useState } from "react";
@@ -46,6 +47,24 @@ const FormsList: React.FC = () => {
     [navigate]
   );
 
+  const handleDeleteForm = useCallback(
+    async (id: number) => {
+      if (confirm("Are you sure you want to delete this form?")) {
+        try {
+          await client.delete({
+            url: `/tasks/${id}`,
+          });
+          // Reload forms after successful deletion
+          loadForms();
+        } catch (err) {
+          console.error("Failed to delete form:", err);
+          alert("Failed to delete form. Please try again.");
+        }
+      }
+    },
+    [loadForms]
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -70,31 +89,42 @@ const FormsList: React.FC = () => {
         <div className="space-y-3 flex-1 overflow-y-auto">
           {forms.map((form) => (
             <Card key={form.id} style={CardStyle.White}>
-              <div
-                onClick={() => handleEditForm(form.id)}
-                className="cursor-pointer"
-              >
-                <div className="flex justify-between mb-2">
-                  <h3 className="font-bold text-sm">
-                    {form.title || `Form ${form.id}`}
-                  </h3>
-                  <span className="text-xs text-gray-500">ID: {form.id}</span>
+              <div className="flex justify-between items-start">
+                <div
+                  onClick={() => handleEditForm(form.id)}
+                  className="cursor-pointer flex-1"
+                >
+                  <div className="flex justify-between mb-2">
+                    <h3 className="font-bold text-sm">
+                      {form.title || `Form ${form.id}`}
+                    </h3>
+                    <span className="text-xs text-gray-500">ID: {form.id}</span>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    {form.schema.pages?.length || 0} page
+                    {(form.schema.pages?.length || 0) !== 1 ? "s" : ""} •{" "}
+                    {form.schema.pages?.reduce(
+                      (total: number, page) => total + (page.fields?.length || 0),
+                      0
+                    ) || 0}{" "}
+                    field
+                    {(form.pages?.reduce(
+                      (total: number, page) => total + (page.fields?.length || 0),
+                      0
+                    ) || 0) !== 1
+                      ? "s"
+                      : ""}
+                  </p>
                 </div>
-                <p className="text-xs text-gray-600">
-                  {form.schema.pages?.length || 0} page
-                  {(form.schema.pages?.length || 0) !== 1 ? "s" : ""} •{" "}
-                  {form.schema.pages?.reduce(
-                    (total: number, page) => total + (page.fields?.length || 0),
-                    0
-                  ) || 0}{" "}
-                  field
-                  {(form.pages?.reduce(
-                    (total: number, page) => total + (page.fields?.length || 0),
-                    0
-                  ) || 0) !== 1
-                    ? "s"
-                    : ""}
-                </p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteForm(form.id);
+                  }}
+                  className="ml-2 p-1 text-gray-400 hover:text-gray-600 rounded"
+                >
+                  ×
+                </button>
               </div>
             </Card>
           ))}

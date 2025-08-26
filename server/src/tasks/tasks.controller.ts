@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -9,7 +10,7 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation } from '@nestjs/swagger';
 import { AuthGuard, JwtRequest } from 'src/auth/guards/auth.guard';
 import { CreateFormDto, FormDto, SubmitFormDto } from './form.dto';
 import { TasksService } from './tasks.service';
@@ -58,5 +59,13 @@ export class TasksController {
     @Body() body: CreateFormDto,
   ) {
     return this.tasksService.updateForm(+formId, body);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ operationId: 'deleteForm' })
+  @ApiOkResponse()
+  async deleteForm(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    return this.tasksService.deleteForm(id);
   }
 }
