@@ -8,10 +8,8 @@ import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import ActionTaskPanel from "../../components/ActionTaskPanel";
 import CompletedBar from "../../components/CompletedBar";
 import ClockIcon from "../../components/icons/ClockIcon";
-import DeadlineIcon from "../../components/icons/DeadlineIcon";
 import UserProfilePicRow from "../../components/UserProfilePicRow";
 import { useActionCount } from "../../lib/useActionWebSocket";
-import { formatTime } from "../../lib/utils";
 
 export interface LargeActionCardProps {
   action: ActionDto;
@@ -68,69 +66,46 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
 
   return (
     <Card
-      style={CardStyle.White}
-      className={`shadow-lg transition-all duration-300 ${
+      style={CardStyle.Outline}
+      className={`transition-all duration-300 ${
         state === LargeActionCardState.Closed
           ? "opacity-0 overflow-hidden"
           : "opacity-100"
-      } !border-green !border-2 w-full relative
+      } !border-1 !border-zinc-200 !p-6 w-full relative
          ${state === LargeActionCardState.Minified ? "pb-4" : ""}`}
     >
       <div className="p-2">
-        <div className="flex flex-row flex-wrap gap-x-4 mb-2">
-          {!!action.timeEstimate && (
-            <div className="flex flex-row items-center gap-x-1.5 text-base text-zinc-500">
-              <ClockIcon />
-              <p className="text-green">{`${action.timeEstimate} minute${
-                action.timeEstimate === 1 ? "" : "s"
-              }`}</p>
-            </div>
-          )}
-          {!!lastEvent.deadline && (
-            <div className="flex flex-row items-center gap-x-1.5 text-base text-zinc-500">
-              <DeadlineIcon fill="#dc2626" />
-              <p className="text-red-600">
-                {`${formatTime(new Date(lastEvent.deadline), {
-                  addSuffix: false,
-                })}`}{" "}
-                left
-              </p>
-            </div>
-          )}
-          <div>
-            <p className="text-base text-zinc-500">
-              {action.status === "gathering_commitments"
-                ? "Launched "
-                : "Action began "}
-              {formatTime(new Date(lastEvent.date), { addSuffix: true })}
-            </p>
-          </div>
-        </div>
-
         <div className="flex flex-row items-start gap-x-8">
           <div className="flex-1 flex flex-col">
-            <p className="font-medium text-lg text-black">{action.name}</p>
-            <p className="text-zinc-500">{action.shortDescription}</p>
+            <div className="flex flex-row items-start justify-between flex-wrap gap-x-4">
+              <div className="">
+                <div className="flex flex-row items-center gap-x-4 mb-2 justify-center">
+                  {!!action.timeEstimate && (
+                    <div className="flex flex-row items-center gap-x-1.5 text-base text-zinc-500">
+                      <ClockIcon />
+                      <p className="text-green">{`${
+                        action.timeEstimate
+                      } minute${action.timeEstimate === 1 ? "" : "s"}`}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="w-24 flex flex-col gap-y-2">
+                <Button
+                  color={ButtonColor.Transparent}
+                  onClick={goToActionPage}
+                  className="w-full text-sm hover:bg-zinc-50 border border-zinc-200 text-black font-normal !rounded-none"
+                >
+                  Details
+                </Button>
+              </div>
+            </div>
+            <p className="font-medium font-serif text-2xl text-black">
+              {action.name}
+            </p>
 
-            {/* {action.type === "Funding" && <Badge>$5</Badge>}
-          {action.type === "Activity" && !!action.timeEstimate && (
-            <Badge>takes {action.timeEstimate}</Badge>
-          )}
-          {action.type === "Ongoing" && <Badge>3 week commitment</Badge>} */}
-          </div>
-          <div className="w-24 flex flex-col gap-y-2">
-            <Button
-              color={ButtonColor.Transparent}
-              onClick={goToActionPage}
-              className="w-full text-sm hover:bg-zinc-50 border border-zinc-200 text-black font-normal"
-            >
-              Details
-            </Button>
-          </div>
-        </div>
-        {!action.commitmentless && (
-          <div className="mt-6">
-            <div>
+            <p className="text-black mt-2">{action.shortDescription}</p>
+            <div className="mt-4">
               <div className="flex flex-row items-center justify-between w-full gap-x-2">
                 <p className="text-zinc-500 text-base mb-1">
                   {liveUserCount ?? 0} / {threshold}{" "}
@@ -148,13 +123,20 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
                   users={friendActivities.map((activity) => activity.user)}
                 />
               </div>
-              <CompletedBar
-                percentage={(liveUserCount ?? 0 / threshold) * 100}
-              />
+              <div className="w-full">
+                <CompletedBar percentage={50} />
+              </div>
             </div>
+
+            {/* {action.type === "Funding" && <Badge>$5</Badge>}
+          {action.type === "Activity" && !!action.timeEstimate && (
+            <Badge>takes {action.timeEstimate}</Badge>
+          )}
+          {action.type === "Ongoing" && <Badge>3 week commitment</Badge>} */}
           </div>
-        )}
-        <div className="mt-4">
+        </div>
+
+        <div className="mt-6 border-t pt-6 border-zinc-200">
           <ActionTaskPanel
             action={action}
             userRelation={userRelation}

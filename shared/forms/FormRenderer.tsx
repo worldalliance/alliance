@@ -284,7 +284,7 @@ const FormRenderer = ({
           )}
         </div>
         {/* Navigation */}
-        <div className="flex justify-between items-center pt-4 border-t border-gray-200 gap-x-3">
+        <div className="flex justify-between items-center gap-x-3">
           {schema.pages.length > 1 && (
             <div>
               <div>
@@ -320,7 +320,7 @@ const FormRenderer = ({
               <Button
                 color={ButtonColor.Black}
                 type="submit"
-                className="w-full !py-3 text-base"
+                className="!px-8 !py-3 text-base !rounded-none"
               >
                 {schema.submit?.label || "Complete"}
               </Button>

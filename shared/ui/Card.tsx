@@ -36,18 +36,17 @@ const Card: React.FC<CardProps> = ({
   const cardStyle = style ?? CardStyle.White;
 
   const styleClasses = {
-    [CardStyle.White]:
-      "bg-white border-gray-2 hover:border border-box rounded-md",
-    [CardStyle.WhiteSolid]: "bg-white border-none rounded-lg",
+    [CardStyle.White]: "bg-white border-none !p-0 hover:border border-box",
+    [CardStyle.WhiteSolid]: "bg-white border-none",
     [CardStyle.Alert]: "bg-sky-100 border-sky-300",
     [CardStyle.Outline]: "bg-transparent border-gray-300",
-    [CardStyle.Grey]: "bg-zinc-100 border-zinc-200 border-[1.5px] rounded-md",
-    [CardStyle.LightGrey]: "bg-[#fcfcfc] border-zinc-300 rounded-md",
+    [CardStyle.Grey]: "bg-zinc-100 border-zinc-200 border-[1.5px] ",
+    [CardStyle.LightGrey]: "bg-[#fcfcfc] border-zinc-300",
     [CardStyle.Black]: "bg-black border-zinc-300 text-white",
     [CardStyle.Image]: "bg-transparent border-none",
     [CardStyle.Green]: "bg-green/20 border-green rounded",
     [CardStyle.Transparent]:
-      "bg-transparent border-gray-2 hover:border border-box rounded-md",
+      "bg-transparent border-gray-2 hover:border border-box",
   };
 
   return (

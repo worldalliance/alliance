@@ -6,7 +6,6 @@ import ActionActivityFeedItem from "../../components/ActionActivityFeedItem";
 import ForumListPost from "../../components/ForumListPost";
 import CheckIcon from "../../components/icons/CheckIcon";
 import LargeActionCard from "./LargeActionCard";
-import SmallActionCard from "./SmallActionCard";
 import useActivities, { ActivityList } from "./useActivities";
 
 export function canCompleteAction(
@@ -52,12 +51,12 @@ const HomePage = () => {
 
   const bulletinCard = (
     <Card style={CardStyle.White}>
-      <p className="font-medium text-base text-black mb-2">Bulletin</p>
-      <p className="text-zinc-500 mb-2">
+      <p className="font-medium text-xl text-black mb-2 font-serif">Bulletin</p>
+      <p className="text-black mb-2">
         Right now, we are focused on organizational improvement and small-scale
         experiments that test collective action strategies.
       </p>
-      <p className="text-zinc-500">
+      <p className="text-black">
         Learn more about our current{" "}
         <Link to="/priorities" className="text-link">
           priorities
@@ -68,14 +67,14 @@ const HomePage = () => {
   );
 
   return (
-    <div className="flex flex-col w-full h-full items-center bg-page min-h-[calc(100vh-50px)]">
-      <div className="flex flex-row px-6 md:gap-x-6 xl:gap-x-10 w-full justify-center">
-        <div className="hidden lg:flex flex-col py-16 gap-y-5 overflow-y-auto items-stretch max-w-[350px] flex-1 min-w-[150px]">
-          {bulletinCard}
-        </div>
-        <div className="flex flex-col py-20 md:py-16 max-w-[750px] sm:min-w-[300px] gap-y-5 overflow-y-auto !overflow-visible flex-2">
-          <div className="flex flex-col gap-y-6 ">
-            <p className="font-serif text-3xl">Your current task</p>
+    <div className="flex flex-col w-full h-full items-center bg-white min-h-[calc(100vh-50px)]">
+      <div className="flex flex-row px-6 md:gap-x-6 xl:gap-x-10 w-full justify-between px-20">
+        <div className="flex-1 flex flex-col py-20 md:py-16 gap-y-5 overflow-y-auto !overflow-visible flex-2 items-center">
+          <div className="flex flex-col gap-y-2 border-zinc-200 max-w-3xl">
+            <p className="font-serif text-center font-medium text-4xl pt-3 mb-8">
+              Your current task
+            </p>
+
             {currentTask && currentTask.relation ? (
               <LargeActionCard
                 action={currentTask}
@@ -94,7 +93,7 @@ const HomePage = () => {
               </Card>
             )}
 
-            {(todoActions.filter((action) => action.id !== currentTask?.id)
+            {/* {(todoActions.filter((action) => action.id !== currentTask?.id)
               .length > 0 ||
               newActions.filter((action) => action.id !== currentTask?.id)
                 .length > 0 ||
@@ -160,43 +159,48 @@ const HomePage = () => {
                   ))}
                 </div>
               </>
-            )}
+            )} */}
 
             {/* <InviteMemberCard /> */}
           </div>
         </div>
-        <div className="hidden md:flex flex-col py-16 gap-y-5 overflow-y-auto items-stretch w-[300px] xl:w-[350px]">
-          <div className="flex flex-col gap-y-3">
-            <div className="flex lg:hidden">{bulletinCard}</div>
-            <Card style={CardStyle.White}>
-              <p className="font-medium text-base text-black">Forum activity</p>
-              {posts?.length === 0 && (
-                <p className="text-zinc-400 mb-3">No forum activity yet</p>
-              )}
-              {posts?.length > 0 && (
-                <div className="flex flex-col *:py-3">
-                  {posts?.slice(0, 3).map((post) => (
-                    <ForumListPost
-                      key={post.id}
-                      post={post}
-                      card={false}
-                      showAction={false}
-                    />
-                  ))}
-                </div>
-              )}
-            </Card>
-            {friendActivities.length !== 0 && (
+        <div className="hidden border-l pl-8 border-zinc-200 md:flex flex-col py-16 gap-y-5 overflow-y-auto items-stretch w-[300px] xl:w-[350px]">
+          <div className="flex flex-col divide-y *:py-6 divide-zinc-200">
+            <div className="flex">{bulletinCard}</div>
+            <div>
+              <Card style={CardStyle.White}>
+                <p className="font-medium text-xl font-serif text-black">
+                  Forum activity
+                </p>
+                {posts?.length === 0 && (
+                  <p className="text-zinc-400 mb-3">No forum activity yet</p>
+                )}
+                {posts?.length > 0 && (
+                  <div className="flex flex-col *:py-3">
+                    {posts?.slice(0, 3).map((post) => (
+                      <ForumListPost
+                        key={post.id}
+                        post={post}
+                        card={false}
+                        showAction={false}
+                      />
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            <div>
               <Card style={CardStyle.White}>
                 <div className="flex flex-row justify-between">
-                  <p className="font-medium text-base text-black mb-3">
+                  <p className="font-medium text-xl font-serif text-black mb-3">
                     Friend activity
                   </p>
                   <Link to="/feed" className="text-link text-sm">
                     See all
                   </Link>
                 </div>
-                <div className="flex flex-col divide-y *:py-3 -my-3">
+                <div className="flex flex-col *:py-3 -my-3">
                   {friendActivities.map((activity) => (
                     <ActionActivityFeedItem
                       key={activity.id}
@@ -209,7 +213,7 @@ const HomePage = () => {
                   ))}
                 </div>
               </Card>
-            )}
+            </div>
           </div>
         </div>
       </div>

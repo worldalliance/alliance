@@ -16,7 +16,6 @@ import ActionTaskPanelActivity from "./ActionTaskPanelActivity";
 import ActionTaskPanelCommit from "./ActionTaskPanelCommit";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 import ActionTaskPanelFunding from "./ActionTaskPanelFunding";
-import ActionTaskPanelOptOut from "./ActionTaskPanelOptOut";
 import { StripeWrapper } from "./StripeWrapper";
 
 export interface ActionTaskPanelProps {
@@ -167,7 +166,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       return (
         <>
           {completionElement}
-          <ActionTaskPanelOptOut onOptOut={handleOptOutAction} />
+          {/* <ActionTaskPanelOptOut onOptOut={handleOptOutAction} /> */}
         </>
       );
     }
