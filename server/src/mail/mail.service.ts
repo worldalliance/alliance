@@ -10,6 +10,8 @@ import { ActionEventNotifType } from 'src/notifs/entities/action-event-notif.ent
 import { actionUrl } from 'src/search/approutes';
 import { Repository } from 'typeorm';
 import { EmailStatus, EmailType, Mail } from './mail.entity';
+import { FormSchema } from 'src/tasks/schema';
+import { renderEmail } from '@alliance/emails';
 
 @Injectable()
 export class MailService {
@@ -30,6 +32,62 @@ export class MailService {
     [EmailType.CommitmentReminder]: 'commitmentreminder',
     [EmailType.MemberActionReminder]: 'memberactionreminder',
   };
+
+
+  async sendMailWithRenderedForm(
+    recipient: string,
+    emailType: EmailType,
+    subject: string | null,
+    context: ISendMailOptions['context'],
+    schema: FormSchema
+  ): Promise<Mail> {
+    if (process.env.NODE_ENV === 'test') {
+      return {
+        id: 0,
+        sentMessageId: 'test',
+        to: recipient,
+        status: EmailStatus.Sent,
+        emailType: emailType,
+        createdAt: new Date(),
+      };
+    }
+
+
+    const { html, text } = renderEmail(schema);
+
+    console.log(html, text);
+  
+
+    const mail = await this.mailRepository.create({
+      to: recipient,
+      emailType: emailType,
+      status: EmailStatus.Pending,
+    });
+
+    const e = await this.mailerService.sendMail({
+      to: recipient,
+      from: 'no-reply@worldalliance.org',
+      subject: subject ?? undefined,
+      headers: {
+        'o:tag': emailType,
+      },
+      html,
+      text,
+      context,
+    });
+
+    const accepted = e.accepted as string[];
+    const messageId = e.messageId as string;
+
+    if (accepted.length > 0) {
+      mail.status = EmailStatus.Sent;
+    } else {
+      mail.status = EmailStatus.Failed;
+    }
+    mail.sentMessageId = messageId;
+    return this.mailRepository.save(mail);
+  }
+
 
   async sendMail(
     recipient: string,

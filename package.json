@@ -6,12 +6,14 @@
     "apps/frontend",
     "apps/admin",
     "apps/mobile",
-    "shared"
+    "server",
+    "shared",
+    "emails"
   ],
   "scripts": {
     "frontend:dev": "yarn workspace @alliance/frontend dev",
     "admin:dev": "yarn workspace @alliance/admin dev",
-    "server:dev": "cd server && npm run start:dev",
+    "server:dev": "yarn workspace @alliance/server start:dev",
     "gen-api": "yarn workspace @alliance/shared gen-api"
   },
   "devDependencies": {

@@ -9,7 +9,6 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
-  env_name: ${{ github.ref_name == 'staging' && 'staging' || 'production' }}
   CI: ""
 
 concurrency:
@@ -300,37 +299,52 @@ jobs:
 
             sudo systemctl restart nginx
 
-  build-nest-backend:
-    runs-on: ubuntu-latest
-    needs:
-      - test-backend-e2e
-    environment: ${{ github.ref_name == 'staging' && 'staging' || 'production' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node + Corepack
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: corepack enable
 
-      - name: Install Dependencies
-        run: npm ci
-        working-directory: ./server
+      # Install deps at monorepo root (resolves workspace:* links)
+      - name: Install deps (Yarn)
+        run: yarn install --immutable
 
-      - name: Build NestJS App
-        run: npm run build
-        working-directory: ./server
+      # Build all packages that have a build script (emails/shared/server, etc.)
+      - name: Build all workspaces
+        run: yarn workspaces foreach -A -R run build
+        # -A = all, -R = respect dependency order
+
+      # Create a production node_modules containing only the server and its deps
+      # Replace @alliance/server with your actual workspace name for the server package
+      - name: Focus prod deps for server
+        run: yarn workspaces focus @alliance/server --production
+
+      # Prepare a deployable bundle that includes dist + node_modules + package.json + migrations
+      - name: Create deploy bundle
+        run: |
+          rm -rf bundle
+          mkdir -p bundle
+          cp -r server/dist bundle/dist
+          cp -r server/migrations bundle/migrations || true
+          cp server/package.json bundle/package.json
+          cp server/package-lock.json bundle/package-lock.json 2>/dev/null || true
+          # include the focused node_modules created at repo root
+          cp -r node_modules bundle/node_modules
+          # if you use any runtime files (ecosystem.config.js, .env.example, etc.), copy them too
+          [ -f server/ecosystem.config.js ] && cp server/ecosystem.config.js bundle/
 
       - name: Zip Build Output
-        run: zip -r nest-build.zip dist package.json package-lock.json migrations
-        working-directory: ./server
+        run: (cd bundle && zip -r ../nest-build.zip .)
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nest-build
-          path: server/nest-build.zip
+          path: nest-build.zip
 
   deploy-nest-backend:
     runs-on: ubuntu-latest

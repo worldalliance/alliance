@@ -130,7 +130,7 @@ export function RenderField({
               onChange
                 ? (e) =>
                     onChange(
-                      e.target.value === "" ? "" : parseFloat(e.target.value)
+                      e.target.value === "" ? "" : parseFloat(e.target.value),
                     )
                 : undefined
             }
@@ -146,8 +146,8 @@ export function RenderField({
               {field.min !== undefined && field.max !== undefined
                 ? `Range: ${field.min} - ${field.max}`
                 : field.min !== undefined
-                ? `Minimum: ${field.min}`
-                : `Maximum: ${field.max}`}
+                  ? `Minimum: ${field.min}`
+                  : `Maximum: ${field.max}`}
             </p>
           ) : null}
         </div>
@@ -255,7 +255,7 @@ export function RenderField({
                             onChange([...currentValues, option.value]);
                           } else {
                             onChange(
-                              currentValues.filter((v) => v !== option.value)
+                              currentValues.filter((v) => v !== option.value),
                             );
                           }
                         }

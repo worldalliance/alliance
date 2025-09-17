@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "@alliance/server",
   "version": "0.0.1",
   "description": "",
   "author": "",
@@ -25,6 +25,8 @@
     "migration:revert": "npm run typeorm -- migration:revert"
   },
   "dependencies": {
+    "@alliance/emails": "workspace:*",
+    "@alliance/shared": "workspace:*",
     "@aws-sdk/client-s3": "^3.842.0",
     "@aws-sdk/s3-request-presigner": "^3.842.0",
     "@nestjs-modules/mailer": "^2.0.2",

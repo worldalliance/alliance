@@ -14,6 +14,8 @@ import {
   SubmitFormDto,
 } from './form.dto';
 import { FormSchema, Page } from './schema';
+import { MailService } from 'src/mail/mail.service';
+import { EmailType } from 'src/mail/mail.entity';
 
 @Injectable()
 export class TasksService {
@@ -26,7 +28,24 @@ export class TasksService {
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
     private userService: UserService,
-  ) {}
+    private mailService: MailService,
+  ) {
+    // this.sendTestEmail();
+  }
+
+  async sendTestEmail() {
+    const form = await this.formRepository.findOne({ where: {} });
+    if (!form) {
+      throw new NotFoundException('Form not found');
+    }
+    await this.mailService.sendMailWithRenderedForm(
+      'caseytmanning@gmail.com',
+      EmailType.Other,
+      'Test Email',
+      {},
+      form.schema as unknown as FormSchema,
+    );
+  }
 
   async createForm(createFormDto: CreateFormDto): Promise<Form> {
     return this.formRepository.save(createFormDto);
