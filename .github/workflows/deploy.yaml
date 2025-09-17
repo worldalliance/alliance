@@ -35,18 +35,27 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node + Corepack (Yarn)
         uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: corepack enable
 
-      - name: Install Backend Dependencies
-        run: npm ci
-        working-directory: ./server
+      - name: Install deps (Yarn)
+        run: yarn install --immutable
 
-      - name: Run Jest Tests
-        run: npm run test:e2e
-        working-directory: ./server
+      - name: Build all workspaces
+        run: yarn workspaces foreach -A -R run build
+
+      - name: Run Jest E2E tests (server workspace)
+        env:
+          NODE_ENV: test
+          DB_HOST: 127.0.0.1
+          DB_PORT: "5432"
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+          DB_NAME: alliance_test
+        run: yarn workspace @alliance/server run test:e2e
 
   build-react-app:
     runs-on: ubuntu-latest
