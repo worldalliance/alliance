@@ -45,7 +45,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Build all workspaces
-        run: yarn workspaces foreach -A -R run build
+        run: yarn workspaces foreach -A run build
 
       - name: Run Jest E2E tests (server workspace)
         env:
@@ -520,7 +520,7 @@ jobs:
     environment: ${{ github.ref_name == 'staging' && 'staging' || 'production' }}
     steps:
       - name: Post webhook if any upstream failed/cancelled
-        if: ${{ contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'skipped') }}
+        if: ${{ (contains(join(needs.*.result, ','), 'failure') || contains(join(needs.*.result, ','), 'skipped')) && github.ref_name != 'staging' }}
         run: |
           curl -X POST -H 'Content-type: application/json' \
             --data "{\"text\":\"Deploy ${{ github.ref_name == 'staging' && 'staging' || 'production' }} failed for ${{ github.event.head_commit.message }}. <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Open run>\"}" \
