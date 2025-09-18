@@ -338,7 +338,6 @@ jobs:
           cp -r server/migrations bundle/migrations || true
           cp server/package.json bundle/package.json
           cp server/package-lock.json bundle/package-lock.json 2>/dev/null || true
-          # include the focused node_modules created at repo root
           cp -r node_modules bundle/node_modules
 
       - name: Zip Build Output
