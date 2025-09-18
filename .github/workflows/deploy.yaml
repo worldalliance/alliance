@@ -340,8 +340,6 @@ jobs:
           cp server/package-lock.json bundle/package-lock.json 2>/dev/null || true
           # include the focused node_modules created at repo root
           cp -r node_modules bundle/node_modules
-          # if you use any runtime files (ecosystem.config.js, .env.example, etc.), copy them too
-          [ -f server/ecosystem.config.js ] && cp server/ecosystem.config.js bundle/
 
       - name: Zip Build Output
         run: (cd bundle && zip -r ../nest-build.zip .)
