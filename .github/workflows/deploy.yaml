@@ -47,15 +47,9 @@ jobs:
       - name: Build all workspaces
         run: yarn workspaces foreach -A run build
 
-      - name: Run Jest E2E tests (server workspace)
-        env:
-          NODE_ENV: test
-          DB_HOST: 127.0.0.1
-          DB_PORT: "5432"
-          DB_USERNAME: postgres
-          DB_PASSWORD: postgres
-          DB_NAME: alliance_test
-        run: yarn workspace @alliance/server run test:e2e
+      - name: Run Jest E2E tests
+        run: yarn test:e2e
+        working-directory: ./server
 
   build-react-app:
     runs-on: ubuntu-latest
