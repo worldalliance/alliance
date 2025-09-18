@@ -333,7 +333,6 @@ jobs:
       # Prepare a deployable bundle that includes dist + node_modules + package.json + migrations
       - name: Create deploy bundle
         run: |
-          rm -rf bundle
           mkdir -p bundle
           cp -r server/dist bundle/dist
           cp -r server/migrations bundle/migrations || true
