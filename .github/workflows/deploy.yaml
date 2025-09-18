@@ -323,8 +323,7 @@ jobs:
 
       # Build all packages that have a build script (emails/shared/server, etc.)
       - name: Build all workspaces
-        run: yarn workspaces foreach -A -R run build
-        # -A = all, -R = respect dependency order
+        run: yarn workspaces foreach -A run build
 
       # Create a production node_modules containing only the server and its deps
       # Replace @alliance/server with your actual workspace name for the server package
