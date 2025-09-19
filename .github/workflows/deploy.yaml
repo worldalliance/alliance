@@ -432,7 +432,7 @@ jobs:
 
             cd ~/nest-backend
 
-            npm run migration:runprod
+            node ./node_modules/typeorm/cli.js --dataSource dist/src/datasources/dataSource.js migration:run
 
             npm install -g pm2
             pm2 delete nest-app || true
