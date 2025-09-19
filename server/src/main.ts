@@ -53,6 +53,7 @@ async function bootstrap() {
   let client: PostHog | null = null;
 
   if (process.env.NODE_ENV === 'production') {
+    //TODO: separate staging posthog setup?
     client = new PostHog(process.env.POSTHOG_KEY!, {
       host: 'https://us.i.posthog.com',
       enableExceptionAutocapture: true,

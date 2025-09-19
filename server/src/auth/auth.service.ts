@@ -25,7 +25,9 @@ export class AuthService {
   public static REFRESH_COOKIE = 'refresh_token';
 
   setAuthCookies(res: Response, access: string, refresh?: string) {
-    const prod = process.env.NODE_ENV === 'production';
+    const prod =
+      process.env.NODE_ENV === 'production' ||
+      process.env.NODE_ENV === 'staging';
 
     res.cookie(AuthService.ACCESS_COOKIE, access, {
       httpOnly: true,

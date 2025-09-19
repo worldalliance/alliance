@@ -3,7 +3,8 @@ import { DataSource } from 'typeorm';
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 
 export const connectionOptions = (): PostgresConnectionOptions => {
-  return process.env.NODE_ENV === 'production'
+  return process.env.NODE_ENV === 'production' ||
+    process.env.NODE_ENV === 'staging'
     ? {
         type: 'postgres',
         host: process.env.DB_HOST,
