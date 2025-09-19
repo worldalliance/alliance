@@ -337,7 +337,7 @@ jobs:
           cp -r server/dist bundle/dist
           cp -r server/migrations bundle/migrations || true
           cp -r node_modules bundle/node_modules
-          cp -r package.json bundle/package.json
+          cp -r server/package.json bundle/package.json
 
       - name: Zip Build Output
         run: (cd bundle && zip -r ../nest-build.zip .)
