@@ -18,7 +18,6 @@ import ActionActivityList from "../../components/ActionActivityList";
 import ActionEventsPanel from "../../components/ActionEventsPanel";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
-import TwoColumnSplit from "../../components/system/TwoColumnSplit";
 import { useAuth } from "../../lib/AuthContext";
 import { testActions } from "../../stories/testData";
 import useActivities, { ActivityList } from "./useActivities";
@@ -115,44 +114,44 @@ export default function ActionPage() {
   }, [isAuthenticated, id]);
 
   return (
-    <div className="w-full h-full bg-white min-h-[calc(100vh-50px)]">
-      <TwoColumnSplit
-        left={
-          <Outlet
-            context={
-              {
-                userRelation,
-                onCompleteAction: () => setUserRelation("completed"),
-                onJoinAction: () => setUserRelation("joined"),
-                onDeclineAction: () => setUserRelation("declined"),
-                onOptOutAction: () => setUserRelation("declined"),
-                activities,
-                handleLikeActivity,
-                setActivities,
-              } satisfies TaskPanelContext
-            }
-          />
-        }
-        right={
-          <div className="divide-y divide-zinc-200 *:py-7">
-            {action !== undefined && (
-              <ActionEventsPanel action={action} events={action.events} />
-            )}
-            {action && (
-              <ActionActivityList
-                actionId={action.id}
-                activities={activities}
-                loading={false}
-                onLikeActivity={handleLikeActivity}
-                setActivities={setActivities}
-              />
-            )}
-          </div>
-        }
-        bg="bg-white"
-        collapseRight={true}
-        border={false}
-      />
+    <div
+      className="max-w-[1250px] mx-auto flex bg-white min-h-[calc(100vh-var(--nav-height))]"
+      style={{ boxSizing: "border-box" }}
+    >
+      <div className="flex-1 p-10">
+        <Outlet
+          context={
+            {
+              userRelation,
+              onCompleteAction: () => setUserRelation("completed"),
+              onJoinAction: () => setUserRelation("joined"),
+              onDeclineAction: () => setUserRelation("declined"),
+              onOptOutAction: () => setUserRelation("declined"),
+              activities,
+              handleLikeActivity,
+              setActivities,
+            } satisfies TaskPanelContext
+          }
+        />
+      </div>
+      <div
+        className="w-[360px] shrink-0 sticky top-[var(--nav-height)] self-start divide-y divide-zinc-200 hidden md:flex flex-col *:py-5 p-10 pt-14 border-l border-zinc-200 overflow-auto"
+        style={{ height: `calc(100vh - var(--nav-height))` }}
+      >
+        {action && (
+          <>
+            <ActionEventsPanel action={action} events={action.events} />
+            <ActionActivityList
+              actionId={action.id}
+              activities={activities}
+              loading={false}
+              onLikeActivity={handleLikeActivity}
+              setActivities={setActivities}
+              maxN={5}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

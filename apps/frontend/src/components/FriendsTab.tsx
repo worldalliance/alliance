@@ -9,6 +9,7 @@ import {
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
+import List from "@alliance/shared/ui/List";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router";
@@ -17,15 +18,17 @@ interface FriendsTabProps {
   userId: number;
   isMe?: boolean;
   originalTab?: "friends" | "received" | "sent";
+  friends?: ProfileDto[];
 }
 
 const FriendsTab: React.FC<FriendsTabProps> = ({
   userId,
   isMe = false,
   originalTab = "friends",
+  friends: initialFriends = [],
 }: FriendsTabProps) => {
-  const [loading, setLoading] = useState(true);
-  const [friends, setFriends] = useState<ProfileDto[]>([]);
+  const [loading, setLoading] = useState(!!initialFriends.length);
+  const [friends, setFriends] = useState<ProfileDto[]>(initialFriends);
   const [receivedRequests, setReceivedRequests] = useState<ProfileDto[]>([]);
   const [sentRequests, setSentRequests] = useState<ProfileDto[]>([]);
   const [activeTab, setActiveTab] = useState<"friends" | "received" | "sent">(
@@ -133,7 +136,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
     !sentRequests.length
   ) {
     return (
-      <Card style={CardStyle.White} className="p-6">
+      <Card style={CardStyle.White} className="p-4">
         <p className="text-center text-zinc-500 py-4">Loading friend data...</p>
       </Card>
     );
@@ -189,15 +192,14 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
                 You don&apos;t have any friends yet.
               </p>
             ) : (
-              <div className="space-y-2">
+              <List>
                 {friends.map((friend) => (
                   <Link
                     key={friend.id}
-                    className="flex items-center p-3 border border-zinc-300 rounded cursor-pointer hover:border-zinc-500"
+                    className="flex items-center p-3 hover:bg-zinc-100"
                     to={`/user/${friend.id}`}
                   >
                     <ProfileImage
-                      size="medium"
                       className="mr-3"
                       pfp={friend.profilePicture}
                     />
@@ -221,7 +223,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
                     )}
                   </Link>
                 ))}
-              </div>
+              </List>
             )}
           </>
         )}
@@ -233,20 +235,20 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
                 No pending friend requests.
               </p>
             ) : (
-              <div className="space-y-2">
+              <List>
                 {receivedRequests.map((request) => (
                   <div
                     key={request.id}
-                    className="flex items-center p-3 border border-zinc-300 rounded-lg"
+                    className="flex items-center p-3 justify-between"
                   >
-                    <ProfileImage
-                      pfp={request.profilePicture}
-                      className="!w-12 !h-12 mr-4"
-                    />
-                    <div className="flex-grow">
-                      <p className="font-medium">{request.displayName}</p>
-                    </div>
-                    <div className="flex space-x-2">
+                    <Link
+                      to={`/user/${request.id}`}
+                      className="flex flex-row flex-2 items-center hover:underline gap-x-3"
+                    >
+                      <ProfileImage pfp={request.profilePicture} />
+                      <p>{request.displayName}</p>
+                    </Link>
+                    <div className="flex space-x-2 -my-1">
                       <Button
                         onClick={() => handleAcceptRequest(request.id)}
                         color={ButtonColor.Green}
@@ -256,7 +258,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
                       </Button>
                       <Button
                         onClick={() => handleDeclineRequest(request.id)}
-                        color={ButtonColor.Stone}
+                        color={ButtonColor.White}
                         disabled={processingIds[request.id]}
                       >
                         {processingIds[request.id]
@@ -266,7 +268,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
                     </div>
                   </div>
                 ))}
-              </div>
+              </List>
             )}
           </>
         )}
@@ -278,18 +280,15 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
                 You haven&apos;t sent any friend requests.
               </p>
             ) : (
-              <div className="space-y-2">
+              <List>
                 {sentRequests.map((request) => (
                   <div
                     key={request.id}
-                    className="flex items-center p-3 border border-zinc-300 rounded-lg"
+                    className="flex items-center p-3 justify-between"
                   >
-                    <ProfileImage
-                      pfp={request.profilePicture}
-                      className="!w-12 !h-12 mr-4"
-                    />
-                    <div className="flex-grow">
-                      <p className="font-medium">{request.displayName}</p>
+                    <div className="flex flex-row items-center gap-x-3">
+                      <ProfileImage pfp={request.profilePicture} />
+                      <p>{request.displayName}</p>
                     </div>
                     <Button
                       onClick={() => handleCancelRequest(request.id)}
@@ -302,7 +301,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
                     </Button>
                   </div>
                 ))}
-              </div>
+              </List>
             )}
           </>
         )}

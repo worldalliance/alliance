@@ -12,7 +12,7 @@ const ActionContents = () => {
   }
 
   return (
-    <div className="flex flex-col gap-y-3 flex-2 pl-10 pt-5 mb-24 w-full">
+    <div className="flex flex-col gap-y-3 flex-2 md:pl-10 pt-5 mb-24 w-full">
       {action?.image && (
         <img
           src={action.image}

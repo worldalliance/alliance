@@ -1,8 +1,6 @@
 import {
   ActionDto,
-  FormDto,
   FormResponseDto,
-  tasksGetForm,
   tasksGetMyFormResponse,
 } from "@alliance/shared/client";
 import FormRenderer from "@alliance/shared/forms/FormRenderer";
@@ -20,7 +18,6 @@ const ActionTaskPanelCompleted = ({
   const [formResponse, setFormResponse] = useState<FormResponseDto | null>(
     null
   );
-  const [form, setForm] = useState<FormDto | null>(null);
 
   useEffect(() => {
     if (action.taskFormId) {
@@ -31,28 +28,22 @@ const ActionTaskPanelCompleted = ({
         if (formResponse.data) {
           setFormResponse(formResponse.data);
         }
-        const form = await tasksGetForm({
-          path: { id },
-        });
-        if (form.data) {
-          setForm(form.data);
-        }
       };
       fetchFormAndResponse(action.taskFormId);
     }
   }, [action.taskFormId]);
 
-  console.log("form", form);
   console.log("formResponse", formResponse);
 
-  if (action.taskFormId && formResponse && form) {
+  if (action.taskFormId && formResponse) {
     return (
       <Card style={CardStyle.Grey} className="inline-block !p-6">
         <Card style={CardStyle.Green} className="border-none mb-4 bg-green/30">
           You&apos;ve completed this action! Thank you for your help.
         </Card>
         <FormRenderer
-          form={form?.schema as unknown as FormSchema}
+          form={formResponse.schemaSnapshot as unknown as FormSchema}
+          id={formResponse.formId}
           completedFormResponse={formResponse}
           renderFormAsCompleted
           onSubmit={null}

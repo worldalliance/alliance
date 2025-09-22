@@ -19,3 +19,13 @@ export const getApiUrl = (): string => {
     return prod_api_url;
   }
 };
+
+export const sharp_allowed_mime_types = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+  "image/gif",
+  "image/svg",
+  "image/tiff",
+];

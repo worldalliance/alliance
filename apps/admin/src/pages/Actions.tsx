@@ -160,12 +160,14 @@ const ActionsList: React.FC = () => {
                 <div className="flex justify-between mb-2 ">
                   <div className="flex flex-row items-center gap-x-2">
                     <h2 className="font-bold text-sm">{action.name}</h2>
-                    <p className="text-sm text-zinc-500">
-                      Last event{" "}
-                      {new Date(
-                        action.events[action.events.length - 1]?.date
-                      ).toLocaleString()}
-                    </p>
+                    {action.events.length > 0 && (
+                      <p className="text-sm text-zinc-500">
+                        Last event{" "}
+                        {new Date(
+                          action.events[action.events.length - 1]?.date
+                        ).toLocaleString()}
+                      </p>
+                    )}
                   </div>
                   <span className="absolute p-2 right-0 top-0 bg-zinc-50 text-zinc-800 font-medium text-xs rounded-sm text-nowrap border-zinc-200 border">
                     {action.status}
@@ -185,15 +187,17 @@ const ActionsList: React.FC = () => {
               </div>
             </Card>
           ))}
-        <div className="flex justify-between items-center">
-          <button
-            onClick={() => setShowPopulateConfirm(true)}
-            disabled={isPopulating}
-            className="bg-gray-100 hover:bg-gray-200/50 border border-gray-300 text-black px-4 py-2 rounded-md text-sm font-medium"
-          >
-            {isPopulating ? "Populating..." : "Populate Test Data"}
-          </button>
-        </div>
+        {window.location.href.includes("localhost") && (
+          <div className="flex justify-between items-center">
+            <button
+              onClick={() => setShowPopulateConfirm(true)}
+              disabled={isPopulating}
+              className="bg-gray-100 hover:bg-gray-200/50 border border-gray-300 text-black px-4 py-2 rounded-md text-sm font-medium"
+            >
+              {isPopulating ? "Populating..." : "Populate Test Data"}
+            </button>
+          </div>
+        )}
       </div>
 
       {showPopulateConfirm && (

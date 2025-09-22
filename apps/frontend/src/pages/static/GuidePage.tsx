@@ -10,7 +10,7 @@ const GuidePage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="flex flex-col md:flex-row mx-40 gap-18 pt-16 md:pt-32 pb-56 px-5">
+      <div className="flex flex-col md:flex-row md:mx-40 gap-8 md:gap-18 pt-8 md:pt-32 pb-56 px-5">
         <aside className="min-w-80">
           <div className="flex flex-col md:sticky top-12 md:pr-18 md:border-r border-zinc-200">
             <h2 className="font-serif !font-semibold !text-xl md:!text-2xl max-w-2xl mb-4">
@@ -74,22 +74,8 @@ const GuidePage: React.FC = () => {
           </Card>
 
           <MarkdownWrapper
-            id="introduction"
-            markdownContent="
-
-Humanity faces many crises which are unlikely to be resolved by business as usual. Among them are extreme poverty, environmental destruction, breakdown of democratic institutions, and unsafe technological development.
-
-Large-scale change will require that people work together reliably and strategically.
-
-The Alliance is group that aims to give its members, and ultimately a significant proportion of humanity, the ability to make deliberate, large-scale change. It uses data, expertise, and democratic input so that its members can take effective collective action at scale.
-
-While this project is highly ambitious, we believe it is the right time to undertake it seriously and carefully.
-
-"
-          />
-          <MarkdownWrapper
             id="goals"
-            className="mt-6"
+            className=""
             markdownContent="
 # Goals
 

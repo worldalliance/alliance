@@ -10,6 +10,7 @@ import type { AnyField, Condition, FormSchema, FormValue } from "./formschema";
 
 type FormRendererProps = {
   form: FormSchema;
+  id: number;
   persistKey?: string | null;
   onFormStarted?: () => void;
   onAbandonAction?: (outOfTime: boolean, reason: string) => void;
@@ -31,11 +32,10 @@ type FormRendererProps = {
  * Format: `form:<slug>:v<version>[:<instanceId>]`
  */
 export function computeFormStorageKey(args: {
-  slug: string;
-  version: number;
+  formId: number;
   instanceId?: string | number | null;
 }): string {
-  const base = `form:${args.slug}:v${args.version}`;
+  const base = `form:${args.formId}`;
   const hasInstance =
     args.instanceId !== undefined &&
     args.instanceId !== null &&
@@ -45,6 +45,7 @@ export function computeFormStorageKey(args: {
 
 const FormRenderer = ({
   form,
+  id,
   onSubmit,
   persistKey,
   onFormStarted,
@@ -56,12 +57,10 @@ const FormRenderer = ({
   const schema = form as unknown as FormSchema;
   const readOnly = !!renderFormAsCompleted;
   const baseStorageKey = computeFormStorageKey({
-    slug: schema.slug,
-    version: schema.version,
+    formId: id,
   });
   const storageKey = computeFormStorageKey({
-    slug: schema.slug,
-    version: schema.version,
+    formId: id,
     instanceId: persistKey ?? undefined,
   });
 
@@ -101,7 +100,7 @@ const FormRenderer = ({
     }
   });
   const [uploadingFields, setUploadingFields] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
   const [hasEmittedStart, setHasEmittedStart] = useState(false);
@@ -206,7 +205,10 @@ const FormRenderer = ({
     if (!isLastPage) {
       setCurrentPageIndex((prev) => prev + 1);
     } else if (onSubmit && !readOnly) {
-      onSubmit({ answers: formData });
+      onSubmit({
+        answers: formData,
+        schemaSnapshot: form as unknown as Record<string, unknown>,
+      });
     }
   };
 
@@ -235,7 +237,7 @@ const FormRenderer = ({
     if (!persistKey || typeof window === "undefined") return;
     window.localStorage.setItem(
       storageKey,
-      JSON.stringify({ formData, currentPageIndex, updatedAt: Date.now() })
+      JSON.stringify({ formData, currentPageIndex, updatedAt: Date.now() }),
     );
   }, [formData, currentPageIndex, persistKey, storageKey, readOnly]);
 
@@ -280,16 +282,12 @@ const FormRenderer = ({
     </div>
   );
 
-  const renderElement = (
-    element: AnyField | DisplayBlock,
-    index: number
-  ) => {
+  const renderElement = (element: AnyField | DisplayBlock, index: number) => {
     const cond = element.visibleIf;
     if (cond) {
       const evalCond = (c: Condition): boolean => {
         if ("expr" in c) {
-          // Basic safeguard: do not evaluate arbitrary expressions in renderer
-          // Future: support a small expression language if needed.
+          // TODO: better safety check
           return true;
         }
         const val = formData[c.when];
@@ -309,12 +307,7 @@ const FormRenderer = ({
     if ("label" in element) {
       return renderField(element as AnyField, index);
     } else {
-      return (
-        <RenderDisplayBlock
-          key={index}
-          block={element as DisplayBlock}
-        />
-      );
+      return <RenderDisplayBlock key={index} block={element as DisplayBlock} />;
     }
   };
 
@@ -328,7 +321,7 @@ const FormRenderer = ({
           }`}
         >
           {currentPage.fields.map((element, index) =>
-            renderElement(element, index)
+            renderElement(element, index),
           )}
         </div>
         {/* Navigation */}

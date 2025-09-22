@@ -102,6 +102,12 @@ ORDER BY total_session_duration_seconds DESC
       this.logger.warn('POSTHOG_QUERY_KEY or POSTHOG_PROJECT_ID is not set');
       return;
     }
+    if (
+      process.env.NODE_ENV === 'development' &&
+      !process.env.DEV_POSTHOG_ANALYTICS
+    ) {
+      return;
+    }
     const timeSpentPerUserLast7Days = await this.getPosthogData('last7Days');
     const timeSpentPerUserTotal = await this.getPosthogData('total');
 

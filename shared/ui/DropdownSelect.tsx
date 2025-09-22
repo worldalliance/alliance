@@ -50,7 +50,7 @@ const DropdownSelect = ({
             <div className="flex flex-row justify-between items-center">
               <span>{option}</span>
               {secondaryLabels?.[index] && (
-                <span className="text-zinc-500 text-xs">
+                <span className="text-zinc-500 !font-mono">
                   {secondaryLabels[index]}
                 </span>
               )}

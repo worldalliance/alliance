@@ -118,9 +118,9 @@ const UserActivityCard = ({
   return (
     <div className="flex flex-row justify-stretch items-center space-x-4">
       <div className="block bg-white text-[11pt] flex-1 gap-y-2">
-        <div className="*:inline space-x-1">
+        <div className="*:inline">
           <div className="flex-shrink-0 inline">
-            <Link to={`/user/${activity.user.id}`} className="mr-2">
+            <Link to={`/user/${activity.user.id}`} className="mr-1">
               <ProfileImage pfp={activity.user.profilePicture} size="small" />
             </Link>
           </div>
@@ -131,7 +131,7 @@ const UserActivityCard = ({
             {activity.user.displayName}
           </Link>
           <p className="text-zinc-900">
-            {completed ? "completed" : "committed to"}
+            {completed ? " completed " : " committed to "}
           </p>
           <p
             className="text-green cursor-pointer hover:underline font-medium"

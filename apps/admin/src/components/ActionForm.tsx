@@ -113,10 +113,18 @@ const ActionForm: React.FC<ActionFormProps> = ({
         helpText: "Suggested amount per person",
       },
       {
+        name: "commitmentless",
+        label: "Commitmentless",
+        type: "checkbox",
+        helpText:
+          "all members (not just committed) will be shown this action to complete. (e.g. for onboarding)",
+      },
+      {
         name: "commitmentThreshold",
         label: "Commitment Threshold",
         type: "number",
         helpText: "Number of commitments needed",
+        show: (f) => !f.commitmentless,
       },
       {
         name: "taskFormId",
@@ -131,13 +139,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
         type: "textarea",
         required: true,
       },
-      {
-        name: "commitmentless",
-        label: "Commitmentless",
-        type: "checkbox",
-        helpText:
-          "all members (not just committed) will be shown this action to complete. (e.g. for onboarding)",
-      },
+
       { name: "image", label: "Image", type: "file" },
     ],
     [actionTypeOptions]

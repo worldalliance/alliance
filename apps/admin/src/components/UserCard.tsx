@@ -33,10 +33,22 @@ const UserCard = ({
   const time = formatTime(timeSpent);
   const timeTotal = formatTime(timeSpentTotal);
 
+  const contractStatusColor = user.contractDateSuspended
+    ? "text-red-500"
+    : user.contractDateSigned
+    ? "text-green"
+    : "text-zinc-500";
+
+  const contractStatus = user.contractDateSuspended
+    ? "Suspended"
+    : user.contractDateSigned
+    ? "Signed"
+    : "Not signed";
+
   return (
     <Card
       style={CardStyle.White}
-      className="min-w-[300px]"
+      className="min-w-[300px] text-sm"
       onClick={() => navigate(`/database/?table=user&id=${user.id}`)}
     >
       <div className="flex flex-row items-center gap-x-3 border-b pb-2 mb-2 border-zinc-200">
@@ -48,15 +60,23 @@ const UserCard = ({
           }
           size="large"
         />
-        <p>{user.name}</p>
+        <p className="text-base">{user.name}</p>
+      </div>
+      <div className="flex flex-row items-center border-b pb-2 mb-2 border-zinc-200">
+        <p>
+          Contract status:{" "}
+          <span className={`font-medium ${contractStatusColor}`}>
+            {contractStatus}
+          </span>
+        </p>
       </div>
       <div>
-        <p className="font-semibold text-sm">Activity</p>
-        <div className="flex flex-row text-sm justify-between ">
+        <p className="font-semibold ">Activity</p>
+        <div className="flex flex-row justify-between ">
           <p className="text-zinc-500">Last 7 days</p>
           <p className={`${!time && "text-zinc-500"}`}>{time || "0"}</p>
         </div>
-        <div className="flex flex-row text-sm justify-between ">
+        <div className="flex flex-row justify-between ">
           <p className="text-zinc-500">Total</p>
           <p className={`${!timeTotal && "text-zinc-500"}`}>
             {timeTotal || "0"}

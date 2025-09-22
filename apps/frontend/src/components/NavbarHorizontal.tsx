@@ -34,7 +34,7 @@ const NavbarHorizontal: React.FC<{ todoActions: number }> = ({
       <div
         className="
       flex flex-col md:flex-row border-zinc-300 border-b bg-white
-    w-screen text-left items-center fixed px-7 z-10 justify-between gap-x-5"
+    w-screen text-left items-center fixed px-7 z-10 justify-between gap-x-5 pt-1 md:pt-0"
         id="main-nav"
         ref={(el) => {
           if (el) {
@@ -71,7 +71,7 @@ const NavbarHorizontal: React.FC<{ todoActions: number }> = ({
               <Link
                 to={destinations[link]}
                 key={link}
-                className={`py-4 px-2 md:px-4 lg:px-6 border-b-2 border-x-zinc-200 space-x-1 flex flex-row items-center ${
+                className={`py-1 md:py-4 px-2 md:px-4 lg:px-6 border-b-2 border-x-zinc-200 space-x-1 flex flex-row items-center ${
                   currentLocation === link
                     ? " border-green text-green "
                     : "border-transparent hover:bg-zinc-50"

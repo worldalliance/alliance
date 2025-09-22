@@ -4,17 +4,17 @@ import {
   tasksGetFormResponses,
   type FormDto,
 } from "@alliance/shared/client";
+import FormRenderer from "@alliance/shared/forms/FormRenderer";
 import type { FormSchema, Page } from "@alliance/shared/forms/formschema";
 import Button from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 
-type FormWithSchema =
-  Pick<FormDto, "id" | "title"> & {
-    schema: FormSchema;
-    pages?: Page[];
-  };
+type FormWithSchema = Pick<FormDto, "id" | "title"> & {
+  schema: FormSchema;
+  pages?: Page[];
+};
 
 const PAGE_SIZE = 1; // show one response per page (step-through)
 
@@ -257,9 +257,16 @@ const FormResponses: React.FC = () => {
               >
                 Previous
               </button>
-              <span className="text-sm text-gray-600">
-                Response {page} / {totalPages}
-              </span>
+              <div className="flex items-center gap-2 mx-2 min-w-[300px] justify-center">
+                <span className="text-sm">
+                  Response {page} / {totalPages}:
+                </span>
+                {!!pageItems[0].user && (
+                  <div className="text-black">
+                    {pageItems[0].user?.name || "User"}
+                  </div>
+                )}
+              </div>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -273,34 +280,17 @@ const FormResponses: React.FC = () => {
               </button>
             </div>
           </div>
-
-          {pageItems.map((resp) => (
-            <Card key={resp.id ?? startIdx} style={CardStyle.White}>
-              <div className="flex justify-between items-start mb-2">
-                <div className="text-sm text-gray-500">
-                  {resp.id ? <span>ID: {resp.id}</span> : null}
-                </div>
-                {resp.user ? (
-                  <div className="text-sm text-gray-600">
-                    {resp.user?.name || "User"}
-                    {resp.user?.id ? ` · #${resp.user.id}` : ""}
-                  </div>
-                ) : null}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {Object.entries(resp?.answers ?? {}).map(([key, value]) => (
-                  <div key={key} className=" rounded-md p-3 bg-zinc-100">
-                    <div className="text-xs font-medium text-gray-600">
-                      {fieldLabels[key] || key}
-                    </div>
-                    <div className="text-sm text-gray-900 break-words">
-                      {formatValue(value)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ))}
+          {form !== null && (
+            <div className="max-w-[600px] mx-auto pt-10">
+              <FormRenderer
+                id={form.id}
+                form={form.schema as unknown as FormSchema}
+                completedFormResponse={pageItems[0]}
+                renderFormAsCompleted
+                onSubmit={null}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

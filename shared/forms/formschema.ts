@@ -102,8 +102,6 @@ export interface Page {
 }
 
 export interface FormSchema {
-  slug: string;
-  version: number;
   title: string;
   description?: string;
   pages: Page[];

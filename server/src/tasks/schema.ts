@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { DisplayBlock } from './display-blocks';
 
 // field-kinds.ts
@@ -89,18 +90,52 @@ export type AnyField =
   | DateField
   | FileField;
 
-export interface Page {
+export class Page {
   id: string;
   title?: string;
   description?: string;
   fields: Array<AnyField | DisplayBlock>;
 }
 
-export interface FormSchema {
-  slug: string;
-  version: number;
+export class FormSchema {
+  @ApiProperty()
   title: string;
+  @ApiPropertyOptional()
   description?: string;
+  @ApiProperty({ type: Page, isArray: true })
   pages: Page[];
+  @ApiPropertyOptional()
   submit?: { label?: string };
+}
+
+export function isQuestionField(
+  field: AnyField | DisplayBlock,
+): field is AnyField {
+  return 'label' in field;
+}
+
+export function isQuestionVisible(
+  element: AnyField | DisplayBlock,
+  formData: Record<string, FormValue>,
+): boolean {
+  const cond = element.visibleIf;
+  if (cond) {
+    const evalCond = (c: Condition): boolean => {
+      if ('expr' in c) {
+        return true;
+      }
+      const val = formData[c.when];
+      // If condition expects a boolean (checkbox controllers), coerce undefined → false
+      if (typeof c.equals === 'boolean') {
+        return Boolean(val) === c.equals;
+      }
+      if (Array.isArray(val) && c.equals) {
+        // multiselect: treat equals as "includes"
+        return val.includes(c.equals as string);
+      }
+      return val === c.equals;
+    };
+    if (!evalCond(cond)) return false;
+  }
+  return true;
 }

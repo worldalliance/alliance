@@ -348,10 +348,65 @@ jobs:
           name: nest-build
           path: nest-build.zip
 
+  migrations-drift-check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: corepack enable
+
+      - run: cd server && npm ci && npm run build
+
+      - run: |
+          echo "DB_HOST=localhost" >> $GITHUB_ENV
+          echo "DB_PORT=5432" >> $GITHUB_ENV
+          echo "DB_USERNAME=postgres" >> $GITHUB_ENV
+          echo "DB_PASSWORD=postgres" >> $GITHUB_ENV
+          echo "DB_NAME=postgres" >> $GITHUB_ENV
+          echo "NODE_ENV=test" >> $GITHUB_ENV
+
+      - name: Run migrations on blank DB
+        run: npx typeorm-ts-node-commonjs --dataSource dist/src/datasources/dataSource.js migration:run
+        working-directory: ./server
+
+      - name: Schema drift check
+        id: drift
+        run: |
+          set -e
+
+          OUT="$(npx typeorm-ts-node-commonjs --dataSource dist/src/datasources/dataSource.js schema:log || true)"
+          echo "$OUT"
+
+          if echo "$OUT" | grep -Eiq '^\s*(ALTER|CREATE|DROP|COMMENT|RENAME|TRUNCATE|INSERT INTO|UPDATE |DELETE FROM)\b'; then
+            echo "Schema drift detected (entities != schema after migrations)."
+            echo "DRIFT=1" >> "$GITHUB_OUTPUT"
+            exit 1
+          else
+            echo "No drift"
+            echo "DRIFT=0" >> "$GITHUB_OUTPUT"
+          fi
+        working-directory: ./server
+
   deploy-nest-backend:
     runs-on: ubuntu-latest
     needs:
       - build-nest-backend
+      - migrations-drift-check
     environment: ${{ github.ref_name == 'staging' && 'staging' || 'production' }}
     steps:
       - name: Download NestJS Build Artifact

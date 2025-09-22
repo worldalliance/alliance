@@ -8,7 +8,6 @@ const FormBuilder: React.FC = () => {
   return (
     <FormBuilderComponent
       formId={formId && formId !== "new" ? formId : undefined}
-      key={formId || "new"}
     />
   );
 };

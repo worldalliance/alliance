@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import UserActivityCard from "../../components/UserActivityCard";
 import { useAuth } from "../../lib/AuthContext";
 import useActivities, { ActivityList } from "./useActivities";
+import CenterLayout from "@alliance/shared/ui/CenterLayout";
 
 type Mode = "friends" | "everyone";
 
@@ -85,44 +86,40 @@ const ActivityFeedPage = () => {
   };
 
   return (
-    <div className="flex flex-col items-center min-h-[calc(100vh-var(--nav-height))]">
-      <div className="w-full sm:w-xl md:w-3xl mx-auto pt-12 md:pt-8 px-3 pb-24 flex flex-row">
-        <div className="space-y-2 w-full flex flex-col justify-stretch px-5">
-          <div className="mx-auto flex flex-row gap-x-2 mb-4 w-full justify-start">
-            {modes.map((m) => (
-              <Button
-                color={ButtonColor.Transparent}
-                key={m}
-                onClick={() => setMode(m)}
-                aria-pressed={m === mode}
-                className={`!border-b-[1.5px] rounded-none ${
-                  m === mode ? "!border-b-green" : "!border-b-transparent"
-                }`}
-              >
-                <p className="capitalize">{m}</p>
-              </Button>
-            ))}
-          </div>
-          <div
-            className="relative overflow-hidden border border-zinc-200 rounded transition-[height] duration-100 ease-out bg-white"
-            style={{
-              height: activeHeight ?? "auto",
-            }}
+    <CenterLayout width="3xl">
+      <div className="mx-auto flex flex-row gap-x-2 mb-4 w-full justify-start">
+        {modes.map((m) => (
+          <Button
+            color={ButtonColor.Transparent}
+            key={m}
+            onClick={() => setMode(m)}
+            aria-pressed={m === mode}
+            className={`!border-b-[1.5px] rounded-none ${
+              m === mode ? "!border-b-green" : "!border-b-transparent"
+            }`}
           >
-            <div
-              className="flex w-[200%] transition-transform duration-200 ease-out motion-reduce:transition-none"
-              style={{
-                transform:
-                  mode === "friends" ? "translateX(0%)" : "translateX(-50%)",
-              }}
-            >
-              {renderActivityColumn("friends")}
-              {renderActivityColumn("everyone")}
-            </div>
-          </div>
+            <p className="capitalize">{m}</p>
+          </Button>
+        ))}
+      </div>
+      <div
+        className="relative overflow-hidden border border-zinc-200 rounded transition-[height] duration-100 ease-out bg-white"
+        style={{
+          height: activeHeight ?? "auto",
+        }}
+      >
+        <div
+          className="flex w-[200%] transition-transform duration-200 ease-out motion-reduce:transition-none"
+          style={{
+            transform:
+              mode === "friends" ? "translateX(0%)" : "translateX(-50%)",
+          }}
+        >
+          {renderActivityColumn("friends")}
+          {renderActivityColumn("everyone")}
         </div>
       </div>
-    </div>
+    </CenterLayout>
   );
 };
 

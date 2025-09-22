@@ -14,13 +14,15 @@ const ContractPage: React.FC = () => {
   useEffect(() => {
     if (user) {
       setContractDateSigned(
-        user.contractDateSigned ? new Date(user.contractDateSigned) : null
+        user.contractDateSigned && !user.contractDateSuspended
+          ? new Date(user.contractDateSigned)
+          : null
       );
     }
   }, [user]);
 
   const handleContractSign = async () => {
-    if (editName.trim() !== user?.name) {
+    if (editName.trim().toLowerCase() !== user?.name.toLowerCase()) {
       alert(
         "Please enter your name exactly as you have set it on your profile."
       );
@@ -58,9 +60,11 @@ const ContractPage: React.FC = () => {
 
   return (
     <div className="flex flex-col bg-white items-center min-h-[calc(100vh-var(--nav-height))]">
-      <div className="flex flex-col max-w-3xl mx-auto p-3 pt-16 md:pt-20">
-        <div className="gap-y-2 flex flex-col text-lg">
-          <p className="font-serif text-4xl font-semibold mb-1">Contract</p>
+      <div className="flex flex-col max-w-3xl mx-auto p-3 mt-4 md:pt-20">
+        <div className="gap-y-2 flex flex-col text-base md:text-lg">
+          <p className="font-serif text-3xl md:text-4xl font-semibold mb-1">
+            Contract
+          </p>
           <p className="text-zinc-900 mb-4">
             Below is your membership contract. This page is also where we will
             post updates to the contract, and where you can terminate your

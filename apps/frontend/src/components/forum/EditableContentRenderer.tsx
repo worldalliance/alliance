@@ -89,7 +89,7 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
         />
       )}
       {attachments.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className={`flex flex-wrap gap-2 ${content.body ? "mt-2" : ""}`}>
           {attachments.map((key, idx) => (
             <button
               type="button"

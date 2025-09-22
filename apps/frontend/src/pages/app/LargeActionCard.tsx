@@ -141,8 +141,8 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
               {!nextEvent && (
                 <p className="text-base text-zinc-500">
                   {action.status === "gathering_commitments"
-                    ? "Launched "
-                    : "Action began "}
+                    ? "Entered commitment stage "
+                    : "Entered action stage "}
                   {formatTime(new Date(lastEvent.date), { addSuffix: true })}
                 </p>
               )}

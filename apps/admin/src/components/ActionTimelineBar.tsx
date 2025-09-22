@@ -135,7 +135,7 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
         );
 
         // Shared background color
-        const barColor = "#ddd"; // gray-100
+        const barColor = phase.status === "member_action" ? "#8fcf4e" : "#ddd"; // gray-100
 
         // Check if this is the last phase and if it extends beyond current time
         const isLastPhase = phaseIndex === phases.length - 1;

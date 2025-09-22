@@ -153,14 +153,14 @@ const ReplyContent: React.FC<ReplyContentProps> = ({
     setShowDropdown(false);
   };
   return (
-    <div className="flex gap-3 relative">
+    <div className={`flex ${compact ? "gap-x-2" : "gap-x-2.5"} relative`}>
       {/* Blue highlight indicator */}
       {isHighlighted && (
         <div className="absolute -left-4 top-0 bottom-0 w-[3px] bg-blue-500 rounded transition-all duration-1000" />
       )}
 
       {/* Profile picture column */}
-      <div className="flex-shrink-0 mt-1">
+      <div className="flex-shrink-0">
         <ProfileImage
           pfp={reply.author.profilePicture}
           size={compact ? "small" : "medium"}
@@ -168,10 +168,10 @@ const ReplyContent: React.FC<ReplyContentProps> = ({
       </div>
 
       {/* Content column */}
-      <div className="flex-1 -mt-1">
+      <div className="flex-1 ">
         {/* Top row: User name and date with pin icon in top right */}
-        <div className="flex justify-between items-center overflow-visible h-7">
-          <div className="flex items-center gap-3 text-sm text-gray-500">
+        <div className="flex justify-between items-center overflow-visible">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
             <a
               href={`/user/${reply.author.id}`}
               className="text-black font-medium"
@@ -197,7 +197,7 @@ const ReplyContent: React.FC<ReplyContentProps> = ({
         </div>
 
         {/* Middle section: Reply content */}
-        <div className="mb-2">
+        <div className={compact ? `mb-1` : `mb-2`}>
           {!isEditing && (
             <EditableContentRenderer
               content={reply.editableContent}
@@ -446,7 +446,7 @@ const ReplyComponent = ({
                     <div key={childReply.id}>
                       <div
                         className={`${
-                          compact ? "my-2" : "border-t border-gray-200 my-4"
+                          compact ? "my-3" : "border-t border-gray-200 my-4"
                         } -mx-4`}
                       ></div>
                       <div>

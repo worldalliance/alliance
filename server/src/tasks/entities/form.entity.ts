@@ -24,7 +24,6 @@ export class Form {
   @IsDefined()
   title: string;
 
-  /** The JSON schema/DSL you render on the client */
   @Column({ type: 'jsonb' })
   @ApiProperty()
   @IsDefined()

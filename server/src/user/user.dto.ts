@@ -14,6 +14,8 @@ import { User } from './user.entity';
 export class FriendStatusDto {
   @ApiProperty({ enum: FriendStatus, nullable: true, enumName: 'FriendStatus' })
   status: FriendStatus;
+  @ApiProperty()
+  didReceiveRequest: boolean;
 }
 
 export class ProfileDto extends PickType(User, [
@@ -61,6 +63,7 @@ export class UserDto extends PickType(User, [
   'admin',
   'staff',
   'contractDateSigned',
+  'contractDateSuspended',
   'id',
   'onboardingComplete',
   'emailNotifsEnabled',

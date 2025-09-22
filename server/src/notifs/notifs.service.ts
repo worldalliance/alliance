@@ -1,7 +1,7 @@
 import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
+    Injectable,
+    NotFoundException,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { MailService } from 'src/mail/mail.service';
@@ -66,12 +66,12 @@ export class NotifsService {
   }
 
   shouldEmailUser(user: User) {
-    return user.emailNotifsEnabled && !user.turnedOffAllNotifs;
+    return user.emailNotifsEnabled && !user.turnedOffAllNotifs && user.contractDateSigned;
   }
 
   shouldTextUser(user: User) {
     return (
-      user.textNotifsEnabled && !user.turnedOffAllNotifs && user.phoneNumber
+      user.textNotifsEnabled && !user.turnedOffAllNotifs && user.phoneNumber && user.contractDateSigned
     );
   }
 

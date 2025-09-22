@@ -16,7 +16,12 @@ import { PaymentUserDataToken } from 'src/payments/entities/payment-token.entity
 import { ILike, Repository } from 'typeorm';
 import { Friend, FriendStatus } from './friend.entity';
 import { PrefillUser } from './prefill-user.entity';
-import { OnboardingDto, ProfileDto, UpdateProfileDto } from './user.dto';
+import {
+  FriendStatusDto,
+  OnboardingDto,
+  ProfileDto,
+  UpdateProfileDto,
+} from './user.dto';
 import { User } from './user.entity';
 
 export interface PWResetJwtPayload {
@@ -107,7 +112,7 @@ export class UserService {
 
   async findOneByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({
-      where: { email: email },
+      where: { email: ILike(email) },
       relations: ['sentFriendRequests', 'receivedFriendRequests'],
     });
   }
@@ -157,7 +162,7 @@ export class UserService {
   async getVerifyEmailToken(userId: number) {
     const payload = { sub: userId, type: 'verify-email' };
     return this.jwtService.sign(payload, {
-      expiresIn: `1d`,
+      expiresIn: `7d`,
       secret: process.env.JWT_SECRET,
     });
   }
@@ -335,7 +340,7 @@ export class UserService {
   async getRelationshipStatus(
     userId: number,
     targetUserId: number,
-  ): Promise<FriendStatus> {
+  ): Promise<FriendStatusDto> {
     const rel =
       (await this.friendRepository.findOne({
         where: { requester: { id: userId }, addressee: { id: targetUserId } },
@@ -343,7 +348,13 @@ export class UserService {
       (await this.friendRepository.findOne({
         where: { requester: { id: targetUserId }, addressee: { id: userId } },
       }));
-    return rel ? rel.status : FriendStatus.None;
+
+    const status = rel ? rel.status : FriendStatus.None;
+    return {
+      status,
+      didReceiveRequest:
+        status === FriendStatus.Pending && rel?.addressee.id === userId,
+    };
   }
 
   async findOneOrFail(id: number): Promise<User> {
@@ -434,12 +445,13 @@ export class UserService {
   async signContract(userId: number): Promise<User> {
     const user = await this.findOneOrFail(userId);
     user.contractDateSigned = new Date();
+    user.contractDateSuspended = null;
     return this.userRepository.save(user);
   }
 
   async suspendContract(userId: number): Promise<User> {
     const user = await this.findOneOrFail(userId);
-    user.contractDateSigned = null;
+    user.contractDateSuspended = new Date();
     return this.userRepository.save(user);
   }
 }

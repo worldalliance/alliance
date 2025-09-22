@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Post,
   Put,
   Query,
   UseGuards,
@@ -31,6 +32,10 @@ import {
   UpdateRecordDto,
   UpdateRecordResponseDto,
 } from './dto/update-record.dto';
+import {
+  CreateRecordDto,
+  CreateRecordResponseDto,
+} from './dto/create-record.dto';
 
 @ApiTags('admin-viewer')
 @Controller('admin-viewer')
@@ -66,6 +71,28 @@ export class AdminViewerController {
     @Query() query: TableDataQueryDto,
   ): Promise<TableDataDto> {
     return this.adminViewerService.getTableData(tableName, query);
+  }
+
+  @Post('tables/:tableName/records')
+  @ApiParam({ name: 'tableName', description: 'Name of the database table' })
+  @ApiBody({ type: CreateRecordDto })
+  @ApiOkResponse({ type: CreateRecordResponseDto })
+  @ApiBadRequestResponse({
+    description: 'Invalid create data or validation failed',
+  })
+  @ApiNotFoundResponse({ description: 'Table not found' })
+  @UsePipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidUnknownValues: true,
+    }),
+  )
+  createRecord(
+    @Param('tableName') tableName: string,
+    @Body() createData: CreateRecordDto,
+  ): Promise<CreateRecordResponseDto> {
+    return this.adminViewerService.createRecord(tableName, createData);
   }
 
   @Put('tables/:tableName/records')

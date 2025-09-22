@@ -15,6 +15,20 @@ import { AuthProvider } from "./lib/AuthContext";
 const options: Partial<PostHogConfig> = {
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
   defaults: "2025-05-24",
+  capture_exceptions: {
+    capture_unhandled_errors: true,
+    capture_unhandled_rejections: true,
+    capture_console_errors: true,
+  },
+  session_recording: {
+    maskAllInputs: false,
+    maskInputFn: (text, element) => {
+      if (element?.nodeName === "TEXTAREA") {
+        return text;
+      }
+      return "*".repeat(text.length);
+    },
+  },
 };
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {

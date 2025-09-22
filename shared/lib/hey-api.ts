@@ -15,36 +15,24 @@ export const createClientConfig: CreateClientConfig = (config) => {
 
   const wrappedFetch: typeof fetch = async (input: RequestInfo | URL) => {
     const inputreq = input as Request;
-    const res = await originalFetch(new Request(input));
+    const res = await originalFetch(new Request(input).clone());
 
     if (
       res.status !== 401 ||
       inputreq.url.includes("auth/refresh") ||
-      window.location.pathname.includes("/login")
+      window.location.pathname.includes("/login") ||
+      window.location.pathname.includes("/signup")
     )
       return res;
 
     const refreshRes = await authRefreshTokens();
 
     if (refreshRes.response.ok) {
-      const newRes = await fetch(
-        new Request(inputreq.url, {
-          headers: inputreq.headers,
-          body: inputreq.body,
-          credentials: "include",
-          method: inputreq.method,
-          mode: inputreq.mode,
-          redirect: inputreq.redirect,
-          referrer: inputreq.referrer,
-          referrerPolicy: inputreq.referrerPolicy,
-          integrity: inputreq.integrity,
-          cache: inputreq.cache,
-        })
-      );
-      if (newRes.status !== 401) {
-        return newRes;
+      const retryRes = await originalFetch(inputreq.clone());
+      if (retryRes.status !== 401) {
+        return retryRes;
       } else {
-        console.log(newRes);
+        console.log(retryRes);
       }
     }
 

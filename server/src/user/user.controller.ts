@@ -182,7 +182,7 @@ export class UserController {
       req.user.sub,
       +id,
     );
-    return { status };
+    return status;
   }
 
   @Get('prefill/:id')

@@ -47,8 +47,7 @@ const ActionTaskPanelForm = ({
     if (response.response.ok) {
       if (typeof window !== "undefined" && form) {
         const storageKey = computeFormStorageKey({
-          slug: form.schema.slug as string,
-          version: form.schema.version as number,
+          formId: form.id,
           instanceId: taskFormId,
         });
         window.localStorage.removeItem(storageKey);
@@ -67,6 +66,7 @@ const ActionTaskPanelForm = ({
         {form && (
           <FormRenderer
             form={form.schema as unknown as FormSchema}
+            id={form.id}
             onSubmit={handleSubmitForm}
             persistKey={String(taskFormId)}
             onFormStarted={onFormStarted}

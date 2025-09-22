@@ -16,9 +16,10 @@ const LoginPage: React.FC = () => {
     password: "",
     mode: "cookie",
   });
+
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [searchParams] = useSearchParams();
   const [message, setMessage] = useState<string | null>(
     location.state?.message || null
@@ -59,19 +60,28 @@ const LoginPage: React.FC = () => {
     } catch {
       setError("Authentication failed.");
       setMessage(null);
-      setShowForgotPassword(true);
       setLoading(false);
     }
   };
 
   const handleForgotPasswordClick = async () => {
+    if (!formData.email) {
+      setMessage('Enter an email address, then click "Forgot password" again.');
+      return;
+    }
+
     setError(null);
-    await authForgotPassword({
+    const resp = await authForgotPassword({
       body: { email: formData.email },
     });
-    setMessage(
-      "A link to reset your password has been sent to your email address."
-    );
+    if (resp.error) {
+      setError("Error sending password reset email.");
+      console.error(resp.error);
+    } else {
+      setMessage(
+        "A link to reset your password has been sent to your email address."
+      );
+    }
   };
 
   const showRegisterLink = isFeatureEnabled(Features.PublicSignup);
@@ -92,14 +102,6 @@ const LoginPage: React.FC = () => {
               className="!border-red-400 !bg-red-50 mb-6 flex flex-row space-x-2"
             >
               <span className="text-red-700">{error}</span>
-              {showForgotPassword && (
-                <span
-                  className="text-blue-600 hover:underline cursor-pointer"
-                  onClick={handleForgotPasswordClick}
-                >
-                  Forgot password?
-                </span>
-              )}
             </Card>
           )}
           <Card className="p-8 z-10 relative" style={CardStyle.White}>
@@ -116,16 +118,23 @@ const LoginPage: React.FC = () => {
                   autoComplete="email"
                 />
               </div>
-              <div>
+              <div className="relative">
                 <FormInput
                   label="Password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleChange}
                   autoComplete="current-password"
                   required
                   name="password"
                 />
+                <button
+                  type="button"
+                  className="absolute right-0 top-2 text-xs text-green hover:underline"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
               </div>
 
               <div className="pt-2">
@@ -150,6 +159,12 @@ const LoginPage: React.FC = () => {
               </p>
             </div>
           )}
+          <p
+            className="mt-4 text-green text-center hover:underline cursor-pointer"
+            onClick={handleForgotPasswordClick}
+          >
+            Forgot password?
+          </p>
         </div>
       </div>
     </div>

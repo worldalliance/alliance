@@ -22,6 +22,14 @@ const ResetPasswordPage = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      setFieldErrors({
+        confirmPassword: "Passwords do not match",
+      });
+      return;
+    }
+
     setLoading(true);
 
     if (!token) {
@@ -51,9 +59,15 @@ const ResetPasswordPage = () => {
     });
   };
 
-  const [formData, setFormData] = useState<{ password: string }>({
+  const [formData, setFormData] = useState<{
+    password: string;
+    confirmPassword: string;
+  }>({
     password: "",
+    confirmPassword: "",
   });
+
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -84,9 +98,19 @@ const ResetPasswordPage = () => {
           name="password"
         />
 
+        <FormInput
+          label="Confirm password:"
+          type="password"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          required
+          name="confirmPassword"
+          error={fieldErrors.confirmPassword}
+        />
+
         <div className="pt-2">
           <Button
-            color={ButtonColor.Stone}
+            color={ButtonColor.Black}
             className="w-full flex justify-center text-center  justify-self-center pb-2"
             type="submit"
             disabled={loading}

@@ -35,7 +35,7 @@ export function RenderField({
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
             required={field.required}
             disabled={disabled}
-            className="w-full px-3 py-2 border border-zinc-200 rounded focus:outline-none focus:ring-1 focus:ring-green focus:border-transparent"
+            className="w-full px-3 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-1 focus:ring-green focus:border-transparent"
             placeholder={field.placeholder}
           />
         </div>
@@ -55,7 +55,7 @@ export function RenderField({
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
             required={field.required}
             disabled={disabled}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
           />
           {field.maxLength && (
             <p className="text-xs text-gray-500 mt-1">
@@ -78,7 +78,7 @@ export function RenderField({
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
             required={field.required}
             disabled={disabled}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Enter email address..."
           />
         </div>
@@ -106,7 +106,7 @@ export function RenderField({
             required={field.required}
             disabled={disabled}
             pattern={field.pattern}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder={field.placeholder || "Enter phone number"}
           />
         </div>
@@ -139,7 +139,7 @@ export function RenderField({
             min={field.min}
             max={field.max}
             step={field.step}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           {field.min !== undefined || field.max !== undefined ? (
             <p className="text-xs text-gray-500 mt-1">
@@ -165,11 +165,18 @@ export function RenderField({
               }
               required={field.required}
               disabled={disabled}
-              className="mt-1 mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="mt-1 mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300 rounded"
             />
             <span className="text-zinc-700 flex flex-row items-start">
               <FormMarkdownWrapper markdownContent={field.label} />
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {field.required && (
+                <span
+                  className="text-red-500 ml-1"
+                  style={{ display: "inline" }}
+                >
+                  *
+                </span>
+              )}
             </span>
           </label>
         </div>
@@ -195,7 +202,7 @@ export function RenderField({
                   }
                   required={field.required}
                   disabled={disabled}
-                  className="mt-1 mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  className="mt-1 mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300"
                 />
                 <span className=" text-gray-700">{option.label}</span>
               </label>
@@ -216,7 +223,7 @@ export function RenderField({
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
             required={field.required}
             disabled={disabled}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent has-[option.placeholder:checked]:text-gray-400"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent has-[option.placeholder:checked]:text-gray-400"
           >
             <option value="" className="placeholder" disabled>
               Select an option
@@ -265,7 +272,7 @@ export function RenderField({
                     !!field.required && selectedCount === 0 && optIndex === 0
                   }
                   disabled={disabled}
-                  className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300 rounded"
                 />
                 <span className=" text-gray-700">{option.label}</span>
               </label>
@@ -288,7 +295,7 @@ export function RenderField({
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
             required={field.required}
             disabled={disabled}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
       );
@@ -325,7 +332,7 @@ export function RenderField({
               }}
               required={field.required && !fileValue}
               disabled={disabled || isUploading}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file: file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+              className="flex-1 px-3 py-2 border border-zinc-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file: file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
             />
             {isUploading && (
               <span className=" text-blue-600">Uploading...</span>

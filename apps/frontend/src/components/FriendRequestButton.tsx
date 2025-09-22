@@ -3,19 +3,21 @@ import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import { useState } from "react";
 
 interface FriendRequestButtonProps {
-  friendStatus: FriendStatusDto["status"];
+  friendStatus: FriendStatusDto | null;
   handleSendFriendRequest: () => void;
   handleRemoveFriend: () => void;
+  handleAcceptFriendRequest: () => void;
 }
 
 const FriendRequestButton = ({
   friendStatus,
   handleSendFriendRequest,
   handleRemoveFriend,
+  handleAcceptFriendRequest,
 }: FriendRequestButtonProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  if (friendStatus === "none") {
+  if (!friendStatus || friendStatus.status === "none") {
     return (
       <Button
         color={ButtonColor.BlueOutline}
@@ -26,7 +28,17 @@ const FriendRequestButton = ({
       </Button>
     );
   }
-  if (friendStatus === "pending") {
+  if (friendStatus.status === "pending") {
+    if (friendStatus.didReceiveRequest) {
+      return (
+        <div className="flex flex-row gap-x-2 items-center text-sm">
+          <p>Sent you a friend request!</p>
+          <Button color={ButtonColor.Green} onClick={handleAcceptFriendRequest}>
+            Accept
+          </Button>
+        </div>
+      );
+    }
     return (
       <Button color={ButtonColor.Light} onClick={handleSendFriendRequest}>
         <span>Request sent!</span>

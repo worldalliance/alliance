@@ -9,12 +9,14 @@ interface ActionActivityListProps {
   loading: boolean;
   onLikeActivity: (activityId: number) => Promise<void>;
   setActivities: React.Dispatch<React.SetStateAction<ActionActivityDto[]>>;
+  maxN: number;
 }
 
 const ActionActivityList = ({
   activities,
   loading,
   onLikeActivity,
+  maxN = 5,
 }: ActionActivityListProps) => {
   const [showAll, setShowAll] = useState(false);
   const { user } = useAuth();
@@ -47,12 +49,11 @@ const ActionActivityList = ({
   if (!allActivities.length) {
     return null;
   }
-  const defaultMaxActivities = 8;
-
   const displayedActivities = showAll
     ? allActivities
-    : allActivities.slice(0, defaultMaxActivities);
-  const hasMore = allActivities.length > defaultMaxActivities;
+    : allActivities.slice(0, maxN);
+
+  const hasMore = allActivities.length > maxN;
 
   return (
     <div className="space-y-3 w-full">
@@ -74,7 +75,7 @@ const ActionActivityList = ({
       {hasMore && !showAll && (
         <button
           onClick={() => setShowAll(true)}
-          className="text-[#318dde] hover:text-blue-800 text-sm font-medium"
+          className="text-green hover:text-green/70 mt-3 font-medium"
         >
           See all ({allActivities.length})
         </button>

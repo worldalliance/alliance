@@ -70,6 +70,10 @@ export class User {
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   contractDateSigned: Date | null;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
+  contractDateSuspended: Date | null;
+
   // @Column({
   //   type: 'enum',
   //   enum: NotificationChannel,

@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { ActionWithRelation, useAppLoaderData } from "../../applayout";
 import ActionItemCard from "../../components/ActionItemCard";
 import { useGrayBackground } from "../../components/HtmlBackgroundManager";
+import List from "@alliance/shared/ui/List";
+import CenterLayout from "@alliance/shared/ui/CenterLayout";
 
 export const filterActions = (
   actions: ActionWithRelation[],
@@ -49,40 +51,40 @@ const ActionsListPage = () => {
   const filteredActions = modeToActions[filterMode];
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="px-4 py-16 md:py-12 flex flex-col items-center w-[calc(min(650px,100%))] gap-y-6">
-        <div className="flex flex-row justify-start items-center gap-x-4 w-full">
-          <p>Filter by:</p>
-          <DropdownSelect
-            options={Object.values(FilterMode)}
-            secondaryLabels={Object.values(FilterMode).map((mode) =>
-              modeToActions[mode].length.toString()
-            )}
-            value={filterMode}
-            onChange={(mode) => setFilterMode(mode as FilterMode)}
-          />
-        </div>
-
-        <div className="flex flex-col gap-y-2 w-full">
-          {filteredActions.map((action) => (
-            <ActionItemCard
-              key={action.id}
-              {...action}
-              className="w-full"
-              // joinedCount={liveCounts[action.id] ?? action.usersJoined}
-              // neededCount={
-              //   action.status === "member_action"
-              //     ? action.usersCompleted
-              //     : undefined
-              // }
-            />
-          ))}
-          {filteredActions.length === 0 && (
-            <p className="text-center text-zinc-500">No matching actions</p>
+    <CenterLayout className="gap-y-4" width="3xl">
+      <div className="flex flex-row justify-start items-center w-full">
+        <p className="text-sm mx-4" style={{ fontWeight: 450 }}>
+          Filter by:
+        </p>
+        <DropdownSelect
+          options={Object.values(FilterMode)}
+          secondaryLabels={Object.values(FilterMode).map((mode) =>
+            modeToActions[mode].length.toString()
           )}
-        </div>
+          value={filterMode}
+          onChange={(mode) => setFilterMode(mode as FilterMode)}
+        />
       </div>
-    </div>
+
+      <List className="w-full">
+        {filteredActions.map((action) => (
+          <ActionItemCard
+            key={action.id}
+            {...action}
+            className="w-full hover:bg-zinc-100"
+            // joinedCount={liveCounts[action.id] ?? action.usersJoined}
+            // neededCount={
+            //   action.status === "member_action"
+            //     ? action.usersCompleted
+            //     : undefined
+            // }
+          />
+        ))}
+        {filteredActions.length === 0 && (
+          <p className="text-center text-zinc-500 py-5">No matching actions</p>
+        )}
+      </List>
+    </CenterLayout>
   );
 };
 

@@ -5,7 +5,10 @@ import { FormResponse } from './entities/formresponse.entity';
 
 export class CreateFormDto extends PickType(Form, ['title', 'schema']) {}
 
-export class SubmitFormDto extends PickType(FormResponse, ['answers']) {}
+export class SubmitFormDto extends PickType(FormResponse, [
+  'answers',
+  'schemaSnapshot',
+]) {}
 
 export class FormDto extends PickType(Form, ['id', 'title', 'schema']) {
   @ApiPropertyOptional()
@@ -17,4 +20,5 @@ export class FormResponseDto extends PickType(FormResponse, [
   'answers',
   'formId',
   'user',
+  'schemaSnapshot',
 ]) {}

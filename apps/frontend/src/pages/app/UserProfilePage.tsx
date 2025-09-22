@@ -6,6 +6,7 @@ import {
   UpdateProfileDto,
   forumFindForumCommentsByUser,
   forumFindPostsByUser,
+  userAcceptFriendRequest,
   userFindOne,
   userListFriends,
   userMyFriendRelationship,
@@ -31,6 +32,8 @@ import UserProfileTab from "../../components/UserProfileTab";
 import { useAuth } from "../../lib/AuthContext";
 import { formatTime } from "../../lib/utils";
 import useActivities, { ActivityList } from "./useActivities";
+import { sharp_allowed_mime_types } from "@alliance/shared/lib/config";
+import List from "@alliance/shared/ui/List";
 
 enum ProfileTabs {
   Activity = "Actions",
@@ -65,7 +68,6 @@ const ForumActivityCommentCard: React.FC<ForumActivityCommentCardProps> = ({
       <EditableContentRenderer
         content={comment.editableContent}
         charLimit={140}
-        className="text-zinc-500"
       />
       <div className="flex flex-row items-center gap-x-2 text-sm text-zinc-500">
         <ProfileImage pfp={comment.author.profilePicture} size="small" />
@@ -95,8 +97,9 @@ const UserProfilePage: React.FC = () => {
   const [profileUser, setProfileUser] = useState<ProfileDto | null>(
     isMe ? myProfile : null
   );
-  const [friendStatus, setFriendStatus] =
-    useState<FriendStatusDto["status"]>("none");
+  const [friendStatus, setFriendStatus] = useState<FriendStatusDto | null>(
+    null
+  );
 
   const [selectedTab, setSelectedTab] = useState(ProfileTabs.Activity);
 
@@ -174,7 +177,9 @@ const UserProfilePage: React.FC = () => {
         const { data: friendStatusData } = await userMyFriendRelationship({
           path: { id: userId },
         });
-        setFriendStatus(friendStatusData?.status ?? "none");
+        if (friendStatusData) {
+          setFriendStatus(friendStatusData);
+        }
 
         const { data: forumPostsData } = await forumFindPostsByUser({
           path: { id: userId },
@@ -211,9 +216,19 @@ const UserProfilePage: React.FC = () => {
     if (!id || !user) return;
     try {
       await userRequestFriend({ path: { targetUserId: parseInt(id) } });
-      setFriendStatus("pending");
+      setFriendStatus({ status: "pending", didReceiveRequest: false });
     } catch (error) {
       console.error("Error sending friend request:", error);
+    }
+  }, [id, user]);
+
+  const handleAcceptFriendRequest = useCallback(async () => {
+    if (!id || !user) return;
+    const response = await userAcceptFriendRequest({
+      path: { requesterId: parseInt(id) },
+    });
+    if (!response.error) {
+      setFriendStatus({ status: "accepted", didReceiveRequest: false });
     }
   }, [id, user]);
 
@@ -221,7 +236,7 @@ const UserProfilePage: React.FC = () => {
     if (!id || !user) return;
     try {
       await userRemoveFriend({ path: { targetUserId: parseInt(id) } });
-      setFriendStatus("none");
+      setFriendStatus({ status: "none", didReceiveRequest: false });
     } catch (error) {
       console.error("Error removing friend:", error);
     }
@@ -235,7 +250,7 @@ const UserProfilePage: React.FC = () => {
 
     setImageUploadError(null);
 
-    if (!file.type.startsWith("image/")) {
+    if (!sharp_allowed_mime_types.includes(file.type)) {
       setImageUploadError("Please select a valid image file.");
       return;
     }
@@ -323,7 +338,7 @@ const UserProfilePage: React.FC = () => {
   return (
     <div className="max-w-[800px] mx-auto">
       <div className="mx-2 space-y-2">
-        <div className="w-full h-[100px]"></div>
+        <div className="w-full h-[50px] md:h-[100px]"></div>
         <Card className="px-8 pb-6 relative gap-y-2">
           {isEditing ? (
             <div className="relative w-fit">
@@ -339,7 +354,7 @@ const UserProfilePage: React.FC = () => {
                 <label className="cursor-pointer text-zinc-400 underline text-sm absolute m-auto text-center w-full h-full flex items-center justify-center">
                   <input
                     type="file"
-                    accept="image/*"
+                    accept={sharp_allowed_mime_types.join(",")}
                     className="hidden w-full h-full"
                     onChange={handleAvatarChange}
                   />
@@ -428,6 +443,7 @@ const UserProfilePage: React.FC = () => {
                   friendStatus={friendStatus}
                   handleSendFriendRequest={handleSendFriendRequest}
                   handleRemoveFriend={handleRemoveFriend}
+                  handleAcceptFriendRequest={handleAcceptFriendRequest}
                 />
                 {/* <Button
                   color={ButtonColor.Light}
@@ -466,18 +482,10 @@ const UserProfilePage: React.FC = () => {
               </div>
             )}
           </div>
-          {/* <div className="absolute -left-20 top-0 p-5">
-          <BackButton />
-          </div> */}
-          {/* <ImpactPanel
-            completedActions={completedActions}
-            isMe={isMe}
-            referredCount={referredCount}
-          /> */}
         </Card>
         <div className="pb-24 mt-2">
           {selectedTab === ProfileTabs.Activity && (
-            <div className="flex flex-col divide-y divide-zinc-200 mb-10 border border-zinc-200 rounded overflow-hidden *:p-4 bg-white">
+            <List className="mb-10 *:p-4">
               {completedActions.length === 0 && (
                 <p className="my-4 text-center text-zinc-500">
                   No actions completed yet
@@ -492,7 +500,7 @@ const UserProfilePage: React.FC = () => {
                   canEdit={isMe}
                 />
               ))}
-            </div>
+            </List>
           )}
 
           {selectedTab === ProfileTabs.Forum && (
@@ -502,7 +510,7 @@ const UserProfilePage: React.FC = () => {
                   No forum activity yet
                 </p>
               ) : (
-                <div className="flex flex-col divide-y divide-zinc-200 mb-10 border border-zinc-200 rounded overflow-hidden">
+                <List className="mb-10">
                   {forumActivityItems.map((item) => {
                     if (item.type === "post") {
                       return (
@@ -515,16 +523,13 @@ const UserProfilePage: React.FC = () => {
                       );
                     }
                     return (
-                      // <ForumListPost
-                      //   post={item.comment.parentPost}
-                      //   commentFeature={item.comment}
                       <ForumActivityCommentCard
                         comment={item.comment}
                         key={`comment-${item.comment.id}`}
                       />
                     );
                   })}
-                </div>
+                </List>
               )}
             </div>
           )}
@@ -541,6 +546,7 @@ const UserProfilePage: React.FC = () => {
                   userId={profileUser.id}
                   isMe={isMe}
                   originalTab={openFriendRequest ? "received" : "friends"}
+                  friends={friends}
                 />
               </div>
             </Card>

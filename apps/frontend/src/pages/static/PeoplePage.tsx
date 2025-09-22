@@ -54,13 +54,14 @@ const PeoplePage: React.FC = () => {
             People
           </h2>
 
-          <div className="flex flex-col text-xl">
-            <p className="text-lg md:text-xl">
-              The Alliance is composed of a full-time Strategic Office and a
-              body of members.
+          <div className="flex flex-col text-base md:text-lg">
+            <p>
+              The Alliance has a full-time strategic office that plans
+              collective actions and a body of members that participate in
+              collective actions.
             </p>
 
-            <h2 className="!font-medium text-xl !mt-8 mb-2">
+            <h2 className="!font-semibold !text-lg md:!text-xl !mt-8 mb-2">
               Strategic Office
             </h2>
 
@@ -78,8 +79,10 @@ const PeoplePage: React.FC = () => {
               ))}
             </div>
 
-            <h2 className="!font-medium text-xl !mt-8 mb-2">Members</h2>
-            <p className="text-lg md:text-xl">
+            <h2 className="!font-semibold !text-lg md:!text-xl !mt-8 mb-2">
+              Members
+            </h2>
+            <p>
               We have 30 members who are participating in early experiments.
             </p>
           </div>

@@ -38,6 +38,7 @@ export class PosthogExceptionFilter implements ExceptionFilter {
         method: req?.method,
         status,
         env: process.env.NODE_ENV,
+        server: true,
       },
     });
 
