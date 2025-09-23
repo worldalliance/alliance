@@ -172,18 +172,12 @@ jobs:
             sudo npm i -g pm2
 
             cd ~
-            unzip -o react-build.zip
+            unzip -o -q react-build.zip
 
             cd ~/output
 
-            if [ -x "./node_modules/.bin/react-router-serve" ]; then
-              START_CMD="./node_modules/.bin/react-router-serve build/server/index.js"
-            else
-              START_CMD="node build/server/index.js"
-            fi
-
             pm2 delete client-ssr || true
-            pm2 start "$START_CMD" --name client-ssr
+            pm2 start "node server.js" --name client-ssr
             pm2 save
 
             sudo systemctl restart nginx
@@ -312,7 +306,7 @@ jobs:
         with: { node-version: 20 }
       - run: corepack enable
 
-      - run: cd server && npm ci && npm run build
+      - run: cd server && yarn install && yarn build
 
       - run: |
           echo "DB_HOST=localhost" >> $GITHUB_ENV
@@ -323,7 +317,7 @@ jobs:
           echo "NODE_ENV=test" >> $GITHUB_ENV
 
       - name: Run migrations on blank DB
-        run: npx typeorm-ts-node-commonjs --dataSource dist/src/datasources/dataSource.js migration:run
+        run: yarn migration:run
         working-directory: ./server
 
       - name: Schema drift check
@@ -331,7 +325,7 @@ jobs:
         run: |
           set -e
 
-          OUT="$(npx typeorm-ts-node-commonjs --dataSource dist/src/datasources/dataSource.js schema:log || true)"
+          OUT="$(yarn typeorm schema:log || true)"
           echo "$OUT"
 
           if echo "$OUT" | grep -Eiq '^\s*(ALTER|CREATE|DROP|COMMENT|RENAME|TRUNCATE|INSERT INTO|UPDATE |DELETE FROM)\b'; then

@@ -72,7 +72,7 @@ export const FormSummaryEmail: React.FC<FormSummaryEmailProps> = ({
 }: FormSummaryEmailProps) => {
   // one page or many pages → list all fields in order, respecting visibleIf
   return (
-    <Layout title={`Form: ${schema.title ?? schema.slug}`}>
+    <Layout title={`Form: ${schema.title ?? "Untitled"}`}>
       <Tailwind
         config={{
           theme: { extend: {} },
