@@ -58,45 +58,54 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Enable Corepack & Activate Yarn
+        run: |
+          corepack enable
+          corepack prepare yarn@4.9.1 --activate
 
-      - name: Activate Yarn 4.x
-        run: corepack prepare yarn@4.9.1 --activate
-
-      - name: Setup Node
+      - name: Setup Node 20 (cache Yarn)
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: "yarn"
+          cache: yarn
 
-      - name: Install Dependencies
-        run: corepack yarn install --immutable
-        working-directory: ./
+      # Full install for the whole monorepo so the build can resolve workspace deps
+      - name: Install (monorepo)
+        run: yarn install --immutable
 
-      - name: Build React App
-        run: corepack yarn workspace @alliance/frontend build
-        working-directory: ./
+      # Build the frontend in the monorepo context (so @alliance/shared is resolved)
+      - name: Build frontend
+        run: yarn workspace @alliance/frontend build
 
-      - name: create output folder
+      # Prune to only the frontend and its *runtime* deps for deployment
+      # (dev deps dropped; other workspaces removed)
+      - name: Focus frontend runtime deps
+        run: yarn workspaces focus @alliance/frontend --production
+
+      # Stage deployable artifacts (build output, server entry, pruned node_modules, package.json, lockfile)
+      - name: Create output bundle
         run: |
-          rm -rf output
-          mkdir output
-          mv build output/build
-          cp server.js output/server.js
-          cp package.json output/package.json
-        working-directory: ./apps/frontend
+          rm -rf apps/frontend/output
+          mkdir -p apps/frontend/output
 
-      - name: Zip client + server
+          cp -R apps/frontend/build apps/frontend/output/build
+
+          cp apps/frontend/server.js apps/frontend/output/server.js
+          cp apps/frontend/package.json apps/frontend/output/package.json
+
+          cp -R node_modules apps/frontend/output/node_modules
+
+          cp yarn.lock apps/frontend/output/yarn.lock
+
+      - name: Zip deployable bundle
         run: |
+          cd apps/frontend
           zip -r react-build.zip output
-        working-directory: ./apps/frontend
 
-      - name: Move Build Artifacts
-        run: |
-          mv apps/frontend/react-build.zip ./react-build.zip
+      - name: Move build artifact to repo root
+        run: mv apps/frontend/react-build.zip ./react-build.zip
 
-      - name: Upload React Build to EC2
+      - name: Upload bundle to EC2
         uses: appleboy/scp-action@v0.1.3
         with:
           host: ${{ secrets.INSTANCE_IP }}
@@ -144,8 +153,7 @@ jobs:
 
   deploy-react-app:
     runs-on: ubuntu-latest
-    needs:
-      - build-react-app
+    needs: [build-react-app]
     environment: ${{ github.ref_name == 'staging' && 'staging' || 'production' }}
     steps:
       - name: SSH and Deploy frontend SSR on EC2
@@ -155,94 +163,28 @@ jobs:
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -euo pipefail
+
+            # Tools (pm2 + unzip + nginx + Node 20). Use one Node path; avoid mixing nvm/nodesource.
             sudo yum install -y unzip nginx
             curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
             sudo yum install -y nodejs
-            sudo npm i -g pm2  
+            sudo npm i -g pm2
 
-            nvm install 20
-            nvm use 20
-            nvm alias default 20
-
-            cd ~/
-
-            unzip -o ~/react-build.zip
+            cd ~
+            unzip -o react-build.zip
 
             cd ~/output
-            yarn install --omit=dev
+
+            if [ -x "./node_modules/.bin/react-router-serve" ]; then
+              START_CMD="./node_modules/.bin/react-router-serve build/server/index.js"
+            else
+              START_CMD="node build/server/index.js"
+            fi
 
             pm2 delete client-ssr || true
-            pm2 start "yarn react-router-serve build/server/index.js" --name client-ssr
+            pm2 start "$START_CMD" --name client-ssr
             pm2 save
-
-            if [ ! -f /etc/nginx/conf.d/alliance.conf ]; then
-              cat <<EOF | sudo tee /etc/nginx/conf.d/alliance.conf
-              map $http_upgrade $connection_upgrade {
-                default upgrade;
-                ''	  close;
-              }
-
-              server {
-                server_name ${vars.DOMAIN_NAME};
-
-                root /home/ec2-user/output/build/client;
-                index index.html;
-
-                location ^~ /assets/ {
-                  try_files $uri =404;
-                  access_log off;
-                  add_header Cache-Control "public, max-age=31536000, immutable";
-                }
-
-                location / {
-                  proxy_pass http://localhost:3000;
-                  proxy_http_version 1.1;
-                  proxy_set_header Host $host;
-                  proxy_set_header X-Forwarded-Proto $scheme;
-
-                }
-
-                location /api/ {
-                  proxy_pass http://localhost:3005/;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade $http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host $host;
-                  proxy_cache_bypass $http_upgrade;
-                }
-
-                  location /socket.io/ {
-                    proxy_pass         http://localhost:3005;
-                    proxy_http_version 1.1;
-                    proxy_set_header   Upgrade $http_upgrade;
-                    proxy_set_header   Connection $connection_upgrade;
-                    proxy_set_header   Host $host;
-                    proxy_set_header   X-Real-IP $remote_addr;
-                    proxy_set_header   X-Forwarded-Proto $scheme;
-                    proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
-                }
-
-                  listen 443 ssl http2; # managed by Certbot
-                  ssl_certificate /etc/letsencrypt/live/worldalliance.org/fullchain.pem; # managed by Certbot
-                  ssl_certificate_key /etc/letsencrypt/live/worldalliance.org/privkey.pem; # managed by Certbot
-                  include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-                  ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-
-              }
-              server {
-                  if ($host = worldalliance.org) {
-                      return 301 https://$host$request_uri;
-                  } # managed by Certbot
-
-
-                listen 80;
-                server_name worldalliance.org;
-                  return 404; # managed by Certbot
-
-
-              }
-            EOF
-            fi
 
             sudo systemctl restart nginx
 
