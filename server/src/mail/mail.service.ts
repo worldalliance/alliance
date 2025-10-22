@@ -200,7 +200,10 @@ export class MailService {
         'Invalid announcement status: ' + context.event.newStatus,
       );
     } else if (context.type === ActionEventNotifType.Reminder) {
-      return processKeywordReplacements(context.customEmailSubject!, context);
+      return processKeywordReplacements(
+        context.customEmailSubject ?? 'no subject',
+        context,
+      );
     } else if (context.type === ActionEventNotifType.MissedDeadline) {
       return 'Failed to complete action: ' + context.action.name;
     }
@@ -222,10 +225,7 @@ export class MailService {
           ? EmailType.Commitment
           : EmailType.MemberAction;
     } else if (context.type === ActionEventNotifType.Reminder) {
-      emailType =
-        context.event.newStatus === ActionStatus.GatheringCommitments
-          ? EmailType.CommitmentReminder
-          : EmailType.MemberActionReminder;
+      emailType = EmailType.CustomActionReminder;
     } else if (context.type === ActionEventNotifType.MissedDeadline) {
       emailType = context.isSecondMiss
         ? EmailType.MissedSecondDeadline
@@ -247,6 +247,7 @@ export class MailService {
     if (context.deadlineEvent) {
       daysLeft = getDaysFromDeadline(context.deadlineEvent);
     }
+    console.log('context', context);
 
     const emailContext = {
       name: context.user.name,

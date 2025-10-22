@@ -13,18 +13,28 @@ import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import DateTimePicker from "@alliance/shared/ui/DateTimePicker";
 import React, { useEffect, useMemo, useState } from "react";
+import {
+  format,
+  formatDistanceStrict,
+  isValid,
+  parseISO,
+  subSeconds,
+} from "date-fns";
 
 interface ActionRemindersTabProps {
   action: ActionDto;
   setAction: React.Dispatch<React.SetStateAction<ActionDto | null>>;
 }
 
-const formatDateTimeLocal = (date: Date) => {
-  const pad = (value: number) => value.toString().padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-    date.getDate()
-  )}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+const DISPLAY_DATETIME_FORMAT = "PP p";
+const INPUT_DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm";
+const notificationChannelLabels: Record<string, string> = {
+  email: "Email",
+  text: "Text",
+  push: "Push",
 };
+
+const formatDateTimeLocal = (date: Date) => format(date, INPUT_DATETIME_FORMAT);
 
 const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   action,
@@ -37,6 +47,21 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       ),
     [action.events]
   );
+  const sortedActionEvents = useMemo(() => {
+    return (action.events || [])
+      .slice()
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [action.events]);
+  const nextEventById = useMemo(() => {
+    const map = new Map<number, (typeof sortedActionEvents)[number]>();
+    sortedActionEvents.forEach((event, index) => {
+      const next = sortedActionEvents[index + 1];
+      if (next) {
+        map.set(event.id, next);
+      }
+    });
+    return map;
+  }, [sortedActionEvents]);
 
   const [selectedEventId, setSelectedEventId] = useState<number | null>(
     memberEvents[0]?.id ?? null
@@ -93,9 +118,168 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     }
   }, [selectedEventId]);
 
-  const reminders = eventWithReminders
-    ? eventWithReminders.reminders.slice()
-    : [];
+  const reminders = useMemo(() => {
+    if (!eventWithReminders) {
+      return [];
+    }
+    return eventWithReminders.reminders
+      .slice()
+      .sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+  }, [eventWithReminders]);
+
+  const parseDate = (value?: string | Date | null) => {
+    if (!value) {
+      return null;
+    }
+    const date = typeof value === "string" ? parseISO(value) : value;
+    return isValid(date) ? date : null;
+  };
+
+  const formatDisplayDate = (value?: string | Date | null) => {
+    const date = parseDate(value);
+    return date ? format(date, DISPLAY_DATETIME_FORMAT) : null;
+  };
+
+  const getMemberEventId = (reminder: ActionReminder) => {
+    const relatedEventId = reminder.memberActionEvent?.id;
+    if (typeof relatedEventId === "number") {
+      return relatedEventId;
+    }
+    const dtoMemberId = (
+      reminder as unknown as { memberActionEventId?: number }
+    ).memberActionEventId;
+    if (typeof dtoMemberId === "number") {
+      return dtoMemberId;
+    }
+    return eventWithReminders?.id;
+  };
+
+  const findDeadlineEvent = (reminder: ActionReminder) => {
+    if (reminder.deadlineEventId) {
+      const match = sortedActionEvents.find(
+        (event) => event.id === reminder.deadlineEventId
+      );
+      if (match) {
+        return match;
+      }
+    }
+    const memberEventId = getMemberEventId(reminder);
+    if (!memberEventId) {
+      return undefined;
+    }
+    return nextEventById.get(memberEventId);
+  };
+
+  const resolveSchedule = (reminder: ActionReminder) => {
+    if (reminder.timingMode === "absolute") {
+      const sendDate = parseDate(reminder.sendAtAbsolute);
+      if (sendDate) {
+        return {
+          primary: `Sends ${format(sendDate, DISPLAY_DATETIME_FORMAT)}`,
+          secondary: "Absolute schedule",
+          sendDate,
+          deadlineDate: null as Date | null,
+          referenceTitle: null as string | null,
+        };
+      }
+      return {
+        primary: "Sends at scheduled time",
+        secondary: "Unable to determine send date",
+        sendDate: null,
+        deadlineDate: null,
+        referenceTitle: null,
+      };
+    }
+
+    if (reminder.timingMode === "from_deadline") {
+      const deadlineEvent = findDeadlineEvent(reminder);
+      const deadlineDate = parseDate(deadlineEvent?.date);
+      const seconds = reminder.sendAtSecondsFromDeadline ?? 0;
+      if (deadlineDate) {
+        const sendDate = subSeconds(deadlineDate, seconds);
+        const isBefore = seconds >= 0;
+        const referenceTitle =
+          deadlineEvent?.title?.trim() ||
+          `deadline on ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`;
+        if (seconds === 0) {
+          return {
+            primary: `Sends when ${referenceTitle} begins`,
+            secondary: `${format(
+              sendDate,
+              DISPLAY_DATETIME_FORMAT
+            )} • Deadline ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`,
+            sendDate,
+            deadlineDate,
+            referenceTitle,
+          };
+        }
+        const distance = formatDistanceStrict(deadlineDate, sendDate, {
+          roundingMethod: "floor",
+        });
+        return {
+          primary: `Sends ${distance} ${
+            isBefore ? "before" : "after"
+          } ${referenceTitle}`,
+          secondary: `${format(
+            sendDate,
+            DISPLAY_DATETIME_FORMAT
+          )} • Deadline ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`,
+          sendDate,
+          deadlineDate,
+          referenceTitle,
+        };
+      }
+      return {
+        primary: "Relative schedule",
+        secondary: "Waiting for deadline details",
+        sendDate: null,
+        deadlineDate: null,
+        referenceTitle: deadlineEvent?.title ?? null,
+      };
+    }
+
+    return {
+      primary: "Scheduled reminder",
+      secondary: "",
+      sendDate: null,
+      deadlineDate: null,
+      referenceTitle: null,
+    };
+  };
+
+  const getNotificationChannels = (reminder: ActionReminder) => {
+    const channels = new Set<string>();
+    (reminder.notifications ?? []).forEach((notification) => {
+      const channel = (notification as { channel?: string })?.channel;
+      if (channel) {
+        channels.add(channel);
+      }
+    });
+    return Array.from(channels);
+  };
+
+  const formatRecipientName = (user: unknown) => {
+    if (!user || typeof user !== "object") {
+      return null;
+    }
+    const record = user as Record<string, unknown>;
+    const displayName = record.displayName;
+    if (typeof displayName === "string" && displayName.trim()) {
+      return displayName.trim();
+    }
+    const name = record.name;
+    if (typeof name === "string" && name.trim()) {
+      return name.trim();
+    }
+    const id = record.id;
+    if (typeof id === "number") {
+      return `User #${id}`;
+    }
+    return null;
+  };
 
   const filteredUsers = useMemo(() => {
     const term = userQuery.trim().toLowerCase();
@@ -143,7 +327,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       setError("Select a member action event first.");
       return;
     }
-    if (!selectedUsers.length) {
+    if (cohortType === "custom" && !selectedUsers.length) {
       setError("Select at least one user.");
       return;
     }
@@ -446,55 +630,145 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             No custom reminders scheduled for this event yet.
           </p>
         ) : (
-          <div className="space-y-3">
-            {reminders
-              .slice()
-              .sort(
-                (a, b) =>
-                  new Date(a.createdAt).getTime() -
-                  new Date(b.createdAt).getTime()
-              )
-              .map((reminder) => (
+          <div className="space-y-4">
+            {reminders.map((reminder) => {
+              const schedule = resolveSchedule(reminder);
+              const sentAtLabel = formatDisplayDate(reminder.sentAt);
+              const createdAtLabel = formatDisplayDate(reminder.createdAt);
+              const sendDateLabel =
+                !sentAtLabel && schedule.sendDate
+                  ? format(schedule.sendDate, DISPLAY_DATETIME_FORMAT)
+                  : null;
+              const channels = getNotificationChannels(reminder);
+              const channelText =
+                channels.length > 0
+                  ? channels
+                      .map(
+                        (channel) =>
+                          notificationChannelLabels[channel] ?? channel
+                      )
+                      .join(", ")
+                  : null;
+              const isCustomCohort = reminder.cohortType === "custom";
+              const recipientNames = (reminder.users ?? [])
+                .map(formatRecipientName)
+                .filter((value): value is string => Boolean(value));
+              const primaryRecipients = recipientNames.slice(0, 3);
+              const remainingRecipients =
+                recipientNames.length - primaryRecipients.length;
+              const cohortSummary = isCustomCohort
+                ? `${recipientNames.length} recipient${
+                    recipientNames.length === 1 ? "" : "s"
+                  }`
+                : "All members who have not completed the action";
+              const emailSubject = reminder.emailSubject?.trim();
+              const emailMessage = reminder.emailMessage?.trim();
+              const textMessage = reminder.textMessage?.trim();
+
+              return (
                 <div
                   key={reminder.id}
-                  className="border border-gray-200 rounded-md p-3 text-sm"
+                  className="border border-gray-200 rounded-md p-4 text-sm space-y-4"
                 >
-                  <div className="flex justify-between items-center flex-wrap gap-2">
+                  <div className="flex flex-wrap justify-between gap-3">
                     <div>
-                      {reminder.sendAtAbsolute && (
-                        <p className="font-medium">
-                          Sends{" "}
-                          {new Date(reminder.sendAtAbsolute).toLocaleString()}
+                      <p className="text-xs uppercase tracking-wide text-gray-500">
+                        Schedule
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {schedule.primary}
+                      </p>
+                      {schedule.secondary && (
+                        <p className="text-xs text-gray-500">
+                          {schedule.secondary}
                         </p>
                       )}
-                      <p className="text-xs text-gray-500">
-                        {reminder.sentAt
-                          ? `Sent ${new Date(reminder.sentAt).toLocaleString()}`
+                      {reminder.timingMode === "from_deadline" &&
+                        schedule.referenceTitle && (
+                          <p className="text-xs text-gray-500">
+                            Deadline event: {schedule.referenceTitle}
+                          </p>
+                        )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs uppercase tracking-wide text-gray-500">
+                        Status
+                      </p>
+                      <p className="text-sm text-gray-900">
+                        {sentAtLabel
+                          ? `Sent ${sentAtLabel}`
+                          : sendDateLabel
+                          ? `Scheduled for ${sendDateLabel}`
                           : "Pending"}
                       </p>
+                      {createdAtLabel && (
+                        <p className="text-xs text-gray-500">
+                          Created {createdAtLabel}
+                        </p>
+                      )}
                     </div>
-                    <span className="text-xs text-gray-500">
-                      {reminder.users?.length ?? 0} recipients
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-gray-500">
+                        Recipients
+                      </p>
+                      <p className="text-sm text-gray-900">{cohortSummary}</p>
+                      {isCustomCohort && primaryRecipients.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {primaryRecipients.join(", ")}
+                          {remainingRecipients > 0
+                            ? ` +${remainingRecipients} more`
+                            : ""}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">
+                          Email Content
+                        </p>
+                        {emailSubject && (
+                          <p className="text-sm font-medium text-gray-900">
+                            {emailSubject}
+                          </p>
+                        )}
+                        <p className="text-sm text-gray-700 whitespace-pre-line">
+                          {emailMessage || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">
+                          Text Content
+                        </p>
+                        <p className="text-sm text-gray-700 whitespace-pre-line">
+                          {textMessage || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs text-gray-500">
+                    <span>
+                      Mode:{" "}
+                      {reminder.timingMode === "absolute"
+                        ? "Absolute time"
+                        : "Relative to deadline"}
+                    </span>
+                    <span>
+                      Cohort:{" "}
+                      {reminder.cohortType === "custom"
+                        ? "Custom recipients"
+                        : "All uncompleted"}
+                    </span>
+                    {channelText && <span>Channels: {channelText}</span>}
+                    <span>
+                      Include action link:{" "}
+                      {reminder.includeActionLinkInMessages ? "Yes" : "No"}
                     </span>
                   </div>
-                  <div className="mt-2">
-                    <p className="text-xs font-semibold uppercase text-gray-500">
-                      Email Message
-                    </p>
-                    <p className="text-sm text-gray-700 whitespace-pre-line">
-                      {reminder.emailMessage}
-                    </p>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-xs font-semibold uppercase text-gray-500">
-                      Text Message
-                    </p>
-                    <p className="text-sm text-gray-700 whitespace-pre-line">
-                      {reminder.textMessage}
-                    </p>
-                  </div>
                 </div>
-              ))}
+              );
+            })}
           </div>
         )}
       </Card>

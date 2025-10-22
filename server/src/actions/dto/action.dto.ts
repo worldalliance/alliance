@@ -91,11 +91,7 @@ export class CreateActionReminderDto extends PickType(ActionReminder, [
   deadlineEventId?: number;
 
   @ApiPropertyOptional({ type: Number, isArray: true })
-  @IsArray()
-  @ArrayNotEmpty()
-  @ArrayUnique()
   @Type(() => Number)
-  @IsInt({ each: true })
   @IsOptional()
   userIds?: number[];
 }

@@ -101,6 +101,7 @@ export class ActionEventNotifWorker {
           windowStart,
           now,
         );
+        this.logger.log('duePlans', duePlans.length);
 
         for (const plan of duePlans) {
           await this.processOne(qr, plan);
@@ -149,7 +150,6 @@ export class ActionEventNotifWorker {
           'memberActionEvent',
           'memberActionEvent.action',
           'memberActionEvent.action.participatingGroups',
-          'deadlineEvent',
           'users',
         ],
       });

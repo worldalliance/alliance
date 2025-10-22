@@ -220,12 +220,9 @@ export class ActionEventReminderService {
     windowEnd: Date,
   ): Promise<NotificationPlan[]> {
     const results: NotificationPlan[] = [];
-    const reminderWindowEnd = new Date(
-      windowEnd.getTime() + 3 * 24 * 60 * 60 * 1000,
-    );
+    console.log('computing reminder plans');
 
     const events = await this.eventRepository.find({
-      where: { date: LessThanOrEqual(reminderWindowEnd) },
       relations: [
         'action',
         'action.participatingGroups',
@@ -234,6 +231,7 @@ export class ActionEventReminderService {
       ],
       order: { action: { id: 'ASC' }, date: 'ASC' },
     });
+    console.log('events', events.length);
 
     const eventsByAction = new Map<number, ActionEvent[]>();
     for (const event of events) {

@@ -31,6 +31,9 @@ const options: Partial<PostHogConfig> = {
       return "*".repeat(text.length);
     },
     maskCapturedNetworkRequestFn: (request) => {
+      if (request.name.includes("/events/")) {
+        return null;
+      }
       if (request.name.includes("auth")) {
         request.requestBody = undefined;
         return request;
