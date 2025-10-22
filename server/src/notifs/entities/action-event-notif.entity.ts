@@ -15,10 +15,8 @@ import { NotificationChannel } from '../notif-utils';
 
 export enum ActionEventNotifType {
   Announcement = 'announcement',
-  ThreeDayReminder = '3dayreminder',
-  OneDayReminder = '1dayreminder',
   MissedDeadline = 'misseddeadline',
-  CustomReminder = 'customreminder',
+  Reminder = 'reminder',
 }
 
 @Entity()

@@ -18,7 +18,11 @@ import {
 } from 'src/actions/dto/notification-schedule.dto';
 import { User } from '../user/entities/user.entity';
 import { ProfileDto } from 'src/user/user.dto';
-import { ActionReminder } from 'src/actions/entities/action-reminder.entity';
+import {
+  ActionReminder,
+  ReminderCohortType,
+  ReminderTimingMode,
+} from 'src/actions/entities/action-reminder.entity';
 
 export interface MissedDeadlineCandidate {
   actionId: number;
@@ -44,14 +48,21 @@ export const POST_MEMBER_ACTION_STATUSES = new Set<ActionStatus>([
   ActionStatus.Abandoned,
 ]);
 
-export interface NotificationPlan {
-  type: ActionEventNotifType;
+export type NotificationPlan = {
   scheduledFor: Date;
   referenceEvent: ActionEvent;
   targetEvent: ActionEvent;
-  reminder?: ActionReminder;
   metadata?: NotificationScheduleMetadataDto;
-}
+} & (
+  | {
+      type: Exclude<ActionEventNotifType, ActionEventNotifType.Reminder>;
+      reminder?: never;
+    }
+  | {
+      type: ActionEventNotifType.Reminder;
+      reminder: ActionReminder;
+    }
+);
 
 @Injectable()
 export class ActionEventReminderService {
@@ -111,13 +122,6 @@ export class ActionEventReminderService {
       requiredEvents.add(plan.targetEvent.id);
     }
 
-    const customPlans = await this.computeCustomReminderPlans(start, end);
-    for (const plan of customPlans) {
-      plans.push(plan);
-      requiredEvents.add(plan.referenceEvent.id);
-      requiredEvents.add(plan.targetEvent.id);
-    }
-
     // Missed deadlines
     const deadlinePlans = await this.computeDeadlinePlans(start, end);
     for (const plan of deadlinePlans) {
@@ -163,11 +167,11 @@ export class ActionEventReminderService {
     windowEnd: Date,
   ): Promise<NotificationScheduleEntryDto[]> {
     const plans = await this.evaluateNotifications(windowStart, windowEnd);
-
     return Promise.all(
       plans.map(async (plan) => {
         const recipients =
-          plan.type === ActionEventNotifType.CustomReminder && plan.reminder
+          plan.type === ActionEventNotifType.Reminder &&
+          plan.reminder.cohortType === ReminderCohortType.Custom
             ? await this.recipientService
                 .filterForCompletion(plan.reminder.users, plan.referenceEvent)
                 .then((users) => users.map((user) => new ProfileDto(user)))
@@ -181,12 +185,34 @@ export class ActionEventReminderService {
           actionId: plan.referenceEvent.action!.id,
           actionName: plan.referenceEvent.action!.name,
           actionStatus: plan.referenceEvent.newStatus,
-          eventId: plan.targetEvent.id,
+          eventId: plan.referenceEvent.id,
           recipients,
           metadata: plan.metadata,
         };
       }),
     );
+  }
+
+  computeReminderSendDate(
+    reminder: ActionReminder,
+    nextEvent: ActionEvent,
+  ): Date {
+    if (reminder.timingMode === ReminderTimingMode.Absolute) {
+      if (!reminder.sendAtAbsolute) {
+        throw new Error('missing sendAtAbsolute for absolute reminder');
+      }
+      return reminder.sendAtAbsolute;
+    } else if (reminder.timingMode === ReminderTimingMode.FromDeadline) {
+      if (!reminder.sendAtSecondsFromDeadline) {
+        throw new Error(
+          'missing sendAtSecondsFromDeadline for relative reminder',
+        );
+      }
+      return new Date(
+        nextEvent.date.getTime() - reminder.sendAtSecondsFromDeadline * 1000,
+      );
+    }
+    return reminder.timingMode satisfies never;
   }
 
   private async computeReminderPlans(
@@ -200,7 +226,12 @@ export class ActionEventReminderService {
 
     const events = await this.eventRepository.find({
       where: { date: LessThanOrEqual(reminderWindowEnd) },
-      relations: ['action', 'action.participatingGroups'],
+      relations: [
+        'action',
+        'action.participatingGroups',
+        'reminders',
+        'reminders.users',
+      ],
       order: { action: { id: 'ASC' }, date: 'ASC' },
     });
 
@@ -211,9 +242,6 @@ export class ActionEventReminderService {
       list.push(event);
       eventsByAction.set(event.action.id, list);
     }
-
-    const threeDayMs = 3 * 24 * 60 * 60 * 1000;
-    const oneDayMs = 24 * 60 * 60 * 1000;
 
     for (const [, list] of eventsByAction) {
       list.sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -226,79 +254,28 @@ export class ActionEventReminderService {
         ) {
           continue;
         }
-
-        if (current.threeDayReminderNotifsSentAt == null) {
-          const scheduled = new Date(next.date.getTime() - threeDayMs);
-          if (scheduled >= windowStart && scheduled <= windowEnd) {
-            results.push({
-              type: ActionEventNotifType.ThreeDayReminder,
-              scheduledFor: scheduled,
-              referenceEvent: current,
-              targetEvent: next,
-              metadata: {
-                currentEventId: current.id,
-                nextEventId: next.id,
-              },
-            });
-          }
-        }
-
-        if (current.oneDayReminderNotifsSentAt == null) {
-          const scheduled = new Date(next.date.getTime() - oneDayMs);
-          if (scheduled >= windowStart && scheduled <= windowEnd) {
-            results.push({
-              type: ActionEventNotifType.OneDayReminder,
-              scheduledFor: scheduled,
-              referenceEvent: current,
-              targetEvent: next,
-              metadata: {
-                currentEventId: current.id,
-                nextEventId: next.id,
-              },
-            });
+        for (const reminder of current.reminders) {
+          if (!reminder.sentAt) {
+            const sendTime = this.computeReminderSendDate(reminder, next);
+            if (sendTime >= windowStart && sendTime <= windowEnd) {
+              results.push({
+                type: ActionEventNotifType.Reminder,
+                reminder,
+                scheduledFor: sendTime,
+                referenceEvent: current,
+                targetEvent: next,
+                metadata: {
+                  currentEventId: current.id,
+                  nextEventId: next.id,
+                },
+              });
+            }
           }
         }
       }
     }
 
     return results;
-  }
-
-  private async computeCustomReminderPlans(
-    windowStart: Date,
-    windowEnd: Date,
-  ): Promise<NotificationPlan[]> {
-    const reminders = await this.reminderRepository.find({
-      where: {
-        sendAt: Between(windowStart, windowEnd),
-        sentAt: IsNull(),
-      },
-      relations: [
-        'memberActionEvent',
-        'memberActionEvent.action',
-        'memberActionEvent.action.participatingGroups',
-        'deadlineEvent',
-        'users',
-      ],
-      order: { sendAt: 'ASC' },
-    });
-
-    return reminders
-      .filter(
-        (reminder) =>
-          reminder.memberActionEvent?.action && reminder.users?.length,
-      )
-      .map((reminder) => ({
-        type: ActionEventNotifType.CustomReminder,
-        scheduledFor: reminder.sendAt,
-        referenceEvent: reminder.memberActionEvent,
-        targetEvent: reminder.deadlineEvent ?? reminder.memberActionEvent,
-        reminder,
-        metadata: {
-          reminderId: reminder.id,
-          deadlineEventId: reminder.deadlineEvent?.id,
-        },
-      }));
   }
 
   private async computeDeadlinePlans(

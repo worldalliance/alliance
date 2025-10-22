@@ -7,10 +7,15 @@ import {
   ActionStatus,
   NotificationType,
 } from 'src/actions/entities/action-event.entity';
-import { ActionReminder } from 'src/actions/entities/action-reminder.entity';
+import {
+  ActionReminder,
+  ReminderCohortType,
+  ReminderTimingMode,
+} from 'src/actions/entities/action-reminder.entity';
 import { ActionTaskType } from 'src/actions/entities/action.entity';
 import { User } from 'src/user/entities/user.entity';
 import {} from 'src/actions/entities/action-activity.entity';
+import { ActionEventNotifType } from 'src/notifs/entities/action-event-notif.entity';
 
 describe('Action reminders (e2e)', () => {
   let ctx: TestContext;
@@ -58,15 +63,20 @@ describe('Action reminders (e2e)', () => {
       .post(`/actions/${action.id}/events/${memberEvent.id}/reminders`)
       .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
       .send({
-        sendAt: sendAt.toISOString(),
-        customEmailMessage: 'Remember to participate!',
+        sendAtAbsolute: sendAt.toISOString(),
+        timingMode: ReminderTimingMode.Absolute,
+        cohortType: ReminderCohortType.Custom,
+        emailMessage: 'Remember to participate!',
+        emailSubject: 'Remember to participate!',
+        textMessage: 'Remember to participate!',
+        includeActionLinkInMessages: true,
         userIds: [ctx.testUserId, ctx.adminUserId],
       })
       .expect(201);
 
     expect(response.body).toMatchObject({
       memberActionEventId: memberEvent.id,
-      customEmailMessage: 'Remember to participate!',
+      emailMessage: 'Remember to participate!',
     });
 
     const stored = await reminderRepo.findOne({
@@ -83,15 +93,17 @@ describe('Action reminders (e2e)', () => {
     await actionRepo.delete({ id: action.id });
   });
 
-  it('includes custom reminders in the notification schedule, sends to non-completed users only', async () => {
+  it('includes absolute reminders in the notification schedule, sends to non-completed users only', async () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: 'Custom Reminder Schedule Action',
         category: 'Testing',
         body: 'Body',
         shortDescription: 'Short',
+        commitmentless: true,
         type: ActionTaskType.Activity,
         participatingGroups: [ctx.defaultGroup],
+        everyoneShouldComplete: true,
       }),
     );
 
@@ -103,6 +115,17 @@ describe('Action reminders (e2e)', () => {
         sendNotifsTo: NotificationType.All,
         date: new Date(),
         showInTimeline: true,
+        action,
+      }),
+    );
+
+    await eventRepo.save(
+      eventRepo.create({
+        title: 'Next Event',
+        description: 'desc',
+        newStatus: ActionStatus.OfficeAction,
+        sendNotifsTo: NotificationType.All,
+        date: new Date(Date.now() + 60 * 60 * 1000),
         action,
       }),
     );
@@ -120,8 +143,13 @@ describe('Action reminders (e2e)', () => {
     const reminder = await reminderRepo.save(
       reminderRepo.create({
         memberActionEvent: memberEvent,
-        users: [testUser],
-        sendAt,
+        cohortType: ReminderCohortType.AllUncompleted,
+        timingMode: ReminderTimingMode.Absolute,
+        sendAtAbsolute: sendAt,
+        emailMessage: 'Custom email message',
+        emailSubject: 'Custom email subject',
+        textMessage: 'Custom text message',
+        includeActionLinkInMessages: true,
       }),
     );
 
@@ -142,7 +170,8 @@ describe('Action reminders (e2e)', () => {
 
     const customEntry = entries.find(
       (entry) =>
-        entry.type === 'customreminder' && entry.eventId === memberEvent.id,
+        entry.type === ActionEventNotifType.Reminder &&
+        entry.eventId === memberEvent.id,
     );
 
     expect(customEntry).toBeDefined();

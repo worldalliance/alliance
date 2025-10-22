@@ -16,14 +16,25 @@ import { Type } from 'class-transformer';
 import { Allow, IsDefined, IsOptional } from 'class-validator';
 import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
 
+export enum ReminderCohortType {
+  AllUncompleted = 'all_uncompleted',
+  Custom = 'custom',
+}
+
+export enum ReminderTimingMode {
+  Absolute = 'absolute',
+  FromDeadline = 'from_deadline',
+}
+
 @Entity()
 export class ActionReminder {
   @PrimaryGeneratedColumn()
+  @ApiProperty()
   @Allow()
   id: number;
 
   @ApiProperty({ type: () => ActionEvent })
-  @ManyToOne(() => ActionEvent, (actionEvent) => actionEvent.customReminders, {
+  @ManyToOne(() => ActionEvent, (actionEvent) => actionEvent.reminders, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'memberActionEventId' })
@@ -32,13 +43,21 @@ export class ActionReminder {
   @IsDefined()
   memberActionEvent: ActionEvent;
 
-  @ApiPropertyOptional({ type: () => ActionEvent })
-  @ManyToOne(() => ActionEvent, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'deadlineEventId' })
-  @Type(() => ActionEvent)
+  @ApiProperty({
+    enum: ReminderCohortType,
+    enumName: 'ReminderCohortType',
+  })
+  @Column({ type: 'enum', enum: ReminderCohortType, nullable: true })
   @Allow()
-  @IsOptional()
-  deadlineEvent?: ActionEvent;
+  cohortType: ReminderCohortType;
+
+  @ApiProperty({
+    enum: ReminderTimingMode,
+    enumName: 'ReminderTimingMode',
+  })
+  @Column({ type: 'enum', enum: ReminderTimingMode })
+  @Allow()
+  timingMode: ReminderTimingMode;
 
   @ApiProperty({ type: User, isArray: true })
   @Type(() => User)
@@ -47,33 +66,38 @@ export class ActionReminder {
   @JoinTable()
   users: User[];
 
-  @ApiPropertyOptional({ type: String })
-  @Column({ type: 'text', nullable: true })
-  @IsOptional()
-  @Allow()
-  customEmailSubject?: string;
-
-  @ApiPropertyOptional({ type: String })
-  @Column({ type: 'text', nullable: true })
-  @IsOptional()
-  customEmailMessage?: string;
-
-  @ApiPropertyOptional({ type: String })
-  @Column({ type: 'text', nullable: true })
-  @IsOptional()
-  customTextMessage?: string;
-
-  @ApiPropertyOptional({ type: Boolean })
-  @Column({ type: 'boolean', default: false })
-  @IsOptional()
-  @Allow()
-  includeActionLinkInMessages?: boolean;
-
-  @ApiProperty({ type: Date })
-  @Column({ type: 'timestamptz' })
+  @ApiProperty({ type: String })
+  @Column({ type: 'text' })
   @IsDefined()
+  emailMessage: string;
+
+  @ApiProperty({ type: String })
+  @Column({ type: 'text' })
+  @IsDefined()
+  emailSubject: string;
+
+  @ApiProperty({ type: String })
+  @Column({ type: 'text' })
+  @IsDefined()
+  textMessage: string;
+
+  @ApiProperty({ type: Boolean })
+  @Column({ type: 'boolean' })
+  @IsDefined()
+  @Allow()
+  includeActionLinkInMessages: boolean;
+
+  @ApiPropertyOptional({ type: Date })
+  @Column({ type: 'timestamptz', nullable: true })
   @Type(() => Date)
-  sendAt: Date;
+  @IsOptional()
+  sendAtAbsolute?: Date;
+
+  @ApiPropertyOptional({ type: Number })
+  @Column({ type: 'integer', nullable: true })
+  @IsOptional()
+  @Type(() => Number)
+  sendAtSecondsFromDeadline?: number;
 
   @ApiPropertyOptional({ type: Date, default: null })
   @Column({ type: 'timestamptz', nullable: true })

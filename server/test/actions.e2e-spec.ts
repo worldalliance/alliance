@@ -541,10 +541,7 @@ describe('Actions (e2e)', () => {
         .send(newEvent);
 
       expect(res.status).toBe(201);
-      expect(res.body.events.length).toBe(2);
-      expect(res.body.events.map((e: ActionEventDto) => e.title)).toContain(
-        'Test Event',
-      );
+      expect(res.body.title).toBe('Test Event');
     });
 
     it('events are included in action details', async () => {
@@ -618,9 +615,13 @@ describe('Actions (e2e)', () => {
           .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
           .send(newEvent);
 
-        expect(res.status).toBe(201);
-        expect(res.body.status).toBe(ActionStatus.GatheringCommitments);
-        expect(res.body.events.length).toBe(1);
+        const getRes = await request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${newAction.id}`)
+          .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+        expect(getRes.status).toBe(200);
+        expect(getRes.body.status).toBe(ActionStatus.GatheringCommitments);
+        expect(getRes.body.events.length).toBe(1);
 
         // Cleanup
         await actionRepo.delete(newAction.id);
@@ -661,21 +662,18 @@ describe('Actions (e2e)', () => {
           sendNotifsTo: NotificationType.All,
         };
 
-        const res = await request(ctx.app.getHttpServer())
+        await request(ctx.app.getHttpServer())
           .post(`/actions/${newAction.id}/events`)
           .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
           .send(secondEvent);
 
-        expect(res.status).toBe(201);
-        expect(res.body.status).toBe(ActionStatus.MemberAction);
-        expect(res.body.events.length).toBe(2);
-
-        // Verify by fetching the action
         const getRes = await request(ctx.app.getHttpServer())
           .get(`/actions/slug/${newAction.id}`)
           .set('Authorization', `Bearer ${ctx.accessToken}`);
 
+        expect(getRes.status).toBe(200);
         expect(getRes.body.status).toBe(ActionStatus.MemberAction);
+        expect(getRes.body.events.length).toBe(2);
 
         // Cleanup
         await actionRepo.delete(newAction.id);
@@ -716,19 +714,22 @@ describe('Actions (e2e)', () => {
           sendNotifsTo: NotificationType.All,
         };
 
-        const res = await request(ctx.app.getHttpServer())
+        await request(ctx.app.getHttpServer())
           .post(`/actions/${newAction.id}/events`)
           .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
           .send(futureEvent);
 
-        expect(res.status).toBe(201);
-        expect(res.body.status).toBe(ActionStatus.GatheringCommitments); // Should still be the past event's status
-        expect(res.body.events.length).toBe(2);
+        const getRes = await request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${newAction.id}`)
+          .set('Authorization', `Bearer ${ctx.accessToken}`);
+
+        expect(getRes.status).toBe(200);
+        expect(getRes.body.status).toBe(ActionStatus.GatheringCommitments); // Should still be the past event's status
+        expect(getRes.body.events.length).toBe(2);
 
         // Cleanup
         await actionRepo.delete(newAction.id);
       });
-
       //   it('events on same date should use chronological order by event creation', async () => {
       //     const newAction = actionRepo.create({
       //       name: 'Same Date Test',

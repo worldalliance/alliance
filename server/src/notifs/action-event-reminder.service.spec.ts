@@ -12,7 +12,12 @@ import {
 import { ActionEvent } from '../actions/entities/action-event.entity';
 import { ActionEventRecipientService } from './action-event-recipient.service';
 import { Action, ActionTaskType } from 'src/actions/entities/action.entity';
-import { ActionReminder } from 'src/actions/entities/action-reminder.entity';
+import {
+  ActionReminder,
+  ReminderCohortType,
+  ReminderTimingMode,
+} from 'src/actions/entities/action-reminder.entity';
+import { User } from 'src/user/entities/user.entity';
 
 const announcementEvent = (overrides: Partial<ActionEvent> = {}): ActionEvent =>
   ({
@@ -58,7 +63,7 @@ const reminderEvent = (overrides: Partial<ActionEvent> = {}): ActionEvent => ({
   updatedAt: new Date('2024-01-01T00:00:00Z'),
   showInTimeline: false,
   notifications: [],
-  customReminders: [],
+  reminders: [],
   action: defaultReminderEventAction,
   date: new Date('2024-01-13T12:00:00Z'),
   newStatus: ActionStatus.Resolution,
@@ -80,11 +85,6 @@ const customReminder = (
         participatingGroups: [],
       },
     }),
-    deadlineEvent: reminderEvent({
-      id: 701,
-      date: new Date('2024-01-15T12:00:00Z'),
-      newStatus: ActionStatus.Resolution,
-    }),
     users: [
       {
         id: 1,
@@ -92,15 +92,19 @@ const customReminder = (
         email: 'test@example.com',
         phoneNumber: '+15555550100',
         groups: [],
-      },
+      } as unknown as User,
     ],
-    customEmailMessage: 'Custom email message',
-    customTextMessage: 'Custom text message',
-    sendAt: new Date('2024-01-12T12:00:00Z'),
-    sentAt: null,
+    cohortType: ReminderCohortType.AllUncompleted,
+    timingMode: ReminderTimingMode.Absolute,
+    emailMessage: 'Custom email message',
+    emailSubject: 'Custom email subject',
+    textMessage: 'Custom text message',
+    includeActionLinkInMessages: true,
+    sentAt: undefined,
+    createdAt: new Date('2024-01-01T00:00:00Z'),
     notifications: [],
     ...overrides,
-  }) as unknown as ActionReminder;
+  }) satisfies ActionReminder;
 
 describe('ActionEventReminderService', () => {
   let eventQueryMock: jest.Mock;
@@ -205,75 +209,69 @@ describe('ActionEventReminderService', () => {
       });
     });
   });
-  describe('evaluateNotifications', () => {
-    it('includes reminder plans for upcoming events', async () => {
-      const windowStart = new Date('2024-01-10T00:00:00Z');
-      const windowEnd = new Date('2024-01-12T23:59:59Z');
 
-      const currentEvent = reminderEvent({
-        id: 500,
-        date: new Date('2024-01-10T12:00:00Z'),
-        newStatus: ActionStatus.MemberAction,
-      });
+  it('includes absolute reminder plans', async () => {
+    const windowStart = new Date('2024-01-12T00:00:00Z');
+    const windowEnd = new Date('2024-01-12T23:59:59Z');
 
-      const nextEvent = reminderEvent({
-        id: 501,
-        date: new Date('2024-01-13T12:00:00Z'),
-        newStatus: ActionStatus.Resolution,
-      });
+    (repositoryMock.find as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
 
-      (repositoryMock.find as jest.Mock)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([currentEvent, nextEvent])
-        .mockResolvedValueOnce([]);
+    reminderRepositoryMock.find.mockResolvedValueOnce([
+      customReminder({
+        sendAtAbsolute: new Date('2024-01-12T12:00:00Z'),
+        timingMode: ReminderTimingMode.Absolute,
+      }),
+    ]);
 
-      jest
-        .spyOn(
-          service as unknown as { findMissedDeadlineCandidates: jest.Mock },
-          'findMissedDeadlineCandidates',
-        )
-        .mockResolvedValueOnce([]);
+    jest
+      .spyOn(
+        service as unknown as { findMissedDeadlineCandidates: jest.Mock },
+        'findMissedDeadlineCandidates',
+      )
+      .mockResolvedValueOnce([]);
 
-      const plans = await service.evaluateNotifications(windowStart, windowEnd);
+    const plans = await service.evaluateNotifications(windowStart, windowEnd);
 
-      expect(plans.map((plan) => plan.type)).toEqual([
-        ActionEventNotifType.ThreeDayReminder,
-        ActionEventNotifType.OneDayReminder,
-      ]);
-      expect(plans[0].referenceEvent.id).toBe(currentEvent.id);
-      expect(plans[0].targetEvent.id).toBe(nextEvent.id);
-    });
+    expect(plans).toHaveLength(1);
+    const plan = plans[0];
+    expect(plan.type).toBe(ActionEventNotifType.Reminder);
+    expect(plan.reminder?.id).toBe(42);
+    expect(plan.reminder?.users?.length).toBe(1);
+  });
 
-    it('includes custom reminder plans', async () => {
-      const windowStart = new Date('2024-01-12T00:00:00Z');
-      const windowEnd = new Date('2024-01-12T23:59:59Z');
+  it('includes relative reminder plans', async () => {
+    const windowStart = new Date('2024-01-12T00:00:00Z');
+    const windowEnd = new Date('2024-01-12T23:59:59Z');
 
-      (repositoryMock.find as jest.Mock)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]);
+    (repositoryMock.find as jest.Mock)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
 
-      reminderRepositoryMock.find.mockResolvedValueOnce([
-        customReminder({
-          sendAt: new Date('2024-01-12T12:00:00Z'),
-        }),
-      ]);
+    reminderRepositoryMock.find.mockResolvedValueOnce([
+      customReminder({
+        sendAtSecondsFromDeadline: 1000,
+        timingMode: ReminderTimingMode.FromDeadline,
+      }),
+    ]);
 
-      jest
-        .spyOn(
-          service as unknown as { findMissedDeadlineCandidates: jest.Mock },
-          'findMissedDeadlineCandidates',
-        )
-        .mockResolvedValueOnce([]);
+    jest
+      .spyOn(
+        service as unknown as { findMissedDeadlineCandidates: jest.Mock },
+        'findMissedDeadlineCandidates',
+      )
+      .mockResolvedValueOnce([]);
 
-      const plans = await service.evaluateNotifications(windowStart, windowEnd);
+    const plans = await service.evaluateNotifications(windowStart, windowEnd);
 
-      expect(plans).toHaveLength(1);
-      const plan = plans[0];
-      expect(plan.type).toBe(ActionEventNotifType.CustomReminder);
-      expect(plan.reminder?.id).toBe(42);
-      expect(plan.reminder?.users?.length).toBe(1);
-    });
+    expect(plans).toHaveLength(1);
+    const plan = plans[0];
+    expect(plan.type).toBe(ActionEventNotifType.Reminder);
+    expect(plan.reminder?.id).toBe(42);
+    expect(plan.reminder?.users?.length).toBe(1);
   });
 
   describe('getNotificationSchedule', () => {

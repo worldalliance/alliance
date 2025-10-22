@@ -15,18 +15,25 @@ import { User } from 'src/user/entities/user.entity';
 import { Repository } from 'typeorm';
 import { ActionEventNotifType } from 'src/notifs/entities/action-event-notif.entity';
 import { ProfileDto } from 'src/user/user.dto';
+import {
+  ActionReminder,
+  ReminderCohortType,
+  ReminderTimingMode,
+} from 'src/actions/entities/action-reminder.entity';
 
 describe('Notification schedule (e2e)', () => {
   let ctx: TestContext;
   let actionRepo: Repository<Action>;
   let eventRepo: Repository<ActionEvent>;
   let activityRepo: Repository<ActionActivity>;
+  let reminderRepo: Repository<ActionReminder>;
 
   beforeAll(async () => {
     ctx = await createTestApp([]);
     actionRepo = ctx.dataSource.getRepository(Action);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
+    reminderRepo = ctx.dataSource.getRepository(ActionReminder);
   });
 
   afterAll(async () => {
@@ -115,7 +122,7 @@ describe('Notification schedule (e2e)', () => {
     await actionRepo.delete(action.id);
   });
 
-  it('excludes completed users from three day reminders for standard actions', async () => {
+  it('excludes completed users from reminders for standard actions', async () => {
     const dayMs = 24 * 60 * 60 * 1000;
     const baseTime = new Date(Date.now() + 2 * dayMs);
     const memberEventDate = new Date(baseTime.getTime());
@@ -147,6 +154,19 @@ describe('Notification schedule (e2e)', () => {
         date: memberEventDate,
         showInTimeline: true,
         action,
+      }),
+    );
+
+    await reminderRepo.save(
+      reminderRepo.create({
+        memberActionEvent: memberEvent,
+        cohortType: ReminderCohortType.AllUncompleted,
+        timingMode: ReminderTimingMode.Absolute,
+        sendAtAbsolute: reminderTime,
+        emailMessage: 'Custom email message',
+        emailSubject: 'Custom email subject',
+        textMessage: 'Custom text message',
+        includeActionLinkInMessages: true,
       }),
     );
 
@@ -214,7 +234,7 @@ describe('Notification schedule (e2e)', () => {
 
       const reminderEntry = schedule.find(
         (entry) =>
-          entry.type === ActionEventNotifType.ThreeDayReminder &&
+          entry.type === ActionEventNotifType.Reminder &&
           entry.actionId === action.id,
       );
 
@@ -230,7 +250,7 @@ describe('Notification schedule (e2e)', () => {
     }
   });
 
-  it('filters completed commitmentless users from one day reminders and deadline reminders', async () => {
+  it('filters completed commitmentless users from reminders and deadline messages', async () => {
     const dayMs = 24 * 60 * 60 * 1000;
     const baseTime = new Date(Date.now() + 3 * dayMs);
     const memberEventDate = new Date(baseTime.getTime());
@@ -287,6 +307,19 @@ describe('Notification schedule (e2e)', () => {
       }),
     );
 
+    await reminderRepo.save(
+      reminderRepo.create({
+        memberActionEvent: memberEvent,
+        cohortType: ReminderCohortType.AllUncompleted,
+        timingMode: ReminderTimingMode.Absolute,
+        sendAtAbsolute: reminderTime,
+        emailMessage: 'Custom email message',
+        emailSubject: 'Custom email subject',
+        textMessage: 'Custom text message',
+        includeActionLinkInMessages: true,
+      }),
+    );
+
     const completion = await activityRepo.save(
       activityRepo.create({
         action,
@@ -322,11 +355,12 @@ describe('Notification schedule (e2e)', () => {
 
       const reminderEntry = schedule.find(
         (entry) =>
-          entry.type === ActionEventNotifType.OneDayReminder &&
+          entry.type === ActionEventNotifType.Reminder &&
           entry.actionId === action.id,
       );
 
       expect(reminderEntry).toBeDefined();
+      expect(reminderEntry?.type).toBe(ActionEventNotifType.Reminder);
       expect(reminderEntry?.recipients).toHaveLength(1);
 
       const deadlineWindowStart = new Date(

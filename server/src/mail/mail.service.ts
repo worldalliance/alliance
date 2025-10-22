@@ -9,6 +9,21 @@ import { Repository } from 'typeorm';
 import { EmailStatus, EmailType, Mail } from './mail.entity';
 import { getDaysFromDeadline } from 'src/notifs/textnotifcontents';
 
+export function processKeywordReplacements(
+  text: string,
+  context: ActionEventNotificationContext,
+): string {
+  return text
+    .replace('#{name}', context.user.name)
+    .replace('#{action}', context.action.name)
+    .replace(
+      '#{days}',
+      context.deadlineEvent
+        ? getDaysFromDeadline(context.deadlineEvent)
+        : '[err]',
+    );
+}
+
 @Injectable()
 export class MailService {
   constructor(
@@ -181,27 +196,17 @@ export class MailService {
       if (context.event.newStatus === ActionStatus.MemberAction) {
         return 'Action needs completion: ' + context.action.name;
       }
-    } else if (context.type === ActionEventNotifType.ThreeDayReminder) {
-      if (context.event.newStatus === ActionStatus.GatheringCommitments) {
-        return '3 days left to commit to: ' + context.action.name;
-      }
-      if (context.event.newStatus === ActionStatus.MemberAction) {
-        return '3 days left to complete: ' + context.action.name;
-      }
-    } else if (context.type === ActionEventNotifType.OneDayReminder) {
-      if (context.event.newStatus === ActionStatus.GatheringCommitments) {
-        return '1 day left to commit to: ' + context.action.name;
-      }
-      if (context.event.newStatus === ActionStatus.MemberAction) {
-        return '1 day left to complete: ' + context.action.name;
-      }
-    } else if (context.type === ActionEventNotifType.CustomReminder) {
-      return 'Reminder: ' + context.action.name;
+      throw new Error(
+        'Invalid announcement status: ' + context.event.newStatus,
+      );
+    } else if (context.type === ActionEventNotifType.Reminder) {
+      return processKeywordReplacements(context.customEmailSubject!, context);
     } else if (context.type === ActionEventNotifType.MissedDeadline) {
       return 'Failed to complete action: ' + context.action.name;
     }
-    console.log(context);
-    throw new Error('Invalid event in mail context: ' + context.type);
+    throw new Error(
+      'Invalid event in mail context: ' + (context.type satisfies never),
+    );
   }
 
   public async sendActionEventNotificationEmail(
@@ -216,16 +221,11 @@ export class MailService {
         context.event.newStatus === ActionStatus.GatheringCommitments
           ? EmailType.Commitment
           : EmailType.MemberAction;
-    } else if (
-      context.type === ActionEventNotifType.ThreeDayReminder ||
-      context.type === ActionEventNotifType.OneDayReminder
-    ) {
+    } else if (context.type === ActionEventNotifType.Reminder) {
       emailType =
         context.event.newStatus === ActionStatus.GatheringCommitments
           ? EmailType.CommitmentReminder
           : EmailType.MemberActionReminder;
-    } else if (context.type === ActionEventNotifType.CustomReminder) {
-      emailType = EmailType.CustomActionReminder;
     } else if (context.type === ActionEventNotifType.MissedDeadline) {
       emailType = context.isSecondMiss
         ? EmailType.MissedSecondDeadline
@@ -243,9 +243,9 @@ export class MailService {
     );
 
     const hasDeadline = context.deadlineEvent !== undefined;
-    let announcementDaysLeft = '';
+    let daysLeft = '';
     if (context.deadlineEvent) {
-      announcementDaysLeft = getDaysFromDeadline(context.deadlineEvent);
+      daysLeft = getDaysFromDeadline(context.deadlineEvent);
     }
 
     const emailContext = {
@@ -254,12 +254,7 @@ export class MailService {
       url: withCid(actionUrl(context.action.id, true), context.cid),
       commitmentless: context.action.commitmentless,
       hasDeadline,
-      daysleft:
-        context.type === ActionEventNotifType.Announcement && hasDeadline
-          ? announcementDaysLeft
-          : context.type === ActionEventNotifType.ThreeDayReminder
-            ? '3 days'
-            : '1 day',
+      daysLeft,
       customMessage: context.customEmailMessage,
       cid: context.cid,
     };

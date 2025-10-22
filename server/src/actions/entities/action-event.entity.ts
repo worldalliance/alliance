@@ -134,25 +134,13 @@ export class ActionEvent {
   @ApiPropertyOptional({ type: Date })
   @Type(() => Date)
   @IsOptional()
-  threeDayReminderNotifsSentAt?: Date;
-
-  @Column({ type: 'timestamptz', nullable: true })
-  @ApiPropertyOptional({ type: Date })
-  @Type(() => Date)
-  @IsOptional()
-  oneDayReminderNotifsSentAt?: Date;
-
-  @Column({ type: 'timestamptz', nullable: true })
-  @ApiPropertyOptional({ type: Date })
-  @Type(() => Date)
-  @IsOptional()
   deadlineNotifsSentAt?: Date;
 
   @OneToMany(() => ActionReminder, (reminder) => reminder.memberActionEvent)
   @ApiProperty({ type: ActionReminder, isArray: true })
   @Type(() => ActionReminder)
   @Allow()
-  customReminders: ActionReminder[];
+  reminders: ActionReminder[];
 
   @OneToMany(() => ActionUpdate, (update) => update.associatedEvent)
   @ApiProperty({ type: ActionUpdate, isArray: true })

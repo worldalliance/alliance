@@ -1,12 +1,13 @@
 import {
   ActionDto,
-  actionsCreateCustomReminder,
-  ActionReminderDto,
   userList,
   User,
   AdminActionEventDto,
   actionsEventWithReminders,
   ActionReminder,
+  actionsCreateReminder,
+  ReminderTimingMode,
+  ReminderCohortType,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
@@ -40,18 +41,22 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   const [selectedEventId, setSelectedEventId] = useState<number | null>(
     memberEvents[0]?.id ?? null
   );
-  const [deadlineEventId, setDeadlineEventId] = useState<number | "">("");
   const [sendAt, setSendAt] = useState<string>(
     formatDateTimeLocal(new Date(Date.now() + 60 * 60 * 1000))
   );
-  const [customEmailMessage, setCustomEmailMessage] = useState<string>("");
-  const [customEmailSubject, setCustomEmailSubject] = useState<string>("");
+  const [timingMode, setTimingMode] = useState<ReminderTimingMode>("absolute");
+  const [sendAtSecondsFromDeadline, setSendAtSecondsFromDeadline] =
+    useState<number>(0);
+  const [emailMessage, setEmailMessage] = useState<string>("");
+  const [emailSubject, setEmailSubject] = useState<string>("");
   const [includeActionLinkInMessages, setIncludeActionLinkInMessages] =
     useState<boolean>(false);
-  const [customTextMessage, setCustomTextMessage] = useState<string>("");
+  const [textMessage, setTextMessage] = useState<string>("");
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [userQuery, setUserQuery] = useState<string>("");
   const [users, setUsers] = useState<User[]>([]);
+  const [cohortType, setCohortType] =
+    useState<ReminderCohortType>("all_uncompleted");
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,19 +93,9 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     }
   }, [selectedEventId]);
 
-  const reminders: ActionReminderDto[] = (
-    (eventWithReminders?.customReminders ??
-      []) as unknown as ActionReminderDto[]
-  ).slice();
-
-  const otherEvents = useMemo(
-    () =>
-      (action.events || []).filter(
-        (event) =>
-          event.id !== selectedEventId && event.newStatus !== "member_action"
-      ),
-    [action.events, selectedEventId]
-  );
+  const reminders = eventWithReminders
+    ? eventWithReminders.reminders.slice()
+    : [];
 
   const filteredUsers = useMemo(() => {
     const term = userQuery.trim().toLowerCase();
@@ -133,10 +128,9 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
 
   const resetForm = () => {
     setSendAt(formatDateTimeLocal(new Date(Date.now() + 60 * 60 * 1000)));
-    setCustomEmailMessage("");
-    setCustomTextMessage("");
+    setEmailMessage("");
+    setTextMessage("");
     setSelectedUsers([]);
-    setDeadlineEventId("");
     setUserQuery("");
   };
 
@@ -161,18 +155,18 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     }
 
     setSubmitting(true);
-    console.log(customEmailSubject);
-    const response = await actionsCreateCustomReminder({
+    const response = await actionsCreateReminder({
       path: { actionId: action.id, eventId: selectedEventId },
       body: {
-        sendAt: parsedSendAt.toISOString(),
-        customEmailMessage: customEmailMessage || undefined,
-        customTextMessage: customTextMessage || undefined,
-        customEmailSubject: customEmailSubject || undefined,
-        deadlineEventId:
-          deadlineEventId === "" ? undefined : Number(deadlineEventId),
+        sendAtAbsolute: parsedSendAt.toISOString(),
+        sendAtSecondsFromDeadline,
+        emailMessage,
+        textMessage,
         userIds: selectedUsers.map((user) => user.id),
         includeActionLinkInMessages,
+        cohortType: "all_uncompleted",
+        timingMode: timingMode,
+        emailSubject,
       },
     });
     setSubmitting(false);
@@ -191,7 +185,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
           if (event.id !== created.memberActionEventId) {
             return event;
           }
-          const existingReminders = eventWithReminders?.customReminders ?? [];
+          const existingReminders = eventWithReminders?.reminders ?? [];
           return {
             ...event,
             customReminders: [...existingReminders, created],
@@ -206,7 +200,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       return {
         ...prev,
         customReminders: [
-          ...(prev.customReminders ?? []),
+          ...(prev.reminders ?? []),
           created as unknown as ActionReminder,
         ],
       };
@@ -254,75 +248,87 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Send At
-              </label>
-              <DateTimePicker
-                value={sendAt}
-                onChange={(change) => setSendAt(change.utcValue || "")}
-                className="w-full !py-1"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Deadline Event (optional)
+                Timing mode
               </label>
               <select
-                value={deadlineEventId}
+                value={timingMode}
                 onChange={(event) =>
-                  setDeadlineEventId(
-                    event.target.value === "" ? "" : Number(event.target.value)
-                  )
+                  setTimingMode(event.target.value as ReminderTimingMode)
                 }
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               >
-                <option value="">None</option>
-                {otherEvents.map((event) => (
-                  <option key={event.id} value={event.id}>
-                    {event.title || `Event #${event.id}`} —{" "}
-                    {new Date(event.date).toLocaleString()}
-                  </option>
-                ))}
+                <option value="absolute">Absolute</option>
+                <option value="from_deadline">Relative to deadline</option>
               </select>
             </div>
+            {timingMode === "absolute" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Send date
+                </label>
+                <DateTimePicker
+                  value={sendAt}
+                  onChange={(change) => setSendAt(change.utcValue || "")}
+                  className="w-full !py-1"
+                  required
+                />
+              </div>
+            )}
+            {timingMode === "from_deadline" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Seconds from deadline
+                </label>
+                <input
+                  type="number"
+                  value={sendAtSecondsFromDeadline}
+                  onChange={(event) =>
+                    setSendAtSecondsFromDeadline(Number(event.target.value))
+                  }
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email Subject
             </label>
-            <input
-              value={customEmailSubject}
-              onChange={(event) => setCustomEmailSubject(event.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              placeholder="Provide a custom email subject"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email Message
-            </label>
             <textarea
-              value={customEmailMessage}
-              onChange={(event) => setCustomEmailMessage(event.target.value)}
-              rows={3}
+              value={emailSubject}
+              onChange={(event) => setEmailSubject(event.target.value)}
+              rows={1}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              placeholder="Provide a custom email body or leave blank to use the default template. '#{name}' will be replaced with the member's name."
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Text Message (optional)
+              Email Message
             </label>
             <textarea
-              value={customTextMessage}
-              onChange={(event) => setCustomTextMessage(event.target.value)}
+              value={emailMessage}
+              onChange={(event) => setEmailMessage(event.target.value)}
+              rows={3}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Text Message
+            </label>
+            <textarea
+              value={textMessage}
+              onChange={(event) => setTextMessage(event.target.value)}
               rows={2}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              placeholder="Provide a custom text message or leave blank for the default reminder. '#{name}' will be replaced with the member's name."
             />
+            <p className="text-xs text-gray-500 mt-3">
+              Message keywords (for subject, text, email):{" "}
+              {"#{name},  #{action},  #{days}"}
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -342,65 +348,81 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Recipients
             </label>
-            <input
-              type="text"
-              value={userQuery}
-              onChange={(event) => setUserQuery(event.target.value)}
-              placeholder={
-                loadingUsers ? "Loading users…" : "Search by name or email"
+            <select
+              value={cohortType}
+              onChange={(event) =>
+                setCohortType(event.target.value as ReminderCohortType)
               }
-              disabled={loadingUsers}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-            />
-            {userQuery && filteredUsers.length > 0 && (
-              <div className="mt-2 border border-gray-200 rounded-md shadow-sm bg-white max-h-48 overflow-y-auto">
-                {filteredUsers.map((user) => (
-                  <button
-                    type="button"
-                    key={user.id}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                    onClick={() => addUser(user)}
-                  >
-                    <span className="font-medium">{user.name}</span>
-                    <span className="text-xs text-gray-500 block">
-                      {user.email}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-            {userQuery && !filteredUsers.length && !loadingUsers && (
-              <p className="mt-2 text-xs text-gray-500">
-                No users match that search.
-              </p>
-            )}
-            <div className="mt-3 space-y-2">
-              {selectedUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center justify-between border border-gray-200 rounded-md px-3 py-2 text-sm bg-gray-50"
-                >
-                  <div>
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-gray-600">{user.email}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => removeUser(user.id)}
-                    className="text-xs text-red-600 hover:text-red-700"
-                  >
-                    Remove ✕
-                  </button>
+            >
+              <option value="all_uncompleted">All uncompleted</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          {cohortType === "custom" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Recipients
+              </label>
+              <input
+                type="text"
+                value={userQuery}
+                onChange={(event) => setUserQuery(event.target.value)}
+                placeholder={
+                  loadingUsers ? "Loading users…" : "Search by name or email"
+                }
+                disabled={loadingUsers}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+              />
+              {userQuery && filteredUsers.length > 0 && (
+                <div className="mt-2 border border-gray-200 rounded-md shadow-sm bg-white max-h-48 overflow-y-auto">
+                  {filteredUsers.map((user) => (
+                    <button
+                      type="button"
+                      key={user.id}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => addUser(user)}
+                    >
+                      <span className="font-medium">{user.name}</span>
+                      <span className="text-xs text-gray-500 block">
+                        {user.email}
+                      </span>
+                    </button>
+                  ))}
                 </div>
-              ))}
-              {selectedUsers.length === 0 && (
-                <p className="text-xs text-gray-500">
-                  Selected users will appear here.
+              )}
+              {userQuery && !filteredUsers.length && !loadingUsers && (
+                <p className="mt-2 text-xs text-gray-500">
+                  No users match that search.
                 </p>
               )}
+              <div className="mt-3 space-y-2">
+                {selectedUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between border border-gray-200 rounded-md px-3 py-2 text-sm bg-gray-50"
+                  >
+                    <div>
+                      <p className="font-medium">{user.name}</p>
+                      <p className="text-xs text-gray-600">{user.email}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeUser(user.id)}
+                      className="text-xs text-red-600 hover:text-red-700"
+                    >
+                      Remove ✕
+                    </button>
+                  </div>
+                ))}
+                {selectedUsers.length === 0 && (
+                  <p className="text-xs text-gray-500">
+                    Selected users will appear here.
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-
+          )}
           {error && <p className="text-red-600 text-sm">{error}</p>}
           {success && <p className="text-green-600 text-sm">{success}</p>}
 
@@ -429,7 +451,8 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
               .slice()
               .sort(
                 (a, b) =>
-                  new Date(a.sendAt).getTime() - new Date(b.sendAt).getTime()
+                  new Date(a.createdAt).getTime() -
+                  new Date(b.createdAt).getTime()
               )
               .map((reminder) => (
                 <div
@@ -438,9 +461,12 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                 >
                   <div className="flex justify-between items-center flex-wrap gap-2">
                     <div>
-                      <p className="font-medium">
-                        Sends {new Date(reminder.sendAt).toLocaleString()}
-                      </p>
+                      {reminder.sendAtAbsolute && (
+                        <p className="font-medium">
+                          Sends{" "}
+                          {new Date(reminder.sendAtAbsolute).toLocaleString()}
+                        </p>
+                      )}
                       <p className="text-xs text-gray-500">
                         {reminder.sentAt
                           ? `Sent ${new Date(reminder.sentAt).toLocaleString()}`
@@ -451,26 +477,22 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                       {reminder.users?.length ?? 0} recipients
                     </span>
                   </div>
-                  {reminder.customEmailMessage && (
-                    <div className="mt-2">
-                      <p className="text-xs font-semibold uppercase text-gray-500">
-                        Email Message
-                      </p>
-                      <p className="text-sm text-gray-700 whitespace-pre-line">
-                        {reminder.customEmailMessage}
-                      </p>
-                    </div>
-                  )}
-                  {reminder.customTextMessage && (
-                    <div className="mt-2">
-                      <p className="text-xs font-semibold uppercase text-gray-500">
-                        Text Message
-                      </p>
-                      <p className="text-sm text-gray-700 whitespace-pre-line">
-                        {reminder.customTextMessage}
-                      </p>
-                    </div>
-                  )}
+                  <div className="mt-2">
+                    <p className="text-xs font-semibold uppercase text-gray-500">
+                      Email Message
+                    </p>
+                    <p className="text-sm text-gray-700 whitespace-pre-line">
+                      {reminder.emailMessage}
+                    </p>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-xs font-semibold uppercase text-gray-500">
+                      Text Message
+                    </p>
+                    <p className="text-sm text-gray-700 whitespace-pre-line">
+                      {reminder.textMessage}
+                    </p>
+                  </div>
                 </div>
               ))}
           </div>

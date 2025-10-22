@@ -1,6 +1,7 @@
 import {
   ActionDto,
   actionsAddEvent,
+  actionsCreateReminder,
   actionsEventNotifData,
   ActionStatus,
   CreateActionEventDto,
@@ -62,6 +63,7 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
   const [useCustomName, setUseCustomName] = useState<boolean>(false);
   const [launchNow, setLaunchNow] = useState<boolean>(true);
   const [useDeadlineEvent, setUseDeadlineEvent] = useState<boolean>(false);
+  const [createReminders, setCreateReminders] = useState<boolean>(false);
   const [notifData, setNotifData] = useState<PreEventNotifDataDto | null>(null);
 
   const [creatingEvent, setCreatingEvent] = useState<boolean>(false);
@@ -93,7 +95,8 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
         path: { id: action.id },
         body: eventData,
       });
-      let updatedAction = response.data;
+      const addedEvent = response.data;
+      let addedOfficeActionEvent = null;
 
       if (
         useDeadlineEvent &&
@@ -116,16 +119,57 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
           path: { id: action.id },
           body: officeActionEvent,
         });
-        updatedAction = officeActionEventResponse.data;
+        addedOfficeActionEvent = officeActionEventResponse.data;
 
         if (officeActionEventResponse.error) {
-          alert("Failed to add office action event");
+          setError("Failed to add office action event");
           console.error(officeActionEventResponse.error);
+        }
+
+        if (createReminders && addedEvent) {
+          const newEventId = addedEvent.id;
+          const threeDayReminderResponse = await actionsCreateReminder({
+            path: { actionId: action.id, eventId: newEventId },
+            body: {
+              cohortType: "all_uncompleted",
+              timingMode: "from_deadline",
+              sendAtSecondsFromDeadline: 3 * 24 * 60 * 60,
+              emailSubject: "3 days left to complete: " + action.name,
+              emailMessage: "You have #{days} left to complete: #{name}",
+              textMessage: "You have #{days} left to complete: #{name}",
+              includeActionLinkInMessages: true,
+            },
+          });
+          if (threeDayReminderResponse.error) {
+            setError("Failed to add 3 day reminder");
+            console.error(threeDayReminderResponse.error);
+          }
+          const oneDayReminderResponse = await actionsCreateReminder({
+            path: { actionId: action.id, eventId: newEventId },
+            body: {
+              cohortType: "all_uncompleted",
+              timingMode: "from_deadline",
+              sendAtSecondsFromDeadline: 1 * 24 * 60 * 60,
+              emailSubject: "1 day left to complete: " + action.name,
+              emailMessage: "You have #{days} left to complete: #{name}",
+              textMessage: "You have #{days} left to complete: #{name}",
+              includeActionLinkInMessages: true,
+            },
+          });
+          if (oneDayReminderResponse.error) {
+            setError("Failed to add 1 day reminder");
+            console.error(oneDayReminderResponse.error);
+          }
         }
       }
 
-      if (updatedAction) {
-        setAction(updatedAction);
+      if (addedEvent) {
+        setAction({
+          ...action,
+          events: !!addedOfficeActionEvent
+            ? [...action.events, addedEvent, addedOfficeActionEvent]
+            : [...action.events, addedEvent],
+        });
 
         // Show success feedback
         setEventCreatedSuccess(true);
@@ -383,6 +427,22 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
                         )}
                       </p>
                     )}
+                    <div className="flex items-center mb-2">
+                      <input
+                        type="checkbox"
+                        id="deadlineExists"
+                        checked={createReminders}
+                        onChange={(e) => setCreateReminders(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label
+                        htmlFor="deadlineExists"
+                        className="ml-2 block text-black"
+                      >
+                        Automatically create 3 and 1 day reminders before
+                        deadline
+                      </label>
+                    </div>
                   </div>
                 )}
               </div>

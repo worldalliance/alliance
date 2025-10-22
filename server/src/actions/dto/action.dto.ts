@@ -36,7 +36,16 @@ import { Action } from '../entities/action.entity';
 import { getImageSource } from 'src/images/images.service';
 import { ActionUpdate } from '../entities/action-update.entity';
 
-export class ActionReminderDto {
+export class ActionReminderDto extends PickType(ActionReminder, [
+  'id',
+  'emailMessage',
+  'textMessage',
+  'cohortType',
+  'timingMode',
+  'sendAtAbsolute',
+  'sendAtSecondsFromDeadline',
+  'sentAt',
+]) {
   @ApiProperty()
   id: number;
 
@@ -45,20 +54,6 @@ export class ActionReminderDto {
 
   @ApiPropertyOptional()
   deadlineEventId?: number;
-
-  @ApiPropertyOptional()
-  customEmailMessage?: string;
-
-  @ApiPropertyOptional()
-  customTextMessage?: string;
-
-  @ApiProperty({ type: Date })
-  @Type(() => Date)
-  sendAt: Date;
-
-  @ApiPropertyOptional({ type: Date })
-  @Type(() => Date)
-  sentAt?: Date;
 
   @ApiProperty({ type: Number, isArray: true })
   userIds: number[];
@@ -71,25 +66,23 @@ export class ActionReminderDto {
   customEmailSubject?: string;
 
   constructor(reminder: ActionReminder) {
-    this.id = reminder.id;
-    this.memberActionEventId = reminder.memberActionEvent?.id ?? 0;
-    this.deadlineEventId = reminder.deadlineEvent?.id ?? undefined;
-    this.customEmailMessage = reminder.customEmailMessage ?? undefined;
-    this.customTextMessage = reminder.customTextMessage ?? undefined;
-    this.customEmailSubject = reminder.customEmailSubject ?? undefined;
-    this.sendAt = reminder.sendAt;
-    this.sentAt = reminder.sentAt ?? undefined;
+    super();
+    Object.assign(this, reminder);
     this.userIds = reminder.users?.map((user) => user.id) ?? [];
+    this.memberActionEventId = reminder.memberActionEvent?.id ?? 0;
     this.users = reminder.users?.map((user) => new ProfileDto(user)) ?? [];
   }
 }
 
 export class CreateActionReminderDto extends PickType(ActionReminder, [
-  'sendAt',
-  'customEmailMessage',
-  'customTextMessage',
+  'cohortType',
+  'timingMode',
+  'sendAtAbsolute',
+  'sendAtSecondsFromDeadline',
+  'emailMessage',
+  'emailSubject',
+  'textMessage',
   'includeActionLinkInMessages',
-  'customEmailSubject',
 ]) {
   @ApiPropertyOptional()
   @IsOptional()
@@ -97,13 +90,14 @@ export class CreateActionReminderDto extends PickType(ActionReminder, [
   @IsInt()
   deadlineEventId?: number;
 
-  @ApiProperty({ type: Number, isArray: true })
+  @ApiPropertyOptional({ type: Number, isArray: true })
   @IsArray()
   @ArrayNotEmpty()
   @ArrayUnique()
   @Type(() => Number)
   @IsInt({ each: true })
-  userIds: number[];
+  @IsOptional()
+  userIds?: number[];
 }
 
 export class ActionEventDto extends PickType(ActionEvent, [
@@ -115,8 +109,6 @@ export class ActionEventDto extends PickType(ActionEvent, [
   'sendNotifsTo',
   'date',
   'announcementNotifsSentAt',
-  'threeDayReminderNotifsSentAt',
-  'oneDayReminderNotifsSentAt',
 ]) {
   constructor(event: ActionEvent) {
     super();
@@ -133,9 +125,7 @@ export class AdminActionEventDto extends PickType(ActionEvent, [
   'sendNotifsTo',
   'date',
   'announcementNotifsSentAt',
-  'threeDayReminderNotifsSentAt',
-  'oneDayReminderNotifsSentAt',
-  'customReminders',
+  'reminders',
   'deadlineNotifsSentAt',
   'updatedAt',
   'notifications',
@@ -149,8 +139,6 @@ export class AdminActionEventDto extends PickType(ActionEvent, [
 export class CreateActionEventDto extends OmitType(ActionEventDto, [
   'id',
   'announcementNotifsSentAt',
-  'threeDayReminderNotifsSentAt',
-  'oneDayReminderNotifsSentAt',
 ]) {}
 
 export class ActionDto extends OmitType(Action, [

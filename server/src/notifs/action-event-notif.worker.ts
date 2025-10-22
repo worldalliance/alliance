@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EmailStatus } from 'src/mail/mail.entity';
-import { MailService } from 'src/mail/mail.service';
+import { MailService, processKeywordReplacements } from 'src/mail/mail.service';
 import { Mms } from 'src/mms/mms.entity';
 import { MmsService } from 'src/mms/mms.service';
 import { User } from 'src/user/entities/user.entity';
@@ -14,7 +14,10 @@ import {
   NotificationType,
 } from '../actions/entities/action-event.entity';
 import { Action } from '../actions/entities/action.entity';
-import { ActionReminder } from '../actions/entities/action-reminder.entity';
+import {
+  ActionReminder,
+  ReminderCohortType,
+} from '../actions/entities/action-reminder.entity';
 import { NotifsService } from '../notifs/notifs.service';
 import { generateCIDForNotif } from './notif-utils';
 import {
@@ -31,17 +34,11 @@ import {
 import { ActionEventRecipientService } from './action-event-recipient.service';
 import { NotificationChannel } from './notif-utils';
 import {
-  defaultEventText1DayReminder,
-  defaultEventText3DayReminder,
   defaultEventTextAnnouncement,
   defaultEventTextMissedDeadline,
   defaultEventTextMissedSecondDeadline,
 } from './textnotifcontents';
 import { withPgAdvisoryLock } from './lock-utils';
-
-export type ReminderKind =
-  | ActionEventNotifType.ThreeDayReminder
-  | ActionEventNotifType.OneDayReminder;
 
 export interface ActionEventNotificationContext {
   event: ActionEvent;
@@ -52,8 +49,8 @@ export interface ActionEventNotificationContext {
   cid: string;
   isSecondMiss?: boolean;
   customEmailMessage?: string;
-  customEmailSubject?: string;
   customTextMessage?: string;
+  customEmailSubject?: string;
   includeActionLinkInCustomMessages?: boolean;
 }
 
@@ -64,8 +61,6 @@ const typeToSentAtField: Partial<
   Record<ActionEventNotifType, keyof ActionEvent>
 > = {
   [ActionEventNotifType.Announcement]: 'announcementNotifsSentAt',
-  [ActionEventNotifType.ThreeDayReminder]: 'threeDayReminderNotifsSentAt',
-  [ActionEventNotifType.OneDayReminder]: 'oneDayReminderNotifsSentAt',
   [ActionEventNotifType.MissedDeadline]: 'deadlineNotifsSentAt',
 };
 
@@ -74,8 +69,6 @@ export class ActionEventNotifWorker {
   private readonly logger = new Logger(ActionEventNotifWorker.name);
   constructor(
     private readonly dataSource: DataSource,
-    @InjectRepository(ActionEvent)
-    private readonly eventRepo: Repository<ActionEvent>,
     private readonly notifsService: NotifsService,
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
@@ -124,15 +117,15 @@ export class ActionEventNotifWorker {
     text: string,
     context: ActionEventNotificationContext,
   ): string {
-    const withName = text.replace('#{name}', context.user.name);
+    const replaced = processKeywordReplacements(text, context);
     if (context.includeActionLinkInCustomMessages) {
       return (
-        withName +
+        replaced +
         ' ' +
         withCid(actionUrl(context.action.id, true), context.cid)
       );
     }
-    return withName;
+    return replaced;
   }
 
   private async processOne(qr: QueryRunner, plan: NotificationPlan) {
@@ -149,10 +142,7 @@ export class ActionEventNotifWorker {
 
     let reminder: ActionReminder | null = null;
 
-    if (type === ActionEventNotifType.CustomReminder) {
-      if (!plan.reminder?.id) {
-        return;
-      }
+    if (type === ActionEventNotifType.Reminder) {
       reminder = await manager.getRepository(ActionReminder).findOne({
         where: { id: plan.reminder.id },
         relations: [
@@ -187,7 +177,8 @@ export class ActionEventNotifWorker {
     const action = event.action;
 
     const users =
-      type === ActionEventNotifType.CustomReminder && reminder
+      type === ActionEventNotifType.Reminder &&
+      reminder?.cohortType === ReminderCohortType.Custom
         ? await this.recipientService.filterForCompletion(reminder.users, event)
         : await this.recipientService.getFilteredUsersForEvent(event, type);
 
@@ -195,30 +186,22 @@ export class ActionEventNotifWorker {
       event,
       type,
       action,
-      customEmailMessage: reminder?.customEmailMessage ?? undefined,
-      customTextMessage: reminder?.customTextMessage ?? undefined,
-      customEmailSubject: reminder?.customEmailSubject ?? undefined,
+      customEmailMessage: reminder?.emailMessage,
+      customTextMessage: reminder?.textMessage,
+      customEmailSubject: reminder?.emailSubject,
       includeActionLinkInCustomMessages:
         reminder?.includeActionLinkInMessages ?? false,
     };
 
-    let deadlineEvent: ActionEvent | undefined;
-    if (
-      type === ActionEventNotifType.CustomReminder &&
-      reminder?.deadlineEvent
-    ) {
-      deadlineEvent = reminder.deadlineEvent;
-    } else if (type !== ActionEventNotifType.CustomReminder) {
-      deadlineEvent =
-        (await manager.getRepository(ActionEvent).findOne({
-          where: {
-            action: { id: action.id },
-            date: MoreThan(event.date),
-            newStatus: In(Array.from(POST_MEMBER_ACTION_STATUSES)),
-          },
-          order: { date: 'ASC' },
-        })) ?? undefined;
-    }
+    const deadlineEvent =
+      (await manager.getRepository(ActionEvent).findOne({
+        where: {
+          action: { id: action.id },
+          date: MoreThan(event.date),
+          newStatus: In(Array.from(POST_MEMBER_ACTION_STATUSES)),
+        },
+        order: { date: 'ASC' },
+      })) ?? undefined;
 
     for (const user of users) {
       const context: ActionEventNotificationContext = {
@@ -283,7 +266,7 @@ export class ActionEventNotifWorker {
     if (sentAtField) {
       (event[sentAtField] as Date | undefined) = new Date();
       await manager.getRepository(ActionEvent).save(event);
-    } else if (type === ActionEventNotifType.CustomReminder && reminder) {
+    } else if (type === ActionEventNotifType.Reminder && reminder) {
       reminder.sentAt = new Date();
       await manager.getRepository(ActionReminder).save(reminder);
     }
@@ -295,11 +278,7 @@ export class ActionEventNotifWorker {
     let body = '';
     if (context.type === ActionEventNotifType.Announcement) {
       body = defaultEventTextAnnouncement[context.event.newStatus](context);
-    } else if (context.type === ActionEventNotifType.ThreeDayReminder) {
-      body = defaultEventText3DayReminder[context.event.newStatus](context);
-    } else if (context.type === ActionEventNotifType.OneDayReminder) {
-      body = defaultEventText1DayReminder[context.event.newStatus](context);
-    } else if (context.type === ActionEventNotifType.CustomReminder) {
+    } else if (context.type === ActionEventNotifType.Reminder) {
       if (context.customTextMessage) {
         body = context.customTextMessage;
       } else {
@@ -310,6 +289,8 @@ export class ActionEventNotifWorker {
       body = context.isSecondMiss
         ? defaultEventTextMissedSecondDeadline(context)
         : defaultEventTextMissedDeadline(context);
+    } else {
+      throw context.type satisfies never;
     }
 
     return this.mmsService.sendMms(

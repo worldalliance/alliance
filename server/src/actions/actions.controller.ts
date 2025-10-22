@@ -55,6 +55,7 @@ import {
   NotificationScheduleQueryDto,
 } from './dto/notification-schedule.dto';
 import { ActionUpdate } from './entities/action-update.entity';
+import { ActionEvent } from './entities/action-event.entity';
 
 @Controller('actions')
 export class ActionsController {
@@ -359,24 +360,24 @@ export class ActionsController {
 
   @Post(':id/events')
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionDto })
+  @ApiOkResponse({ type: ActionEvent })
   async addEvent(
     @Param('id', ParseIntPipe) id: number,
     @Body() actionEventDto: CreateActionEventDto,
     @Request() req: JwtRequest,
-  ): Promise<ActionDto> {
+  ): Promise<ActionEvent> {
     return this.actionsService.addEvent(id, actionEventDto, req.user?.sub);
   }
 
   @Post(':actionId/events/:eventId/reminders')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionReminderDto })
-  async createCustomReminder(
+  async createReminder(
     @Param('actionId', ParseIntPipe) actionId: number,
     @Param('eventId', ParseIntPipe) eventId: number,
     @Body() body: CreateActionReminderDto,
   ): Promise<ActionReminderDto> {
-    return this.actionsService.createCustomReminder(actionId, eventId, body);
+    return this.actionsService.createReminder(actionId, eventId, body);
   }
 
   @Post('clearDb')
