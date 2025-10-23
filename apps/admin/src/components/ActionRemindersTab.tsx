@@ -21,6 +21,18 @@ import {
   subSeconds,
 } from "date-fns";
 
+const defaultEmailSubject = "You have #{days} left to complete #{action}";
+const defaultEmailContents = `Hi,
+An action needs your completion: "#{action}"
+
+You have #{days} left to complete it. Please do so at the below link.
+
+#{link}
+`;
+
+const defaultTextMessage =
+  "You have #{days} left to complete #{action}. #{link}";
+
 interface ActionRemindersTabProps {
   action: ActionDto;
   setAction: React.Dispatch<React.SetStateAction<ActionDto | null>>;
@@ -72,11 +84,10 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   const [timingMode, setTimingMode] = useState<ReminderTimingMode>("absolute");
   const [sendAtSecondsFromDeadline, setSendAtSecondsFromDeadline] =
     useState<number>(0);
-  const [emailMessage, setEmailMessage] = useState<string>("");
-  const [emailSubject, setEmailSubject] = useState<string>("");
-  const [includeActionLinkInMessages, setIncludeActionLinkInMessages] =
-    useState<boolean>(false);
-  const [textMessage, setTextMessage] = useState<string>("");
+  const [emailMessage, setEmailMessage] =
+    useState<string>(defaultEmailContents);
+  const [emailSubject, setEmailSubject] = useState<string>(defaultEmailSubject);
+  const [textMessage, setTextMessage] = useState<string>(defaultTextMessage);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [userQuery, setUserQuery] = useState<string>("");
   const [users, setUsers] = useState<User[]>([]);
@@ -158,14 +169,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   };
 
   const findDeadlineEvent = (reminder: ActionReminder) => {
-    if (reminder.deadlineEventId) {
-      const match = sortedActionEvents.find(
-        (event) => event.id === reminder.deadlineEventId
-      );
-      if (match) {
-        return match;
-      }
-    }
     const memberEventId = getMemberEventId(reminder);
     if (!memberEventId) {
       return undefined;
@@ -347,7 +350,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         emailMessage,
         textMessage,
         userIds: selectedUsers.map((user) => user.id),
-        includeActionLinkInMessages,
         cohortType: "all_uncompleted",
         timingMode: timingMode,
         emailSubject,
@@ -514,20 +516,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
               {"#{name},  #{action},  #{days}"}
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Include Action Link in Messages
-            </label>
-            <input
-              type="checkbox"
-              checked={includeActionLinkInMessages}
-              onChange={(event) =>
-                setIncludeActionLinkInMessages(event.target.checked)
-              }
-            />
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Recipients

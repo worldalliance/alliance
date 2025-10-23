@@ -326,7 +326,6 @@ export type ActionReminder = {
   emailMessage: string;
   emailSubject: string;
   textMessage: string;
-  includeActionLinkInMessages: boolean;
   sendAtAbsolute?: string;
   sendAtSecondsFromDeadline?: number;
   sentAt?: string;
@@ -909,7 +908,6 @@ export type CreateActionReminderDto = {
   emailMessage: string;
   emailSubject: string;
   textMessage: string;
-  includeActionLinkInMessages: boolean;
   sendAtAbsolute?: string;
   sendAtSecondsFromDeadline?: number;
   deadlineEventId?: number;

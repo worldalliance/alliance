@@ -51,7 +51,6 @@ export interface ActionEventNotificationContext {
   customEmailMessage?: string;
   customTextMessage?: string;
   customEmailSubject?: string;
-  includeActionLinkInCustomMessages?: boolean;
 }
 
 const PROCESS_ONE_LOCK_KEY1 = 0xa11a;
@@ -118,15 +117,7 @@ export class ActionEventNotifWorker {
     text: string,
     context: ActionEventNotificationContext,
   ): string {
-    const replaced = processKeywordReplacements(text, context);
-    if (context.includeActionLinkInCustomMessages) {
-      return (
-        replaced +
-        ' ' +
-        withCid(actionUrl(context.action.id, true), context.cid)
-      );
-    }
-    return replaced;
+    return processKeywordReplacements(text, context);
   }
 
   private async processOne(qr: QueryRunner, plan: NotificationPlan) {
@@ -189,8 +180,6 @@ export class ActionEventNotifWorker {
       customEmailMessage: reminder?.emailMessage,
       customTextMessage: reminder?.textMessage,
       customEmailSubject: reminder?.emailSubject,
-      includeActionLinkInCustomMessages:
-        reminder?.includeActionLinkInMessages ?? false,
     };
 
     const deadlineEvent =

@@ -81,12 +81,6 @@ export class ActionReminder {
   @IsDefined()
   textMessage: string;
 
-  @ApiProperty({ type: Boolean })
-  @Column({ type: 'boolean' })
-  @IsDefined()
-  @Allow()
-  includeActionLinkInMessages: boolean;
-
   @ApiPropertyOptional({ type: Date })
   @Column({ type: 'timestamptz', nullable: true })
   @Type(() => Date)

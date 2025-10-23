@@ -548,7 +548,6 @@ export class ActionsService {
       emailSubject: dto.emailSubject,
       sendAtAbsolute,
       sendAtSecondsFromDeadline,
-      includeActionLinkInMessages: dto.includeActionLinkInMessages,
     });
 
     const saved = await this.actionReminderRepository.save(reminder);

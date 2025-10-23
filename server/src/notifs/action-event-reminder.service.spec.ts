@@ -99,7 +99,6 @@ const customReminder = (
     emailMessage: 'Custom email message',
     emailSubject: 'Custom email subject',
     textMessage: 'Custom text message',
-    includeActionLinkInMessages: true,
     sentAt: undefined,
     createdAt: new Date('2024-01-01T00:00:00Z'),
     notifications: [],

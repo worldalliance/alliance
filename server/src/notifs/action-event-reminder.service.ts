@@ -255,6 +255,9 @@ export class ActionEventReminderService {
         for (const reminder of current.reminders) {
           if (!reminder.sentAt) {
             const sendTime = this.computeReminderSendDate(reminder, next);
+            console.log('sendTime', sendTime);
+            console.log('windowStart', windowStart);
+            console.log('windowEnd', windowEnd);
             if (sendTime >= windowStart && sendTime <= windowEnd) {
               results.push({
                 type: ActionEventNotifType.Reminder,

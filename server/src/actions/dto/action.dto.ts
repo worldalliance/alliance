@@ -8,9 +8,6 @@ import {
 import { Type } from 'class-transformer';
 import {
   Allow,
-  ArrayNotEmpty,
-  ArrayUnique,
-  IsArray,
   IsBoolean,
   IsDefined,
   IsInt,
@@ -82,7 +79,6 @@ export class CreateActionReminderDto extends PickType(ActionReminder, [
   'emailMessage',
   'emailSubject',
   'textMessage',
-  'includeActionLinkInMessages',
 ]) {
   @ApiPropertyOptional()
   @IsOptional()

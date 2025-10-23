@@ -21,6 +21,10 @@ export function processKeywordReplacements(
       context.deadlineEvent
         ? getDaysFromDeadline(context.deadlineEvent)
         : '[err]',
+    )
+    .replace(
+      '#{link}',
+      withCid(actionUrl(context.action.id, true), context.cid),
     );
 }
 
