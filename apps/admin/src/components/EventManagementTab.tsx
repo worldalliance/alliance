@@ -561,7 +561,7 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
         )}
       </Card>
       <h2 className="text-lg font-semibold mb-4">All Events</h2>
-      <div className="space-y-3">
+      <div className="space-y-3 mb-3">
         {action.events && action.events.length > 0 ? (
           action.events
             .sort(

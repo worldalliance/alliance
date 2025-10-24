@@ -10,12 +10,11 @@ type announcedStates =
   | ActionStatus.MemberAction;
 
 export function getDaysFromDeadline(deadlineEvent: ActionEvent): string {
-  return (
-    Math.round(
-      (deadlineEvent.date.getTime() - new Date().getTime()) /
-        (1000 * 60 * 60 * 24),
-    ).toString() + ' days'
+  const days = Math.round(
+    (deadlineEvent.date.getTime() - new Date().getTime()) /
+      (1000 * 60 * 60 * 24),
   );
+  return days.toString() + ' day' + (days === 1 ? '' : 's');
 }
 
 export const welcomeMessage = `Thanks for opting in to action notifications from the Alliance! You'll get a text here when a new action is ready to complete. Reply STOP to opt out.`;

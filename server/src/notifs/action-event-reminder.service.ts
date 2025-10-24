@@ -220,7 +220,6 @@ export class ActionEventReminderService {
     windowEnd: Date,
   ): Promise<NotificationPlan[]> {
     const results: NotificationPlan[] = [];
-    console.log('computing reminder plans');
 
     const events = await this.eventRepository.find({
       relations: [
@@ -231,7 +230,6 @@ export class ActionEventReminderService {
       ],
       order: { action: { id: 'ASC' }, date: 'ASC' },
     });
-    console.log('events', events.length);
 
     const eventsByAction = new Map<number, ActionEvent[]>();
     for (const event of events) {

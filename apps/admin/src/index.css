@@ -238,3 +238,10 @@ a,
 button {
   cursor: pointer;
 }
+
+#keywordstable th,
+#keywordstable td {
+  padding: 0.5rem;
+  text-align: left;
+  border: 1px solid #e0e0e0;
+}

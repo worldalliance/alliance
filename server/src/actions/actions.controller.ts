@@ -49,6 +49,7 @@ import {
   PreEventNotifDataQueryDto,
   UpdateActionActivityDto,
   UpdateActionDto,
+  UpdateActionReminderDto,
 } from './dto/action.dto';
 import {
   NotificationScheduleEntryDto,
@@ -378,6 +379,30 @@ export class ActionsController {
     @Body() body: CreateActionReminderDto,
   ): Promise<ActionReminderDto> {
     return this.actionsService.createReminder(actionId, eventId, body);
+  }
+
+  @Patch(':actionId/events/:eventId/reminders/:reminderId')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionReminderDto })
+  async updateReminder(
+    @Param('actionId', ParseIntPipe) actionId: number,
+    @Param('eventId', ParseIntPipe) eventId: number,
+    @Param('reminderId', ParseIntPipe) reminderId: number,
+    @Body() body: UpdateActionReminderDto,
+  ): Promise<ActionReminderDto> {
+    return this.actionsService.updateReminder(
+      actionId,
+      eventId,
+      reminderId,
+      body,
+    );
+  }
+
+  @Delete('deleteReminder/:reminderId')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  deleteReminder(@Param('reminderId', ParseIntPipe) reminderId: number) {
+    return this.actionsService.deleteReminder(reminderId);
   }
 
   @Post('clearDb')

@@ -166,7 +166,6 @@ describe('Notification schedule (e2e)', () => {
         emailMessage: 'Custom email message',
         emailSubject: 'Custom email subject',
         textMessage: 'Custom text message',
-        includeActionLinkInMessages: true,
       }),
     );
 
@@ -316,7 +315,6 @@ describe('Notification schedule (e2e)', () => {
         emailMessage: 'Custom email message',
         emailSubject: 'Custom email subject',
         textMessage: 'Custom text message',
-        includeActionLinkInMessages: true,
       }),
     );
 

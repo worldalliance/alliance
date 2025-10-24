@@ -149,7 +149,6 @@ describe('Action reminders (e2e)', () => {
         emailMessage: 'Custom email message',
         emailSubject: 'Custom email subject',
         textMessage: 'Custom text message',
-        includeActionLinkInMessages: true,
       }),
     );
 

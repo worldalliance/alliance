@@ -930,6 +930,18 @@ export type ActionReminderDto = {
   customEmailSubject?: string;
 };
 
+export type UpdateActionReminderDto = {
+    cohortType?: ReminderCohortType;
+    timingMode?: ReminderTimingMode;
+    emailMessage?: string;
+    emailSubject?: string;
+    textMessage?: string;
+    sendAtAbsolute?: string;
+    sendAtSecondsFromDeadline?: number;
+    deadlineEventId?: number;
+    userIds?: Array<number>;
+};
+
 export type CreateEditableContentDto = {
   /**
    * Markdown or plain text body
@@ -2478,6 +2490,36 @@ export type ActionsCreateReminderResponses = {
 
 export type ActionsCreateReminderResponse =
   ActionsCreateReminderResponses[keyof ActionsCreateReminderResponses];
+
+export type ActionsUpdateReminderData = {
+    body: UpdateActionReminderDto;
+    path: {
+        actionId: number;
+        eventId: number;
+        reminderId: number;
+    };
+    query?: never;
+    url: '/actions/{actionId}/events/{eventId}/reminders/{reminderId}';
+};
+
+export type ActionsUpdateReminderResponses = {
+    200: ActionReminderDto;
+};
+
+export type ActionsUpdateReminderResponse = ActionsUpdateReminderResponses[keyof ActionsUpdateReminderResponses];
+
+export type ActionsDeleteReminderData = {
+    body?: never;
+    path: {
+        reminderId: number;
+    };
+    query?: never;
+    url: '/actions/deleteReminder/{reminderId}';
+};
+
+export type ActionsDeleteReminderResponses = {
+    200: unknown;
+};
 
 export type ActionsClearDbData = {
   body?: never;

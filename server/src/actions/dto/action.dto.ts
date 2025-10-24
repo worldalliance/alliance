@@ -92,6 +92,10 @@ export class CreateActionReminderDto extends PickType(ActionReminder, [
   userIds?: number[];
 }
 
+export class UpdateActionReminderDto extends PartialType(
+  CreateActionReminderDto,
+) {}
+
 export class ActionEventDto extends PickType(ActionEvent, [
   'id',
   'title',

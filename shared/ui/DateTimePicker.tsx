@@ -25,7 +25,7 @@ export interface DateTimePickerProps
 }
 
 const DEFAULT_INPUT_CLASS =
-  "w-full p-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500";
+  "w-full p-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500";
 
 export function resolveDateValue(value?: string | Date | null): Date | null {
   if (!value) {
