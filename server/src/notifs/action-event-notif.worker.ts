@@ -77,7 +77,7 @@ export class ActionEventNotifWorker {
     private readonly reminderService: ActionEventReminderService,
   ) {}
 
-  @Cron('* * * * *')
+  @Cron('*/3 * * * *')
   async dispatchDueNotifs() {
     if (
       process.env.NODE_ENV === 'development' &&
