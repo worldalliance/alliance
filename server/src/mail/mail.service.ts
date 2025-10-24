@@ -78,8 +78,17 @@ export class MailService {
       cid,
     });
 
+    const pug = await import('pug');
+
     const tag =
       process.env.NODE_ENV === 'production' ? 'production' : 'development';
+
+    const html = pug.renderFile(
+      __dirname + `/../../mail/templates/${this.templates[emailType]}.pug`,
+      { ...context },
+    );
+
+    console.log('html', html);
 
     const e = await this.mailerService.sendMail({
       to: recipient,
@@ -89,9 +98,7 @@ export class MailService {
         'o:tag': emailType,
         'X-Mailgun-Tag': tag,
       },
-      template:
-        __dirname + `/../../mail/templates/${this.templates[emailType]}`,
-      context,
+      html,
     });
 
     const accepted = e.accepted as string[];
@@ -241,17 +248,11 @@ export class MailService {
       );
     }
 
-    console.log(
-      'url',
-      withCid(actionUrl(context.action.id, true), context.cid),
-    );
-
     const hasDeadline = context.deadlineEvent !== undefined;
     let daysLeft = '';
     if (context.deadlineEvent) {
       daysLeft = getDaysFromDeadline(context.deadlineEvent);
     }
-    console.log('context', context);
 
     const emailContext = {
       name: context.user.name,
@@ -260,9 +261,13 @@ export class MailService {
       commitmentless: context.action.commitmentless,
       hasDeadline,
       daysLeft,
-      customMessage: context.customEmailMessage,
+      customMessage: context.customEmailMessage
+        ? context.customEmailMessage.replace(/\n/g, '<br>')
+        : undefined,
       cid: context.cid,
     };
+
+    console.log('emailContext', emailContext.customMessage);
 
     return this.sendMail(
       context.user.email,

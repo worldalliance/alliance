@@ -17,6 +17,11 @@ import { formatStatus, getStatusColor } from "../pages/ActionDashboard";
 import DateTimePicker, {
   DateTimePickerChange,
 } from "@alliance/shared/ui/DateTimePicker";
+import {
+  defaultEmailContents,
+  defaultEmailSubject,
+  defaultTextMessage,
+} from "./ActionRemindersTab";
 
 // Status options for event creation
 const statusOptions: Record<ActionStatus, string> = {
@@ -134,10 +139,9 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
               cohortType: "all_uncompleted",
               timingMode: "from_deadline",
               sendAtSecondsFromDeadline: 3 * 24 * 60 * 60,
-              emailSubject: "3 days left to complete: " + action.name,
-              emailMessage: "You have #{days} left to complete: #{name}",
-              textMessage: "You have #{days} left to complete: #{name}",
-              includeActionLinkInMessages: true,
+              emailSubject: defaultEmailSubject,
+              emailMessage: defaultEmailContents,
+              textMessage: defaultTextMessage,
             },
           });
           if (threeDayReminderResponse.error) {
@@ -150,10 +154,9 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
               cohortType: "all_uncompleted",
               timingMode: "from_deadline",
               sendAtSecondsFromDeadline: 1 * 24 * 60 * 60,
-              emailSubject: "1 day left to complete: " + action.name,
-              emailMessage: "You have #{days} left to complete: #{name}",
-              textMessage: "You have #{days} left to complete: #{name}",
-              includeActionLinkInMessages: true,
+              emailSubject: defaultEmailSubject,
+              emailMessage: defaultEmailContents,
+              textMessage: defaultTextMessage,
             },
           });
           if (oneDayReminderResponse.error) {

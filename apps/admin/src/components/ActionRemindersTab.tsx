@@ -21,8 +21,9 @@ import {
   subSeconds,
 } from "date-fns";
 
-const defaultEmailSubject = "You have #{days} left to complete #{action}";
-const defaultEmailContents = `Hi,
+export const defaultEmailSubject =
+  "You have #{days} left to complete #{action}";
+export const defaultEmailContents = `Hi,
 An action needs your completion: "#{action}"
 
 You have #{days} left to complete it. Please do so at the below link.
@@ -30,7 +31,7 @@ You have #{days} left to complete it. Please do so at the below link.
 #{link}
 `;
 
-const defaultTextMessage =
+export const defaultTextMessage =
   "You have #{days} left to complete #{action}. #{link}";
 
 interface ActionRemindersTabProps {
@@ -749,10 +750,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                         : "All uncompleted"}
                     </span>
                     {channelText && <span>Channels: {channelText}</span>}
-                    <span>
-                      Include action link:{" "}
-                      {reminder.includeActionLinkInMessages ? "Yes" : "No"}
-                    </span>
                   </div>
                 </div>
               );
