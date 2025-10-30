@@ -450,6 +450,8 @@ export type ActionSuite = {
     name: string;
     actions: Array<Array<unknown>>;
     reminderGroups: Array<ReminderGroup>;
+    createdAt: string;
+    updatedAt: string;
 };
 
 export type Action = {
@@ -513,7 +515,10 @@ export type Action = {
      * Timestamp when the action was last updated
      */
     updatedAt: string;
-    events: Array<Array<ActionEvent>>;
+    /**
+     * Events associated with the action
+     */
+    events: Array<ActionEvent>;
     participatingGroups: Array<Group>;
     /**
      * Whether to show the action to members who are not of participating groups
@@ -524,10 +529,7 @@ export type Action = {
      */
     usersJoined: number;
     activities: Array<Array<ActionActivity>>;
-    /**
-     * Number of users who have joined the action
-     */
-    status: string;
+    status: ActionStatus;
     /**
      * Number of users who have completed the action
      */
@@ -646,9 +648,6 @@ export type ActionDto = {
      */
     usersJoined: number;
     activities: Array<Array<ActionActivity>>;
-    /**
-     * Number of users who have joined the action
-     */
     status: ActionStatus;
     /**
      * Number of users who have completed the action
@@ -806,11 +805,11 @@ export type CreateActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
-    suite?: ActionSuite;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: string;
     reqAuthenticated?: boolean;
+    suiteId?: number;
 };
 
 export type UpdateActionDto = {
@@ -867,11 +866,11 @@ export type UpdateActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete?: boolean;
-    suite?: ActionSuite;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: string;
     reqAuthenticated?: boolean;
+    suiteId?: number;
 };
 
 export type CreateActionEventDto = {
@@ -903,6 +902,7 @@ export type CreateActionEventDto = {
 
 export type CreateTodReminderGroupDto = {
     name: string;
+    timingMode: ReminderGroupTimingMode;
     cohortType: ReminderCohortType;
     emailMessage: string;
     emailSubject: string;
@@ -913,6 +913,13 @@ export type CreateTodReminderGroupDto = {
     sendAtSecondsFromDeadline?: number;
     userIds?: Array<number>;
     userGroupId?: number;
+};
+
+export type NotificationPlan = {
+    scheduledFor: string;
+    referenceEvent: ActionEvent;
+    targetEvent: ActionEvent;
+    user: User;
 };
 
 export type CreateEditableContentDto = {
@@ -959,6 +966,19 @@ export type CreateActionUpdateDto = {
     notifyType: ActionUpdateNotifyType;
     content: CreateEditableContentDto;
     associatedEventId?: number;
+};
+
+export type ActionSuiteDto = {
+    id: number;
+    name: string;
+    reminderGroups: Array<ReminderGroup>;
+    createdAt: string;
+    updatedAt: string;
+    actions: Array<ActionDto>;
+};
+
+export type CreateActionSuiteDto = {
+    name: string;
 };
 
 export type NotificationDto = {
@@ -2416,16 +2436,30 @@ export type ActionsCreateReminderGroupResponse = ActionsCreateReminderGroupRespo
 export type ActionsDeleteReminderGroupData = {
     body?: never;
     path: {
-        eventId: number;
         groupId: number;
     };
     query?: never;
-    url: '/actions/events/{eventId}/reminders/{groupId}';
+    url: '/actions/reminders/{groupId}';
 };
 
 export type ActionsDeleteReminderGroupResponses = {
     200: unknown;
 };
+
+export type ActionsPlansForGroupData = {
+    body?: never;
+    path: {
+        groupId: number;
+    };
+    query?: never;
+    url: '/actions/plansForGroup/{groupId}';
+};
+
+export type ActionsPlansForGroupResponses = {
+    200: Array<NotificationPlan>;
+};
+
+export type ActionsPlansForGroupResponse = ActionsPlansForGroupResponses[keyof ActionsPlansForGroupResponses];
 
 export type ActionsClearDbData = {
     body?: never;
@@ -2599,6 +2633,47 @@ export type ActionsCreateUpdateResponses = {
 };
 
 export type ActionsCreateUpdateResponse = ActionsCreateUpdateResponses[keyof ActionsCreateUpdateResponses];
+
+export type ActionsSuitesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/suites';
+};
+
+export type ActionsSuitesResponses = {
+    200: Array<ActionSuite>;
+};
+
+export type ActionsSuitesResponse = ActionsSuitesResponses[keyof ActionsSuitesResponses];
+
+export type ActionsSuiteData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/suite/{id}';
+};
+
+export type ActionsSuiteResponses = {
+    200: ActionSuiteDto;
+};
+
+export type ActionsSuiteResponse = ActionsSuiteResponses[keyof ActionsSuiteResponses];
+
+export type ActionsCreateSuiteData = {
+    body: CreateActionSuiteDto;
+    path?: never;
+    query?: never;
+    url: '/actions/createSuite';
+};
+
+export type ActionsCreateSuiteResponses = {
+    200: ActionSuiteDto;
+};
+
+export type ActionsCreateSuiteResponse = ActionsCreateSuiteResponses[keyof ActionsCreateSuiteResponses];
 
 export type NotifsFindAllData = {
     body?: never;

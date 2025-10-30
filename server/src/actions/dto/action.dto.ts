@@ -31,11 +31,13 @@ import { Action } from '../entities/action.entity';
 import { getImageSource } from 'src/images/images.service';
 import { ActionUpdate } from '../entities/action-update.entity';
 import { ReminderGroup } from '../entities/reminder-group.entity';
+import { ActionSuite } from '../entities/action-suite.entity';
 
 export class CreateTODReminderGroupDto extends PickType(ReminderGroup, [
   'name',
   'emailMessage',
   'cohortType',
+  'timingMode',
   'emailSubject',
   'textMessage',
   'sendAtAbsolute',
@@ -135,9 +137,14 @@ export class CreateActionDto extends OmitType(ActionDto, [
   'status',
   'taskContents',
   'events',
+  'suite',
   'archived',
   'updates',
-]) {}
+]) {
+  @ApiPropertyOptional({ type: Number })
+  @IsOptional()
+  suiteId?: number;
+}
 
 export class UpdateActionDto extends PartialType(CreateActionDto) {}
 
@@ -281,4 +288,19 @@ export class CreateActionUpdateDto extends PickType(ActionUpdate, [
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   associatedEventId?: number;
+}
+
+export class CreateActionSuiteDto extends PickType(ActionSuite, ['name']) {}
+
+export class ActionSuiteDto extends OmitType(ActionSuite, ['actions']) {
+  @ApiProperty({ type: () => ActionDto, isArray: true })
+  @Type(() => ActionDto)
+  @Allow()
+  actions: ActionDto[];
+
+  constructor(suite: ActionSuite, actions: ActionDto[]) {
+    super();
+    Object.assign(this, suite);
+    this.actions = actions;
+  }
 }

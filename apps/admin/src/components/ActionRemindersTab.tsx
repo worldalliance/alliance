@@ -1,9 +1,11 @@
 import {
   ActionDto,
   GroupDto,
+  NotificationPlan,
   ReminderGroup,
   actionsCreateReminderGroup,
   actionsDeleteReminderGroup,
+  actionsPlansForGroup,
   actionsReminderGroupsForEvent,
   actionsUpdateReminderGroup,
   userGetGroups,
@@ -23,6 +25,7 @@ import ActionReminderGroupForm, {
   ActionReminderGroupFormSubmitPayload,
 } from "./ActionReminderGroupForm";
 import { UserSelectUser } from "./UserSelect";
+import { Link } from "react-router";
 
 export const defaultEmailSubject =
   "You have #{days} left to complete #{action}";
@@ -37,26 +40,9 @@ export const defaultTextMessage =
 
 interface ActionRemindersTabProps {
   action: ActionDto;
-  setAction: React.Dispatch<React.SetStateAction<ActionDto | null>>;
 }
 
 const DISPLAY_DATETIME_FORMAT = "PP p";
-
-type ReminderGroupReminder = {
-  id?: number;
-  user?: Record<string, unknown>;
-  sentAt?: string | null;
-  sendTime?: string | null;
-  skippedForCompletion?: boolean;
-};
-
-type ReminderGroupWithRelations = ReminderGroup & {
-  reminders?: ReminderGroupReminder[];
-  sendRangeStart?: string | null;
-  sendRangeEnd?: string | null;
-  send_range_start?: string | null;
-  send_range_end?: string | null;
-};
 
 const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
   const memberEvents = useMemo(
@@ -193,7 +179,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
       return;
     }
     const resp = await actionsDeleteReminderGroup({
-      path: { eventId: selectedEventId, groupId: deleteGroupConfirmation },
+      path: { groupId: deleteGroupConfirmation },
     });
     if (resp.response.ok) {
       setDeleteGroupConfirmation(null);
@@ -214,10 +200,10 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
     return date ? format(date, DISPLAY_DATETIME_FORMAT) : null;
   };
 
-  const getGroupMemberEventId = (group: ReminderGroupWithRelations) =>
+  const getGroupMemberEventId = (group: ReminderGroup) =>
     group.memberActionEvent?.id ?? null;
 
-  const findGroupDeadlineEvent = (group: ReminderGroupWithRelations) => {
+  const findGroupDeadlineEvent = (group: ReminderGroup) => {
     const memberEventId = getGroupMemberEventId(group);
     if (!memberEventId) {
       return undefined;
@@ -225,14 +211,30 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
     return nextEventById.get(memberEventId);
   };
 
-  const getGroupRange = (group: ReminderGroupWithRelations) => {
-    const start = group.sendRangeStart ?? group.send_range_start ?? null;
-    const end = group.sendRangeEnd ?? group.send_range_end ?? null;
+  const [showReminderPlans, setShowReminderPlans] = useState<number | null>(
+    null
+  );
+  const [reminderPlans, setReminderPlans] = useState<NotificationPlan[]>([]);
+
+  useEffect(() => {
+    setReminderPlans([]);
+    if (showReminderPlans) {
+      actionsPlansForGroup({
+        path: { groupId: showReminderPlans },
+      }).then((response) => {
+        setReminderPlans(response.data ?? []);
+      });
+    }
+  }, [showReminderPlans]);
+
+  const getGroupRange = (group: ReminderGroup) => {
+    const start = group.send_range_start ?? null;
+    const end = group.send_range_end ?? null;
     return { start: parseDate(start), end: parseDate(end) };
   };
 
   const describeGroupSchedule = (
-    group: ReminderGroupWithRelations
+    group: ReminderGroup
   ): { primary: string; secondary?: string | null } => {
     if (group.timingMode === "absolute") {
       const sendAtLabel = formatDisplayDate(group.sendAtAbsolute);
@@ -325,6 +327,8 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
     setCreateSuccess(null);
     setCreateSubmitting(true);
 
+    console.log("handleCreateGroupSubmit", payload);
+
     try {
       const { memberActionEventId: eventId, ...body } = payload;
       if (!eventId) {
@@ -369,7 +373,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
         }
 
         const response = await actionsUpdateReminderGroup({
-          path: { actionId: action.id, eventId, groupId },
+          path: { groupId },
           body,
         });
 
@@ -418,52 +422,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
 
   return (
     <div className="space-y-4 mb-5">
-      <Card style={CardStyle.White}>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-base font-semibold">Schedule a notification</h3>
-            <Button
-              type="button"
-              color={ButtonColor.Black}
-              className="px-3 py-1 text-sm"
-              onClick={() => setCreateGroupExpanded((prev) => !prev)}
-            >
-              {createGroupExpanded ? "Hide form" : "New reminder"}
-            </Button>
-          </div>
-          {!createGroupExpanded && createSuccess && (
-            <p className="text-sm text-green-600">{createSuccess}</p>
-          )}
-          {createGroupExpanded && (
-            <>
-              <p className="text-sm text-gray-600">
-                Creates a personal reminder for each user based on their time
-                zone and reminder time preference.
-              </p>
-              <ActionReminderGroupForm
-                memberEvents={memberEvents}
-                users={users}
-                loadingUsers={loadingUsers}
-                userGroups={userGroups}
-                loadingUserGroups={loadingUserGroups}
-                userGroupsError={userGroupsError}
-                initialValues={{
-                  memberActionEventId: selectedEventId,
-                  reminderGroup: null,
-                  users: [],
-                }}
-                submitting={createSubmitting}
-                serverError={createError}
-                serverSuccess={createSuccess}
-                onCancel={() => setCreateGroupExpanded(false)}
-                onEventChange={setSelectedEventId}
-                onSubmit={handleCreateGroupSubmit}
-              />
-            </>
-          )}
-        </div>
-      </Card>
-
       {loadError && <p className="text-sm text-red-600 mb-2">{loadError}</p>}
       {editSuccess && !editingReminderId && (
         <p className="text-sm text-green-600 mb-2">{editSuccess}</p>
@@ -500,8 +458,10 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
             )}
             <div className="flex flex-row gap-2 w-full bg-zinc-100 p-4 items-center justify-between">
               <div className="flex flex-col gap-1">
-                <p className="font-semibold">{group.name}</p>
-                <p className="">{groupSchedule.primary}</p>
+                <div className="flex flex-row gap-2">
+                  <p className="font-semibold">{group.name}</p>
+                  <p className="">{groupSchedule.primary}</p>
+                </div>
                 {groupSchedule.secondary && (
                   <p className="text-xs text-gray-500">
                     {groupSchedule.secondary}
@@ -566,50 +526,89 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
               )}
             </div>
             <div>
-              <div className="divide-y divide-gray-200 border-t border-gray-200 max-h-[300px] overflow-y-auto">
-                {/* {reminders.length === 0 && (
-                  <p className="text-sm text-gray-600 p-4">
-                    This group has no reminders.
-                  </p>
-                )}
-                {reminders.map((reminder) => (
+              <p
+                className="text-sm cursor-pointer ml-4 mb-4"
+                onClick={() =>
+                  setShowReminderPlans((prev) =>
+                    prev === group.id ? null : group.id
+                  )
+                }
+              >
+                {showReminderPlans === group.id
+                  ? "Hide reminder plans"
+                  : "Show reminder plans"}
+              </p>
+              <div
+                className={`divide-y divide-gray-200 border-t border-gray-200 
+                    overflow-y-auto transition-[max-height] duration-300 ${
+                      showReminderPlans === group.id
+                        ? "max-h-[300px]"
+                        : "max-h-[0px]"
+                    }`}
+              >
+                {reminderPlans.map((plan) => (
                   <div
-                    key={reminder.id}
-                    className="flex flex-row gap-2 items-center p-3 justify-between"
+                    key={plan.user.id}
+                    className="p-3 flex flex-row gap-2 items-center"
                   >
-                    <p className="text-sm font-semibold text-gray-900">
-                      {formatRecipientName(reminder.user)}
+                    <Link to={`/member/${plan.user.id}`} target="_blank">
+                      {plan.user.name}
+                    </Link>
+                    <p className="text-xs text-gray-500">
+                      {formatDisplayDate(plan.scheduledFor)}
                     </p>
-                    <div className="flex flex-row gap-2 items-center">
-                      <div className="mt-[2px]">
-                        <ClockIcon
-                          fill={!!reminder.sentAt ? undefined : "#aaa"}
-                          size="xs"
-                        />
-                      </div>
-                      <span
-                        className={`text-sm ${
-                          reminder.skippedForCompletion
-                            ? "text-green"
-                            : "text-gray-500"
-                        }`}
-                      >
-                        {reminder.skippedForCompletion
-                          ? "not sent (completion / withdrawal)"
-                          : reminder.sentAt
-                          ? `Sent ${formatDisplayDate(reminder.sentAt)}`
-                          : `Scheduled for ${formatDisplayDate(
-                              reminder.sendTime
-                            )}`}
-                      </span>
-                    </div>
                   </div>
-                ))} */}
+                ))}
               </div>
             </div>
           </Card>
         );
       })}
+      <Card style={CardStyle.White}>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-base font-semibold">Schedule a notification</h3>
+            <Button
+              type="button"
+              color={ButtonColor.Black}
+              className="px-3 py-1 text-sm"
+              onClick={() => setCreateGroupExpanded((prev) => !prev)}
+            >
+              {createGroupExpanded ? "Hide form" : "New reminder"}
+            </Button>
+          </div>
+          {!createGroupExpanded && createSuccess && (
+            <p className="text-sm text-green-600">{createSuccess}</p>
+          )}
+          {createGroupExpanded && (
+            <>
+              <p className="text-sm text-gray-600">
+                Creates a personal reminder for each user based on their time
+                zone and reminder time preference.
+              </p>
+              <ActionReminderGroupForm
+                memberEvents={memberEvents}
+                users={users}
+                loadingUsers={loadingUsers}
+                userGroups={userGroups}
+                loadingUserGroups={loadingUserGroups}
+                userGroupsError={userGroupsError}
+                initialValues={{
+                  memberActionEventId: selectedEventId,
+                  reminderGroup: null,
+                  users: [],
+                }}
+                submitting={createSubmitting}
+                serverError={createError}
+                serverSuccess={createSuccess}
+                onCancel={() => setCreateGroupExpanded(false)}
+                onEventChange={setSelectedEventId}
+                onSubmit={handleCreateGroupSubmit}
+              />
+            </>
+          )}
+        </div>
+      </Card>
     </div>
   );
 };

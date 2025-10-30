@@ -576,9 +576,10 @@ export class UserService {
     return user;
   }
 
-  async findByIds(ids: number[]): Promise<User[]> {
+  async findByIds(ids: number[], relations?: string[]): Promise<User[]> {
     return this.userRepository.find({
       where: { id: In(ids) },
+      relations,
     });
   }
 

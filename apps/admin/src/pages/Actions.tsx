@@ -7,13 +7,64 @@ import {
   actionsSetTestRelations,
   userList,
 } from "@alliance/shared/client";
-import Card, { CardStyle } from "@alliance/shared/ui/Card";
-import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router";
-import ActionProgressBar from "../components/ActionProgressBar";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import ActionTimeline from "../components/ActionTimeline";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { testActions } from "../lib/testData";
+import Button, { ButtonColor } from "@alliance/shared/ui/Button";
+import ActionListCard from "../components/ActionListCard";
+
+export const getLastPastEventDate = (action: ActionDto): Date | null => {
+  const now = Date.now();
+  let latest: Date | null = null;
+
+  for (const event of action.events) {
+    if (!event?.date) {
+      continue;
+    }
+
+    const eventDate = new Date(event.date);
+    const eventTime = eventDate.getTime();
+
+    if (Number.isNaN(eventTime) || eventTime > now) {
+      continue;
+    }
+
+    if (!latest || eventDate > latest) {
+      latest = eventDate;
+    }
+  }
+
+  return latest;
+};
+
+const compareActionsBySchedule = (a: ActionDto, b: ActionDto) => {
+  if (a.archived && !b.archived) {
+    return 1;
+  }
+
+  if (!a.archived && b.archived) {
+    return -1;
+  }
+
+  const aLastPast = getLastPastEventDate(a);
+  const bLastPast = getLastPastEventDate(b);
+
+  if (!aLastPast || !bLastPast) {
+    return 0;
+  }
+
+  return aLastPast.getTime() - bLastPast.getTime();
+};
+
+type ActionSuiteGroup = {
+  id: number | null;
+  name: string;
+  actions: ActionDto[];
+  sortDate: Date | null;
+  isArchivedOnly: boolean;
+};
 
 const ActionsList: React.FC = () => {
   const [actions, setActions] = useState<ActionDto[]>([]);
@@ -98,6 +149,100 @@ const ActionsList: React.FC = () => {
     }
   }, [loadActions]);
 
+  const groupedActions = useMemo<ActionSuiteGroup[]>(() => {
+    if (actions.length === 0) {
+      return [];
+    }
+
+    const suites = new Map<
+      string,
+      {
+        id: number | null;
+        name: string;
+        actions: ActionDto[];
+      }
+    >();
+
+    actions.forEach((action) => {
+      const suiteId = action.suite?.id ?? null;
+      const suiteKey =
+        suiteId === null ? "suite-unspecified" : `suite-${suiteId}`;
+      const suiteName = action.suite?.name ?? "No suite";
+      const existing = suites.get(suiteKey);
+
+      if (existing) {
+        existing.actions.push(action);
+        return;
+      }
+
+      suites.set(suiteKey, {
+        id: suiteId,
+        name: suiteName,
+        actions: [action],
+      });
+    });
+
+    return Array.from(suites.values())
+      .map((suite) => {
+        const suiteActions = suite.actions
+          .slice()
+          .sort(compareActionsBySchedule);
+        const nonArchivedActions = suiteActions.filter(
+          (action) => !action.archived
+        );
+        const relevantActions =
+          nonArchivedActions.length > 0 ? nonArchivedActions : suiteActions;
+
+        const firstActionDate = relevantActions.reduce<Date | null>(
+          (earliest, action) => {
+            const date = getLastPastEventDate(action);
+            if (!date) {
+              return earliest;
+            }
+
+            if (!earliest || date < earliest) {
+              return date;
+            }
+
+            return earliest;
+          },
+          null
+        );
+
+        return {
+          ...suite,
+          actions: suiteActions,
+          sortDate: firstActionDate,
+          isArchivedOnly: suiteActions.every((action) => action.archived),
+        };
+      })
+      .sort((a, b) => {
+        if (a.isArchivedOnly && !b.isArchivedOnly) {
+          return 1;
+        }
+
+        if (!a.isArchivedOnly && b.isArchivedOnly) {
+          return -1;
+        }
+
+        const aDate = a.sortDate;
+        const bDate = b.sortDate;
+
+        if (!aDate || !bDate) {
+          if (aDate && !bDate) {
+            return -1;
+          }
+          if (!aDate && bDate) {
+            return 1;
+          }
+
+          return 0;
+        }
+
+        return aDate.getTime() - bDate.getTime();
+      });
+  }, [actions]);
+
   if (actionsLoading) {
     return <p>Loading actions...</p>;
   }
@@ -144,81 +289,54 @@ const ActionsList: React.FC = () => {
         )}
         className="h-full"
       />
-      <p className="font-bold my-4 px-5">All actions</p>
+      <div className="flex items-center gap-x-2 px-5 my-4">
+        <p className="font-bold ">All actions</p>
+        <Button
+          onClick={() => navigate("/actions/new")}
+          className="bg-green-3 hover:bg-green-2 text-white !px-3 !py-1 rounded-md text-sm"
+          color={ButtonColor.Green}
+        >
+          New action
+        </Button>
+        <Button
+          onClick={() => navigate("/new-suite")}
+          className="bg-green-3 !px-3 !py-1 rounded-md text-sm"
+          color={ButtonColor.White}
+        >
+          New suite
+        </Button>
+      </div>
       <p className="text-sm text-zinc-500 px-5">
-        Sorted by appearance to users (earliest last event first)
+        Grouped by suite and ordered by earliest appearing action (earliest last
+        event first)
       </p>
 
-      <div className="space-y-3 flex-1 overflow-y-auto p-5 pt-0">
-        {actions
-          .sort((a, b) => {
-            if (a.archived) return 1;
-            if (b.archived) return -1;
-            if (a.events.length === 0) return 1;
-            if (b.events.length === 0) return -1;
-            const pastAEvents = a.events.filter(
-              (e) => new Date(e.date) < new Date()
-            );
-            const pastBEvents = b.events.filter(
-              (e) => new Date(e.date) < new Date()
-            );
-            const aEvent = pastAEvents[pastAEvents.length - 1];
-            const bEvent = pastBEvents[pastBEvents.length - 1];
-
-            const aDate = aEvent ? new Date(aEvent.date) : new Date(0);
-            const bDate = bEvent ? new Date(bEvent.date) : new Date(0);
-
-            return aDate.getTime() - bDate.getTime();
-          })
-          .map((action) => (
-            <Card key={action.name} style={CardStyle.White}>
-              <div
-                onClick={() => handleEditAction(action.id)}
-                className="cursor-pointer relative"
+      <div className="space-y-5 flex-1 overflow-y-auto p-5 pt-0">
+        {groupedActions.map((suite) => (
+          <div
+            key={suite.id ?? "suite-unspecified"}
+            className="border border-zinc-200 rounded-lg overflow-hidden"
+          >
+            <div className="px-4 py-2 border-b border-zinc-200 bg-zinc-50">
+              <Link
+                to={`/suites/${suite.id}`}
+                className="text-sm font-semibold text-black hover:text-green"
               >
-                <div className="flex justify-between mb-2 ">
-                  <div className="flex flex-row items-center gap-x-2">
-                    {action?.archived && (
-                      <span className="px-2 py-1 rounded-sm bg-red-200 text-xs">
-                        Archived
-                      </span>
-                    )}
-                    <h2 className="font-bold text-sm">{action.name}</h2>
-                    {action.events.length > 0 && (
-                      <p className="text-sm text-zinc-500">
-                        Last event{" "}
-                        {new Date(
-                          action.events.filter(
-                            (e) => new Date(e.date) < new Date()
-                          )[
-                            action.events.filter(
-                              (e) => new Date(e.date) < new Date()
-                            ).length - 1
-                          ]?.date
-                        ).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                  <span className="absolute p-2 right-0 top-0 bg-zinc-50 text-zinc-800 font-medium text-xs rounded-sm text-nowrap border-zinc-200 border">
-                    {action.status}
-                  </span>
-                </div>
-                <p className="text-xs">{action.shortDescription}</p>
-
-                <ActionProgressBar
-                  status={action.status}
-                  usersJoined={
-                    action.commitmentless ? totalUsers : action.usersJoined
-                  }
-                  usersCompleted={action.usersCompleted}
-                  commitmentThreshold={action.commitmentThreshold}
-                  actionType={action.type}
-                  donationAmount={action.donationAmount}
-                  className="mt-2"
+                {suite.name}
+              </Link>
+            </div>
+            <div className="space-y-3 p-4">
+              {suite.actions.map((action) => (
+                <ActionListCard
+                  key={action.id}
+                  action={action}
+                  handleEditAction={handleEditAction}
+                  totalUsers={totalUsers}
                 />
-              </div>
-            </Card>
-          ))}
+              ))}
+            </div>
+          </div>
+        ))}
         {window.location.href.includes("localhost") && (
           <div className="flex justify-between items-center">
             <button

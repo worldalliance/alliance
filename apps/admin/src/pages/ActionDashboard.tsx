@@ -4,6 +4,7 @@ import {
   actionsCreate,
   actionsFindOne,
   actionsRemove,
+  actionsSuites,
   actionsUnarchive,
   actionsUpdate,
   CreateActionDto,
@@ -14,7 +15,7 @@ import {
   tasksListForms,
   userGetGroups,
 } from "@alliance/shared/client";
-import type { Group, GroupDto } from "@alliance/shared/client";
+import type { ActionSuite, Group, GroupDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import DatabaseIcon from "@alliance/shared/ui/icons/DatabaseIcon";
@@ -79,6 +80,8 @@ const ActionDashboard: React.FC = () => {
   const [formsLoading, setFormsLoading] = useState<boolean>(true);
   const [availableGroups, setAvailableGroups] = useState<GroupDto[]>([]);
   const [groupsLoading, setGroupsLoading] = useState<boolean>(true);
+  const [availableSuites, setAvailableSuites] = useState<ActionSuite[]>([]);
+  const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -108,6 +111,31 @@ const ActionDashboard: React.FC = () => {
       }
     };
     loadForms();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSuites = async () => {
+      try {
+        const response = await actionsSuites();
+        if (!cancelled && response.data) {
+          setAvailableSuites(response.data);
+        }
+      } catch (err) {
+        console.error("Failed to load suites:", err);
+      } finally {
+        if (!cancelled) {
+          setSuitesLoading(false);
+        }
+      }
+    };
+
+    loadSuites();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -147,6 +175,7 @@ const ActionDashboard: React.FC = () => {
     taskFormId: undefined,
     participatingGroups: [],
     everyoneShouldComplete: false,
+    suiteId: undefined,
   });
 
   // Reset form when switching to new action mode
@@ -164,6 +193,7 @@ const ActionDashboard: React.FC = () => {
         taskFormId: undefined,
         participatingGroups: [],
         everyoneShouldComplete: false,
+        suiteId: undefined,
       });
       setImageKey(null);
       setImagePreview(null);
@@ -202,14 +232,26 @@ const ActionDashboard: React.FC = () => {
           throw new Error("Action not found");
         }
         setAction(actionData);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { activities, usersCompleted, usersJoined, events, ...formData } =
-          actionData;
+        const {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          activities,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          usersCompleted,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          usersJoined,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          events,
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          updates,
+          suite,
+          ...formData
+        } = actionData;
 
         setForm({
           ...formData,
           taskFormId: actionData.taskFormId,
           participatingGroups: actionData.participatingGroups ?? [],
+          suiteId: suite?.id,
         });
 
         setSelectedGroupIds(
@@ -290,6 +332,14 @@ const ActionDashboard: React.FC = () => {
       setForm((prev) => ({
         ...prev,
         [name]: target.checked,
+      }));
+      return;
+    }
+
+    if (name === "suiteId") {
+      setForm((prev) => ({
+        ...prev,
+        suiteId: value === "" ? undefined : parseInt(value, 10),
       }));
       return;
     }
@@ -531,6 +581,8 @@ const ActionDashboard: React.FC = () => {
             formsLoading={formsLoading}
             availableGroups={availableGroups}
             groupsLoading={groupsLoading}
+            availableSuites={availableSuites}
+            suitesLoading={suitesLoading}
             selectedGroupIds={selectedGroupIds}
             onGroupsChange={handleGroupsChange}
           />
@@ -757,6 +809,8 @@ const ActionDashboard: React.FC = () => {
                   formsLoading={formsLoading}
                   availableGroups={availableGroups}
                   groupsLoading={groupsLoading}
+                  availableSuites={availableSuites}
+                  suitesLoading={suitesLoading}
                   selectedGroupIds={selectedGroupIds}
                   onGroupsChange={handleGroupsChange}
                 />

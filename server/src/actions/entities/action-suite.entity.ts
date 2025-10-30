@@ -4,6 +4,10 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Allow } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ReminderGroup } from './reminder-group.entity';
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from 'src/datasources/basecolumns';
 
 @Entity()
 export class ActionSuite {
@@ -28,4 +32,16 @@ export class ActionSuite {
   @Allow()
   @Type(() => ReminderGroup)
   reminderGroups: ReminderGroup[];
+
+  @CreateDateColumnTz()
+  @ApiProperty()
+  @Type(() => Date)
+  @Allow()
+  createdAt: Date;
+
+  @UpdateDateColumnTz()
+  @ApiProperty()
+  @Type(() => Date)
+  @Allow()
+  updatedAt: Date;
 }

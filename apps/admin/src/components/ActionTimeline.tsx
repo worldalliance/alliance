@@ -15,6 +15,7 @@ import { Link } from "react-router";
 
 interface ActionTimelineProps {
   actions: ActionDto[];
+  title?: string;
   className?: string;
 }
 
@@ -37,6 +38,7 @@ interface PhaseSegment {
 
 const ActionTimeline: React.FC<ActionTimelineProps> = ({
   actions,
+  title,
   className,
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -181,9 +183,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   }
 
   return (
-    <div
-      className={`bg-white rounded-lg shadow flex flex-col ${className || ""}`}
-    >
+    <div className={`bg-white rounded-lg flex flex-col ${className || ""}`}>
       <div className="flex-shrink-0">
         {/* Gantt chart area with frozen action names */}
         <div className="flex flex-1 min-h-0">
@@ -194,7 +194,13 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
               className="sticky top-0 bg-gray-50 border-b border-gray-200 py-3 pr-4 text-xs font-medium text-gray-700 z-20"
               style={{ height: "50px" }}
             >
-              <div className="flex items-center h-full pl-4">Actions</div>
+              {title ? (
+                <div className="flex items-center h-full pl-4 font-bold text-black text-base">
+                  {title}
+                </div>
+              ) : (
+                <div className="flex items-center h-full pl-4">Actions</div>
+              )}
             </div>
             {/* Action names - scrollable vertically */}
             <div

@@ -19,6 +19,7 @@ import { CreateTODReminderGroupDto } from 'src/actions/dto/action.dto';
 import { UserService } from 'src/user/user.service';
 import { Temporal } from '@js-temporal/polyfill';
 import { Group } from 'src/user/entities/group.entity';
+import { ApiProperty } from '@nestjs/swagger';
 
 export interface MissedDeadlineCandidate {
   actionId: number;
@@ -39,13 +40,17 @@ export const POST_MEMBER_ACTION_STATUSES = new Set<ActionStatus>([
   ActionStatus.Abandoned,
 ]);
 
-export type NotificationPlan = {
+export class NotificationPlan {
+  @ApiProperty()
   scheduledFor: Date;
+  @ApiProperty()
   referenceEvent: ActionEvent;
+  @ApiProperty()
   targetEvent: ActionEvent;
+  @ApiProperty()
   user: User;
   group: ReminderGroup;
-};
+}
 
 @Injectable()
 export class ActionEventReminderService {
@@ -57,6 +62,34 @@ export class ActionEventReminderService {
     private readonly recipientService: ActionEventRecipientService,
     private readonly userService: UserService,
   ) {}
+
+  async getPlansForGroup(
+    group: ReminderGroup,
+    windowStart: Date,
+    windowEnd: Date,
+  ): Promise<NotificationPlan[]> {
+    const plans: NotificationPlan[] = [];
+
+    const users = await this.recipientService.getReminderGroupCohort(group);
+
+    for (const user of users) {
+      const reminderSendTime = getGroupSendTimeForUser(user, group);
+
+      if (!reminderSendTime) continue;
+
+      if (reminderSendTime >= windowStart && reminderSendTime <= windowEnd) {
+        plans.push({
+          user,
+          group,
+          scheduledFor: reminderSendTime,
+          referenceEvent: group.memberActionEvent,
+          targetEvent: group.memberActionEvent,
+        });
+      }
+    }
+
+    return plans;
+  }
 
   async evaluateNotifications(
     windowStart: Date,
@@ -80,23 +113,8 @@ export class ActionEventReminderService {
     );
 
     for (const group of groups) {
-      const users = await this.recipientService.getReminderGroupCohort(group);
-
-      for (const user of users) {
-        const reminderSendTime = getGroupSendTimeForUser(user, group);
-
-        if (!reminderSendTime) continue;
-
-        if (reminderSendTime >= windowStart && reminderSendTime <= windowEnd) {
-          plans.push({
-            user,
-            group,
-            scheduledFor: reminderSendTime,
-            referenceEvent: group.memberActionEvent,
-            targetEvent: group.memberActionEvent,
-          });
-        }
-      }
+      const plans = await this.getPlansForGroup(group, windowStart, windowEnd);
+      plans.push(...plans);
     }
 
     if (plans.length === 0) {
@@ -195,13 +213,31 @@ export class ActionEventReminderService {
     return zoned;
   }
 
+  async getNotificationPlansForGroup(
+    groupId: number,
+  ): Promise<NotificationPlan[]> {
+    const group = await this.reminderGroupRepository.findOneOrFail({
+      where: { id: groupId },
+      relations: [
+        'memberActionEvent',
+        'memberActionEvent.action',
+        'memberActionEvent.action.participatingGroups',
+        'users',
+      ],
+    });
+    return this.getPlansForGroup(
+      group,
+      new Date(),
+      new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
+    );
+  }
+
   async createReminderGroup(
     eventId: number,
     dto: CreateTODReminderGroupDto,
   ): Promise<ReminderGroup> {
     const event = await this.eventRepository.findOneOrFail({
       where: { id: eventId },
-      relations: ['action', 'action.participatingGroups'],
     });
     if (event.newStatus !== ActionStatus.MemberAction) {
       throw new BadRequestException('Event is not a member action event');
@@ -237,15 +273,10 @@ export class ActionEventReminderService {
 
     Object.assign(group, dto);
 
-    const newGroup = await this.reminderGroupRepository.save(group);
-
-    return this.reminderGroupRepository.findOneOrFail({
-      where: { id: newGroup.id },
-      relations: ['reminders'],
-    });
+    return this.reminderGroupRepository.save(group);
   }
 
-  async deleteReminderGroup(eventId: number, groupId: number): Promise<void> {
+  async deleteReminderGroup(groupId: number): Promise<void> {
     await this.reminderGroupRepository.delete({
       id: groupId,
     });

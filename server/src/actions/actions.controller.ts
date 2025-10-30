@@ -35,9 +35,11 @@ import {
   ActionActivityDto,
   ActionDto,
   ActionEventDto,
+  ActionSuiteDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
+  CreateActionSuiteDto,
   CreateActionUpdateDto,
   CreateTODReminderGroupDto,
   DeclineActionDto,
@@ -55,6 +57,8 @@ import {
 import { ActionUpdate } from './entities/action-update.entity';
 import { ActionEvent } from './entities/action-event.entity';
 import { ReminderGroup } from './entities/reminder-group.entity';
+import { NotificationPlan } from 'src/notifs/action-event-reminder.service';
+import { ActionSuite } from './entities/action-suite.entity';
 
 @Controller('actions')
 export class ActionsController {
@@ -388,14 +392,20 @@ export class ActionsController {
     return this.actionsService.createdTimedReminderGroup(eventId, body);
   }
 
-  @Delete('events/:eventId/reminders/:groupId')
+  @Delete('reminders/:groupId')
   @UseGuards(AdminGuard)
   @ApiOkResponse()
-  async deleteReminderGroup(
-    @Param('eventId', ParseIntPipe) eventId: number,
+  async deleteReminderGroup(@Param('groupId', ParseIntPipe) groupId: number) {
+    this.actionsService.deleteReminderGroup(groupId);
+  }
+
+  @Get('plansForGroup/:groupId')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: NotificationPlan, isArray: true })
+  async plansForGroup(
     @Param('groupId', ParseIntPipe) groupId: number,
-  ) {
-    this.actionsService.deleteReminderGroup(eventId, groupId);
+  ): Promise<NotificationPlan[]> {
+    return this.actionsService.getNotificationPlansForGroup(groupId);
   }
 
   @Post('clearDb')
@@ -511,5 +521,28 @@ export class ActionsController {
     @Body() createActionUpdateDto: CreateActionUpdateDto,
   ): Promise<ActionUpdate> {
     return this.actionsService.createActionUpdate(id, createActionUpdateDto);
+  }
+
+  @Get('suites')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionSuite, isArray: true })
+  suites(): Promise<ActionSuite[]> {
+    return this.actionsService.getSuites();
+  }
+
+  @Get('suite/:id')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionSuiteDto })
+  suite(@Param('id', ParseIntPipe) id: number): Promise<ActionSuiteDto> {
+    return this.actionsService.getSuite(id);
+  }
+
+  @Post('createSuite')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionSuiteDto })
+  createSuite(
+    @Body() createActionSuiteDto: CreateActionSuiteDto,
+  ): Promise<ActionSuiteDto> {
+    return this.actionsService.createSuite(createActionSuiteDto);
   }
 }

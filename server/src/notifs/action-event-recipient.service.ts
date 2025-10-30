@@ -93,21 +93,21 @@ export class ActionEventRecipientService {
     const targetGroupIds = new Set(
       event.action.participatingGroups.map((group) => group.id),
     );
+    const usersWithGroups = await this.userService.findByIds(
+      users.map((user) => user.id),
+      ['groups'],
+    );
+    const idToUser = new Map(usersWithGroups.map((user) => [user.id, user]));
 
     const filterToEligible = (users: User[]) =>
-      users.filter(async (user) => {
-        const userWithGroups = await this.userService.findOneOrFail(user.id, [
-          'groups',
-        ]);
-        return (
-          this.userShouldCompleteEvent(
-            userWithGroups,
-            event.date,
-            targetGroupIds,
-            event.action.everyoneShouldComplete,
-          ) === true
-        );
-      });
+      users.filter((user) =>
+        this.userShouldCompleteEvent(
+          idToUser.get(user.id)!,
+          event.date,
+          targetGroupIds,
+          event.action.everyoneShouldComplete,
+        ),
+      );
 
     const actions = actionSuite ? actionSuite.actions : [event.action];
 

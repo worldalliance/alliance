@@ -124,7 +124,7 @@ export class Action {
   @OneToMany(() => ActionEvent, (event) => event.action)
   @ApiProperty({
     description: 'Events associated with the action',
-    type: () => [ActionEvent],
+    type: () => ActionEvent,
     isArray: true,
   })
   @Allow()
@@ -181,10 +181,7 @@ export class Action {
   activities: ActionActivity[];
 
   @Expose()
-  @ApiProperty({
-    description: 'Number of users who have joined the action',
-    example: 5,
-  })
+  @ApiProperty({ enum: ActionStatus, enumName: 'ActionStatus' })
   get status(): ActionStatus {
     if (!this.events) {
       return ActionStatus.Draft;

@@ -585,15 +585,6 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
                     <DatabaseIcon />
                     Edit in Database
                   </Button>
-                  <Button
-                    onClick={() =>
-                      (window.location.href = `/event/${event.id}`)
-                    }
-                    color={ButtonColor.White}
-                    className="!px-3 !text-xs gap-x-1"
-                  >
-                    See notifications
-                  </Button>
                 </div>
               </div>
             ))

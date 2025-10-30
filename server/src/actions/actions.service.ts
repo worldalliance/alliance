@@ -16,7 +16,10 @@ import {
 } from 'src/forum/entities/comment.entity';
 import { EditableContent } from 'src/forum/entities/editablecontent.entity';
 import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
-import { ActionEventReminderService } from 'src/notifs/action-event-reminder.service';
+import {
+  ActionEventReminderService,
+  NotificationPlan,
+} from 'src/notifs/action-event-reminder.service';
 import { NotifsService } from 'src/notifs/notifs.service';
 import { ILike, In, LessThan, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
@@ -24,9 +27,11 @@ import {
   ActionActivityDto,
   ActionDto,
   ActionEventDto,
+  ActionSuiteDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
+  CreateActionSuiteDto,
   CreateActionUpdateDto,
   CreateTODReminderGroupDto,
   LatLonDto,
@@ -52,6 +57,7 @@ import { User } from 'src/user/entities/user.entity';
 import { ActionEventNotifType } from 'src/notifs/entities/action-event-notif.entity';
 import { ActionUpdate } from './entities/action-update.entity';
 import { ReminderGroup } from './entities/reminder-group.entity';
+import { ActionSuite } from './entities/action-suite.entity';
 
 export enum UserActionRelation {
   Joined = 'joined',
@@ -82,8 +88,8 @@ export class ActionsService {
     private readonly groupRepository: Repository<Group>,
     @InjectRepository(ActionUpdate)
     private readonly actionUpdateRepository: Repository<ActionUpdate>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    @InjectRepository(ActionSuite)
+    private readonly actionSuiteRepository: Repository<ActionSuite>,
     private readonly notifsService: NotifsService,
     private userService: UserService,
     public eventEmitter: EventEmitter2,
@@ -92,8 +98,15 @@ export class ActionsService {
   ) {}
 
   async create(createActionDto: CreateActionDto): Promise<Action> {
-    const { participatingGroups, ...rest } = createActionDto;
+    const { participatingGroups, suiteId, ...rest } = createActionDto;
     const action = this.actionRepository.create(rest);
+
+    if (suiteId) {
+      const suite = await this.actionSuiteRepository.findOneOrFail({
+        where: { id: suiteId },
+      });
+      action.suite = suite;
+    }
 
     if (participatingGroups && participatingGroups.length > 0) {
       action.participatingGroups =
@@ -106,7 +119,7 @@ export class ActionsService {
   findAll(): Promise<ActionDto[]> {
     return this.actionRepository
       .find({
-        relations: ['events', 'activities', 'participatingGroups'],
+        relations: ['events', 'activities', 'participatingGroups', 'suite'],
       })
       .then((actions) => {
         return actions.map((action) => new ActionDto(action));
@@ -247,7 +260,13 @@ export class ActionsService {
       : null;
     const action = await this.actionRepository.findOne({
       where: { id },
-      relations: ['events', 'activities', 'participatingGroups', 'updates'],
+      relations: [
+        'events',
+        'activities',
+        'participatingGroups',
+        'updates',
+        'suite',
+      ],
     });
 
     if (
@@ -454,7 +473,14 @@ export class ActionsService {
       throw new NotFoundException('Action not found');
     }
 
-    const { participatingGroups, ...rest } = updateActionDto;
+    const { participatingGroups, suiteId, ...rest } = updateActionDto;
+
+    if (suiteId) {
+      const suite = await this.actionSuiteRepository.findOneOrFail({
+        where: { id: suiteId },
+      });
+      action.suite = suite;
+    }
 
     Object.assign(action, rest);
 
@@ -484,9 +510,13 @@ export class ActionsService {
     return savedEvent;
   }
 
-  async deleteReminderGroup(eventId: number, groupId: number) {
-    return this.actionEventReminderService.deleteReminderGroup(
-      eventId,
+  async deleteReminderGroup(groupId: number) {
+    return this.actionEventReminderService.deleteReminderGroup(groupId);
+  }
+  async getNotificationPlansForGroup(
+    groupId: number,
+  ): Promise<NotificationPlan[]> {
+    return this.actionEventReminderService.getNotificationPlansForGroup(
       groupId,
     );
   }
@@ -1001,5 +1031,27 @@ export class ActionsService {
 
   async getReminderGroupsForEvent(id: number): Promise<ReminderGroup[]> {
     return this.actionEventReminderService.getReminderGroupsForEvent(id);
+  }
+
+  async getSuites(): Promise<ActionSuite[]> {
+    return this.actionSuiteRepository.find();
+  }
+
+  async getSuite(id: number): Promise<ActionSuiteDto> {
+    const suite = await this.actionSuiteRepository.findOneOrFail({
+      where: { id },
+    });
+    const all = await this.findAll();
+    return new ActionSuiteDto(
+      suite,
+      all.filter((action) => action.suite?.id === id),
+    );
+  }
+
+  async createSuite(
+    createActionSuiteDto: CreateActionSuiteDto,
+  ): Promise<ActionSuiteDto> {
+    const suite = this.actionSuiteRepository.create(createActionSuiteDto);
+    return this.actionSuiteRepository.save(suite);
   }
 }

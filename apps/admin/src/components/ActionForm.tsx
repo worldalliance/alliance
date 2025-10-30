@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CreateActionDto, FormDto, GroupDto } from "@alliance/shared/client";
+import {
+  ActionSuite,
+  CreateActionDto,
+  FormDto,
+  GroupDto,
+} from "@alliance/shared/client";
 import React, { useMemo, useRef } from "react";
 import { MarkdownTextArea } from "./MarkdownTextArea";
 
@@ -22,6 +27,8 @@ interface ActionFormProps {
   formsLoading: boolean;
   availableGroups?: GroupDto[];
   groupsLoading: boolean;
+  availableSuites?: ActionSuite[];
+  suitesLoading: boolean;
   selectedGroupIds: number[];
   onGroupsChange: (ids: number[]) => void;
   actionId?: number;
@@ -40,6 +47,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
   baseUrl,
   availableGroups = [],
   groupsLoading,
+  availableSuites = [],
+  suitesLoading = false,
   selectedGroupIds,
   onGroupsChange,
 }) => {
@@ -93,6 +102,20 @@ const ActionForm: React.FC<ActionFormProps> = ({
     []
   );
 
+  const suiteSelectOptions = useMemo(
+    () => [
+      {
+        value: "",
+        label: suitesLoading ? "Loading suites..." : "No suite",
+      },
+      ...availableSuites.map((suite) => ({
+        value: suite.id,
+        label: suite.name,
+      })),
+    ],
+    [availableSuites, suitesLoading]
+  );
+
   const fieldDefs = useMemo(
     (): FieldDef[] => [
       {
@@ -110,6 +133,14 @@ const ActionForm: React.FC<ActionFormProps> = ({
         type: "text",
         required: true,
         inGrid: true,
+      },
+      {
+        name: "suiteId",
+        label: "Suite",
+        type: "select",
+        options: suiteSelectOptions,
+        inGrid: true,
+        helpText: suitesLoading ? "Fetching suites..." : undefined,
       },
       {
         name: "type",
@@ -166,7 +197,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
       { name: "body", label: "Body", type: "markdowntextarea", required: true },
       { name: "image", label: "Image", type: "file" },
     ],
-    [actionTypeOptions]
+    [actionTypeOptions, suiteSelectOptions, suitesLoading]
   );
 
   const renderField = (f: FieldDef) => {

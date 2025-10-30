@@ -39,10 +39,6 @@ const Sidebar: React.FC = () => {
     loadActions();
   }, [loadActions]);
 
-  const handleCreateAction = useCallback(() => {
-    navigate("/actions/new");
-  }, [navigate]);
-
   const handleEditAction = useCallback(
     (id: number) => {
       navigate(`/actions/${id}`);
@@ -136,10 +132,10 @@ const Sidebar: React.FC = () => {
               User Invites
             </Link>
           </div>
-          <div className="flex flex-row justify-between items-center mt-3 mx-2">
+          <div className="flex flex-row justify-between items-center mt-3">
             <p className="font-bold">Current Actions</p>
             <Button
-              onClick={handleCreateAction}
+              onClick={() => navigate("/actions/new")}
               className="bg-green-3 hover:bg-green-2 text-white !px-3 !py-1 rounded-md text-sm"
               color={ButtonColor.Green}
             >

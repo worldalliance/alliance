@@ -20,6 +20,7 @@ import { ActionEvent } from './entities/action-event.entity';
 import { Action } from './entities/action.entity';
 import { ActionUpdate } from './entities/action-update.entity';
 import { ReminderGroup } from './entities/reminder-group.entity';
+import { ActionSuite } from './entities/action-suite.entity';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ReminderGroup } from './entities/reminder-group.entity';
       ActionUpdate,
       ReminderGroup,
       ActionEventNotif,
+      ActionSuite,
     ]),
     UserModule,
     NotifsModule,
