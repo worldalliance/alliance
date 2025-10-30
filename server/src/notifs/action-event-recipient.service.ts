@@ -17,6 +17,7 @@ import {
   ReminderCohortType,
   ReminderGroup,
 } from 'src/actions/entities/reminder-group.entity';
+import { ActionSuite } from 'src/actions/entities/action-suite.entity';
 
 @Injectable()
 export class ActionEventRecipientService {
@@ -87,26 +88,33 @@ export class ActionEventRecipientService {
   async filterForShouldRemind(
     users: User[],
     event: Pick<ActionEvent, 'newStatus' | 'action' | 'date'>,
+    actionSuite?: ActionSuite,
   ): Promise<User[]> {
     const targetGroupIds = new Set(
       event.action.participatingGroups.map((group) => group.id),
     );
 
     const filterToEligible = (users: User[]) =>
-      users.filter(
-        (user) =>
+      users.filter(async (user) => {
+        const userWithGroups = await this.userService.findOneOrFail(user.id, [
+          'groups',
+        ]);
+        return (
           this.userShouldCompleteEvent(
-            user,
+            userWithGroups,
             event.date,
             targetGroupIds,
             event.action.everyoneShouldComplete,
-          ) === true,
-      );
+          ) === true
+        );
+      });
+
+    const actions = actionSuite ? actionSuite.actions : [event.action];
 
     const completionActivities = await this.actionActivityRepository.find({
       where: {
         userId: In(users.map((user) => user.id)),
-        actionId: event.action.id,
+        actionId: In(actions.map((action) => action.id)),
         type: In([
           ActionActivityType.USER_COMPLETED,
           ActionActivityType.USER_DECLINED,
@@ -114,9 +122,22 @@ export class ActionEventRecipientService {
         ]),
       },
     });
+
+    const userToHasCompletedAllActions = new Map<number, boolean>();
+    for (const user of users) {
+      userToHasCompletedAllActions.set(
+        user.id,
+        actions.every((action) =>
+          completionActivities.some(
+            (activity) =>
+              activity.userId === user.id && activity.actionId === action.id,
+          ),
+        ),
+      );
+    }
+
     return filterToEligible(users).filter(
-      (user) =>
-        !completionActivities.some((activity) => activity.userId === user.id),
+      (user) => !(userToHasCompletedAllActions.get(user.id) ?? true),
     );
   }
 
@@ -163,6 +184,10 @@ export class ActionEventRecipientService {
           `Invalid cohort type: ${group.cohortType satisfies never}`,
         );
     }
-    return this.filterForShouldRemind(users, group.memberActionEvent);
+    return this.filterForShouldRemind(
+      users,
+      group.memberActionEvent,
+      group.actionSuite,
+    );
   }
 }

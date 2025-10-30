@@ -1,15 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, In, LessThanOrEqual, Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { ActionEventNotifType } from './entities/action-event-notif.entity';
 import {
   ActionEvent,
   ActionStatus,
 } from '../actions/entities/action-event.entity';
-import {
-  ActionActivity,
-  ActionActivityType,
-} from '../actions/entities/action-activity.entity';
 import { ActionEventRecipientService } from './action-event-recipient.service';
 import { NotificationScheduleEntryDto } from 'src/actions/dto/notification-schedule.dto';
 import { User } from '../user/entities/user.entity';
@@ -56,8 +52,6 @@ export class ActionEventReminderService {
   constructor(
     @InjectRepository(ActionEvent)
     private readonly eventRepository: Repository<ActionEvent>,
-    @InjectRepository(ActionActivity)
-    private readonly actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(ReminderGroup)
     private readonly reminderGroupRepository: Repository<ReminderGroup>,
     private readonly recipientService: ActionEventRecipientService,
@@ -78,14 +72,31 @@ export class ActionEventReminderService {
     }
 
     const plans: NotificationPlan[] = [];
-    const requiredEvents = new Set<number>();
 
-    // Reminders
-    const reminderPlans = await this.computeReminderPlans(start, end);
-    for (const plan of reminderPlans) {
-      plans.push(plan);
-      requiredEvents.add(plan.referenceEvent.id);
-      requiredEvents.add(plan.targetEvent.id);
+    const groups = await this.findSendableReminderGroups(
+      this.reminderGroupRepository,
+      windowStart,
+      windowEnd,
+    );
+
+    for (const group of groups) {
+      const users = await this.recipientService.getReminderGroupCohort(group);
+
+      for (const user of users) {
+        const reminderSendTime = getGroupSendTimeForUser(user, group);
+
+        if (!reminderSendTime) continue;
+
+        if (reminderSendTime >= windowStart && reminderSendTime <= windowEnd) {
+          plans.push({
+            user,
+            group,
+            scheduledFor: reminderSendTime,
+            referenceEvent: group.memberActionEvent,
+            targetEvent: group.memberActionEvent,
+          });
+        }
+      }
     }
 
     if (plans.length === 0) {
@@ -124,9 +135,13 @@ export class ActionEventReminderService {
   ) {
     return repo
       .createQueryBuilder('rg')
-      .leftJoin('rg.memberActionEvent', 'event')
-      .leftJoin('rg.deadlineEvent', 'deadline')
-      .leftJoin('rg.users', 'users')
+      .leftJoinAndSelect('rg.memberActionEvent', 'event')
+      .leftJoinAndSelect('event.action', 'eventAction')
+      .leftJoinAndSelect('eventAction.participatingGroups', 'eventActionGroups')
+      .leftJoinAndSelect('rg.deadlineEvent', 'deadline')
+      .leftJoinAndSelect('rg.users', 'users')
+      .leftJoinAndSelect('users.groups', 'userGroups')
+      .leftJoinAndSelect('rg.userGroup', 'userGroup')
       .andWhere('rg."allSent" = false')
       .where(
         new Brackets((qb) => {
@@ -143,7 +158,7 @@ export class ActionEventReminderService {
               `(
                  rg."timingMode" = :from
                  AND deadline."date" IS NOT NULL
-                 AND (deadline."date" + (rg."sendAtSecondsFromDeadline" * interval '1 second'))
+                 AND (deadline."date" - (rg."sendAtSecondsFromDeadline" * interval '1 second'))
                    BETWEEN :ws AND :we
                )`,
             );
@@ -158,323 +173,6 @@ export class ActionEventReminderService {
         we: windowEnd,
       })
       .getMany();
-  }
-
-  private async computeReminderPlans(
-    windowStart: Date,
-    windowEnd: Date,
-  ): Promise<NotificationPlan[]> {
-    const results: NotificationPlan[] = [];
-
-    const groups = await this.findSendableReminderGroups(
-      this.reminderGroupRepository,
-      windowStart,
-      windowEnd,
-    );
-
-    for (const group of groups) {
-      const users = await this.recipientService.getReminderGroupCohort(group);
-
-      for (const user of users) {
-        const reminderSendTime = getGroupSendTimeForUser(user, group);
-
-        if (!reminderSendTime) continue;
-
-        if (reminderSendTime >= windowStart && reminderSendTime <= windowEnd) {
-          results.push({
-            user,
-            group,
-            scheduledFor: reminderSendTime,
-            referenceEvent: group.memberActionEvent,
-            targetEvent: group.memberActionEvent,
-          });
-        }
-      }
-    }
-
-    // const events = await this.eventRepository.find({
-    //   relations: [
-    //     'action',
-    //     'action.participatingGroups',
-    //     'reminders',
-    //     'reminders.users', //TODO: shouldnt load whole users
-    //     'personalActionReminders',
-    //     'personalActionReminders.group',
-    //     'personalActionReminders.user',
-    //   ],
-    //   order: { action: { id: 'ASC' }, date: 'ASC' },
-    // });
-
-    // const eventsByAction = new Map<number, ActionEvent[]>();
-    // for (const event of events) {
-    //   if (!event.action) continue;
-    //   const list = eventsByAction.get(event.action.id) ?? [];
-    //   list.push(event);
-    //   eventsByAction.set(event.action.id, list);
-    // }
-
-    // for (const [, list] of eventsByAction) {
-    //   list.sort((a, b) => a.date.getTime() - b.date.getTime());
-    //   for (let i = 0; i < list.length - 1; i += 1) {
-    //     const current = list[i];
-    //     const next = list[i + 1];
-    //     if (
-    //       !current.action ||
-    //       !ANNOUNCEMENT_SUPPORTED_STATUSES.includes(current.newStatus)
-    //     ) {
-    //       continue;
-    //     }
-    //     for (const reminder of current.reminders) {
-    //       if (!reminder.sentAt) {
-    //         const sendTime = this.computeReminderSendDate(reminder, next);
-    //         if (sendTime >= windowStart && sendTime <= windowEnd) {
-    //           results.push({
-    //             type: ActionEventNotifType.Reminder,
-    //             reminder,
-    //             scheduledFor: sendTime,
-    //             referenceEvent: current,
-    //             targetEvent: next,
-    //             metadata: {
-    //               currentEventId: current.id,
-    //               nextEventId: next.id,
-    //             },
-    //           });
-    //         }
-    //       }
-    //     }
-    //     for (const personalReminder of current.personalActionReminders) {
-    //       if (!personalReminder.sentAt) {
-    //         const sendTime = personalReminder.sendTime;
-    //         if (sendTime >= windowStart && sendTime <= windowEnd) {
-    //           console.log('sending personal reminder', personalReminder);
-    //           results.push({
-    //             type: ActionEventNotifType.PersonalReminder,
-    //             reminder: personalReminder,
-    //             scheduledFor: sendTime,
-    //             referenceEvent: current,
-    //             targetEvent: next,
-    //             metadata: {
-    //               currentEventId: current.id,
-    //               nextEventId: next.id,
-    //             },
-    //           });
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
-
-    return results;
-  }
-
-  async findMissedDeadlineCandidates(
-    reference: Date,
-    windowEnd: Date = reference,
-  ): Promise<MissedDeadlineCandidate[]> {
-    const rows = await this.eventRepository.find({
-      where: { date: LessThanOrEqual(windowEnd) },
-      relations: ['action', 'action.participatingGroups'],
-      order: { action: { id: 'ASC' }, date: 'ASC' },
-    });
-
-    const eventsByAction = new Map<number, ActionEvent[]>();
-    for (const event of rows) {
-      if (!event.action) continue;
-      const list = eventsByAction.get(event.action.id) ?? [];
-      list.push(event);
-      eventsByAction.set(event.action.id, list);
-    }
-
-    const candidates = new Map<
-      number,
-      { deadlineEvent: ActionEvent; resolutionEvent: ActionEvent }
-    >();
-
-    for (const [actionId, list] of eventsByAction) {
-      list.sort((a, b) => a.date.getTime() - b.date.getTime());
-      for (let i = list.length - 1; i >= 0; i -= 1) {
-        const deadline = list[i];
-        if (deadline.newStatus !== ActionStatus.MemberAction) {
-          continue;
-        }
-
-        let followUp: ActionEvent | null = null;
-        for (let j = i + 1; j < list.length; j += 1) {
-          const candidate = list[j];
-          if (candidate.newStatus === ActionStatus.MemberAction) {
-            continue;
-          }
-          if (!POST_MEMBER_ACTION_STATUSES.has(candidate.newStatus)) {
-            continue;
-          }
-          followUp = candidate;
-          break;
-        }
-
-        if (
-          followUp &&
-          followUp.date >= reference &&
-          followUp.date <= windowEnd
-        ) {
-          candidates.set(actionId, {
-            deadlineEvent: deadline,
-            resolutionEvent: followUp,
-          });
-        }
-
-        break;
-      }
-    }
-
-    if (candidates.size === 0) {
-      return [];
-    }
-
-    const activities = await this.actionActivityRepository.find({
-      where: { actionId: In(Array.from(candidates.keys())) },
-      order: { createdAt: 'ASC' },
-      select: ['actionId', 'userId', 'type', 'createdAt'],
-    });
-
-    const latestActivityByAction = new Map<
-      number,
-      Map<number, { type: ActionActivityType; createdAt: Date }>
-    >();
-
-    for (const activity of activities) {
-      const map =
-        latestActivityByAction.get(activity.actionId) ??
-        new Map<number, { type: ActionActivityType; createdAt: Date }>();
-      map.set(activity.userId, {
-        type: activity.type,
-        createdAt: activity.createdAt,
-      });
-      latestActivityByAction.set(activity.actionId, map);
-    }
-
-    const raw: Array<MissedDeadlineCandidate & { _timelineDate: Date }> = [];
-
-    const extraRecipientsByAction = new Map<number, User[]>();
-
-    await Promise.all(
-      Array.from(candidates.entries()).map(async ([actionId, context]) => {
-        const action = context.deadlineEvent.action;
-        if (!action || !action.commitmentless) {
-          return;
-        }
-
-        const recipients = await this.recipientService.getFilteredUsersForEvent(
-          context.deadlineEvent,
-          ActionEventNotifType.MissedDeadline,
-        );
-        extraRecipientsByAction.set(actionId, recipients);
-      }),
-    );
-
-    for (const [actionId, context] of candidates) {
-      const userIds = new Set<number>();
-      const userMap = latestActivityByAction.get(actionId);
-
-      if (userMap) {
-        for (const [userId, activity] of userMap) {
-          if (activity.type !== ActionActivityType.USER_JOINED) {
-            continue;
-          }
-          userIds.add(userId);
-        }
-      }
-
-      const extraRecipients = extraRecipientsByAction.get(actionId) ?? [];
-      for (const user of extraRecipients) {
-        if (!user?.id || !user.contractDateSigned) {
-          continue;
-        }
-        userIds.add(user.id);
-      }
-
-      if (userIds.size === 0) {
-        continue;
-      }
-
-      for (const userId of userIds) {
-        raw.push({
-          actionId,
-          userId,
-          deadlineEventId: context.deadlineEvent.id,
-          deadlineDate: context.deadlineEvent.date,
-          resolutionEventId: context.resolutionEvent.id,
-          resolutionDate: context.resolutionEvent.date,
-          _timelineDate: context.resolutionEvent.date,
-        });
-      }
-    }
-
-    if (raw.length === 0) {
-      return [];
-    }
-
-    const userIds = Array.from(
-      new Set(raw.map((candidate) => candidate.userId)),
-    );
-    const completionsByUser = new Map<number, Date[]>();
-
-    if (userIds.length) {
-      const completionActivities = await this.actionActivityRepository.find({
-        where: {
-          userId: In(userIds),
-          type: ActionActivityType.USER_COMPLETED,
-        },
-        order: { createdAt: 'ASC' },
-        select: ['userId', 'createdAt'],
-      });
-
-      for (const activity of completionActivities) {
-        const list = completionsByUser.get(activity.userId) ?? [];
-        list.push(activity.createdAt);
-        completionsByUser.set(activity.userId, list);
-      }
-    }
-
-    const groupedByUser = new Map<
-      number,
-      Array<MissedDeadlineCandidate & { _timelineDate: Date }>
-    >();
-
-    for (const candidate of raw) {
-      const list = groupedByUser.get(candidate.userId) ?? [];
-      list.push(candidate);
-      groupedByUser.set(candidate.userId, list);
-    }
-
-    for (const [userId, list] of groupedByUser) {
-      const completions = (completionsByUser.get(userId) ?? []).slice();
-      completions.sort((a, b) => a.getTime() - b.getTime());
-
-      const timeline: Array<
-        | { type: 'completion'; time: Date }
-        | {
-            type: 'miss';
-            time: Date;
-            candidate: MissedDeadlineCandidate & { _timelineDate: Date };
-          }
-      > = [];
-
-      for (const completion of completions) {
-        timeline.push({ type: 'completion', time: completion });
-      }
-
-      for (const candidate of list) {
-        timeline.push({
-          type: 'miss',
-          time: candidate._timelineDate,
-          candidate,
-        });
-      }
-
-      timeline.sort((a, b) => a.time.getTime() - b.time.getTime());
-    }
-
-    return raw;
   }
 
   async getPersonalizedSendTime(
@@ -519,7 +217,7 @@ export class ActionEventReminderService {
       users = await this.userService.findByIds(dto.userIds);
     }
 
-    const group = await this.reminderGroupRepository.save(
+    return this.reminderGroupRepository.save(
       await this.reminderGroupRepository.create({
         ...dto,
         memberActionEvent: event,
@@ -527,16 +225,9 @@ export class ActionEventReminderService {
         users,
       }),
     );
-
-    return this.reminderGroupRepository.findOneOrFail({
-      where: { id: group.id },
-      relations: ['reminders'],
-    });
   }
 
   async updateReminderGroup(
-    actionId: number,
-    eventId: number,
     groupId: number,
     dto: CreateTODReminderGroupDto,
   ): Promise<ReminderGroup> {
@@ -557,6 +248,12 @@ export class ActionEventReminderService {
   async deleteReminderGroup(eventId: number, groupId: number): Promise<void> {
     await this.reminderGroupRepository.delete({
       id: groupId,
+    });
+  }
+
+  async getReminderGroupsForEvent(id: number): Promise<ReminderGroup[]> {
+    return this.reminderGroupRepository.find({
+      where: { memberActionEvent: { id } },
     });
   }
 }

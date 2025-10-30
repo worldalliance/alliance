@@ -1,20 +1,13 @@
 import {
   ActionDto,
-  AdminActionEventDto,
   GroupDto,
-  PersonalActionReminder,
   ReminderGroup,
-  actionsCreateReminder,
   actionsCreateReminderGroup,
-  actionsDeleteReminder,
   actionsDeleteReminderGroup,
-  actionsEventWithReminders,
-  actionsUpdateReminder,
+  actionsReminderGroupsForEvent,
   actionsUpdateReminderGroup,
-  CreateActionReminderDto,
   userGetGroups,
   userList,
-  ActionReminder,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
@@ -26,11 +19,6 @@ import {
   parseISO,
   subSeconds,
 } from "date-fns";
-import ActionReminderForm, {
-  ActionReminderFormInitialValues,
-  ActionReminderFormSubmitPayload,
-} from "./ActionReminderForm";
-import ClockIcon from "@alliance/shared/ui/icons/ClockIcon";
 import ActionReminderGroupForm, {
   ActionReminderGroupFormSubmitPayload,
 } from "./ActionReminderGroupForm";
@@ -53,16 +41,24 @@ interface ActionRemindersTabProps {
 }
 
 const DISPLAY_DATETIME_FORMAT = "PP p";
-const notificationChannelLabels: Record<string, string> = {
-  email: "Email",
-  text: "Text",
-  push: "Push",
+
+type ReminderGroupReminder = {
+  id?: number;
+  user?: Record<string, unknown>;
+  sentAt?: string | null;
+  sendTime?: string | null;
+  skippedForCompletion?: boolean;
 };
 
-const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
-  action,
-  setAction,
-}) => {
+type ReminderGroupWithRelations = ReminderGroup & {
+  reminders?: ReminderGroupReminder[];
+  sendRangeStart?: string | null;
+  sendRangeEnd?: string | null;
+  send_range_start?: string | null;
+  send_range_end?: string | null;
+};
+
+const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
   const memberEvents = useMemo(
     () =>
       (action.events || []).filter(
@@ -90,18 +86,11 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     memberEvents[0].id //TODO: collate or move between events
   );
   const [users, setUsers] = useState<UserSelectUser[]>([]);
-  const usersById = useMemo(
-    () => new Map(users.map((user) => [user.id, user])),
-    [users]
-  );
   const [userGroups, setUserGroups] = useState<GroupDto[]>([]);
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
   const [loadingUserGroups, setLoadingUserGroups] = useState<boolean>(false);
   const [userGroupsError, setUserGroupsError] = useState<string | null>(null);
-  const [eventWithReminders, setEventWithReminders] = useState<
-    AdminActionEventDto | undefined
-  >(undefined);
-  const [createExpanded, setCreateExpanded] = useState<boolean>(false);
+
   const [createGroupExpanded, setCreateGroupExpanded] =
     useState<boolean>(false);
   const [createSubmitting, setCreateSubmitting] = useState<boolean>(false);
@@ -119,9 +108,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [deleteConfirmation, setDeleteConfirmation] = useState<number | null>(
-    null
-  );
+  const [reminderGroups, setReminderGroups] = useState<ReminderGroup[]>([]);
 
   useEffect(() => {
     if (memberEvents.length && selectedEventId == null) {
@@ -173,75 +160,34 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       .finally(() => setLoadingUserGroups(false));
   }, []);
 
-  const refreshEventReminders = useCallback(
-    async (eventId: number) => {
-      const response = await actionsEventWithReminders({
-        path: { id: eventId },
-      });
+  const refreshReminderGroups = useCallback(async (eventId: number) => {
+    const response = await actionsReminderGroupsForEvent({
+      path: { id: eventId },
+    });
 
-      if (response.error) {
-        throw new Error(
-          typeof response.error === "string"
-            ? response.error
-            : "Failed to load reminders."
-        );
-      }
+    if (response.error) {
+      throw new Error(
+        typeof response.error === "string"
+          ? response.error
+          : "Failed to load reminders."
+      );
+    }
 
-      if (!response.data) {
-        throw new Error("Failed to load reminders.");
-      }
+    if (!response.data) {
+      setLoadError("Failed to load reminders");
+      throw new Error("Failed to load reminders.");
+    }
 
-      setEventWithReminders(response.data);
+    setReminderGroups(response.data);
+  }, []);
 
-      setAction((previous) => {
-        if (!previous) {
-          return previous;
-        }
-        const remindersList = response.data.reminders;
-        return {
-          ...previous,
-          events: previous.events.map((event) => {
-            if (event.id !== response.data.id) {
-              return event;
-            }
-            return {
-              ...event,
-              reminders: remindersList,
-              customReminders: remindersList,
-              reminderGroups: response.data.reminderGroups,
-            } as typeof event & {
-              reminders?: ActionReminder[];
-              customReminders?: ActionReminder[];
-              reminderGroups?: ReminderGroup[];
-            };
-          }),
-        };
-      });
+  useEffect(() => {
+    refreshReminderGroups(selectedEventId);
+  }, [selectedEventId, refreshReminderGroups]);
 
-      return response.data;
-    },
-    [setAction]
-  );
-
-  const handleDeleteConfirm = (reminderId: number) => {
-    setDeleteConfirmation(reminderId);
-  };
   const handleDeleteGroupConfirm = (groupId: number) => {
     setDeleteGroupConfirmation(groupId);
   };
-  const handleDelete = async () => {
-    if (!deleteConfirmation) {
-      return;
-    }
-    const resp = await actionsDeleteReminder({
-      path: { reminderId: deleteConfirmation },
-    });
-    if (resp.response.ok) {
-      setDeleteConfirmation(null);
-      refreshEventReminders(selectedEventId);
-    }
-  };
-
   const handleDeleteGroup = async () => {
     if (!deleteGroupConfirmation) {
       return;
@@ -251,61 +197,9 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     });
     if (resp.response.ok) {
       setDeleteGroupConfirmation(null);
-      refreshEventReminders(selectedEventId);
+      refreshReminderGroups(selectedEventId);
     }
   };
-
-  useEffect(() => {
-    if (!selectedEventId) {
-      setEventWithReminders(undefined);
-      return;
-    }
-    setLoadError(null);
-    refreshEventReminders(selectedEventId).catch((err) => {
-      console.error(err);
-      setLoadError(
-        err instanceof Error ? err.message : "Failed to load reminders."
-      );
-    });
-  }, [selectedEventId, refreshEventReminders]);
-
-  const reminders = useMemo(() => {
-    if (!eventWithReminders) {
-      return [];
-    }
-    return eventWithReminders.reminders
-      .slice()
-      .sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-  }, [eventWithReminders]);
-
-  console.log(eventWithReminders);
-
-  const reminderGroups = useMemo(() => {
-    if (!eventWithReminders?.reminderGroups) {
-      return [];
-    }
-    const groups = new Map<
-      number,
-      { group: ReminderGroup; reminders: PersonalActionReminder[] }
-    >();
-
-    for (const group of eventWithReminders.reminderGroups) {
-      if (group) {
-        if (!groups.has(group.id)) {
-          groups.set(group.id, { group, reminders: [] });
-        }
-        groups
-          .get(group.id)
-          ?.reminders.push(
-            ...(group.reminders as unknown as PersonalActionReminder[])
-          );
-      }
-    }
-    return Array.from(groups.entries());
-  }, [eventWithReminders]);
 
   const parseDate = (value?: string | Date | null) => {
     if (!value) {
@@ -320,59 +214,43 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     return date ? format(date, DISPLAY_DATETIME_FORMAT) : null;
   };
 
-  const getMemberEventId = useCallback(
-    (reminder: ActionReminder) => {
-      const relatedEventId = reminder.memberActionEvent?.id;
-      if (typeof relatedEventId === "number") {
-        return relatedEventId;
-      }
-      const dtoMemberId = (
-        reminder as unknown as { memberActionEventId?: number }
-      ).memberActionEventId;
-      if (typeof dtoMemberId === "number") {
-        return dtoMemberId;
-      }
-      return eventWithReminders?.id;
-    },
-    [eventWithReminders]
-  );
+  const getGroupMemberEventId = (group: ReminderGroupWithRelations) =>
+    group.memberActionEvent?.id ?? null;
 
-  const findDeadlineEvent = (reminder: ActionReminder) => {
-    const memberEventId = getMemberEventId(reminder);
+  const findGroupDeadlineEvent = (group: ReminderGroupWithRelations) => {
+    const memberEventId = getGroupMemberEventId(group);
     if (!memberEventId) {
       return undefined;
     }
     return nextEventById.get(memberEventId);
   };
 
-  const resolveSchedule = (reminder: ActionReminder) => {
-    if (reminder.timingMode === "absolute") {
-      const sendDate = parseDate(reminder.sendAtAbsolute);
-      if (sendDate) {
-        return {
-          primary: `Sends ${format(sendDate, DISPLAY_DATETIME_FORMAT)}`,
-          secondary: "Absolute schedule",
-          sendDate,
-          deadlineDate: null as Date | null,
-          referenceTitle: null as string | null,
-        };
-      }
+  const getGroupRange = (group: ReminderGroupWithRelations) => {
+    const start = group.sendRangeStart ?? group.send_range_start ?? null;
+    const end = group.sendRangeEnd ?? group.send_range_end ?? null;
+    return { start: parseDate(start), end: parseDate(end) };
+  };
+
+  const describeGroupSchedule = (
+    group: ReminderGroupWithRelations
+  ): { primary: string; secondary?: string | null } => {
+    if (group.timingMode === "absolute") {
+      const sendAtLabel = formatDisplayDate(group.sendAtAbsolute);
       return {
-        primary: "Sends at scheduled time",
-        secondary: "Unable to determine send date",
-        sendDate: null,
-        deadlineDate: null,
-        referenceTitle: null,
+        primary: sendAtLabel
+          ? `Sends ${sendAtLabel}`
+          : "Absolute schedule configured",
+        secondary: sendAtLabel ? "Absolute schedule" : null,
       };
     }
 
-    if (reminder.timingMode === "from_deadline") {
-      const deadlineEvent = findDeadlineEvent(reminder);
+    if (group.timingMode === "from_deadline") {
+      const deadlineEvent =
+        group.deadlineEvent ?? findGroupDeadlineEvent(group);
       const deadlineDate = parseDate(deadlineEvent?.date);
-      const seconds = reminder.sendAtSecondsFromDeadline ?? 0;
+      const seconds = group.sendAtSecondsFromDeadline ?? 0;
       if (deadlineDate) {
         const sendDate = subSeconds(deadlineDate, seconds);
-        const isBefore = seconds >= 0;
         const referenceTitle =
           deadlineEvent?.title?.trim() ||
           `deadline on ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`;
@@ -383,9 +261,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
               sendDate,
               DISPLAY_DATETIME_FORMAT
             )} • Deadline ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`,
-            sendDate,
-            deadlineDate,
-            referenceTitle,
           };
         }
         const distance = formatDistanceStrict(deadlineDate, sendDate, {
@@ -393,179 +268,54 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         });
         return {
           primary: `Sends ${distance} ${
-            isBefore ? "before" : "after"
+            seconds >= 0 ? "before" : "after"
           } ${referenceTitle}`,
           secondary: `${format(
             sendDate,
             DISPLAY_DATETIME_FORMAT
           )} • Deadline ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`,
-          sendDate,
-          deadlineDate,
-          referenceTitle,
         };
       }
       return {
         primary: "Relative schedule",
         secondary: "Waiting for deadline details",
-        sendDate: null,
-        deadlineDate: null,
-        referenceTitle: deadlineEvent?.title ?? null,
       };
     }
 
-    return {
-      primary: "Scheduled reminder",
-      secondary: "",
-      sendDate: null,
-      deadlineDate: null,
-      referenceTitle: null,
-    };
-  };
-
-  const getNotificationChannels = (reminder: ActionReminder) => {
-    const channels = new Set<string>();
-    (reminder.notifications ?? []).forEach((notification) => {
-      const channel = (notification as { channel?: string })?.channel;
-      if (channel) {
-        channels.add(channel);
+    if (group.timingMode === "within_range") {
+      const { start, end } = getGroupRange(group);
+      if (start && end) {
+        return {
+          primary: `Sends between ${format(
+            start,
+            DISPLAY_DATETIME_FORMAT
+          )} and ${format(end, DISPLAY_DATETIME_FORMAT)}`,
+          secondary: "Personalized window",
+        };
       }
-    });
-    return Array.from(channels);
-  };
-
-  const toFormUsers = useCallback(
-    (rawUsers: unknown[]): UserSelectUser[] => {
-      if (!Array.isArray(rawUsers)) {
-        return [];
-      }
-      return rawUsers
-        .map((user) => {
-          if (!user || typeof user !== "object") {
-            return null;
-          }
-          const id = (user as { id?: number }).id;
-          if (typeof id !== "number") {
-            return null;
-          }
-          const existing = usersById.get(id);
-          if (existing) {
-            return existing;
-          }
-          const name =
-            (user as { name?: string }).name ??
-            (user as { displayName?: string }).displayName ??
-            undefined;
-          const email = (user as { email?: string }).email ?? undefined;
-          return {
-            id,
-            name,
-            displayName: name,
-            email,
-          };
-        })
-        .filter((user): user is UserSelectUser => Boolean(user));
-    },
-    [usersById]
-  );
-
-  const buildReminderInitialValues = useCallback(
-    (reminder: ActionReminder): ActionReminderFormInitialValues => {
-      const memberActionEventId =
-        getMemberEventId(reminder) ?? selectedEventId ?? null;
-      const reminderUsers = toFormUsers(reminder.users ?? []);
-
       return {
-        memberActionEventId,
-        reminder: {
-          cohortType: reminder.cohortType,
-          timingMode: reminder.timingMode,
-          emailSubject: reminder.emailSubject ?? defaultEmailSubject,
-          emailMessage: reminder.emailMessage ?? defaultEmailContents,
-          textMessage: reminder.textMessage ?? defaultTextMessage,
-          sendAtAbsolute: reminder.sendAtAbsolute,
-          sendAtSecondsFromDeadline: reminder.sendAtSecondsFromDeadline,
-          userIds:
-            reminderUsers.length > 0
-              ? reminderUsers.map((user) => user.id)
-              : undefined,
-        },
-        selectedUsers: reminderUsers,
+        primary: "Personalized window",
+        secondary: "Range not fully configured",
       };
-    },
-    [selectedEventId, toFormUsers, getMemberEventId]
-  );
-
-  const createInitialValues = useMemo<ActionReminderFormInitialValues>(() => {
-    const defaultSendAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
-    return {
-      memberActionEventId: selectedEventId,
-      reminder: {
-        cohortType: "all_uncompleted",
-        timingMode: "absolute",
-        emailSubject: defaultEmailSubject,
-        emailMessage: defaultEmailContents,
-        textMessage: defaultTextMessage,
-        sendAtAbsolute: defaultSendAt,
-        sendAtSecondsFromDeadline: undefined,
-        userIds: undefined,
-      },
-      selectedUsers: [],
-    };
-  }, [selectedEventId]);
-
-  const mapFormPayloadToDto = (
-    payload: ActionReminderFormSubmitPayload
-  ): CreateActionReminderDto => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { memberActionEventId: _eventId, userIds, ...rest } = payload;
-    return {
-      ...rest,
-      userIds:
-        rest.cohortType === "custom"
-          ? userIds && userIds.length > 0
-            ? userIds
-            : []
-          : undefined,
-    };
-  };
-
-  const handleCreateSubmit = async (
-    payload: ActionReminderFormSubmitPayload
-  ) => {
-    setCreateError(null);
-    setCreateSuccess(null);
-    setCreateSubmitting(true);
-
-    try {
-      const eventId = payload.memberActionEventId;
-      if (!eventId) {
-        throw new Error("Select a member action event first.");
-      }
-
-      const body = mapFormPayloadToDto(payload);
-
-      setSelectedEventId(eventId);
-      const response = await actionsCreateReminder({
-        path: { actionId: action.id, eventId },
-        body,
-      });
-
-      if (response.error || !response.data) {
-        throw new Error(
-          (response.error as string) ?? "Failed to create reminder."
-        );
-      }
-
-      await refreshEventReminders(eventId);
-      setCreateSuccess("Reminder scheduled successfully.");
-    } catch (err) {
-      console.error(err);
-      setCreateError(
-        err instanceof Error ? err.message : "Failed to create reminder."
-      );
-    } finally {
-      setCreateSubmitting(false);
     }
+
+    if (group.timingMode === "event_launch") {
+      const launchDate = parseDate(group.memberActionEvent?.date);
+      return {
+        primary: launchDate
+          ? `Sends when launch event begins (${format(
+              launchDate,
+              DISPLAY_DATETIME_FORMAT
+            )})`
+          : "Sends when launch event begins",
+        secondary: null,
+      };
+    }
+
+    return {
+      primary: "Scheduled group reminder",
+      secondary: null,
+    };
   };
 
   const handleCreateGroupSubmit = async (
@@ -593,7 +343,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         );
       }
 
-      await refreshEventReminders(eventId);
+      await refreshReminderGroups(eventId);
       setCreateSuccess("Personal reminders group scheduled successfully.");
       setCreateGroupExpanded(false);
     } catch (err) {
@@ -605,45 +355,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       setCreateSubmitting(false);
     }
   };
-
-  const handleEditSubmit =
-    (reminderId: number) =>
-    async (payload: ActionReminderFormSubmitPayload) => {
-      setEditError(null);
-      setEditSuccess(null);
-      setEditSubmitting(true);
-      try {
-        const eventId = payload.memberActionEventId;
-        if (!eventId) {
-          throw new Error("Select a member action event first.");
-        }
-
-        const body = mapFormPayloadToDto(payload);
-        setSelectedEventId(eventId);
-
-        const response = await actionsUpdateReminder({
-          path: { actionId: action.id, eventId, reminderId },
-          body,
-        });
-
-        if (!response.data) {
-          throw new Error(
-            (response.error as string) ?? "Failed to update reminder."
-          );
-        }
-
-        await refreshEventReminders(eventId);
-        setEditSuccess("Reminder updated successfully.");
-        setEditingReminderId(null);
-      } catch (err) {
-        console.error(err);
-        setEditError(
-          err instanceof Error ? err.message : "Failed to update reminder."
-        );
-      } finally {
-        setEditSubmitting(false);
-      }
-    };
 
   const handleEditGroupSubmit =
     (groupId: number) =>
@@ -668,7 +379,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
           );
         }
 
-        await refreshEventReminders(eventId);
+        await refreshReminderGroups(eventId);
         setEditSuccess("Reminder group updated successfully.");
         setEditingGroupId(null);
       } catch (err) {
@@ -681,12 +392,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       }
     };
 
-  const handleEditStart = (reminderId: number) => {
-    setEditingReminderId(reminderId);
-    setEditError(null);
-    setEditSuccess(null);
-  };
-
   const handleEditGroupStart = (groupId: number) => {
     setEditingGroupId(groupId);
     setEditError(null);
@@ -698,33 +403,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     setEditingGroupId(null);
     setEditError(null);
     setEditSuccess(null);
-  };
-
-  const formatRecipientName = (user: unknown) => {
-    if (!user || typeof user !== "object") {
-      return null;
-    }
-    const record = user as Record<string, unknown>;
-    const displayName = record.displayName;
-    if (typeof displayName === "string" && displayName.trim()) {
-      return displayName.trim();
-    }
-    const name = record.name;
-    if (typeof name === "string" && name.trim()) {
-      return name.trim();
-    }
-    const id = record.id;
-    if (typeof id === "number") {
-      return `User #${id}`;
-    }
-    return null;
-  };
-
-  const handleCreateToggle = () => {
-    if (createExpanded) {
-      setCreateError(null);
-    }
-    setCreateExpanded((prev) => !prev);
   };
 
   if (!memberEvents.length) {
@@ -743,41 +421,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       <Card style={CardStyle.White}>
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-base font-semibold">Schedule Reminder</h3>
-            <Button
-              type="button"
-              color={ButtonColor.Black}
-              className="px-3 py-1 text-sm"
-              onClick={handleCreateToggle}
-            >
-              {createExpanded ? "Hide form" : "New reminder"}
-            </Button>
-          </div>
-          {!createExpanded && createSuccess && (
-            <p className="text-sm text-green-600">{createSuccess}</p>
-          )}
-          {createExpanded && (
-            <ActionReminderForm
-              memberEvents={memberEvents}
-              users={users}
-              loadingUsers={loadingUsers}
-              initialValues={createInitialValues}
-              submitting={createSubmitting}
-              serverError={createError}
-              serverSuccess={createSuccess}
-              onCancel={handleCreateToggle}
-              onEventChange={setSelectedEventId}
-              onSubmit={handleCreateSubmit}
-            />
-          )}
-        </div>
-      </Card>
-      <Card style={CardStyle.White}>
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-base font-semibold">
-              Schedule Personalized Time of Day Reminder Group
-            </h3>
+            <h3 className="text-base font-semibold">Schedule a notification</h3>
             <Button
               type="button"
               color={ButtonColor.Black}
@@ -820,207 +464,18 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         </div>
       </Card>
 
-      <h3 className="text-base font-semibold mb-3 ml-1">Scheduled Reminders</h3>
       {loadError && <p className="text-sm text-red-600 mb-2">{loadError}</p>}
       {editSuccess && !editingReminderId && (
         <p className="text-sm text-green-600 mb-2">{editSuccess}</p>
       )}
-      <div className="space-y-4">
-        {reminders.map((reminder) => {
-          const schedule = resolveSchedule(reminder);
-          const sentAtLabel = formatDisplayDate(reminder.sentAt);
-          const sendDateLabel =
-            !sentAtLabel && schedule.sendDate
-              ? format(schedule.sendDate, DISPLAY_DATETIME_FORMAT)
-              : null;
-          const channels = getNotificationChannels(reminder);
-          const channelText =
-            channels.length > 0
-              ? channels
-                  .map(
-                    (channel) => notificationChannelLabels[channel] ?? channel
-                  )
-                  .join(", ")
-              : null;
-          const isCustomCohort = reminder.cohortType === "custom";
-          const recipientNames = (reminder.users ?? [])
-            .map(formatRecipientName)
-            .filter((value): value is string => Boolean(value));
-          const primaryRecipients = recipientNames.slice(0, 3);
-          const remainingRecipients =
-            recipientNames.length - primaryRecipients.length;
-          const cohortSummary = isCustomCohort
-            ? `${recipientNames.length} recipient${
-                recipientNames.length === 1 ? "" : "s"
-              }`
-            : "All members who have not completed the action";
-          const emailSubject = reminder.emailSubject?.trim();
-          const emailMessage = reminder.emailMessage?.trim();
-          const textMessage = reminder.textMessage?.trim();
-          const isEditing = editingReminderId === reminder.id;
-
-          return (
-            <div
-              key={reminder.id}
-              className="border border-gray-200 rounded-md text-sm space-y-4"
-            >
-              {deleteConfirmation === reminder.id && (
-                <div className="p-4 flex flex-row items-center gap-2">
-                  <p className="text-sm text-gray-600">
-                    Are you sure you want to delete this reminder?
-                  </p>
-                  <div className="flex flex-row gap-2">
-                    <Button
-                      type="button"
-                      color={ButtonColor.White}
-                      onClick={() => setDeleteConfirmation(null)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      color={ButtonColor.Red}
-                      onClick={handleDelete}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              )}
-              {isEditing ? (
-                <div className="p-4">
-                  <ActionReminderForm
-                    memberEvents={memberEvents}
-                    users={users}
-                    loadingUsers={loadingUsers}
-                    initialValues={buildReminderInitialValues(reminder)}
-                    submitting={isEditing ? editSubmitting : false}
-                    serverError={isEditing ? editError : null}
-                    serverSuccess={isEditing ? editSuccess : null}
-                    disableEventSelection
-                    submitLabel="Save Changes"
-                    onCancel={handleEditCancel}
-                    onSubmit={handleEditSubmit(reminder.id)}
-                  />
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-wrap justify-between gap-3">
-                    <div className="flex flex-row gap-2 w-full bg-zinc-100 p-4 items-center justify-between">
-                      <div className="flex flex-row gap-2 items-center">
-                        <ClockIcon fill={!!sentAtLabel ? undefined : "#aaa"} />
-                        <p className="text-sm text-black font-semibold">
-                          {sentAtLabel
-                            ? `Sent ${sentAtLabel}`
-                            : sendDateLabel
-                            ? `Scheduled for ${sendDateLabel}`
-                            : "Pending"}
-                        </p>
-                      </div>
-                      <div className="flex flex-row gap-2">
-                        <Button
-                          type="button"
-                          color={ButtonColor.White}
-                          onClick={() => handleEditStart(reminder.id)}
-                          className="-my-1"
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          type="button"
-                          color={ButtonColor.Black}
-                          onClick={() => handleDeleteConfirm(reminder.id)}
-                          className="-my-1"
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="px-4">
-                      <p className="text-xs uppercase tracking-wide text-gray-500">
-                        Schedule
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {schedule.primary}
-                      </p>
-                      {schedule.secondary && (
-                        <p className="text-xs text-gray-500">
-                          {schedule.secondary}
-                        </p>
-                      )}
-                      {reminder.timingMode === "from_deadline" &&
-                        schedule.referenceTitle && (
-                          <p className="text-xs text-gray-500">
-                            Deadline event: {schedule.referenceTitle}
-                          </p>
-                        )}
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2 pl-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-gray-500">
-                        Recipients
-                      </p>
-                      <p className="text-sm text-gray-900">{cohortSummary}</p>
-                      {isCustomCohort && primaryRecipients.length > 0 && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {primaryRecipients.join(", ")}
-                          {remainingRecipients > 0
-                            ? ` +${remainingRecipients} more`
-                            : ""}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">
-                          Email Content
-                        </p>
-                        {emailSubject && (
-                          <p className="text-sm font-medium text-gray-900">
-                            {emailSubject}
-                          </p>
-                        )}
-                        <p className="text-sm text-gray-700 whitespace-pre-line">
-                          {emailMessage || "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">
-                          Text Content
-                        </p>
-                        <p className="text-sm text-gray-700 whitespace-pre-line">
-                          {textMessage || "—"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-4 text-xs text-gray-500 pl-4 pb-4">
-                    <span>
-                      Mode:{" "}
-                      {reminder.timingMode === "absolute"
-                        ? "Absolute time"
-                        : "Relative to deadline"}
-                    </span>
-                    <span>
-                      Cohort:{" "}
-                      {reminder.cohortType === "custom"
-                        ? "Custom recipients"
-                        : "All uncompleted"}
-                    </span>
-                    {channelText && <span>Channels: {channelText}</span>}
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      {reminderGroups.map(([groupId, { group, reminders }]) => {
-        console.log(group);
+      {reminderGroups.map((group) => {
+        const groupSchedule = describeGroupSchedule(group);
         return (
-          <Card key={groupId} className="bg-white text-sm !p-0 overflow-hidden">
-            {deleteGroupConfirmation === groupId && (
+          <Card
+            key={group.id}
+            className="bg-white text-sm !p-0 overflow-hidden"
+          >
+            {deleteGroupConfirmation === group.id && (
               <div className="p-4 flex flex-row items-center gap-2">
                 <p className="text-sm text-gray-600">
                   Are you sure you want to delete this reminder group?
@@ -1044,9 +499,14 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
               </div>
             )}
             <div className="flex flex-row gap-2 w-full bg-zinc-100 p-4 items-center justify-between">
-              <div className="flex flex-row gap-2 items-center">
+              <div className="flex flex-col gap-1">
                 <p className="font-semibold">{group.name}</p>
-                <p className="text-gray-500">Send day: {group.sendDayString}</p>
+                <p className="">{groupSchedule.primary}</p>
+                {groupSchedule.secondary && (
+                  <p className="text-xs text-gray-500">
+                    {groupSchedule.secondary}
+                  </p>
+                )}
                 {group.allSent && (
                   <p className="text-green">All reminders processed</p>
                 )}
@@ -1055,7 +515,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                 <Button
                   type="button"
                   color={ButtonColor.White}
-                  onClick={() => handleEditGroupStart(groupId)}
+                  onClick={() => handleEditGroupStart(group.id)}
                   className="-my-1"
                 >
                   Edit
@@ -1063,7 +523,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                 <Button
                   type="button"
                   color={ButtonColor.Black}
-                  onClick={() => handleDeleteGroupConfirm(groupId)}
+                  onClick={() => handleDeleteGroupConfirm(group.id)}
                   className="-my-1"
                 >
                   Delete
@@ -1071,7 +531,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
               </div>
             </div>
             <div className="flex flex-row gap-2 p-4">
-              {editingGroupId === groupId ? (
+              {editingGroupId === group.id ? (
                 <ActionReminderGroupForm
                   memberEvents={memberEvents}
                   users={users}
@@ -1083,13 +543,13 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                   initialValues={{
                     memberActionEventId: selectedEventId,
                     reminderGroup: group,
-                    users: reminders.map((reminder) => reminder.user),
+                    users: group.users ?? [],
                   }}
                   serverError={editError}
                   serverSuccess={editSuccess}
                   submitLabel="Update Reminders"
                   onCancel={handleEditCancel}
-                  onSubmit={handleEditGroupSubmit(groupId)}
+                  onSubmit={handleEditGroupSubmit(group.id)}
                 />
               ) : (
                 <>
@@ -1107,7 +567,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             </div>
             <div>
               <div className="divide-y divide-gray-200 border-t border-gray-200 max-h-[300px] overflow-y-auto">
-                {reminders.length === 0 && (
+                {/* {reminders.length === 0 && (
                   <p className="text-sm text-gray-600 p-4">
                     This group has no reminders.
                   </p>
@@ -1118,7 +578,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                     className="flex flex-row gap-2 items-center p-3 justify-between"
                   >
                     <p className="text-sm font-semibold text-gray-900">
-                      {reminder.user?.name}
+                      {formatRecipientName(reminder.user)}
                     </p>
                     <div className="flex flex-row gap-2 items-center">
                       <div className="mt-[2px]">
@@ -1144,7 +604,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                       </span>
                     </div>
                   </div>
-                ))}
+                ))} */}
               </div>
             </div>
           </Card>

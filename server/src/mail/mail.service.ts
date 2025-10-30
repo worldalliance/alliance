@@ -2,7 +2,7 @@ import { ISendMailOptions, MailerService } from '@nestjs-modules/mailer';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ActionEvent } from 'src/actions/entities/action-event.entity';
-import { actionUrl, tasksUrl, withCid } from 'src/search/approutes';
+import { tasksUrl, withCid } from 'src/search/approutes';
 import { Repository } from 'typeorm';
 import { EmailStatus, EmailType, Mail } from './mail.entity';
 import { getDaysFromDeadline } from 'src/notifs/textnotifcontents';
@@ -39,7 +39,7 @@ export function processKeywordReplacements(
         ? getDaysFromDeadline(context.deadlineEvent)
         : '[err]',
     )
-    .replace('#{link}', withCid(tasksUrl(), context.cid));
+    .replace('#{link}', withCid(tasksUrl(true), context.cid));
 }
 
 @Injectable()
@@ -75,7 +75,7 @@ export class MailService {
   ): Promise<Mail> {
     if (process.env.NODE_ENV === 'test') {
       return {
-        id: 0,
+        id: Math.floor(Math.random() * 1000000),
         sentMessageId: 'test',
         to: recipient,
         cid,

@@ -5,7 +5,7 @@ import {
   PartialType,
   PickType,
 } from '@nestjs/swagger';
-import { instanceToPlain, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import {
   Allow,
   IsBoolean,
@@ -38,6 +38,10 @@ export class CreateTODReminderGroupDto extends PickType(ReminderGroup, [
   'cohortType',
   'emailSubject',
   'textMessage',
+  'sendAtAbsolute',
+  'sendAtSecondsFromDeadline',
+  'send_range_start',
+  'send_range_end',
 ]) {
   @ApiPropertyOptional({ type: Number, isArray: true })
   @IsOptional()
@@ -46,11 +50,6 @@ export class CreateTODReminderGroupDto extends PickType(ReminderGroup, [
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   userGroupId?: number;
-
-  @ApiProperty()
-  @IsDefined()
-  @Type(() => String)
-  sendDay: string;
 }
 
 export class ActionEventDto extends PickType(ActionEvent, [
@@ -65,23 +64,6 @@ export class ActionEventDto extends PickType(ActionEvent, [
   constructor(event: ActionEvent) {
     super();
     Object.assign(this, event);
-  }
-}
-
-export class AdminActionEventDto extends PickType(ActionEvent, [
-  'id',
-  'title',
-  'description',
-  'newStatus',
-  'showInTimeline',
-  'sendNotifsTo',
-  'date',
-  'updatedAt',
-]) {
-  constructor(event: ActionEvent) {
-    super();
-    const plain = instanceToPlain(event);
-    Object.assign(this, plain);
   }
 }
 

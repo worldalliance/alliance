@@ -24,7 +24,6 @@ import {
   ActionActivityDto,
   ActionDto,
   ActionEventDto,
-  AdminActionEventDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
@@ -500,17 +499,10 @@ export class ActionsService {
   }
 
   async updateReminderGroup(
-    actionId: number,
-    eventId: number,
     groupId: number,
     dto: CreateTODReminderGroupDto,
   ): Promise<ReminderGroup> {
-    return this.actionEventReminderService.updateReminderGroup(
-      actionId,
-      eventId,
-      groupId,
-      dto,
-    );
+    return this.actionEventReminderService.updateReminderGroup(groupId, dto);
   }
 
   async remove(id: number) {
@@ -989,23 +981,6 @@ export class ActionsService {
     return new ActionDto(await this.actionRepository.save(action));
   }
 
-  async getEventWithReminders(id: number): Promise<AdminActionEventDto> {
-    const event = await this.actionEventRepository.findOneOrFail({
-      where: { id },
-      relations: [
-        'reminders',
-        'reminders.users',
-        'reminders.memberActionEvent',
-        'reminderGroups',
-        'reminderGroups.reminders',
-        'reminderGroups.userGroup',
-        'reminderGroups.reminders.user',
-        'reminderGroups.reminders.group',
-      ],
-    });
-    return new AdminActionEventDto(event);
-  }
-
   async createActionUpdate(
     id: number,
     createActionUpdateDto: CreateActionUpdateDto,
@@ -1022,5 +997,9 @@ export class ActionsService {
       action,
     });
     return this.actionUpdateRepository.save(actionUpdate);
+  }
+
+  async getReminderGroupsForEvent(id: number): Promise<ReminderGroup[]> {
+    return this.actionEventReminderService.getReminderGroupsForEvent(id);
   }
 }

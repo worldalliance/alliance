@@ -35,7 +35,6 @@ import {
   ActionActivityDto,
   ActionDto,
   ActionEventDto,
-  AdminActionEventDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
@@ -369,21 +368,14 @@ export class ActionsController {
     return this.actionsService.addEvent(id, actionEventDto, req.user?.sub);
   }
 
-  @Patch(':actionId/events/:eventId/remindergroups/:groupId')
+  @Patch('remindergroups/:groupId')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ReminderGroup })
   async updateReminderGroup(
-    @Param('actionId', ParseIntPipe) actionId: number,
-    @Param('eventId', ParseIntPipe) eventId: number,
     @Param('groupId', ParseIntPipe) groupId: number,
     @Body() body: CreateTODReminderGroupDto,
   ): Promise<ReminderGroup> {
-    return this.actionsService.updateReminderGroup(
-      actionId,
-      eventId,
-      groupId,
-      body,
-    );
+    return this.actionsService.updateReminderGroup(groupId, body);
   }
 
   @Post('events/:eventId/createremindergroup')
@@ -502,13 +494,13 @@ export class ActionsController {
     return this.actionsService.unarchive(id);
   }
 
-  @Get('eventWithReminders/:id')
+  @Get('reminderGroupsForEvent/:id')
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: AdminActionEventDto })
-  eventWithReminders(
+  @ApiOkResponse({ type: ReminderGroup, isArray: true })
+  reminderGroupsForEvent(
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<AdminActionEventDto> {
-    return this.actionsService.getEventWithReminders(id);
+  ): Promise<ReminderGroup[]> {
+    return this.actionsService.getReminderGroupsForEvent(id);
   }
 
   @Post('createUpdate/:id')

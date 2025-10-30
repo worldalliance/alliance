@@ -126,11 +126,13 @@ export class ReminderGroup {
   @Type(() => ActionEventNotif)
   notifications: ActionEventNotif[];
 
+  @ApiPropertyOptional({ type: Date })
   @Column({ type: 'timestamptz', nullable: true })
   @Type(() => Date)
   @IsOptional()
   send_range_start?: Date;
 
+  @ApiPropertyOptional({ type: Date })
   @Column({ type: 'timestamptz', nullable: true })
   @Type(() => Date)
   @IsOptional()

@@ -78,7 +78,7 @@ export async function createTestApp(
     userRepo.create({
       email: 'user@example.com',
       password: 'pass',
-      name: 'User',
+      name: 'Test User',
       groups: [defaultGroup],
     }),
   );
@@ -87,7 +87,7 @@ export async function createTestApp(
     userRepo.create({
       email: 'admin@example.com',
       password: 'pass',
-      name: 'Admin',
+      name: 'Test Admin',
       admin: true,
       groups: [defaultGroup],
     }),

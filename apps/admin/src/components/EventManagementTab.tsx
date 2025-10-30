@@ -1,7 +1,6 @@
 import {
   ActionDto,
   actionsAddEvent,
-  actionsCreateReminderGroup,
   actionsEventNotifData,
   ActionStatus,
   CreateActionEventDto,
@@ -17,11 +16,6 @@ import { formatStatus, getStatusColor } from "../pages/ActionDashboard";
 import DateTimePicker, {
   DateTimePickerChange,
 } from "@alliance/shared/ui/DateTimePicker";
-import {
-  defaultEmailContents,
-  defaultEmailSubject,
-  defaultTextMessage,
-} from "./ActionRemindersTab";
 
 // Status options for event creation
 const statusOptions: Record<ActionStatus, string> = {
@@ -68,7 +62,6 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
   const [useCustomName, setUseCustomName] = useState<boolean>(false);
   const [launchNow, setLaunchNow] = useState<boolean>(true);
   const [useDeadlineEvent, setUseDeadlineEvent] = useState<boolean>(false);
-  const [createReminders, setCreateReminders] = useState<boolean>(false);
   const [deadlineEventDate, setDeadlineEventDate] = useState<string>(
     new Date(new Date().getTime() + 604800000).toISOString()
   );
@@ -130,54 +123,6 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
         if (officeActionEventResponse.error) {
           setError("Failed to add office action event");
           console.error(officeActionEventResponse.error);
-        }
-
-        if (createReminders && addedEvent) {
-          const newEventId = addedEvent.id;
-          const threeDayReminderDay = new Date(
-            new Date(deadlineEventDate).getTime() - 3 * 24 * 60 * 60 * 1000
-          )
-            .toISOString()
-            .split("T")[0];
-          const oneDayReminderDay = new Date(
-            new Date(deadlineEventDate).getTime() - 1 * 24 * 60 * 60 * 1000
-          )
-            .toISOString()
-            .split("T")[0];
-
-          console.log(threeDayReminderDay);
-          console.log(oneDayReminderDay);
-
-          const threeDayReminderResponse = await actionsCreateReminderGroup({
-            path: { eventId: newEventId },
-            body: {
-              cohortType: "all_uncompleted",
-              sendDay: threeDayReminderDay,
-              name: "3 day reminder",
-              emailSubject: defaultEmailSubject,
-              emailMessage: defaultEmailContents,
-              textMessage: defaultTextMessage,
-            },
-          });
-          if (threeDayReminderResponse.error) {
-            setError("Failed to add 3 day reminder");
-            console.error(threeDayReminderResponse.error);
-          }
-          const oneDayReminderResponse = await actionsCreateReminderGroup({
-            path: { eventId: newEventId },
-            body: {
-              cohortType: "all_uncompleted",
-              sendDay: oneDayReminderDay,
-              name: "1 day reminder",
-              emailSubject: defaultEmailSubject,
-              emailMessage: defaultEmailContents,
-              textMessage: defaultTextMessage,
-            },
-          });
-          if (oneDayReminderResponse.error) {
-            setError("Failed to add 1 day reminder");
-            console.error(oneDayReminderResponse.error);
-          }
         }
       }
 
@@ -463,23 +408,6 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
                         )}
                       </p>
                     )}
-                    <div className="flex items-center mb-2">
-                      <input
-                        type="checkbox"
-                        id="deadlineExists"
-                        checked={createReminders}
-                        onChange={(e) => setCreateReminders(e.target.checked)}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      />
-                      <label
-                        htmlFor="deadlineExists"
-                        className="ml-2 block text-black"
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        Automatically create 3 and 1 day reminders before
-                        deadline
-                      </label>
-                    </div>
                   </div>
                 )}
               </div>

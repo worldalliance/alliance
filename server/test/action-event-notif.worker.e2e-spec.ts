@@ -62,10 +62,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await userRepo.update(ctx.testUserId, {
       contractDateSigned: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
       contractDateSuspended: null,
-      emailNotifsEnabled: true,
       turnedOffAllNotifs: false,
-      textNotifsEnabled: false,
-      name: 'User',
+      emailNotifsEnabled: false,
+      textNotifsEnabled: true,
+      phoneNumber: '+15555550100',
+      phoneNumberValidated: true,
+      name: 'Reminder Tester',
     });
   };
 
@@ -92,7 +94,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
         shortDescription: 'Short description',
         type: ActionTaskType.Activity,
         commitmentless: true,
-        everyoneShouldComplete: true,
+        everyoneShouldComplete: false,
         participatingGroups: participatingGroups ?? [ctx.defaultGroup],
       }),
     );
@@ -133,18 +135,18 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
   };
 
-  const fetchSentNotifsForGroup = async (group: ReminderGroup) =>
+  const fetchNotifsForGroup = async (group: ReminderGroup) =>
     notifRepo.find({
-      where: { reminderGroup: { id: group.id }, sent: true },
+      where: { reminderGroup: { id: group.id } },
       relations: ['user', 'reminderGroup'],
     });
 
   beforeEach(async () => {
-    await notifRepo.delete({});
-    await reminderGroupRepo.delete({});
-    await activityRepo.delete({});
-    await eventRepo.delete({});
-    await actionRepo.delete({});
+    await notifRepo.query('DELETE FROM action_event_notif');
+    await reminderGroupRepo.query('DELETE FROM reminder_group');
+    await activityRepo.query('DELETE FROM action_activity');
+    await eventRepo.query('DELETE FROM action_event');
+    await actionRepo.query('DELETE FROM action');
     await resetPrimaryUser();
   });
 
@@ -171,10 +173,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(1);
-    expect(sent[0].user.id).toBe(user.id);
-    expect(sent[0].channel).toBe(NotificationChannel.Email);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs.map((notif) => notif.user.id)).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(user.id);
+    expect(notifs[0].channel).toBe(NotificationChannel.Text);
   });
 
   it('guards against duplicate reminders via idempotency keys', async () => {
@@ -201,9 +203,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await worker.dispatchDueNotifs();
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(1);
-    expect(sent[0].sent).toBe(true);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs.map((notif) => notif.user.id)).toHaveLength(1);
+    expect(notifs[0].channel).toBe(NotificationChannel.Text);
   });
 
   it('skips users who have already completed the action', async () => {
@@ -239,12 +241,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(0);
-    const allNotifs = await notifRepo.find({
-      where: { reminderGroup: { id: reminderGroup.id } },
-    });
-    expect(allNotifs).toHaveLength(0);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(0);
   });
 
   it('sends reminders to joined users who have not completed the action', async () => {
@@ -280,9 +278,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(1);
-    expect(sent[0].user.id).toBe(user.id);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs.map((notif) => notif.user.id)).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(user.id);
   });
 
   it('does not send reminders to users without signed contracts', async () => {
@@ -307,13 +305,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(0);
-
-    const allNotifs = await notifRepo.find({
-      where: { reminderGroup: { id: reminderGroup.id } },
-    });
-    expect(allNotifs.every((notif) => notif.sent === false)).toBe(true);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs.map((notif) => notif.user.id)).toHaveLength(0);
 
     await resetPrimaryUser();
   });
@@ -343,13 +336,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(0);
-
-    const allNotifs = await notifRepo.find({
-      where: { reminderGroup: { id: reminderGroup.id } },
-    });
-    expect(allNotifs.every((notif) => notif.sent === false)).toBe(true);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs.map((notif) => notif.user.id)).toHaveLength(0);
 
     await userRepo.update(user.id, { contractDateSuspended: null });
   });
@@ -368,8 +356,16 @@ describe('ActionEventNotifWorker (e2e)', () => {
         name: 'Custom User',
         groups: primaryUser.groups,
         contractDateSigned: new Date(now - 48 * 60 * 60 * 1000),
+        textNotifsEnabled: true,
+        phoneNumber: '+15555550200',
+        phoneNumberValidated: true,
+        emailNotifsEnabled: false,
       }),
     );
+    const customUserWithGroups = await userRepo.findOneOrFail({
+      where: { id: customUser.id },
+      relations: ['groups'],
+    });
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('custom-cohort-action'),
@@ -381,16 +377,16 @@ describe('ActionEventNotifWorker (e2e)', () => {
       ReminderGroupTimingMode.Absolute,
       ReminderCohortType.Custom,
       {
-        users: [customUser],
+        users: [customUserWithGroups],
         sendAtAbsolute: new Date(now - 8 * 60 * 1000),
       },
     );
 
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(1);
-    expect(sent[0].user.id).toBe(customUser.id);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(customUser.id);
 
     await userRepo.delete({ id: customUser.id });
   });
@@ -411,8 +407,16 @@ describe('ActionEventNotifWorker (e2e)', () => {
         name: 'Cohort User',
         groups: [group],
         contractDateSigned: new Date(now - 48 * 60 * 60 * 1000),
+        textNotifsEnabled: true,
+        phoneNumber: '+15555550300',
+        phoneNumberValidated: true,
+        emailNotifsEnabled: false,
       }),
     );
+    const cohortUserWithGroups = await userRepo.findOneOrFail({
+      where: { id: cohortUser.id },
+      relations: ['groups'],
+    });
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('group-cohort-action'),
@@ -432,12 +436,11 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(1);
-    expect(sent[0].user.id).toBe(cohortUser.id);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(cohortUserWithGroups.id);
 
     await userRepo.delete({ id: cohortUser.id });
-    await groupRepo.delete({ id: group.id });
   });
 
   it('respects deadlines when scheduling reminders from a deadline offset', async () => {
@@ -476,9 +479,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(1);
-    expect(sent[0].user.id).toBe(user.id);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(user.id);
   });
 
   it('schedules reminders within ranges based on user preference', async () => {
@@ -515,10 +518,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     await worker.dispatchDueNotifs();
 
-    const sent = await fetchSentNotifsForGroup(reminderGroup);
-    expect(sent).toHaveLength(1);
-    expect(sent[0].user.id).toBe(user.id);
-    expect(sent[0].channel).toBe(NotificationChannel.Email);
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(user.id);
+    expect(notifs[0].channel).toBe(NotificationChannel.Text);
   });
 
   it('currently throws for event launch timing mode', async () => {

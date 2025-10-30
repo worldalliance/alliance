@@ -263,97 +263,6 @@ export type ActionTaskType = 'Funding' | 'Activity' | 'Ongoing';
  */
 export type NotificationType = 'all' | 'joined' | 'none';
 
-export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder' | 'personalreminder';
-
-export type NotificationChannel = 'text' | 'email' | 'push';
-
-export type EmailType = 'verification' | 'password_reset' | 'partial_signup' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder';
-
-export type Mail = {
-    id: number;
-    sentMessageId?: string;
-    renderedHtml?: string;
-    to: string;
-    status: string;
-    emailType: EmailType;
-    createdAt: string;
-    cid?: string;
-    clickedLink: boolean;
-};
-
-export type Mms = {
-    id: number;
-    to: string;
-    from: string;
-    body: string;
-    status: string;
-    twilioSid: string;
-    errorCode?: number;
-    errorMessage?: string;
-    createdAt: string;
-    updatedAt: string;
-    cid?: string;
-    clickedLink: boolean;
-};
-
-export type ActionEventNotif = {
-    type: ActionEventNotifType;
-    channel: NotificationChannel;
-    mail: Mail | null;
-    mms: Mms | null;
-    /**
-     * Indicates whether the notification has been sent
-     */
-    sent: boolean;
-};
-
-export type ReminderCohortType = 'all_uncompleted' | 'group' | 'custom';
-
-export type ReminderTimingMode = 'absolute' | 'from_deadline';
-
-export type ActionReminder = {
-    id: number;
-    memberActionEvent: ActionEvent;
-    cohortType: ReminderCohortType;
-    timingMode: ReminderTimingMode;
-    users: Array<Array<unknown>>;
-    emailMessage: string;
-    emailSubject: string;
-    textMessage: string;
-    sendAtAbsolute?: string;
-    sendAtSecondsFromDeadline?: number;
-    sentAt?: string;
-    notifications: Array<ActionEventNotif>;
-    createdAt: string;
-};
-
-export type ReminderGroup = {
-    id: number;
-    name: string;
-    reminders: Array<Array<unknown>>;
-    memberActionEvent: ActionEvent;
-    cohortType: ReminderCohortType;
-    userGroup?: Group;
-    emailMessage: string;
-    emailSubject: string;
-    textMessage: string;
-    sendDay: string;
-    sendDayString: string;
-    allSent?: boolean;
-};
-
-export type PersonalActionReminder = {
-    id: number;
-    memberActionEvent: ActionEvent;
-    user: User;
-    sentAt?: string;
-    skippedForCompletion: boolean;
-    notification?: ActionEventNotif;
-    createdAt: string;
-    group: ReminderGroup;
-    sendTime?: string;
-};
-
 export type EditableContent = {
     /**
      * Markdown or plain text body
@@ -431,12 +340,6 @@ export type ActionEvent = {
      * The action associated with this event
      */
     action: Action;
-    notifications: Array<Array<ActionEventNotif>>;
-    announcementNotifsSentAt?: string;
-    deadlineNotifsSentAt?: string;
-    reminders: Array<ActionReminder>;
-    personalActionReminders: Array<PersonalActionReminder>;
-    reminderGroups: Array<ReminderGroup>;
     updates: Array<ActionUpdate>;
 };
 
@@ -469,6 +372,84 @@ export type ActionActivity = {
     declineReason?: string;
     isMoral?: boolean;
     outOfTime?: boolean;
+};
+
+export type ReminderGroupTimingMode = 'absolute' | 'from_deadline' | 'within_range' | 'event_launch';
+
+export type ReminderCohortType = 'all_uncompleted' | 'group' | 'custom';
+
+export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder' | 'personalreminder';
+
+export type NotificationChannel = 'text' | 'email' | 'push';
+
+export type EmailType = 'verification' | 'password_reset' | 'partial_signup' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder';
+
+export type Mail = {
+    id: number;
+    sentMessageId?: string;
+    renderedHtml?: string;
+    to: string;
+    status: string;
+    emailType: EmailType;
+    createdAt: string;
+    cid?: string;
+    clickedLink: boolean;
+};
+
+export type Mms = {
+    id: number;
+    to: string;
+    from: string;
+    body: string;
+    status: string;
+    twilioSid: string;
+    errorCode?: number;
+    errorMessage?: string;
+    createdAt: string;
+    updatedAt: string;
+    cid?: string;
+    clickedLink: boolean;
+};
+
+export type ActionEventNotif = {
+    type: ActionEventNotifType;
+    channel: NotificationChannel;
+    mail: Mail | null;
+    mms: Mms | null;
+    reminderGroup?: ReminderGroup;
+    /**
+     * Indicates whether the notification has been sent
+     */
+    sent: boolean;
+    idempotency_key?: string;
+};
+
+export type ReminderGroup = {
+    id: number;
+    name: string;
+    timingMode: ReminderGroupTimingMode;
+    actionSuite?: ActionSuite;
+    memberActionEvent: ActionEvent;
+    cohortType: ReminderCohortType;
+    userGroup?: Group;
+    users?: Array<User>;
+    emailMessage: string;
+    emailSubject: string;
+    textMessage: string;
+    notifications: Array<ActionEventNotif>;
+    send_range_start?: string;
+    send_range_end?: string;
+    sendAtAbsolute?: string;
+    sendAtSecondsFromDeadline?: number;
+    deadlineEvent?: ActionEvent;
+    allSent: boolean;
+};
+
+export type ActionSuite = {
+    id: number;
+    name: string;
+    actions: Array<Array<unknown>>;
+    reminderGroups: Array<ReminderGroup>;
 };
 
 export type Action = {
@@ -557,6 +538,7 @@ export type Action = {
     everyoneShouldComplete: boolean;
     archived: boolean;
     updates: Array<ActionUpdate>;
+    suite?: ActionSuite;
 };
 
 export type Group = {
@@ -599,7 +581,6 @@ export type ActionEventDto = {
      * Indicates whether the event should be shown in the timeline
      */
     showInTimeline: boolean;
-    announcementNotifsSentAt?: string;
 };
 
 export type ActionDto = {
@@ -679,6 +660,7 @@ export type ActionDto = {
     everyoneShouldComplete: boolean;
     archived: boolean;
     updates: Array<ActionUpdate>;
+    suite?: ActionSuite;
     events: Array<ActionEventDto>;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
@@ -824,6 +806,7 @@ export type CreateActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
+    suite?: ActionSuite;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: string;
@@ -884,6 +867,7 @@ export type UpdateActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete?: boolean;
+    suite?: ActionSuite;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: string;
@@ -917,53 +901,18 @@ export type CreateActionEventDto = {
     showInTimeline: boolean;
 };
 
-export type CreateActionReminderDto = {
-    cohortType: ReminderCohortType;
-    timingMode: ReminderTimingMode;
-    emailMessage: string;
-    emailSubject: string;
-    textMessage: string;
-    sendAtAbsolute?: string;
-    sendAtSecondsFromDeadline?: number;
-    userIds?: Array<number>;
-};
-
-export type ActionReminderDto = {
-    id: number;
-    cohortType: ReminderCohortType;
-    timingMode: ReminderTimingMode;
-    emailMessage: string;
-    textMessage: string;
-    sendAtAbsolute?: string;
-    sendAtSecondsFromDeadline?: number;
-    sentAt?: string;
-    memberActionEventId: number;
-    deadlineEventId?: number;
-    userIds: Array<number>;
-    users: Array<ProfileDto>;
-    customEmailSubject?: string;
-};
-
-export type UpdateActionReminderDto = {
-    cohortType?: ReminderCohortType;
-    timingMode?: ReminderTimingMode;
-    emailMessage?: string;
-    emailSubject?: string;
-    textMessage?: string;
-    sendAtAbsolute?: string;
-    sendAtSecondsFromDeadline?: number;
-    userIds?: Array<number>;
-};
-
 export type CreateTodReminderGroupDto = {
     name: string;
     cohortType: ReminderCohortType;
     emailMessage: string;
     emailSubject: string;
     textMessage: string;
+    send_range_start?: string;
+    send_range_end?: string;
+    sendAtAbsolute?: string;
+    sendAtSecondsFromDeadline?: number;
     userIds?: Array<number>;
     userGroupId?: number;
-    sendDay: string;
 };
 
 export type CreateEditableContentDto = {
@@ -1003,46 +952,6 @@ export type CreateActionActivityDto = {
     userId: number;
 };
 
-export type AdminActionEventDto = {
-    /**
-     * Unique identifier for the action event
-     */
-    id: number;
-    /**
-     * Title of the event
-     */
-    title: string;
-    /**
-     * secondary text
-     */
-    description: string;
-    /**
-     * New status of the action after the event
-     */
-    newStatus: ActionStatus;
-    /**
-     * Notification type for the event
-     */
-    sendNotifsTo: NotificationType;
-    /**
-     * time of the event (for display)
-     */
-    date: string;
-    /**
-     * Timestamp when the event was last updated
-     */
-    updatedAt: string;
-    /**
-     * Indicates whether the event should be shown in the timeline
-     */
-    showInTimeline: boolean;
-    notifications: Array<Array<ActionEventNotif>>;
-    announcementNotifsSentAt?: string;
-    deadlineNotifsSentAt?: string;
-    reminders: Array<ActionReminder>;
-    reminderGroups: Array<ReminderGroup>;
-};
-
 export type CreateActionUpdateDto = {
     title: string;
     displayDate: string;
@@ -1070,10 +979,12 @@ export type ActionEventNotifDto = {
     channel: NotificationChannel;
     mail: Mail | null;
     mms: Mms | null;
+    reminderGroup?: ReminderGroup;
     /**
      * Indicates whether the notification has been sent
      */
     sent: boolean;
+    idempotency_key?: string;
     user: ProfileDto;
 };
 
@@ -2472,48 +2383,13 @@ export type ActionsAddEventResponses = {
 
 export type ActionsAddEventResponse = ActionsAddEventResponses[keyof ActionsAddEventResponses];
 
-export type ActionsCreateReminderData = {
-    body: CreateActionReminderDto;
-    path: {
-        actionId: number;
-        eventId: number;
-    };
-    query?: never;
-    url: '/actions/{actionId}/events/{eventId}/reminders';
-};
-
-export type ActionsCreateReminderResponses = {
-    200: ActionReminderDto;
-};
-
-export type ActionsCreateReminderResponse = ActionsCreateReminderResponses[keyof ActionsCreateReminderResponses];
-
-export type ActionsUpdateReminderData = {
-    body: UpdateActionReminderDto;
-    path: {
-        actionId: number;
-        eventId: number;
-        reminderId: number;
-    };
-    query?: never;
-    url: '/actions/{actionId}/events/{eventId}/reminders/{reminderId}';
-};
-
-export type ActionsUpdateReminderResponses = {
-    200: ActionReminderDto;
-};
-
-export type ActionsUpdateReminderResponse = ActionsUpdateReminderResponses[keyof ActionsUpdateReminderResponses];
-
 export type ActionsUpdateReminderGroupData = {
     body: CreateTodReminderGroupDto;
     path: {
-        actionId: number;
-        eventId: number;
         groupId: number;
     };
     query?: never;
-    url: '/actions/{actionId}/events/{eventId}/remindergroups/{groupId}';
+    url: '/actions/remindergroups/{groupId}';
 };
 
 export type ActionsUpdateReminderGroupResponses = {
@@ -2521,19 +2397,6 @@ export type ActionsUpdateReminderGroupResponses = {
 };
 
 export type ActionsUpdateReminderGroupResponse = ActionsUpdateReminderGroupResponses[keyof ActionsUpdateReminderGroupResponses];
-
-export type ActionsDeleteReminderData = {
-    body?: never;
-    path: {
-        reminderId: number;
-    };
-    query?: never;
-    url: '/actions/deleteReminder/{reminderId}';
-};
-
-export type ActionsDeleteReminderResponses = {
-    200: unknown;
-};
 
 export type ActionsCreateReminderGroupData = {
     body: CreateTodReminderGroupDto;
@@ -2707,20 +2570,20 @@ export type ActionsUnarchiveResponses = {
 
 export type ActionsUnarchiveResponse = ActionsUnarchiveResponses[keyof ActionsUnarchiveResponses];
 
-export type ActionsEventWithRemindersData = {
+export type ActionsReminderGroupsForEventData = {
     body?: never;
     path: {
         id: number;
     };
     query?: never;
-    url: '/actions/eventWithReminders/{id}';
+    url: '/actions/reminderGroupsForEvent/{id}';
 };
 
-export type ActionsEventWithRemindersResponses = {
-    200: AdminActionEventDto;
+export type ActionsReminderGroupsForEventResponses = {
+    200: Array<ReminderGroup>;
 };
 
-export type ActionsEventWithRemindersResponse = ActionsEventWithRemindersResponses[keyof ActionsEventWithRemindersResponses];
+export type ActionsReminderGroupsForEventResponse = ActionsReminderGroupsForEventResponses[keyof ActionsReminderGroupsForEventResponses];
 
 export type ActionsCreateUpdateData = {
     body: CreateActionUpdateDto;
@@ -2785,21 +2648,6 @@ export type NotifsClearResponses = {
     200: unknown;
 };
 
-export type NotifsNotifsForEventData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/notifs/for-event/{id}';
-};
-
-export type NotifsNotifsForEventResponses = {
-    200: Array<ActionEventNotifDto>;
-};
-
-export type NotifsNotifsForEventResponse = NotifsNotifsForEventResponses[keyof NotifsNotifsForEventResponses];
-
 export type NotifsNotifsForUserData = {
     body?: never;
     path: {
@@ -2814,19 +2662,6 @@ export type NotifsNotifsForUserResponses = {
 };
 
 export type NotifsNotifsForUserResponse = NotifsNotifsForUserResponses[keyof NotifsNotifsForUserResponses];
-
-export type NotifsReloadNotifDataForEventData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/notifs/reloadNotifDataForEvent/{id}';
-};
-
-export type NotifsReloadNotifDataForEventResponses = {
-    200: unknown;
-};
 
 export type NotifsLinkClickData = {
     body: NotifClickDto;

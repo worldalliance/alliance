@@ -67,7 +67,7 @@ export class ActionEventNotif {
     },
   )
   @JoinColumn({ name: 'reminderGroupId' })
-  @ApiPropertyOptional({ type: ReminderGroup })
+  @ApiPropertyOptional({ type: () => ReminderGroup })
   @Type(() => ReminderGroup)
   reminderGroup?: ReminderGroup;
 

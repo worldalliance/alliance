@@ -1,31 +1,82 @@
-import {
+import type {
   ActionEventDto,
   CreateTodReminderGroupDto,
   GroupDto,
   ReminderCohortType,
   ReminderGroup,
+  ReminderGroupTimingMode,
   User,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
+import DateTimePicker from "@alliance/shared/ui/DateTimePicker";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import TextareaWithHighlights from "./TextareaWithHighlights";
 import UserSelect, { UserSelectUser } from "./UserSelect";
-import { keywords } from "./ActionReminderForm";
 import {
   defaultEmailContents,
   defaultEmailSubject,
   defaultTextMessage,
 } from "./ActionRemindersTab";
 
-export type ActionReminderGroupFormSubmitPayload = CreateTodReminderGroupDto & {
-  memberActionEventId: number;
-};
+type ReminderGroupContentFields = Pick<
+  ReminderGroup,
+  | "name"
+  | "cohortType"
+  | "timingMode"
+  | "emailSubject"
+  | "emailMessage"
+  | "textMessage"
+>;
+
+type ReminderGroupScheduleFields = Pick<
+  ReminderGroup,
+  | "sendAtAbsolute"
+  | "sendAtSecondsFromDeadline"
+  | "send_range_start"
+  | "send_range_end"
+>;
+
+type ReminderGroupUserFields = Pick<
+  CreateTodReminderGroupDto,
+  "userIds" | "userGroupId"
+>;
+
+export type ActionReminderGroupFormSubmitPayload = ReminderGroupContentFields &
+  ReminderGroupScheduleFields &
+  ReminderGroupUserFields & {
+    memberActionEventId: number;
+  };
 
 export type ActionReminderGroupFormInitialValues = {
   memberActionEventId: number;
   reminderGroup: ReminderGroup | null;
   users: User[];
 };
+
+export const keywords = [
+  "#{fullname}",
+  "#{firstname}",
+  "#{lastname}",
+  "#{action}",
+  "#{days}",
+  "#{link}",
+];
+
+const TIMING_MODE_OPTIONS: Array<{
+  value: ReminderGroupTimingMode;
+  label: string;
+}> = [
+  { value: "within_range", label: "Personalized window" },
+  { value: "absolute", label: "Absolute time" },
+  { value: "from_deadline", label: "Relative to deadline" },
+  { value: "event_launch", label: "Event launch" },
+];
+
+const COHORT_OPTIONS: Array<{ value: ReminderCohortType; label: string }> = [
+  { value: "all_uncompleted", label: "All uncompleted" },
+  { value: "group", label: "User group" },
+  { value: "custom", label: "Custom recipients" },
+];
 
 interface ActionReminderFormProps {
   memberEvents: ActionEventDto[];
@@ -67,10 +118,27 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [selectedEventId, setSelectedEventId] = useState<number | null>(
     initialValues.memberActionEventId ?? null
   );
-  const [sendDay, setSendDay] = useState<string>(
-    initialValues.reminderGroup?.sendDayString ??
-      new Date().toISOString().split("T")[0]
+  const initialGroup = initialValues.reminderGroup;
+  const initialTimingMode: ReminderGroupTimingMode =
+    initialGroup?.timingMode ?? "within_range";
+  const initialSendAtAbsolute =
+    initialGroup?.sendAtAbsolute ?? new Date().toISOString();
+  const initialSendAtSeconds = initialGroup?.sendAtSecondsFromDeadline ?? 0;
+  const initialRangeStart =
+    initialGroup?.send_range_start ?? new Date().toISOString();
+  const initialRangeEnd =
+    initialGroup?.send_range_end ??
+    new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  const [timingMode, setTimingMode] =
+    useState<ReminderGroupTimingMode>(initialTimingMode);
+  const [sendAtAbsolute, setSendAtAbsolute] = useState<string>(
+    initialSendAtAbsolute
   );
+  const [sendAtSecondsFromDeadline, setSendAtSecondsFromDeadline] =
+    useState<number>(initialSendAtSeconds);
+  const [sendRangeStart, setSendRangeStart] =
+    useState<string>(initialRangeStart);
+  const [sendRangeEnd, setSendRangeEnd] = useState<string>(initialRangeEnd);
   const [name, setName] = useState<string>(
     initialValues.reminderGroup?.name ?? ""
   );
@@ -100,12 +168,18 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     const userIds = [...initialValues.users.map((user) => user.id)].sort(
       (a, b) => a - b
     );
+    const reminder = initialValues.reminderGroup;
     return JSON.stringify({
       memberActionEventId: initialValues.memberActionEventId,
       reminder: {
-        ...initialValues.reminderGroup,
+        ...reminder,
         userIds: userIds,
         userGroupId: initialValues.reminderGroup?.userGroup?.id ?? null,
+        timingMode: reminder?.timingMode ?? null,
+        sendAtAbsolute: reminder?.sendAtAbsolute ?? null,
+        sendAtSecondsFromDeadline: reminder?.sendAtSecondsFromDeadline ?? null,
+        sendRangeStart: reminder?.send_range_start ?? null,
+        sendRangeEnd: reminder?.send_range_end ?? null,
       },
       selectedUsers: userIds,
     });
@@ -119,9 +193,14 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
     setSelectedEventId(initialValues.memberActionEventId);
     onEventChange?.(initialValues.memberActionEventId);
-    setSendDay(
-      initialValues.reminderGroup?.sendDayString ??
-        new Date().toISOString().split("T")[0]
+    const nextGroup = initialValues.reminderGroup;
+    setTimingMode(nextGroup?.timingMode ?? "within_range");
+    setSendAtAbsolute(nextGroup?.sendAtAbsolute ?? new Date().toISOString());
+    setSendAtSecondsFromDeadline(nextGroup?.sendAtSecondsFromDeadline ?? 0);
+    setSendRangeStart(nextGroup?.send_range_start ?? new Date().toISOString());
+    setSendRangeEnd(
+      nextGroup?.send_range_end ??
+        new Date(Date.now() + 60 * 60 * 1000).toISOString()
     );
     setName(initialValues.reminderGroup?.name ?? "");
     setEmailSubject(
@@ -172,20 +251,80 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       return;
     }
 
+    let normalizedSendAtAbsolute: string | undefined;
+    let normalizedRangeStart: string | undefined;
+    let normalizedRangeEnd: string | undefined;
+
+    if (timingMode === "absolute") {
+      if (!sendAtAbsolute) {
+        setLocalError("Select a send time.");
+        return;
+      }
+      const parsed = new Date(sendAtAbsolute);
+      if (Number.isNaN(parsed.getTime())) {
+        setLocalError("Invalid send time.");
+        return;
+      }
+      normalizedSendAtAbsolute = parsed.toISOString();
+    }
+
+    if (timingMode === "from_deadline") {
+      if (
+        sendAtSecondsFromDeadline === null ||
+        Number.isNaN(sendAtSecondsFromDeadline)
+      ) {
+        setLocalError("Enter the number of seconds relative to the deadline.");
+        return;
+      }
+    }
+
+    if (timingMode === "within_range") {
+      if (!sendRangeStart || !sendRangeEnd) {
+        setLocalError("Select both the start and end of the send range.");
+        return;
+      }
+      const start = new Date(sendRangeStart);
+      const end = new Date(sendRangeEnd);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        setLocalError("Invalid range selection.");
+        return;
+      }
+      if (start.getTime() > end.getTime()) {
+        setLocalError("Send range start must be before the end.");
+        return;
+      }
+      normalizedRangeStart = start.toISOString();
+      normalizedRangeEnd = end.toISOString();
+    }
+
     const userIds = cohortType === "custom" ? selectedUserIds : undefined;
 
-    await onSubmit({
+    const payload = {
       name,
       cohortType,
-      sendDay,
       emailSubject,
       emailMessage,
       textMessage,
+      timingMode,
       memberActionEventId: selectedEventId,
       userIds,
       userGroupId:
         cohortType === "group" ? selectedGroupId ?? undefined : undefined,
-    });
+      sendAtAbsolute:
+        timingMode === "absolute" ? normalizedSendAtAbsolute : undefined,
+      sendAtSecondsFromDeadline:
+        timingMode === "from_deadline"
+          ? sendAtSecondsFromDeadline ?? 0
+          : undefined,
+      send_range_start:
+        timingMode === "within_range" ? normalizedRangeStart : undefined,
+      send_range_end:
+        timingMode === "within_range" ? normalizedRangeEnd : undefined,
+    } satisfies ActionReminderGroupFormSubmitPayload;
+
+    console.log(payload);
+
+    await onSubmit(payload);
   };
 
   const combinedError = localError ?? serverError ?? null;
@@ -219,18 +358,6 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Send date
-          </label>
-          <input
-            type="date"
-            value={sendDay}
-            onChange={(event) => setSendDay(event.target.value)}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
             Reminder name
           </label>
           <input
@@ -241,7 +368,158 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
             placeholder="admin-only identifier"
           />
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Timing mode
+          </label>
+          <select
+            value={timingMode}
+            onChange={(event) =>
+              setTimingMode(event.target.value as ReminderGroupTimingMode)
+            }
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+          >
+            {TIMING_MODE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {timingMode === "absolute" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Send at
+          </label>
+          <DateTimePicker
+            value={sendAtAbsolute}
+            onChange={(change) => setSendAtAbsolute(change.utcValue ?? "")}
+            className="w-full !py-1"
+            required
+          />
+        </div>
+      )}
+
+      {timingMode === "from_deadline" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Seconds to deadline
+          </label>
+          <input
+            type="number"
+            value={
+              Number.isFinite(sendAtSecondsFromDeadline)
+                ? sendAtSecondsFromDeadline
+                : ""
+            }
+            onChange={(event) => {
+              const value = event.target.value;
+              setSendAtSecondsFromDeadline(value === "" ? NaN : Number(value));
+            }}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+          />
+        </div>
+      )}
+
+      {timingMode === "within_range" && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Send range start
+            </label>
+            <DateTimePicker
+              value={sendRangeStart}
+              onChange={(change) => setSendRangeStart(change.utcValue ?? "")}
+              className="w-full !py-1"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Send range end
+            </label>
+            <DateTimePicker
+              value={sendRangeEnd}
+              onChange={(change) => setSendRangeEnd(change.utcValue ?? "")}
+              className="w-full !py-1"
+              required
+            />
+          </div>
+        </div>
+      )}
+
+      {timingMode === "event_launch" && (
+        <p className="text-sm text-gray-600">
+          Reminders send when the member action event begins (i.e. announcement)
+        </p>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Recipients
+        </label>
+        <select
+          value={cohortType}
+          onChange={(event) =>
+            setCohortType(event.target.value as ReminderCohortType)
+          }
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+        >
+          {COHORT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {cohortType === "group" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            User group
+          </label>
+          <select
+            value={selectedGroupId ?? ""}
+            onChange={(event) =>
+              setSelectedGroupId(
+                event.target.value ? Number(event.target.value) : null
+              )
+            }
+            disabled={loadingUserGroups}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+          >
+            <option value="" disabled>
+              {loadingUserGroups ? "Loading groups…" : "Select a group"}
+            </option>
+            {userGroups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+          {!loadingUserGroups && userGroupsError && (
+            <p className="mt-2 text-xs text-red-600">{userGroupsError}</p>
+          )}
+          {!loadingUserGroups &&
+            !userGroupsError &&
+            userGroups.length === 0 && (
+              <p className="mt-2 text-xs text-gray-500">
+                No groups available. Create a group before scheduling.
+              </p>
+            )}
+        </div>
+      )}
+
+      {cohortType === "custom" && (
+        <UserSelect
+          users={users}
+          selectedUserIds={selectedUserIds}
+          onChange={setSelectedUserIds}
+          loading={loadingUsers}
+        />
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -332,77 +610,17 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
                 </tr>
                 <tr>
                   <td>{"#{link}"}</td>
-                  <td>https://www.worldalliance.org/actions/123?cid=123</td>
-                  <td>The link to the action, with tracking CID included</td>
+                  <td>https://worldalliance.org/tasks?cid=123</td>
+                  <td>
+                    The link to the user&apos;s tasks page, with tracking CID
+                    included
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
         )}
       </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Recipients
-        </label>
-        <select
-          value={cohortType}
-          onChange={(event) =>
-            setCohortType(event.target.value as ReminderCohortType)
-          }
-          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-        >
-          <option value="all_uncompleted">All uncompleted</option>
-          <option value="group">User group</option>
-          <option value="custom">Custom</option>
-        </select>
-      </div>
-
-      {cohortType === "group" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            User group
-          </label>
-          <select
-            value={selectedGroupId ?? ""}
-            onChange={(event) =>
-              setSelectedGroupId(
-                event.target.value ? Number(event.target.value) : null
-              )
-            }
-            disabled={loadingUserGroups}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
-          >
-            <option value="" disabled>
-              {loadingUserGroups ? "Loading groups…" : "Select a group"}
-            </option>
-            {userGroups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
-          </select>
-          {!loadingUserGroups && userGroupsError && (
-            <p className="mt-2 text-xs text-red-600">{userGroupsError}</p>
-          )}
-          {!loadingUserGroups &&
-            !userGroupsError &&
-            userGroups.length === 0 && (
-              <p className="mt-2 text-xs text-gray-500">
-                No groups available. Create a group before scheduling.
-              </p>
-            )}
-        </div>
-      )}
-
-      {cohortType === "custom" && (
-        <UserSelect
-          users={users}
-          selectedUserIds={selectedUserIds}
-          onChange={setSelectedUserIds}
-          loading={loadingUsers}
-        />
-      )}
 
       {combinedError && (
         <p className="text-red-600 text-sm" role="alert">
