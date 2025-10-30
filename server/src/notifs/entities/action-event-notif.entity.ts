@@ -1,17 +1,19 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { ActionEvent } from 'src/actions/entities/action-event.entity';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Mail } from 'src/mail/mail.entity';
 import { Mms } from 'src/mms/mms.entity';
 import { User } from 'src/user/entities/user.entity';
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { NotificationChannel } from '../notif-utils';
+import { ReminderGroup } from 'src/actions/entities/reminder-group.entity';
+import { Type } from 'class-transformer';
 
 export enum ActionEventNotifType {
   Announcement = 'announcement',
@@ -21,15 +23,13 @@ export enum ActionEventNotifType {
 }
 
 @Entity()
+@Index(['idempotency_key'], {
+  unique: true,
+  where: 'idempotency_key IS NOT NULL',
+})
 export class ActionEventNotif {
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ManyToOne(() => ActionEvent, (actionEvent) => actionEvent.notifications, {
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'actionEventId' })
-  actionEvent: ActionEvent;
 
   @Column({
     type: 'enum',
@@ -58,6 +58,19 @@ export class ActionEventNotif {
   @JoinColumn({ name: 'mmsId' })
   mms: Mms | null;
 
+  @ManyToOne(
+    () => ReminderGroup,
+    (reminderGroup) => reminderGroup.notifications,
+    {
+      onDelete: 'SET NULL',
+      nullable: true,
+    },
+  )
+  @JoinColumn({ name: 'reminderGroupId' })
+  @ApiPropertyOptional({ type: ReminderGroup })
+  @Type(() => ReminderGroup)
+  reminderGroup?: ReminderGroup;
+
   @ManyToOne(() => User, (user) => user.actionEventNotifs, {
     onDelete: 'CASCADE',
   })
@@ -69,4 +82,8 @@ export class ActionEventNotif {
     description: 'Indicates whether the notification has been sent',
   })
   sent: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  @ApiPropertyOptional({ type: String })
+  idempotency_key?: string;
 }

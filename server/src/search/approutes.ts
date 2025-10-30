@@ -16,6 +16,11 @@ export function actionUrl(actionId: number, full = false) {
   return full ? `${process.env.APP_URL}${path}` : path;
 }
 
+export function tasksUrl(full = false) {
+  const path = `/tasks`;
+  return full ? `${process.env.APP_URL}${path}` : path;
+}
+
 export function postUrl(postId: number) {
   return `/forum/post/${postId}`;
 }

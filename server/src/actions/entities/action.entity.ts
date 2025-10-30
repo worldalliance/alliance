@@ -8,6 +8,7 @@ import {
   Entity,
   JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -16,6 +17,7 @@ import { ActionEvent, ActionStatus } from './action-event.entity';
 import { Group } from 'src/user/entities/group.entity';
 import { UpdateDateColumnTz } from 'src/datasources/basecolumns';
 import { ActionUpdate } from './action-update.entity';
+import { ActionSuite } from './action-suite.entity';
 
 export enum ActionTaskType {
   Funding = 'Funding', //giving money to a particular cause
@@ -232,4 +234,10 @@ export class Action {
   @Allow()
   @Type(() => ActionUpdate)
   updates: ActionUpdate[];
+
+  @ManyToOne(() => ActionSuite, (suite) => suite.actions, { nullable: true })
+  @ApiPropertyOptional({ type: () => ActionSuite })
+  @Type(() => ActionSuite)
+  @IsOptional()
+  suite?: ActionSuite;
 }

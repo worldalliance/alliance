@@ -51,28 +51,12 @@ export class NotifsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('for-event/:id')
-  @ApiOkResponse({ type: [ActionEventNotifDto] })
-  notifsForEvent(@Param('id', ParseIntPipe) id: number) {
-    return this.notifsService
-      .notifsForEvent(id)
-      .then((notifs) => notifs.map((notif) => new ActionEventNotifDto(notif)));
-  }
-
-  @UseGuards(AdminGuard)
   @Get('for-user/:id')
   @ApiOkResponse({ type: [ActionEventNotifDto] })
   notifsForUser(@Param('id', ParseIntPipe) id: number) {
     return this.notifsService
       .notifsForUser(id)
       .then((notifs) => notifs.map((notif) => new ActionEventNotifDto(notif)));
-  }
-
-  @Post('reloadNotifDataForEvent/:id')
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  reloadNotifDataForEvent(@Param('id', ParseIntPipe) id: number) {
-    return this.notifsService.reloadNotifDataForEvent(id);
   }
 
   @Post('linkClick')

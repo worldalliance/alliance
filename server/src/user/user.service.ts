@@ -576,6 +576,12 @@ export class UserService {
     return user;
   }
 
+  async findByIds(ids: number[]): Promise<User[]> {
+    return this.userRepository.find({
+      where: { id: In(ids) },
+    });
+  }
+
   async countReferred(id: number): Promise<number> {
     const user = await this.userRepository.findOne({
       where: { id },

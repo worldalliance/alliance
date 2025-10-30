@@ -35,12 +35,10 @@ import {
   ActionActivityDto,
   ActionDto,
   ActionEventDto,
-  ActionReminderDto,
   AdminActionEventDto,
   CreateActionActivityDto,
   CreateActionDto,
   CreateActionEventDto,
-  CreateActionReminderDto,
   CreateActionUpdateDto,
   CreateTODReminderGroupDto,
   DeclineActionDto,
@@ -50,7 +48,6 @@ import {
   PreEventNotifDataQueryDto,
   UpdateActionActivityDto,
   UpdateActionDto,
-  UpdateActionReminderDto,
 } from './dto/action.dto';
 import {
   NotificationScheduleEntryDto,
@@ -372,34 +369,6 @@ export class ActionsController {
     return this.actionsService.addEvent(id, actionEventDto, req.user?.sub);
   }
 
-  @Post(':actionId/events/:eventId/reminders')
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionReminderDto })
-  async createReminder(
-    @Param('actionId', ParseIntPipe) actionId: number,
-    @Param('eventId', ParseIntPipe) eventId: number,
-    @Body() body: CreateActionReminderDto,
-  ): Promise<ActionReminderDto> {
-    return this.actionsService.createReminder(actionId, eventId, body);
-  }
-
-  @Patch(':actionId/events/:eventId/reminders/:reminderId')
-  @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: ActionReminderDto })
-  async updateReminder(
-    @Param('actionId', ParseIntPipe) actionId: number,
-    @Param('eventId', ParseIntPipe) eventId: number,
-    @Param('reminderId', ParseIntPipe) reminderId: number,
-    @Body() body: UpdateActionReminderDto,
-  ): Promise<ActionReminderDto> {
-    return this.actionsService.updateReminder(
-      actionId,
-      eventId,
-      reminderId,
-      body,
-    );
-  }
-
   @Patch(':actionId/events/:eventId/remindergroups/:groupId')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ReminderGroup })
@@ -415,13 +384,6 @@ export class ActionsController {
       groupId,
       body,
     );
-  }
-
-  @Delete('deleteReminder/:reminderId')
-  @UseGuards(AdminGuard)
-  @ApiOkResponse()
-  deleteReminder(@Param('reminderId', ParseIntPipe) reminderId: number) {
-    return this.actionsService.deleteReminder(reminderId);
   }
 
   @Post('events/:eventId/createremindergroup')

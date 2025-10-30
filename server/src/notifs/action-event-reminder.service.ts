@@ -1,34 +1,27 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, In, IsNull, LessThanOrEqual, Not, Repository } from 'typeorm';
+import { Brackets, In, LessThanOrEqual, Repository } from 'typeorm';
 import { ActionEventNotifType } from './entities/action-event-notif.entity';
 import {
   ActionEvent,
   ActionStatus,
-  NotificationType,
 } from '../actions/entities/action-event.entity';
 import {
   ActionActivity,
   ActionActivityType,
 } from '../actions/entities/action-activity.entity';
 import { ActionEventRecipientService } from './action-event-recipient.service';
-import {
-  NotificationScheduleEntryDto,
-  NotificationScheduleMetadataDto,
-} from 'src/actions/dto/notification-schedule.dto';
+import { NotificationScheduleEntryDto } from 'src/actions/dto/notification-schedule.dto';
 import { User } from '../user/entities/user.entity';
-import { ProfileDto } from 'src/user/user.dto';
 import {
-  ActionReminder,
+  getGroupSendTimeForUser,
   ReminderCohortType,
-  ReminderTimingMode,
-} from 'src/actions/entities/action-reminder.entity';
-import { ReminderGroup } from 'src/actions/entities/reminder-group.entity';
+  ReminderGroup,
+  ReminderGroupTimingMode,
+} from 'src/actions/entities/reminder-group.entity';
 import { CreateTODReminderGroupDto } from 'src/actions/dto/action.dto';
 import { UserService } from 'src/user/user.service';
 import { Temporal } from '@js-temporal/polyfill';
-import { PersonalActionReminder } from 'src/actions/entities/personal-action-reminder.entity';
-import { instanceToPlain } from 'class-transformer';
 import { Group } from 'src/user/entities/group.entity';
 
 export interface MissedDeadlineCandidate {
@@ -39,11 +32,6 @@ export interface MissedDeadlineCandidate {
   resolutionEventId: number;
   resolutionDate: Date;
 }
-
-export const ANNOUNCEMENT_SUPPORTED_STATUSES: ActionStatus[] = [
-  ActionStatus.GatheringCommitments,
-  ActionStatus.MemberAction,
-];
 
 export const NOTIFICATION_LOOKBACK_WINDOW_MS = 1 * 24 * 60 * 60 * 1000;
 
@@ -59,21 +47,9 @@ export type NotificationPlan = {
   scheduledFor: Date;
   referenceEvent: ActionEvent;
   targetEvent: ActionEvent;
-  metadata?: NotificationScheduleMetadataDto;
-} & (
-  | {
-      type: Exclude<ActionEventNotifType, ActionEventNotifType.Reminder>;
-      reminder?: never;
-    }
-  | {
-      type: ActionEventNotifType.Reminder;
-      reminder: ActionReminder;
-    }
-  | {
-      type: ActionEventNotifType.PersonalReminder;
-      reminder: PersonalActionReminder;
-    }
-);
+  user: User;
+  group: ReminderGroup;
+};
 
 @Injectable()
 export class ActionEventReminderService {
@@ -82,12 +58,8 @@ export class ActionEventReminderService {
     private readonly eventRepository: Repository<ActionEvent>,
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
-    @InjectRepository(ActionReminder)
-    private readonly reminderRepository: Repository<ActionReminder>,
     @InjectRepository(ReminderGroup)
     private readonly reminderGroupRepository: Repository<ReminderGroup>,
-    @InjectRepository(PersonalActionReminder)
-    private readonly personalActionReminderRepository: Repository<PersonalActionReminder>,
     private readonly recipientService: ActionEventRecipientService,
     private readonly userService: UserService,
   ) {}
@@ -108,28 +80,6 @@ export class ActionEventReminderService {
     const plans: NotificationPlan[] = [];
     const requiredEvents = new Set<number>();
 
-    // Announcements
-    const announcements = await this.eventRepository.find({
-      where: {
-        sendNotifsTo: Not(NotificationType.None),
-        announcementNotifsSentAt: IsNull(),
-        newStatus: In(ANNOUNCEMENT_SUPPORTED_STATUSES),
-        date: Between(start, end),
-      },
-      relations: ['action', 'action.participatingGroups'],
-      order: { date: 'ASC' },
-    });
-
-    for (const event of announcements) {
-      plans.push({
-        type: ActionEventNotifType.Announcement,
-        scheduledFor: event.date,
-        referenceEvent: event,
-        targetEvent: event,
-      });
-      requiredEvents.add(event.id);
-    }
-
     // Reminders
     const reminderPlans = await this.computeReminderPlans(start, end);
     for (const plan of reminderPlans) {
@@ -138,40 +88,8 @@ export class ActionEventReminderService {
       requiredEvents.add(plan.targetEvent.id);
     }
 
-    // Missed deadlines
-    const deadlinePlans = await this.computeDeadlinePlans(start, end);
-    for (const plan of deadlinePlans) {
-      plans.push(plan);
-      requiredEvents.add(plan.referenceEvent.id);
-      requiredEvents.add(plan.targetEvent.id);
-    }
-
     if (plans.length === 0) {
       return [];
-    }
-
-    // Load any events that were not already fully populated with relations TODO
-    const missingEventIds = Array.from(requiredEvents).filter((id) =>
-      plans.every(
-        (plan) => plan.referenceEvent.id !== id && plan.targetEvent.id !== id,
-      ),
-    );
-    if (missingEventIds.length > 0) {
-      const extras = await this.eventRepository.find({
-        where: { id: In(missingEventIds) },
-        relations: ['action', 'action.participatingGroups'],
-      });
-      const map = new Map(extras.map((event) => [event.id, event]));
-      for (const plan of plans) {
-        if (!plan.referenceEvent.action) {
-          const replacement = map.get(plan.referenceEvent.id);
-          if (replacement) plan.referenceEvent = replacement;
-        }
-        if (!plan.targetEvent.action) {
-          const replacement = map.get(plan.targetEvent.id);
-          if (replacement) plan.targetEvent = replacement;
-        }
-      }
     }
 
     plans.sort((a, b) => a.scheduledFor.getTime() - b.scheduledFor.getTime());
@@ -183,52 +101,63 @@ export class ActionEventReminderService {
     windowEnd: Date,
   ): Promise<NotificationScheduleEntryDto[]> {
     const plans = await this.evaluateNotifications(windowStart, windowEnd);
+
     return Promise.all(
       plans.map(async (plan) => {
-        const recipients =
-          plan.type === ActionEventNotifType.Reminder &&
-          plan.reminder.cohortType === ReminderCohortType.Custom
-            ? await this.recipientService
-                .filterForShouldRemind(plan.reminder.users, plan.referenceEvent)
-                .then((users) => users.map((user) => new ProfileDto(user)))
-            : await this.recipientService
-                .getFilteredUsersForEvent(plan.referenceEvent, plan.type)
-                .then((users) => users.map((user) => new ProfileDto(user)));
-
         return {
-          type: plan.type,
           scheduledFor: plan.scheduledFor,
           actionId: plan.referenceEvent.action!.id,
           actionName: plan.referenceEvent.action!.name,
           actionStatus: plan.referenceEvent.newStatus,
           eventId: plan.referenceEvent.id,
-          recipients,
-          metadata: plan.metadata,
-        };
+          type: ActionEventNotifType.Reminder,
+          recipients: [], //TODO
+        } satisfies NotificationScheduleEntryDto;
       }),
     );
   }
 
-  computeReminderSendDate(
-    reminder: ActionReminder,
-    nextEvent: ActionEvent,
-  ): Date {
-    if (reminder.timingMode === ReminderTimingMode.Absolute) {
-      if (!reminder.sendAtAbsolute) {
-        throw new Error('missing sendAtAbsolute for absolute reminder');
-      }
-      return reminder.sendAtAbsolute;
-    } else if (reminder.timingMode === ReminderTimingMode.FromDeadline) {
-      if (!reminder.sendAtSecondsFromDeadline) {
-        throw new Error(
-          'missing sendAtSecondsFromDeadline for relative reminder',
-        );
-      }
-      return new Date(
-        nextEvent.date.getTime() - reminder.sendAtSecondsFromDeadline * 1000,
-      );
-    }
-    return reminder.timingMode satisfies never;
+  async findSendableReminderGroups(
+    repo: Repository<ReminderGroup>,
+    windowStart: Date,
+    windowEnd: Date,
+  ) {
+    return repo
+      .createQueryBuilder('rg')
+      .leftJoin('rg.memberActionEvent', 'event')
+      .leftJoin('rg.deadlineEvent', 'deadline')
+      .leftJoin('rg.users', 'users')
+      .andWhere('rg."allSent" = false')
+      .where(
+        new Brackets((qb) => {
+          qb.where(
+            '(rg."timingMode" = :abs AND rg."sendAtAbsolute" BETWEEN :ws AND :we)',
+          )
+            .orWhere(
+              '(rg."timingMode" = :launch AND event."date" BETWEEN :ws AND :we)',
+            )
+            .orWhere(
+              '(rg."timingMode" = :range AND rg."send_range_start" <= :we AND rg."send_range_end" >= :ws)',
+            )
+            .orWhere(
+              `(
+                 rg."timingMode" = :from
+                 AND deadline."date" IS NOT NULL
+                 AND (deadline."date" + (rg."sendAtSecondsFromDeadline" * interval '1 second'))
+                   BETWEEN :ws AND :we
+               )`,
+            );
+        }),
+      )
+      .setParameters({
+        abs: ReminderGroupTimingMode.Absolute,
+        range: ReminderGroupTimingMode.WithinRange,
+        from: ReminderGroupTimingMode.FromDeadline,
+        launch: ReminderGroupTimingMode.EventLaunch,
+        ws: windowStart,
+        we: windowEnd,
+      })
+      .getMany();
   }
 
   private async computeReminderPlans(
@@ -237,153 +166,105 @@ export class ActionEventReminderService {
   ): Promise<NotificationPlan[]> {
     const results: NotificationPlan[] = [];
 
-    const events = await this.eventRepository.find({
-      relations: [
-        'action',
-        'action.participatingGroups',
-        'reminders',
-        'reminders.users', //TODO: shouldnt load whole users
-        'personalActionReminders',
-        'personalActionReminders.group',
-        'personalActionReminders.user',
-      ],
-      order: { action: { id: 'ASC' }, date: 'ASC' },
-    });
-
-    const eventsByAction = new Map<number, ActionEvent[]>();
-    for (const event of events) {
-      if (!event.action) continue;
-      const list = eventsByAction.get(event.action.id) ?? [];
-      list.push(event);
-      eventsByAction.set(event.action.id, list);
-    }
-
-    for (const [, list] of eventsByAction) {
-      list.sort((a, b) => a.date.getTime() - b.date.getTime());
-      for (let i = 0; i < list.length - 1; i += 1) {
-        const current = list[i];
-        const next = list[i + 1];
-        if (
-          !current.action ||
-          !ANNOUNCEMENT_SUPPORTED_STATUSES.includes(current.newStatus)
-        ) {
-          continue;
-        }
-        for (const reminder of current.reminders) {
-          if (!reminder.sentAt) {
-            const sendTime = this.computeReminderSendDate(reminder, next);
-            if (sendTime >= windowStart && sendTime <= windowEnd) {
-              results.push({
-                type: ActionEventNotifType.Reminder,
-                reminder,
-                scheduledFor: sendTime,
-                referenceEvent: current,
-                targetEvent: next,
-                metadata: {
-                  currentEventId: current.id,
-                  nextEventId: next.id,
-                },
-              });
-            }
-          }
-        }
-        for (const personalReminder of current.personalActionReminders) {
-          if (!personalReminder.sentAt) {
-            const sendTime = personalReminder.sendTime;
-            if (sendTime >= windowStart && sendTime <= windowEnd) {
-              console.log('sending personal reminder', personalReminder);
-              results.push({
-                type: ActionEventNotifType.PersonalReminder,
-                reminder: personalReminder,
-                scheduledFor: sendTime,
-                referenceEvent: current,
-                targetEvent: next,
-                metadata: {
-                  currentEventId: current.id,
-                  nextEventId: next.id,
-                },
-              });
-            }
-          }
-        }
-      }
-    }
-
-    return results;
-  }
-
-  private async computeDeadlinePlans(
-    windowStart: Date,
-    windowEnd: Date,
-  ): Promise<NotificationPlan[]> {
-    const candidates = await this.findMissedDeadlineCandidates(
+    const groups = await this.findSendableReminderGroups(
+      this.reminderGroupRepository,
       windowStart,
       windowEnd,
     );
 
-    if (!candidates.length) {
-      return [];
-    }
+    for (const group of groups) {
+      const users = await this.recipientService.getReminderGroupCohort(group);
 
-    const eventIds = Array.from(
-      new Set(
-        candidates.flatMap((candidate) => [
-          candidate.deadlineEventId,
-          candidate.resolutionEventId,
-        ]),
-      ),
-    );
+      for (const user of users) {
+        const reminderSendTime = getGroupSendTimeForUser(user, group);
 
-    const events = await this.eventRepository.find({
-      where: { id: In(eventIds) },
-      relations: ['action', 'action.participatingGroups'],
-    });
+        if (!reminderSendTime) continue;
 
-    const eventMap = new Map(events.map((event) => [event.id, event]));
-
-    const aggregated = new Map<
-      string,
-      {
-        deadlineEvent: ActionEvent;
-        resolutionEvent: ActionEvent;
-        count: number;
+        if (reminderSendTime >= windowStart && reminderSendTime <= windowEnd) {
+          results.push({
+            user,
+            group,
+            scheduledFor: reminderSendTime,
+            referenceEvent: group.memberActionEvent,
+            targetEvent: group.memberActionEvent,
+          });
+        }
       }
-    >();
-
-    for (const candidate of candidates) {
-      const deadlineEvent = eventMap.get(candidate.deadlineEventId);
-      const resolutionEvent = eventMap.get(candidate.resolutionEventId);
-      if (!deadlineEvent || !resolutionEvent || !deadlineEvent.action) {
-        continue;
-      }
-
-      const key = `${candidate.resolutionEventId}`;
-      const group = aggregated.get(key) ?? {
-        deadlineEvent,
-        resolutionEvent,
-        count: 0,
-        isSecondMiss: false,
-      };
-
-      group.count += 1;
-      aggregated.set(key, group);
     }
 
-    const plans: NotificationPlan[] = [];
+    // const events = await this.eventRepository.find({
+    //   relations: [
+    //     'action',
+    //     'action.participatingGroups',
+    //     'reminders',
+    //     'reminders.users', //TODO: shouldnt load whole users
+    //     'personalActionReminders',
+    //     'personalActionReminders.group',
+    //     'personalActionReminders.user',
+    //   ],
+    //   order: { action: { id: 'ASC' }, date: 'ASC' },
+    // });
 
-    for (const group of aggregated.values()) {
-      plans.push({
-        type: ActionEventNotifType.MissedDeadline,
-        scheduledFor: group.resolutionEvent.date,
-        referenceEvent: group.deadlineEvent,
-        targetEvent: group.resolutionEvent,
-        metadata: {
-          deadlineEventId: group.deadlineEvent.id,
-        },
-      });
-    }
+    // const eventsByAction = new Map<number, ActionEvent[]>();
+    // for (const event of events) {
+    //   if (!event.action) continue;
+    //   const list = eventsByAction.get(event.action.id) ?? [];
+    //   list.push(event);
+    //   eventsByAction.set(event.action.id, list);
+    // }
 
-    return plans;
+    // for (const [, list] of eventsByAction) {
+    //   list.sort((a, b) => a.date.getTime() - b.date.getTime());
+    //   for (let i = 0; i < list.length - 1; i += 1) {
+    //     const current = list[i];
+    //     const next = list[i + 1];
+    //     if (
+    //       !current.action ||
+    //       !ANNOUNCEMENT_SUPPORTED_STATUSES.includes(current.newStatus)
+    //     ) {
+    //       continue;
+    //     }
+    //     for (const reminder of current.reminders) {
+    //       if (!reminder.sentAt) {
+    //         const sendTime = this.computeReminderSendDate(reminder, next);
+    //         if (sendTime >= windowStart && sendTime <= windowEnd) {
+    //           results.push({
+    //             type: ActionEventNotifType.Reminder,
+    //             reminder,
+    //             scheduledFor: sendTime,
+    //             referenceEvent: current,
+    //             targetEvent: next,
+    //             metadata: {
+    //               currentEventId: current.id,
+    //               nextEventId: next.id,
+    //             },
+    //           });
+    //         }
+    //       }
+    //     }
+    //     for (const personalReminder of current.personalActionReminders) {
+    //       if (!personalReminder.sentAt) {
+    //         const sendTime = personalReminder.sendTime;
+    //         if (sendTime >= windowStart && sendTime <= windowEnd) {
+    //           console.log('sending personal reminder', personalReminder);
+    //           results.push({
+    //             type: ActionEventNotifType.PersonalReminder,
+    //             reminder: personalReminder,
+    //             scheduledFor: sendTime,
+    //             referenceEvent: current,
+    //             targetEvent: next,
+    //             metadata: {
+    //               currentEventId: current.id,
+    //               nextEventId: next.id,
+    //             },
+    //           });
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+
+    return results;
   }
 
   async findMissedDeadlineCandidates(
@@ -616,60 +497,7 @@ export class ActionEventReminderService {
     return zoned;
   }
 
-  async generatePersonalReminders(
-    group: ReminderGroup,
-    event: ActionEvent,
-    dto: CreateTODReminderGroupDto,
-  ): Promise<void> {
-    let users: User[];
-    switch (dto.cohortType) {
-      case ReminderCohortType.Custom:
-        users = await Promise.all(
-          (dto.userIds ?? []).map((id) => this.userService.findOneOrFail(id)),
-        );
-        break;
-      case ReminderCohortType.AllUncompleted:
-        users = await this.recipientService.getFilteredUsersForEvent(
-          event,
-          ActionEventNotifType.PersonalReminder,
-        );
-        break;
-      case ReminderCohortType.Group:
-        if (!dto.userGroupId) {
-          throw new BadRequestException(
-            'User group ID is required for group cohort type',
-          );
-        }
-        const group = await this.userService.findGroupOrFail(dto.userGroupId);
-        users = group.users;
-        break;
-      default:
-        throw new Error(
-          `Invalid cohort type: ${dto.cohortType satisfies never}`,
-        );
-    }
-
-    for (const user of users) {
-      const crreminder = this.personalActionReminderRepository.create({
-        group,
-        user,
-        memberActionEvent: event,
-      });
-      await this.personalActionReminderRepository.save(crreminder);
-
-      const withgroup = instanceToPlain(
-        await this.personalActionReminderRepository.findOneOrFail({
-          where: { id: crreminder.id },
-          relations: ['group', 'user'],
-        }),
-      );
-      if (withgroup.sendTime < new Date()) {
-        await this.personalActionReminderRepository.delete(withgroup.id); //TODO: dont save then delete
-      }
-    }
-  }
-
-  async computeIndividuallyTimedReminders(
+  async createReminderGroup(
     eventId: number,
     dto: CreateTODReminderGroupDto,
   ): Promise<ReminderGroup> {
@@ -686,21 +514,19 @@ export class ActionEventReminderService {
       userGroup = await this.userService.findGroupOrFail(dto.userGroupId);
     }
 
+    let users: User[] | undefined = undefined;
+    if (dto.cohortType === ReminderCohortType.Custom && dto.userIds) {
+      users = await this.userService.findByIds(dto.userIds);
+    }
+
     const group = await this.reminderGroupRepository.save(
       await this.reminderGroupRepository.create({
-        name: dto.name ?? `reminders for action event ${eventId}`,
-        emailMessage: dto.emailMessage,
-        emailSubject: dto.emailSubject,
-        textMessage: dto.textMessage,
-        cohortType: dto.cohortType,
+        ...dto,
         memberActionEvent: event,
-        sendDay: dto.sendDay,
         userGroup,
-        reminders: [],
+        users,
       }),
     );
-
-    await this.generatePersonalReminders(group, event, dto);
 
     return this.reminderGroupRepository.findOneOrFail({
       where: { id: group.id },
@@ -718,20 +544,9 @@ export class ActionEventReminderService {
       where: { id: groupId },
     });
 
-    this.personalActionReminderRepository.delete({
-      group: { id: groupId },
-    });
-
     Object.assign(group, dto);
 
-    const event = await this.eventRepository.findOneOrFail({
-      where: { id: eventId },
-      relations: ['action', 'action.participatingGroups'],
-    });
-
     const newGroup = await this.reminderGroupRepository.save(group);
-
-    await this.generatePersonalReminders(newGroup, event, dto);
 
     return this.reminderGroupRepository.findOneOrFail({
       where: { id: newGroup.id },

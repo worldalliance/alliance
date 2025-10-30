@@ -1,17 +1,22 @@
 import { ISendMailOptions, MailerService } from '@nestjs-modules/mailer';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ActionStatus } from 'src/actions/entities/action-event.entity';
-import { ActionEventNotificationContext } from 'src/notifs/action-event-notif.worker';
-import { ActionEventNotifType } from 'src/notifs/entities/action-event-notif.entity';
-import { actionUrl, withCid } from 'src/search/approutes';
+import { ActionEvent } from 'src/actions/entities/action-event.entity';
+import { actionUrl, tasksUrl, withCid } from 'src/search/approutes';
 import { Repository } from 'typeorm';
 import { EmailStatus, EmailType, Mail } from './mail.entity';
 import { getDaysFromDeadline } from 'src/notifs/textnotifcontents';
+import { User } from 'src/user/entities/user.entity';
+import { Action } from 'src/actions/entities/action.entity';
 
 export function processKeywordReplacements(
   text: string,
-  context: ActionEventNotificationContext,
+  context: {
+    user: User;
+    action: Action;
+    deadlineEvent?: ActionEvent;
+    cid: string;
+  },
 ): string {
   const names = context.user.name.split(' ');
   let firstname = '';
@@ -34,10 +39,7 @@ export function processKeywordReplacements(
         ? getDaysFromDeadline(context.deadlineEvent)
         : '[err]',
     )
-    .replace(
-      '#{link}',
-      withCid(actionUrl(context.action.id, true), context.cid),
-    );
+    .replace('#{link}', withCid(tasksUrl(), context.cid));
 }
 
 @Injectable()
@@ -212,83 +214,20 @@ export class MailService {
     );
   }
 
-  getSubject(context: ActionEventNotificationContext): string {
-    if (context.type === ActionEventNotifType.Announcement) {
-      if (context.event.newStatus === ActionStatus.GatheringCommitments) {
-        return 'New action: ' + context.action.name;
-      }
-      if (context.event.newStatus === ActionStatus.MemberAction) {
-        return 'Action needs completion: ' + context.action.name;
-      }
-      throw new Error(
-        'Invalid announcement status: ' + context.event.newStatus,
-      );
-    } else if (
-      context.type === ActionEventNotifType.Reminder ||
-      context.type === ActionEventNotifType.PersonalReminder
-    ) {
-      return context.customEmailSubject ?? 'Alliance reminder';
-    } else if (context.type === ActionEventNotifType.MissedDeadline) {
-      return 'Failed to complete action: ' + context.action.name;
-    }
-    throw new Error(
-      'Invalid event in mail context: ' + (context.type satisfies never),
-    );
-  }
-
   public async sendActionEventNotificationEmail(
-    context: ActionEventNotificationContext,
+    subject: string,
+    message: string,
+    cid: string,
+    recipient: string,
   ): Promise<Mail> {
-    const subject = context.customEmailSubject ?? this.getSubject(context);
-
-    let emailType: EmailType | null = null;
-
-    if (context.type === ActionEventNotifType.Announcement) {
-      emailType =
-        context.event.newStatus === ActionStatus.GatheringCommitments
-          ? EmailType.Commitment
-          : EmailType.MemberAction;
-    } else if (
-      context.type === ActionEventNotifType.Reminder ||
-      context.type === ActionEventNotifType.PersonalReminder
-    ) {
-      emailType = EmailType.CustomActionReminder;
-    } else if (context.type === ActionEventNotifType.MissedDeadline) {
-      emailType = context.isSecondMiss
-        ? EmailType.MissedSecondDeadline
-        : EmailType.MissedDeadline;
-    }
-    if (!emailType) {
-      throw new Error(
-        'Invalid event in mail context: ' + JSON.stringify(context),
-      );
-    }
-
-    const hasDeadline = context.deadlineEvent !== undefined;
-    let daysLeft = '';
-    if (context.deadlineEvent) {
-      daysLeft = getDaysFromDeadline(context.deadlineEvent);
-    }
-
-    const emailContext = {
-      name: context.user.name,
-      actionName: context.action.name,
-      url: withCid(actionUrl(context.action.id, true), context.cid),
-      commitmentless: context.action.commitmentless,
-      hasDeadline,
-      daysLeft,
-      customMessage: context.customEmailMessage
-        ? context.customEmailMessage.replace(/\n/g, '<br>')
-        : undefined,
-      cid: context.cid,
-    };
-
     return this.sendMail(
-      context.user.email,
-      emailType,
+      recipient,
+      EmailType.CustomActionReminder,
       subject,
-      emailContext,
-      context.cid,
+      {
+        customMessage: message.replace(/\n/g, '<br>'),
+      },
+      cid,
     );
   }
 

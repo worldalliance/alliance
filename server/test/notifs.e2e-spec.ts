@@ -1,4 +1,3 @@
-import * as request from 'supertest';
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { User } from 'src/user/entities/user.entity';
 import { Repository } from 'typeorm';
@@ -7,12 +6,6 @@ import {
   NotificationCategory,
 } from '../src/notifs/entities/notification.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
-import { Action } from 'src/actions/entities/action.entity';
-import {
-  ActionEvent,
-  ActionStatus,
-  NotificationType,
-} from 'src/actions/entities/action-event.entity';
 
 describe('Notifications (e2e)', () => {
   let ctx: TestContext;
@@ -71,38 +64,5 @@ describe('Notifications (e2e)', () => {
 
     notifs = await ctx.agent.get('/notifs').expect(200);
     expect(notifs.body.every((notif) => notif.cleared)).toBe(true);
-  });
-
-  it('admin can reload notification data for an event', async () => {
-    const actionRepo = ctx.dataSource.getRepository(Action);
-    const eventRepo = ctx.dataSource.getRepository(ActionEvent);
-
-    const action = await actionRepo.save(
-      actionRepo.create({
-        name: 'Notif Action',
-        category: 'Test',
-        body: 'Body',
-      }),
-    );
-
-    const event = await eventRepo.save(
-      eventRepo.create({
-        title: 'Notif Event',
-        description: 'Event description',
-        newStatus: ActionStatus.MemberAction,
-        sendNotifsTo: NotificationType.All,
-        date: new Date(Date.now() - 1000),
-        showInTimeline: true,
-        action,
-      }),
-    );
-
-    await request(ctx.app.getHttpServer())
-      .post(`/notifs/reloadNotifDataForEvent/${event.id}`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-      .expect(201);
-
-    await eventRepo.delete(event.id);
-    await actionRepo.delete(action.id);
   });
 });

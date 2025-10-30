@@ -34,7 +34,6 @@ import {
   UpdateDateColumnTz,
 } from 'src/datasources/basecolumns';
 import { Temporal } from '@js-temporal/polyfill';
-import { PersonalActionReminder } from 'src/actions/entities/personal-action-reminder.entity';
 
 export enum NotificationPreference {
   All = 'all',
@@ -285,7 +284,4 @@ export class User {
   @ManyToMany(() => Group, (group) => group.users, { onDelete: 'CASCADE' })
   @Type(() => Group)
   groups: Group[];
-
-  @OneToMany(() => PersonalActionReminder, (reminder) => reminder.user)
-  personalActionReminders: PersonalActionReminder[];
 }

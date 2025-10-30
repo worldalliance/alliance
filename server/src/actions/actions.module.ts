@@ -18,10 +18,8 @@ import { ActionsService } from './actions.service';
 import { ActionActivity } from './entities/action-activity.entity';
 import { ActionEvent } from './entities/action-event.entity';
 import { Action } from './entities/action.entity';
-import { ActionReminder } from './entities/action-reminder.entity';
 import { ActionUpdate } from './entities/action-update.entity';
 import { ReminderGroup } from './entities/reminder-group.entity';
-import { PersonalActionReminder } from './entities/personal-action-reminder.entity';
 
 @Module({
   imports: [
@@ -29,14 +27,12 @@ import { PersonalActionReminder } from './entities/personal-action-reminder.enti
       User,
       Action,
       ActionEvent,
-      ActionReminder,
       ActionActivity,
       Comment,
       EditableContent,
       Group,
       ActionUpdate,
       ReminderGroup,
-      PersonalActionReminder,
       ActionEventNotif,
     ]),
     UserModule,

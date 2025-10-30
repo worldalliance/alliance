@@ -13,6 +13,10 @@ import {
 import { User } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
 import { ActionEventNotifType } from './entities/action-event-notif.entity';
+import {
+  ReminderCohortType,
+  ReminderGroup,
+} from 'src/actions/entities/reminder-group.entity';
 
 @Injectable()
 export class ActionEventRecipientService {
@@ -128,5 +132,37 @@ export class ActionEventRecipientService {
     return type === ActionEventNotifType.Announcement
       ? users
       : await this.filterForShouldRemind(users, event);
+  }
+
+  async getReminderGroupCohort(group: ReminderGroup): Promise<User[]> {
+    let users: User[];
+    switch (group.cohortType) {
+      case ReminderCohortType.Custom:
+        if (!group.users) {
+          throw new Error('Custom cohort type requires users');
+        }
+        users = group.users;
+        break;
+      case ReminderCohortType.AllUncompleted:
+        users = await this.getFilteredUsersForEvent(
+          group.memberActionEvent,
+          ActionEventNotifType.PersonalReminder,
+        );
+        break;
+      case ReminderCohortType.Group:
+        if (!group.userGroup) {
+          throw new Error('Group cohort type requires user group');
+        }
+        const userGroup = await this.userService.findGroupOrFail(
+          group.userGroup.id,
+        );
+        users = userGroup.users;
+        break;
+      default:
+        throw new Error(
+          `Invalid cohort type: ${group.cohortType satisfies never}`,
+        );
+    }
+    return this.filterForShouldRemind(users, group.memberActionEvent);
   }
 }

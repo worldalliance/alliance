@@ -27,64 +27,10 @@ import {
   ActionStatus,
   NotificationType,
 } from '../entities/action-event.entity';
-import { ActionReminder } from '../entities/action-reminder.entity';
 import { Action } from '../entities/action.entity';
 import { getImageSource } from 'src/images/images.service';
 import { ActionUpdate } from '../entities/action-update.entity';
 import { ReminderGroup } from '../entities/reminder-group.entity';
-
-export class ActionReminderDto extends PickType(ActionReminder, [
-  'id',
-  'emailMessage',
-  'textMessage',
-  'cohortType',
-  'timingMode',
-  'sendAtAbsolute',
-  'sendAtSecondsFromDeadline',
-  'sentAt',
-]) {
-  @ApiProperty()
-  id: number;
-
-  @ApiProperty()
-  memberActionEventId: number;
-
-  @ApiPropertyOptional()
-  deadlineEventId?: number;
-
-  @ApiProperty({ type: Number, isArray: true })
-  userIds: number[];
-
-  @ApiProperty({ type: ProfileDto, isArray: true })
-  @Type(() => ProfileDto)
-  users: ProfileDto[];
-
-  @ApiPropertyOptional()
-  customEmailSubject?: string;
-
-  constructor(reminder: ActionReminder) {
-    super();
-    Object.assign(this, reminder);
-    this.userIds = reminder.users?.map((user) => user.id) ?? [];
-    this.memberActionEventId = reminder.memberActionEvent?.id ?? 0;
-    this.users = reminder.users?.map((user) => new ProfileDto(user)) ?? [];
-  }
-}
-
-export class CreateActionReminderDto extends PickType(ActionReminder, [
-  'cohortType',
-  'timingMode',
-  'sendAtAbsolute',
-  'sendAtSecondsFromDeadline',
-  'emailMessage',
-  'emailSubject',
-  'textMessage',
-]) {
-  @ApiPropertyOptional({ type: Number, isArray: true })
-  @Type(() => Number)
-  @IsOptional()
-  userIds?: number[];
-}
 
 export class CreateTODReminderGroupDto extends PickType(ReminderGroup, [
   'name',
@@ -107,10 +53,6 @@ export class CreateTODReminderGroupDto extends PickType(ReminderGroup, [
   sendDay: string;
 }
 
-export class UpdateActionReminderDto extends PartialType(
-  CreateActionReminderDto,
-) {}
-
 export class ActionEventDto extends PickType(ActionEvent, [
   'id',
   'title',
@@ -119,7 +61,6 @@ export class ActionEventDto extends PickType(ActionEvent, [
   'showInTimeline',
   'sendNotifsTo',
   'date',
-  'announcementNotifsSentAt',
 ]) {
   constructor(event: ActionEvent) {
     super();
@@ -135,12 +76,7 @@ export class AdminActionEventDto extends PickType(ActionEvent, [
   'showInTimeline',
   'sendNotifsTo',
   'date',
-  'announcementNotifsSentAt',
-  'reminders',
-  'reminderGroups',
-  'deadlineNotifsSentAt',
   'updatedAt',
-  'notifications',
 ]) {
   constructor(event: ActionEvent) {
     super();
@@ -149,10 +85,7 @@ export class AdminActionEventDto extends PickType(ActionEvent, [
   }
 }
 
-export class CreateActionEventDto extends OmitType(ActionEventDto, [
-  'id',
-  'announcementNotifsSentAt',
-]) {}
+export class CreateActionEventDto extends OmitType(ActionEventDto, ['id']) {}
 
 export class ActionDto extends OmitType(Action, [
   'createdAt',
