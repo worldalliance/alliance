@@ -113,7 +113,6 @@ const ActionsList: React.FC = () => {
               newStatus: "gathering_commitments",
               date: new Date(Date.now() - 86400000).toISOString(),
               showInTimeline: true,
-              sendNotifsTo: "all",
             },
           });
           if (i % 2 === 0) {
@@ -125,7 +124,6 @@ const ActionsList: React.FC = () => {
                 newStatus: "member_action",
                 date: new Date(Date.now() - 26400000).toISOString(),
                 showInTimeline: true,
-                sendNotifsTo: "joined",
               },
             });
           }

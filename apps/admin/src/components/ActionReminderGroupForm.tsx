@@ -16,7 +16,7 @@ import {
   defaultEmailContents,
   defaultEmailSubject,
   defaultTextMessage,
-} from "./ActionRemindersTab";
+} from "./defaultReminderContents";
 
 type ReminderGroupContentFields = Pick<
   ReminderGroup,
@@ -59,6 +59,7 @@ export const keywords = [
   "#{lastname}",
   "#{action}",
   "#{days}",
+  "#{hours}",
   "#{link}",
 ];
 
@@ -606,6 +607,17 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
                   <td>
                     The number of days until the action is due, with
                     &apos;days&apos; attached
+                  </td>
+                </tr>
+                <tr>
+                  <td>{"#{hours}"}</td>
+                  <td>1 hour</td>
+                  <td>
+                    The number of hours until the action is due, with
+                    &apos;hours&apos; attached. Note: assumes usage with days,
+                    so will not show more than 24 hours. (ie an action due in 25
+                    hours will show &quot;1 hour&quot;) to allow rendering
+                    &quot;1 day 1 hour remaning&quot;
                   </td>
                 </tr>
                 <tr>

@@ -1,7 +1,10 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, In, LessThanOrEqual, MoreThan, Repository } from 'typeorm';
-import { ActionEventNotifType } from './entities/action-event-notif.entity';
+import { Brackets, In, MoreThan, Repository } from 'typeorm';
+import {
+  ActionEventNotif,
+  ActionEventNotifType,
+} from './entities/action-event-notif.entity';
 import {
   ActionEvent,
   ActionStatus,
@@ -58,6 +61,8 @@ export class ActionEventReminderService {
     private readonly reminderGroupRepository: Repository<ReminderGroup>,
     @InjectRepository(ActionSuite)
     private readonly actionSuiteRepository: Repository<ActionSuite>,
+    @InjectRepository(ActionEventNotif)
+    private readonly actionEventNotifRepository: Repository<ActionEventNotif>,
     private readonly recipientService: ActionEventRecipientService,
     private readonly userService: UserService,
   ) {}
@@ -75,6 +80,18 @@ export class ActionEventReminderService {
       const reminderSendTime = getGroupSendTimeForUser(user, group);
 
       if (!reminderSendTime) continue;
+
+      if (
+        await this.actionEventNotifRepository.exists({
+          where: {
+            user: { id: user.id },
+            reminderGroup: { id: group.id },
+            sent: true,
+          },
+        })
+      ) {
+        continue;
+      }
 
       if (reminderSendTime >= windowStart && reminderSendTime <= windowEnd) {
         plans.push({
@@ -249,8 +266,9 @@ export class ActionEventReminderService {
         'users',
       ],
     });
+
     return this.getPlansForGroup(
-      group,
+      await this.attachDeadlineEvent(group),
       new Date(),
       new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
     );

@@ -91,8 +91,7 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
                     })}
                   </div>
                   <div>
-                    Notifications: {event.sendNotifsTo} | Timeline:{" "}
-                    {event.showInTimeline ? "Visible" : "Hidden"}
+                    Timeline: {event.showInTimeline ? "Visible" : "Hidden"}
                   </div>
                 </div>
 

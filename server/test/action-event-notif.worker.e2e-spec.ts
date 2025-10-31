@@ -3,7 +3,6 @@ import { ActionTaskType, Action } from 'src/actions/entities/action.entity';
 import {
   ActionEvent,
   ActionStatus,
-  NotificationType,
 } from 'src/actions/entities/action-event.entity';
 import {
   ReminderCohortType,
@@ -104,7 +103,6 @@ describe('ActionEventNotifWorker (e2e)', () => {
         title: `${name} member event`,
         description: 'desc',
         newStatus: ActionStatus.MemberAction,
-        sendNotifsTo: NotificationType.All,
         date: eventDate,
         showInTimeline: true,
         action,
@@ -460,7 +458,6 @@ describe('ActionEventNotifWorker (e2e)', () => {
         title: 'Deadline event',
         description: 'desc',
         newStatus: ActionStatus.Resolution,
-        sendNotifsTo: NotificationType.All,
         date: new Date(now + 30 * 60 * 1000),
         showInTimeline: false,
         action,
@@ -522,29 +519,6 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs).toHaveLength(1);
     expect(notifs[0].user.id).toBe(user.id);
     expect(notifs[0].channel).toBe(NotificationChannel.Text);
-  });
-
-  it('currently throws for event launch timing mode', async () => {
-    const now = Date.now();
-    const user = await getPrimaryUser();
-    await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 4 * 24 * 60 * 60 * 1000),
-    });
-
-    const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('launch-action'),
-      eventDate: new Date(now - 8 * 60 * 1000),
-    });
-
-    await createReminderGroup(
-      memberEvent,
-      ReminderGroupTimingMode.EventLaunch,
-      ReminderCohortType.AllUncompleted,
-    );
-
-    await expect(worker.dispatchDueNotifs()).rejects.toThrow(
-      'Invalid timing mode: event_launch',
-    );
   });
 
   it('replaces placeholders in custom reminder text', async () => {

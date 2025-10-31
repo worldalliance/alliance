@@ -1,7 +1,6 @@
 import {
   ActionEvent,
   ActionStatus,
-  NotificationType,
 } from 'src/actions/entities/action-event.entity';
 import { CreateCommentDto, UpdateCommentDto } from 'src/forum/dto/comment.dto';
 import { CommentParentObject } from 'src/forum/entities/comment.entity';
@@ -43,7 +42,6 @@ describe('Forum (e2e)', () => {
       title: 'Action Started',
       description: 'Action is now in gathering commitments phase',
       newStatus: ActionStatus.GatheringCommitments,
-      sendNotifsTo: NotificationType.None,
       date: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
       showInTimeline: true,
       action: testAction,

@@ -217,7 +217,11 @@ export function getGroupSendTimeForUser(
         ),
         Temporal.Instant.fromEpochMilliseconds(group.send_range_end!.getTime()),
       );
+    case ReminderGroupTimingMode.EventLaunch:
+      return group.memberActionEvent.date;
     default:
-      throw new Error(`Invalid timing mode: ${group.timingMode}`);
+      throw new Error(
+        `Invalid timing mode: ${group.timingMode satisfies never}`,
+      );
   }
 }

@@ -17,6 +17,14 @@ export function getDaysFromDeadline(deadlineEvent: ActionEvent): string {
   return days.toString() + ' day' + (days === 1 ? '' : 's');
 }
 
+export function getHoursFromDeadline(deadlineEvent: ActionEvent): string {
+  const hours =
+    Math.round(
+      (deadlineEvent.date.getTime() - new Date().getTime()) / (1000 * 60 * 60),
+    ) % 24;
+  return hours.toString() + ' hour' + (hours === 1 ? '' : 's');
+}
+
 export const welcomeMessage = `Thanks for opting in to action notifications from the Alliance! You'll get a text here when a new action is ready to complete. Reply STOP to opt out.`;
 
 export const defaultEventTextAnnouncement: {

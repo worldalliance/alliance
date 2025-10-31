@@ -69,15 +69,6 @@ export class ActionEvent {
   })
   newStatus: ActionStatus;
 
-  @Column({ type: 'text' })
-  @IsNotEmpty()
-  @ApiProperty({
-    description: 'Notification type for the event',
-    enum: NotificationType,
-    enumName: 'NotificationType',
-  })
-  sendNotifsTo: NotificationType;
-
   @Column({ type: 'timestamptz' })
   @ApiProperty({ description: 'time of the event (for display)' })
   @IsNotEmpty()

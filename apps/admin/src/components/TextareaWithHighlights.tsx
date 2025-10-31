@@ -10,6 +10,7 @@ export interface TextareaWithHighlightProps {
   exactWord?: boolean;
   rows?: number;
   caseSensitive?: boolean;
+  editable?: boolean;
 }
 
 function escapeHtml(s: string) {
@@ -28,8 +29,9 @@ export default function TextareaWithHighlight({
   className = "",
   textareaClassName = "",
   exactWord = false,
-  rows = 3,
+  rows = 4,
   caseSensitive = false,
+  editable = true,
 }: TextareaWithHighlightProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -58,7 +60,7 @@ export default function TextareaWithHighlight({
     if (!highlightRegex) return safe;
     return safe.replace(
       highlightRegex,
-      `<span class="bg-green-600/20 text-transparent">$1</span>`
+      `<span class="bg-green/20 text-transparent">$1</span>`
     );
   }, [value, highlightRegex]);
 
@@ -169,10 +171,12 @@ export default function TextareaWithHighlight({
           "p-3",
           "overflow-auto",
           "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+          !editable && "!border-0 !resize-none",
           textareaClassName,
         ].join(" ")}
         spellCheck={false}
         autoComplete="off"
+        disabled={!editable}
         rows={rows}
         autoCorrect="off"
         autoCapitalize="off"

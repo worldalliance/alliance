@@ -21,6 +21,7 @@ interface ActionTimelineProps {
   className?: string;
   reminders?: ReminderGroup[];
   onReminderClick?: (reminderId: number) => void;
+  focusOnDate?: Date | string | number | null;
 }
 
 interface TimelineData {
@@ -58,9 +59,15 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   className,
   reminders,
   onReminderClick,
+  focusOnDate,
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
+  const [focusIndicator, setFocusIndicator] = useState<{
+    timestamp: number;
+    visible: boolean;
+    id: number;
+  } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   console.log(reminders);
@@ -86,6 +93,14 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
 
     return null;
   }, []);
+
+  const focusDate = useMemo(() => {
+    if (focusOnDate === undefined || focusOnDate === null) {
+      return null;
+    }
+
+    return parseReminderDate(focusOnDate);
+  }, [parseReminderDate, focusOnDate]);
 
   const reminderList = reminders ?? EMPTY_REMINDERS;
 
@@ -323,6 +338,65 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       };
     }, [actions, normalizedReminders]);
 
+  const focusTimestamp = focusDate ? focusDate.getTime() : null;
+  const scrollContainer = scrollContainerRef.current;
+  const pixelsPerDay = 80;
+  const chartWidth = Math.max(totalDays, 1) * pixelsPerDay;
+  const rowHeight = 64;
+  const hasReminderOverlay = normalizedReminders.length > 0;
+  const timelineContentHeight =
+    Math.max(timelineData.length, hasReminderOverlay ? 1 : 0) * rowHeight;
+  const chartHeight = timelineContentHeight + 60;
+
+  console.log(normalizedReminders);
+
+  useEffect(() => {
+    if (
+      focusTimestamp === null ||
+      Number.isNaN(focusTimestamp) ||
+      !scrollContainer
+    ) {
+      return;
+    }
+
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    const pixelsPerMillisecond = pixelsPerDay / millisecondsPerDay;
+    const startTime = globalStartDate.getTime();
+    const endTime = globalEndDate.getTime();
+    const clampedTime = Math.min(Math.max(focusTimestamp, startTime), endTime);
+    const focusOffset = clampedTime - startTime;
+    const targetScrollLeft =
+      focusOffset * pixelsPerMillisecond - scrollContainer.clientWidth / 2;
+
+    scrollContainer.scrollTo({
+      left: Math.max(0, targetScrollLeft),
+      behavior: "smooth",
+    });
+
+    const indicatorId = Date.now();
+    setFocusIndicator({
+      timestamp: clampedTime,
+      visible: true,
+      id: indicatorId,
+    });
+
+    const timeout = window.setTimeout(() => {
+      setFocusIndicator((prev) =>
+        prev && prev.id === indicatorId ? { ...prev, visible: false } : prev
+      );
+    }, 1000);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [
+    focusTimestamp,
+    globalStartDate,
+    globalEndDate,
+    pixelsPerDay,
+    scrollContainer,
+  ]);
+
   // Generate date ticks for the timeline
   const dateTicks = useMemo(() => {
     const ticks: Date[] = [];
@@ -335,14 +409,6 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
 
     return ticks;
   }, [globalStartDate, globalEndDate]);
-
-  const pixelsPerDay = 80;
-  const chartWidth = Math.max(totalDays, 1) * pixelsPerDay;
-  const rowHeight = 64;
-  const hasReminderOverlay = normalizedReminders.length > 0;
-  const timelineContentHeight =
-    Math.max(timelineData.length, hasReminderOverlay ? 1 : 0) * rowHeight;
-  const chartHeight = timelineContentHeight + 60;
 
   // Effect to center current time on mount
   useEffect(() => {
@@ -620,6 +686,31 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                 }
                 return null;
               })()}
+
+              {focusIndicator?.visible &&
+                (() => {
+                  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+                  const pixelsPerMillisecond =
+                    pixelsPerDay / millisecondsPerDay;
+                  const offset =
+                    focusIndicator.timestamp - globalStartDate.getTime();
+
+                  if (!Number.isFinite(offset)) {
+                    return null;
+                  }
+
+                  return (
+                    <div
+                      className="absolute bg-blue-500 pointer-events-none z-40 transition-opacity duration-200"
+                      style={{
+                        left: `${offset * pixelsPerMillisecond}px`,
+                        width: "2px",
+                        top: "45px",
+                        height: `${timelineContentHeight}px`,
+                      }}
+                    />
+                  );
+                })()}
 
               {/* Timeline bars only */}
               {timelineData.map(({ action, phases }, index) => (

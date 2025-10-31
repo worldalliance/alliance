@@ -81,7 +81,6 @@ const CreateEventForm = (props: CreateEventFormProps) => {
       : "gathering_commitments",
     date: new Date().toISOString(),
     showInTimeline: true,
-    sendNotifsTo: "all",
   });
 
   const handleEventInputChange = (
@@ -109,7 +108,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
         path: { id: action.id },
         query: {
           type: eventForm.newStatus,
-          sendNotifsTo: eventForm.sendNotifsTo,
+          sendNotifsTo: "all",
         },
       });
       if (response.data) {
@@ -117,7 +116,7 @@ const CreateEventForm = (props: CreateEventFormProps) => {
       }
     };
     loadNotifData();
-  }, [action.id, eventForm.newStatus, eventForm.sendNotifsTo]);
+  }, [action.id, eventForm.newStatus]);
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,7 +164,6 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           title: defaultEventNames["office_action"],
           date: deadlineEventDate,
           newStatus: "office_action",
-          sendNotifsTo: "none",
           showInTimeline: false,
           description: "",
         } satisfies CreateActionEventDto;
@@ -201,7 +199,11 @@ const CreateEventForm = (props: CreateEventFormProps) => {
           props.setAction({
             ...action,
             events: !!addedOfficeActionEvent
-              ? [...action.events, addedEvent as ActionEventDto]
+              ? [
+                  ...action.events,
+                  addedOfficeActionEvent,
+                  addedEvent as ActionEventDto,
+                ]
               : [...action.events, addedEvent as ActionEventDto],
           });
         }
@@ -217,10 +219,11 @@ const CreateEventForm = (props: CreateEventFormProps) => {
         setEventForm({
           title: "",
           description: "",
-          newStatus: "gathering_commitments",
+          newStatus: action.commitmentless
+            ? "member_action"
+            : "gathering_commitments",
           date: new Date().toISOString(),
           showInTimeline: true,
-          sendNotifsTo: "all",
         });
         setUseCustomName(false);
         setLaunchNow(true);
@@ -413,22 +416,6 @@ const CreateEventForm = (props: CreateEventFormProps) => {
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="sendNotifsTo" className="block text-black mb-1">
-            Send Notifications To
-          </label>
-          <select
-            id="sendNotifsTo"
-            name="sendNotifsTo"
-            value={eventForm.sendNotifsTo}
-            onChange={handleEventInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All</option>
-            <option value="none">None</option>
-          </select>
-        </div>
-
         <div className="flex items-center">
           <input
             type="checkbox"

@@ -7,7 +7,6 @@ import { Action } from 'src/actions/entities/action.entity';
 import {
   ActionEvent,
   ActionStatus,
-  NotificationType,
 } from 'src/actions/entities/action-event.entity';
 import { Post } from 'src/forum/entities/post.entity';
 import { RecentSearch } from 'src/search/recentsearch.entity';
@@ -57,7 +56,6 @@ describe('Search (e2e)', () => {
         title: 'Launch',
         description: 'Action is live',
         newStatus: ActionStatus.GatheringCommitments,
-        sendNotifsTo: NotificationType.All,
         date: new Date(Date.now() - 1000),
         showInTimeline: true,
         action: targetAction,

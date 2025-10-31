@@ -743,7 +743,6 @@ export class ActionsService {
       title,
       description,
       newStatus,
-      sendNotifsTo: NotificationType.Joined, // Notify users who joined the action
       date: new Date(), // Set to current time for immediate transition
       showInTimeline: true,
     };

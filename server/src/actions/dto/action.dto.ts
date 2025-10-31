@@ -64,7 +64,6 @@ export class ActionEventDto extends PickType(ActionEvent, [
   'description',
   'newStatus',
   'showInTimeline',
-  'sendNotifsTo',
   'suiteManaged',
   'date',
 ]) {

@@ -69,7 +69,10 @@ const ActionSuitePage = () => {
       if (resp.data) {
         setSuite(resp.data);
       } else {
-        setError((resp.error as Error).message as string);
+        setError(
+          ((resp.error as Error).message as string) +
+            " (events will fail to delete if reminders depend on their existence)"
+        );
       }
     });
   };
@@ -93,12 +96,12 @@ const ActionSuitePage = () => {
       />
       {error && <p className="text-red-500">{error}</p>}
       <div className="space-y-5 flex-1 overflow-y-auto pt-0">
+        <p className="text-sm text-gray-500">Actions ordered by priority</p>
         {suite?.actions
           .sort((a, b) => b.priority - a.priority)
           .map((action) => (
             <ActionListCard key={action.id} action={action} totalUsers={0} />
           ))}
-        <p className="text-sm text-gray-500">Actions ordered by priority</p>
       </div>
       {suite && suite.actions.length > 0 && (
         <ActionRemindersTab

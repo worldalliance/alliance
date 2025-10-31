@@ -5,7 +5,10 @@ import { ActionEvent } from 'src/actions/entities/action-event.entity';
 import { tasksUrl, withCid } from 'src/search/approutes';
 import { Repository } from 'typeorm';
 import { EmailStatus, EmailType, Mail } from './mail.entity';
-import { getDaysFromDeadline } from 'src/notifs/textnotifcontents';
+import {
+  getDaysFromDeadline,
+  getHoursFromDeadline,
+} from 'src/notifs/textnotifcontents';
 import { User } from 'src/user/entities/user.entity';
 import { Action } from 'src/actions/entities/action.entity';
 
@@ -37,6 +40,12 @@ export function processKeywordReplacements(
       '#{days}',
       context.deadlineEvent
         ? getDaysFromDeadline(context.deadlineEvent)
+        : '[err]',
+    )
+    .replace(
+      '#{hours}',
+      context.deadlineEvent
+        ? getHoursFromDeadline(context.deadlineEvent)
         : '[err]',
     )
     .replace('#{link}', withCid(tasksUrl(true), context.cid));

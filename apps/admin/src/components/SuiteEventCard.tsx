@@ -71,7 +71,7 @@ const SuiteEventCard = ({ event, onEdit, onDelete }: SuiteEventCardProps) => {
               setEditingValues({ ...editingValues, date: date.utcValue! })
             }
           />
-          <div className="flex flex-row gap-2">
+          <div className="flex flex-row gap-2 mt-2">
             <Button color={ButtonColor.Black} onClick={handleSave}>
               Save
             </Button>

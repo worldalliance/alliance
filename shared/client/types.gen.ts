@@ -579,10 +579,6 @@ export type ActionEventDto = {
      */
     newStatus: ActionStatus;
     /**
-     * Notification type for the event
-     */
-    sendNotifsTo: NotificationType;
-    /**
      * time of the event (for display)
      */
     date: string;
@@ -907,10 +903,6 @@ export type CreateActionEventDto = {
      */
     newStatus: ActionStatus;
     /**
-     * Notification type for the event
-     */
-    sendNotifsTo: NotificationType;
-    /**
      * time of the event (for display)
      */
     date: string;
@@ -1014,10 +1006,6 @@ export type UpdateActionEventDto = {
      * New status of the action after the event
      */
     newStatus?: ActionStatus;
-    /**
-     * Notification type for the event
-     */
-    sendNotifsTo?: NotificationType;
     /**
      * time of the event (for display)
      */

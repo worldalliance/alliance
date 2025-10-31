@@ -32,17 +32,21 @@ import ActionReminderGroupForm, {
 } from "./ActionReminderGroupForm";
 import { UserSelectUser } from "./UserSelect";
 import { Link } from "react-router";
-
-export const defaultEmailSubject =
-  "You have #{days} left to complete #{action}";
-export const defaultEmailContents = `Hi,
-An action needs your completion: "#{action}"
-
-You have #{days} left to complete it. Please do so at the below link.
-#{link}`;
-
-export const defaultTextMessage =
-  "You have #{days} left to complete #{action}. #{link}";
+import {
+  defaultAnnouncementEmailContents,
+  defaultAnnouncementEmailSubject,
+  defaultAnnouncementTextMessage,
+  defaultEmailContents,
+  defaultEmailSubject,
+  defaultMissedDeadlineEmailContents,
+  defaultMissedDeadlineEmailSubject,
+  defaultMissedDeadlineTextMessage,
+  defaultTextMessage,
+  hoursEmailContents,
+  hoursEmailSubject,
+  hoursTextMessage,
+} from "./defaultReminderContents";
+import TextareaWithHighlights from "./TextareaWithHighlights";
 
 interface ActionRemindersTabProps {
   suite: ActionSuiteDto;
@@ -181,14 +185,10 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   }, []);
 
   useEffect(() => {
-    setReminderGroups(suite.reminderGroups);
-  }, []);
-
-  useEffect(() => {
     if (selectedEventId) {
       refreshReminderGroups(selectedEventId);
     }
-  }, [selectedEventId]);
+  }, [selectedEventId, refreshReminderGroups]);
 
   const handleDeleteGroupConfirm = (groupId: number) => {
     setDeleteGroupConfirmation(groupId);
@@ -339,6 +339,122 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       primary: "Scheduled group reminder",
       secondary: null,
     };
+  };
+
+  const populateDefaultReminders = async () => {
+    if (!selectedEventId) {
+      setCreateError("add a member action event to the suite first.");
+      return;
+    }
+
+    const reminders: Awaited<ReturnType<typeof actionsCreateReminderGroup>>[] =
+      [];
+
+    const announcement = await actionsCreateReminderGroup({
+      path: { eventId: selectedEventId },
+      body: {
+        suiteId: suite.id,
+        timingMode: "event_launch",
+        cohortType: "all_uncompleted",
+        textMessage: defaultAnnouncementTextMessage,
+        name: "Member Action announcement",
+        emailMessage: defaultAnnouncementEmailContents,
+        emailSubject: defaultAnnouncementEmailSubject,
+      },
+    });
+    reminders.push(announcement);
+
+    const deadlineEvent = nextEventById.get(selectedEventId);
+    if (!deadlineEvent) {
+      setCreateError("No deadline event found.");
+      return;
+    }
+
+    const twoDay = await actionsCreateReminderGroup({
+      path: { eventId: selectedEventId },
+      body: {
+        suiteId: suite.id,
+        timingMode: "within_range",
+        send_range_start: new Date(
+          new Date(deadlineEvent.date).getTime() - 48 * 60 * 60 * 1000
+        ).toISOString(),
+        send_range_end: new Date(
+          new Date(deadlineEvent.date).getTime() - 24 * 60 * 60 * 1000
+        ).toISOString(),
+        cohortType: "all_uncompleted",
+        textMessage: defaultTextMessage,
+        emailSubject: defaultEmailSubject,
+        emailMessage: defaultEmailContents,
+        name: "24-48h reminder",
+      },
+    });
+    reminders.push(twoDay);
+
+    const oneDay = await actionsCreateReminderGroup({
+      path: { eventId: selectedEventId },
+      body: {
+        suiteId: suite.id,
+        timingMode: "within_range",
+        send_range_start: new Date(
+          new Date(deadlineEvent.date).getTime() - 24 * 60 * 60 * 1000
+        ).toISOString(),
+        send_range_end: new Date(
+          new Date(deadlineEvent.date).getTime() - 6 * 60 * 60 * 1000
+        ).toISOString(),
+        cohortType: "all_uncompleted",
+        textMessage: hoursTextMessage,
+        emailSubject: hoursEmailSubject,
+        emailMessage: hoursEmailContents,
+        name: "6-24h reminder",
+      },
+    });
+    reminders.push(oneDay);
+
+    const threeHour = await actionsCreateReminderGroup({
+      path: { eventId: selectedEventId },
+      body: {
+        suiteId: suite.id,
+        timingMode: "from_deadline",
+        sendAtSecondsFromDeadline: 3 * 60 * 60,
+        cohortType: "all_uncompleted",
+        textMessage: hoursTextMessage,
+        emailMessage: hoursEmailContents,
+        emailSubject: hoursEmailSubject,
+        name: "3 hour reminder",
+      },
+    });
+    reminders.push(threeHour);
+
+    const missedDeadline = await actionsCreateReminderGroup({
+      path: { eventId: selectedEventId },
+      body: {
+        suiteId: suite.id,
+        timingMode: "from_deadline",
+        sendAtSecondsFromDeadline: 0,
+        cohortType: "all_uncompleted",
+        textMessage: defaultMissedDeadlineTextMessage,
+        emailMessage: defaultMissedDeadlineEmailContents,
+        emailSubject: defaultMissedDeadlineEmailSubject,
+        name: "Missed deadline message",
+      },
+    });
+    reminders.push(missedDeadline);
+
+    const error = reminders.some(
+      (reminder) => (reminder as unknown as { error: string | undefined }).error
+    );
+    if (error) {
+      setCreateError("Failed to create reminders.");
+    }
+    if (reminders.every((reminder) => reminder.data)) {
+      setCreateSuccess("Reminders created successfully.");
+    }
+    setReminderGroups((prev) => [
+      ...prev,
+      ...reminders
+        .filter((reminder) => reminder.data !== undefined)
+        .map((reminder) => reminder.data),
+    ]);
   };
 
   const handleCreateGroupSubmit = async (
@@ -509,14 +625,25 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                 )}
               </div>
               <div className="flex flex-row gap-2">
-                <Button
-                  type="button"
-                  color={ButtonColor.White}
-                  onClick={() => handleEditGroupStart(group.id)}
-                  className="-my-1"
-                >
-                  Edit
-                </Button>
+                {editingGroupId === group.id ? (
+                  <Button
+                    type="button"
+                    color={ButtonColor.White}
+                    onClick={handleEditCancel}
+                    className="-my-1"
+                  >
+                    Cancel
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    color={ButtonColor.White}
+                    onClick={() => handleEditGroupStart(group.id)}
+                    className="-my-1"
+                  >
+                    Edit
+                  </Button>
+                )}
                 <Button
                   type="button"
                   color={ButtonColor.Black}
@@ -554,9 +681,15 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                     <p className="text-sm font-semibold text-gray-900">
                       {group.emailSubject}
                     </p>
-                    <p>{group.emailMessage}</p>
+                    <TextareaWithHighlights
+                      value={group.emailMessage}
+                      editable={false}
+                      onChange={() => {}}
+                      keywords={[]}
+                    />
                   </div>
                   <div className="flex flex-col gap-1 w-1/2">
+                    <p className="text-xs font-semibold">Text message:</p>
                     <p>{group.textMessage}</p>
                   </div>
                 </>
@@ -564,7 +697,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             </div>
             <div>
               <p
-                className="text-sm cursor-pointer ml-4 mb-4"
+                className="text-sm cursor-pointer ml-4 mb-4 text-green"
                 onClick={() =>
                   setShowReminderPlans((prev) =>
                     prev === group.id ? null : group.id
@@ -605,17 +738,29 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-base font-semibold">Schedule a notification</h3>
-            <Button
-              type="button"
-              color={ButtonColor.Black}
-              className="px-3 py-1 text-sm"
-              onClick={() => setCreateGroupExpanded((prev) => !prev)}
-            >
-              {createGroupExpanded ? "Hide form" : "New reminder"}
-            </Button>
+            <div className="flex flex-row gap-2">
+              <Button
+                type="button"
+                color={ButtonColor.Black}
+                className="px-3 py-1 text-sm"
+                onClick={() => setCreateGroupExpanded((prev) => !prev)}
+              >
+                {createGroupExpanded ? "Hide form" : "New reminder"}
+              </Button>
+              {!createGroupExpanded && (
+                <Button
+                  type="button"
+                  color={ButtonColor.Green}
+                  className="px-3 py-1 text-sm"
+                  onClick={populateDefaultReminders}
+                >
+                  Populate default reminders
+                </Button>
+              )}
+            </div>
           </div>
           {!createGroupExpanded && createSuccess && (
-            <p className="text-sm text-green-600">{createSuccess}</p>
+            <p className="text-sm text-green">{createSuccess}</p>
           )}
           {createGroupExpanded && selectedEventId !== null && (
             <>

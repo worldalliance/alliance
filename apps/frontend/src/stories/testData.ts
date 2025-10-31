@@ -29,7 +29,7 @@ export const testActions: ActionDto[] = [
         date: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
         newStatus: "member_action",
         showInTimeline: true,
-        sendNotifsTo: "all",
+        suiteManaged: false,
       },
       {
         id: 2,
@@ -38,7 +38,7 @@ export const testActions: ActionDto[] = [
         date: new Date(Date.now() - 1000 * 60 * 60 * 49).toISOString(),
         newStatus: "member_action",
         showInTimeline: true,
-        sendNotifsTo: "all",
+        suiteManaged: false,
       },
     ],
     commitmentless: false,
