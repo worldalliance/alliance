@@ -1,6 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { Allow, IsArray, IsNotEmpty, IsOptional } from 'class-validator';
+import {
+  Allow,
+  IsArray,
+  IsDefined,
+  IsNotEmpty,
+  IsOptional,
+} from 'class-validator';
 import { Form } from 'src/tasks/entities/form.entity';
 import {
   Column,
@@ -237,4 +243,9 @@ export class Action {
   @Type(() => ActionSuite)
   @IsOptional()
   suite?: ActionSuite;
+
+  @Column({ default: 0 })
+  @ApiProperty({ description: 'Priority of the action' })
+  @IsDefined()
+  priority: number;
 }

@@ -20,6 +20,7 @@ import { UserService } from 'src/user/user.service';
 import { Temporal } from '@js-temporal/polyfill';
 import { Group } from 'src/user/entities/group.entity';
 import { ApiProperty } from '@nestjs/swagger';
+import { ActionSuite } from 'src/actions/entities/action-suite.entity';
 
 export interface MissedDeadlineCandidate {
   actionId: number;
@@ -59,6 +60,8 @@ export class ActionEventReminderService {
     private readonly eventRepository: Repository<ActionEvent>,
     @InjectRepository(ReminderGroup)
     private readonly reminderGroupRepository: Repository<ReminderGroup>,
+    @InjectRepository(ActionSuite)
+    private readonly actionSuiteRepository: Repository<ActionSuite>,
     private readonly recipientService: ActionEventRecipientService,
     private readonly userService: UserService,
   ) {}
@@ -113,8 +116,12 @@ export class ActionEventReminderService {
     );
 
     for (const group of groups) {
-      const plans = await this.getPlansForGroup(group, windowStart, windowEnd);
-      plans.push(...plans);
+      const groupPlans = await this.getPlansForGroup(
+        group,
+        windowStart,
+        windowEnd,
+      );
+      plans.push(...groupPlans);
     }
 
     if (plans.length === 0) {
@@ -253,10 +260,18 @@ export class ActionEventReminderService {
       users = await this.userService.findByIds(dto.userIds);
     }
 
+    let actionSuite: ActionSuite | undefined = undefined;
+    if (dto.suiteId) {
+      actionSuite = await this.actionSuiteRepository.findOneOrFail({
+        where: { id: dto.suiteId },
+      });
+    }
+
     return this.reminderGroupRepository.save(
       await this.reminderGroupRepository.create({
         ...dto,
         memberActionEvent: event,
+        actionSuite,
         userGroup,
         users,
       }),
@@ -285,6 +300,7 @@ export class ActionEventReminderService {
   async getReminderGroupsForEvent(id: number): Promise<ReminderGroup[]> {
     return this.reminderGroupRepository.find({
       where: { memberActionEvent: { id } },
+      relations: ['memberActionEvent'],
     });
   }
 }

@@ -2,18 +2,23 @@ import { ActionDto } from "@alliance/shared/client";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import ActionProgressBar from "./ActionProgressBar";
 import { getLastPastEventDate } from "../pages/Actions";
+import { useCallback } from "react";
+import { useNavigate } from "react-router";
 
 export interface ActionListCardProps {
   action: ActionDto;
-  handleEditAction: (actionId: number) => void;
   totalUsers: number;
 }
 
-const ActionListCard = ({
-  action,
-  handleEditAction,
-  totalUsers,
-}: ActionListCardProps) => {
+const ActionListCard = ({ action, totalUsers }: ActionListCardProps) => {
+  const navigate = useNavigate();
+  const handleEditAction = useCallback(
+    (id: number) => {
+      navigate(`/actions/${id}`);
+    },
+    [navigate]
+  );
+
   const lastEventDate = getLastPastEventDate(action);
   return (
     <Card key={action.id} style={CardStyle.White}>

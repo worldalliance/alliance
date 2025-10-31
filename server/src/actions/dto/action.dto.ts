@@ -52,6 +52,10 @@ export class CreateTODReminderGroupDto extends PickType(ReminderGroup, [
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   userGroupId?: number;
+
+  @ApiPropertyOptional({ type: Number })
+  @IsOptional()
+  suiteId?: number;
 }
 
 export class ActionEventDto extends PickType(ActionEvent, [
@@ -298,9 +302,9 @@ export class ActionSuiteDto extends OmitType(ActionSuite, ['actions']) {
   @Allow()
   actions: ActionDto[];
 
-  constructor(suite: ActionSuite, actions: ActionDto[]) {
+  constructor(suite: ActionSuite) {
     super();
     Object.assign(this, suite);
-    this.actions = actions;
+    this.actions = suite.actions.map((action) => new ActionDto(action));
   }
 }

@@ -309,7 +309,7 @@ const DatabaseViewer: React.FC = () => {
 
       setEditingCell(null);
     },
-    [editingCell, tableData, selectedTable]
+    [editingCell, tableData, selectedTable, showError]
   );
 
   const handleCellCancel = useCallback(() => {
@@ -958,7 +958,9 @@ const DatabaseViewer: React.FC = () => {
         title="Confirm Update"
         message={
           pendingUpdate
-            ? `Are you sure you want to update "${pendingUpdate.columnName}" from "${describeConfirmValue(
+            ? `Are you sure you want to update "${
+                pendingUpdate.columnName
+              }" from "${describeConfirmValue(
                 pendingUpdate.originalValue,
                 pendingUpdate.originalDisplayValue
               )}" to "${describeConfirmValue(

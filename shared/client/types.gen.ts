@@ -541,6 +541,10 @@ export type Action = {
     archived: boolean;
     updates: Array<ActionUpdate>;
     suite?: ActionSuite;
+    /**
+     * Priority of the action
+     */
+    priority: number;
 };
 
 export type Group = {
@@ -660,6 +664,10 @@ export type ActionDto = {
     archived: boolean;
     updates: Array<ActionUpdate>;
     suite?: ActionSuite;
+    /**
+     * Priority of the action
+     */
+    priority: number;
     events: Array<ActionEventDto>;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
@@ -805,6 +813,10 @@ export type CreateActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
+    /**
+     * Priority of the action
+     */
+    priority: number;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: string;
@@ -866,6 +878,10 @@ export type UpdateActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete?: boolean;
+    /**
+     * Priority of the action
+     */
+    priority?: number;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: string;
@@ -913,6 +929,7 @@ export type CreateTodReminderGroupDto = {
     sendAtSecondsFromDeadline?: number;
     userIds?: Array<number>;
     userGroupId?: number;
+    suiteId?: number;
 };
 
 export type NotificationPlan = {

@@ -10,7 +10,6 @@ import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import DatabaseIcon from "@alliance/shared/ui/icons/DatabaseIcon";
 import DropdownIcon from "@alliance/shared/ui/icons/DropdownIcon";
-import { formatDate } from "date-fns";
 import { useEffect, useState } from "react";
 import { formatStatus, getStatusColor } from "../pages/ActionDashboard";
 import DateTimePicker, {
@@ -399,15 +398,6 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
                         className="max-w-80"
                       />
                     </div>
-                    {eventForm.date && (
-                      <p className="text-sm text-gray-600 mb-1">
-                        Date:{" "}
-                        {formatDate(
-                          new Date(eventForm.date).getTime() + 604800000,
-                          "MM/dd/yyyy hh:mm a"
-                        )}
-                      </p>
-                    )}
                   </div>
                 )}
               </div>

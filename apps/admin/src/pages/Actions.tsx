@@ -94,13 +94,6 @@ const ActionsList: React.FC = () => {
     userList().then((res) => setTotalUsers(res.data?.length ?? 0));
   }, [loadActions]);
 
-  const handleEditAction = useCallback(
-    (id: number) => {
-      navigate(`/actions/${id}`);
-    },
-    [navigate]
-  );
-
   const handlePopulateTestData = useCallback(async () => {
     setIsPopulating(true);
     try {
@@ -318,19 +311,24 @@ const ActionsList: React.FC = () => {
             className="border border-zinc-200 rounded-lg overflow-hidden"
           >
             <div className="px-4 py-2 border-b border-zinc-200 bg-zinc-50">
-              <Link
-                to={`/suites/${suite.id}`}
-                className="text-sm font-semibold text-black hover:text-green"
-              >
-                {suite.name}
-              </Link>
+              {suite.id ? (
+                <Link
+                  to={`/suites/${suite.id}`}
+                  className="text-sm font-semibold text-black hover:text-green"
+                >
+                  {suite.name}
+                </Link>
+              ) : (
+                <p className="text-sm font-semibold text-black ">
+                  {suite.name}
+                </p>
+              )}
             </div>
             <div className="space-y-3 p-4">
               {suite.actions.map((action) => (
                 <ActionListCard
                   key={action.id}
                   action={action}
-                  handleEditAction={handleEditAction}
                   totalUsers={totalUsers}
                 />
               ))}

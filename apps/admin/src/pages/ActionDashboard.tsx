@@ -26,7 +26,6 @@ import EventManagementTab from "../components/EventManagementTab";
 import { getApiUrl } from "../lib/config";
 import CopyIcon from "@alliance/shared/ui/icons/CopyIcon";
 import { FormBuilder } from "../components/FormBuilder";
-import ActionRemindersTab from "../components/ActionRemindersTab";
 import ActionUpdatesTab from "../components/ActionUpdatesTab";
 
 // Status color mapping
@@ -63,7 +62,7 @@ export const formatStatus = (status: string) => {
     .join(" ");
 };
 
-type Tab = "overview" | "details" | "events" | "form" | "reminders" | "updates";
+type Tab = "overview" | "details" | "events" | "form" | "updates";
 
 const ActionDashboard: React.FC = () => {
   const { actionId: actionIdParam } = useParams<{ actionId: string }>();
@@ -495,18 +494,11 @@ const ActionDashboard: React.FC = () => {
 
   const baseUrl = getApiUrl();
 
-  const hasMemberActionEvent = action?.events?.some(
-    (event) => event.newStatus === "member_action"
-  );
-
   const tabData: { key: Tab; label: string }[] = [
     { key: "overview", label: "Status Overview" },
     { key: "details", label: "Action Details" },
     { key: "events", label: "Event Management" },
     { key: "updates", label: "Updates" },
-    ...(hasMemberActionEvent
-      ? [{ key: "reminders" as Tab, label: "Reminders" }]
-      : []),
     ...(action?.type === "Activity"
       ? [{ key: "form" as Tab, label: "Task Form" }]
       : []),
@@ -816,11 +808,6 @@ const ActionDashboard: React.FC = () => {
                 />
               </Card>
             )}
-
-            {activeTab === "reminders" && action && (
-              <ActionRemindersTab action={action} setAction={setAction} />
-            )}
-
             {activeTab === "form" && action && (
               <FormBuilder
                 formId={action.taskFormId}

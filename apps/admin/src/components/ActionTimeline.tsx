@@ -2,6 +2,8 @@ import {
   ActionDto,
   ActionEventDto,
   ActionStatus,
+  ReminderGroup,
+  ReminderGroupTimingMode,
 } from "@alliance/shared/client";
 import React, {
   useCallback,
@@ -17,6 +19,8 @@ interface ActionTimelineProps {
   actions: ActionDto[];
   title?: string;
   className?: string;
+  reminders?: ReminderGroup[];
+  onReminderClick?: (reminderId: number) => void;
 }
 
 interface TimelineData {
@@ -36,10 +40,24 @@ interface PhaseSegment {
   isActive: boolean;
 }
 
+interface NormalizedReminder {
+  id: number;
+  label?: string | null;
+  startDate: Date;
+  endDate: Date;
+  isRange: boolean;
+  timingMode: ReminderGroupTimingMode;
+  original: ReminderGroup;
+}
+
+const EMPTY_REMINDERS: ReminderGroup[] = [];
+
 const ActionTimeline: React.FC<ActionTimelineProps> = ({
   actions,
   title,
   className,
+  reminders,
+  onReminderClick,
 }) => {
   const [scrollLeft, setScrollLeft] = useState(0);
   const [containerWidth, setContainerWidth] = useState(800);
@@ -49,6 +67,140 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     const target = event.currentTarget;
     setScrollLeft(target.scrollLeft);
   }, []);
+
+  const parseReminderDate = useCallback((value: unknown): Date | null => {
+    if (!value && value !== 0) {
+      return null;
+    }
+
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+
+    if (typeof value === "string" || typeof value === "number") {
+      const parsed = new Date(value);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
+  }, []);
+
+  const reminderList = reminders ?? EMPTY_REMINDERS;
+
+  const nextEventById = useMemo(() => {
+    const nextEventMap = new Map<number, ActionEventDto>();
+
+    for (const action of actions) {
+      if (!action.events || action.events.length === 0) {
+        continue;
+      }
+
+      const sortedEvents = [...action.events].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+
+      sortedEvents.forEach((event, index) => {
+        const next = sortedEvents[index + 1];
+        if (next) {
+          nextEventMap.set(event.id, next);
+        }
+      });
+    }
+
+    return nextEventMap;
+  }, [actions]);
+
+  const normalizedReminders = useMemo<NormalizedReminder[]>(() => {
+    if (!reminderList || reminderList.length === 0) {
+      return [];
+    }
+
+    return reminderList
+      .map<NormalizedReminder | null>((reminder) => {
+        const timingMode = reminder.timingMode;
+
+        const rangeStart = parseReminderDate(reminder.send_range_start) ?? null;
+
+        const rangeEnd = parseReminderDate(reminder.send_range_end) ?? null;
+
+        let singleDate = parseReminderDate(reminder.sendAtAbsolute) ?? null;
+
+        const isRangeTiming = timingMode === "within_range";
+
+        if (!singleDate) {
+          const offsetSeconds = reminder.sendAtSecondsFromDeadline;
+
+          if (offsetSeconds != null && timingMode === "from_deadline") {
+            let deadlineDate: Date | null = null;
+
+            const memberEventId = reminder.memberActionEvent?.id;
+
+            if (!deadlineDate && memberEventId != null) {
+              const next = nextEventById.get(memberEventId);
+              if (next) {
+                deadlineDate = parseReminderDate(next.date);
+              }
+            }
+
+            if (deadlineDate) {
+              singleDate = new Date(
+                deadlineDate.getTime() - offsetSeconds * 1000
+              );
+            }
+          }
+        }
+
+        if (rangeStart && rangeEnd) {
+          const start =
+            rangeStart.getTime() <= rangeEnd.getTime() ? rangeStart : rangeEnd;
+          const end =
+            rangeStart.getTime() <= rangeEnd.getTime() ? rangeEnd : rangeStart;
+
+          return {
+            id: reminder.id,
+            label: reminder.name,
+            startDate: start,
+            endDate: end,
+            isRange: true,
+            timingMode,
+            original: reminder,
+          };
+        }
+
+        if (singleDate) {
+          return {
+            id: reminder.id,
+            label: reminder.name,
+            startDate: singleDate,
+            endDate: singleDate,
+            isRange: isRangeTiming,
+            timingMode,
+            original: reminder,
+          };
+        }
+
+        if (rangeStart || rangeEnd) {
+          const fallbackDate = rangeStart ?? rangeEnd;
+          if (!fallbackDate) {
+            return null;
+          }
+
+          return {
+            id: reminder.id,
+            label: reminder.name,
+            startDate: fallbackDate,
+            endDate: fallbackDate,
+            isRange: false,
+            timingMode,
+            original: reminder,
+          };
+        }
+
+        return null;
+      })
+      .filter((entry): entry is NormalizedReminder => entry !== null)
+      .sort((a, b) => a.startDate.getTime() - b.startDate.getTime());
+  }, [parseReminderDate, reminderList, nextEventById]);
 
   const { timelineData, globalStartDate, globalEndDate, totalDays } =
     useMemo(() => {
@@ -110,33 +262,52 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
         (a, b) => a.startDate.getTime() - b.startDate.getTime()
       );
 
-      // Calculate global timeline bounds with some padding
-      const minDate =
-        sortedActions.length > 0
-          ? new Date(
-              Math.min(...sortedActions.map((d) => d.startDate.getTime())) -
-                24 * 60 * 60 * 1000
-            )
-          : new Date();
-      const maxDate =
-        sortedActions.length > 0
-          ? new Date(
-              Math.max(...sortedActions.map((d) => d.endDate.getTime())) +
-                24 * 60 * 60 * 1000
-            )
-          : new Date();
+      const boundaryTimestamps: number[] = [];
 
-      const dayCount = Math.ceil(
-        (maxDate.getTime() - minDate.getTime()) / (24 * 60 * 60 * 1000)
+      sortedActions.forEach((item) => {
+        boundaryTimestamps.push(
+          item.startDate.getTime(),
+          item.endDate.getTime()
+        );
+      });
+
+      normalizedReminders.forEach((reminder) => {
+        boundaryTimestamps.push(reminder.startDate.getTime());
+        if (reminder.isRange) {
+          boundaryTimestamps.push(reminder.endDate.getTime());
+        }
+      });
+
+      // Calculate global timeline bounds with some padding
+      const defaultPadding = 24 * 60 * 60 * 1000;
+      let minDate: Date;
+      let maxDate: Date;
+
+      if (boundaryTimestamps.length > 0) {
+        const minTime = Math.min(...boundaryTimestamps);
+        const maxTime = Math.max(...boundaryTimestamps);
+        minDate = new Date(minTime - defaultPadding);
+        maxDate = new Date(maxTime + defaultPadding);
+      } else {
+        const now = new Date();
+        minDate = new Date(now.getTime() - defaultPadding);
+        maxDate = new Date(now.getTime() + defaultPadding);
+      }
+
+      const globalStartDate = new Date(
+        Math.min(minDate.getTime(), Date.now() - 2 * 24 * 60 * 60 * 1000)
       );
+
+      const span = maxDate.getTime() - globalStartDate.getTime();
+      const dayCount = Math.max(1, Math.ceil(span / (24 * 60 * 60 * 1000)));
 
       return {
         timelineData: sortedActions,
-        globalStartDate: minDate,
+        globalStartDate,
         globalEndDate: maxDate,
         totalDays: dayCount,
       };
-    }, [actions]);
+    }, [actions, normalizedReminders]);
 
   // Generate date ticks for the timeline
   const dateTicks = useMemo(() => {
@@ -152,7 +323,12 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   }, [globalStartDate, globalEndDate]);
 
   const pixelsPerDay = 80;
-  const chartWidth = totalDays * pixelsPerDay;
+  const chartWidth = Math.max(totalDays, 1) * pixelsPerDay;
+  const rowHeight = 64;
+  const hasReminderOverlay = normalizedReminders.length > 0;
+  const timelineContentHeight =
+    Math.max(timelineData.length, hasReminderOverlay ? 1 : 0) * rowHeight;
+  const chartHeight = timelineContentHeight + 60;
 
   // Effect to center current time on mount
   useEffect(() => {
@@ -174,7 +350,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
     }
   }, [timelineData, globalStartDate, globalEndDate, pixelsPerDay]);
 
-  if (timelineData.length === 0) {
+  if (timelineData.length === 0 && normalizedReminders.length === 0) {
     return (
       <div className={`p-8 text-center text-gray-500 ${className || ""}`}>
         No actions with timeline events found.
@@ -205,7 +381,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
             {/* Action names - scrollable vertically */}
             <div
               className="overflow-y-auto"
-              style={{ height: `${timelineData.length * 64}px` }}
+              style={{ height: `${timelineContentHeight}px` }}
             >
               {timelineData.map(({ action }) => (
                 <div
@@ -265,7 +441,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
               className="relative"
               style={{
                 width: `${chartWidth}px`,
-                height: `${timelineData.length * 64 + 60}px`,
+                height: `${chartHeight}px`,
               }}
             >
               {/* Date grid header - sticky */}
@@ -300,7 +476,7 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                 style={{
                   width: `${chartWidth}px`,
                   top: "50px",
-                  height: `${timelineData.length * 64}px`,
+                  height: `${timelineContentHeight}px`,
                 }}
               >
                 {dateTicks.map((_, index) => (
@@ -310,11 +486,92 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                     style={{
                       left: `${index * pixelsPerDay}px`,
                       top: 0,
-                      height: `${timelineData.length * 64}px`,
+                      height: `${timelineContentHeight}px`,
                     }}
                   />
                 ))}
               </div>
+
+              {/* Reminder overlays */}
+              {normalizedReminders.length > 0 && (
+                <div
+                  className="absolute left-0 right-0 z-30 pointer-events-none"
+                  style={{
+                    top: "50px",
+                    height: `${timelineContentHeight}px`,
+                  }}
+                >
+                  {normalizedReminders.map((reminder) => {
+                    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+                    const pixelsPerMillisecond =
+                      pixelsPerDay / millisecondsPerDay;
+                    const startOffset =
+                      reminder.startDate.getTime() - globalStartDate.getTime();
+                    const left = startOffset * pixelsPerMillisecond;
+
+                    if (reminder.isRange) {
+                      const endOffset =
+                        reminder.endDate.getTime() - globalStartDate.getTime();
+                      const width = Math.max(
+                        2,
+                        (endOffset - startOffset) * pixelsPerMillisecond
+                      );
+
+                      return (
+                        <div
+                          key={`reminder-range-${reminder.id}`}
+                          className="absolute cursor-pointer rounded-sm"
+                          style={{
+                            left: `${left}px`,
+                            width: `${width}px`,
+                            top: 0,
+                            height: "100%",
+                            backgroundColor: "rgba(220, 38, 38, 0.2)",
+                            borderLeft: "2px solid rgba(220, 38, 38, 0.6)",
+                            borderRight: "2px solid rgba(220, 38, 38, 0.6)",
+                            pointerEvents: "auto",
+                          }}
+                          title={
+                            reminder.label
+                              ? `Reminder window: ${reminder.label}`
+                              : "Reminder window"
+                          }
+                          onClick={() => {
+                            if (onReminderClick) {
+                              onReminderClick(reminder.original.id);
+                            }
+                          }}
+                        />
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={`reminder-${reminder.id}`}
+                        className="absolute cursor-pointer"
+                        style={{
+                          left: `${left}px`,
+                          width: "2px",
+                          top: 0,
+                          height: "100%",
+                          backgroundColor: "rgba(220, 38, 38, 0.85)",
+                          pointerEvents: "auto",
+                        }}
+                        title={
+                          reminder.label
+                            ? `Reminder: ${reminder.label}`
+                            : "Reminder"
+                        }
+                        onClick={() => {
+                          if (onReminderClick) {
+                            onReminderClick(reminder.original.id);
+                          }
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Current time indicator */}
               {(() => {
@@ -338,8 +595,8 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                           millisecondsSinceStart * pixelsPerMillisecond
                         }px`,
                         width: "2px",
-                        top: "60px",
-                        height: `${timelineData.length * 64}px`,
+                        top: "45px",
+                        height: `${timelineContentHeight}px`,
                       }}
                       title={`Now - ${currentDate.toLocaleString()}`}
                     >

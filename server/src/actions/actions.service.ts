@@ -1040,12 +1040,16 @@ export class ActionsService {
   async getSuite(id: number): Promise<ActionSuiteDto> {
     const suite = await this.actionSuiteRepository.findOneOrFail({
       where: { id },
+      relations: [
+        'actions',
+        'actions.events',
+        'reminderGroups',
+        'reminderGroups.memberActionEvent',
+        'reminderGroups.memberActionEvent',
+        'reminderGroups.deadlineEvent',
+      ],
     });
-    const all = await this.findAll();
-    return new ActionSuiteDto(
-      suite,
-      all.filter((action) => action.suite?.id === id),
-    );
+    return new ActionSuiteDto(suite);
   }
 
   async createSuite(

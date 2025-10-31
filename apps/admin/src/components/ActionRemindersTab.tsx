@@ -1,5 +1,5 @@
 import {
-  ActionDto,
+  ActionSuiteDto,
   GroupDto,
   NotificationPlan,
   ReminderGroup,
@@ -13,7 +13,13 @@ import {
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   format,
   formatDistanceStrict,
@@ -39,12 +45,17 @@ export const defaultTextMessage =
   "You have #{days} left to complete #{action}. #{link}";
 
 interface ActionRemindersTabProps {
-  action: ActionDto;
+  suite: ActionSuiteDto;
+  highlightedReminder?: number;
 }
 
 const DISPLAY_DATETIME_FORMAT = "PP p";
 
-const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
+const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
+  suite,
+  highlightedReminder,
+}) => {
+  const action = suite.actions[0];
   const memberEvents = useMemo(
     () =>
       (action.events || []).filter(
@@ -68,8 +79,8 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
     return map;
   }, [sortedActionEvents]);
 
-  const [selectedEventId, setSelectedEventId] = useState<number>(
-    memberEvents[0].id //TODO: collate or move between events
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(
+    memberEvents.length > 0 ? memberEvents[0].id : null //TODO: collate or move between events
   );
   const [users, setUsers] = useState<UserSelectUser[]>([]);
   const [userGroups, setUserGroups] = useState<GroupDto[]>([]);
@@ -168,7 +179,9 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
   }, []);
 
   useEffect(() => {
-    refreshReminderGroups(selectedEventId);
+    if (selectedEventId) {
+      refreshReminderGroups(selectedEventId);
+    }
   }, [selectedEventId, refreshReminderGroups]);
 
   const handleDeleteGroupConfirm = (groupId: number) => {
@@ -183,7 +196,9 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
     });
     if (resp.response.ok) {
       setDeleteGroupConfirmation(null);
-      refreshReminderGroups(selectedEventId);
+      if (selectedEventId) {
+        refreshReminderGroups(selectedEventId);
+      }
     }
   };
 
@@ -205,6 +220,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
 
   const findGroupDeadlineEvent = (group: ReminderGroup) => {
     const memberEventId = getGroupMemberEventId(group);
+
     if (!memberEventId) {
       return undefined;
     }
@@ -215,6 +231,8 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
     null
   );
   const [reminderPlans, setReminderPlans] = useState<NotificationPlan[]>([]);
+
+  console.log(suite);
 
   useEffect(() => {
     setReminderPlans([]);
@@ -300,7 +318,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
         secondary: "Range not fully configured",
       };
     }
-
     if (group.timingMode === "event_launch") {
       const launchDate = parseDate(group.memberActionEvent?.date);
       return {
@@ -327,10 +344,12 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
     setCreateSuccess(null);
     setCreateSubmitting(true);
 
-    console.log("handleCreateGroupSubmit", payload);
-
     try {
       const { memberActionEventId: eventId, ...body } = payload;
+      const updatedBody = {
+        ...body,
+        suiteId: suite.id,
+      };
       if (!eventId) {
         throw new Error("Select a member action event first.");
       }
@@ -338,7 +357,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
       setSelectedEventId(eventId);
       const response = await actionsCreateReminderGroup({
         path: { eventId },
-        body,
+        body: updatedBody,
       });
 
       if (response.error || !response.data) {
@@ -368,13 +387,17 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
       setEditSubmitting(true);
       try {
         const { memberActionEventId: eventId, ...body } = payload;
+        const updatedBody = {
+          ...body,
+          suiteId: suite.id,
+        };
         if (!eventId) {
           throw new Error("Select a member action event first.");
         }
 
         const response = await actionsUpdateReminderGroup({
           path: { groupId },
-          body,
+          body: updatedBody,
         });
 
         if (!response.data) {
@@ -409,12 +432,19 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
     setEditSuccess(null);
   };
 
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (highlightedReminder) {
+      ref.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [highlightedReminder]);
+
   if (!memberEvents.length) {
     return (
       <Card style={CardStyle.White}>
         <p className="text-sm text-gray-600">
-          This action does not have a member action event yet. Add a member
-          action event on the Events tab to schedule reminders.
+          No member action events yet. Add a member action event to schedule
+          reminders.
         </p>
       </Card>
     );
@@ -431,7 +461,10 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
         return (
           <Card
             key={group.id}
-            className="bg-white text-sm !p-0 overflow-hidden"
+            ref={highlightedReminder === group.id ? ref : undefined}
+            className={`bg-white text-sm !p-0 overflow-hidden transition-all duration-300 ${
+              highlightedReminder === group.id ? "!border-red-500" : ""
+            }`}
           >
             {deleteGroupConfirmation === group.id && (
               <div className="p-4 flex flex-row items-center gap-2">
@@ -491,7 +524,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
               </div>
             </div>
             <div className="flex flex-row gap-2 p-4">
-              {editingGroupId === group.id ? (
+              {editingGroupId === group.id && selectedEventId !== null ? (
                 <ActionReminderGroupForm
                   memberEvents={memberEvents}
                   users={users}
@@ -580,7 +613,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({ action }) => {
           {!createGroupExpanded && createSuccess && (
             <p className="text-sm text-green-600">{createSuccess}</p>
           )}
-          {createGroupExpanded && (
+          {createGroupExpanded && selectedEventId !== null && (
             <>
               <p className="text-sm text-gray-600">
                 Creates a personal reminder for each user based on their time
