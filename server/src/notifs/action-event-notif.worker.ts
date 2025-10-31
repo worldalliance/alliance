@@ -50,7 +50,9 @@ export class ActionEventNotifWorker {
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
-  ) {}
+  ) {
+    this.dispatchDueNotifs();
+  }
 
   @Cron('*/3 * * * *')
   async dispatchDueNotifs() {
@@ -93,7 +95,7 @@ export class ActionEventNotifWorker {
   ): string {
     return processKeywordReplacements(text, {
       user: plan.user,
-      action: plan.referenceEvent.action,
+      action: plan.group.memberActionEvent.action,
       deadlineEvent: plan.group.deadlineEvent,
       cid,
     });

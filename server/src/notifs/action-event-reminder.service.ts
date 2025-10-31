@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Brackets, In, LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 import { ActionEventNotifType } from './entities/action-event-notif.entity';
 import {
   ActionEvent,
@@ -45,10 +45,6 @@ export class NotificationPlan {
   @ApiProperty()
   scheduledFor: Date;
   @ApiProperty()
-  referenceEvent: ActionEvent;
-  @ApiProperty()
-  targetEvent: ActionEvent;
-  @ApiProperty()
   user: User;
   group: ReminderGroup;
 }
@@ -85,13 +81,32 @@ export class ActionEventReminderService {
           user,
           group,
           scheduledFor: reminderSendTime,
-          referenceEvent: group.memberActionEvent,
-          targetEvent: group.memberActionEvent,
         });
       }
     }
 
     return plans;
+  }
+
+  async attachDeadlineEvent(group: ReminderGroup): Promise<ReminderGroup> {
+    if (group.deadlineEvent || !group.memberActionEvent) {
+      return group;
+    }
+    const deadlineEvents = await this.eventRepository.find({
+      where: {
+        action: { id: group.memberActionEvent.action.id },
+        date: MoreThan(group.memberActionEvent.date),
+        newStatus: In(Array.from(POST_MEMBER_ACTION_STATUSES)),
+      },
+      order: {
+        date: 'ASC',
+      },
+      take: 1,
+    });
+    if (deadlineEvents.length === 0) {
+      return group;
+    }
+    return { ...group, deadlineEvent: deadlineEvents[0] };
   }
 
   async evaluateNotifications(
@@ -116,8 +131,9 @@ export class ActionEventReminderService {
     );
 
     for (const group of groups) {
+      const withDeadline = await this.attachDeadlineEvent(group);
       const groupPlans = await this.getPlansForGroup(
-        group,
+        withDeadline,
         windowStart,
         windowEnd,
       );
@@ -140,12 +156,13 @@ export class ActionEventReminderService {
 
     return Promise.all(
       plans.map(async (plan) => {
+        const event = plan.group.memberActionEvent!;
         return {
           scheduledFor: plan.scheduledFor,
-          actionId: plan.referenceEvent.action!.id,
-          actionName: plan.referenceEvent.action!.name,
-          actionStatus: plan.referenceEvent.newStatus,
-          eventId: plan.referenceEvent.id,
+          actionId: event.action!.id,
+          actionName: event.action!.name,
+          actionStatus: event.newStatus,
+          eventId: event.id,
           type: ActionEventNotifType.Reminder,
           recipients: [], //TODO
         } satisfies NotificationScheduleEntryDto;

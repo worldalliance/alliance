@@ -68,7 +68,11 @@ const HomePage = () => {
     const todoActions = actions.filter((action) =>
       shouldCompleteAction(action)
     );
-    const newActions = actions.filter((action) => canJoinAction(action));
+    const newActions = actions
+      .filter((action) => canJoinAction(action))
+      .sort((a, b) => {
+        return a.priority - b.priority;
+      });
 
     const committedActions = actions.filter(
       (action) =>

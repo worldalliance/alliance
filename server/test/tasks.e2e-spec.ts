@@ -86,6 +86,7 @@ describe('Tasks (e2e)', () => {
         commitmentless: true,
         everyoneShouldComplete: false,
         participatingGroups: [ctx.defaultGroup],
+        priority: 0,
       } satisfies CreateActionDto),
     );
 

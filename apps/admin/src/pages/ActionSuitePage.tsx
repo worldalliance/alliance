@@ -1,9 +1,16 @@
-import { actionsSuite, ActionSuiteDto } from "@alliance/shared/client";
+import {
+  actionsBatchUpdateSuiteEvents,
+  actionsDeleteSuiteEvent,
+  actionsSuite,
+  ActionSuiteDto,
+  UpdateActionEventDto,
+} from "@alliance/shared/client";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import ActionListCard from "../components/ActionListCard";
 import ActionRemindersTab from "../components/ActionRemindersTab";
 import ActionTimeline from "../components/ActionTimeline";
+import SuiteEventList from "../components/SuiteEventList";
 
 const ActionSuitePage = () => {
   const { suiteId: suiteIdString } = useParams();
@@ -43,6 +50,30 @@ const ActionSuitePage = () => {
     return <div>Loading...</div>;
   }
 
+  console.log(suite);
+
+  const handleEditEvent = (eventId: number, body: UpdateActionEventDto) => {
+    actionsBatchUpdateSuiteEvents({ path: { suiteId, eventId }, body }).then(
+      (resp) => {
+        if (resp.data) {
+          setSuite(resp.data as ActionSuiteDto);
+        } else {
+          setError((resp.error as Error).message as string);
+        }
+      }
+    );
+  };
+
+  const handleDeleteEvent = (eventId: number) => {
+    actionsDeleteSuiteEvent({ path: { suiteId, eventId } }).then((resp) => {
+      if (resp.data) {
+        setSuite(resp.data);
+      } else {
+        setError((resp.error as Error).message as string);
+      }
+    });
+  };
+
   return (
     <div className="p-6 flex flex-col gap-6">
       <ActionTimeline
@@ -51,6 +82,14 @@ const ActionSuitePage = () => {
         reminders={suite.reminderGroups}
         className="-m-6 mb-0"
         onReminderClick={handleHighlightReminder}
+      />
+      <SuiteEventList
+        referenceAction={suite.actions[0]}
+        setSuite={setSuite}
+        suiteId={suiteId}
+        events={suite.events}
+        onEdit={handleEditEvent}
+        onDelete={handleDeleteEvent}
       />
       {error && <p className="text-red-500">{error}</p>}
       <div className="space-y-5 flex-1 overflow-y-auto pt-0">

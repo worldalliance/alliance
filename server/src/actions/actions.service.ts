@@ -38,6 +38,7 @@ import {
   PreEventNotifDataDto,
   UpdateActionActivityDto,
   UpdateActionDto,
+  UpdateActionEventDto,
 } from './dto/action.dto';
 import {
   ActionActivity,
@@ -1049,7 +1050,7 @@ export class ActionsService {
         'reminderGroups.deadlineEvent',
       ],
     });
-    return new ActionSuiteDto(suite);
+    return new ActionSuiteDto(instanceToPlain(suite) as ActionSuite);
   }
 
   async createSuite(
@@ -1057,5 +1058,83 @@ export class ActionsService {
   ): Promise<ActionSuiteDto> {
     const suite = this.actionSuiteRepository.create(createActionSuiteDto);
     return this.actionSuiteRepository.save(suite);
+  }
+
+  async batchUpdateSuiteEvents(
+    suiteId: number,
+    eventId: number,
+    body: UpdateActionEventDto,
+  ) {
+    const event = await this.actionEventRepository.findOneOrFail({
+      where: { id: eventId },
+      relations: ['action', 'action.events'],
+    });
+    const suite = await this.actionSuiteRepository.findOneOrFail({
+      where: { id: suiteId },
+      relations: ['actions', 'actions.events'],
+    });
+    const eventIdx = event.action.events.findIndex(
+      (event) => event.id === eventId,
+    );
+    const eventsToUpdate = new Set<number>([eventId]);
+
+    for (const action of suite.actions) {
+      const possibleEvent = action.events[eventIdx];
+      if (
+        possibleEvent.newStatus === event.newStatus &&
+        possibleEvent.suiteManaged
+      ) {
+        eventsToUpdate.add(possibleEvent.id);
+      }
+    }
+
+    for (const id of eventsToUpdate) {
+      await this.actionEventRepository.update(id, body);
+    }
+    return this.getSuite(suiteId);
+  }
+
+  async addSuiteEvent(suiteId: number, actionEventDto: CreateActionEventDto) {
+    const suite = await this.actionSuiteRepository.findOneOrFail({
+      where: { id: suiteId },
+      relations: ['actions'],
+    });
+
+    for (const action of suite.actions) {
+      console.log('adding event to action', action.id);
+      const newEvent = this.actionEventRepository.create({
+        ...actionEventDto,
+        action,
+        suiteManaged: true,
+      });
+      await this.actionEventRepository.save(newEvent);
+    }
+    return this.getSuite(suiteId);
+  }
+
+  async deleteSuiteEvent(suiteId: number, eventId: number) {
+    const event = await this.actionEventRepository.findOneOrFail({
+      where: { id: eventId },
+      relations: ['action', 'action.events'],
+    });
+    const suite = await this.actionSuiteRepository.findOneOrFail({
+      where: { id: suiteId },
+      relations: ['actions', 'actions.events'],
+    });
+    const eventIdx = event.action.events.findIndex(
+      (event) => event.id === eventId,
+    );
+
+    for (const action of suite.actions) {
+      const possibleEvent = action.events[eventIdx];
+      if (
+        possibleEvent.newStatus === event.newStatus &&
+        possibleEvent.suiteManaged
+      ) {
+        console.log('deleting event', possibleEvent.id);
+        await this.actionEventRepository.delete(possibleEvent.id);
+      }
+    }
+    return this.getSuite(suiteId);
   }
 }

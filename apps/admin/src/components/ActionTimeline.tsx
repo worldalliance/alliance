@@ -63,6 +63,8 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
   const [containerWidth, setContainerWidth] = useState(800);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  console.log(reminders);
+
   const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
     const target = event.currentTarget;
     setScrollLeft(target.scrollLeft);
@@ -115,6 +117,8 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
       return [];
     }
 
+    console.log(reminderList);
+
     return reminderList
       .map<NormalizedReminder | null>((reminder) => {
         const timingMode = reminder.timingMode;
@@ -146,6 +150,11 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
               singleDate = new Date(
                 deadlineDate.getTime() - offsetSeconds * 1000
               );
+            }
+          } else if (timingMode === "event_launch") {
+            console.log(reminder);
+            if (reminder.memberActionEvent) {
+              singleDate = parseReminderDate(reminder.memberActionEvent.date);
             }
           }
         }
@@ -276,6 +285,11 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
         if (reminder.isRange) {
           boundaryTimestamps.push(reminder.endDate.getTime());
         }
+      });
+      actions.forEach((action) => {
+        action.events.forEach((event) => {
+          boundaryTimestamps.push(new Date(event.date).getTime());
+        });
       });
 
       // Calculate global timeline bounds with some padding

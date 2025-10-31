@@ -341,6 +341,7 @@ export type ActionEvent = {
      */
     action: Action;
     updates: Array<ActionUpdate>;
+    suiteManaged: boolean;
 };
 
 export type FormResponse = {
@@ -422,6 +423,7 @@ export type ActionEventNotif = {
      */
     sent: boolean;
     idempotency_key?: string;
+    createdAt: string;
 };
 
 export type ReminderGroup = {
@@ -452,6 +454,7 @@ export type ActionSuite = {
     reminderGroups: Array<ReminderGroup>;
     createdAt: string;
     updatedAt: string;
+    events: Array<ActionEvent>;
 };
 
 export type Action = {
@@ -587,6 +590,7 @@ export type ActionEventDto = {
      * Indicates whether the event should be shown in the timeline
      */
     showInTimeline: boolean;
+    suiteManaged: boolean;
 };
 
 export type ActionDto = {
@@ -934,8 +938,6 @@ export type CreateTodReminderGroupDto = {
 
 export type NotificationPlan = {
     scheduledFor: string;
-    referenceEvent: ActionEvent;
-    targetEvent: ActionEvent;
     user: User;
 };
 
@@ -991,11 +993,39 @@ export type ActionSuiteDto = {
     reminderGroups: Array<ReminderGroup>;
     createdAt: string;
     updatedAt: string;
+    events: Array<ActionEvent>;
     actions: Array<ActionDto>;
 };
 
 export type CreateActionSuiteDto = {
     name: string;
+};
+
+export type UpdateActionEventDto = {
+    /**
+     * Title of the event
+     */
+    title?: string;
+    /**
+     * secondary text
+     */
+    description?: string;
+    /**
+     * New status of the action after the event
+     */
+    newStatus?: ActionStatus;
+    /**
+     * Notification type for the event
+     */
+    sendNotifsTo?: NotificationType;
+    /**
+     * time of the event (for display)
+     */
+    date?: string;
+    /**
+     * Indicates whether the event should be shown in the timeline
+     */
+    showInTimeline?: boolean;
 };
 
 export type NotificationDto = {
@@ -1022,6 +1052,7 @@ export type ActionEventNotifDto = {
      */
     sent: boolean;
     idempotency_key?: string;
+    createdAt: string;
     user: ProfileDto;
 };
 
@@ -2691,6 +2722,51 @@ export type ActionsCreateSuiteResponses = {
 };
 
 export type ActionsCreateSuiteResponse = ActionsCreateSuiteResponses[keyof ActionsCreateSuiteResponses];
+
+export type ActionsBatchUpdateSuiteEventsData = {
+    body: UpdateActionEventDto;
+    path: {
+        suiteId: number;
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/batchUpdateSuiteEvents/{eventId}';
+};
+
+export type ActionsBatchUpdateSuiteEventsResponses = {
+    200: unknown;
+};
+
+export type ActionsAddSuiteEventData = {
+    body: CreateActionEventDto;
+    path: {
+        suiteId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/events';
+};
+
+export type ActionsAddSuiteEventResponses = {
+    200: ActionSuiteDto;
+};
+
+export type ActionsAddSuiteEventResponse = ActionsAddSuiteEventResponses[keyof ActionsAddSuiteEventResponses];
+
+export type ActionsDeleteSuiteEventData = {
+    body?: never;
+    path: {
+        suiteId: number;
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/suite/{suiteId}/events/{eventId}';
+};
+
+export type ActionsDeleteSuiteEventResponses = {
+    200: ActionSuiteDto;
+};
+
+export type ActionsDeleteSuiteEventResponse = ActionsDeleteSuiteEventResponses[keyof ActionsDeleteSuiteEventResponses];
 
 export type NotifsFindAllData = {
     body?: never;

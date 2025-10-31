@@ -175,6 +175,7 @@ const ActionDashboard: React.FC = () => {
     participatingGroups: [],
     everyoneShouldComplete: false,
     suiteId: undefined,
+    priority: 0,
   });
 
   // Reset form when switching to new action mode
@@ -193,6 +194,7 @@ const ActionDashboard: React.FC = () => {
         participatingGroups: [],
         everyoneShouldComplete: false,
         suiteId: undefined,
+        priority: 0,
       });
       setImageKey(null);
       setImagePreview(null);

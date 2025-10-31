@@ -14,6 +14,7 @@ import {
 import { NotificationChannel } from '../notif-utils';
 import { ReminderGroup } from 'src/actions/entities/reminder-group.entity';
 import { Type } from 'class-transformer';
+import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 
 export enum ActionEventNotifType {
   Announcement = 'announcement',
@@ -86,4 +87,9 @@ export class ActionEventNotif {
   @Column({ type: 'text', nullable: true })
   @ApiPropertyOptional({ type: String })
   idempotency_key?: string;
+
+  @CreateDateColumnTz()
+  @ApiProperty({ type: Date })
+  @Type(() => Date)
+  createdAt: Date;
 }

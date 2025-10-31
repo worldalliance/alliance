@@ -117,4 +117,9 @@ export class ActionEvent {
   @Type(() => ActionUpdate)
   @Allow()
   updates: ActionUpdate[];
+
+  @ApiProperty()
+  @Column({ default: false })
+  @Allow()
+  suiteManaged: boolean;
 }

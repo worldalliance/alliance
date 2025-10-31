@@ -65,6 +65,7 @@ export class ActionEventDto extends PickType(ActionEvent, [
   'newStatus',
   'showInTimeline',
   'sendNotifsTo',
+  'suiteManaged',
   'date',
 ]) {
   constructor(event: ActionEvent) {
@@ -73,7 +74,12 @@ export class ActionEventDto extends PickType(ActionEvent, [
   }
 }
 
-export class CreateActionEventDto extends OmitType(ActionEventDto, ['id']) {}
+export class CreateActionEventDto extends OmitType(ActionEventDto, [
+  'id',
+  'suiteManaged',
+]) {}
+
+export class UpdateActionEventDto extends PartialType(CreateActionEventDto) {}
 
 export class ActionDto extends OmitType(Action, [
   'createdAt',

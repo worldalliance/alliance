@@ -574,8 +574,6 @@ describe('ActionEventNotifWorker (e2e)', () => {
       {
         user,
         group: reminderGroup,
-        referenceEvent: memberEvent,
-        targetEvent: memberEvent,
         scheduledFor: new Date(),
       },
       'cid-123',

@@ -49,6 +49,7 @@ import {
   PreEventNotifDataQueryDto,
   UpdateActionActivityDto,
   UpdateActionDto,
+  UpdateActionEventDto,
 } from './dto/action.dto';
 import {
   NotificationScheduleEntryDto,
@@ -544,5 +545,36 @@ export class ActionsController {
     @Body() createActionSuiteDto: CreateActionSuiteDto,
   ): Promise<ActionSuiteDto> {
     return this.actionsService.createSuite(createActionSuiteDto);
+  }
+
+  @Patch('suite/:suiteId/batchUpdateSuiteEvents/:eventId')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  batchUpdateSuiteEvents(
+    @Param('suiteId', ParseIntPipe) suiteId: number,
+    @Param('eventId', ParseIntPipe) eventId: number,
+    @Body() body: UpdateActionEventDto,
+  ) {
+    return this.actionsService.batchUpdateSuiteEvents(suiteId, eventId, body);
+  }
+
+  @Post('suite/:suiteId/events')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionSuiteDto })
+  async addSuiteEvent(
+    @Param('suiteId', ParseIntPipe) suiteId: number,
+    @Body() actionEventDto: CreateActionEventDto,
+  ): Promise<ActionSuiteDto> {
+    return this.actionsService.addSuiteEvent(suiteId, actionEventDto);
+  }
+
+  @Delete('suite/:suiteId/events/:eventId')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionSuiteDto })
+  async deleteSuiteEvent(
+    @Param('suiteId', ParseIntPipe) suiteId: number,
+    @Param('eventId', ParseIntPipe) eventId: number,
+  ): Promise<ActionSuiteDto> {
+    return this.actionsService.deleteSuiteEvent(suiteId, eventId);
   }
 }

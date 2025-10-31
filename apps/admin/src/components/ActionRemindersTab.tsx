@@ -175,14 +175,20 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       throw new Error("Failed to load reminders.");
     }
 
+    console.log("fetched reminders", response.data);
+
     setReminderGroups(response.data);
+  }, []);
+
+  useEffect(() => {
+    setReminderGroups(suite.reminderGroups);
   }, []);
 
   useEffect(() => {
     if (selectedEventId) {
       refreshReminderGroups(selectedEventId);
     }
-  }, [selectedEventId, refreshReminderGroups]);
+  }, [selectedEventId]);
 
   const handleDeleteGroupConfirm = (groupId: number) => {
     setDeleteGroupConfirmation(groupId);
@@ -231,8 +237,6 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     null
   );
   const [reminderPlans, setReminderPlans] = useState<NotificationPlan[]>([]);
-
-  console.log(suite);
 
   useEffect(() => {
     setReminderPlans([]);
