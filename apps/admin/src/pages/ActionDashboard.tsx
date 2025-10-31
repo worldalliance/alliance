@@ -621,6 +621,17 @@ const ActionDashboard: React.FC = () => {
               <div className="space-y-4">
                 {/* Current Status */}
                 <div className="flex flex-row gap-2 flex-wrap">
+                  {action.suite !== undefined && (
+                    <Button
+                      onClick={() => {
+                        navigate(`/suites/${action.suite!.id}`);
+                      }}
+                      color={ButtonColor.White}
+                      className="!px-3 !text-sm gap-x-1"
+                    >
+                      Open Suite
+                    </Button>
+                  )}
                   <Button
                     onClick={() =>
                       window.open(

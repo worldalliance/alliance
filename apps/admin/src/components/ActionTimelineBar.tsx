@@ -4,7 +4,6 @@ import {
   ActionStatus,
 } from "@alliance/shared/client";
 import React from "react";
-import { useNavigate } from "react-router";
 
 interface PhaseSegment {
   status: ActionStatus;
