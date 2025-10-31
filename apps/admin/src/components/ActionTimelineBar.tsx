@@ -101,8 +101,6 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
     };
   };
 
-  const navigate = useNavigate();
-
   return (
     <div
       className="absolute border-b border-gray-100 hover:bg-gray-50"
@@ -191,9 +189,6 @@ const ActionTimelineBar: React.FC<ActionTimelineBarProps> = ({
             title={`${action.name}: ${
               STATUS_LABELS[phase.status]
             } (${phase.startDate.toLocaleDateString()} - ${phase.endDate.toLocaleDateString()})`}
-            onClick={() => {
-              navigate(`/?action=${action.id}&tab=events`);
-            }}
           >
             {stickyLabel && (
               <div

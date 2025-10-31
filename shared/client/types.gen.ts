@@ -258,11 +258,6 @@ export type UploadImageResponseDto = {
  */
 export type ActionTaskType = 'Funding' | 'Activity' | 'Ongoing';
 
-/**
- * Notification type for the event
- */
-export type NotificationType = 'all' | 'joined' | 'none';
-
 export type EditableContent = {
     /**
      * Markdown or plain text body
@@ -320,10 +315,6 @@ export type ActionEvent = {
      * New status of the action after the event
      */
     newStatus: ActionStatus;
-    /**
-     * Notification type for the event
-     */
-    sendNotifsTo: NotificationType;
     /**
      * time of the event (for display)
      */
@@ -413,6 +404,7 @@ export type Mms = {
 };
 
 export type ActionEventNotif = {
+    id: number;
     type: ActionEventNotifType;
     channel: NotificationChannel;
     mail: Mail | null;
@@ -933,6 +925,22 @@ export type NotificationPlan = {
     user: User;
 };
 
+export type ActionEventNotifDto = {
+    id: number;
+    type: ActionEventNotifType;
+    channel: NotificationChannel;
+    mail: Mail | null;
+    mms: Mms | null;
+    reminderGroup?: ReminderGroup;
+    /**
+     * Indicates whether the notification has been sent
+     */
+    sent: boolean;
+    idempotency_key?: string;
+    createdAt: string;
+    user: ProfileDto;
+};
+
 export type CreateEditableContentDto = {
     /**
      * Markdown or plain text body
@@ -954,6 +962,8 @@ export type CreateCommentDto = {
 export type UpdateActionActivityDto = {
     editableContent: EditableContentDto;
 };
+
+export type NotificationType = 'all' | 'joined' | 'none';
 
 export type PreEventNotifDataDto = {
     emails: Array<UserDto>;
@@ -1027,21 +1037,6 @@ export type NotificationDto = {
     createdAt: string;
     updatedAt: string;
     associatedUser?: ProfileDto;
-};
-
-export type ActionEventNotifDto = {
-    type: ActionEventNotifType;
-    channel: NotificationChannel;
-    mail: Mail | null;
-    mms: Mms | null;
-    reminderGroup?: ReminderGroup;
-    /**
-     * Indicates whether the notification has been sent
-     */
-    sent: boolean;
-    idempotency_key?: string;
-    createdAt: string;
-    user: ProfileDto;
 };
 
 export type NotifClickDto = {
@@ -2496,6 +2491,21 @@ export type ActionsPlansForGroupResponses = {
 };
 
 export type ActionsPlansForGroupResponse = ActionsPlansForGroupResponses[keyof ActionsPlansForGroupResponses];
+
+export type ActionsSentNotifsForGroupData = {
+    body?: never;
+    path: {
+        groupId: number;
+    };
+    query?: never;
+    url: '/actions/sentNotifsForGroup/{groupId}';
+};
+
+export type ActionsSentNotifsForGroupResponses = {
+    200: Array<ActionEventNotifDto>;
+};
+
+export type ActionsSentNotifsForGroupResponse = ActionsSentNotifsForGroupResponses[keyof ActionsSentNotifsForGroupResponses];
 
 export type ActionsClearDbData = {
     body?: never;

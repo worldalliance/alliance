@@ -24,6 +24,7 @@ import { Temporal } from '@js-temporal/polyfill';
 import { Group } from 'src/user/entities/group.entity';
 import { ApiProperty } from '@nestjs/swagger';
 import { ActionSuite } from 'src/actions/entities/action-suite.entity';
+import { ActionEventNotifDto } from './entities/action-event-notif.dto';
 
 export interface MissedDeadlineCandidate {
   actionId: number;
@@ -272,6 +273,14 @@ export class ActionEventReminderService {
       new Date(),
       new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
     );
+  }
+
+  async getSentNotifsForGroup(groupId: number): Promise<ActionEventNotifDto[]> {
+    const notifs = await this.actionEventNotifRepository.find({
+      where: { reminderGroup: { id: groupId }, sent: true },
+      relations: ['user'],
+    });
+    return notifs.map((notif) => new ActionEventNotifDto(notif));
   }
 
   async createReminderGroup(

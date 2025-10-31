@@ -7,6 +7,7 @@ import {
   actionsDeleteReminderGroup,
   actionsPlansForGroup,
   actionsReminderGroupsForEvent,
+  actionsSentNotifsForGroup,
   actionsUpdateReminderGroup,
   userGetGroups,
   userList,
@@ -47,6 +48,8 @@ import {
   hoursTextMessage,
 } from "./defaultReminderContents";
 import TextareaWithHighlights from "./TextareaWithHighlights";
+import { ActionEventNotifDto } from "@alliance/shared/client";
+import DatabaseIcon from "@alliance/shared/ui/icons/DatabaseIcon";
 
 interface ActionRemindersTabProps {
   suite: ActionSuiteDto;
@@ -236,7 +239,11 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   const [showReminderPlans, setShowReminderPlans] = useState<number | null>(
     null
   );
+  const [showSentReminders, setShowSentReminders] = useState<number | null>(
+    null
+  );
   const [reminderPlans, setReminderPlans] = useState<NotificationPlan[]>([]);
+  const [sentReminders, setSentReminders] = useState<ActionEventNotifDto[]>([]);
 
   useEffect(() => {
     setReminderPlans([]);
@@ -248,6 +255,16 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       });
     }
   }, [showReminderPlans]);
+
+  useEffect(() => {
+    if (showSentReminders) {
+      actionsSentNotifsForGroup({
+        path: { groupId: showSentReminders },
+      }).then((response) => {
+        setSentReminders(response.data ?? []);
+      });
+    }
+  }, [showSentReminders]);
 
   const getGroupRange = (group: ReminderGroup) => {
     const start = group.send_range_start ?? null;
@@ -365,81 +382,77 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     reminders.push(announcement);
 
     const deadlineEvent = nextEventById.get(selectedEventId);
-    if (!deadlineEvent) {
-      setCreateError("No deadline event found.");
-      return;
+    if (deadlineEvent) {
+      const twoDay = await actionsCreateReminderGroup({
+        path: { eventId: selectedEventId },
+        body: {
+          suiteId: suite.id,
+          timingMode: "within_range",
+          send_range_start: new Date(
+            new Date(deadlineEvent.date).getTime() - 48 * 60 * 60 * 1000
+          ).toISOString(),
+          send_range_end: new Date(
+            new Date(deadlineEvent.date).getTime() - 24 * 60 * 60 * 1000
+          ).toISOString(),
+          cohortType: "all_uncompleted",
+          textMessage: defaultTextMessage,
+          emailSubject: defaultEmailSubject,
+          emailMessage: defaultEmailContents,
+          name: "24-48h reminder",
+        },
+      });
+      reminders.push(twoDay);
+
+      const oneDay = await actionsCreateReminderGroup({
+        path: { eventId: selectedEventId },
+        body: {
+          suiteId: suite.id,
+          timingMode: "within_range",
+          send_range_start: new Date(
+            new Date(deadlineEvent.date).getTime() - 24 * 60 * 60 * 1000
+          ).toISOString(),
+          send_range_end: new Date(
+            new Date(deadlineEvent.date).getTime() - 6 * 60 * 60 * 1000
+          ).toISOString(),
+          cohortType: "all_uncompleted",
+          textMessage: hoursTextMessage,
+          emailSubject: hoursEmailSubject,
+          emailMessage: hoursEmailContents,
+          name: "6-24h reminder",
+        },
+      });
+      reminders.push(oneDay);
+
+      const threeHour = await actionsCreateReminderGroup({
+        path: { eventId: selectedEventId },
+        body: {
+          suiteId: suite.id,
+          timingMode: "from_deadline",
+          sendAtSecondsFromDeadline: 3 * 60 * 60,
+          cohortType: "all_uncompleted",
+          textMessage: hoursTextMessage,
+          emailMessage: hoursEmailContents,
+          emailSubject: hoursEmailSubject,
+          name: "3 hour reminder",
+        },
+      });
+      reminders.push(threeHour);
+
+      const missedDeadline = await actionsCreateReminderGroup({
+        path: { eventId: selectedEventId },
+        body: {
+          suiteId: suite.id,
+          timingMode: "from_deadline",
+          sendAtSecondsFromDeadline: 0,
+          cohortType: "all_uncompleted",
+          textMessage: defaultMissedDeadlineTextMessage,
+          emailMessage: defaultMissedDeadlineEmailContents,
+          emailSubject: defaultMissedDeadlineEmailSubject,
+          name: "Missed deadline message",
+        },
+      });
+      reminders.push(missedDeadline);
     }
-
-    const twoDay = await actionsCreateReminderGroup({
-      path: { eventId: selectedEventId },
-      body: {
-        suiteId: suite.id,
-        timingMode: "within_range",
-        send_range_start: new Date(
-          new Date(deadlineEvent.date).getTime() - 48 * 60 * 60 * 1000
-        ).toISOString(),
-        send_range_end: new Date(
-          new Date(deadlineEvent.date).getTime() - 24 * 60 * 60 * 1000
-        ).toISOString(),
-        cohortType: "all_uncompleted",
-        textMessage: defaultTextMessage,
-        emailSubject: defaultEmailSubject,
-        emailMessage: defaultEmailContents,
-        name: "24-48h reminder",
-      },
-    });
-    reminders.push(twoDay);
-
-    const oneDay = await actionsCreateReminderGroup({
-      path: { eventId: selectedEventId },
-      body: {
-        suiteId: suite.id,
-        timingMode: "within_range",
-        send_range_start: new Date(
-          new Date(deadlineEvent.date).getTime() - 24 * 60 * 60 * 1000
-        ).toISOString(),
-        send_range_end: new Date(
-          new Date(deadlineEvent.date).getTime() - 6 * 60 * 60 * 1000
-        ).toISOString(),
-        cohortType: "all_uncompleted",
-        textMessage: hoursTextMessage,
-        emailSubject: hoursEmailSubject,
-        emailMessage: hoursEmailContents,
-        name: "6-24h reminder",
-      },
-    });
-    reminders.push(oneDay);
-
-    const threeHour = await actionsCreateReminderGroup({
-      path: { eventId: selectedEventId },
-      body: {
-        suiteId: suite.id,
-        timingMode: "from_deadline",
-        sendAtSecondsFromDeadline: 3 * 60 * 60,
-        cohortType: "all_uncompleted",
-        textMessage: hoursTextMessage,
-        emailMessage: hoursEmailContents,
-        emailSubject: hoursEmailSubject,
-        name: "3 hour reminder",
-      },
-    });
-    reminders.push(threeHour);
-
-    const missedDeadline = await actionsCreateReminderGroup({
-      path: { eventId: selectedEventId },
-      body: {
-        suiteId: suite.id,
-        timingMode: "from_deadline",
-        sendAtSecondsFromDeadline: 0,
-        cohortType: "all_uncompleted",
-        textMessage: defaultMissedDeadlineTextMessage,
-        emailMessage: defaultMissedDeadlineEmailContents,
-        emailSubject: defaultMissedDeadlineEmailSubject,
-        name: "Missed deadline message",
-      },
-    });
-    reminders.push(missedDeadline);
-
     const error = reminders.some(
       (reminder) => (reminder as unknown as { error: string | undefined }).error
     );
@@ -696,18 +709,32 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
               )}
             </div>
             <div>
-              <p
-                className="text-sm cursor-pointer ml-4 mb-4 text-green"
-                onClick={() =>
-                  setShowReminderPlans((prev) =>
-                    prev === group.id ? null : group.id
-                  )
-                }
-              >
-                {showReminderPlans === group.id
-                  ? "Hide reminder plans"
-                  : "Show reminder plans"}
-              </p>
+              <div className="flex flex-row gap-2">
+                <p
+                  className="text-sm cursor-pointer ml-4 mb-4 text-blue"
+                  onClick={() =>
+                    setShowReminderPlans((prev) =>
+                      prev === group.id ? null : group.id
+                    )
+                  }
+                >
+                  {showReminderPlans === group.id
+                    ? "Hide reminder plans"
+                    : "Show reminder plans"}
+                </p>
+                <p
+                  className="text-sm cursor-pointer ml-4 mb-4 text-green"
+                  onClick={() =>
+                    setShowSentReminders((prev) =>
+                      prev === group.id ? null : group.id
+                    )
+                  }
+                >
+                  {showSentReminders === group.id
+                    ? "Hide sent reminders"
+                    : "Show sent reminders"}
+                </p>
+              </div>
               <div
                 className={`divide-y divide-gray-200 border-t border-gray-200 
                     overflow-y-auto transition-[max-height] duration-300 ${
@@ -729,6 +756,41 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                     </p>
                   </div>
                 ))}
+                {reminderPlans.length === 0 && (
+                  <p className="text-sm text-zinc-500 p-5">No reminder plans</p>
+                )}
+              </div>
+              <div
+                className={`divide-y divide-gray-200 border-t border-gray-200 
+                    overflow-y-auto transition-[max-height] duration-300 ${
+                      showSentReminders === group.id
+                        ? "max-h-[300px]"
+                        : "max-h-[0px]"
+                    }`}
+              >
+                {sentReminders.map((notif) => (
+                  <div
+                    key={notif.id}
+                    className="p-3 flex flex-row gap-2 items-center"
+                  >
+                    <p className="text-zinc-500">({notif.channel})</p>
+                    <Link to={`/member/${notif.user.id}`} target="_blank">
+                      {notif.user.displayName}
+                    </Link>
+                    <p className="text-sm text-zinc-500">
+                      {formatDisplayDate(notif.createdAt)}
+                    </p>
+                    <Link
+                      to={`/database?table=action_event_notif&id=${notif.id}`}
+                      target="_blank"
+                    >
+                      <DatabaseIcon size="small" fill="gray" />
+                    </Link>
+                  </div>
+                ))}
+                {sentReminders.length === 0 && (
+                  <p className="text-sm text-zinc-500 p-5">No sent reminders</p>
+                )}
               </div>
             </div>
           </Card>

@@ -30,6 +30,7 @@ export enum ActionEventNotifType {
 })
 export class ActionEventNotif {
   @PrimaryGeneratedColumn()
+  @ApiProperty()
   id: number;
 
   @Column({

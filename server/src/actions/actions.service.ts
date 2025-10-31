@@ -59,6 +59,7 @@ import { ActionEventNotifType } from 'src/notifs/entities/action-event-notif.ent
 import { ActionUpdate } from './entities/action-update.entity';
 import { ReminderGroup } from './entities/reminder-group.entity';
 import { ActionSuite } from './entities/action-suite.entity';
+import { ActionEventNotifDto } from 'src/notifs/entities/action-event-notif.dto';
 
 export enum UserActionRelation {
   Joined = 'joined',
@@ -520,6 +521,10 @@ export class ActionsService {
     return this.actionEventReminderService.getNotificationPlansForGroup(
       groupId,
     );
+  }
+
+  async getSentNotifsForGroup(groupId: number): Promise<ActionEventNotifDto[]> {
+    return this.actionEventReminderService.getSentNotifsForGroup(groupId);
   }
 
   async createdTimedReminderGroup(

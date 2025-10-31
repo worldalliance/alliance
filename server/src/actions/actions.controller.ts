@@ -60,6 +60,7 @@ import { ActionEvent } from './entities/action-event.entity';
 import { ReminderGroup } from './entities/reminder-group.entity';
 import { NotificationPlan } from 'src/notifs/action-event-reminder.service';
 import { ActionSuite } from './entities/action-suite.entity';
+import { ActionEventNotifDto } from 'src/notifs/entities/action-event-notif.dto';
 
 @Controller('actions')
 export class ActionsController {
@@ -407,6 +408,15 @@ export class ActionsController {
     @Param('groupId', ParseIntPipe) groupId: number,
   ): Promise<NotificationPlan[]> {
     return this.actionsService.getNotificationPlansForGroup(groupId);
+  }
+
+  @Get('sentNotifsForGroup/:groupId')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionEventNotifDto, isArray: true })
+  async sentNotifsForGroup(
+    @Param('groupId', ParseIntPipe) groupId: number,
+  ): Promise<ActionEventNotifDto[]> {
+    return this.actionsService.getSentNotifsForGroup(groupId);
   }
 
   @Post('clearDb')
