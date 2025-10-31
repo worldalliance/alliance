@@ -76,6 +76,16 @@ const ActionSuitePage = () => {
       }
     });
   };
+  if (suite.actions.length === 0) {
+    return (
+      <div className="p-6 flex flex-col gap-6 items-center justify-center h-screen">
+        <p>Suite: {suite.name}</p>
+        <p className="text-sm text-zinc-500">
+          Add an action to the suite begin managing events & reminders
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 flex flex-col gap-6">
