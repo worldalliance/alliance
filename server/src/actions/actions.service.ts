@@ -580,7 +580,7 @@ export class ActionsService {
   async findCompletedForUser(userId: number): Promise<ActionActivityDto[]> {
     const activities = await this.actionActivityRepository.find({
       where: { userId, type: ActionActivityType.USER_COMPLETED },
-      relations: ['action'],
+      relations: ['action', 'user'],
     });
     return activities.map((activity) => new ActionActivityDto(activity));
   }
@@ -873,7 +873,7 @@ export class ActionsService {
 
     const updatedActivity = await this.actionActivityRepository.findOne({
       where: { id },
-      relations: ['likes'],
+      relations: ['user', 'likes'],
     });
     if (!updatedActivity) {
       throw new NotFoundException('Activity not found');
