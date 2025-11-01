@@ -202,6 +202,8 @@ export class ActionEventReminderService {
       .leftJoinAndSelect('rg.users', 'users')
       .leftJoinAndSelect('users.groups', 'userGroups')
       .leftJoinAndSelect('rg.userGroup', 'userGroup')
+      .leftJoinAndSelect('rg.actionSuite', 'actionSuite')
+      .leftJoinAndSelect('actionSuite.actions', 'actionSuiteActions')
       .andWhere('rg."allSent" = false')
       .where(
         new Brackets((qb) => {

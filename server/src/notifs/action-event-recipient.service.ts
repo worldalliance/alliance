@@ -144,6 +144,7 @@ export class ActionEventRecipientService {
   async getFilteredUsersForEvent(
     event: Pick<ActionEvent, 'newStatus' | 'action' | 'date'>,
     type: ActionEventNotifType,
+    suite?: ActionSuite,
   ): Promise<User[]> {
     const users = await this.getBaseUsersForEvent(
       event.newStatus,
@@ -152,7 +153,7 @@ export class ActionEventRecipientService {
     );
     return type === ActionEventNotifType.Announcement
       ? users
-      : await this.filterForShouldRemind(users, event);
+      : await this.filterForShouldRemind(users, event, suite);
   }
 
   async getReminderGroupCohort(group: ReminderGroup): Promise<User[]> {
@@ -168,6 +169,7 @@ export class ActionEventRecipientService {
         users = await this.getFilteredUsersForEvent(
           group.memberActionEvent,
           ActionEventNotifType.PersonalReminder,
+          group.actionSuite,
         );
         break;
       case ReminderCohortType.Group:

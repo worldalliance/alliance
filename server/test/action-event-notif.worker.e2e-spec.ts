@@ -20,6 +20,7 @@ import {
   ActionActivityType,
 } from 'src/actions/entities/action-activity.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
+import { ActionSuite } from 'src/actions/entities/action-suite.entity';
 
 describe('ActionEventNotifWorker (e2e)', () => {
   let ctx: TestContext;
@@ -31,6 +32,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
   let userRepo: Repository<User>;
   let activityRepo: Repository<ActionActivity>;
   let groupRepo: Repository<Group>;
+  let actionSuiteRepo: Repository<ActionSuite>;
 
   const baseMessages = {
     emailMessage: 'Reminder for #{firstname} on #{action}',
@@ -51,6 +53,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     userRepo = ctx.dataSource.getRepository(User);
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
     groupRepo = ctx.dataSource.getRepository(Group);
+    actionSuiteRepo = ctx.dataSource.getRepository(ActionSuite);
   });
 
   afterAll(async () => {
@@ -80,10 +83,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
     name,
     eventDate,
     participatingGroups,
+    suite,
+    suiteManaged,
   }: {
     name: string;
     eventDate: Date;
     participatingGroups?: Group[];
+    suite?: ActionSuite;
+    suiteManaged?: boolean;
   }) => {
     const action = await actionRepo.save(
       actionRepo.create({
@@ -95,6 +102,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
         commitmentless: true,
         everyoneShouldComplete: false,
         participatingGroups: participatingGroups ?? [ctx.defaultGroup],
+        suite,
       }),
     );
 
@@ -106,6 +114,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
         date: eventDate,
         showInTimeline: true,
         action,
+        suiteManaged: suiteManaged ?? false,
       }),
     );
 
@@ -139,12 +148,24 @@ describe('ActionEventNotifWorker (e2e)', () => {
       relations: ['user', 'reminderGroup'],
     });
 
+  const recordCompletion = (user: User, action: Action) =>
+    activityRepo.save(
+      activityRepo.create({
+        action,
+        actionId: action.id,
+        user,
+        userId: user.id,
+        type: ActionActivityType.USER_COMPLETED,
+      }),
+    );
+
   beforeEach(async () => {
     await notifRepo.query('DELETE FROM action_event_notif');
     await reminderGroupRepo.query('DELETE FROM reminder_group');
     await activityRepo.query('DELETE FROM action_activity');
     await eventRepo.query('DELETE FROM action_event');
     await actionRepo.query('DELETE FROM action');
+    await actionSuiteRepo.query('DELETE FROM action_suite');
     await resetPrimaryUser();
   });
 
@@ -521,6 +542,176 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].channel).toBe(NotificationChannel.Text);
   });
 
+  it('sends suite reminders to users missing any suite actions', async () => {
+    const now = Date.now();
+    await userRepo.update(ctx.testUserId, { contractDateSigned: null });
+
+    const suite = await actionSuiteRepo.save(
+      actionSuiteRepo.create({
+        name: uniqueName('suite-reminder'),
+      }),
+    );
+
+    const eventDate = new Date(now - 60 * 60 * 1000);
+
+    const { action: firstAction, memberEvent } =
+      await createActionWithMemberEvent({
+        name: uniqueName('suite-action-one'),
+        eventDate,
+        suite,
+        suiteManaged: true,
+      });
+
+    const { action: secondAction } = await createActionWithMemberEvent({
+      name: uniqueName('suite-action-two'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+
+    const suiteWithActions = await actionSuiteRepo.findOneOrFail({
+      where: { id: suite.id },
+      relations: ['actions'],
+    });
+
+    const createSuiteUser = async (
+      label: string,
+      phoneSuffix: string,
+    ): Promise<User> =>
+      userRepo.save(
+        userRepo.create({
+          email: `${uniqueName(`suite-${label}`)}@example.com`,
+          password: 'pass',
+          name: `Suite ${label}`,
+          groups: [ctx.defaultGroup],
+          contractDateSigned: new Date(now - 72 * 60 * 60 * 1000),
+          contractDateSuspended: null,
+          textNotifsEnabled: true,
+          phoneNumber: `+1555555${phoneSuffix}`,
+          phoneNumberValidated: true,
+          emailNotifsEnabled: false,
+          turnedOffAllNotifs: false,
+        }),
+      );
+
+    const [noCompletion, firstOnly, secondOnly, bothCompleted] =
+      await Promise.all([
+        createSuiteUser('none', '2001'),
+        createSuiteUser('first', '2002'),
+        createSuiteUser('second', '2003'),
+        createSuiteUser('both', '2004'),
+      ]);
+
+    await recordCompletion(firstOnly, firstAction);
+    await recordCompletion(secondOnly, secondAction);
+    await recordCompletion(bothCompleted, firstAction);
+    await recordCompletion(bothCompleted, secondAction);
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        actionSuite: suiteWithActions,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    const notifiedUserIds = notifs.map((notif) => notif.user.id);
+
+    expect(notifiedUserIds).toHaveLength(3);
+    expect(notifiedUserIds).toEqual(
+      expect.arrayContaining([noCompletion.id, firstOnly.id, secondOnly.id]),
+    );
+    expect(notifiedUserIds).not.toContain(bothCompleted.id);
+
+    await userRepo.delete([
+      noCompletion.id,
+      firstOnly.id,
+      secondOnly.id,
+      bothCompleted.id,
+    ]);
+  });
+
+  it('does not send suite reminders when users completed every suite action', async () => {
+    const now = Date.now();
+    await userRepo.update(ctx.testUserId, { contractDateSigned: null });
+
+    const suite = await actionSuiteRepo.save(
+      actionSuiteRepo.create({
+        name: uniqueName('suite-reminder-none'),
+      }),
+    );
+
+    const newgroup = groupRepo.create({
+      name: uniqueName('suite-reminder-none-group'),
+      description: 'Suite reminder none group',
+    });
+    const savedGroup = await groupRepo.save(newgroup);
+
+    const eventDate = new Date(now - 45 * 60 * 1000);
+
+    const { action: firstAction, memberEvent } =
+      await createActionWithMemberEvent({
+        name: uniqueName('suite-reminder-none-one'),
+        eventDate,
+        suite,
+        suiteManaged: true,
+        participatingGroups: [savedGroup],
+      });
+
+    const { action: secondAction } = await createActionWithMemberEvent({
+      name: uniqueName('suite-reminder-none-two'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+
+    const suiteWithActions = await actionSuiteRepo.findOneOrFail({
+      where: { id: suite.id },
+      relations: ['actions'],
+    });
+
+    const completeUser = await userRepo.save(
+      userRepo.create({
+        email: `${uniqueName('suite-complete')}@example.com`,
+        password: 'pass',
+        name: 'Suite Completer',
+        groups: [savedGroup],
+        contractDateSigned: new Date(now - 6 * 24 * 60 * 60 * 1000),
+        contractDateSuspended: null,
+        textNotifsEnabled: true,
+        phoneNumber: '+15555552005',
+        phoneNumberValidated: true,
+        emailNotifsEnabled: false,
+        turnedOffAllNotifs: false,
+      }),
+    );
+
+    await recordCompletion(completeUser, firstAction);
+    await recordCompletion(completeUser, secondAction);
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        actionSuite: suiteWithActions,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs.map((n) => n.user.id)).toHaveLength(0);
+
+    await userRepo.delete({ id: completeUser.id });
+  });
+
   it('replaces placeholders in custom reminder text', async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
@@ -543,7 +734,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
       },
     );
 
-    const text = worker.processCustomReminderText(
+    const text = await worker.processCustomReminderText(
       'Hi #{firstname}, #{action} is waiting.',
       {
         user,

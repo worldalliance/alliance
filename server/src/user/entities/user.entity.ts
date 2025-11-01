@@ -59,7 +59,6 @@ export class User {
   name: string;
 
   @Column({ unique: true })
-  @ApiProperty()
   @IsNotEmpty()
   @IsEmail()
   email: string;
