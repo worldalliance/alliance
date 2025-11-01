@@ -1,11 +1,13 @@
-import type {
-  ActionEventDto,
-  CreateTodReminderGroupDto,
-  GroupDto,
-  ReminderCohortType,
-  ReminderGroup,
-  ReminderGroupTimingMode,
-  User,
+import {
+  actionsTentativePlansForGroup,
+  type ActionEventDto,
+  type CreateTodReminderGroupDto,
+  type GroupDto,
+  type NotificationPlan,
+  type ReminderCohortType,
+  type ReminderGroup,
+  type ReminderGroupTimingMode,
+  type User,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import DateTimePicker from "@alliance/shared/ui/DateTimePicker";
@@ -61,6 +63,7 @@ export const keywords = [
   "#{days}",
   "#{hours}",
   "#{link}",
+  "#{n}",
 ];
 
 const TIMING_MODE_OPTIONS: Array<{
@@ -144,6 +147,8 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     initialValues.reminderGroup?.name ?? ""
   );
 
+  const [tentativePlans, setTentativePlans] = useState<NotificationPlan[]>([]);
+
   const [emailSubject, setEmailSubject] = useState<string>(
     initialValues.reminderGroup?.emailSubject ?? defaultEmailSubject
   );
@@ -185,6 +190,55 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       selectedUsers: userIds,
     });
   }, [initialValues]);
+
+  useEffect(() => {
+    if (selectedEventId) {
+      actionsTentativePlansForGroup({
+        path: {
+          eventId: selectedEventId,
+        },
+        body: {
+          name,
+          cohortType,
+          emailSubject,
+          emailMessage,
+          textMessage,
+          timingMode,
+          userGroupId:
+            cohortType === "group" ? selectedGroupId ?? undefined : undefined,
+          sendAtAbsolute:
+            timingMode === "absolute" ? sendAtAbsolute : undefined,
+          sendAtSecondsFromDeadline:
+            timingMode === "from_deadline"
+              ? sendAtSecondsFromDeadline ?? 0
+              : undefined,
+          send_range_start:
+            timingMode === "within_range" ? sendRangeStart : undefined,
+          send_range_end:
+            timingMode === "within_range" ? sendRangeEnd : undefined,
+        },
+      }).then((response) => {
+        if (response.error) {
+          setLocalError((response.error as Error).message);
+          return;
+        }
+        setTentativePlans(response.data ?? []);
+      });
+    }
+  }, [
+    selectedEventId,
+    name,
+    cohortType,
+    emailSubject,
+    emailMessage,
+    textMessage,
+    timingMode,
+    sendAtAbsolute,
+    sendAtSecondsFromDeadline,
+    sendRangeStart,
+    sendRangeEnd,
+    selectedGroupId,
+  ]);
 
   useEffect(() => {
     if (computedInitialSnapshot === initialSnapshotRef.current) {
@@ -331,6 +385,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const combinedError = localError ?? serverError ?? null;
 
   const [keywordsHelpExpanded, setKeywordsHelpExpanded] = useState(false);
+
+  const firstTentativePlan = tentativePlans.sort(
+    (a, b) =>
+      new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime()
+  )[0];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
@@ -610,6 +669,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
                   </td>
                 </tr>
                 <tr>
+                  <td>{"#{n}"}</td>
+                  <td>2</td>
+                  <td>Total uncompleted tasks for this user</td>
+                </tr>
+                <tr>
                   <td>{"#{hours}"}</td>
                   <td>1 hour</td>
                   <td>
@@ -644,6 +708,27 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       )}
 
       <div className="flex justify-end gap-3">
+        {tentativePlans.length > 0 &&
+          !(
+            typeof window !== "undefined" &&
+            window.location.href.includes("localhost")
+          ) && (
+            <p
+              className={`px-4 py-2 rounded self-start ${
+                tentativePlans.length > 0
+                  ? "bg-yellow-600 text-white"
+                  : "border border-gray-200"
+              }`}
+            >
+              ⚠️ This will send <b>{tentativePlans.length}</b> reminders
+              {firstTentativePlan && (
+                <span>
+                  , starting at{" "}
+                  {new Date(firstTentativePlan.scheduledFor).toLocaleString()}
+                </span>
+              )}
+            </p>
+          )}
         {onCancel && (
           <Button
             type="button"

@@ -22,6 +22,7 @@ import {
 } from './action-event-reminder.service';
 import { NotificationChannel } from './notif-utils';
 import { withPgAdvisoryLock } from './lock-utils';
+import { ActionsService } from 'src/actions/actions.service';
 
 export interface ActionEventNotificationContext {
   event: ActionEvent;
@@ -47,10 +48,13 @@ export class ActionEventNotifWorker {
     private readonly notifsService: NotifsService,
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
+    private readonly actionsService: ActionsService,
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
-  ) {}
+  ) {
+    this.dispatchDueNotifs();
+  }
 
   @Cron('*/3 * * * *')
   async dispatchDueNotifs() {
@@ -86,16 +90,19 @@ export class ActionEventNotifWorker {
     }
   }
 
-  processCustomReminderText(
+  async processCustomReminderText(
     text: string,
     plan: NotificationPlan,
     cid: string,
-  ): string {
+  ): Promise<string> {
     return processKeywordReplacements(text, {
       user: plan.user,
       action: plan.group.memberActionEvent.action,
       deadlineEvent: plan.group.deadlineEvent,
       cid,
+      uncompletedTasksCount: await this.actionsService.getUncompletedTasksCount(
+        plan.user.id,
+      ),
     });
   }
 
@@ -127,7 +134,7 @@ export class ActionEventNotifWorker {
     let sentAnyNotif = false;
     if (this.notifsService.shouldTextUser(plan.user)) {
       sentAnyNotif = true;
-      const textMessage = this.processCustomReminderText(
+      const textMessage = await this.processCustomReminderText(
         plan.group.textMessage,
         plan,
         cid,
@@ -149,12 +156,12 @@ export class ActionEventNotifWorker {
       sentAnyNotif = true;
       notif.channel = NotificationChannel.Email;
 
-      const emailMessage = this.processCustomReminderText(
+      const emailMessage = await this.processCustomReminderText(
         plan.group.emailMessage,
         plan,
         cid,
       );
-      const emailSubject = this.processCustomReminderText(
+      const emailSubject = await this.processCustomReminderText(
         plan.group.emailSubject,
         plan,
         cid,

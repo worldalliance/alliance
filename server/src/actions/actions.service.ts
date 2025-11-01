@@ -18,6 +18,7 @@ import { EditableContent } from 'src/forum/entities/editablecontent.entity';
 import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
 import {
   ActionEventReminderService,
+  NOTIFICATION_LOOKBACK_WINDOW_MS,
   NotificationPlan,
 } from 'src/notifs/action-event-reminder.service';
 import { NotifsService } from 'src/notifs/notifs.service';
@@ -1140,5 +1141,39 @@ export class ActionsService {
       }
     }
     return this.getSuite(suiteId);
+  }
+
+  async tentativePlansForGroup(
+    eventId: number,
+    body: CreateTODReminderGroupDto,
+  ): Promise<NotificationPlan[]> {
+    const event = await this.actionEventRepository.findOneOrFail({
+      where: { id: eventId },
+      relations: ['action', 'action.events', 'action.participatingGroups'],
+    });
+
+    const fakeGroup = {
+      ...body,
+      id: 0,
+      name: 'Tentative Reminder Group',
+      memberActionEvent: event,
+      notifications: [],
+      allSent: false,
+    } satisfies ReminderGroup;
+
+    return this.actionEventReminderService.getPlansForGroup(
+      await this.actionEventReminderService.attachDeadlineEvent(fakeGroup),
+      new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
+      new Date(Date.now() + 30 * NOTIFICATION_LOOKBACK_WINDOW_MS),
+    );
+  }
+
+  async getUncompletedTasksCount(userId: number): Promise<number> {
+    const actions = (await this.findPublic(userId)).filter(
+      (action) =>
+        action.shouldParticipate &&
+        action.userRelation !== UserActionRelation.Completed,
+    );
+    return actions.length;
   }
 }

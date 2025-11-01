@@ -2766,6 +2766,21 @@ export type ActionsDeleteSuiteEventResponses = {
 
 export type ActionsDeleteSuiteEventResponse = ActionsDeleteSuiteEventResponses[keyof ActionsDeleteSuiteEventResponses];
 
+export type ActionsTentativePlansForGroupData = {
+    body: CreateTodReminderGroupDto;
+    path: {
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/events/{eventId}/checkTentativePlans';
+};
+
+export type ActionsTentativePlansForGroupResponses = {
+    200: Array<NotificationPlan>;
+};
+
+export type ActionsTentativePlansForGroupResponse = ActionsTentativePlansForGroupResponses[keyof ActionsTentativePlansForGroupResponses];
+
 export type NotifsFindAllData = {
     body?: never;
     path?: never;

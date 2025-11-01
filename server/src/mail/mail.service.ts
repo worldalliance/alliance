@@ -19,6 +19,7 @@ export function processKeywordReplacements(
     action: Action;
     deadlineEvent?: ActionEvent;
     cid: string;
+    uncompletedTasksCount: number;
   },
 ): string {
   const names = context.user.name.split(' ');
@@ -36,6 +37,7 @@ export function processKeywordReplacements(
     .replace('#{firstname}', firstname)
     .replace('#{lastname}', lastname)
     .replace('#{action}', context.action.name)
+    .replace('#{n}', context.uncompletedTasksCount.toString())
     .replace(
       '#{days}',
       context.deadlineEvent

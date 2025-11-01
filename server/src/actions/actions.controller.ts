@@ -587,4 +587,14 @@ export class ActionsController {
   ): Promise<ActionSuiteDto> {
     return this.actionsService.deleteSuiteEvent(suiteId, eventId);
   }
+
+  @Post('events/:eventId/checkTentativePlans')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: NotificationPlan, isArray: true })
+  async tentativePlansForGroup(
+    @Param('eventId', ParseIntPipe) eventId: number,
+    @Body() body: CreateTODReminderGroupDto,
+  ): Promise<NotificationPlan[]> {
+    return this.actionsService.tentativePlansForGroup(eventId, body);
+  }
 }
