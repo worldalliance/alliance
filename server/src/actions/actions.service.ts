@@ -165,7 +165,7 @@ export class ActionsService {
 
   async findPublic(userId?: number): Promise<ActionDto[]> {
     const actions = await this.actionRepository.find({
-      relations: ['events', 'participatingGroups'],
+      relations: ['events', 'participatingGroups', 'activities'],
     });
 
     const user = userId
@@ -625,6 +625,7 @@ export class ActionsService {
           ActionActivityType.USER_COMPLETED,
         ]),
       },
+      relations: ['user'],
       order: { createdAt: 'DESC' },
       take: limit,
     });

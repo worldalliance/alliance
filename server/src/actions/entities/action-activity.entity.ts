@@ -53,7 +53,7 @@ export class ActionActivity {
   @Allow()
   actionId: number;
 
-  @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   @Allow()
   @Type(() => User)
