@@ -193,6 +193,10 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
   useEffect(() => {
     if (selectedEventId) {
+      if (cohortType === "group" && !selectedGroupId) {
+        setTentativePlans([]);
+        return;
+      }
       actionsTentativePlansForGroup({
         path: {
           eventId: selectedEventId,
@@ -206,6 +210,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           timingMode,
           userGroupId:
             cohortType === "group" ? selectedGroupId ?? undefined : undefined,
+          userIds: cohortType === "custom" ? selectedUserIds : undefined,
           sendAtAbsolute:
             timingMode === "absolute" ? sendAtAbsolute : undefined,
           sendAtSecondsFromDeadline:
@@ -238,6 +243,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     sendRangeStart,
     sendRangeEnd,
     selectedGroupId,
+    selectedUserIds,
   ]);
 
   useEffect(() => {
@@ -386,10 +392,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
   const [keywordsHelpExpanded, setKeywordsHelpExpanded] = useState(false);
 
-  const firstTentativePlan = tentativePlans.sort(
+  const sortedPlans = tentativePlans.sort(
     (a, b) =>
       new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime()
-  )[0];
+  );
+  const firstTentativePlan = sortedPlans[0];
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
@@ -709,10 +716,8 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
       <div className="flex justify-end gap-3">
         {tentativePlans.length > 0 &&
-          !(
-            typeof window !== "undefined" &&
-            window.location.href.includes("localhost")
-          ) && (
+          typeof window !== "undefined" &&
+          window.location.href.includes("localhost") && (
             <p
               className={`px-4 py-2 rounded self-start ${
                 tentativePlans.length > 0

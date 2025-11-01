@@ -1152,12 +1152,26 @@ export class ActionsService {
       relations: ['action', 'action.events', 'action.participatingGroups'],
     });
 
+    let group: Group | undefined = undefined;
+    if (body.userGroupId) {
+      group = await this.groupRepository.findOneOrFail({
+        where: { id: body.userGroupId },
+      });
+    }
+
+    let users: User[] = [];
+    if (body.userIds) {
+      users = await this.userService.findByIds(body.userIds);
+    }
+
     const fakeGroup = {
       ...body,
       id: 0,
       name: 'Tentative Reminder Group',
       memberActionEvent: event,
       notifications: [],
+      users,
+      userGroup: group,
       allSent: false,
     } satisfies ReminderGroup;
 
