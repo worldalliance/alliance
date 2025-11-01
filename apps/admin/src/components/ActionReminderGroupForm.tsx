@@ -716,8 +716,10 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
       <div className="flex justify-end gap-3">
         {tentativePlans.length > 0 &&
-          typeof window !== "undefined" &&
-          window.location.href.includes("localhost") && (
+          !(
+            typeof window !== "undefined" &&
+            window.location.href.includes("localhost")
+          ) && (
             <p
               className={`px-4 py-2 rounded self-start ${
                 tentativePlans.length > 0
