@@ -40,6 +40,7 @@ import { UserService } from './user.service';
 import { AddUserToGroupDto, CreateGroupDto, GroupDto } from './group.dto';
 import { UserActionRelationsResponseDto } from './dto/user-action-relations.dto';
 import { CreateOnetimeInviteDto, OnetimeInviteDto } from './dto/invite.dto';
+import { CreateAwayRangeDto, UserAwayRangeDto } from './dto/away-range.dto';
 
 class VerifyEmailBody {
   @IsString()
@@ -87,6 +88,31 @@ export class UserController {
   async suspendContract(@Request() req: JwtRequest) {
     const user = await this.userService.suspendContract(req.user.sub);
     return user.contractDateSigned;
+  }
+
+  @Post('awayranges')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: UserAwayRangeDto })
+  @ApiUnauthorizedResponse()
+  async createAwayRange(@Request() req: JwtRequest, @Body() body: CreateAwayRangeDto) {
+    return this.userService.createAwayRange(req.user.sub, body);
+  }
+
+  @Get('awayranges')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: [UserAwayRangeDto] })
+  @ApiUnauthorizedResponse()
+  async getAwayRanges(@Request() req: JwtRequest) {
+    return this.userService.getAwayRanges(req.user.sub);
+  }
+
+  @Delete('awayranges/:id')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: String })
+  @ApiUnauthorizedResponse()
+  async deleteAwayRange(@Request() req: JwtRequest, @Param('id', ParseIntPipe) id: number) {
+    await this.userService.deleteAwayRange(req.user.sub, id);
+    return { success: true };
   }
 
   @Post('update')

@@ -41,6 +41,8 @@ import {
 } from './dto/user-action-relations.dto';
 import { OnetimeInvite } from './entities/onetime-invite.entity';
 import { CreateOnetimeInviteDto } from './dto/invite.dto';
+import { UserAwayRange } from './entities/user-away-range.entity';
+import { CreateAwayRangeDto } from './dto/away-range.dto';
 
 export interface PWResetJwtPayload {
   sub: number;
@@ -68,6 +70,8 @@ export class UserService {
     private readonly groupRepository: Repository<Group>,
     @InjectRepository(OnetimeInvite)
     private readonly onetimeInviteRepository: Repository<OnetimeInvite>,
+    @InjectRepository(UserAwayRange)
+    private readonly userAwayRangeRepository: Repository<UserAwayRange>,
     private readonly jwtService: JwtService,
     private readonly imagesService: ImagesService,
     private readonly mailService: MailService,
@@ -740,6 +744,73 @@ export class UserService {
     const user = await this.findOneOrFail(userId);
     user.contractDateSuspended = new Date();
     return this.userRepository.save(user);
+  }
+
+  async createAwayRange(userId: number, data: CreateAwayRangeDto): Promise<UserAwayRange> {
+    const startDate = new Date(data.startDate);
+    const endDate = new Date(data.endDate);
+    const now = new Date();
+
+    if (startDate >= endDate) {
+      throw new BadRequestException('End date must be after start date.');
+    }
+
+    if (startDate < now) {
+      throw new BadRequestException('Start date must be in the future.');
+    }
+
+    const maxDuration = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
+    if (endDate.getTime() - startDate.getTime() > maxDuration) {
+      throw new BadRequestException('Away period cannot exceed 14 days. Please email us if you need to be away for longer.');
+    }
+
+    const awayRange = this.userAwayRangeRepository.create({
+      userId,
+      startDate,
+      endDate,
+      note: data.note,
+    });
+
+    return this.userAwayRangeRepository.save(awayRange);
+  }
+
+  async getAwayRanges(userId: number): Promise<UserAwayRange[]> {
+    return this.userAwayRangeRepository.find({
+      where: { userId },
+      order: { startDate: 'DESC' },
+    });
+  }
+
+  async deleteAwayRange(userId: number, awayRangeId: number): Promise<void> {
+    const awayRange = await this.userAwayRangeRepository.findOne({
+      where: { id: awayRangeId, userId },
+    });
+
+    if (!awayRange) {
+      throw new NotFoundException('Away range not found.');
+    }
+
+    await this.userAwayRangeRepository.remove(awayRange);
+  }
+
+  async isUserAway(userId: number, checkDate: Date = new Date()): Promise<boolean> {
+    const count = await this.userAwayRangeRepository.count({
+      where: {
+        userId,
+      },
+    });
+
+    if (count === 0) {
+      return false;
+    }
+
+    const awayRanges = await this.userAwayRangeRepository.find({
+      where: { userId },
+    });
+
+    return awayRanges.some(
+      (range) => checkDate >= range.startDate && checkDate <= range.endDate
+    );
   }
 
   async createGroup(body: CreateGroupDto): Promise<Group> {

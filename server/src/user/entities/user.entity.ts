@@ -29,6 +29,7 @@ import {
 import { Notification } from '../../notifs/entities/notification.entity';
 import { Friend, FriendStatus } from './friend.entity';
 import { Group } from './group.entity';
+import { UserAwayRange } from './user-away-range.entity';
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -275,6 +276,9 @@ export class User {
 
   @OneToMany(() => ActionEventNotif, (notif) => notif.user)
   actionEventNotifs: ActionEventNotif[];
+
+  @OneToMany(() => UserAwayRange, (awayRange) => awayRange.user)
+  awayRanges: UserAwayRange[];
 
   @OneToOne(() => Mail, { nullable: true })
   @JoinColumn({ name: 'welcomeMailId' })

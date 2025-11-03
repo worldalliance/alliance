@@ -62,6 +62,17 @@ export class ActionEventRecipientService {
           ) === true,
       );
 
+    const filterAwayUsers = async (users: User[]) => {
+      const filteredUsers: User[] = [];
+      for (const user of users) {
+        const isAway = await this.userService.isUserAway(user.id, eventDate);
+        if (!isAway) {
+          filteredUsers.push(user);
+        }
+      }
+      return filteredUsers;
+    };
+
     if (eventStatus === ActionStatus.MemberAction && !action.commitmentless) {
       const activities = await this.actionActivityRepository.find({
         where: {
@@ -70,16 +81,18 @@ export class ActionEventRecipientService {
         },
         relations: ['user', 'user.groups'],
       });
-      return filterToEligible(activities.map((activity) => activity.user));
+      const eligible = filterToEligible(activities.map((activity) => activity.user));
+      return await filterAwayUsers(eligible);
     }
 
     if (
       eventStatus === ActionStatus.GatheringCommitments ||
       eventStatus === ActionStatus.MemberAction
     ) {
-      return filterToEligible(
+      const eligible = filterToEligible(
         await this.userService.findActiveUsersWithGroups(),
       );
+      return await filterAwayUsers(eligible);
     }
 
     return [];

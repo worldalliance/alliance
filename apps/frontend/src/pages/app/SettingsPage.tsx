@@ -18,6 +18,7 @@ import LargeCheckbox from "../../components/LargeCheckbox";
 import FormInput from "@alliance/shared/ui/FormInput";
 import { AdminOnly } from "../../lib/AdminOnly";
 import { useAuth } from "../../lib/AuthContext";
+import AwayRangesSection from "../../components/AwayRangesSection";
 
 type EditableUserFields = Pick<
   UserDto,
@@ -374,6 +375,12 @@ const SettingsPage: React.FC = () => {
                 </select>
               </div>
             </div>
+          </div>
+
+          <hr className="border-zinc-300 mt-4" />
+
+          <div>
+            <AwayRangesSection />
           </div>
 
           <hr className="border-zinc-300 mt-4" />

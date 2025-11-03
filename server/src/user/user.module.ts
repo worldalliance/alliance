@@ -15,6 +15,7 @@ import { UserService } from './user.service';
 import { IsUserAlreadyExist } from './validators/user-already-exists.validator';
 import { Group } from './entities/group.entity';
 import { OnetimeInvite } from './entities/onetime-invite.entity';
+import { UserAwayRange } from './entities/user-away-range.entity';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { OnetimeInvite } from './entities/onetime-invite.entity';
       PrefillUser,
       Group,
       OnetimeInvite,
+      UserAwayRange,
     ]),
     JwtModule,
     ImagesModule,
