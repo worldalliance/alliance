@@ -3,6 +3,7 @@
 export type SignInDto = {
     password: string;
     mode: 'cookie' | 'header';
+    email: string;
 };
 
 export type SignInResponseDto = {
@@ -58,6 +59,7 @@ export type UserDto = {
     anonymous: boolean;
     cityId?: number;
     friends: Array<ProfileDto>;
+    email: string;
 };
 
 export type ForgotPasswordDto = {
@@ -73,6 +75,20 @@ export type OnboardingDto = {
     over18: boolean | null;
     anonymous: boolean;
     cityId?: number;
+};
+
+export type CreateAwayRangeDto = {
+    startDate: string;
+    endDate: string;
+    note?: string | null;
+};
+
+export type UserAwayRangeDto = {
+    id: number;
+    startDate: string;
+    endDate: string;
+    createdAt: string;
+    note?: string | null;
 };
 
 export type PlainTime = {
@@ -1597,6 +1613,59 @@ export type UserSuspendContractResponses = {
 };
 
 export type UserSuspendContractResponse = UserSuspendContractResponses[keyof UserSuspendContractResponses];
+
+export type UserGetAwayRangesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/awayranges';
+};
+
+export type UserGetAwayRangesErrors = {
+    401: unknown;
+};
+
+export type UserGetAwayRangesResponses = {
+    200: Array<UserAwayRangeDto>;
+};
+
+export type UserGetAwayRangesResponse = UserGetAwayRangesResponses[keyof UserGetAwayRangesResponses];
+
+export type UserCreateAwayRangeData = {
+    body: CreateAwayRangeDto;
+    path?: never;
+    query?: never;
+    url: '/user/awayranges';
+};
+
+export type UserCreateAwayRangeErrors = {
+    401: unknown;
+};
+
+export type UserCreateAwayRangeResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserCreateAwayRangeResponse = UserCreateAwayRangeResponses[keyof UserCreateAwayRangeResponses];
+
+export type UserDeleteAwayRangeData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/awayranges/{id}';
+};
+
+export type UserDeleteAwayRangeErrors = {
+    401: unknown;
+};
+
+export type UserDeleteAwayRangeResponses = {
+    200: string;
+};
+
+export type UserDeleteAwayRangeResponse = UserDeleteAwayRangeResponses[keyof UserDeleteAwayRangeResponses];
 
 export type UserUpdateData = {
     body: UpdateProfileDto;

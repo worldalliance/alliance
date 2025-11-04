@@ -1,17 +1,21 @@
 import React from "react";
 
-interface FormInputProps {
+interface FormInputProps
+  extends Pick<
+    React.InputHTMLAttributes<HTMLInputElement>,
+    | "type"
+    | "value"
+    | "onChange"
+    | "placeholder"
+    | "required"
+    | "autoComplete"
+    | "disabled"
+    | "className"
+    | "min"
+  > {
   label?: string;
-  type: string;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-  required?: boolean;
-  autoComplete?: string;
   error?: string;
   name: string;
-  disabled?: boolean;
-  className?: string;
 }
 
 const FormInput: React.FC<FormInputProps> = ({
@@ -26,6 +30,7 @@ const FormInput: React.FC<FormInputProps> = ({
   name,
   disabled = false,
   className,
+  min,
 }) => {
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
@@ -54,6 +59,7 @@ const FormInput: React.FC<FormInputProps> = ({
         } 
         ${error ? "focus:border-red-500" : "focus:border-green"}`}
         autoComplete={autoComplete}
+        min={min}
       />
       {error && <p className="text-red-500 text-[10pt] mt-1">{error}</p>}
     </div>

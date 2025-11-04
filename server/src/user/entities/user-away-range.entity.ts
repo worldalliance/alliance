@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Allow } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Allow, IsOptional } from 'class-validator';
 import {
   Column,
   CreateDateColumn,
@@ -9,6 +9,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Type } from 'class-transformer';
 
 @Entity()
 export class UserAwayRange {
@@ -19,26 +20,35 @@ export class UserAwayRange {
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
+  @Allow()
+  @Type(() => User)
   user: User;
 
   @Column()
   @ApiProperty()
+  @Allow()
   userId: number;
 
   @Column({ type: 'timestamptz' })
-  @ApiProperty({ type: String, format: 'date-time' })
+  @ApiProperty()
+  @Allow()
+  @Type(() => Date)
   startDate: Date;
 
   @Column({ type: 'timestamptz' })
-  @ApiProperty({ type: 'date-time' })
+  @ApiProperty()
+  @Allow()
+  @Type(() => Date)
   endDate: Date;
 
   @CreateDateColumn()
   @Allow()
   @ApiProperty()
+  @Type(() => Date)
   createdAt: Date;
 
   @Column({ type: 'text', nullable: true })
-  @ApiProperty({ nullable: true })
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
   note?: string;
 }

@@ -707,7 +707,7 @@ export class UserService {
       where: {
         isNotSignedUpPartialProfile: false,
       },
-      relations: ['groups'],
+      relations: ['groups', 'awayRanges'],
     });
   }
 
@@ -746,7 +746,10 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
-  async createAwayRange(userId: number, data: CreateAwayRangeDto): Promise<UserAwayRange> {
+  async createAwayRange(
+    userId: number,
+    data: CreateAwayRangeDto,
+  ): Promise<UserAwayRange> {
     const startDate = new Date(data.startDate);
     const endDate = new Date(data.endDate);
     const now = new Date();
@@ -761,7 +764,9 @@ export class UserService {
 
     const maxDuration = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
     if (endDate.getTime() - startDate.getTime() > maxDuration) {
-      throw new BadRequestException('Away period cannot exceed 14 days. Please email us if you need to be away for longer.');
+      throw new BadRequestException(
+        'Away period cannot exceed 14 days. Please email us if you need to be away for longer.',
+      );
     }
 
     const awayRange = this.userAwayRangeRepository.create({
@@ -793,23 +798,22 @@ export class UserService {
     await this.userAwayRangeRepository.remove(awayRange);
   }
 
-  async isUserAway(userId: number, checkDate: Date = new Date()): Promise<boolean> {
-    const count = await this.userAwayRangeRepository.count({
-      where: {
-        userId,
-      },
-    });
+  isUserAway(user: User, checkDate: Date = new Date()): boolean {
+    return user.awayRanges.some(
+      (range) => checkDate >= range.startDate && checkDate <= range.endDate,
+    );
+  }
 
-    if (count === 0) {
-      return false;
-    }
-
+  async isUserIdAway(
+    userId: number,
+    checkDate: Date = new Date(),
+  ): Promise<boolean> {
     const awayRanges = await this.userAwayRangeRepository.find({
       where: { userId },
     });
 
     return awayRanges.some(
-      (range) => checkDate >= range.startDate && checkDate <= range.endDate
+      (range) => checkDate >= range.startDate && checkDate <= range.endDate,
     );
   }
 

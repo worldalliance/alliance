@@ -82,6 +82,9 @@ export class ActionEventReminderService {
 
       if (!reminderSendTime) continue;
 
+      if (await this.userService.isUserIdAway(user.id, reminderSendTime))
+        continue;
+
       if (
         await this.actionEventNotifRepository.exists({
           where: {

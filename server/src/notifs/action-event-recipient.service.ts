@@ -59,19 +59,8 @@ export class ActionEventRecipientService {
             eventDate,
             targetGroupIds,
             action.everyoneShouldComplete,
-          ) === true,
+          ) === true && !this.userService.isUserAway(user, eventDate),
       );
-
-    const filterAwayUsers = async (users: User[]) => {
-      const filteredUsers: User[] = [];
-      for (const user of users) {
-        const isAway = await this.userService.isUserAway(user.id, eventDate);
-        if (!isAway) {
-          filteredUsers.push(user);
-        }
-      }
-      return filteredUsers;
-    };
 
     if (eventStatus === ActionStatus.MemberAction && !action.commitmentless) {
       const activities = await this.actionActivityRepository.find({
@@ -79,20 +68,18 @@ export class ActionEventRecipientService {
           actionId: action.id,
           type: ActionActivityType.USER_JOINED,
         },
-        relations: ['user', 'user.groups'],
+        relations: ['user', 'user.groups', 'user.awayRanges'],
       });
-      const eligible = filterToEligible(activities.map((activity) => activity.user));
-      return await filterAwayUsers(eligible);
+      return filterToEligible(activities.map((activity) => activity.user));
     }
 
     if (
       eventStatus === ActionStatus.GatheringCommitments ||
       eventStatus === ActionStatus.MemberAction
     ) {
-      const eligible = filterToEligible(
+      return filterToEligible(
         await this.userService.findActiveUsersWithGroups(),
       );
-      return await filterAwayUsers(eligible);
     }
 
     return [];
@@ -108,7 +95,7 @@ export class ActionEventRecipientService {
     );
     const usersWithGroups = await this.userService.findByIds(
       users.map((user) => user.id),
-      ['groups'],
+      ['groups', 'awayRanges'],
     );
     const idToUser = new Map(usersWithGroups.map((user) => [user.id, user]));
 

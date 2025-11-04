@@ -133,11 +133,14 @@ export class ActionsService {
     const event = action.events.find(
       (event) => event.newStatus === ActionStatus.MemberAction,
     );
+    if (!event) return 1;
+
+    const deadlineEvent = action.events[action.events.indexOf(event) + 1];
     const baseUsers =
       await this.actionEventRecipientService.getBaseUsersForEvent(
         ActionStatus.MemberAction,
         action,
-        event?.date ?? new Date(),
+        deadlineEvent?.date ?? event.date,
       );
     const completionActivities = await this.actionActivityRepository.find({
       where: {
@@ -169,7 +172,7 @@ export class ActionsService {
     });
 
     const user = userId
-      ? await this.userService.findOne(userId, ['groups'])
+      ? await this.userService.findOne(userId, ['groups', 'awayRanges'])
       : null;
 
     const filtered: Action[] = [];

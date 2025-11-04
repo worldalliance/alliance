@@ -28,7 +28,7 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchParams] = useSearchParams();
   const [message, setMessage] = useState<string | null>(
-    location.state?.message || null,
+    location.state?.message || null
   );
   const navigate = useNavigate();
 
@@ -91,7 +91,7 @@ const LoginPage: React.FC = () => {
       console.error(resp.error);
     } else {
       setMessage(
-        "A link to reset your password has been sent to your email address.",
+        "A link to reset your password has been sent to your email address."
       );
     }
   };

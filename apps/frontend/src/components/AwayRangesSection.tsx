@@ -1,8 +1,8 @@
 import {
   UserAwayRangeDto,
-  userAwayranges,
-  userAwayrangesCreate,
-  userAwayrangesDelete,
+  userCreateAwayRange,
+  userDeleteAwayRange,
+  userGetAwayRanges,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import FormInput from "@alliance/shared/ui/FormInput";
@@ -18,7 +18,7 @@ const AwayRangesSection: React.FC = () => {
 
   const loadAwayRanges = useCallback(async () => {
     try {
-      const response = await userAwayranges();
+      const response = await userGetAwayRanges();
       if (response.data) {
         setAwayRanges(response.data);
       }
@@ -55,13 +55,15 @@ const AwayRangesSection: React.FC = () => {
 
     const maxDuration = 14 * 24 * 60 * 60 * 1000;
     if (endDate.getTime() - startDate.getTime() > maxDuration) {
-      alert("Away period cannot exceed 14 days. Please email us if you need to be away for longer.");
+      alert(
+        "Away period cannot exceed 14 days. Please email us if you need to be away for longer."
+      );
       return;
     }
 
     setCreating(true);
     try {
-      await userAwayrangesCreate({
+      await userCreateAwayRange({
         body: {
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
@@ -81,12 +83,8 @@ const AwayRangesSection: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this away period?")) {
-      return;
-    }
-
     try {
-      await userAwayrangesDelete({ path: { id } });
+      await userDeleteAwayRange({ path: { id } });
       await loadAwayRanges();
     } catch (error) {
       console.error("Error deleting away range:", error);
@@ -116,8 +114,9 @@ const AwayRangesSection: React.FC = () => {
     <div>
       <h2 className="!font-semibold text-lg mb-2">Away Periods</h2>
       <p className="text-sm text-zinc-600 mb-4">
-        Schedule periods when you'll be away. During these times, you won't receive new tasks,
-        notifications, or be counted in action participation. Maximum 14 days per period.
+        You can schedule times here when you know you wont be able to complete
+        Alliance actions. This will let us know not to send you notifications or
+        expect you to complete tasks while you&apos;re away.
       </p>
 
       {awayRanges.length > 0 && (
@@ -134,24 +133,36 @@ const AwayRangesSection: React.FC = () => {
               <div className="flex justify-between items-start">
                 <div className="flex-1">
                   {isCurrentlyAway(range) && (
-                    <p className="text-xs font-semibold text-yellow-800 mb-1">CURRENTLY AWAY</p>
+                    <p className="text-xs font-semibold text-yellow-800 mb-1">
+                      Currently away
+                    </p>
                   )}
                   {isFutureRange(range) && (
-                    <p className="text-xs font-semibold text-blue-800 mb-1">SCHEDULED</p>
+                    <p className="text-xs font-semibold text-green mb-1">
+                      Scheduled
+                    </p>
                   )}
                   <p className="font-medium">
                     {new Date(range.startDate).toLocaleDateString()} at{" "}
-                    {new Date(range.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(range.startDate).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                     {" → "}
                     {new Date(range.endDate).toLocaleDateString()} at{" "}
-                    {new Date(range.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(range.endDate).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
-                  {range.note && <p className="text-sm text-gray-600 mt-1">{range.note}</p>}
+                  {range.note && (
+                    <p className="text-sm text-gray-600 mt-1">{range.note}</p>
+                  )}
                 </div>
                 <Button
                   onClick={() => handleDelete(range.id)}
                   color={ButtonColor.Red}
-                  className="ml-4 px-3 py-1 text-sm"
+                  className="ml-4 !py-0 !px-1 text-sm !bg-transparent"
                 >
                   Delete
                 </Button>
@@ -162,24 +173,26 @@ const AwayRangesSection: React.FC = () => {
       )}
 
       <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-        <p className="font-medium mb-3">Schedule new away period</p>
+        <p className="font-medium mb-3">Schedule time away</p>
         <div className="space-y-3">
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">Start Date & Time</label>
+              <label className="block text-sm font-medium mb-1">
+                Start Date
+              </label>
               <FormInput
                 name="startDate"
-                type="datetime-local"
+                type="date"
                 value={startDateInput}
                 onChange={(e) => setStartDateInput(e.target.value)}
                 min={new Date().toISOString().slice(0, 16)}
               />
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">End Date & Time</label>
+              <label className="block text-sm font-medium mb-1">End Date</label>
               <FormInput
                 name="endDate"
-                type="datetime-local"
+                type="date"
                 value={endDateInput}
                 onChange={(e) => setEndDateInput(e.target.value)}
                 min={startDateInput || new Date().toISOString().slice(0, 16)}
@@ -187,7 +200,9 @@ const AwayRangesSection: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Note (optional)</label>
+            <label className="block text-sm font-medium mb-1">
+              Note (optional)
+            </label>
             <FormInput
               name="note"
               type="text"
@@ -202,7 +217,7 @@ const AwayRangesSection: React.FC = () => {
             disabled={creating || !startDateInput || !endDateInput}
             className="w-full md:w-auto"
           >
-            {creating ? "Creating..." : "Add Away Period"}
+            {creating ? "Creating..." : "Schedule"}
           </Button>
           <p className="text-xs text-zinc-500 mt-2">
             Need to be away for longer than 14 days? Please email us.

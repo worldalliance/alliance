@@ -74,7 +74,6 @@ export class ProfileDtoWithFriends extends ProfileDto {
 
 export class UserDto extends PickType(User, [
   'name',
-  'email',
   'admin',
   'staff',
   'contractDateSigned',
@@ -99,6 +98,10 @@ export class UserDto extends PickType(User, [
   @Type(() => ProfileDto)
   @Allow()
   friends: ProfileDto[];
+
+  @ApiProperty()
+  @Allow()
+  email: string;
 
   constructor(user: User) {
     super();
