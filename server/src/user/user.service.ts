@@ -43,6 +43,9 @@ import { OnetimeInvite } from './entities/onetime-invite.entity';
 import { CreateOnetimeInviteDto } from './dto/invite.dto';
 import { UserAwayRange } from './entities/user-away-range.entity';
 import { CreateAwayRangeDto } from './dto/away-range.dto';
+import { Temporal } from '@js-temporal/polyfill';
+
+const defaultTimeZone = 'America/Los_Angeles';
 
 export interface PWResetJwtPayload {
   sub: number;
@@ -750,20 +753,35 @@ export class UserService {
     userId: number,
     data: CreateAwayRangeDto,
   ): Promise<UserAwayRange> {
-    const startDate = new Date(data.startDate);
-    const endDate = new Date(data.endDate);
+    const startDay = Temporal.PlainDate.from(data.startDay);
+    const endDay = Temporal.PlainDate.from(data.endDay);
+    const user = await this.findOneOrFail(userId);
+    const tz = user.timeZone ?? defaultTimeZone;
     const now = new Date();
 
-    if (startDate >= endDate) {
+    const startDate = startDay
+      .toZonedDateTime({
+        timeZone: tz,
+        plainTime: Temporal.PlainTime.from({ hour: 0 }),
+      })
+      .toInstant();
+    const endDate = endDay
+      .toZonedDateTime({
+        timeZone: tz,
+        plainTime: Temporal.PlainTime.from({ hour: 23, minute: 59 }),
+      })
+      .toInstant();
+
+    if (startDate.epochMilliseconds >= endDate.epochMilliseconds) {
       throw new BadRequestException('End date must be after start date.');
     }
 
-    if (startDate < now) {
+    if (startDate.epochMilliseconds < now.getTime()) {
       throw new BadRequestException('Start date must be in the future.');
     }
 
     const maxDuration = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
-    if (endDate.getTime() - startDate.getTime() > maxDuration) {
+    if (endDate.epochMilliseconds - startDate.epochMilliseconds > maxDuration) {
       throw new BadRequestException(
         'Away period cannot exceed 14 days. Please email us if you need to be away for longer.',
       );
@@ -771,8 +789,8 @@ export class UserService {
 
     const awayRange = this.userAwayRangeRepository.create({
       userId,
-      startDate,
-      endDate,
+      startDate: new Date(startDate.epochMilliseconds),
+      endDate: new Date(endDate.epochMilliseconds),
       note: data.note,
     });
 

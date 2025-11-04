@@ -38,20 +38,8 @@ const AwayRangesSection: React.FC = () => {
       alert("Please select both start and end dates.");
       return;
     }
-
     const startDate = new Date(startDateInput);
     const endDate = new Date(endDateInput);
-    const now = new Date();
-
-    if (startDate < now) {
-      alert("Start date must be in the future.");
-      return;
-    }
-
-    if (endDate <= startDate) {
-      alert("End date must be after start date.");
-      return;
-    }
 
     const maxDuration = 14 * 24 * 60 * 60 * 1000;
     if (endDate.getTime() - startDate.getTime() > maxDuration) {
@@ -62,24 +50,20 @@ const AwayRangesSection: React.FC = () => {
     }
 
     setCreating(true);
-    try {
-      await userCreateAwayRange({
-        body: {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          note: noteInput || undefined,
-        },
-      });
+    const resp = await userCreateAwayRange({
+      body: {
+        startDay: startDateInput,
+        endDay: endDateInput,
+        note: noteInput || undefined,
+      },
+    });
+    if (resp.response.ok) {
       setStartDateInput("");
       setEndDateInput("");
       setNoteInput("");
-      await loadAwayRanges();
-    } catch (error) {
-      console.error("Error creating away range:", error);
-      alert("There was an error creating your away period. Please try again.");
-    } finally {
-      setCreating(false);
     }
+    setCreating(false);
+    await loadAwayRanges();
   };
 
   const handleDelete = async (id: number) => {
@@ -143,16 +127,16 @@ const AwayRangesSection: React.FC = () => {
                     </p>
                   )}
                   <p className="font-medium">
-                    {new Date(range.startDate).toLocaleDateString()} at{" "}
-                    {new Date(range.startDate).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
+                    {new Date(range.startDate).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
                     })}
                     {" → "}
-                    {new Date(range.endDate).toLocaleDateString()} at{" "}
-                    {new Date(range.endDate).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
+                    {new Date(range.endDate).toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
                     })}
                   </p>
                   {range.note && (

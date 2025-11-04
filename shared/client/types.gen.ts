@@ -78,9 +78,9 @@ export type OnboardingDto = {
 };
 
 export type CreateAwayRangeDto = {
-    startDate: string;
-    endDate: string;
     note?: string | null;
+    startDay: string;
+    endDay: string;
 };
 
 export type UserAwayRangeDto = {
