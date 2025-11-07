@@ -52,7 +52,7 @@ const GuidePage: React.FC = () => {
         </aside>
         <div className="flex flex-col max-w-[46rem]">
           <div className="mx-auto w-full mb-4 md:mb-16">
-            <h2 className="font-serif !font-semibold !text-4xl md:!text-6xl mb-3 text-black">
+            <h2 className="font-serif !font-medium !text-4xl md:!text-6xl mb-3 text-black">
               Guide to the Alliance
             </h2>
             <p className="text-base md:text-lg text-zinc-600">

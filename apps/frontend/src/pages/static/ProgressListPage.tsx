@@ -31,7 +31,7 @@ const ProgressListPage: React.FC = () => {
       <PrelaunchNavbar transparent={false} absolute={false} />
       <div className="flex-1 container mx-auto pt-16 md:pt-28 pb-56 flex flex-col px-5">
         <div className="mx-auto w-full max-w-3xl flex flex-col gap-4 md:gap-12">
-          <h2 className="text-center font-serif !font-semibold !text-4xl md:!text-6xl">
+          <h2 className="text-center font-serif !font-medium !text-4xl md:!text-6xl">
             Progress
           </h2>
           <div className="flex flex-col gap-y-4">

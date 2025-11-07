@@ -193,7 +193,7 @@ const SearchBar = () => {
       <input
         type="text"
         placeholder="Search for members, actions, posts..."
-        className="w-full border bg-white border-zinc-200 p-2 px-4 rounded focus:outline-none"
+        className="w-full border bg-white border-zinc-200 py-2 px-4 rounded focus:outline-none"
         value={search}
         onChange={onChange}
         onFocus={handleFocus}
@@ -201,17 +201,17 @@ const SearchBar = () => {
         ref={inputRef}
       />
       {open && items.length === 0 && search.length > 0 && (
-        <div className="w-full bg-white -mt-[3px] pt-[7px] shrink-0 rounded-b-md p-2 flex flex-col max-h-[min(calc(100vh-50px),400px)] overflow-y-auto">
-          <p className="text-black text-sm font-medium pl-3 pt-3 pb-1 w-full border-t border-zinc-200">
+        <div className="w-full bg-white border border-zinc-200 -mt-[3px] shrink-0 rounded-b-md py-2 px-2 flex flex-col max-h-[min(calc(100vh-50px),400px)] overflow-y-auto">
+          <p className="text-black text-sm font-medium pl-3 pb-1 w-full">
             No results found
           </p>
         </div>
       )}
       {open && items.length > 0 && (
-        <div className="w-full bg-white -mt-[3px] pt-[7px] shrink-0 rounded-b-md p-2 flex flex-col overflow-y-auto">
+        <div className="w-full bg-white border border-zinc-200 -mt-[3px] shrink-0 rounded-b-md px-2 flex flex-col overflow-y-auto divide-y divide-zinc-200">
           {categoriesWithItems.map((category) => (
-            <div key={category} className=" w-full">
-              <p className="text-black text-sm font-medium pl-3 pt-3 pb-1 w-full border-t border-zinc-200">
+            <div key={category} className=" w-full py-3">
+              <p className="text-black text-sm font-medium pl-3 pb-1 w-full">
                 {categoryNames[category]}
               </p>
               {itemsByCategory[category]?.map((item) => (
