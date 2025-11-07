@@ -81,11 +81,11 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
 
   return (
     <div
-      className={`transition-all duration-300 ${
+      className={`p-6 border border-zinc-200 rounded transition-all duration-300 ${
         state === LargeActionCardState.Closed
           ? "opacity-0 overflow-hidden"
           : "opacity-100"
-      } ${className} w-full relative !p-0 border-none
+      } ${className} w-full relative 
          ${state === LargeActionCardState.Minified ? "pb-4" : ""}`}
     >
       <div className="p-0 sm:p-2">
@@ -101,7 +101,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
             </Button>
           )}
           <div className="flex flex-col flex-1 gap-y-2">
-            <p className="font-medium text-2xl md:text-4xl font-serif">
+            <p className="font-medium text-2xl md:text-3xl font-serif">
               {action.name}
             </p>
             <TaskTimeInfo

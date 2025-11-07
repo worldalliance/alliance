@@ -185,7 +185,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
 
       <aside
         id="side-nav"
-        className={`fixed top-0 left-0 h-screen w-screen sm:w-40 md:w-60 lg:w-72 bg-page shadow-md flex flex-col transform transition-transform duration-100 ease-in-out z-30
+        className={`fixed top-0 left-0 h-screen w-screen sm:w-40 md:w-60 lg:w-72 bg-zinc-50 border-r border-zinc-200 shadow-md flex flex-col transform transition-transform duration-100 ease-in-out z-30
         ${
           open ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 md:shadow-none`}
@@ -238,7 +238,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
                           key={item.page}
                           className={`px-3 py-1.5 rounded flex items-center justify-between w-full ${
                             currentLocation === item.page
-                              ? "bg-zinc-100 text-black"
+                              ? "bg-zinc-200/80 text-black"
                               : "text-zinc-700 hover:bg-zinc-100"
                           }`}
                           onClick={() => setOpen(false)}
@@ -247,7 +247,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
                             <p>{item.page}</p>
                             {item.page === NavbarPage.Notifications &&
                               unreadCount > 0 && (
-                                <div className=" text-white bg-red-500 rounded-full w-6 h-6 flex gap-x-1 justify-center items-center">
+                                <div className=" text-white bg-red-500 rounded-md w-5 h-5 flex gap-x-1 justify-center items-center">
                                   {/* <img
                                     src={notifBell}
                                     alt="Notifications"
@@ -261,7 +261,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
                               )}
                             {item.page === NavbarPage.Tasks &&
                               todoActions > 0 && (
-                                <div className=" text-white bg-green rounded-full w-6 h-6 flex gap-x-1 justify-center items-center">
+                                <div className=" text-white bg-red-500 rounded-md w-5 h-5 flex gap-x-1 justify-center items-center">
                                   <p className="font-semibold text-xs">
                                     {todoActions}
                                   </p>

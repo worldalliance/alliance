@@ -20,10 +20,10 @@ export default function TwoColumnLayout({
 }: TwoColumnLayoutProps) {
   return (
     <div
-      className={`w-full h-[calc(100vh-var(--mobile-nav-height))] bg-white md:bg-page ${className}`}
+      className={`w-full h-[calc(100vh-var(--mobile-nav-height))] bg-white  ${className}`}
     >
       <div
-        className={`sm:border border-zinc-200 absolute rounded-lg top-0 left-0 bottom-0 sm:my-2 ${
+        className={`absolute rounded-lg top-0 left-0 bottom-0 ${
           sidebar ? "" : "sm:mr-2"
         } bg-white flex flex-col items-center overflow-hidden`}
         style={{ right: sidebar ? `${sidebarWidth}px` : "0" }}

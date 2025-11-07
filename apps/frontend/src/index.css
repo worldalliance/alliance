@@ -107,8 +107,8 @@
 
 @theme {
   --color-blue: #318dde;
-  --color-page: oklch(99% 0 0);
-  /* --color-page: #fff; */
+  /* --color-page: oklch(99% 0 0); */
+  --color-page: #fff;
   --color-green: rgb(98, 161, 36);
   --color-navy: rgb(7, 30, 64);
   --color-staff: #5598da;
