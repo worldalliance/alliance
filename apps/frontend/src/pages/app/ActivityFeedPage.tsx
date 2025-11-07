@@ -114,7 +114,7 @@ const ActivityFeedPage = () => {
               key={m}
               onClick={() => setMode(m)}
               aria-pressed={m === mode}
-              className={`!border-b-[2px] rounded-none !text-sm ${
+              className={`!border-b-[2px] rounded-none !text-base ${
                 m === mode
                   ? "!border-b-green text-black"
                   : "!border-b-transparent hover:!border-b-zinc-200 text-zinc-500"

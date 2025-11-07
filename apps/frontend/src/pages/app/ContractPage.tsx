@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import MemberContract from "../../components/MemberContract";
 import FormInput from "@alliance/shared/ui/FormInput";
 import { useAuth } from "../../lib/AuthContext";
+import CenterLayout from "@alliance/shared/ui/CenterLayout";
 
 const ContractPage: React.FC = () => {
   const { user, loading } = useAuth();
@@ -52,54 +53,52 @@ const ContractPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col bg-page items-center min-h-[calc(100vh-var(--nav-height))]">
-      <div className="flex flex-col max-w-3xl mx-auto p-3 mt-4 md:pt-20">
-        <div className="gap-y-2 flex flex-col text-base md:text-lg">
-          <p className="font-serif text-3xl md:text-4xl font-medium mb-1">
-            Contract
-          </p>
-          <p className="text-zinc-900 mb-4">
-            Below is your membership contract.
-            <ul className="list-disc list-inside mt-2">
-              <li>We will post any updates to your contract here.</li>
-              <li>You can terminate your membership at any time.</li>
-            </ul>
-          </p>
-          <MemberContract />
+    <CenterLayout>
+      <div className="md:mt-8 gap-y-2 flex flex-col text-base md:text-lg">
+        <p className="font-serif text-3xl md:text-4xl font-medium mb-1">
+          Contract
+        </p>
+        <p className="text-zinc-900 mb-4">
+          Below is your membership contract.
+          <ul className="list-disc list-inside mt-2">
+            <li>We will post any updates to your contract here.</li>
+            <li>You can terminate your membership at any time.</li>
+          </ul>
+        </p>
+        <MemberContract />
 
-          {!contractDateSigned && (
-            <div className="flex flex-row mt-2 w-full">
-              <FormInput
-                name="name"
-                type="text"
-                placeholder="Type your full name"
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                onClick={handleContractSign}
-                color={ButtonColor.Black}
-                className="ml-2 !h-auto px-6"
-              >
-                Sign
-              </Button>
-            </div>
-          )}
-          {contractDateSigned && (
-            <div className="mt-4 flex flex-row justify-between items-center">
-              <p className="text-green">
-                You signed this contract on{" "}
-                {new Date(contractDateSigned).toLocaleDateString()}.
-              </p>
-              <Button onClick={handleContractSuspend} color={ButtonColor.Red}>
-                Suspend contract
-              </Button>
-            </div>
-          )}
-        </div>
+        {!contractDateSigned && (
+          <div className="flex flex-row mt-2 w-full">
+            <FormInput
+              name="name"
+              type="text"
+              placeholder="Type your full name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleContractSign}
+              color={ButtonColor.Black}
+              className="ml-2 !h-auto px-6"
+            >
+              Sign
+            </Button>
+          </div>
+        )}
+        {contractDateSigned && (
+          <div className="mt-4 flex flex-row justify-between items-center">
+            <p className="text-green">
+              You signed this contract on{" "}
+              {new Date(contractDateSigned).toLocaleDateString()}.
+            </p>
+            <Button onClick={handleContractSuspend} color={ButtonColor.Red}>
+              Suspend contract
+            </Button>
+          </div>
+        )}
       </div>
-    </div>
+    </CenterLayout>
   );
 };
 

@@ -3,14 +3,15 @@ import { useNotifications } from "../../lib/useNotifications";
 import { formatTime } from "@alliance/shared/lib/utils";
 import List from "@alliance/shared/ui/List";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
+import CenterLayout from "@alliance/shared/ui/CenterLayout";
 
 const NotificationsPage = () => {
   const { allNotifications, handleMarkAllAsRead, handleNotifClick } =
     useNotifications();
 
   return (
-    <div className="flex flex-col bg-page items-center">
-      <div className="py-8 sm:py-18 px-4 flex flex-col items-center w-[calc(min(650px,100%))] gap-y-6">
+    <CenterLayout>
+      <div className="md:mt-8 flex flex-col items-center w-[calc(min(650px,100%))] gap-y-6">
         <div className="w-full flex flex-row justify-between items-end">
           <h2 className="!font-medium font-serif !text-3xl md:!text-4xl">
             Notifications
@@ -50,7 +51,7 @@ const NotificationsPage = () => {
           ))}
         </List>
       </div>
-    </div>
+    </CenterLayout>
   );
 };
 

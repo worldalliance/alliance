@@ -67,8 +67,8 @@ const ActionContents = () => {
             Discussion
           </p>
           <p className="mb-8">
-            Questions and comments about this action that all members would find
-            helpul.
+            Questions and comments about this action that other members would
+            find helpful.
           </p>
           <Comments objectId={action.id} type={"action"} />
         </div>
