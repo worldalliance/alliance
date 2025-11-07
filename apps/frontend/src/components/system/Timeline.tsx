@@ -63,7 +63,7 @@ const Timeline: React.FC<TimelineProps> = ({
       {/* vertical line */}
       <div className="absolute top-0 bottom-0 -ml-[1px]" style={lineStyle} />
 
-      <ul className="space-y-6">
+      <ul className="space-y-8">
         {React.Children.map(children, (child, index) => (
           <li
             className="relative"
@@ -78,7 +78,7 @@ const Timeline: React.FC<TimelineProps> = ({
               } mt-1 flex items-center justify-center`}
             ></div>
             {/* content */}
-            <div className="pl-5">{child}</div>
+            <div className="pl-6">{child}</div>
           </li>
         ))}
       </ul>

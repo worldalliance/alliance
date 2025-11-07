@@ -37,8 +37,8 @@ const ActionContents = () => {
         )}
       </div>
 
-      <div className="flex flex-col gap-y-8 sm:gap-y-16">
-        <div className="bg-white p-6 rounded border border-zinc-200">
+      <div className="flex flex-col gap-y-8 sm:gap-y-12">
+        <div className="">
           <ActionEventsPanel action={action} events={action.events} />
         </div>
         <div className="flex flex-col">
