@@ -30,7 +30,7 @@ const ProgressListPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-white">
       <PrelaunchNavbar transparent={false} absolute={false} />
       <div className="flex-1 container mx-auto pt-16 md:pt-28 pb-56 flex flex-col px-5">
-        <div className="mx-auto w-full max-w-3xl flex flex-col gap-4 md:gap-12">
+        <div className="mx-auto w-full max-w-3xl flex flex-col gap-4 md:gap-16">
           <h2 className="text-center font-serif !font-medium !text-4xl md:!text-6xl">
             Progress
           </h2>
@@ -39,7 +39,7 @@ const ProgressListPage: React.FC = () => {
               <Link
                 to={`/progress/${post.slug}`}
                 key={post.slug}
-                className="bg-zinc-50 hover:bg-zinc-100 p-6 flex flex-row justify-between"
+                className="group flex flex-row justify-between"
               >
                 {/* <Card
                   style={CardStyle.White}
@@ -47,7 +47,7 @@ const ProgressListPage: React.FC = () => {
                 > */}
                 <div className="">
                   <div className="flex justify-between">
-                    <p className="text-xl md:text-2xl font-serif font-medium">
+                    <p className="text-xl md:text-3xl font-serif font-medium mb-2 group-hover:underline">
                       {post.frontmatter.title}
                     </p>
 

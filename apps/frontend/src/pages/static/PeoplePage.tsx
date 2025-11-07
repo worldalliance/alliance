@@ -58,10 +58,14 @@ const PeoplePage: React.FC = () => {
 
           <div className="flex flex-col text-base md:text-lg">
             <p>
-              The Alliance has a full-time strategic office that plans
-              collective actions and a body of members that participate in
-              collective actions.
+              The Alliance has a body of members that is committed to take
+              actions and full-time strategic office that plans actions.
             </p>
+
+            <h2 className="!font-semibold !text-lg md:!text-xl !mt-8 mb-2">
+              Members
+            </h2>
+            <p>40 members are participating in early experiments.</p>
 
             <h2 className="!font-semibold !text-lg md:!text-xl !mt-8 mb-2">
               Strategic Office
@@ -80,13 +84,6 @@ const PeoplePage: React.FC = () => {
                 </p>
               ))}
             </div>
-
-            <h2 className="!font-semibold !text-lg md:!text-xl !mt-8 mb-2">
-              Members
-            </h2>
-            <p>
-              We have 39 members who are participating in early experiments.
-            </p>
           </div>
         </div>
       </div>
