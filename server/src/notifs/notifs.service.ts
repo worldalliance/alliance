@@ -78,7 +78,7 @@ export class NotifsService {
 
   async setReadAll(userId: number) {
     return this.notifsRepository.update(
-      { user: { id: userId }, cleared: false },
+      { user: { id: userId } },
       { read: true },
     );
   }

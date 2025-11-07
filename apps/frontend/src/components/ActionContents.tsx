@@ -2,39 +2,77 @@ import AppMarkdownWrapper from "@alliance/shared/ui/AppMarkdownWrapper";
 import { Outlet, useOutletContext } from "react-router";
 import { TaskPanelContext } from "./ActionPageTaskPanel";
 import Comments from "./Comments";
+import { getLastAndNextEvent } from "../pages/app/LargeActionCard";
+import TaskTimeInfo from "../pages/app/TaskTimeInfo";
+import ActionEventsPanel from "./ActionEventsPanel";
 
 const ActionContents = () => {
   const context = useOutletContext<TaskPanelContext>();
+
   const action = context.action;
+
   if (!action) {
     return null;
   }
 
+  const { lastEvent, nextEvent } = getLastAndNextEvent(action);
+
   return (
-    <div className="flex flex-col gap-y-3 flex-2 md:pl-10 pt-5 mb-24 w-full">
+    <div className="flex flex-col gap-y-3 flex-2 w-full">
       {action?.image && (
         <img
           src={action.image}
           className="w-full h-auto rounded-md border border-gray-300 max-h-[200px] object-cover mb-5"
         />
       )}
-      <div className="flex flex-row justify-between items-start">
+
+      <div className="flex flex-row justify-between items-start mb-4 sm:mb-8">
         {action !== undefined && (
-          <div className="flex flex-col gap-y-2 mb-3">
-            <h1 className="font-serif !font-semibold">{action.name}</h1>
-            <p className="text-zinc-500">{action.shortDescription}</p>
+          <div className="flex flex-col gap-y-2">
+            <p className="font-medium text-2xl sm:text-3xl md:text-4xl font-serif mb-2">
+              {action.name}
+            </p>
+            <p className="">{action.shortDescription}</p>
           </div>
         )}
       </div>
-      {/* {action.updates?.length > 0 && (
-        <ActionUpdatesPanel updates={action.updates} />
-      )} */}
 
-      <Outlet context={context} />
+      <div className="flex flex-col gap-y-8 sm:gap-y-12">
+        <div className="bg-white p-6 rounded border border-zinc-200">
+          <ActionEventsPanel action={action} events={action.events} />
+        </div>
+        <div className="flex flex-col">
+          <div className="flex flex-row justify-between items-center mb-4 pb-2 border-b border-zinc-200">
+            <p className="font-medium text-xl sm:text-2xl">Task</p>
 
-      <AppMarkdownWrapper markdownContent={action?.body} className="my-4" />
+            <TaskTimeInfo
+              action={action}
+              nextEvent={nextEvent}
+              lastEvent={lastEvent}
+            />
+          </div>
 
-      <Comments objectId={action.id} type={"action"} />
+          <Outlet context={context} />
+        </div>
+
+        <div>
+          <p className="font-medium text-xl sm:text-2xl mb-4 pb-2 border-b border-zinc-200">
+            Description
+          </p>
+          <AppMarkdownWrapper markdownContent={action?.body} />
+        </div>
+
+        <div>
+          <p className="font-medium text-xl sm:text-2xl mb-4 pb-2 border-b border-zinc-200">
+            Discussion
+          </p>
+          <p className="mb-8">
+            Questions and comments about this action that all members would find
+            helpul.
+          </p>
+          <Comments objectId={action.id} type={"action"} />
+        </div>
+      </div>
     </div>
   );
 };

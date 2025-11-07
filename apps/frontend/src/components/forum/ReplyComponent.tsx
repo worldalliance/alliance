@@ -206,7 +206,11 @@ const ReplyContent: React.FC<ReplyContentProps> = ({
         </div>
 
         {/* Middle section: Reply content */}
-        <div className={`text-sm sm:text-base ${compact ? `mb-1` : `mb-2`}`}>
+        <div
+          className={`${
+            compact ? `text-xs sm:text-sm mb-1` : `text-sm sm:text-base mb-2`
+          }`}
+        >
           {!isEditing && (
             <EditableContentRenderer
               content={reply.editableContent}
@@ -453,7 +457,7 @@ const ReplyComponent = ({
                         className={`${
                           compact
                             ? "my-3"
-                            : "border-t border-zinc-200 my-2 sm:my-4"
+                            : "border-t border-zinc-200 my-3 sm:my-4"
                         } -mx-2 sm:-mx-4`}
                       ></div>
                       <div>
@@ -544,7 +548,7 @@ const ReplyComponent = ({
               <div
                 className={`
                   ${
-                    compact ? "my-2" : "border-t border-gray-200 my-2 sm:my-4"
+                    compact ? "my-3" : "border-t border-gray-200 my-3 sm:my-4"
                   } -mx-2 sm:-mx-4
                `}
               ></div>

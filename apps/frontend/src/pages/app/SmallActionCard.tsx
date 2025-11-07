@@ -59,7 +59,7 @@ const SmallActionCard: React.FC<SmallActionCardProps> = ({
   return (
     <div className={`relative ${className}`}>
       <Card
-        className="block overflow-hidden rounded-none"
+        className="block overflow-hidden hover:bg-zinc-50"
         style={CardStyle.White}
         onClick={goToActionPage}
       >

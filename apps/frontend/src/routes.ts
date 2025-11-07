@@ -44,6 +44,7 @@ export default [
       route("/tasks", "pages/app/HomePage.tsx"),
       route("/community", "pages/app/CommunityPage.tsx"),
       route("/notifications", "pages/app/NotificationsPage.tsx"),
+      route("/search", "pages/app/SearchPage.tsx"),
       route("/settings", "pages/app/SettingsPage.tsx"),
       route("/contract", "pages/app/ContractPage.tsx"),
       route("/commit", "pages/app/CommitActionPage.tsx"),

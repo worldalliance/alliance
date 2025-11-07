@@ -187,7 +187,10 @@ const SettingsPage: React.FC = () => {
   return (
     <div className="bg-page py-4 md:py-20 px-4 md:px-16">
       <div className="max-w-4xl mx-auto">
-        <Card style={CardStyle.White} className="p-8 mb-6 relative gap-y-4">
+        <Card
+          style={CardStyle.White}
+          className="p-4 sm:p-8 mb-6 relative gap-y-4"
+        >
           <div className="flex justify-between mb-2">
             <div className="gap-x-2">
               <h1 className="text-3xl font-serif !font-medium mb-2">Account</h1>
@@ -235,9 +238,7 @@ const SettingsPage: React.FC = () => {
               />
             </div>
             <div className="flex-1 flex flex-col w-full">
-              <p className="mb-1">
-                Email <i className="text-gray-500">(Not shown)</i>
-              </p>
+              <p className="mb-1">Email</p>
               <FormInput
                 name="email"
                 type="email"
@@ -354,8 +355,8 @@ const SettingsPage: React.FC = () => {
                   updateEditableUser({ textNotifsEnabled: checked })
                 }
               /> */}
-              <div className="flex flex-col">
-                <p className="!font-medium mt-2">Platform activity digest</p>
+              <div className="flex flex-col mt-4">
+                <p className="!font-medium">Platform activity digest</p>
                 <p className="text-sm text-zinc-500 mb-2">
                   This includes replies to your posts, friend requests, and
                   other updates.

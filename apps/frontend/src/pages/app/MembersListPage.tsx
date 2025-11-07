@@ -101,7 +101,7 @@ const MembersListPage = () => {
   return (
     <CenterLayout className="gap-y-4" width="3xl">
       <div className="flex flex-row gap-x-6 items-center">
-        <p className="text-lg md:text-2xl font-serif font-medium relative w-fit -mt-1">
+        <p className="text-2xl md:text-3xl font-serif font-medium relative w-fit -mt-1">
           Members {!loading && `(${members.length})`}
         </p>
 

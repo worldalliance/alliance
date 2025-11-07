@@ -17,7 +17,7 @@ const TaskTimeInfo = ({ action, nextEvent, lastEvent }: TaskTimeInfoProps) => {
       : "var(--color-zinc-500)";
 
   return (
-    <div className="flex flex-row flex-wrap gap-x-4 mb-2">
+    <div className="flex flex-row flex-wrap gap-x-4">
       {!!action.timeEstimate && action.status !== "gathering_commitments" && (
         <div className="flex flex-row items-center gap-x-1.5 text-base text-zinc-500">
           <ClockIcon />
@@ -36,14 +36,6 @@ const TaskTimeInfo = ({ action, nextEvent, lastEvent }: TaskTimeInfoProps) => {
             left
           </p>
         </div>
-      )}
-      {!nextEvent && lastEvent && (
-        <p className="text-base text-zinc-500">
-          {action.status === "gathering_commitments"
-            ? "Opened for member commitment  "
-            : "Action began "}
-          {formatTime(new Date(lastEvent.date), { addSuffix: true })}
-        </p>
       )}
     </div>
   );

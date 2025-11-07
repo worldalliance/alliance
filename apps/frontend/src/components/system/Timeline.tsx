@@ -18,8 +18,8 @@ interface TimelineProps {
 
 const Timeline: React.FC<TimelineProps> = ({
   children,
-  lineWidth = 2,
-  dotSize = 16,
+  lineWidth = 1,
+  dotSize = 12,
   lineColor = "var(--color-zinc-200)",
   className,
 }) => {

@@ -48,7 +48,7 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   return (
     <div className={`${className}`}>
       <div className="flex flex-row items-center justify-between w-full gap-x-2">
-        <p className="text-zinc-500 text-sm mb-1">
+        <p className="text-zinc-600 mb-1">
           {value} / {safeThreshold}{" "}
           {action.status === "gathering_commitments"
             ? "members committed"

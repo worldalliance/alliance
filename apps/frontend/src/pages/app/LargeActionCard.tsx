@@ -4,10 +4,10 @@ import { useNavigate } from "react-router";
 import { ActionDto, UserActionRelation } from "@alliance/shared/client";
 import { ActionActivityDto } from "@alliance/shared/client/types.gen";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
-import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import ActionTaskPanel from "../../components/ActionTaskPanel";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
 import TaskTimeInfo from "./TaskTimeInfo";
+import chevronRight from "../../assets/icons8-expand-arrow-96.png";
 
 export interface LargeActionCardProps {
   action: ActionDto;
@@ -80,45 +80,48 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
   const { lastEvent, nextEvent } = getLastAndNextEvent(action);
 
   return (
-    <Card
-      style={CardStyle.White}
+    <div
       className={`transition-all duration-300 ${
         state === LargeActionCardState.Closed
           ? "opacity-0 overflow-hidden"
           : "opacity-100"
-      } ${className} w-full relative p-6
+      } ${className} w-full relative !p-0 border-none
          ${state === LargeActionCardState.Minified ? "pb-4" : ""}`}
     >
       <div className="p-0 sm:p-2">
-        <div className="flex flex-col sm:flex-row gap-x-2 items-start mb-1">
+        <div className="flex flex-col sm:flex-row gap-x-4 items-start mb-4">
           {showDetails && (
             <Button
               color={ButtonColor.Transparent}
               onClick={goToActionPage}
-              className="!px-6 block mb-4 sm:hidden text-sm hover:bg-zinc-50 border border-zinc-200 text-black font-normal"
+              className="!px-4 flex gap-x-1 mb-4 sm:hidden text-sm hover:bg-zinc-50 border border-zinc-200 text-black font-normal"
             >
               Details
+              <img src={chevronRight} className="w-3 h-3 rotate-270" />
             </Button>
           )}
-          <div className="flex flex-col flex-1">
+          <div className="flex flex-col flex-1 gap-y-2">
+            <p className="font-medium text-2xl md:text-4xl font-serif">
+              {action.name}
+            </p>
             <TaskTimeInfo
               action={action}
               nextEvent={nextEvent}
               lastEvent={lastEvent}
             />
-            <p className="font-medium text-lg">{action.name}</p>
           </div>
           {showDetails && (
             <Button
               color={ButtonColor.Transparent}
               onClick={goToActionPage}
-              className="!px-6 hidden sm:block text-sm hover:bg-zinc-50 border border-zinc-200 text-black font-normal"
+              className="!px-4 hidden sm:flex gap-x-1 text-sm hover:bg-zinc-50 border border-zinc-200 text-black font-normal"
             >
               Details
+              <img src={chevronRight} className="w-3 h-3 rotate-270" />
             </Button>
           )}
         </div>
-        <p className="mb-4">{action.shortDescription}</p>
+        <p className="mb-8">{action.shortDescription}</p>
         <ActionCompletedBarWithInfo
           friendActivities={friendActivities}
           action={action}
@@ -134,7 +137,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
           />
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 

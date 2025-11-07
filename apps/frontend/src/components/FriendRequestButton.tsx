@@ -31,8 +31,8 @@ const FriendRequestButton = ({
   if (friendStatus.status === "pending") {
     if (friendStatus.didReceiveRequest) {
       return (
-        <div className="flex flex-row gap-x-2 items-center text-sm">
-          <p>Sent you a friend request!</p>
+        <div className="flex flex-row gap-x-3 items-center text-sm">
+          <p>Sent you a friend request</p>
           <Button color={ButtonColor.Green} onClick={handleAcceptFriendRequest}>
             Accept
           </Button>

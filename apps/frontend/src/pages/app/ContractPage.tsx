@@ -52,16 +52,18 @@ const ContractPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col bg-white items-center min-h-[calc(100vh-var(--nav-height))]">
+    <div className="flex flex-col bg-page items-center min-h-[calc(100vh-var(--nav-height))]">
       <div className="flex flex-col max-w-3xl mx-auto p-3 mt-4 md:pt-20">
         <div className="gap-y-2 flex flex-col text-base md:text-lg">
-          <p className="font-serif text-3xl md:text-4xl font-semibold mb-1">
+          <p className="font-serif text-3xl md:text-4xl font-medium mb-1">
             Contract
           </p>
           <p className="text-zinc-900 mb-4">
-            Below is your membership contract. This page is also where we will
-            post updates to the contract, and where you can terminate your
-            membership if you choose to do so.
+            Below is your membership contract.
+            <ul className="list-disc list-inside mt-2">
+              <li>We will post any updates to your contract here.</li>
+              <li>You can terminate your membership at any time.</li>
+            </ul>
           </p>
           <MemberContract />
 

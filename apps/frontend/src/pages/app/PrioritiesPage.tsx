@@ -6,9 +6,9 @@ const PrioritiesPage: React.FC = () => {
   useWhiteBackground();
 
   return (
-    <div className="flex flex-col max-w-3xl mx-auto p-3 pt-6 md:pt-24">
+    <div className="flex flex-col py-8 sm:py-18 px-4 max-w-xl md:max-w-3xl mx-auto">
       <div className="gap-y-2 flex flex-col text-base md:text-lg">
-        <p className="font-serif text-3xl md:text-5xl font-semibold">
+        <p className="font-serif text-3xl md:text-4xl font-medium">
           Our priorities
         </p>
         <p className="text-zinc-500 mb-4 md:mb-8 ">

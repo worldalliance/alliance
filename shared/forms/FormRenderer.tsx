@@ -1049,7 +1049,7 @@ const FormRenderer = ({
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Page Content */}
         <div
-          className={`space-y-3 ${
+          className={`space-y-6 ${
             readOnly && schema.pages.length === 1 ? "mb-0" : ""
           }`}
         >

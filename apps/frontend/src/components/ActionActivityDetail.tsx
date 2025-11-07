@@ -105,7 +105,7 @@ const ActionActivityDetail = () => {
     <>
       <div className="flex flex-col gap-y-3 flex-2 px-5 pl-10 pt-5 w-full">
         <Link
-          className="flex flex-row gap-x-2 items-center cursor-pointer hover:bg-zinc-50 self-start px-2 py-1 rounded border border-zinc-300"
+          className="flex flex-row gap-x-2 items-center cursor-pointer hover:bg-zinc-50 self-start px-2 py-1 rounded border border-zinc-200"
           to={`/actions/${action.id}`}
         >
           <img src={chevronLeft} className="w-3 h-3 rotate-90" />

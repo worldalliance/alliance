@@ -188,12 +188,12 @@ const SearchBar = () => {
   return (
     <div
       ref={divRef}
-      className="relative flex-1 max-w-[500px] flex flex-col overflow-visible h-[37.5px] rounded"
+      className="relative flex-1 flex flex-col overflow-visible h-[37.5px] rounded"
     >
       <input
         type="text"
-        placeholder="Search"
-        className="w-full !bg-zinc-100 p-2 px-4 rounded focus:outline-none"
+        placeholder="Search for members, actions, posts..."
+        className="w-full border bg-white border-zinc-200 p-2 px-4 rounded focus:outline-none"
         value={search}
         onChange={onChange}
         onFocus={handleFocus}
@@ -201,14 +201,14 @@ const SearchBar = () => {
         ref={inputRef}
       />
       {open && items.length === 0 && search.length > 0 && (
-        <div className="w-full bg-zinc-100 -mt-[3px] pt-[7px] shrink-0 rounded-b-md p-2 flex flex-col max-h-[min(calc(100vh-50px),400px)] overflow-y-auto">
+        <div className="w-full bg-white -mt-[3px] pt-[7px] shrink-0 rounded-b-md p-2 flex flex-col max-h-[min(calc(100vh-50px),400px)] overflow-y-auto">
           <p className="text-black text-sm font-medium pl-3 pt-3 pb-1 w-full border-t border-zinc-200">
             No results found
           </p>
         </div>
       )}
       {open && items.length > 0 && (
-        <div className="w-full bg-zinc-100 -mt-[3px] pt-[7px] shrink-0 rounded-b-md p-2 flex flex-col max-h-[min(calc(100vh-50px),400px)] overflow-y-auto">
+        <div className="w-full bg-white -mt-[3px] pt-[7px] shrink-0 rounded-b-md p-2 flex flex-col overflow-y-auto">
           {categoriesWithItems.map((category) => (
             <div key={category} className=" w-full">
               <p className="text-black text-sm font-medium pl-3 pt-3 pb-1 w-full border-t border-zinc-200">
@@ -221,8 +221,8 @@ const SearchBar = () => {
                   ref={(el) => {
                     itemRefs.current[item.id] = el;
                   }}
-                  className={`text-black hover:bg-zinc-200 p-3 rounded-md flex flex-row justify-start cursor-pointer items-center ${
-                    selectedItem?.id === item.id ? "bg-zinc-200" : ""
+                  className={`text-black hover:bg-zinc-50 p-3 rounded-md flex flex-row justify-start cursor-pointer items-center ${
+                    selectedItem?.id === item.id ? "bg-zinc-50" : ""
                   }`}
                 >
                   {item.type === "user" ? (

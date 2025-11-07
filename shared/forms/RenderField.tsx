@@ -170,7 +170,7 @@ export function RenderField({
             disabled={disabled}
             aria-invalid={hasError}
             className={composeClassName(
-              "w-full px-3 py-2 rounded-md focus:outline-none"
+              "w-full px-3 py-2 rounded focus:outline-none"
             )}
             placeholder="Enter email address..."
           />
@@ -199,7 +199,7 @@ export function RenderField({
             pattern={field.pattern}
             aria-invalid={hasError}
             className={composeClassName(
-              "w-full px-3 py-2 rounded-md focus:outline-none"
+              "w-full px-3 py-2 rounded focus:outline-none"
             )}
             placeholder={field.placeholder || "Enter phone number"}
           />
