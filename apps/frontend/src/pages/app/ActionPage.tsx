@@ -3,7 +3,7 @@ import {
   actionsFindOne,
   UserActionRelation,
 } from "@alliance/shared/client";
-import { Outlet, useParams } from "react-router";
+import { Outlet, useNavigate, useParams } from "react-router";
 import ActionActivityList from "../../components/ActionActivityList";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
@@ -17,6 +17,7 @@ import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
 
 export default function ActionPage() {
   const { id: idParam } = useParams();
+  const navigate = useNavigate();
 
   const actionId = parseInt(idParam!);
 
@@ -79,26 +80,38 @@ export default function ActionPage() {
                 userRelation:
                   (action.userRelation as UserActionRelation | undefined) ??
                   null,
-                onCompleteAction: () =>
+                onCompleteAction: () => {
                   setAction((action) => ({
                     ...action!,
                     userRelation: "completed",
-                  })),
+                  }));
+
+                  // TODO need better way to update number of remaining tasks
+                  navigate(window.location.pathname);
+                },
                 onJoinAction: () =>
                   setAction((action) => ({
                     ...action!,
                     userRelation: "joined",
                   })),
-                onDeclineAction: () =>
+                onDeclineAction: () => {
                   setAction((action) => ({
                     ...action!,
                     userRelation: "declined",
-                  })),
-                onOptOutAction: () =>
+                  }));
+
+                  // TODO need better way to update number of remaining tasks
+                  navigate(window.location.pathname);
+                },
+                onOptOutAction: () => {
                   setAction((action) => ({
                     ...action!,
                     userRelation: "declined",
-                  })),
+                  }));
+
+                  // TODO need better way to update number of remaining tasks
+                  navigate(window.location.pathname);
+                },
                 activities,
                 handleLikeActivity,
                 setActivities,

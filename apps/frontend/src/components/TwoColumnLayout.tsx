@@ -26,7 +26,7 @@ export default function TwoColumnLayout({
         } bg-white flex flex-col items-center overflow-hidden`}
         style={{ right: sidebar ? `${sidebarWidth}px` : "0" }}
       >
-        <div className="w-full overflow-y-auto">{main}</div>
+        <div className="w-full h-full overflow-y-auto">{main}</div>
       </div>
 
       {sidebar && (
