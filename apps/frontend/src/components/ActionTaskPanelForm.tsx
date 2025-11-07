@@ -109,12 +109,10 @@ const ActionTaskPanelForm = ({
     }
   }
 
+  const Wrapper = card ? Card : "div";
+
   return (
-    <div
-      className={`flex flex-col gap-y-2 ${
-        card ? "p-4 sm:p-6 rounded border border-zinc-200" : ""
-      }`}
-    >
+    <Wrapper className={!card ? "flex flex-col gap-y-2" : "p-4 sm:p-6"}>
       <div>
         <FormRenderer
           form={form.schema as unknown as FormSchema}
@@ -134,7 +132,7 @@ const ActionTaskPanelForm = ({
           <div className="text-red-500">{error}</div>
         </Card>
       )}
-    </div>
+    </Wrapper>
   );
 };
 
