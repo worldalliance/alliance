@@ -98,23 +98,21 @@ const HomePage = () => {
             onUpdateActionState={() => navigate(window.location.pathname)}
           />
         ) : (
-          <Card style={CardStyle.Transparent} className="w-full border-none">
-            <div className="px-2 py-2 mx-auto my-auto flex flex-col items-center gap-y-4">
-              {user?.contractDateSuspended ? (
-                <p className="text-center text-zinc-500">
-                  You will not be given new tasks while your contract is
-                  suspended.
+          <div className="mt-4 px-2 py-2 mx-auto my-auto flex flex-col items-center gap-y-4">
+            {user?.contractDateSuspended ? (
+              <p className="text-center text-zinc-500">
+                You will not be given new tasks while your contract is
+                suspended.
+              </p>
+            ) : (
+              <>
+                <CheckIcon size="large" />
+                <p className="text-center text-zinc-500 text-lg lg:text-xl">
+                  No tasks to do right now
                 </p>
-              ) : (
-                <>
-                  <CheckIcon size="large" />
-                  <p className="text-center text-zinc-500 text-lg lg:text-xl">
-                    No tasks to do right now
-                  </p>
-                </>
-              )}
-            </div>
-          </Card>
+              </>
+            )}
+          </div>
         )}
       </div>
     );
@@ -231,7 +229,9 @@ const HomePage = () => {
         <TwoColumnLayout main={mainContent()} sidebar={sidebarContent()} />
       </div>
 
-      <div className="md:hidden bg-white">{mainContent()}</div>
+      <div className="md:hidden">
+        <TwoColumnLayout main={mainContent()} />
+      </div>
     </>
   );
 };
