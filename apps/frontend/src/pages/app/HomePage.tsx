@@ -1,4 +1,3 @@
-import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import CheckIcon from "@alliance/shared/ui/icons/CheckIcon";
 import { Link, useNavigate, useOutletContext } from "react-router";
 import { ActionWithRelation, AppLayoutOutletContext } from "../../applayout";
