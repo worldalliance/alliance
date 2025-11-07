@@ -151,7 +151,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
     <>
       {/* MOBILE TOP BAR */}
       <div
-        className="md:hidden flex items-center justify-between px-4 py-3 bg-white shadow-sm fixed top-0 left-0 right-0 z-30"
+        className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-zinc-200 fixed top-0 left-0 right-0 z-30"
         ref={(el) => {
           if (el) {
             document.documentElement.style.setProperty(
@@ -178,8 +178,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
           to={destinations[NavbarPage.Profile]}
           className="flex items-center gap-x-2"
         >
-          <ProfileImage pfp={profilePicture} size="small" />
-          <span className="">{profile?.displayName}</span>
+          <ProfileImage pfp={profilePicture} size="medium" />
         </Link>
       </div>
 

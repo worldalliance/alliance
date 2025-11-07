@@ -114,7 +114,7 @@ const ActionActivityDetail = () => {
         <h1 className="font-serif !font-medium w-full">{action.name}</h1>
         {activity !== null && (
           <>
-            <div className="flex flex-row items-center justify-between">
+            <div className="flex flex-row items-center justify-between mt-4">
               <div className="flex flex-row items-center">
                 <div className="flex flex-row items-center gap-x-2">
                   {activity.user.profilePicture !== null && (
