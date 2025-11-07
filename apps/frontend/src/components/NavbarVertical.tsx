@@ -2,7 +2,7 @@ import { Link, useNavigate, useOutletContext } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { AppLayoutOutletContext } from "../applayout";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useNotifications } from "../lib/useNotifications";
 
 export enum NavbarPage {
@@ -110,6 +110,27 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
   const { unreadCount } = useNotifications();
 
   const [open, setOpen] = useState(false);
+  const navRef = useRef<HTMLDivElement | null>(null);
+
+  const updateNavWidth = useCallback(() => {
+    if (navRef.current) {
+      document.documentElement.style.setProperty(
+        "--nav-width",
+        `${navRef.current.offsetWidth}px`
+      );
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    updateNavWidth();
+
+    const handleResize = () => updateNavWidth();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [updateNavWidth]);
 
   const handleLogout = useCallback(async () => {
     await logout();
@@ -168,14 +189,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
         ${
           open ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 md:shadow-none`}
-        ref={(el) => {
-          if (el) {
-            document.documentElement.style.setProperty(
-              "--nav-width",
-              `${el.offsetWidth}px`
-            );
-          }
-        }}
+        ref={navRef}
       >
         {/* Close button on mobile */}
         <div className="md:hidden flex justify-end p-4">
