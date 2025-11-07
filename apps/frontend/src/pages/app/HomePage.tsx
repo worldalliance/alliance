@@ -84,7 +84,7 @@ const HomePage = () => {
     return (
       <div
         className={
-          "flex flex-col py-8 sm:py-18 px-4 sm:px-12 md:px-18 lg:px-24 xl:px-48"
+          "flex flex-col py-8 sm:py-18 px-4 sm:px-12 md:px-18 lg:px-24 xl:px-48 h-full"
         }
       >
         {currentTask && currentTask.relation ? (
@@ -97,7 +97,7 @@ const HomePage = () => {
             onUpdateActionState={() => navigate(window.location.pathname)}
           />
         ) : (
-          <div className="mt-4 px-2 py-2 mx-auto my-auto flex flex-col items-center gap-y-4">
+          <div className="mt-4 px-2 py-2 mx-auto my-auto flex flex-col items-center gap-y-4 h-full justify-center">
             {user?.contractDateSuspended ? (
               <p className="text-center text-zinc-500">
                 You will not be given new tasks while your contract is
