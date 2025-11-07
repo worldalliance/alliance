@@ -76,7 +76,7 @@ const ActionPageTaskPanel = () => {
         action={action}
         {...panelHandlers}
         missedDeadline={didMissDeadline}
-        card={false}
+        card={true}
       />
     </>
   );

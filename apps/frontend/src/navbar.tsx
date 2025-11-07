@@ -25,7 +25,7 @@ function Navbar() {
   return (
     <NotificationsProvider>
       <NavbarVertical todoActions={nTasks} />
-      <main className="min-h-screen bg-page md:ml-[var(--nav-width)] mt-[var(--mobile-nav-height)] md:mt-0 relative">
+      <main className="min-h-[calc(100vh-var(--mobile-nav-height))] md:min-h-screen bg-page md:ml-[var(--nav-width)] mt-[var(--mobile-nav-height)] md:mt-0 relative">
         <Outlet context={context} />
         {isNavigating && (
           <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">

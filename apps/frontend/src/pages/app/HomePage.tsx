@@ -109,7 +109,7 @@ const HomePage = () => {
                 <>
                   <CheckIcon size="large" />
                   <p className="text-center text-zinc-500 text-lg lg:text-xl">
-                    You have completed all your current tasks.
+                    No tasks to do right now
                   </p>
                 </>
               )}

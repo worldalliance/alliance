@@ -124,10 +124,7 @@ const ActivityFeedPage = () => {
             </Button>
           ))}
         </div>
-        <Link
-          to="/members"
-          className="px-4 py-2 text-sm border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 rounded"
-        >
+        <Link to="/members" className="hover:underline text-zinc-800 rounded">
           Member list
         </Link>
       </div>

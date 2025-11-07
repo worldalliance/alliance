@@ -54,7 +54,7 @@ const ContractPage: React.FC = () => {
 
   return (
     <CenterLayout>
-      <div className="md:mt-8 gap-y-2 flex flex-col text-base md:text-lg">
+      <div className="mt-4 md:mt-8 gap-y-2 flex flex-col text-base md:text-lg">
         <p className="font-serif text-3xl md:text-4xl font-medium mb-1">
           Contract
         </p>
@@ -87,7 +87,7 @@ const ContractPage: React.FC = () => {
           </div>
         )}
         {contractDateSigned && (
-          <div className="mt-4 flex flex-row justify-between items-center">
+          <div className="mt-4 flex flex-col gap-y-2 sm:flex-row justify-between sm:items-center">
             <p className="text-green">
               You signed this contract on{" "}
               {new Date(contractDateSigned).toLocaleDateString()}.
