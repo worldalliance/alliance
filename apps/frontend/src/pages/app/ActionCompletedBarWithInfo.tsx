@@ -8,6 +8,8 @@ import UserProfilePicRow from "../../components/UserProfilePicRow";
 interface ActionCompletedBarWithInfoProps {
   friendActivities: ActionActivityDto[] | null;
   className?: string;
+  textSize?: "sm" | "base";
+  textColor?: string;
   action: Pick<
     ActionDto,
     | "commitmentThreshold"
@@ -22,6 +24,8 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   action,
   friendActivities,
   className,
+  textSize = "sm",
+  textColor = "zinc-500",
 }: ActionCompletedBarWithInfoProps) => {
   const value =
     action.status === "member_action"
@@ -48,7 +52,7 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   return (
     <div className={`${className}`}>
       <div className="flex flex-row items-center justify-between w-full gap-x-2">
-        <p className="text-zinc-600 mb-1">
+        <p className={`mb-1 text-${textSize} text-${textColor}`}>
           {value} / {safeThreshold}{" "}
           {action.status === "gathering_commitments"
             ? "members committed"

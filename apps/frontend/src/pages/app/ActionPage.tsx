@@ -120,7 +120,12 @@ export default function ActionPage() {
           />
         </div>
         <div className="hidden sm:flex flex-col max-w-[400px] *:bg-white rounded gap-y-12 border-l border-zinc-200 pl-4 lg:pl-12">
-          <ActionCompletedBarWithInfo friendActivities={[]} action={action} />
+          <ActionCompletedBarWithInfo
+            friendActivities={[]}
+            action={action}
+            textSize="base"
+            textColor="zinc-800"
+          />
           <ActionActivityList
             actionId={action.id}
             activities={activities}
