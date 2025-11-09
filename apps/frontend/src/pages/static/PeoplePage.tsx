@@ -62,12 +62,12 @@ const PeoplePage: React.FC = () => {
               a full-time strategic office that plans actions.
             </p>
 
-            <h2 className="!font-semibold !text-lg md:!text-xl !mt-8 mb-2">
+            <h2 className="!font-medium !text-xl md:!text-2xl !mt-8 mb-3">
               Members
             </h2>
             <p>40 members are participating in early experiments.</p>
 
-            <h2 className="!font-semibold !text-lg md:!text-xl !mt-8 mb-2">
+            <h2 className="!font-medium !text-xl md:!text-2xl !mt-8 mb-3">
               Strategic Office
             </h2>
 

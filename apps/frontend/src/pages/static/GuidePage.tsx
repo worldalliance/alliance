@@ -94,7 +94,7 @@ Therefore, as a starting point, we seek to address urgent global crises that har
 
 # Structure
 
-Our current structure has two key components:
+Our structure has two key components:
 1. **Commitment-based membership.** We each dependably make a small amount of our time and resources available to the Alliance.
 2. **Central strategy.** We are served by a strategic office that designs collective actions to ensure they are effective. The strategic office breaks actions into easy-to-follow steps and communicates with members over an online platform.
 

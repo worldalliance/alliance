@@ -23,13 +23,13 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
         components={{
           h1: ({ ...props }) => (
             <h1
-              className="!font-semibold !text-xl md:!text-2xl !mt-4 md:!mt-6"
+              className="!font-semibold !text-2xl md:!text-3xl !mt-4 md:!mt-6"
               {...props}
             />
           ),
           h2: ({ ...props }) => (
             <h2
-              className="!font-semibold !text-lg md:!text-xl !mt-4 md:!mt-6"
+              className="!font-semibold !text-xl md:!text-2xl !mt-4 md:!mt-6"
               {...props}
             />
           ),
@@ -44,13 +44,13 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
           ),
           ol: ({ ...props }) => (
             <ol
-              className="text-lg list-decimal list-inside first:mt-0 mt-2 pl-4"
+              className="text-lg list-decimal list-inside first:!mt-0 !mt-2 md:!mt-4 pl-4"
               {...props}
             />
           ),
           ul: ({ ...props }) => (
             <ul
-              className="text-lg list-disc list-inside first:mt-0 mt-2 pl-4"
+              className="text-lg list-disc list-inside first:!mt-0 !mt-2 md:!mt-4 pl-4"
               {...props}
             />
           ),

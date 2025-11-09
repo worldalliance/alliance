@@ -43,7 +43,7 @@ const ActionContents = () => {
         </div>
         <div className="flex flex-col">
           <div className="flex flex-row justify-between items-center mb-4">
-            <p className="font-semibold text-xl sm:text-2xl">Task</p>
+            <p className="font-medium text-2xl sm:text-3xl">Task</p>
 
             <TaskTimeInfo
               action={action}
@@ -56,14 +56,14 @@ const ActionContents = () => {
         </div>
 
         <div>
-          <p className="font-semibold text-xl sm:text-2xl mb-4 pb-2 border-b border-zinc-200">
+          <p className="font-medium text-2xl sm:text-3xl mb-4 pb-2">
             Description
           </p>
           <AppMarkdownWrapper markdownContent={action?.body} />
         </div>
 
         <div>
-          <p className="font-semibold text-xl sm:text-2xl mb-4 pb-2 border-b border-zinc-200">
+          <p className="font-medium text-2xl sm:text-3xl mb-4 pb-2">
             Discussion
           </p>
           <p className="mb-8">

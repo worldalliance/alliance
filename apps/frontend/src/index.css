@@ -105,6 +105,24 @@
     format("truetype");
 }
 
+@font-face {
+  font-family: "Switzer";
+  font-weight: 400;
+  src: url("/assets/fonts/Switzer-Regular.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Switzer";
+  font-weight: 500;
+  src: url("/assets/fonts/Switzer-Medium.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Switzer";
+  font-weight: 600;
+  src: url("/assets/fonts/Switzer-Semibold.otf") format("opentype");
+}
+
 @theme {
   --color-blue: #318dde;
   /* --color-page: oklch(99% 0 0); */
@@ -117,6 +135,21 @@
   --color-gray-2: #d6d6d6;
   --color-gray-3: #777;
   --color-gray-4: #404040;
+}
+
+a,
+h1,
+h2,
+h3,
+p,
+ol,
+ul,
+span,
+label,
+input,
+textarea,
+button {
+  font-family: "Switzer", sans-serif;
 }
 
 .none {
@@ -155,21 +188,6 @@ h1 {
 h2 {
   font-weight: 600;
   font-size: 20px;
-}
-
-a,
-h1,
-h2,
-h3,
-p,
-ol,
-ul,
-span,
-label,
-input,
-textarea,
-button {
-  font-family: "Inter", sans-serif;
 }
 
 img {
