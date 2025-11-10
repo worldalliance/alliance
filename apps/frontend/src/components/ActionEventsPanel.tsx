@@ -34,7 +34,6 @@ const ActionEventsPanel = ({ action, events }: ActionEventsPanelProps) => {
                 title={event.title}
                 description={event.description}
                 first={idx === 0}
-                absoluteTime={format(event.date, "MMM d h:mm a")}
                 time={formatDistance(event.date, new Date(), {
                   addSuffix: true,
                 })}

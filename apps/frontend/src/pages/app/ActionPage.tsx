@@ -69,82 +69,70 @@ export default function ActionPage() {
     );
   }
 
-  const mainContent = () => {
-    return (
-      <div className="w-full flex flex-row justify-between *:py-10 sm:*:py-20 px-4 md:px-8 lg:px-18">
-        <div className="flex flex-col pr-0 sm:pr-12 max-w-2xl lg:max-w-3xl mx-auto w-full">
-          <Outlet
-            context={
-              {
-                action,
-                userRelation:
-                  (action.userRelation as UserActionRelation | undefined) ??
-                  null,
-                onCompleteAction: () => {
-                  setAction((action) => ({
-                    ...action!,
-                    userRelation: "completed",
-                  }));
-
-                  // TODO need better way to update number of remaining tasks
-                  navigate(window.location.pathname);
-                },
-                onJoinAction: () =>
-                  setAction((action) => ({
-                    ...action!,
-                    userRelation: "joined",
-                  })),
-                onDeclineAction: () => {
-                  setAction((action) => ({
-                    ...action!,
-                    userRelation: "declined",
-                  }));
-
-                  // TODO need better way to update number of remaining tasks
-                  navigate(window.location.pathname);
-                },
-                onOptOutAction: () => {
-                  setAction((action) => ({
-                    ...action!,
-                    userRelation: "declined",
-                  }));
-
-                  // TODO need better way to update number of remaining tasks
-                  navigate(window.location.pathname);
-                },
-                activities,
-                handleLikeActivity,
-                setActivities,
-              } satisfies TaskPanelContext
-            }
-          />
-        </div>
-        <div className="hidden sm:flex flex-col sm:min-w-[320px] max-w-[320px] xl:max-w-[380px] rounded gap-y-12 border-l border-zinc-200 pl-4 lg:pl-12">
-          <ActionCompletedBarWithInfo
-            friendActivities={[]}
-            action={action}
-            textSize="base"
-            textColor="zinc-800"
-          />
-          <ActionActivityList
-            actionId={action.id}
-            activities={activities}
-            loading={false}
-            onLikeActivity={handleLikeActivity}
-            setActivities={setActivities}
-            maxN={5}
-          />
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <>
-      <div className="hidden sm:block">
-        <TwoColumnLayout main={mainContent()} />
+    <div className="w-full flex flex-row justify-between py-10 sm:py-20 px-4 md:px-8 lg:px-18">
+      <div className="flex flex-col pr-0 sm:pr-12 max-w-2xl lg:max-w-3xl mx-auto w-full">
+        <Outlet
+          context={
+            {
+              action,
+              userRelation:
+                (action.userRelation as UserActionRelation | undefined) ?? null,
+              onCompleteAction: () => {
+                setAction((action) => ({
+                  ...action!,
+                  userRelation: "completed",
+                }));
+
+                // TODO need better way to update number of remaining tasks
+                navigate(window.location.pathname);
+              },
+              onJoinAction: () =>
+                setAction((action) => ({
+                  ...action!,
+                  userRelation: "joined",
+                })),
+              onDeclineAction: () => {
+                setAction((action) => ({
+                  ...action!,
+                  userRelation: "declined",
+                }));
+
+                // TODO need better way to update number of remaining tasks
+                navigate(window.location.pathname);
+              },
+              onOptOutAction: () => {
+                setAction((action) => ({
+                  ...action!,
+                  userRelation: "declined",
+                }));
+
+                // TODO need better way to update number of remaining tasks
+                navigate(window.location.pathname);
+              },
+              activities,
+              handleLikeActivity,
+              setActivities,
+            } satisfies TaskPanelContext
+          }
+        />
       </div>
-      <div className="block sm:hidden bg-white">{mainContent()}</div>
-    </>
+      <div className="hidden lg:flex flex-col max-w-[320px] xl:max-w-[380px] rounded gap-y-12 border-l border-zinc-200 pl-4 lg:pl-12">
+        <ActionCompletedBarWithInfo
+          friendActivities={[]}
+          action={action}
+          textSize="base"
+          textColor="zinc-800"
+        />
+        <ActionActivityList
+          actionId={action.id}
+          activities={activities}
+          loading={false}
+          onLikeActivity={handleLikeActivity}
+          setActivities={setActivities}
+          maxN={5}
+        />
+      </div>
+    </div>
   );
 }

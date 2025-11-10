@@ -39,6 +39,7 @@ export function isCurrentlyCompletedAction(action: ActionWithRelation) {
     action.shouldParticipate &&
     (action.status === "member_action" ||
       action.status === "gathering_commitments") &&
+    !action.everyoneShouldComplete &&
     action.relation === "completed"
   );
 }

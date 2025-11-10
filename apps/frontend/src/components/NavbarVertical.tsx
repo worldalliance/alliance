@@ -102,6 +102,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
 
   const [open, setOpen] = useState(false);
   const navRef = useRef<HTMLDivElement | null>(null);
+  const mobileNavRef = useRef<HTMLDivElement | null>(null);
 
   const updateNavWidth = useCallback(() => {
     if (navRef.current) {
@@ -112,16 +113,29 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
     }
   }, []);
 
+  const updateMobileNavHeight = useCallback(() => {
+    if (mobileNavRef.current) {
+      document.documentElement.style.setProperty(
+        "--mobile-nav-height",
+        `${mobileNavRef.current.offsetHeight}px`
+      );
+    }
+  }, []);
+
   useLayoutEffect(() => {
     updateNavWidth();
+    updateMobileNavHeight();
 
-    const handleResize = () => updateNavWidth();
+    const handleResize = () => {
+      updateNavWidth();
+      updateMobileNavHeight();
+    };
     window.addEventListener("resize", handleResize);
 
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, [updateNavWidth]);
+  }, [updateNavWidth, updateMobileNavHeight]);
 
   const profilePicture = profile?.profilePicture || null;
 
@@ -138,14 +152,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
       {/* MOBILE TOP BAR */}
       <div
         className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-zinc-200 fixed top-0 left-0 right-0 z-30"
-        ref={(el) => {
-          if (el) {
-            document.documentElement.style.setProperty(
-              "--mobile-nav-height",
-              `${el.offsetHeight}px`
-            );
-          }
-        }}
+        ref={mobileNavRef}
       >
         <button
           onClick={() => setOpen(!open)}
@@ -170,7 +177,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
 
       <aside
         id="side-nav"
-        className={`fixed top-0 left-0 h-screen w-screen sm:w-40 md:w-60 lg:w-72 bg-zinc-50 border-r border-zinc-200 shadow-md flex flex-col transform transition-transform duration-100 ease-in-out z-30
+        className={`fixed top-0 left-0 h-screen w-screen sm:w-60 lg:w-72 bg-zinc-50 border-r border-zinc-200 flex flex-col transform transition-transform duration-100 ease-in-out z-30
         ${
           open ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0 md:shadow-none`}
@@ -186,12 +193,12 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
           </button>
         </div>
 
-        <div className="flex flex-col items-start px-2 py-4">
+        <div className="flex flex-col items-start px-4 py-4">
           <p className="p-3 font-berlingske uppercase text-xl mb-12">
             The Alliance
           </p>
 
-          <div className="flex flex-col w-full">
+          <div className="flex flex-col w-full divide-y divide-zinc-200">
             {navSections.map((section) => (
               <nav key={section.title} className="flex flex-col py-4 w-full">
                 {section.items.map((item) => (
@@ -239,7 +246,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
                               )}
                             {item.page === NavbarPage.Tasks &&
                               todoActions > 0 && (
-                                <div className=" text-white bg-red-500 rounded-md w-5 h-5 flex gap-x-1 justify-center items-center">
+                                <div className=" text-white bg-red-500 rounded-md w-5 h-5 flex justify-center items-center -mr-1">
                                   <p className="font-semibold text-xs">
                                     {todoActions}
                                   </p>
