@@ -1,5 +1,5 @@
 import { ActionDto } from "@alliance/shared/client";
-import { formatDistance } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import Timeline from "./system/Timeline";
 import TimelineItem from "./system/TimelineItem";
 import { Fragment } from "react";
@@ -29,7 +29,7 @@ const ActionEventsPanel = ({ action, events }: ActionEventsPanelProps) => {
   return (
     <div className="flex flex-col gap-y-3 w-full">
       <Timeline>
-        {pastEvents
+        {events
           .slice()
           .reverse()
           .map((event, idx) => (
@@ -38,6 +38,7 @@ const ActionEventsPanel = ({ action, events }: ActionEventsPanelProps) => {
                 title={event.title}
                 description={event.description}
                 first={idx === 0}
+                absoluteTime={format(event.date, "h:mm a MMM d")}
                 time={formatDistance(event.date, new Date(), {
                   addSuffix: true,
                 })}

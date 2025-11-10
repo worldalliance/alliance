@@ -34,6 +34,15 @@ export function shouldCompleteAction(action: ActionWithRelation) {
   );
 }
 
+export function isCurrentlyCompletedAction(action: ActionWithRelation) {
+  return (
+    action.shouldParticipate &&
+    (action.status === "member_action" ||
+      action.status === "gathering_commitments") &&
+    action.relation === "completed"
+  );
+}
+
 export function canJoinAction(action: ActionWithRelation) {
   return (
     action.status === "gathering_commitments" &&
@@ -72,6 +81,11 @@ const HomePage = () => {
     return sum;
   }, 0);
 
+  const completedActions =
+    actions?.filter((action) => isCurrentlyCompletedAction(action)) || [];
+
+  console.log(todoActions);
+
   const mainContent = () => {
     if (actions === null) {
       return loading ? (
@@ -82,7 +96,11 @@ const HomePage = () => {
     }
 
     return (
-      <div className={"flex flex-col py-8 sm:py-18 px-4 max-w-2xl mx-auto"}>
+      <div
+        className={
+          "flex flex-col py-8 sm:py-18 px-4 max-w-2xl mx-auto min-h-full justify-center"
+        }
+      >
         {currentTask && currentTask.relation ? (
           <LargeActionCard
             action={currentTask}
@@ -93,7 +111,7 @@ const HomePage = () => {
             onUpdateActionState={() => navigate(window.location.pathname)}
           />
         ) : (
-          <div className="mt-4 px-2 py-2 mx-auto my-auto flex flex-col items-center gap-y-4 h-full justify-center">
+          <div className="mt-4 px-2 py-2 mx-auto flex flex-col items-center gap-y-4 h-full justify-center">
             {user?.contractDateSuspended ? (
               <p className="text-center text-zinc-500">
                 You will not be given new tasks while your contract is
@@ -118,22 +136,37 @@ const HomePage = () => {
       <div className="px-4 py-12 flex flex-col divide-y *:py-6 *:px-2 divide-zinc-200">
         {todoActions.length + newActions.length > 0 && (
           <div className="flex flex-col gap-y-2">
-            <p className="rounded px-5 py-4 bg-white border border-zinc-200">
-              {todoActions.length + newActions.length > 0 && (
-                <p className="text-zinc-600">
-                  <span className="text-green font-medium">
-                    {todoActions.length + newActions.length} task
-                    {todoActions.length + newActions.length !== 1
-                      ? "s"
-                      : ""}{" "}
-                    left
-                  </span>
-                  <br />
-                  {todoActions.length > 0 &&
-                    ` for a total of ${remainingTasksEstimatedTime} minutes`}
-                </p>
-              )}
+            <p className="font-semibold text-xl font-serif text-black">
+              Progress
             </p>
+            {todoActions.length + newActions.length > 0 && (
+              <p className="text-zinc-600 mb-4">
+                <span className="text-green font-medium mr-0.5">
+                  {todoActions.length + newActions.length} task
+                  {todoActions.length + newActions.length !== 1
+                    ? "s"
+                    : ""} left{" "}
+                </span>
+                {todoActions.length > 0 &&
+                  `for a total of ${remainingTasksEstimatedTime} minutes`}
+              </p>
+            )}
+            <ul className="space-y-2 list-disc">
+              {completedActions.map((action) => (
+                <div key={action.id} className="text-zinc-600 flex gap-x-2">
+                  <CheckIcon size="line" />
+                  <span className="text-zinc-400 line-through">
+                    {action.name}
+                  </span>
+                </div>
+              ))}
+              {todoActions.map((action) => (
+                <div key={action.id} className="text-zinc-600 flex gap-x-2">
+                  <div className="!w-4 !h-4 shrink-0 border-2 border-zinc-200 rounded-full mt-[4px]"></div>
+                  <span className="text-zinc-600">{action.name}</span>
+                </div>
+              ))}
+            </ul>
           </div>
         )}
 
