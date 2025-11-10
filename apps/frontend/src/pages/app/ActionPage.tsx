@@ -71,7 +71,7 @@ export default function ActionPage() {
 
   const mainContent = () => {
     return (
-      <div className="w-full flex flex-row justify-between py-10 sm:py-20 px-4 md:px-8 lg:px-18">
+      <div className="w-full flex flex-row justify-between *:py-10 sm:*:py-20 px-4 md:px-8 lg:px-18">
         <div className="flex flex-col pr-0 sm:pr-12 max-w-2xl lg:max-w-3xl mx-auto w-full">
           <Outlet
             context={

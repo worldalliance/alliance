@@ -9,6 +9,10 @@ const NotificationsPage = () => {
   const { allNotifications, handleMarkAllAsRead, handleNotifClick } =
     useNotifications();
 
+  const unreadCount = allNotifications.filter(
+    (notification) => !notification.read
+  ).length;
+
   return (
     <CenterLayout>
       <div className="md:mt-8 flex flex-col items-center w-[calc(min(650px,100%))] gap-y-6">
@@ -17,9 +21,11 @@ const NotificationsPage = () => {
             Notifications
           </h2>
 
-          <Button color={ButtonColor.White} onClick={handleMarkAllAsRead}>
-            Mark all as read
-          </Button>
+          {unreadCount > 0 && (
+            <Button color={ButtonColor.White} onClick={handleMarkAllAsRead}>
+              Mark all as read
+            </Button>
+          )}
         </div>
         <List className="w-full">
           {allNotifications.map((notification) => (

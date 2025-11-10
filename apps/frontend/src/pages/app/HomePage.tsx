@@ -166,7 +166,7 @@ const HomePage = () => {
             </div>
           )}
         </div>
-        <div className="!overflow-y-auto">
+        <div className="">
           <div className="flex flex-row justify-between items-center mb-3">
             <p className="font-semibold text-xl font-serif text-black">
               Friend activity
