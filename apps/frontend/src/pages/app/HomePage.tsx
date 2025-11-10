@@ -83,9 +83,7 @@ const HomePage = () => {
 
     return (
       <div
-        className={
-          "flex flex-col py-8 sm:py-18 px-4 sm:px-12 md:px-18 lg:px-24 xl:px-48 h-full"
-        }
+        className={"flex flex-col py-8 sm:py-18 px-4 h-full max-w-2xl mx-auto"}
       >
         {currentTask && currentTask.relation ? (
           <LargeActionCard
@@ -224,11 +222,11 @@ const HomePage = () => {
 
   return (
     <>
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <TwoColumnLayout main={mainContent()} sidebar={sidebarContent()} />
       </div>
 
-      <div className="md:hidden">
+      <div className="lg:hidden">
         <TwoColumnLayout main={mainContent()} />
       </div>
     </>
