@@ -386,59 +386,53 @@ const SettingsPage: React.FC = () => {
             <AwayRangesSection />
           </div>
 
-          <hr className="border-zinc-300 mt-4" />
-
-          <div>
-            <h2 className="!font-semibold text-lg mb-4">Payment Methods</h2>
-
-            {paymentMethod !== null ? (
-              <>
-                <div className="flex items-center justify-between p-4 bg-gray-100 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center justify-center p-2 h-5 bg-blue-500 text-white text-xs font-semibold rounded">
-                      {paymentMethod.brand?.toUpperCase() || "CARD"}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        •••• •••• •••• {paymentMethod.last4}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Expires{" "}
-                        {paymentMethod.exp_month?.toString().padStart(2, "0")}/
-                        {paymentMethod.exp_year}
-                      </p>
-                    </div>
+          {paymentMethod !== null && (
+            <div>
+              <hr className="border-zinc-300 mt-4" />
+              <h2 className="!font-semibold text-lg mb-4">Payment methods</h2>
+              <div className="flex items-center justify-between p-4 bg-gray-100 rounded-lg">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center justify-center p-2 h-5 bg-blue-500 text-white text-xs font-semibold rounded">
+                    {paymentMethod.brand?.toUpperCase() || "CARD"}
                   </div>
-                  <button
-                    onClick={handleClearPaymentMethod}
-                    disabled={loadingPaymentMethod}
-                    className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                    title="Remove payment method"
-                  >
-                    {loadingPaymentMethod ? (
-                      <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                    ) : (
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    )}
-                  </button>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      •••• •••• •••• {paymentMethod.last4}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Expires{" "}
+                      {paymentMethod.exp_month?.toString().padStart(2, "0")}/
+                      {paymentMethod.exp_year}
+                    </p>
+                  </div>
                 </div>
-              </>
-            ) : (
-              <p className="text-zinc-500">No payment methods set up yet</p>
-            )}
-          </div>
+                <button
+                  onClick={handleClearPaymentMethod}
+                  disabled={loadingPaymentMethod}
+                  className="flex items-center justify-center w-8 h-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                  title="Remove payment method"
+                >
+                  {loadingPaymentMethod ? (
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                  ) : (
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

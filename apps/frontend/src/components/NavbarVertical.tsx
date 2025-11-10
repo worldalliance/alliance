@@ -16,7 +16,6 @@ export enum NavbarPage {
   Contract = "Contract",
   Settings = "Settings",
   Search = "Search",
-  LogOut = "Log Out",
 }
 
 export const destinations: Record<NavbarPage, string> = {
@@ -210,14 +209,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
               <nav key={section.title} className="flex flex-col py-4 w-full">
                 {section.items.map((item) => (
                   <>
-                    {item.page === NavbarPage.LogOut ? (
-                      <p
-                        className="px-3 py-1.5 hover:bg-zinc-100 text-zinc-700 hover:text-red-500 rounded cursor-pointer"
-                        onClick={handleLogout}
-                      >
-                        Log out
-                      </p>
-                    ) : item.page === NavbarPage.Profile ? (
+                    {item.page === NavbarPage.Profile ? (
                       <Link
                         to={destinations[NavbarPage.Profile]}
                         prefetch="render"
