@@ -3,6 +3,7 @@ import { ActionDto } from "@alliance/shared/client/types.gen";
 import { formatTime } from "@alliance/shared/lib/utils";
 import ClockIcon from "@alliance/shared/ui/icons/ClockIcon";
 import DeadlineIcon from "@alliance/shared/ui/icons/DeadlineIcon";
+import { format } from "date-fns";
 
 export interface TaskTimeInfoProps {
   action: ActionDto;
@@ -10,7 +11,7 @@ export interface TaskTimeInfoProps {
   lastEvent: ActionEventDto | null;
 }
 
-const TaskTimeInfo = ({ action, nextEvent, lastEvent }: TaskTimeInfoProps) => {
+const TaskTimeInfo = ({ action, nextEvent }: TaskTimeInfoProps) => {
   const deadlineColor =
     !!nextEvent && new Date(nextEvent.date).getTime() - Date.now() < 172800000 // 2 days
       ? "var(--color-red-600)"
@@ -27,7 +28,7 @@ const TaskTimeInfo = ({ action, nextEvent, lastEvent }: TaskTimeInfoProps) => {
         </div>
       )}
       {!!nextEvent && (
-        <div className="flex flex-row items-center gap-x-1.5 text-base text-zinc-500">
+        <div className="flex flex-row items-center gap-x-1.5 text-base text-zinc-500 group">
           <DeadlineIcon fill={deadlineColor} />
           <p style={{ color: deadlineColor }}>
             {`${formatTime(new Date(nextEvent.date), {
@@ -35,6 +36,11 @@ const TaskTimeInfo = ({ action, nextEvent, lastEvent }: TaskTimeInfoProps) => {
             })}`}{" "}
             left
           </p>
+          <div className="hidden group-hover:block">
+            <p className="">
+              - Due {format(new Date(nextEvent.date), "MMM d h:mm a")}
+            </p>
+          </div>
         </div>
       )}
     </div>

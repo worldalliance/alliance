@@ -6,7 +6,7 @@ export interface CenterLayoutProps extends React.PropsWithChildren {
 const CenterLayout: React.FC<CenterLayoutProps> = ({
   children,
   className,
-  width = "4xl",
+  width = "3xl",
 }) => {
   return (
     <div

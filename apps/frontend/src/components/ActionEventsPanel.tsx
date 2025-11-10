@@ -10,12 +10,8 @@ export interface ActionEventsPanelProps {
 }
 
 const ActionEventsPanel = ({ action, events }: ActionEventsPanelProps) => {
-  const pastEvents = events
-    .filter((event) => new Date(event.date) < new Date())
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
   if (action.status === "draft" && events.length === 0) {
-    pastEvents.push({
+    events.push({
       id: 0,
       title: "Draft",
       description: "This action is being viewed as a draft preview",
@@ -38,7 +34,7 @@ const ActionEventsPanel = ({ action, events }: ActionEventsPanelProps) => {
                 title={event.title}
                 description={event.description}
                 first={idx === 0}
-                absoluteTime={format(event.date, "h:mm a MMM d")}
+                absoluteTime={format(event.date, "MMM d h:mm a")}
                 time={formatDistance(event.date, new Date(), {
                   addSuffix: true,
                 })}

@@ -84,8 +84,6 @@ const HomePage = () => {
   const completedActions =
     actions?.filter((action) => isCurrentlyCompletedAction(action)) || [];
 
-  console.log(todoActions);
-
   const mainContent = () => {
     if (actions === null) {
       return loading ? (
@@ -140,7 +138,7 @@ const HomePage = () => {
               Progress
             </p>
             {todoActions.length + newActions.length > 0 && (
-              <p className="text-zinc-600 mb-4">
+              <p className="text-zinc-600 mb-2">
                 <span className="text-green font-medium mr-0.5">
                   {todoActions.length + newActions.length} task
                   {todoActions.length + newActions.length !== 1
