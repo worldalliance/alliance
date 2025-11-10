@@ -23,13 +23,13 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
         components={{
           h1: ({ ...props }) => (
             <h1
-              className="!font-semibold !text-2xl md:!text-3xl !mt-4 md:!mt-6"
+              className="!font-medium !text-2xl md:!text-3xl !mt-4 md:!mt-6"
               {...props}
             />
           ),
           h2: ({ ...props }) => (
             <h2
-              className="!font-semibold !text-xl md:!text-2xl !mt-4 md:!mt-6"
+              className="!font-medium !text-xl md:!text-2xl !mt-4 md:!mt-6"
               {...props}
             />
           ),
