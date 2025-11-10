@@ -1,4 +1,4 @@
-import { Link, useNavigate, useOutletContext } from "react-router";
+import { Link, useOutletContext } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { AppLayoutOutletContext } from "../applayout";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
@@ -29,7 +29,6 @@ export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.Profile]: "/profile",
   [NavbarPage.Contract]: "/contract",
   [NavbarPage.Settings]: "/settings",
-  [NavbarPage.LogOut]: "#",
 };
 
 const navSections = [
@@ -86,10 +85,6 @@ const navSections = [
         page: NavbarPage.Settings,
         destination: destinations[NavbarPage.Settings],
       },
-      {
-        page: NavbarPage.LogOut,
-        destination: "#",
-      },
     ],
   },
 ];
@@ -102,9 +97,6 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
   const { isAuthenticated, loading } = useAuth();
 
   const { profile } = useOutletContext<AppLayoutOutletContext>();
-
-  const { logout } = useAuth();
-  const navigate = useNavigate();
 
   const { unreadCount } = useNotifications();
 
@@ -130,11 +122,6 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
       window.removeEventListener("resize", handleResize);
     };
   }, [updateNavWidth]);
-
-  const handleLogout = useCallback(async () => {
-    await logout();
-    navigate("/tasks");
-  }, [logout, navigate]);
 
   const profilePicture = profile?.profilePicture || null;
 
