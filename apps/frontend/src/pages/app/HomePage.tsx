@@ -82,9 +82,7 @@ const HomePage = () => {
     }
 
     return (
-      <div
-        className={"flex flex-col py-8 sm:py-18 px-4 h-full max-w-2xl mx-auto"}
-      >
+      <div className={"flex flex-col py-8 sm:py-18 px-4 max-w-2xl mx-auto"}>
         {currentTask && currentTask.relation ? (
           <LargeActionCard
             action={currentTask}
