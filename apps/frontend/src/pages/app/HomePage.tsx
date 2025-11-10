@@ -117,7 +117,7 @@ const HomePage = () => {
 
   const sidebarContent = () => {
     return (
-      <div className="px-4 py-4 flex flex-col divide-y *:py-6 *:px-2 divide-zinc-200">
+      <div className="px-4 py-12 flex flex-col divide-y *:py-6 *:px-2 divide-zinc-200">
         {todoActions.length + newActions.length > 0 && (
           <div className="flex flex-col gap-y-2">
             <p className="rounded px-5 py-4 bg-white border border-zinc-200">
