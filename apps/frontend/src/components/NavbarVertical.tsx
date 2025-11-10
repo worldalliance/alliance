@@ -166,7 +166,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
           className="p-2 text-xl rounded-md hover:bg-gray-100 focus:outline-none"
           aria-label="Toggle navigation"
         >
-          <p className="relative">
+          <p className="relative text-4xl">
             ☰
             {(unreadCount > 0 || todoActions > 0) && (
               <div className="absolute -right-0.5 top-1.5 w-2 h-2 bg-red-500 rounded-full"></div>
@@ -194,7 +194,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
         <div className="md:hidden flex justify-end p-4">
           <button
             onClick={() => setOpen(false)}
-            className="text-gray-500 hover:text-black focus:outline-none"
+            className="text-gray-500 hover:text-black focus:outline-none text-3xl"
           >
             ✕
           </button>
