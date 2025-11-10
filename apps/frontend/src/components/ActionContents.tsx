@@ -29,7 +29,7 @@ const ActionContents = () => {
       <div className="flex flex-row justify-between items-start mb-4 sm:mb-8">
         {action !== undefined && (
           <div className="flex flex-col gap-y-2">
-            <p className="font-semibold text-3xl md:text-4xl font-serif mb-2">
+            <p className="font-semibold text-3xl sm:text-[2.5rem] font-serif mb-2">
               {action.name}
             </p>
             <p className="">{action.shortDescription}</p>
@@ -43,7 +43,7 @@ const ActionContents = () => {
         </div>
         <div className="flex flex-col">
           <div className="flex flex-row justify-between items-center mb-4">
-            <p className="font-medium text-2xl sm:text-3xl">Task</p>
+            <p className="font-medium text-xl sm:text-2xl">Task</p>
 
             <TaskTimeInfo
               action={action}
@@ -56,14 +56,14 @@ const ActionContents = () => {
         </div>
 
         <div>
-          <p className="font-medium text-2xl sm:text-3xl mb-4 pb-2">
+          <p className="font-medium text-xl sm:text-2xl mb-4 pb-2">
             Description
           </p>
           <AppMarkdownWrapper markdownContent={action?.body} />
         </div>
 
         <div>
-          <p className="font-medium text-2xl sm:text-3xl mb-4 pb-2">
+          <p className="font-medium text-xl sm:text-2xl mb-4 pb-2">
             Discussion
           </p>
           <p className="mb-8">
