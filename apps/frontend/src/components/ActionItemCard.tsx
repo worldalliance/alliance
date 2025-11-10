@@ -44,11 +44,15 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
           <p className="text-zinc-500">{action.shortDescription}</p>
         </div>
       </div>
-      <ActionCompletedBarWithInfo
-        action={action}
-        friendActivities={friendCommitmentActivities ?? null}
-        className="mt-4"
-      />
+      {(action.status === "member_action" ||
+        action.status === "gathering_commitments") &&
+        !action.everyoneShouldComplete && (
+          <ActionCompletedBarWithInfo
+            action={action}
+            friendActivities={friendCommitmentActivities ?? null}
+            className="mt-4"
+          />
+        )}
     </Link>
   );
 };

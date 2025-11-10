@@ -119,7 +119,7 @@ export default function ActionPage() {
             }
           />
         </div>
-        <div className="hidden sm:flex flex-col max-w-[320px] xl:max-w-[380px] rounded gap-y-12 border-l border-zinc-200 pl-4 lg:pl-12">
+        <div className="hidden sm:flex flex-col sm:min-w-[320px] max-w-[320px] xl:max-w-[380px] rounded gap-y-12 border-l border-zinc-200 pl-4 lg:pl-12">
           <ActionCompletedBarWithInfo
             friendActivities={[]}
             action={action}

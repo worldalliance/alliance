@@ -37,15 +37,7 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
       ? action.commitmentThreshold
       : action.usersJoined;
 
-  // TODO fix so it shows and hide elsewhere
-  if (
-    action.everyoneShouldComplete ||
-    !threshold ||
-    !(
-      action.status === "gathering_commitments" ||
-      action.status === "member_action"
-    )
-  ) {
+  if (!threshold) {
     return null;
   }
 
