@@ -105,24 +105,6 @@
     format("truetype");
 }
 
-@font-face {
-  font-family: "Switzer";
-  font-weight: 400;
-  src: url("/assets/fonts/Switzer-Regular.otf") format("opentype");
-}
-
-@font-face {
-  font-family: "Switzer";
-  font-weight: 500;
-  src: url("/assets/fonts/Switzer-Medium.otf") format("opentype");
-}
-
-@font-face {
-  font-family: "Switzer";
-  font-weight: 600;
-  src: url("/assets/fonts/Switzer-Semibold.otf") format("opentype");
-}
-
 @theme {
   --color-blue: #318dde;
   /* --color-page: oklch(99% 0 0); */
@@ -149,7 +131,7 @@ label,
 input,
 textarea,
 button {
-  font-family: "Switzer", sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 .none {
