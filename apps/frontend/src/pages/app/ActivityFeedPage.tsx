@@ -126,7 +126,7 @@ const ActivityFeedPage = () => {
         </div>
         <Link
           to="/members"
-          className="text-zinc-800 rounded text-sm font-medium"
+          className="text-zinc-800 hover:underline rounded text-sm font-medium"
         >
           Member list
         </Link>

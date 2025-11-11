@@ -12,7 +12,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../lib/AuthContext";
 import Spinner from "../../components/Spinner";
 import { useCIDFromParams } from "../../lib/utils";
-import TwoColumnLayout from "../../components/TwoColumnLayout";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
 
 export default function ActionPage() {

@@ -202,7 +202,10 @@ const HomePage = () => {
               Friend activity
             </p>
             {friendActivities.length > 0 && (
-              <Link to="/feed" className="hover:underline text-sm mt-0">
+              <Link
+                to="/feed"
+                className="text-zinc-800 font-medium hover:underline text-sm mt-0"
+              >
                 See all
               </Link>
             )}
