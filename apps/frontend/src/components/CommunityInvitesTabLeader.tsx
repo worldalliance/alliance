@@ -25,7 +25,7 @@ import OneTimeInviteListItem from "./OneTimeInviteListItem";
 import CommunityInviteListItem from "./CommunityInviteListItem";
 import { Link } from "react-router";
 
-export interface CommunityInvitesTabProps {
+export interface CommunityInvitesTabLeaderProps {
   communityId: number;
   existingMembers: ProfileDto[];
 }
@@ -38,7 +38,7 @@ export enum InviteMode {
 const CommunityInvitesTabLeader = ({
   communityId,
   existingMembers,
-}: CommunityInvitesTabProps) => {
+}: CommunityInvitesTabLeaderProps) => {
   const [name, setName] = useState("");
   const { user } = useAuth();
 

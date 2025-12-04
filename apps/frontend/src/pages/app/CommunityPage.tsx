@@ -432,10 +432,7 @@ const CommunityPage = () => {
                 existingMembers={community.users}
               />
             ) : (
-              <CommunityInvitesTabMember
-                communityId={community.id}
-                existingMembers={community.users}
-              />
+              <CommunityInvitesTabMember communityId={community.id} />
             ))}
           {tab === "edit" && (
             <Card style={CardStyle.Grey}>
