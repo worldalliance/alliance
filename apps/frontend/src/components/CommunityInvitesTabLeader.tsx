@@ -35,7 +35,7 @@ export enum InviteMode {
   CurrentMember = "Current Alliance member",
 }
 
-const CommunityInvitesTab = ({
+const CommunityInvitesTabLeader = ({
   communityId,
   existingMembers,
 }: CommunityInvitesTabProps) => {
@@ -287,4 +287,4 @@ const CommunityInvitesTab = ({
   );
 };
 
-export default CommunityInvitesTab;
+export default CommunityInvitesTabLeader;

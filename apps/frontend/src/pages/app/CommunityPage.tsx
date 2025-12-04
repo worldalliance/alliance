@@ -22,7 +22,6 @@ import {
   GroupOrganizerGuidelines,
 } from "../../components/GroupGuidelines";
 import CommunityEditForm from "../../components/CommunityEditForm";
-import CommunityInvitesTab from "../../components/CommunityInvitesTab";
 import { href, useNavigate, useSearchParams } from "react-router";
 import { useToast } from "@alliance/shared/ui/ToastProvider";
 import CommunityActivityTab from "../../components/CommunityActivityTab";
@@ -32,6 +31,9 @@ import FloatingChatPanel from "../../components/FloatingChatpanel";
 import { MessageCircleMore } from "lucide-react";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../../lib/config";
+import CommunityInvitesTabMember from "../../components/CommunityInvitesTabMember";
+import CommunityInvitesTabLeader from "../../components/CommunityInvitesTabLeader";
+
 
 type Tab = "activity" | "members" | "invites" | "about" | "edit" | "resources";
 
@@ -188,8 +190,8 @@ const CommunityPage = () => {
   }, [community, navigate, confirm]);
 
   const tabs: Tab[] = amLeader
-    ? ["activity", "members", "invites", "resources"]
-    : ["activity", "members", "about"];
+    ? ["activity", "members", "invites", "about", "resources"]
+    : ["activity", "members", "invites", "about"];
 
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
 
@@ -423,12 +425,18 @@ const CommunityPage = () => {
               <GroupOrganizerGuidelines />
             </div>
           )}
-          {tab === "invites" && (
-            <CommunityInvitesTab
-              communityId={community.id}
-              existingMembers={community.users}
-            />
-          )}
+          {tab === "invites" &&
+            (amLeader ? (
+              <CommunityInvitesTabLeader
+                communityId={community.id}
+                existingMembers={community.users}
+              />
+            ) : (
+              <CommunityInvitesTabMember
+                communityId={community.id}
+                existingMembers={community.users}
+              />
+            ))}
           {tab === "edit" && (
             <Card style={CardStyle.Grey}>
               <CommunityEditForm
