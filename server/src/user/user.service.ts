@@ -24,7 +24,7 @@ import {
   UpdateProfileDto,
 } from './user.dto';
 import { User } from './entities/user.entity';
-import { profileUrl } from 'src/search/approutes';
+import { groupInvitesUrl, profileUrl } from 'src/search/approutes';
 import { Tag } from './entities/tag.entity';
 import { CreateTagDto } from './tag.dto';
 import { Community } from './entities/community.entity';
@@ -950,7 +950,30 @@ export class UserService {
       invitingUser,
       community,
     });
-    return this.onetimeInviteRepository.save(invite);
+    const savedInvite = await this.onetimeInviteRepository.save(invite);
+
+    sendNotificationToLeaders: if (!approved && communityId !== undefined) {
+      const communityWithLeaders = await this.communityRepository.findOne({
+        where: { id: communityId },
+        relations: ['leaders'],
+      });
+      if (!communityWithLeaders || !communityWithLeaders.leaders) {
+        console.log('Community leaders not found for community', communityId);
+        break sendNotificationToLeaders;
+      }
+      for (const leader of communityWithLeaders.leaders) {
+        const notif = this.notifRepository.create({
+          user: leader,
+          category: NotificationCategory.CommunityInviteCreated,
+          message: `${invitingUser.name} has requested a new member to join the Alliance`,
+          webAppLocation: groupInvitesUrl(),
+          associatedUsers: [invitingUser],
+        });
+        this.notifRepository.save(notif);
+      }
+    }
+
+    return savedInvite;
   }
 
   async deleteOnetimeInvite(inviteId: number, userId: number): Promise<void> {
@@ -1110,7 +1133,7 @@ export class UserService {
       user: invite.invitingUser,
       category: NotificationCategory.CommunityInviteAccepted,
       message: `${invite.invitedUser?.name} has joined your community`,
-      webAppLocation: `/groups?tab=invites`,
+      webAppLocation: groupInvitesUrl(),
       associatedUsers: [invite.invitedUser],
     });
     await this.notifRepository.save(notif);
@@ -1134,7 +1157,7 @@ export class UserService {
       user: invite.invitingUser,
       category: NotificationCategory.CommunityInviteRejected,
       message: `${invite.invitedUser?.name} declined your community invitation`,
-      webAppLocation: `/community?tab=invites`,
+      webAppLocation: groupInvitesUrl(),
       associatedUsers: [invite.invitedUser],
     });
     await this.notifRepository.save(notif);

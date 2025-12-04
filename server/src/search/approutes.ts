@@ -16,6 +16,10 @@ export function actionUrl(actionId: number, full = false) {
   return full ? `${process.env.APP_URL}${path}` : path;
 }
 
+export function groupInvitesUrl() {
+  return `/groups?tab=invites`;
+}
+
 export function actionActivityUrl(
   actionId: number,
   activityId: number,
