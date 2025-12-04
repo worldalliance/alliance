@@ -44,7 +44,12 @@ const CommunityInvitesTabLeader = ({
 
   const [creatingInvite, setCreatingInvite] = useState(false);
 
-  const [newUserInvites, setNewUserInvites] = useState<OnetimeInviteDto[]>([]);
+  const [newUserPastInvites, setNewUserPastInvites] = useState<
+    OnetimeInviteDto[]
+  >([]);
+  const [newUserInviteRequests, setNewUserUnapprovedInvites] = useState<
+    OnetimeInviteDto[]
+  >([]);
   const [existingMemberInvites, setExistingMemberInvites] = useState<
     CommunityInviteDto[]
   >([]);
@@ -75,7 +80,12 @@ const CommunityInvitesTabLeader = ({
     userGetOnetimeInvitesByCommunity({ path: { communityId } }).then(
       (response) => {
         if (response.data) {
-          setNewUserInvites(response.data);
+          setNewUserPastInvites(
+            response.data.filter((invite) => invite.approved)
+          );
+          setNewUserUnapprovedInvites(
+            response.data.filter((invite) => !invite.approved)
+          );
         } else {
           setError("Failed to load new member invites");
         }
@@ -112,7 +122,7 @@ const CommunityInvitesTabLeader = ({
         if (response.data) {
           console.log("Invite created", response.data);
           setName("");
-          setNewUserInvites((prev) => [response.data, ...prev]);
+          setNewUserPastInvites((prev) => [response.data, ...prev]);
           setError(null);
         }
       })
@@ -148,7 +158,7 @@ const CommunityInvitesTabLeader = ({
   const handleDeleteInvite = (inviteId: number) => {
     userDeleteOnetimeInvite({ path: { inviteId } }).then((response) => {
       if (response.data) {
-        setNewUserInvites((prev) =>
+        setNewUserPastInvites((prev) =>
           prev.filter((invite) => invite.id !== inviteId)
         );
       }
@@ -165,11 +175,20 @@ const CommunityInvitesTabLeader = ({
     });
   };
 
-  const combinedInvites = useMemo(() => {
-    return [...newUserInvites, ...existingMemberInvites].sort((a, b) => {
+  const combinedPastInvites = useMemo(() => {
+    return [...newUserPastInvites, ...existingMemberInvites].sort((a, b) => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [newUserInvites, existingMemberInvites]);
+  }, [newUserPastInvites, existingMemberInvites]);
+  useMemo(
+    () =>
+      newUserInviteRequests.sort((a, b) => {
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      }),
+    [newUserInviteRequests]
+  );
 
   return (
     <div className="flex flex-col gap-y-8 py-4">
@@ -263,9 +282,23 @@ const CommunityInvitesTabLeader = ({
       </div>
 
       <div className="flex flex-col gap-y-2">
+        <p className="font-semibold text-xl">Invite requests</p>
+        <List>
+          {newUserInviteRequests.map((invite) => (
+            <OneTimeInviteListItem
+              key={invite.id}
+              invite={invite}
+              onDelete={handleDeleteInvite}
+              onCopy={copyToClipboard}
+            />
+          ))}
+        </List>
+      </div>
+
+      <div className="flex flex-col gap-y-2">
         <p className="font-semibold text-xl">Past invites</p>
         <List>
-          {combinedInvites.map((invite) =>
+          {combinedPastInvites.map((invite) =>
             "invitee" in invite ? (
               <OneTimeInviteListItem
                 key={invite.id}
