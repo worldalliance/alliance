@@ -25,6 +25,11 @@ export class OnetimeInvite {
   @Allow()
   invitee: string;
 
+  @Column({ nullable: true })
+  @ApiPropertyOptional()
+  @IsOptional()
+  inviteeDescription?: string;
+
   @ApiProperty()
   @Column()
   @Allow()
@@ -47,6 +52,11 @@ export class OnetimeInvite {
   @ApiProperty()
   @Allow()
   isValid: boolean;
+
+  @Column({ default: true })
+  @ApiProperty()
+  @Allow()
+  approved: boolean;
 
   @ManyToOne(() => Community, (community) => community.invites, {
     nullable: true,

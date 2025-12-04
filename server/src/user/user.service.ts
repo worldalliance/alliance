@@ -895,26 +895,57 @@ export class UserService {
       communityId,
       ...rest
     } = body;
-    const isAdmin = await this.isAdmin(userId);
+
+    // Fetch the user only once
+    const user = await this.findOneOrFail(userId, ['leaderOf', 'communities']);
+    const isAdmin = user.admin;
+
+    // Normal users cannot create invites from other users
     const invitingUserId =
       (isAdmin ? providedInvitingUserId : undefined) ?? userId;
-    const invitingUser =
-      communityId === undefined
-        ? await this.findOneOrFail(invitingUserId)
-        : await this.findOneLeaderOrFail(invitingUserId, communityId);
 
     let community: Community | undefined;
-    if (communityId !== undefined) {
-      community = await this.communityRepository.findOneOrFail({
-        where: { id: communityId },
-      });
+
+    if (communityId === undefined) {
+      if (!isAdmin) {
+        throw new UnauthorizedException('Community ID not provided');
+      }
+    } else if (isAdmin) {
+      community =
+        (await this.communityRepository.findOne({
+          where: { id: communityId },
+        })) ?? undefined;
       if (!community) {
         throw new NotFoundException(`Community ${communityId} not found`);
       }
+    } else {
+      community = user.communities.find(
+        (community) => community.id === communityId,
+      );
+      if (!community) {
+        throw new UnauthorizedException(
+          `User is not a member of community ${communityId}`,
+        );
+      }
+    }
+
+    const invitingUser =
+      userId === invitingUserId
+        ? user
+        : await this.findOneOrFail(invitingUserId);
+
+    // Auto-approve if the inviting user is the leader of the community (or admin)
+    const approved =
+      isAdmin ||
+      invitingUser.leaderOf.some((leader) => leader.id === communityId);
+
+    if (!approved && !rest.inviteeDescription) {
+      throw new BadRequestException('Must provide invitee description');
     }
 
     const invite = this.onetimeInviteRepository.create({
       ...rest,
+      approved,
       code,
       invitingUser,
       community,
@@ -975,6 +1006,15 @@ export class UserService {
   async findOnetimeInvites(communityId: number): Promise<OnetimeInvite[]> {
     return this.onetimeInviteRepository.find({
       where: { community: { id: communityId } },
+    });
+  }
+
+  async findOnetimeInvitesByRequester(
+    userId: number,
+    communityId: number,
+  ): Promise<OnetimeInvite[]> {
+    return this.onetimeInviteRepository.find({
+      where: { invitingUser: { id: userId }, community: { id: communityId } },
     });
   }
 

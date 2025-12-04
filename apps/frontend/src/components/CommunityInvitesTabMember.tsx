@@ -1,15 +1,79 @@
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
+import { useAuth } from "../lib/AuthContext";
+import {
+  CreateOnetimeInviteDto,
+  OnetimeInviteDto,
+  userCreateOnetimeInvite,
+  userGetOnetimeInvitesByRequester,
+} from "@alliance/shared/client";
+import OneTimeInviteListItem from "./OneTimeInviteListItem";
+import { getBaseUrl } from "@alliance/shared/lib/config";
+import List from "@alliance/shared/ui/List";
 
 export interface CommunityInvitesTabMemberProps {
   communityId: number;
 }
 
-const CommunityInvitesTabMember = ({}: CommunityInvitesTabMemberProps) => {
-  const [error] = useState<string | null>(null);
+const CommunityInvitesTabMember = ({
+  communityId,
+}: CommunityInvitesTabMemberProps) => {
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
   const [inviteeName, setInviteeName] = useState("");
   const [inviteeDescription, setInviteeDescription] = useState("");
+  const [creatingInvite, setCreatingInvite] = useState(false);
+  const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
+
+  useEffect(() => {
+    userGetOnetimeInvitesByRequester({ path: { communityId } }).then(
+      (response) => {
+        if (response.data) {
+          setInvites(response.data);
+        } else {
+          setError("Failed to load new member invites");
+        }
+      }
+    );
+  }, [communityId]);
+
+  const copyToClipboard = (text: string) => {
+    const baseUrl = getBaseUrl();
+    const url = `${baseUrl}/invite?ref=${text}`;
+    navigator.clipboard.writeText(url);
+  };
+
+  const handleInvite = () => {
+    if (!user) {
+      return;
+    }
+    setCreatingInvite(true);
+    const body = {
+      invitee: inviteeName,
+      inviteeDescription,
+      communityId,
+      invitingUserId: user.id,
+    } satisfies CreateOnetimeInviteDto;
+
+    userCreateOnetimeInvite({ body })
+      .then((response) => {
+        if (response.data) {
+          setInviteeName("");
+          setInviteeDescription("");
+          setInvites((prev) => [response.data, ...prev]);
+          setError(null);
+        }
+      })
+      .finally(() => {
+        setCreatingInvite(false);
+      });
+  };
+
+  invites.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   return (
     <div className="flex flex-col gap-y-8 py-4">
       <div className="flex flex-col gap-y-3">
@@ -50,13 +114,13 @@ const CommunityInvitesTabMember = ({}: CommunityInvitesTabMemberProps) => {
               ></input>
               <Button
                 color={ButtonColor.Black}
-                onClick={() => {
-                  /* asdf */
-                }}
+                onClick={handleInvite}
                 className="!h-10"
-                disabled={!inviteeDescription || !inviteeName}
+                disabled={creatingInvite || !inviteeDescription || !inviteeName}
               >
-                Send request to group leader
+                {creatingInvite
+                  ? "Creating invite..."
+                  : "Send request to group leader"}
               </Button>
             </div>
           </Card>
@@ -66,6 +130,18 @@ const CommunityInvitesTabMember = ({}: CommunityInvitesTabMemberProps) => {
 
       <div className="flex flex-col gap-y-2">
         <p className="font-semibold text-xl">Past invites</p>
+        <List>
+          {invites.map((invite) => (
+            <OneTimeInviteListItem
+              key={invite.id}
+              invite={invite}
+              onDelete={() => {
+                /* asdf */
+              }}
+              onCopy={copyToClipboard}
+            />
+          ))}
+        </List>
       </div>
     </div>
   );

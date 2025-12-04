@@ -109,10 +109,12 @@ export type User = {
 export type OnetimeInvite = {
     id: number;
     invitee: string;
+    inviteeDescription?: string;
     code: string;
     invitingUser: User;
     createdAt: string;
     isValid: boolean;
+    approved: boolean;
     community?: Community;
 };
 
@@ -325,12 +327,14 @@ export type OnetimeInviteDto = {
     code: string;
     createdAt: string;
     isValid: boolean;
+    approved: boolean;
     community?: Community;
     invitingUser?: ProfileDto;
 };
 
 export type CreateOnetimeInviteDto = {
     invitee: string;
+    inviteeDescription?: string;
     invitingUserId?: number;
     communityId?: number;
 };
@@ -2726,6 +2730,21 @@ export type UserGetOnetimeInvitesByCommunityResponses = {
 };
 
 export type UserGetOnetimeInvitesByCommunityResponse = UserGetOnetimeInvitesByCommunityResponses[keyof UserGetOnetimeInvitesByCommunityResponses];
+
+export type UserGetOnetimeInvitesByRequesterData = {
+    body?: never;
+    path: {
+        communityId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{communityId}/my';
+};
+
+export type UserGetOnetimeInvitesByRequesterResponses = {
+    200: Array<OnetimeInviteDto>;
+};
+
+export type UserGetOnetimeInvitesByRequesterResponse = UserGetOnetimeInvitesByRequesterResponses[keyof UserGetOnetimeInvitesByRequesterResponses];
 
 export type UserGetMyCommunityData = {
     body?: never;
