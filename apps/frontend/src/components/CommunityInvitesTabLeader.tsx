@@ -9,6 +9,8 @@ import {
   userDeleteOnetimeInvite,
   userGetCommunityInvites,
   userGetOnetimeInvitesByCommunity,
+  userGetOnetimeInviteRequestsByCommunity,
+  OnetimeInviteRequestDto,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import { useEffect, useMemo, useState } from "react";
@@ -24,6 +26,7 @@ import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import OneTimeInviteListItem from "./OneTimeInviteListItem";
 import CommunityInviteListItem from "./CommunityInviteListItem";
 import { Link } from "react-router";
+import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
 
 export interface CommunityInvitesTabLeaderProps {
   communityId: number;
@@ -44,10 +47,11 @@ const CommunityInvitesTabLeader = ({
 
   const [creatingInvite, setCreatingInvite] = useState(false);
 
-  const [newUserPastInvites, setNewUserPastInvites] = useState<
-    OnetimeInviteDto[]
+  const [newUserInviteRequests, setNewUserInviteRequests] = useState<
+    OnetimeInviteRequestDto[]
   >([]);
-  const [newUserInviteRequests, setNewUserUnapprovedInvites] = useState<
+
+  const [newUserPastInvites, setNewUserPastInvites] = useState<
     OnetimeInviteDto[]
   >([]);
   const [existingMemberInvites, setExistingMemberInvites] = useState<
@@ -80,12 +84,7 @@ const CommunityInvitesTabLeader = ({
     userGetOnetimeInvitesByCommunity({ path: { communityId } }).then(
       (response) => {
         if (response.data) {
-          setNewUserPastInvites(
-            response.data.filter((invite) => invite.approved)
-          );
-          setNewUserUnapprovedInvites(
-            response.data.filter((invite) => !invite.approved)
-          );
+          setNewUserPastInvites(response.data);
         } else {
           setError("Failed to load new member invites");
         }
@@ -98,6 +97,15 @@ const CommunityInvitesTabLeader = ({
         setError("Failed to load existing member invites");
       }
     });
+    userGetOnetimeInviteRequestsByCommunity({ path: { communityId } }).then(
+      (response) => {
+        if (response.data) {
+          setNewUserInviteRequests(response.data);
+        } else {
+          setError("Failed to load new member requests");
+        }
+      }
+    );
   }, [communityId]);
 
   const copyToClipboard = (text: string) => {
@@ -284,12 +292,17 @@ const CommunityInvitesTabLeader = ({
       <div className="flex flex-col gap-y-2">
         <p className="font-semibold text-xl">Invite requests</p>
         <List>
-          {newUserInviteRequests.map((invite) => (
-            <OneTimeInviteListItem
-              key={invite.id}
-              invite={invite}
-              onDelete={handleDeleteInvite}
-              onCopy={copyToClipboard}
+          {newUserInviteRequests.map((request) => (
+            <OneTimeInviteRequestListItem
+              key={request.id}
+              request={request}
+              isLeader={true}
+              onApprove={() => {
+                /* TODO asdf */
+              }}
+              onReject={() => {
+                /* TODO asdf */
+              }}
             />
           ))}
         </List>

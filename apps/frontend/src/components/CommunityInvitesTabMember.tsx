@@ -3,14 +3,15 @@ import { useEffect, useState } from "react";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import { useAuth } from "../lib/AuthContext";
 import {
-  CreateOnetimeInviteDto,
-  OnetimeInviteDto,
-  userCreateOnetimeInvite,
-  userGetOnetimeInvitesByRequester,
+  CreateOnetimeInviteRequestDto,
+  OnetimeInviteRequestDto,
+  userCreateOnetimeInviteRequest,
+  userDeleteOnetimeInviteRequest,
+  userGetOnetimeInviteRequestsByRequester,
 } from "@alliance/shared/client";
-import OneTimeInviteListItem from "./OneTimeInviteListItem";
-import { getBaseUrl } from "@alliance/shared/lib/config";
 import List from "@alliance/shared/ui/List";
+import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
+import { useToast } from "@alliance/shared/ui/ToastProvider";
 
 export interface CommunityInvitesTabMemberProps {
   communityId: number;
@@ -23,14 +24,15 @@ const CommunityInvitesTabMember = ({
   const { user } = useAuth();
   const [inviteeName, setInviteeName] = useState("");
   const [inviteeDescription, setInviteeDescription] = useState("");
-  const [creatingInvite, setCreatingInvite] = useState(false);
-  const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
+  const [creatingRequest, setCreatingInvite] = useState(false);
+  const [requests, setRequests] = useState<OnetimeInviteRequestDto[]>([]);
+  const { error: errorToast } = useToast();
 
   useEffect(() => {
-    userGetOnetimeInvitesByRequester({ path: { communityId } }).then(
+    userGetOnetimeInviteRequestsByRequester({ path: { communityId } }).then(
       (response) => {
         if (response.data) {
-          setInvites(response.data);
+          setRequests(response.data);
         } else {
           setError("Failed to load new member invites");
         }
@@ -38,13 +40,7 @@ const CommunityInvitesTabMember = ({
     );
   }, [communityId]);
 
-  const copyToClipboard = (text: string) => {
-    const baseUrl = getBaseUrl();
-    const url = `${baseUrl}/invite?ref=${text}`;
-    navigator.clipboard.writeText(url);
-  };
-
-  const handleInvite = () => {
+  const handleRequest = () => {
     if (!user) {
       return;
     }
@@ -54,14 +50,14 @@ const CommunityInvitesTabMember = ({
       inviteeDescription,
       communityId,
       invitingUserId: user.id,
-    } satisfies CreateOnetimeInviteDto;
+    } satisfies CreateOnetimeInviteRequestDto;
 
-    userCreateOnetimeInvite({ body })
+    userCreateOnetimeInviteRequest({ body })
       .then((response) => {
         if (response.data) {
           setInviteeName("");
           setInviteeDescription("");
-          setInvites((prev) => [response.data, ...prev]);
+          setRequests((prev) => [response.data, ...prev]);
           setError(null);
         }
       })
@@ -70,7 +66,19 @@ const CommunityInvitesTabMember = ({
       });
   };
 
-  invites.sort(
+  const handleDeleteRequest = (requestId: number) => {
+    userDeleteOnetimeInviteRequest({ path: { requestId } }).then((response) => {
+      if (response.response.ok) {
+        setRequests((prev) =>
+          prev.filter((request) => request.id !== requestId)
+        );
+      } else {
+        errorToast(`Failed to delete request: ${response.response.statusText}`);
+      }
+    });
+  };
+
+  requests.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
@@ -114,12 +122,14 @@ const CommunityInvitesTabMember = ({
               ></input>
               <Button
                 color={ButtonColor.Black}
-                onClick={handleInvite}
+                onClick={handleRequest}
                 className="!h-10"
-                disabled={creatingInvite || !inviteeDescription || !inviteeName}
+                disabled={
+                  creatingRequest || !inviteeDescription || !inviteeName
+                }
               >
-                {creatingInvite
-                  ? "Creating invite..."
+                {creatingRequest
+                  ? "Creating request..."
                   : "Send request to group leader"}
               </Button>
             </div>
@@ -128,21 +138,21 @@ const CommunityInvitesTabMember = ({
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </div>
 
-      <div className="flex flex-col gap-y-2">
-        <p className="font-semibold text-xl">Past invites</p>
-        <List>
-          {invites.map((invite) => (
-            <OneTimeInviteListItem
-              key={invite.id}
-              invite={invite}
-              onDelete={() => {
-                /* asdf */
-              }}
-              onCopy={copyToClipboard}
-            />
-          ))}
-        </List>
-      </div>
+      {requests.length > 0 && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-semibold text-xl">Pending requests</p>
+          <List>
+            {requests.map((request) => (
+              <OneTimeInviteRequestListItem
+                key={request.id}
+                request={request}
+                isLeader={false}
+                onDelete={handleDeleteRequest}
+              />
+            ))}
+          </List>
+        </div>
+      )}
     </div>
   );
 };

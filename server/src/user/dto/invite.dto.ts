@@ -79,9 +79,11 @@ export class CreateOnetimeInviteRequestDto extends PickType(
   OnetimeInviteRequest,
   ['invitee', 'inviteeDescription'],
 ) {
+  @ApiPropertyOptional()
   @IsOptional()
   invitingUserId?: number;
 
+  @ApiProperty()
   @Allow()
   communityId: number;
 }

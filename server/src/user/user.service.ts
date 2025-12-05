@@ -949,6 +949,22 @@ export class UserService {
     return await this.onetimeInviteRepository.save(invite);
   }
 
+  async deleteOnetimeInviteRequest(
+    requestId: number,
+    userId: number,
+  ): Promise<void> {
+    const request = await this.onetimeInviteRequestRepository.findOneOrFail({
+      where: { id: requestId },
+      relations: ['invitingUser', 'community'],
+    });
+    const user = await this.findOneOrFail(userId);
+    if (!(request.invitingUser.id === userId || user.admin)) {
+      throw new UnauthorizedException();
+    }
+
+    await this.onetimeInviteRequestRepository.delete(requestId);
+  }
+
   async deleteOnetimeInvite(inviteId: number, userId: number): Promise<void> {
     const invite = await this.onetimeInviteRepository.findOneOrFail({
       where: { id: inviteId },
@@ -1078,6 +1094,23 @@ export class UserService {
     communityId: number,
   ): Promise<OnetimeInvite[]> {
     return this.onetimeInviteRepository.find({
+      where: { invitingUser: { id: userId }, community: { id: communityId } },
+    });
+  }
+
+  async findOnetimeInviteRequests(
+    communityId: number,
+  ): Promise<OnetimeInviteRequest[]> {
+    return this.onetimeInviteRequestRepository.find({
+      where: { community: { id: communityId } },
+    });
+  }
+
+  async findOnetimeInviteRequestsByRequester(
+    userId: number,
+    communityId: number,
+  ): Promise<OnetimeInviteRequest[]> {
+    return this.onetimeInviteRequestRepository.find({
       where: { invitingUser: { id: userId }, community: { id: communityId } },
     });
   }
