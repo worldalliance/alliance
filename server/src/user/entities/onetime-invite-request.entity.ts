@@ -14,7 +14,7 @@ import { Community } from './community.entity';
 import { Ty } from 'src/tasks/entities/type';
 
 @Entity()
-export class OnetimeInvite {
+export class OnetimeInviteRequest {
   @PrimaryGeneratedColumn()
   @ApiProperty()
   @Allow()
@@ -25,10 +25,10 @@ export class OnetimeInvite {
   @Allow()
   invitee: string;
 
-  @ApiProperty()
-  @Column()
-  @Allow()
-  code: string;
+  @Column({ nullable: true })
+  @ApiPropertyOptional()
+  @IsOptional()
+  inviteeDescription?: string;
 
   @ManyToOne(() => User)
   @ApiProperty({ type: () => User })
@@ -43,18 +43,13 @@ export class OnetimeInvite {
   @Type(() => Date)
   createdAt: Date;
 
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  isValid: boolean;
-
   @ManyToOne(() => Community, (community) => community.invites, {
     nullable: true,
     onDelete: 'SET NULL',
   })
-  @ApiPropertyOptional({ type: () => Community })
+  @ApiProperty({ type: () => Community })
   @Type(() => Community)
   @JoinColumn({ name: 'communityId' })
-  @IsOptional()
-  community?: Ty<Community>;
+  @Allow()
+  community: Ty<Community>;
 }

@@ -4,10 +4,10 @@ import { OnetimeInvite } from '../entities/onetime-invite.entity';
 import { CommunityInvite } from '../entities/community-invite.entity';
 import { ProfileDto } from '../user.dto';
 import { Type } from 'class-transformer';
+import { OnetimeInviteRequest } from '../entities/onetime-invite-request.entity';
 
 export class CreateOnetimeInviteDto extends PickType(OnetimeInvite, [
   'invitee',
-  'inviteeDescription',
 ]) {
   @ApiPropertyOptional()
   @IsOptional()
@@ -59,7 +59,6 @@ export class OnetimeInviteDto extends PickType(OnetimeInvite, [
   'invitee',
   'code',
   'isValid',
-  'approved',
   'createdAt',
   'community',
 ]) {
@@ -73,5 +72,34 @@ export class OnetimeInviteDto extends PickType(OnetimeInvite, [
     this.invitingUser = onetimeInvite.invitingUser
       ? new ProfileDto(onetimeInvite.invitingUser)
       : undefined;
+  }
+}
+
+export class CreateOnetimeInviteRequestDto extends PickType(
+  OnetimeInviteRequest,
+  ['invitee', 'inviteeDescription'],
+) {
+  @IsOptional()
+  invitingUserId?: number;
+
+  @Allow()
+  communityId: number;
+}
+
+export class OnetimeInviteRequestDto extends PickType(OnetimeInviteRequest, [
+  'id',
+  'invitee',
+  'inviteeDescription',
+  'createdAt',
+  'community',
+]) {
+  @ApiProperty({ type: ProfileDto })
+  @Type(() => ProfileDto)
+  invitingUser: ProfileDto;
+
+  constructor(invite: OnetimeInviteRequest) {
+    super();
+    Object.assign(this, invite);
+    this.invitingUser = new ProfileDto(invite.invitingUser);
   }
 }

@@ -109,13 +109,20 @@ export type User = {
 export type OnetimeInvite = {
     id: number;
     invitee: string;
-    inviteeDescription?: string;
     code: string;
     invitingUser: User;
     createdAt: string;
     isValid: boolean;
-    approved: boolean;
     community?: Community;
+};
+
+export type OnetimeInviteRequest = {
+    id: number;
+    invitee: string;
+    inviteeDescription?: string;
+    invitingUser: User;
+    createdAt: string;
+    community: Community;
 };
 
 export type Community = {
@@ -126,6 +133,7 @@ export type Community = {
     users?: Array<User>;
     leaders?: Array<User>;
     invites?: Array<OnetimeInvite>;
+    requests?: Array<OnetimeInviteRequest>;
     internalInvites: Array<CommunityInvite>;
 };
 
@@ -286,6 +294,7 @@ export type CommunityDto = {
     name: string;
     description: string;
     photo?: string;
+    requests?: Array<OnetimeInviteRequest>;
     internalInvites: Array<CommunityInvite>;
     users: Array<ProfileDto>;
     leaders: Array<ProfileDto>;
@@ -327,14 +336,12 @@ export type OnetimeInviteDto = {
     code: string;
     createdAt: string;
     isValid: boolean;
-    approved: boolean;
     community?: Community;
     invitingUser?: ProfileDto;
 };
 
 export type CreateOnetimeInviteDto = {
     invitee: string;
-    inviteeDescription?: string;
     invitingUserId?: number;
     communityId?: number;
 };

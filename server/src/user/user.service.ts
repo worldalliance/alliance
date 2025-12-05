@@ -35,6 +35,7 @@ import {
   CommunityInviteDto,
   CreateCommunityInviteDto,
   CreateOnetimeInviteDto,
+  CreateOnetimeInviteRequestDto,
 } from './dto/invite.dto';
 import {
   UserAwayRange,
@@ -48,6 +49,7 @@ import {
 } from './entities/community-invite.entity';
 import { ConversationService } from 'src/messaging/conversation.service';
 import { RelationString } from 'src/tasks/entities/type';
+import { OnetimeInviteRequest } from './entities/onetime-invite-request.entity';
 
 const defaultTimeZone = 'America/Los_Angeles';
 const communityDefaultRelations: readonly RelationString<Community>[] = [
@@ -79,6 +81,8 @@ export class UserService {
     private readonly communityRepository: Repository<Community>,
     @InjectRepository(OnetimeInvite)
     private readonly onetimeInviteRepository: Repository<OnetimeInvite>,
+    @InjectRepository(OnetimeInviteRequest)
+    private readonly onetimeInviteRequestRepository: Repository<OnetimeInviteRequest>,
     @InjectRepository(UserAwayRange)
     private readonly userAwayRangeRepository: Repository<UserAwayRange>,
     @InjectRepository(CommunityInvite)
@@ -897,7 +901,7 @@ export class UserService {
     } = body;
 
     // Fetch the user only once
-    const user = await this.findOneOrFail(userId, ['leaderOf', 'communities']);
+    const user = await this.findOneOrFail(userId, ['leaderOf']);
     const isAdmin = user.admin;
 
     // Normal users cannot create invites from other users
@@ -906,25 +910,27 @@ export class UserService {
 
     let community: Community | undefined;
 
-    if (communityId === undefined) {
-      if (!isAdmin) {
-        throw new UnauthorizedException('Community ID not provided');
-      }
-    } else if (isAdmin) {
-      community =
-        (await this.communityRepository.findOne({
-          where: { id: communityId },
-        })) ?? undefined;
-      if (!community) {
-        throw new NotFoundException(`Community ${communityId} not found`);
+    if (isAdmin) {
+      if (communityId) {
+        community =
+          (await this.communityRepository.findOne({
+            where: { id: communityId },
+          })) ?? undefined;
+        if (!community) {
+          throw new NotFoundException(`Community ${communityId} not found`);
+        }
       }
     } else {
-      community = user.communities.find(
+      if (communityId === undefined) {
+        throw new UnauthorizedException('Community ID not provided');
+      }
+
+      community = user.leaderOf.find(
         (community) => community.id === communityId,
       );
       if (!community) {
         throw new UnauthorizedException(
-          `User is not a member of community ${communityId}`,
+          `User is not a leader of community ${communityId}`,
         );
       }
     }
@@ -934,25 +940,79 @@ export class UserService {
         ? user
         : await this.findOneOrFail(invitingUserId);
 
-    // Auto-approve if the inviting user is the leader of the community (or admin)
-    const approved =
-      isAdmin ||
-      invitingUser.leaderOf.some((leader) => leader.id === communityId);
-
-    if (!approved && !rest.inviteeDescription) {
-      throw new BadRequestException('Must provide invitee description');
-    }
-
     const invite = this.onetimeInviteRepository.create({
       ...rest,
-      approved,
       code,
       invitingUser,
       community,
     });
-    const savedInvite = await this.onetimeInviteRepository.save(invite);
+    return await this.onetimeInviteRepository.save(invite);
+  }
 
-    sendNotificationToLeaders: if (!approved && communityId !== undefined) {
+  async deleteOnetimeInvite(inviteId: number, userId: number): Promise<void> {
+    const invite = await this.onetimeInviteRepository.findOneOrFail({
+      where: { id: inviteId },
+      relations: ['invitingUser', 'community'],
+    });
+    const user = await this.findOneOrFail(userId, ['leaderOf']);
+    if (
+      !(
+        invite.invitingUser.id === userId ||
+        user.leaderOf.some((leader) => leader.id === invite.community?.id) ||
+        user.admin
+      )
+    ) {
+      throw new UnauthorizedException();
+    }
+
+    await this.onetimeInviteRepository.delete(inviteId);
+  }
+
+  async createOnetimeInviteRequest(
+    body: CreateOnetimeInviteRequestDto,
+    userId: number,
+  ) {
+    const {
+      invitingUserId: providedInvitingUserId,
+      communityId,
+      ...rest
+    } = body;
+
+    const user = await this.findOneOrFail(userId, ['communities']);
+    const isAdmin = user.admin;
+    let community: Community | undefined | null = user.communities.find(
+      (community) => community.id === communityId,
+    );
+    if (!community) {
+      if (!isAdmin) {
+        throw new UnauthorizedException(
+          `User is not a member of community ${communityId}`,
+        );
+      }
+      community = await this.communityRepository.findOne({
+        where: { id: communityId },
+      });
+      if (!community) {
+        throw new NotFoundException(`Community ${communityId} not found`);
+      }
+    }
+
+    const invitingUserId =
+      (isAdmin ? providedInvitingUserId : undefined) ?? userId;
+    const invitingUser =
+      userId === invitingUserId
+        ? user
+        : await this.findOneOrFail(invitingUserId);
+
+    const request = this.onetimeInviteRequestRepository.create({
+      ...rest,
+      invitingUser,
+      community,
+    });
+    const savedRequest =
+      await this.onetimeInviteRequestRepository.save(request);
+
+    sendNotificationToLeaders: {
       const communityWithLeaders = await this.communityRepository.findOne({
         where: { id: communityId },
         relations: ['leaders'],
@@ -973,26 +1033,7 @@ export class UserService {
       }
     }
 
-    return savedInvite;
-  }
-
-  async deleteOnetimeInvite(inviteId: number, userId: number): Promise<void> {
-    const invite = await this.onetimeInviteRepository.findOneOrFail({
-      where: { id: inviteId },
-      relations: ['invitingUser', 'community'],
-    });
-    const user = await this.findOneOrFail(userId, ['leaderOf']);
-    if (
-      !(
-        invite.invitingUser.id === userId ||
-        user.leaderOf.some((leader) => leader.id === invite.community?.id) ||
-        user.admin
-      )
-    ) {
-      throw new UnauthorizedException();
-    }
-
-    await this.onetimeInviteRepository.delete(inviteId);
+    return savedRequest;
   }
 
   async deleteCommunityInvite(inviteId: number, userId: number): Promise<void> {
