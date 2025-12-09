@@ -243,6 +243,7 @@ export class ActionActivityDto extends PickType(ActionActivity, [
   'type',
   'createdAt',
   'actionId',
+  'likesCount',
 ]) {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)
@@ -253,10 +254,14 @@ export class ActionActivityDto extends PickType(ActionActivity, [
   @Allow()
   actionName: string;
 
-  @ApiProperty({ type: () => ProfileDto, isArray: true })
+  @ApiPropertyOptional({ type: () => ProfileDto, isArray: true })
   @Type(() => ProfileDto)
-  @Allow()
-  likes: ProfileDto[];
+  @IsOptional()
+  likes?: ProfileDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  likedByMe?: boolean;
 
   @ApiProperty({ type: () => CommentDto, isArray: true })
   @Type(() => CommentDto)
@@ -278,6 +283,8 @@ export class ActionActivityDto extends PickType(ActionActivity, [
     extra?: {
       comments?: CommentDto[];
       formResponseOutput?: FormResponseOutputDto;
+      includeLikes?: boolean;
+      likedByMe?: boolean;
     },
   ) {
     super();
@@ -286,10 +293,12 @@ export class ActionActivityDto extends PickType(ActionActivity, [
     const { action, ...rest } = actionActivity;
     Object.assign(this, rest);
     this.user = new ProfileDto(actionActivity.user);
-    this.likes =
-      actionActivity.likes !== undefined
-        ? actionActivity.likes.map((like) => new ProfileDto(like))
-        : [];
+    // Only include likes array when explicitly requested (detail views, like/unlike)
+    // For feed views, we rely on likesCount which is already set via Object.assign
+    if (extra?.includeLikes && actionActivity.likes !== undefined) {
+      this.likes = actionActivity.likes.map((like) => new ProfileDto(like));
+    }
+    this.likedByMe = extra?.likedByMe;
     this.comments = extra?.comments ?? [];
     this.formResponseOutput = extra?.formResponseOutput;
     this.editableContent = actionActivity.editableContent
@@ -320,14 +329,33 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
   'id',
   'title',
   'date',
+  'actionId',
   'visibleAt',
   'notifyType',
   'shortNotifString',
-  'content',
   'associatedEvent',
   'associatedEventId',
   'tag',
-]) {}
+]) {
+  @ApiProperty({ type: () => EditableContentDto })
+  @Type(() => EditableContentDto)
+  @Allow()
+  content: EditableContentDto;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Allow()
+  actionName?: string;
+
+  constructor(actionUpdate: ActionUpdate) {
+    super();
+    Object.assign(this, actionUpdate);
+    this.content = actionUpdate.content
+      ? new EditableContentDto(actionUpdate.content)
+      : { body: '', attachments: [] };
+    this.actionName = actionUpdate.action?.name;
+  }
+}
 
 export class CreateActionUpdateDto extends PickType(ActionUpdate, [
   'title',

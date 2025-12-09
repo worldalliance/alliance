@@ -305,7 +305,7 @@ const UserProfilePage: React.FC = () => {
     <div className="max-w-[800px] mx-auto">
       <div className="mx-2 space-y-2">
         <div className="w-full h-[50px] md:h-[100px]"></div>
-        <Card className="px-8 pb-6 relative gap-y-2">
+        <Card className="px-4 md:px-8 pb-6 relative gap-y-2">
           {/* {isProfileImageUploadPending && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-[1px] rounded-[inherit]">
               <Spinner />
@@ -333,21 +333,35 @@ const UserProfilePage: React.FC = () => {
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                className="w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none !text-[30px] !font-semibold font-serif"
+                className="w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none text-2xl !font-semibold font-serif"
               />
             ) : (
               <div className="flex flex-row gap-3 items-center">
-                <h1 className="font-serif !font-semibold">
+                <h1 className="font-serif font-semibold text-2xl">
                   {profile.displayName}
                 </h1>
                 {profile.staff && (
-                  <div className="text-sm bg-navy text-white px-3 py-0.5 rounded self-center mt-2">
+                  <div className="text-xs bg-staff text-white px-2 py-0.5 rounded-sm self-center relative group">
                     Staff
+                    <div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded border border-zinc-200 bg-white px-2 py-1 text-[12px] font-medium text-zinc-700 opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">
+                      Member of the office
+                    </div>
+                  </div>
+                )}
+                {!profile.staff && profile.isCommunityLeader && (
+                  <div className="text-xs bg-grouplead text-white px-2 py-0.5 rounded-sm self-center relative group">
+                    Lead
+                    <div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded border border-zinc-200 bg-white px-2 py-1 text-[12px] font-medium text-zinc-700 opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">
+                      Leads a group of members
+                    </div>
                   </div>
                 )}
                 {!profile.hasActiveContract && (
-                  <div className="bg-zinc-100 text-zinc-600 px-2.5 py-1 rounded self-center mt-2">
+                  <div className="text-xs bg-zinc-100 text-zinc-600 px-2 py-1 rounded-sm self-center relative group">
                     Observer
+                    <div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded border border-zinc-200 bg-white px-2 py-1 text-[12px] font-medium text-zinc-700 opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">
+                      No signed contract
+                    </div>
                   </div>
                 )}
               </div>
@@ -423,7 +437,11 @@ const UserProfilePage: React.FC = () => {
               <div className="space-x-3 flex">
                 {isEditing ? (
                   <>
-                    <Button color={ButtonColor.Light} onClick={handleCancel}>
+                    <Button
+                      color={ButtonColor.Light}
+                      onClick={handleCancel}
+                      className="!h-9"
+                    >
                       Cancel
                     </Button>
                     <Button
@@ -438,11 +456,11 @@ const UserProfilePage: React.FC = () => {
                 ) : (
                   <div className="flex flex-col items-end">
                     <Button
-                      color={ButtonColor.Light}
+                      color={ButtonColor.White}
                       onClick={() => setIsEditing(true)}
                       className="!h-9"
                     >
-                      Edit Profile
+                      Edit
                     </Button>
                   </div>
                 )}
@@ -507,6 +525,7 @@ const UserProfilePage: React.FC = () => {
               isMe={isMe}
               originalTab={openFriendRequest ? "received" : "friends"}
               friends={friends ?? []}
+              className="mt-4"
             />
           )}
         </div>

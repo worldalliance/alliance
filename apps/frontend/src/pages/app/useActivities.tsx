@@ -86,17 +86,17 @@ const useActivities = ({
     apiCall
       .then(async (resp) => {
         const data = resp.data ?? [];
-        if (list === ActivityList.Global) {
-          const extraFriendActivity = await actionsFriendActivity({
-            query: { comments, limit: limit.toString() },
-          });
-          const set = new Set(data.map((a) => a.id));
-          extraFriendActivity.data?.forEach((a) => {
-            if (!set.has(a.id)) {
-              data.push(a);
-            }
-          });
-        }
+        // if (list === ActivityList.Global) {
+        //   const extraFriendActivity = await actionsFriendActivity({
+        //     query: { comments, limit: limit.toString() },
+        //   });
+        //   const set = new Set(data.map((a) => a.id));
+        //   extraFriendActivity.data?.forEach((a) => {
+        //     if (!set.has(a.id)) {
+        //       data.push(a);
+        //     }
+        //   });
+        // }
         const respActivities = data.sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -116,24 +116,28 @@ const useActivities = ({
       const activity = activities.find((a) => a.id === activityId);
       if (!activity) return;
 
-      const isLiked = activity.likes.some((like) => like.id === user.id);
+      const isLiked = activity.likedByMe ?? false;
 
       if (isLiked) {
         const response = await actionsUnlikeActivity({
           path: { id: activityId },
         });
-        if (response.response.ok) {
+        if (response.response.ok && response.data) {
           setActivities((prev) =>
             prev.map((a) =>
               a.id === activityId
                 ? {
                     ...a,
-                    likes: a.likes.filter((like) => like.id !== user.id),
+                    likes: response.data.likes,
+                    likesCount: response.data.likesCount,
+                    likedByMe: response.data.likedByMe,
                   }
                 : a
             )
           );
+          return response.data;
         }
+        return null;
       } else {
         const response = await actionsLikeActivity({
           path: { id: activityId },
@@ -144,7 +148,9 @@ const useActivities = ({
               a.id === activityId
                 ? {
                     ...a,
-                    likes: response.data.likes || [],
+                    likes: response.data.likes,
+                    likesCount: response.data.likesCount,
+                    likedByMe: response.data.likedByMe,
                   }
                 : a
             )
@@ -154,8 +160,10 @@ const useActivities = ({
             activityId: activity.id,
             activityType: activity.type,
           });
+          return response.data;
         }
       }
+      return null;
     },
     [user, activities]
   );

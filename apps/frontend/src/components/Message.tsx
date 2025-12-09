@@ -4,6 +4,9 @@ import ProfileImage from "@alliance/shared/ui/ProfileImage";
 import { Reply, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, href } from "react-router";
+import UserDisplayName from "./UserDisplayName";
+import { formatTime } from "@alliance/shared/lib/utils";
+import AppMarkdownWrapper from "@alliance/shared/ui/AppMarkdownWrapper";
 
 const Message = ({
   message,
@@ -55,50 +58,76 @@ const Message = ({
   return (
     <>
       <div
-        className={`${className} bg-white hover:bg-zinc-100 rounded-md flex flex-row gap-x-3 px-2 py-1 group relative transition-colors duration-100 ${
+        className={`${className} bg-white hover:bg-zinc-100 items-start rounded-md flex flex-col px-2 py-1 group relative ${
           isFirstInGroup ? "pt-2" : "pt-1"
         } ${isFocused ? "!bg-green/20" : ""}`}
         ref={ref}
       >
-        <div className="w-8 shrink-0 mt-1">
-          {isFirstInGroup && (
-            <Link
-              to={href("/member/:id", { id: message.author.id.toString() })}
-            >
-              <ProfileImage pfp={message.author.profilePicture} size="medium" />
-            </Link>
-          )}
-        </div>
-        <div className="flex flex-col -mt-1">
-          {message.replyTo && isFirstInReplyGroup && (
-            <div
-              className="text-zinc-500 text-sm flex flex-row items-center gap-x-1 my-1 cursor-pointer"
-              onClick={() => handleFocusReply(message.replyTo!.id)}
-            >
-              <Reply size={15} />
-              <ProfileImage
-                pfp={message.replyTo.author.profilePicture}
-                size="mini"
-              />
-              Replying to: {message.replyTo.body}
-            </div>
-          )}
-          {isFirstInGroup && (
-            <span className="font-medium">{message.author.displayName}</span>
-          )}
-          {message.body && <span>{message.body}</span>}
-          {attachments.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {attachments.map((attachment, idx) => (
-                <img
-                  key={`${message.id}-attachment-${idx}`}
-                  src={attachment}
-                  onClick={() => setLightboxIndex(idx)}
-                  className="w-28 h-28 object-cover rounded border border-zinc-200 cursor-zoom-in"
+        {message.replyTo && isFirstInReplyGroup && (
+          <div
+            className="text-zinc-500 text-sm flex flex-row items-center gap-x-1 my-1 cursor-pointer ml-9"
+            onClick={() => handleFocusReply(message.replyTo!.id)}
+          >
+            <Reply size={15} />
+            <ProfileImage
+              pfp={message.replyTo.author.profilePicture}
+              size="mini"
+            />
+            Replying to: {message.replyTo.body || "image"}
+          </div>
+        )}
+        <div className="flex flex-row gap-x-3">
+          <div className="w-8 shrink-0 mt-1">
+            {isFirstInGroup && (
+              <Link
+                to={href("/member/:id", { id: message.author.id.toString() })}
+              >
+                <ProfileImage
+                  pfp={message.author.profilePicture}
+                  size="medium"
                 />
-              ))}
-            </div>
-          )}
+              </Link>
+            )}
+          </div>
+          <div className="flex flex-col">
+            {isFirstInGroup && (
+              <div className="flex flex-row items-center">
+                <Link
+                  to={href("/member/:id", { id: message.author.id.toString() })}
+                  className="font-medium"
+                >
+                  <UserDisplayName
+                    staff={message.author.staff}
+                    grouplead={message.author.isCommunityLeader}
+                  >
+                    {message.author.displayName}
+                  </UserDisplayName>
+                </Link>
+                {message.createdAt && (
+                  <span className="text-zinc-500 text-sm ml-2 mt-px">
+                    {formatTime(new Date(message.createdAt), {
+                      addSuffix: true,
+                    }).replace("less than a minute ago", "now")}
+                  </span>
+                )}
+              </div>
+            )}
+            {message.body && (
+              <AppMarkdownWrapper markdownContent={message.body} />
+            )}
+            {attachments.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {attachments.map((attachment, idx) => (
+                  <img
+                    key={`${message.id}-attachment-${idx}`}
+                    src={attachment}
+                    onClick={() => setLightboxIndex(idx)}
+                    className="w-28 h-28 object-cover rounded border border-zinc-200 cursor-zoom-in"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
@@ -107,7 +136,7 @@ const Message = ({
             size="small"
             className="!px-2"
           >
-            <Reply size={15} />
+            <Reply size={18} />
           </Button>
         </div>
       </div>

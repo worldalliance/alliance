@@ -21,7 +21,7 @@ import {
   NOTIFICATION_LOOKBACK_WINDOW_MS,
   PreviewNotificationPlan,
 } from 'src/notifs/action-event-reminder.service';
-import { ILike, In, LessThan, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import {
   ActionActivityDto,
@@ -75,6 +75,7 @@ import {
   UserActionSummaryDto,
 } from 'src/user/dto/user-action-relations.dto';
 import { RelationString } from 'src/tasks/entities/type';
+import { ContractEventType } from 'src/user/entities/contract-event.entity';
 
 export enum UserActionRelation {
   Joined = 'joined',
@@ -93,8 +94,6 @@ export class ActionsService {
   constructor(
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
     @InjectRepository(ActionEvent)
     private readonly actionEventRepository: Repository<ActionEvent>,
     @InjectRepository(ActionActivity)
@@ -197,16 +196,33 @@ export class ActionsService {
     const actions = await qb.getMany();
 
     if (relations.length > 0) {
+      const metadata = this.actionRepository.metadata;
       await Promise.all(
         actions.map(async (action) => {
           for (const rel of relations) {
-            const loaded = await this.actionRepository
+            const relationMeta = metadata.relations.find(
+              (r) => r.propertyName === rel,
+            );
+
+            if (!relationMeta) {
+              continue;
+            }
+
+            const relationQb = this.actionRepository
               .createQueryBuilder()
               .relation(Action, rel)
-              .of(action)
-              .loadMany();
+              .of(action);
 
-            (action as Record<keyof Action, unknown>)[rel] = loaded;
+            let loaded: unknown;
+
+            if (relationMeta.isOneToOne || relationMeta.isManyToOne) {
+              loaded = await relationQb.loadOne();
+            } else {
+              loaded = await relationQb.loadMany();
+            }
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (action as any)[rel] = loaded;
           }
         }),
       );
@@ -305,7 +321,11 @@ export class ActionsService {
         });
 
     const user = userId
-      ? await this.userService.findOne(userId, ['tags', 'awayRanges'])
+      ? await this.userService.findOne(userId, [
+          'tags',
+          'awayRanges',
+          'contractEvents',
+        ])
       : null;
 
     const filtered: Action[] = [];
@@ -689,18 +709,50 @@ export class ActionsService {
     return map;
   }
 
+  async getLikedActivityIds(
+    activityIds: number[],
+    userId: number,
+  ): Promise<Set<number>> {
+    if (!activityIds.length || !userId) {
+      return new Set();
+    }
+
+    const rows = await this.actionActivityRepository
+      .createQueryBuilder('activity')
+      .innerJoin('activity.likes', 'liker', 'liker.id = :userId', { userId })
+      .where('activity.id IN (:...activityIds)', { activityIds })
+      .select('activity.id', 'id')
+      .getRawMany<{ id: number }>();
+
+    return new Set(rows.map((r) => r.id));
+  }
+
   async findCompletedForUser(
     userId: number,
     comments?: boolean,
+    requestingUserId?: number,
   ): Promise<ActionActivityDto[]> {
     const activities = await this.actionActivityRepository.find({
       where: { userId, type: ActionActivityType.USER_COMPLETED },
-      relations: ['action', 'user', 'likes', 'taskFormResponse'],
+      relations: ['action', 'user', 'taskFormResponse'],
     });
+
+    const likedIds = requestingUserId
+      ? await this.getLikedActivityIds(
+          activities.map((a) => a.id),
+          requestingUserId,
+        )
+      : new Set<number>();
+
     if (comments) {
-      return this.attachComments(activities);
+      return this.attachComments(activities, requestingUserId);
     }
-    return activities.map((activity) => new ActionActivityDto(activity));
+    return activities.map(
+      (activity) =>
+        new ActionActivityDto(activity, {
+          likedByMe: likedIds.has(activity.id),
+        }),
+    );
   }
 
   async userCoordinatesForAction(actionId: number): Promise<LatLonDto[]> {
@@ -774,22 +826,47 @@ export class ActionsService {
     actionId: number,
     limit?: number,
     comments?: boolean,
+    requestingUserId?: number,
   ): Promise<ActionActivityDto[]> {
-    const activities = await this.actionActivityRepository.find({
-      where: { actionId },
-      relations: ['user', 'likes', 'taskFormResponse'],
-      order: { createdAt: 'DESC' },
-      take: limit,
-    });
-    if (comments) {
-      return this.attachComments(activities);
+    const activities = await this.buildActivityFeedQuery({
+      limit: limit ?? 20,
+      actionId,
+      filterFeedTypes: false,
+    }).getMany();
+
+    if (activities.length === 0) {
+      return [];
     }
-    return activities.map((activity) => new ActionActivityDto(activity));
+
+    const likedIds = requestingUserId
+      ? await this.getLikedActivityIds(
+          activities.map((a) => a.id),
+          requestingUserId,
+        )
+      : new Set<number>();
+
+    if (comments) {
+      return this.attachComments(activities, requestingUserId);
+    }
+    return activities.map(
+      (activity) =>
+        new ActionActivityDto(activity, {
+          likedByMe: likedIds.has(activity.id),
+        }),
+    );
   }
 
   async attachComments(
     activities: ActionActivity[],
+    requestingUserId?: number,
   ): Promise<ActionActivityDto[]> {
+    const likedIds = requestingUserId
+      ? await this.getLikedActivityIds(
+          activities.map((a) => a.id),
+          requestingUserId,
+        )
+      : new Set<number>();
+
     return Promise.all(
       activities.map(async (activity) => {
         return new ActionActivityDto(activity, {
@@ -799,41 +876,119 @@ export class ActionsService {
           formResponseOutput: activity.taskFormResponse
             ? this.buildOutputFormResponse(activity)
             : undefined,
+          likedByMe: likedIds.has(activity.id),
         });
       }),
     );
+  }
+
+  /**
+   * Shared helper to build optimized activity feed queries.
+   * Only selects the fields needed for ActionActivityDto to minimize data transfer.
+   */
+  private buildActivityFeedQuery(options: {
+    limit: number;
+    before?: Date;
+    userIds?: number[];
+    actionId?: number;
+    filterFeedTypes?: boolean;
+  }) {
+    const qb = this.actionActivityRepository
+      .createQueryBuilder('activity')
+      .leftJoinAndSelect('activity.user', 'user')
+      .leftJoinAndSelect('activity.action', 'action')
+      .leftJoinAndSelect('activity.editableContent', 'editableContent')
+      .leftJoinAndSelect('activity.taskFormResponse', 'taskFormResponse')
+      .select([
+        'activity.id',
+        'activity.type',
+        'activity.actionId',
+        'activity.userId',
+        'activity.createdAt',
+        'activity.likesCount',
+        'user.id',
+        'user.name',
+        'user.profilePicture',
+        'user.profileDescription',
+        'user.admin',
+        'user.staff',
+        'user.anonymous',
+        'action.id',
+        'action.name',
+        'editableContent.id',
+        'editableContent.body',
+        'editableContent.attachments',
+        'taskFormResponse.id',
+        'taskFormResponse.formId',
+        'taskFormResponse.answers',
+        'taskFormResponse.publicAnswers',
+        'taskFormResponse.schemaSnapshot',
+        'taskFormResponse.visibilityValidatorResults',
+        'taskFormResponse.deviceType',
+      ])
+      .loadRelationIdAndMap('user.leaderOfIds', 'user.leaderOf')
+      .orderBy('activity.createdAt', 'DESC')
+      .take(options.limit);
+
+    if (options.filterFeedTypes !== false) {
+      qb.where('activity.type IN (:...types)', {
+        types: [
+          ActionActivityType.USER_JOINED,
+          ActionActivityType.USER_COMPLETED,
+        ],
+      });
+    }
+
+    if (options.before) {
+      qb.andWhere('activity.createdAt < :before', { before: options.before });
+    }
+
+    if (options.userIds?.length) {
+      qb.andWhere('activity.userId IN (:...userIds)', {
+        userIds: options.userIds,
+      });
+    }
+
+    if (options.actionId) {
+      qb.andWhere('activity.actionId = :actionId', {
+        actionId: options.actionId,
+      });
+    }
+
+    return qb;
   }
 
   async getActivityFeed(
     limit: number = 20,
     before?: Date,
     comments?: boolean,
+    requestingUserId?: number,
   ): Promise<ActionActivityDto[]> {
-    const activities = await this.actionActivityRepository.find({
-      where: {
-        ...(before ? { createdAt: LessThan(before) } : {}),
-        type: In([
-          ActionActivityType.USER_JOINED,
-          ActionActivityType.USER_COMPLETED,
-        ]),
-      },
-      relations: ['user', 'action', 'likes', 'taskFormResponse'],
-      order: { createdAt: 'DESC' },
-      take: limit,
-    });
+    const activities = await this.buildActivityFeedQuery({
+      limit,
+      before,
+    }).getMany();
 
     if (activities.length === 0) {
       return [];
     }
 
+    const likedIds = requestingUserId
+      ? await this.getLikedActivityIds(
+          activities.map((a) => a.id),
+          requestingUserId,
+        )
+      : new Set<number>();
+
     if (comments) {
-      return this.attachComments(activities);
+      return this.attachComments(activities, requestingUserId);
     }
 
-    return Promise.all(
-      activities.map(async (activity) => {
-        return new ActionActivityDto(activity);
-      }),
+    return activities.map(
+      (activity) =>
+        new ActionActivityDto(activity, {
+          likedByMe: likedIds.has(activity.id),
+        }),
     );
   }
 
@@ -1005,7 +1160,7 @@ export class ActionsService {
       where: {
         user: { id: userId },
       },
-      relations: ['action', 'user', 'likes'],
+      relations: ['action', 'user'],
     });
     return activities.map((activity) => new ActionActivityDto(activity));
   }
@@ -1023,24 +1178,35 @@ export class ActionsService {
       throw new NotFoundException('User not found');
     }
     const friends = await this.userService.findFriends(userId);
-    const friendActivities = await this.actionActivityRepository.find({
-      where: {
-        user: { id: In(friends.map((f) => f.id)) },
-        type: In([
-          ActionActivityType.USER_JOINED,
-          ActionActivityType.USER_COMPLETED,
-        ]),
-      },
-      relations: ['user', 'action', 'likes', 'taskFormResponse'],
-      order: { createdAt: 'DESC' },
-      take: limit,
-    });
 
-    if (comments) {
-      return this.attachComments(friendActivities);
+    if (friends.length === 0) {
+      return [];
     }
 
-    return friendActivities.map((activity) => new ActionActivityDto(activity));
+    const friendActivities = await this.buildActivityFeedQuery({
+      limit: limit ?? 20,
+      userIds: friends.map((f) => f.id),
+    }).getMany();
+
+    if (friendActivities.length === 0) {
+      return [];
+    }
+
+    const likedIds = await this.getLikedActivityIds(
+      friendActivities.map((a) => a.id),
+      userId,
+    );
+
+    if (comments) {
+      return this.attachComments(friendActivities, userId);
+    }
+
+    return friendActivities.map(
+      (activity) =>
+        new ActionActivityDto(activity, {
+          likedByMe: likedIds.has(activity.id),
+        }),
+    );
   }
 
   async communityActivity(
@@ -1048,30 +1214,43 @@ export class ActionsService {
     beforeDate: Date | undefined,
     communityId: number,
     comments?: boolean,
+    requestingUserId?: number,
   ) {
     const community = await this.userService.findCommunityOrFail(communityId);
 
     const members = community.users ?? [];
 
-    const memberActivities = await this.actionActivityRepository.find({
-      where: {
-        ...(beforeDate ? { createdAt: LessThan(beforeDate) } : {}),
-        user: { id: In(members.map((m) => m.id)) },
-        type: In([
-          ActionActivityType.USER_JOINED,
-          ActionActivityType.USER_COMPLETED,
-        ]),
-      },
-      relations: ['user', 'action', 'likes', 'taskFormResponse'],
-      order: { createdAt: 'DESC' },
-      take: limitNum,
-    });
-
-    if (comments) {
-      return this.attachComments(memberActivities);
+    if (members.length === 0) {
+      return [];
     }
 
-    return memberActivities.map((activity) => new ActionActivityDto(activity));
+    const memberActivities = await this.buildActivityFeedQuery({
+      limit: limitNum,
+      before: beforeDate,
+      userIds: members.map((m) => m.id),
+    }).getMany();
+
+    if (memberActivities.length === 0) {
+      return [];
+    }
+
+    const likedIds = requestingUserId
+      ? await this.getLikedActivityIds(
+          memberActivities.map((a) => a.id),
+          requestingUserId,
+        )
+      : new Set<number>();
+
+    if (comments) {
+      return this.attachComments(memberActivities, requestingUserId);
+    }
+
+    return memberActivities.map(
+      (activity) =>
+        new ActionActivityDto(activity, {
+          likedByMe: likedIds.has(activity.id),
+        }),
+    );
   }
 
   async findByName(name: string): Promise<Action[]> {
@@ -1082,7 +1261,10 @@ export class ActionsService {
     return actions.filter((action) => action.status !== ActionStatus.Draft);
   }
 
-  async getActivity(id: number): Promise<ActionActivityDto> {
+  async getActivity(
+    id: number,
+    requestingUserId?: number,
+  ): Promise<ActionActivityDto> {
     const activity = await this.actionActivityRepository.findOne({
       where: { id },
       relations: ['user', 'action', 'likes', 'taskFormResponse'],
@@ -1092,6 +1274,10 @@ export class ActionsService {
     }
     return new ActionActivityDto(activity, {
       formResponseOutput: this.buildOutputFormResponse(activity),
+      includeLikes: true,
+      likedByMe: requestingUserId
+        ? activity.likes?.some((like) => like.id === requestingUserId)
+        : undefined,
     });
   }
 
@@ -1122,11 +1308,22 @@ export class ActionsService {
       .of(activity);
 
     let createdLike = false;
+    let removedLike = false;
     if (unlike) {
-      await qb.remove(user);
+      if (activity.likes.some((like) => like.id === user.id)) {
+        await qb.remove(user);
+        removedLike = true;
+      }
     } else if (!activity.likes.some((like) => like.id === user.id)) {
       await qb.add(user);
       createdLike = true;
+    }
+
+    // Update likesCount
+    if (createdLike || removedLike) {
+      await this.actionActivityRepository.update(id, {
+        likesCount: () => `"likesCount" ${createdLike ? '+ 1' : '- 1'}`,
+      });
     }
 
     const updatedActivity = await this.actionActivityRepository.findOne({
@@ -1152,7 +1349,10 @@ export class ActionsService {
       });
     }
 
-    return new ActionActivityDto(updatedActivity);
+    return new ActionActivityDto(updatedActivity, {
+      includeLikes: true,
+      likedByMe: !unlike,
+    });
   }
 
   async addActivityComment(
@@ -1290,7 +1490,7 @@ export class ActionsService {
       await this.generateNotifsForActionUpdate(actionUpdate);
     }
 
-    return actionUpdate;
+    return new ActionUpdateDto(actionUpdate);
   }
 
   async deleteActionUpdate(id: number) {
@@ -1299,6 +1499,22 @@ export class ActionsService {
     });
     await this.actionUpdateRepository.delete(id);
     return actionUpdate;
+  }
+
+  async getAllActionUpdates(limit?: number): Promise<ActionUpdateDto[]> {
+    const actionUpdates = await this.actionUpdateRepository.find({
+      take: limit,
+      relations: ['action'],
+      select: {
+        action: {
+          name: true,
+        },
+      },
+    });
+
+    return actionUpdates.map(
+      (actionUpdate) => new ActionUpdateDto(actionUpdate),
+    );
   }
 
   async generateNotifsForActionUpdate(actionUpdate: ActionUpdate) {
@@ -1644,10 +1860,8 @@ export class ActionsService {
   // TODO move ==================================
 
   async getUserActionRelations(): Promise<UserActionRelationsResponseDto> {
-    const users = await this.userRepository.find({
-      select: ['id'],
-    });
-    return this.getActionRelationsForUsers(users.map((user) => user.id));
+    const users = await this.userService.getAllUserIds();
+    return this.getActionRelationsForUsers(users);
   }
 
   async getActionRelationsForUsers(
@@ -1803,5 +2017,166 @@ export class ActionsService {
     };
   }
 
-  // ==================================
+  async getFailedUsersForEvent(
+    action: Action,
+    event: ActionEvent,
+  ): Promise<User[]> {
+    const baseUsers =
+      await this.actionEventRecipientService.getBaseUsersForEvent(
+        ActionStatus.MemberAction,
+        action,
+        event.date,
+      );
+
+    const completionActivities = await this.actionActivityRepository.find({
+      where: {
+        actionId: action.id,
+        type: In([
+          ActionActivityType.USER_COMPLETED,
+          ActionActivityType.USER_WONT_COMPLETE,
+          ActionActivityType.USER_DECLINED,
+        ]),
+      },
+    });
+
+    const didntComplete = baseUsers.filter(
+      (user) =>
+        !completionActivities.some((activity) => activity.userId === user.id),
+    );
+    return didntComplete;
+  }
+
+  async getNextEvent(action: Action): Promise<ActionEvent | null> {
+    const memberActionIndex = action.events.findIndex(
+      (event) => event.newStatus === ActionStatus.MemberAction,
+    );
+    if (memberActionIndex === -1) {
+      return null;
+    }
+    return action.events[memberActionIndex + 1];
+  }
+
+  isActionPast(action: Action, now: Date): boolean {
+    return (
+      action.events.some(
+        (event) =>
+          event.newStatus === ActionStatus.MemberAction && event.date < now,
+      ) && action.status !== ActionStatus.MemberAction
+    );
+  }
+
+  async findUsersToSuspend(now: Date) {
+    const actions = await this.findAllSorted([
+      'events',
+      'suite',
+      'participatingTags',
+    ]);
+
+    const suiteMap = new Map<
+      number,
+      {
+        suite: ActionSuite;
+        actions: Action[];
+        orderIndex: number;
+      }
+    >();
+
+    for (let i = 0; i < actions.length; i++) {
+      const action = actions[i];
+      if (!action.suite) continue;
+
+      const suiteId = action.suite.id;
+      if (!suiteMap.has(suiteId)) {
+        suiteMap.set(suiteId, {
+          suite: action.suite,
+          actions: [],
+          orderIndex: i,
+        });
+      }
+      suiteMap.get(suiteId)!.actions.push(action);
+    }
+
+    const orderedSuites = Array.from(suiteMap.values()).sort(
+      (a, b) => a.orderIndex - b.orderIndex,
+    );
+    const pastSuites = orderedSuites.filter(({ actions }) =>
+      actions.every((action) => this.isActionPast(action, now)),
+    );
+
+    const failedUsersForSuites = new Map<number, number[]>();
+
+    const idToUser = new Map<number, User>();
+
+    const getLastSignedDate = (user: User) => {
+      return (
+        user.contractEvents
+          ?.filter((event) => event.type === ContractEventType.SIGNED)
+          .sort((a, b) => b.date.getTime() - a.date.getTime())[0]?.date ??
+        new Date(0)
+      );
+    };
+
+    for (const suite of pastSuites) {
+      for (const action of suite.actions) {
+        const event = action.events.find(
+          (event) => event.newStatus === ActionStatus.MemberAction,
+        );
+        if (!event) {
+          continue;
+        }
+        const failed = await this.getFailedUsersForEvent(action, event);
+        const failedAndActive = failed.filter((user) => user.hasActiveContract);
+
+        const signedBeforeFailed = failedAndActive.filter(
+          (user) => getLastSignedDate(user) < event.date,
+        );
+        for (const user of signedBeforeFailed) {
+          idToUser.set(user.id, user);
+        }
+
+        if (failedUsersForSuites.has(suite.suite.id)) {
+          failedUsersForSuites
+            .get(suite.suite.id)!
+            .push(...signedBeforeFailed.map((user) => user.id));
+        } else {
+          failedUsersForSuites.set(
+            suite.suite.id,
+            signedBeforeFailed.map((user) => user.id),
+          );
+        }
+      }
+    }
+    const usersToSuspend = new Set<number>();
+    const suspendReasonKeys = new Map<number, string>();
+
+    for (let i = 2; i < pastSuites.length; i++) {
+      const failedThis = failedUsersForSuites.get(pastSuites[i].suite.id);
+      const failedPrevious = failedUsersForSuites.get(
+        pastSuites[i - 1].suite.id,
+      );
+      const failedPreviousPrevious = failedUsersForSuites.get(
+        pastSuites[i - 2].suite.id,
+      );
+      if (!failedPrevious || !failedThis || !failedPreviousPrevious) {
+        continue;
+      }
+      const failedAll = failedThis
+        .filter((userId) => failedPrevious.includes(userId))
+        .filter((userId) => failedPreviousPrevious.includes(userId));
+
+      for (const userId of failedAll) {
+        usersToSuspend.add(userId);
+        suspendReasonKeys.set(
+          userId,
+          `s-${pastSuites[i].suite.id}-${pastSuites[i - 1].suite.id}-${pastSuites[i - 2].suite.id}`,
+        );
+      }
+    }
+    return {
+      usersToSuspend: Array.from(usersToSuspend).map(
+        (userId) => idToUser.get(userId)!,
+      ),
+      suspendReasonKeys,
+    };
+  }
 }

@@ -94,7 +94,10 @@ const ForumListPost = ({
             <ProfileImage pfp={post.author.profilePicture} size="small" />
             <p>
               <span onClick={authorClick}>
-                <UserDisplayName staff={post.author.staff}>
+                <UserDisplayName
+                  staff={post.author.staff}
+                  grouplead={post.author.isCommunityLeader}
+                >
                   {post.author.displayName}
                 </UserDisplayName>
               </span>

@@ -56,7 +56,14 @@ const ActionActivityDetail = () => {
       return;
     }
     setActivity((prev) =>
-      !!prev ? { ...prev, likes: origactivity.likes } : prev
+      !!prev
+        ? {
+            ...prev,
+            likes: origactivity.likes,
+            likesCount: origactivity.likesCount,
+            likedByMe: origactivity.likedByMe,
+          }
+        : prev
     );
   }, [origactivity]);
 
@@ -77,7 +84,7 @@ const ActionActivityDetail = () => {
     await handleLikeActivity(activity.id);
   };
 
-  const isLiked = activity?.likes.some((like) => like.id === user?.id) || false;
+  const isLiked = activity?.likedByMe ?? false;
 
   const isOwner = activity?.user.id === user?.id;
   const [editing, setEditing] = useState(false);
@@ -130,7 +137,7 @@ const ActionActivityDetail = () => {
 
   return (
     <>
-      <div className="flex flex-col gap-y-3 flex-2 pr-0 sm:pr-5 xl:pl-10 pt-5 w-full">
+      <div className="flex flex-col flex-2 pr-0 sm:pr-5 xl:pl-10 pt-5 w-full">
         <Link
           className="flex flex-row gap-x-2 items-center cursor-pointer hover:bg-zinc-50 self-start px-2 py-1 rounded border border-zinc-200"
           to={href("/actions/:id", { id: action.id.toString() })}
@@ -138,7 +145,9 @@ const ActionActivityDetail = () => {
           <img src={chevronLeft} className="w-3 h-3 rotate-90" />
           Back to action
         </Link>
-        <h1 className="font-serif !font-semibold w-full">{action.name}</h1>
+        <h1 className="mt-8 mb-2 text-3xl font-serif !font-semibold w-full">
+          {action.name}
+        </h1>
         {activity !== null && (
           <>
             <div className="flex flex-col gap-y-2 lg:gap-y-0 lg:flex-row lg:items-center lg:gap-x-2 justify-between mt-4">
@@ -240,10 +249,11 @@ const ActionActivityDetail = () => {
                 className="w-full h-auto rounded-md object-cover"
               />
             ))}
-            <div className="flex flex-row items-center justify-between mt-1">
+            <div className="flex flex-row items-center justify-between mt-4">
               <ActivityLikesButtonRow
                 isLiked={isLiked}
                 likes={activity.likes}
+                likesCount={activity.likesCount}
                 handleLike={handleLike}
                 labelText={true}
               />

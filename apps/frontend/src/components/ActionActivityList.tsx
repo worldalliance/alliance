@@ -8,7 +8,7 @@ interface ActionActivityListProps {
   actionId: number;
   activities: ActionActivityDto[];
   loading: boolean;
-  onLikeActivity: (activityId: number) => Promise<void>;
+  onLikeActivity: (activityId: number) => Promise<unknown>;
   setActivities: React.Dispatch<React.SetStateAction<ActionActivityDto[]>>;
   maxN: number;
 }
@@ -59,14 +59,19 @@ const ActionActivityList = ({
   return (
     <div className="space-y-3 w-full">
       <div className="mb-2">
-        <Link
-          to={href("/feed/:actionId", {
-            actionId: (activities[0]?.actionId ?? "").toString(),
-          })}
-          className="text-black hover:underline mt-3 font-medium"
-        >
-          See all
-        </Link>
+        <div className="flex flex-row justify-between items-center mb-3">
+          <p className="font-semibold text-base font-serif text-black">
+            Activity
+          </p>
+          <Link
+            to={href("/feed/:actionId", {
+              actionId: (activities[0]?.actionId ?? "").toString(),
+            })}
+            className="text-black hover:underline font-medium"
+          >
+            See all
+          </Link>
+        </div>
       </div>
       <div className="flex flex-col *:py-3 -my-3">
         {displayedActivities.map((activity) => (

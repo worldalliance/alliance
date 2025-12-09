@@ -23,7 +23,7 @@ export function shouldEmailUser(user: User) {
   return (
     user.emailNotifsEnabled &&
     !user.turnedOffAllNotifs &&
-    user.contractDateSigned
+    user.hasActiveContract
   );
 }
 
@@ -32,7 +32,7 @@ export function shouldTextUser(user: User) {
     user.textNotifsEnabled &&
     !user.turnedOffAllNotifs &&
     user.phoneNumber &&
-    user.contractDateSigned &&
+    user.hasActiveContract &&
     user.phoneNumberValidated &&
     user.preferredActionReminderChannel === NotificationChannel.Text
   );

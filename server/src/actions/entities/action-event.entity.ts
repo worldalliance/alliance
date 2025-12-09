@@ -23,7 +23,7 @@ export enum NotificationType {
 
 export enum ActionStatus {
   Draft = 'draft',
-  Upcoming = 'upcoming',
+  Planned = 'planned',
   GatheringCommitments = 'gathering_commitments',
   OfficeAction = 'office_action', // all commitments have been reached, actions not yet started
   MemberAction = 'member_action', // all committed members start doing the action
@@ -35,7 +35,7 @@ export enum ActionStatus {
 
 export const readableActionStatus: Record<ActionStatus, string> = {
   [ActionStatus.Draft]: 'Draft',
-  [ActionStatus.Upcoming]: 'Upcoming',
+  [ActionStatus.Planned]: 'Planned',
   [ActionStatus.GatheringCommitments]: 'Gathering commitments',
   [ActionStatus.OfficeAction]: 'Office action',
   [ActionStatus.MemberAction]: 'Members taking action',

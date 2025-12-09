@@ -6,6 +6,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   JoinTable,
   ManyToMany,
@@ -28,6 +29,7 @@ export enum ActionActivityType {
 
 @Entity()
 @Unique('UQ_activity_user_action_type', ['userId', 'actionId', 'type'])
+@Index('IDX_action_activity_type_createdAt', ['type', 'createdAt'])
 export class ActionActivity {
   @PrimaryGeneratedColumn()
   @Allow()
@@ -99,6 +101,11 @@ export class ActionActivity {
   @ApiProperty({ type: () => User, isArray: true })
   @Type(() => User)
   likes: Ty<User>[];
+
+  @Column({ default: 0 })
+  @ApiProperty()
+  @Allow()
+  likesCount: number;
 
   @ApiPropertyOptional({ type: () => FormResponse })
   @Type(() => FormResponse)

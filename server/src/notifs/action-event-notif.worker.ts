@@ -99,7 +99,7 @@ export class ActionEventNotifWorker {
   }
 
   private async processOne(plan: NotificationPlan) {
-    const cid = await generateCIDForNotif();
+    const cid = generateCIDForNotif();
 
     const idempotency_key = `reminder:${plan.group.id}:${plan.user.id}`;
 

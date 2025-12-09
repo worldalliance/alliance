@@ -1,6 +1,6 @@
 import { randomBytes } from 'crypto';
 
-export async function generateCIDForNotif() {
+export function generateCIDForNotif() {
   return randomBytes(5).toString('hex');
 }
 

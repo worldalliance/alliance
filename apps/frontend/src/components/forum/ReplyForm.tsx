@@ -53,6 +53,7 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
           value={editableContent}
           expanded={expanded}
           clearDraftSignal={clearDraftSignal}
+          draftKey={`reply-${parentId}`}
           onChange={(val) => {
             setEditableContent(val);
             if ((val.body || val.attachments.length > 0) && !expanded)

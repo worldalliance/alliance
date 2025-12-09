@@ -18,7 +18,10 @@ type ActionEventWithUpdates = ActionEventDto & {
 };
 
 const ActionEventsPanel = ({ action }: ActionEventsPanelProps) => {
-  const events = action.events;
+  const events =
+    action.events.length > 1
+      ? action.events.filter((event) => event.newStatus !== "planned")
+      : action.events;
   const updates = action.updates;
 
   if (action.status === "draft" && events.length === 0) {
@@ -61,8 +64,12 @@ const ActionEventsPanel = ({ action }: ActionEventsPanelProps) => {
     const now = new Date().getTime();
     return eventDate <= now;
   });
+  const highlightedObjectId =
+    highlightedObjectIndex !== -1
+      ? interleaved[highlightedObjectIndex].id
+      : undefined;
 
-  return (
+  return events.length > 0 ? (
     <div className="flex flex-col w-full">
       <Timeline currentIdx={highlightedObjectIndex}>
         {interleaved.slice().map((event) => (
@@ -71,9 +78,7 @@ const ActionEventsPanel = ({ action }: ActionEventsPanelProps) => {
               <TimelineItem
                 title={event.title}
                 description={event.description}
-                highlighted={
-                  event.id === interleaved[highlightedObjectIndex].id
-                }
+                highlighted={event.id === highlightedObjectId}
                 time={formatDistance(event.date, new Date(), {
                   addSuffix: true,
                 })}
@@ -86,7 +91,7 @@ const ActionEventsPanel = ({ action }: ActionEventsPanelProps) => {
         ))}
       </Timeline>
     </div>
-  );
+  ) : null;
 };
 
 export default ActionEventsPanel;

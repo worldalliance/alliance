@@ -28,7 +28,7 @@ export enum ButtonColor {
   GreenOutLine = "border border-green text-green hover:bg-green/10",
   Red = "bg-red-100 !text-red-500",
   RedOutline = "border border-red-500 text-red-500",
-  Light = "bg-zinc-200/60",
+  Light = "bg-zinc-200/60 border border-[#efeff1]",
   LightHover = "bg-zinc-200/60 hover:bg-zinc-200/80 !text-zinc-500",
   Blue = "bg-[#318dde] text-white",
   BlueOutline = "border border-[#318dde] text-[#318dde] hover:bg-[#318dde]/10",
@@ -56,9 +56,9 @@ const Button: React.FC<ButtonProps> = ({
   const color = colorProp ?? ButtonColor.White;
 
   const sizeClass = {
-    small: "px-3 py-1.5 text-xs",
-    medium: "px-4 py-2 text-sm",
-    large: "px-6 py-3 text-base",
+    small: "px-3 py-1.5 text-sm",
+    medium: "px-4 py-2 text-base",
+    large: "px-6 py-3 text-lg",
   }[size];
 
   return (
@@ -66,7 +66,7 @@ const Button: React.FC<ButtonProps> = ({
       ref={ref}
       type={type}
       title={title}
-      className={` ${sizeClass} font-medium rounded w-fit h-fit flex items-center justify-center ${
+      className={`${sizeClass} font-medium rounded w-fit h-fit flex items-center justify-center border-box ${
         disabled ? "opacity-50 !cursor-not-allowed" : ``
       } ${color} ${
         color === ButtonColor.Light ? "!text-zinc-800" : ""

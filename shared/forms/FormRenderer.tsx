@@ -352,39 +352,7 @@ const FormRenderer = ({
   });
 
   const [publicAnswers, setPublicAnswers] = useState<Record<string, boolean>>(
-    () => {
-      if (readOnly) {
-        const snapshot = (
-          completedFormResponse as {
-            publicAnswers?: Record<string, boolean>;
-          }
-        )?.publicAnswers;
-        return snapshot ?? {};
-      }
-
-      if (typeof window === "undefined") {
-        return {};
-      }
-
-      if (!persistKey) {
-        return {};
-      }
-
-      try {
-        const raw = window.localStorage.getItem(storageKey);
-        if (!raw) {
-          return {};
-        }
-        const parsed = JSON.parse(raw);
-        const storedPublicAnswers =
-          parsed?.publicAnswers && typeof parsed.publicAnswers === "object"
-            ? (parsed.publicAnswers as Record<string, boolean>)
-            : undefined;
-        return storedPublicAnswers ?? {};
-      } catch {
-        return {};
-      }
-    }
+    {}
   );
 
   useEffect(() => {
@@ -392,11 +360,9 @@ const FormRenderer = ({
 
     setPublicAnswers((prev) => {
       if (prev && Object.keys(prev).length > 0) {
-        // already modified elsewhere, leave it alone
         return prev;
       }
 
-      // initialize
       const next: Record<string, boolean> = {};
       for (const fieldId of outputFieldIds) {
         next[fieldId] = user?.formDataPreference === "public" ? true : false;
@@ -595,7 +561,9 @@ const FormRenderer = ({
       const val = data[cond.when];
       if ("anySelected" in cond) {
         const selections = Array.isArray(val) ? val : [];
-        return cond.anySelected ? selections.length > 0 : selections.length === 0;
+        return cond.anySelected
+          ? selections.length > 0
+          : selections.length === 0;
       }
       if ("includesOption" in cond) {
         if (!cond.includesOption) {
@@ -1118,7 +1086,6 @@ const FormRenderer = ({
     readOnly,
   ]);
 
-  // If key changes (different form/version/instance), attempt to restore
   useEffect(() => {
     if (readOnly) return;
     if (!persistKey || typeof window === "undefined") return;
@@ -1133,7 +1100,10 @@ const FormRenderer = ({
       setFormData(applyDefaultValues(filtered, defaultValueMap));
     }
     if (parsed?.publicAnswers && typeof parsed.publicAnswers === "object") {
-      setPublicAnswers(parsed.publicAnswers as Record<string, boolean>);
+      setPublicAnswers((prev) => ({
+        ...prev,
+        ...(parsed.publicAnswers as Record<string, boolean>),
+      }));
     }
     if (typeof parsed?.currentPageIndex === "number") {
       const maxIdx = Math.max(0, (pageCount || 1) - 1);

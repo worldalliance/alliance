@@ -39,7 +39,7 @@ export const getStatusColor = (status: ActionDto["status"]) => {
   switch (status) {
     case "draft":
       return "bg-gray-100 text-gray-800";
-    case "upcoming":
+    case "planned":
       return "bg-blue-100 text-blue-800";
     case "gathering_commitments":
       return "bg-yellow-100 text-yellow-800";

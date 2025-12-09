@@ -82,7 +82,6 @@ export const testUser: ProfileDto = {
   profileDescription:
     "This is a test description of a user thats a sort of medium length. It isn't too long, but it also isn't that short. It has a sort of just right amount of length.",
   staff: false,
-  contractDateSigned: null,
   hasActiveContract: false,
 };
 
@@ -94,7 +93,6 @@ export const testUser2: ProfileDto = {
   profileDescription:
     "This is a test description of a user thats a sort of medium length. It isn't too long, but it also isn't that short. It has a sort of just right amount of length.",
   staff: false,
-  contractDateSigned: null,
   hasActiveContract: false,
 };
 
@@ -107,8 +105,6 @@ export const testAuthUser: UserDto = {
   referralCode: "1234567890",
   anonymous: false,
   forumDigestPreference: "off",
-  contractDateSigned: null,
-  contractDateSuspended: null,
   emailNotifsEnabled: false,
   textNotifsEnabled: false,
   pushNotifsEnabled: false,
@@ -245,7 +241,6 @@ export const testActivities: ActionActivityDto[] = [
       profilePicture: null,
       profileDescription: null,
       displayName: "John Doe",
-      contractDateSigned: null,
       hasActiveContract: false,
       staff: false,
     },
@@ -265,7 +260,6 @@ export const testActivities: ActionActivityDto[] = [
     user: {
       id: 1,
       admin: false,
-      contractDateSigned: null,
       hasActiveContract: false,
       profilePicture: null,
       profileDescription: null,

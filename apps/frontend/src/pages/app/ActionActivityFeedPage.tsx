@@ -145,7 +145,7 @@ const ActionActivityFeedPage = () => {
   return (
     <CenterLayout width="3xl">
       {action && (
-        <div className="flex flex-col gap-y-4 mb-8 pt-5">
+        <div className="flex flex-col gap-y-8 mb-8 pt-5">
           <Link
             className="flex flex-row gap-x-2 items-center cursor-pointer hover:bg-zinc-50 self-start px-2 py-1 rounded border border-zinc-200"
             to={href("/actions/:id", { id: action.id.toString() })}
@@ -153,9 +153,7 @@ const ActionActivityFeedPage = () => {
             <img src={chevronLeft} className="w-3 h-3 rotate-90" />
             Back to action
           </Link>
-          <p className="font-semibold text-3xl sm:text-[2.5rem] font-serif">
-            {action.name}
-          </p>
+          <p className="font-semibold text-3xl font-serif">{action.name}</p>
         </div>
       )}
 

@@ -129,7 +129,7 @@ export default function ActionPage() {
           actionId={action.id}
           activities={activities}
           loading={false}
-          onLikeActivity={handleLikeActivity}
+          onLikeActivity={(activityId) => handleLikeActivity(activityId)}
           setActivities={setActivities}
           maxN={10}
         />

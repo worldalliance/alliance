@@ -11,7 +11,13 @@ import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card from "@alliance/shared/ui/Card";
 import DateTimePicker from "@alliance/shared/ui/DateTimePicker";
 import React, { useEffect, useState } from "react";
-import { Link, href, useNavigate, useParams, useSearchParams } from "react-router";
+import {
+  Link,
+  href,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router";
 import { setRevalidate } from "../../applayout";
 import EditableContentForm from "@alliance/shared/ui/EditableContentForm";
 import { useAuth } from "../../lib/AuthContext";
@@ -157,9 +163,7 @@ const PostFormPage: React.FC = () => {
 
       if (response.data) {
         setClearDraftSignal((x) => x + 1);
-        navigate(
-          href("/forum/post/:id", { id: response.data.id.toString() })
-        );
+        navigate(href("/forum/post/:id", { id: response.data.id.toString() }));
       } else {
         setError("An error occurred while updating the post");
         console.error(response);
@@ -232,6 +236,7 @@ const PostFormPage: React.FC = () => {
                   clearDraftSignal={clearDraftSignal}
                   expanded={true}
                   placeholder="Write your post content here..."
+                  draftKey={`post-${postId}`}
                 />
                 <div className="mt-3 flex justify-end text-sm text-zinc-500">
                   Drag an image to attach

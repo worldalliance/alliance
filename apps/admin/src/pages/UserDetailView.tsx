@@ -16,7 +16,6 @@ import {
   UserActionRelationsResponseDto,
   UserActionSummaryDto,
 } from "@alliance/shared/client/types.gen";
-import { getApiUrl } from "@alliance/shared/lib/config";
 import Badge from "@alliance/shared/ui/Badge";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
@@ -161,18 +160,25 @@ const UserDetailView: React.FC = () => {
     [timeSpentTotal]
   );
 
-  const contractStatusColor = user.contractDateSuspended
-    ? "text-red-500"
-    : user.contractDateSigned
-    ? "text-green"
-    : "text-zinc-500";
+  const latestEvent = user.contractEvents?.length
+    ? user.contractEvents.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      )[0]
+    : null;
 
-  const contractStatus = user.contractDateSuspended
-    ? "Suspended"
-    : user.contractDateSigned
-    ? "Signed"
-    : "Not signed";
+  const contractStatusColor =
+    latestEvent === null
+      ? "text-zinc-500"
+      : latestEvent.type === "signed"
+      ? "text-green"
+      : "text-red-500";
 
+  const contractStatus =
+    latestEvent === null
+      ? "Not signed"
+      : latestEvent.type === "signed"
+      ? "Signed"
+      : "Suspended";
   const tagKey = useCallback(
     (tagId: number) => `${user.id}-${tagId}`,
     [user.id]
@@ -234,14 +240,7 @@ const UserDetailView: React.FC = () => {
       <Card style={CardStyle.WhiteSolid} className="p-6">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-col sm:flex-row sm:gap-4">
-            <ProfileImage
-              pfp={
-                user.profilePicture
-                  ? `${getApiUrl()}/images/${user.profilePicture}`
-                  : null
-              }
-              size="large"
-            />
+            <ProfileImage pfp={user.profilePicture} size="large" />
             <div className="mt-4 sm:mt-0">
               <div className="flex items-center gap-3">
                 <h1 className="text-xl font-semibold text-zinc-900">
@@ -270,16 +269,12 @@ const UserDetailView: React.FC = () => {
                 {contractStatus}
               </span>
             </p>
-            {user.contractDateSigned && (
-              <p>
-                Signed on{" "}
-                {new Date(user.contractDateSigned).toLocaleDateString()}
-              </p>
+            {latestEvent?.type === "signed" && (
+              <p>Signed on {new Date(latestEvent.date).toLocaleDateString()}</p>
             )}
-            {user.contractDateSuspended && (
+            {latestEvent?.type === "suspended" && (
               <p>
-                Suspended on{" "}
-                {new Date(user.contractDateSuspended).toLocaleDateString()}
+                Suspended on {new Date(latestEvent.date).toLocaleDateString()}
               </p>
             )}
             <div className="flex flex-wrap gap-2 text-xs text-zinc-500">

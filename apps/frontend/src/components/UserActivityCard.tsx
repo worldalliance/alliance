@@ -232,8 +232,8 @@ const UserActivityCard = ({
                 }`}
               >
                 <ActivityLikeButton
-                  liked={activity.likes.some((like) => like.id === self?.id)}
-                  likes={activity.likes.length}
+                  liked={activity.likedByMe ?? false}
+                  likes={activity.likesCount}
                   handleLike={() => handleLike(activity.id)}
                   backgroundColor="white"
                 />

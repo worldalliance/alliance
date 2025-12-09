@@ -10,7 +10,7 @@ const actionStatusStyles: Record<ActionDto["status"], TagStyle> = {
   failed: TagStyle.GreyOutline,
   abandoned: TagStyle.GreyOutline,
   draft: TagStyle.GreyOutline,
-  upcoming: TagStyle.GreyOutline,
+  planned: TagStyle.GreyOutline,
 };
 
 const actionStatusDescriptions: Record<ActionDto["status"], string> = {
@@ -22,7 +22,7 @@ const actionStatusDescriptions: Record<ActionDto["status"], string> = {
   failed: "Failed",
   abandoned: "Abandoned",
   draft: "Draft",
-  upcoming: "Upcoming",
+  planned: "Planned",
 };
 
 interface StatusTagProps {

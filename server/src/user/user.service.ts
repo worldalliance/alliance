@@ -14,7 +14,7 @@ import {
   NotificationCategory,
 } from 'src/notifs/entities/notification.entity';
 import { PaymentUserDataToken } from 'src/payments/entities/payment-token.entity';
-import { ILike, In, Repository } from 'typeorm';
+import { DeepPartial, ILike, In, Repository } from 'typeorm';
 import { Friend, FriendStatus } from './entities/friend.entity';
 import { PrefillUser } from './entities/prefill-user.entity';
 import {
@@ -53,6 +53,10 @@ import {
   OnetimeInviteRequest,
   OnetimeInviteRequestStatus,
 } from './entities/onetime-invite-request.entity';
+import {
+  ContractEvent,
+  ContractEventType,
+} from './entities/contract-event.entity';
 
 const defaultTimeZone = 'America/Los_Angeles';
 const communityDefaultRelations: readonly RelationString<Community>[] = [
@@ -88,6 +92,8 @@ export class UserService {
     private readonly onetimeInviteRequestRepository: Repository<OnetimeInviteRequest>,
     @InjectRepository(UserAwayRange)
     private readonly userAwayRangeRepository: Repository<UserAwayRange>,
+    @InjectRepository(ContractEvent)
+    private readonly contractEventRepository: Repository<ContractEvent>,
     @InjectRepository(CommunityInvite)
     private readonly communityInviteRepository: Repository<CommunityInvite>,
     private readonly jwtService: JwtService,
@@ -96,7 +102,7 @@ export class UserService {
     private readonly conversationService: ConversationService,
   ) {}
 
-  async create(data: Partial<User>): Promise<User> {
+  async create(data: DeepPartial<User>): Promise<User> {
     const user = this.userRepository.create(data);
     return this.userRepository.save(user);
   }
@@ -120,7 +126,7 @@ export class UserService {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { cityId, profilePicture, hasActiveContract, ...updateData } = data;
+    const { cityId, profilePicture, ...updateData } = data;
 
     if (!updateData.preferredReminderTime) {
       updateData.preferredReminderTime = undefined;
@@ -152,8 +158,10 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
-  findAll(): Promise<User[]> {
-    return this.userRepository.find();
+  findAll(relations?: RelationString<User>[]): Promise<User[]> {
+    return this.userRepository.find({
+      relations,
+    });
   }
 
   findAllWithFriendRequests(): Promise<User[]> {
@@ -163,6 +171,7 @@ export class UserService {
         'sentFriendRequests.addressee',
         'receivedFriendRequests',
         'receivedFriendRequests.requester',
+        'contractEvents',
       ],
     });
   }
@@ -173,7 +182,7 @@ export class UserService {
   ): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id },
-      relations: ['city', ...(relations ?? [])],
+      relations: [...(relations ?? [])],
     });
   }
 
@@ -243,11 +252,8 @@ export class UserService {
   }
 
   async isCommunityLeader(email: string): Promise<boolean> {
-    const user = await this.findOneByEmail(email, ['leaderOf']);
-    if (!user) {
-      return false;
-    }
-    return user.leaderOf?.length > 0;
+    const user = await this.findOneByEmail(email);
+    return user?.isCommunityLeader ?? false;
   }
 
   async onboarding(userId: number, body: OnboardingDto): Promise<User> {
@@ -543,7 +549,7 @@ export class UserService {
       where: {
         isNotSignedUpPartialProfile: false,
       },
-      relations: ['tags', 'awayRanges'],
+      relations: ['tags', 'awayRanges', 'contractEvents'],
     });
   }
 
@@ -569,17 +575,38 @@ export class UserService {
     return users;
   }
 
-  async signContract(userId: number): Promise<User> {
-    const user = await this.findOneOrFail(userId);
-    user.contractDateSigned = new Date();
-    user.contractDateSuspended = null;
-    return this.userRepository.save(user);
+  async signContract(userId: number): Promise<Date> {
+    const user = await this.findOneOrFail(userId, ['contractEvents']);
+    if (user.hasActiveContract) {
+      throw new BadRequestException('Member already has an active contract.');
+    }
+    const contractEvent = this.contractEventRepository.create({
+      user,
+      type: ContractEventType.SIGNED,
+      date: new Date(),
+    });
+    await this.contractEventRepository.save(contractEvent);
+    return contractEvent.date;
   }
 
-  async suspendContract(userId: number): Promise<User> {
-    const user = await this.findOneOrFail(userId);
-    user.contractDateSuspended = new Date();
-    return this.userRepository.save(user);
+  async suspendContract(
+    userId: number,
+    automatic: boolean = false,
+    autoSuspendKey?: string,
+  ): Promise<Date> {
+    const user = await this.findOneOrFail(userId, ['contractEvents']);
+    if (!user.hasActiveContract) {
+      throw new BadRequestException('Member does not have an active contract.');
+    }
+    const contractEvent = this.contractEventRepository.create({
+      user,
+      type: ContractEventType.SUSPENDED,
+      date: new Date(),
+      automatic,
+      autoSuspendKey,
+    });
+    await this.contractEventRepository.save(contractEvent);
+    return contractEvent.date;
   }
 
   async createAwayRange(
@@ -811,7 +838,11 @@ export class UserService {
       return null;
     }
 
-    return this.findCommunityOrFail(communityId, ['users', 'leaders']);
+    return this.findCommunityOrFail(communityId, [
+      'users',
+      'leaders',
+      'users.contractEvents',
+    ]);
   }
 
   async getUserIdsForUserCommunity(userId: number): Promise<number[]> {
@@ -1339,5 +1370,11 @@ export class UserService {
       (community) => community.id !== communityId,
     );
     await this.userRepository.save(user);
+  }
+
+  async getAllUserIds(): Promise<number[]> {
+    return this.userRepository
+      .find({ select: ['id'] })
+      .then((users) => users.map((user) => user.id));
   }
 }

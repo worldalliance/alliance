@@ -13,12 +13,15 @@ const FoundationPage: React.FC = () => {
       <div className="flex flex-col md:flex-row mx-2 sm:mx-4 md:mx-12 pt-8 md:pt-32 pb-56 justify-center">
         <div className="flex flex-col max-w-[46rem]">
           <div className="mx-auto w-full mb-2">
-            <h2 className="font-serif !font-semibold !text-4xl md:!text-6xl text-black">
+            <h2 className="font-serif !font-semibold !text-4xl text-black">
               Foundation
             </h2>
           </div>
 
-          <Link to={href("/progress/early-governance")} className="mb-8">
+          <Link
+            to={href("/progress/:slug", { slug: "early-governance" })}
+            className="mb-8"
+          >
             <Card
               style={CardStyle.White}
               className="mt-4 p-4 md:p-4 text-lg cursor-pointer hover:bg-zinc-50 flex flex-row gap-x-4 items-center justify-between"

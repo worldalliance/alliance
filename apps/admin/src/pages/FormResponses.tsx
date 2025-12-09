@@ -5,7 +5,6 @@ import {
   type FormDto,
 } from "@alliance/shared/client";
 import FormRenderer from "@alliance/shared/forms/FormRenderer";
-import OutputRenderer from "@alliance/shared/forms/OutputRenderer";
 import type {
   FieldKind,
   FormSchema,
@@ -326,19 +325,6 @@ const FormResponses: React.FC = () => {
                 const responseSchema =
                   (pageItems[0].schemaSnapshot as unknown as FormSchema) ??
                   form.schema;
-                const hasOutputViews =
-                  Array.isArray(responseSchema.outputViews) &&
-                  responseSchema.outputViews.length > 0;
-                if (hasOutputViews) {
-                  return (
-                    <div className="bg-white p-6 border border-gray-200 rounded-lg">
-                      <OutputRenderer
-                        schema={responseSchema}
-                        submission={pageItems[0]}
-                      />
-                    </div>
-                  );
-                }
                 return (
                   <div className="bg-white p-6 border border-gray-200 rounded-lg">
                     <FormRenderer

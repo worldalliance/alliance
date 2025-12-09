@@ -48,7 +48,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
       ref={ref}
     >
       <h1
-        className="font-bold font-berlingske !text-[18pt] md:!text-[20pt] cursor-pointer text-nowrap"
+        className="font-bold font-berlingske text-lg md:text-2xl cursor-pointer text-nowrap"
         onClick={() => {
           navigate(href("/"));
         }}

@@ -78,8 +78,19 @@ const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
     ? "Search by name"
     : "Remove current selection to choose another";
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      event.key === "Backspace" &&
+      event.currentTarget.value.length === 0 &&
+      selectedUsers.length > 0
+    ) {
+      removeUser(selectedUsers[selectedUsers.length - 1].id);
+      event.preventDefault();
+    }
+  };
+
   return (
-    <div className="relative flex flex-row items-center gap-x-2">
+    <div className="relative flex flex-row items-center gap-2 flex-wrap">
       {selectedUsers.map((user) => (
         <div
           className="flex items-center justify-between rounded px-1 py-1 text-sm bg-zinc-100 shrink-0"
@@ -101,11 +112,14 @@ const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
         {canSelectMore && (
           <input
             type="text"
+            key={selectedUsers.length}
             value={query}
+            onKeyDown={handleKeyDown}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={placeholder}
+            autoFocus
             disabled={inputDisabled}
-            className="border border-zinc-300 rounded-md px-3 py-2.5 text-sm disabled:bg-zinc-100 disabled:text-zinc-500"
+            className="border-zinc-300 rounded-md py-2.5 disabled:bg-zinc-100 disabled:text-zinc-500 focus:outline-none min-w-48"
           />
         )}
         {query && filteredUsers.length > 0 && (
@@ -118,16 +132,21 @@ const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
                 onClick={() => addUser(user.id)}
               >
                 <ProfileImage pfp={user.profilePicture} size="medium" />
-                <span className="font-medium">{user.displayName}</span>
+                <span className="font-medium whitespace-nowrap">
+                  {user.displayName}
+                </span>
               </button>
             ))}
           </div>
         )}
+        {query && !filteredUsers.length && !loading && (
+          <div className="border border-zinc-200 rounded bg-white max-h-48 overflow-y-auto absolute w-full top-full shadow">
+            <p className="px-3 py-2 ml-2 text-sm text-zinc-500">
+              No members found
+            </p>
+          </div>
+        )}
       </div>
-
-      {query && !filteredUsers.length && !loading && (
-        <p className="ml-2 text-sm text-zinc-500">No members found</p>
-      )}
     </div>
   );
 };

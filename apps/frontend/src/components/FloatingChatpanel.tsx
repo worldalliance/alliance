@@ -24,7 +24,7 @@ const FloatingChatPanel = ({
   const [loading, setLoading] = useState(true);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
-  const [convoMessages] = useLiveConvoMessages(conversation?.id ?? null, {
+  const { messages: convoMessages, addOptimisticMessage, removeOptimisticMessage } = useLiveConvoMessages(conversation?.id ?? null, {
     onIncomingMessage: () => {},
     onConversationUpdated: (conversation: ConversationDto) => {
       setConversation(conversation);
@@ -74,6 +74,8 @@ const FloatingChatPanel = ({
           setSendingNewMessageToIds={null}
           handleCreateConversation={null}
           compact={true}
+          onOptimisticMessage={addOptimisticMessage}
+          onOptimisticMessageFailed={(tempId) => removeOptimisticMessage(tempId)}
         />
       ) : (
         <p>Could not load conversation</p>

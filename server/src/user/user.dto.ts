@@ -1,15 +1,15 @@
 import {
   ApiProperty,
   ApiPropertyOptional,
-  OmitType,
   PartialType,
   PickType,
 } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { instanceToPlain, Type } from 'class-transformer';
 import { Allow, IsOptional } from 'class-validator';
 import { getImageSource } from 'src/images/images.service';
 import { FriendStatus } from './entities/friend.entity';
 import { User } from './entities/user.entity';
+import { ContractEvent } from './entities/contract-event.entity';
 
 export class FriendStatusDto {
   @ApiProperty({ enum: FriendStatus, nullable: true, enumName: 'FriendStatus' })
@@ -24,13 +24,18 @@ export class ProfileDto extends PickType(User, [
   'id',
   'profilePicture',
   'profileDescription',
-  'contractDateSigned',
 ]) {
   @ApiProperty()
   displayName: string;
 
   @ApiProperty()
   hasActiveContract: boolean;
+
+  @ApiProperty()
+  isCommunityLeader: boolean;
+
+  @ApiPropertyOptional({ type: ContractEvent })
+  lastContractEvent?: ContractEvent;
 
   constructor(
     user: Pick<
@@ -43,9 +48,9 @@ export class ProfileDto extends PickType(User, [
       | 'anonymous'
       | 'profilePicture'
       | 'profileDescription'
-      | 'contractDateSigned'
-      | 'contractDateSuspended'
       | 'hasActiveContract'
+      | 'isCommunityLeader'
+      | 'contractEvents'
     >,
   ) {
     super();
@@ -53,9 +58,13 @@ export class ProfileDto extends PickType(User, [
     this.profileDescription = user.profileDescription;
     this.admin = user.admin;
     this.staff = user.staff;
-    this.contractDateSigned = user.contractDateSigned;
     this.hasActiveContract = user.hasActiveContract;
-
+    this.isCommunityLeader = user.isCommunityLeader;
+    this.lastContractEvent = user.contractEvents?.length
+      ? user.contractEvents?.sort(
+          (a, b) => b.date.getTime() - a.date.getTime(),
+        )[0]
+      : undefined;
     if (user.anonymous) {
       this.displayName = 'Someone';
     } else {
@@ -84,8 +93,6 @@ export class UserDto extends PickType(User, [
   'name',
   'admin',
   'staff',
-  'contractDateSigned',
-  'contractDateSuspended',
   'id',
   'onboardingComplete',
   'emailNotifsEnabled',
@@ -107,6 +114,7 @@ export class UserDto extends PickType(User, [
   'preferredReminderTime',
   'timeZone',
   'formDataPreference',
+  'contractEvents',
 ]) {
   @ApiPropertyOptional()
   @IsOptional()
@@ -126,7 +134,8 @@ export class UserDto extends PickType(User, [
 
   constructor(user: User) {
     super();
-    Object.assign(this, user);
+    Object.assign(this, instanceToPlain(user));
+    this.profilePicture = getImageSource(user.profilePicture);
   }
 }
 
@@ -138,7 +147,26 @@ export function userToDto(user: User | null): ProfileDto | null {
   return new ProfileDto(user);
 }
 
-export class UpdateProfileDto extends PartialType(OmitType(User, ['city'])) {
+export class UpdateProfileDto extends PartialType(
+  PickType(User, [
+    'name',
+    'phoneNumber',
+    'profileDescription',
+    'profilePicture',
+    'anonymous',
+    'emailNotifsEnabled',
+    'pushNotifsEnabled',
+    'textNotifsEnabled',
+    'shareEmailWithCommunityLead',
+    'sharePhoneNumberWithCommunityLead',
+    'forumDigestPreference',
+    'preferredActionReminderChannel',
+    'preferredReminderTime',
+    'formDataPreference',
+    'timeZone',
+    'isNotSignedUpPartialProfile',
+  ]),
+) {
   @ApiPropertyOptional()
   @IsOptional()
   cityId?: number;

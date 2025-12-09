@@ -40,7 +40,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   expanded,
   draftKey,
   autosaveMs = 1200,
-  restoreDraft = true,
+  restoreDraft,
   onDraftRestored,
   clearDraftSignal,
 }) => {
@@ -50,12 +50,14 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   const storageKeyRef = useRef<string>(getStorageKey(draftKey));
   const lastSavedHashRef = useRef<string>("");
 
+  const shouldRestoreDraft = restoreDraft ?? draftKey !== undefined;
+
   useEffect(() => {
     storageKeyRef.current = getStorageKey(draftKey);
   }, [draftKey]);
 
   useEffect(() => {
-    if (!restoreDraft || typeof window === "undefined") return;
+    if (!shouldRestoreDraft || typeof window === "undefined") return;
 
     const raw = sessionStorage.getItem(storageKeyRef.current);
     if (!raw) return;
@@ -72,7 +74,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
       onDraftRestored?.(parsed.dto);
     }
     lastSavedHashRef.current = storedHash;
-  }, [restoreDraft]);
+  }, [shouldRestoreDraft]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

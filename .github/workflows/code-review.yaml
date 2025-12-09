@@ -36,6 +36,7 @@ jobs:
 
             Output a final message with your concise thoughts. Do not summarize the commit, just write one short bullet point for each specific issue you found, if any. End the message with the phrase "[NEEDS_ATTENTION]" if there is a significant issue or possible improvement that the author should address. If everything is fine, do not include this phrase.
             Only output [NEEDS_ATTENTION] if you are highly confident there is a substantial issue. Look around at related files to make sure you arent missing anything before doing so. If the changes remove a feature or affordance but this removal was clearly intentional by the author, this does not need attention. For example, if a useful thing was removed as the only change in a commit, the author likely intended to remove it.
+            ${{ (github.ref_name == 'main' || github.ref_name == 'staging' || github.ref_name == 'production') && '' || 'This is a WIP feature branch, do not comment on unimplemented features or clearly in-progress areas.' }}
 
   post_feedback:
     runs-on: ubuntu-latest

@@ -115,6 +115,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
         <ActionCompletedBarWithInfo
           friendActivities={friendActivities}
           action={action}
+          textSize="base"
         />
         <div className="mt-6 border-t border-zinc-200 pt-6">
           <ActionTaskPanel

@@ -447,6 +447,7 @@ export class TasksService {
     const user = await this.userService.findOneOrFail(userId, [
       'tags',
       'communities',
+      'contractEvents',
     ]);
 
     switch (validator.type) {
@@ -455,17 +456,16 @@ export class TasksService {
           return {
             isValid: false,
             message:
-              "It looks like you haven't uploaded a profile picture yet - please do that now!",
+              'You have not uploaded a profile picture yet - please do that now',
           };
         }
         break;
       case CustomValidatorType.SignedContract:
-        console.log(user.contractDateSigned, user.contractDateSuspended);
-        if (!user.contractDateSigned || user.contractDateSuspended) {
+        if (!user.hasActiveContract) {
           return {
             isValid: false,
             message:
-              "It looks like you haven't signed the contract yet - please do that now!",
+              'You have not signed the contract yet - please do that now.',
           };
         }
         break;
@@ -474,7 +474,7 @@ export class TasksService {
           return {
             isValid: false,
             message:
-              "It looks like you haven't added a profile description yet - please do that now!",
+              'You have not added a profile description yet - please do that now.',
           };
         }
         break;
@@ -491,7 +491,7 @@ export class TasksService {
           return {
             isValid: false,
             message:
-              "It looks like you haven't replied to the discussion yet - please do that now!",
+              'You have not replied to the discussion yet - please do that now.',
           };
         }
         break;
@@ -501,7 +501,7 @@ export class TasksService {
           return {
             isValid: false,
             message:
-              "It looks like you haven't added a phone number yet - please do that now!",
+              'You have not added a phone number yet - please do that now.',
           };
         }
         break;
@@ -510,7 +510,7 @@ export class TasksService {
           return {
             isValid: false,
             message:
-              "It looks like you haven't entered a phone number yet - please do that now!",
+              'You have not entered a phone number yet - please do that now.',
           };
         }
         try {
@@ -547,6 +547,11 @@ export class TasksService {
         } else {
           return { isValid: false };
         }
+      case CustomValidatorType.AnyCommunity:
+        if (user.communities.length === 0) {
+          return { isValid: false };
+        }
+        return { isValid: true };
       default:
         console.warn(
           `Unknown validator type: ${validator.type satisfies never}`,

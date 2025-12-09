@@ -11,6 +11,7 @@ const PeoplePage: React.FC = () => {
       "Sidney Hough": 7,
       "Casey Manning": 15,
       "Eamon OCearuil": 24,
+      "Charles Lien": 64,
     };
   }, []);
 
@@ -20,6 +21,7 @@ const PeoplePage: React.FC = () => {
       "Sidney Hough": "https://sidney.com/",
       "Casey Manning": "https://caseymanning.github.io/",
       "Eamon OCearuil": "https://worldalliance.org/member/24",
+      "Charles Lien": "https://worldalliance.org/member/64",
     };
   }, []);
 
@@ -52,7 +54,7 @@ const PeoplePage: React.FC = () => {
       <PrelaunchNavbar transparent={false} absolute={false} />
       <div className="flex-1 container mx-auto pt-16 md:pt-28 pb-56 flex flex-col px-5">
         <div className="mx-auto w-full max-w-3xl flex flex-col gap-4 md:gap-12">
-          <h2 className="text-center font-serif !font-semibold !text-4xl md:!text-6xl">
+          <h2 className="text-center font-serif font-bold text-3xl md:text-5xl">
             People
           </h2>
 
@@ -65,7 +67,7 @@ const PeoplePage: React.FC = () => {
             <h2 className="!font-semibold !text-xl md:!text-2xl !mt-8 mb-3">
               Members
             </h2>
-            <p>39 members are participating in early experiments.</p>
+            <p>40 members are participating in early experiments.</p>
 
             <h2 className="!font-semibold !text-xl md:!text-2xl !mt-8 mb-3">
               Strategic office

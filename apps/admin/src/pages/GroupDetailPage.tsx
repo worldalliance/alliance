@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { href, Link, useNavigate, useParams } from "react-router";
 import {
   userAddLeaderToCommunity,
   userAddMemberToCommunity,
@@ -13,7 +13,6 @@ import {
 import type {
   CommunityDto,
   UpdateCommunityDto,
-  User,
 } from "@alliance/shared/client/types.gen";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
@@ -82,11 +81,12 @@ const CommunityDetailPage: React.FC = () => {
     setUsersLoading(true);
     userList()
       .then((response) => {
-        const rawUsers = (response.data ?? []) as User[];
+        const rawUsers = response.data ?? [];
         setUsers(
           rawUsers.map((user) => ({
             id: user.id,
             name: user.name ?? `User #${user.id}`,
+            profilePicture: user.profilePicture ?? null,
           }))
         );
       })
@@ -295,7 +295,7 @@ const CommunityDetailPage: React.FC = () => {
     try {
       await userDeleteCommunity({ path: { communityId } });
       success("Community deleted", community.name);
-      navigate("/communities");
+      navigate(href("/groups"));
     } catch (err) {
       console.error("Failed to delete community", err);
       setError("Unable to delete community. Please try again.");
@@ -369,10 +369,10 @@ const CommunityDetailPage: React.FC = () => {
           <p className="text-sm text-zinc-500">Community not found.</p>
         )}
         <Link
-          to="/communities"
+          to={href("/groups")}
           className="text-blue-600 text-sm hover:underline"
         >
-          ← Back to communities
+          ← Back to groups
         </Link>
       </div>
     );
@@ -383,14 +383,14 @@ const CommunityDetailPage: React.FC = () => {
       <div className="flex flex-row items-center justify-between gap-3">
         <div>
           <Link
-            to="/communities"
+            to={href("/groups")}
             className="text-sm text-blue-600 hover:underline"
           >
-            ← Back to communities
+            ← Back to groups
           </Link>
           <h1 className="text-2xl font-semibold mt-2">{community.name}</h1>
           <p className="text-sm text-zinc-500">
-            Manage community details, membership, and leadership.
+            Manage group details, membership, and leadership.
           </p>
         </div>
         <Button
@@ -399,7 +399,7 @@ const CommunityDetailPage: React.FC = () => {
           onClick={handleDelete}
           disabled={deleting}
         >
-          {deleting ? "Deleting…" : "Delete community"}
+          {deleting ? "Deleting…" : "Delete group"}
         </Button>
       </div>
 

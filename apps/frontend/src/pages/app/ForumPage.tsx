@@ -35,7 +35,7 @@ const ForumPage: React.FC = () => {
         style={CardStyle.Outline}
         className="text-zinc-500"
       >
-        Create a new thread...
+        <p>Create a new thread...</p>
       </Card>
       <List className="mb-10">
         {sorted.map((post) => (

@@ -11,6 +11,7 @@ export enum CustomValidatorType {
   IsPhoneNumberValid = 'IsPhoneNumberValid',
   MemberTag = 'MemberTag',
   MemberCommunity = 'MemberCommunity',
+  AnyCommunity = 'AnyCommunity',
 }
 
 export const typeName: Record<CustomValidatorType, string> = {
@@ -21,7 +22,8 @@ export const typeName: Record<CustomValidatorType, string> = {
   [CustomValidatorType.HasPhoneNumber]: 'Has Phone Number',
   [CustomValidatorType.IsPhoneNumberValid]: 'Entered phone number is valid',
   [CustomValidatorType.MemberTag]: 'Member has tag',
-  [CustomValidatorType.MemberCommunity]: 'Member is in community',
+  [CustomValidatorType.MemberCommunity]: 'Member is in specific community',
+  [CustomValidatorType.AnyCommunity]: 'Member is in any community',
 };
 
 export const typeUsesIdArgument: Record<CustomValidatorType, boolean> = {
@@ -33,6 +35,7 @@ export const typeUsesIdArgument: Record<CustomValidatorType, boolean> = {
   [CustomValidatorType.IsPhoneNumberValid]: false,
   [CustomValidatorType.MemberTag]: true,
   [CustomValidatorType.MemberCommunity]: true,
+  [CustomValidatorType.AnyCommunity]: false,
 };
 
 export const typeUsableForVisibility: Record<CustomValidatorType, boolean> = {
@@ -44,6 +47,7 @@ export const typeUsableForVisibility: Record<CustomValidatorType, boolean> = {
   [CustomValidatorType.IsPhoneNumberValid]: false,
   [CustomValidatorType.MemberTag]: true,
   [CustomValidatorType.MemberCommunity]: true,
+  [CustomValidatorType.AnyCommunity]: true,
 };
 
 @Entity()

@@ -20,6 +20,7 @@ export enum EmailType {
   MissedDeadline = 'missed_deadline',
   MissedSecondDeadline = 'missed_second_deadline',
   CustomActionReminder = 'custom_action_reminder',
+  ContractSuspended = 'contract_suspended',
 }
 
 export enum EmailStatus {

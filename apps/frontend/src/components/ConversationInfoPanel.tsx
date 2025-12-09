@@ -85,7 +85,6 @@ const ConversationInfoPanel = ({
     );
   }, [friends, addMemberSearch, selectedConvo.participants]);
 
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [justAddedMember, setJustAddedMember] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -96,13 +95,6 @@ const ConversationInfoPanel = ({
       }, 2000);
     }
   }, [justAddedMember]);
-
-  const onSearchFocus = () => {
-    setIsSearchFocused(true);
-  };
-  const onSearchBlur = () => {
-    setIsSearchFocused(false);
-  };
 
   const handleSaveGroup = async () => {
     setIsSaving(true);
@@ -133,7 +125,7 @@ const ConversationInfoPanel = ({
 
   return (
     <div className="flex-1 relative flex flex-col items-center justify-center">
-      <div className="flex flex-col items-center px-8 w-full gap-y-2">
+      <div className="flex flex-col items-center p-8 w-full gap-y-2">
         {isEditingGroup ? (
           <ProfileImageEditor
             key={0}
@@ -189,67 +181,37 @@ const ConversationInfoPanel = ({
           </div>
         ) : (
           <div className="flex flex-row items-center gap-x-1">
-            <p className="font-semibold text-xl text-center">
+            <p className="font-semibold text-xl text-center break-words max-w-[500px]">
               {selectedConvo.title}
             </p>
-            <div
-              className="cursor-pointer hover:bg-zinc-100 rounded-md p-2"
-              onClick={() => setIsEditingGroup(true)}
-            >
-              <CreateIcon size="medium" fill="var(--color-zinc-500)" />
-            </div>
+            {selectedConvo.type !== "community" && (
+              <div
+                className="cursor-pointer hover:bg-zinc-100 rounded-md p-2"
+                onClick={() => setIsEditingGroup(true)}
+              >
+                <CreateIcon size="medium" fill="var(--color-zinc-500)" />
+              </div>
+            )}
           </div>
         )}
       </div>
       {selectedConvo.type !== "direct" && (
-        <div className="flex flex-col p-2 px-5 gap-4 w-full items-center  max-w-[500px]">
+        <div className="flex flex-col p-2 px-5 gap-4 w-full items-center max-w-[500px]">
           <p className="text-center">
             {selectedConvo.participants.length} members
           </p>
-          {selectedConvo.type === "multiple" &&
-            (participantMe?.role === "admin" ||
-              participantMe?.role === "owner") && (
-              <Card
-                style={CardStyle.Outline}
-                className="w-full !p-0 relative group"
-              >
-                <input
-                  type="text"
-                  onFocus={onSearchFocus}
-                  onBlur={onSearchBlur}
-                  placeholder="Add member..."
-                  className="text-zinc-800 !bg-transparent p-4 active:outline-none focus:outline-none"
-                  value={addMemberSearch}
-                  onChange={(e) => setAddMemberSearch(e.target.value)}
-                />
-                {filteredFriends && filteredFriends.length > 0 && (
-                  <div className="absolute top-full bg-white w-full border border-zinc-200 rounded rounded-t-none">
-                    {filteredFriends.map((friend) => (
-                      <div
-                        key={friend.id}
-                        className="flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md"
-                        onClick={() => {
-                          handleAddMember(friend.id);
-                        }}
-                      >
-                        <ProfileImage
-                          pfp={friend.profilePicture}
-                          size="large"
-                        />
-                        <p>{friend.displayName}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            )}
-          <List
-            className={`max-h-[300px] overflow-y-auto w-full ${
-              filteredFriends?.length && isSearchFocused
-                ? "opacity-0 pointer-events-none"
-                : "opacity-100 pointer-events-auto"
-            }`}
-          >
+
+          {selectedConvo.type === "community" && (
+            <p className="text-sm center">
+              <span className="text-zinc-500">
+                This is a chat with everyone in
+              </span>{" "}
+              <Link to={href("/groups")} className="text-green hover:underline">
+                {selectedConvo.community?.name}
+              </Link>
+            </p>
+          )}
+          <List className={`w-full`}>
             {selectedConvo.participants.map((participant) => (
               <Link
                 key={participant.user.id}
@@ -279,21 +241,49 @@ const ConversationInfoPanel = ({
                   )}
                 {participant.state == "invited" &&
                   (justAddedMember === participant.user.id ? (
-                    <p className="text-sm text-green">Invite sent!</p>
+                    <p className="text-green">Invite sent!</p>
                   ) : (
-                    <p className="text-sm text-zinc-500 mr-2">Invited</p>
+                    <p className="text-zinc-500 mr-2">Invited</p>
                   ))}
               </Link>
             ))}
           </List>
-          {selectedConvo.type === "community" && (
-            <p className="text-sm center">
-              This is a chat with everyone in your member group:{" "}
-              <Link to={href("/groups")} className="text-green">
-                {selectedConvo.community?.name}
-              </Link>
-            </p>
-          )}
+          {selectedConvo.type === "multiple" &&
+            (participantMe?.role === "admin" ||
+              participantMe?.role === "owner") && (
+              <Card
+                style={CardStyle.LightGrey}
+                className="w-full !p-0 relative group"
+              >
+                <input
+                  type="text"
+                  placeholder="Add member..."
+                  className="text-zinc-800 !bg-transparent p-4 active:outline-none focus:outline-none"
+                  value={addMemberSearch}
+                  onChange={(e) => setAddMemberSearch(e.target.value)}
+                />
+                {filteredFriends && filteredFriends.length > 0 && (
+                  <div className="absolute top-full bg-white w-full border border-zinc-200 rounded rounded-t-none">
+                    {filteredFriends.map((friend) => (
+                      <div
+                        key={friend.id}
+                        className="flex flex-row items-center gap-x-3 cursor-pointer hover:bg-zinc-100 p-4 rounded-md"
+                        onClick={() => {
+                          handleAddMember(friend.id);
+                        }}
+                      >
+                        <ProfileImage
+                          pfp={friend.profilePicture}
+                          size="large"
+                        />
+                        <p>{friend.displayName}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
+
           {selectedConvo.type === "multiple" && (
             <Button
               color={ButtonColor.Transparent}

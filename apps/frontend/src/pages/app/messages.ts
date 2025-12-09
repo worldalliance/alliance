@@ -6,7 +6,7 @@ import {
   MessageDto,
   messageGetMessages,
 } from "@alliance/shared/client";
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { getWebSocketUrl } from "../../lib/config";
 
@@ -136,16 +136,23 @@ export const useConversations = (activeConversationId?: number | null) => {
   return { conversations, setConversations, loading };
 };
 
+interface UseLiveConvoMessagesResult {
+  messages: MessageDto[] | null;
+  addOptimisticMessage: (message: MessageDto) => void;
+  removeOptimisticMessage: (tempId: string) => void;
+}
+
 const useLiveConvoMessages = (
   conversationId: number | null,
   options?: UseLiveConvoMessagesOptions
-): [MessageDto[] | null, Dispatch<SetStateAction<MessageDto[] | null>>] => {
+): UseLiveConvoMessagesResult => {
   const [convoMessages, setConvoMessages] = useState<MessageDto[] | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const joinedConversationRef = useRef<number | null>(null);
   const activeConversationRef = useRef<number | null>(conversationId);
   const pendingMessagesRef = useRef<MessageDto[]>([]);
   const messageIdsRef = useRef<Set<string>>(new Set());
+  const optimisticIdsRef = useRef<Set<string>>(new Set());
   const handlersRef = useRef<UseLiveConvoMessagesOptions | undefined>(options);
 
   useEffect(() => {
@@ -177,6 +184,17 @@ const useLiveConvoMessages = (
         if (!prev) {
           pendingMessagesRef.current.push(incoming);
           return prev;
+        }
+        // Check if there are any optimistic messages to replace from this user
+        // When a real message comes in, replace the oldest optimistic message from the same author
+        const optimisticToRemove = prev.find(
+          (msg) => msg.id.startsWith("temp-") && msg.author.id === incoming.author.id
+        );
+        if (optimisticToRemove) {
+          optimisticIdsRef.current.delete(optimisticToRemove.id);
+          return prev
+            .filter((msg) => msg.id !== optimisticToRemove.id)
+            .concat(incoming);
         }
         return [...prev, incoming];
       });
@@ -280,7 +298,25 @@ const useLiveConvoMessages = (
     };
   }, [conversationId]);
 
-  return [convoMessages, setConvoMessages];
+  const addOptimisticMessage = useCallback((message: MessageDto) => {
+    optimisticIdsRef.current.add(message.id);
+    setConvoMessages((prev) => {
+      if (!prev) {
+        return [message];
+      }
+      return [...prev, message];
+    });
+  }, []);
+
+  const removeOptimisticMessage = useCallback((tempId: string) => {
+    optimisticIdsRef.current.delete(tempId);
+    setConvoMessages((prev) => {
+      if (!prev) return prev;
+      return prev.filter((msg) => msg.id !== tempId);
+    });
+  }, []);
+
+  return { messages: convoMessages, addOptimisticMessage, removeOptimisticMessage };
 };
 
 export default useLiveConvoMessages;
@@ -352,12 +388,27 @@ const useMessagingUnread = (activeConversationId?: number | null) => {
 
       setUnread((prevTotal) => {
         const map = unreadByConversationRef.current;
-        const prevForConvo = map.get(payload.conversationId) ?? 0;
+        const prevForConvo = map.get(payload.conversationId);
+        const wasTracked = prevForConvo !== undefined;
+        const prevCount = prevForConvo ?? 0;
 
         map.set(payload.conversationId, newCount);
 
-        const hadUnread = prevForConvo > 0;
+        const hadUnread = prevCount > 0;
         const hasUnread = newCount > 0;
+
+        // Conversation wasn't tracked before and is now marked as read.
+        // It was likely part of the "unknown" unread pool from initial load.
+        if (!wasTracked && !hasUnread) {
+          if (unknownUnreadRef.current > 0) {
+            unknownUnreadRef.current = Math.max(
+              unknownUnreadRef.current - 1,
+              0
+            );
+            return Math.max(prevTotal - 1, 0);
+          }
+          return prevTotal;
+        }
 
         if (!hadUnread && hasUnread) {
           if (unknownUnreadRef.current > 0) {

@@ -88,7 +88,11 @@ const MessagesPage = () => {
     [setConversations]
   );
 
-  const [convoMessages] = useLiveConvoMessages(selectedConvoId, {
+  const {
+    messages: convoMessages,
+    addOptimisticMessage,
+    removeOptimisticMessage,
+  } = useLiveConvoMessages(selectedConvoId, {
     onIncomingMessage: setConvoLastMessage,
     onConversationUpdated: handleConversationUpdated,
   });
@@ -172,10 +176,17 @@ const MessagesPage = () => {
           return response.data;
         }
       } else {
+        const names = sendingNewMessageToIds
+          .map((id) => friends?.find((friend) => friend.id === id)?.displayName)
+          .filter((name) => name !== undefined);
+        if (user && !user.anonymous) {
+          names.push(user.name);
+        }
+        const title = names.join(", ");
         const response = await conversationCreateGroupConversation({
           body: {
             participantIds: sendingNewMessageToIds,
-            title: "New group",
+            title: title,
           },
         });
         if (response.data) {
@@ -189,6 +200,8 @@ const MessagesPage = () => {
       setSelectedConvoId,
       setConversations,
       selectedConvo,
+      friends,
+      user,
     ]);
 
   const joinedConversations = useMemo(() => {
@@ -245,6 +258,7 @@ const MessagesPage = () => {
     setCreatingNewConversation(true);
     setSelectedConvoId(null);
     setSendingNewMessageToIds([]);
+    setMessagesOpen(true);
     setSearch("");
   }, [setSelectedConvoId]);
 
@@ -344,8 +358,8 @@ const MessagesPage = () => {
       >
         <div>
           <div className="p-4">
-            <div className="flex flex-row items-center justify-between gap-x-2 mb-2">
-              <p className="text-lg font-semibold">Chats</p>
+            <div className="flex flex-row items-center justify-between gap-x-2 mb-3">
+              <p className="text-2xl font-semibold">Chats</p>
               <Button
                 color={ButtonColor.Transparent}
                 size="small"
@@ -357,9 +371,10 @@ const MessagesPage = () => {
             </div>
             <input
               placeholder="Search"
-              className="w-full border border-zinc-200 rounded-md p-2 !bg-gray-200 text-black"
+              className="w-full border border-zinc-200 rounded-md p-2 !bg-zinc-100 text-black focus:outline-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              autoFocus
             />
           </div>
           <div className="border-t border-zinc-200">
@@ -376,7 +391,9 @@ const MessagesPage = () => {
                 <div className="flex flex-row items-center gap-x-3">
                   <ProfileImage pfp={conversation.photo ?? null} size="large" />
                   <div className="flex flex-col">
-                    <span className="font-medium">{conversation.title}</span>
+                    <span className="font-medium line-clamp-1">
+                      {conversation.title}
+                    </span>
                     <span className="text-sm text-zinc-500 line-clamp-1">
                       {!!conversation.lastMessage
                         ? conversation.type === "direct"
@@ -403,40 +420,48 @@ const MessagesPage = () => {
               </div>
             ))}
             {pendingInvites && pendingInvites.length > 0 && (
-              <div className="mt-6">
+              <div className="mt-2">
                 <p className="text-sm text-zinc-500 font-medium px-4">
-                  New message requests
+                  Message requests
                 </p>
                 <div className="flex flex-col border-t border-zinc-200 mt-2">
                   {pendingInvites?.map((conversation) => (
                     <div
                       key={conversation.id}
-                      className={`p-4 hover:bg-zinc-100 cursor-pointer border-b border-zinc-200 flex flex-row items-center gap-x-2 ${
+                      className={`p-4 hover:bg-zinc-100 cursor-pointer border-b border-zinc-200 flex flex-row justify-between items-center gap-x-3 ${
                         selectedConvoId === conversation.id
                           ? "bg-zinc-100"
-                          : "bg-green/10"
+                          : "bg-white"
                       }`}
                       onClick={handleConversationClick(conversation.id)}
                     >
-                      <ProfileImage
-                        pfp={conversation.photo ?? null}
-                        size="large"
-                      />
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {conversation.title}
-                        </span>
-                        <span className="text-sm text-zinc-500 line-clamp-1">
-                          {!!conversation.lastMessage
-                            ? conversation.type === "direct"
-                              ? conversation.lastMessage.body
-                              : conversation.lastMessage.author.displayName +
-                                ": " +
-                                conversation.lastMessage.body
-                            : conversation.type === "direct"
-                            ? "Wants to start a conversation"
-                            : "You were invited to a group"}
-                        </span>
+                      <div className="flex flex-row items-center gap-x-3">
+                        <ProfileImage
+                          pfp={conversation.photo ?? null}
+                          size="large"
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-medium line-clamp-2">
+                            {conversation.title}
+                          </span>
+                          <span className="text-sm text-zinc-500 line-clamp-1">
+                            {!!conversation.lastMessage
+                              ? conversation.type === "direct"
+                                ? conversation.lastMessage.body
+                                : conversation.lastMessage.author.displayName +
+                                  ": " +
+                                  conversation.lastMessage.body
+                              : conversation.type === "direct"
+                              ? "Wants to start a conversation"
+                              : "You were invited to a group"}
+                          </span>
+                        </div>
+                      </div>
+                      <div
+                        className={`font-semibold text-xs text-white bg-red-500
+                    } rounded-md flex justify-center items-center w-6 h-6 shrink-0`}
+                      >
+                        {conversation.unreadCount || 1}
                       </div>
                     </div>
                   ))}
@@ -467,6 +492,10 @@ const MessagesPage = () => {
             setSendingNewMessageToIds={null}
             handleCreateConversation={null}
             friends={friends}
+            onOptimisticMessage={addOptimisticMessage}
+            onOptimisticMessageFailed={(tempId) =>
+              removeOptimisticMessage(tempId)
+            }
           />
         )}
         {creatingNewConversation && (
@@ -488,6 +517,10 @@ const MessagesPage = () => {
             sendingNewMessageToIds={sendingNewMessageToIds}
             setSendingNewMessageToIds={handleUpdateRecipientIds}
             handleCreateConversation={handleCreateConversation}
+            onOptimisticMessage={addOptimisticMessage}
+            onOptimisticMessageFailed={(tempId) =>
+              removeOptimisticMessage(tempId)
+            }
           />
         )}
       </div>

@@ -20,6 +20,7 @@ interface FriendsTabProps {
   isMe?: boolean;
   originalTab?: "friends" | "received" | "sent";
   friends?: ProfileDto[];
+  className?: string;
 }
 
 const FriendsTab: React.FC<FriendsTabProps> = ({
@@ -27,6 +28,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
   isMe = false,
   originalTab = "friends",
   friends: initialFriends = [],
+  className,
 }: FriendsTabProps) => {
   const [loading, setLoading] = useState(!!initialFriends.length);
   const [friends, setFriends] = useState<ProfileDto[]>(initialFriends);
@@ -191,7 +193,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
 
   return (
     <>
-      <div className="flex mt-2 mb-3">
+      <div className={`flex mb-3 ${className}`}>
         <Button
           color={ButtonColor.Transparent}
           className={`px-4 py-2 rounded-none  ${

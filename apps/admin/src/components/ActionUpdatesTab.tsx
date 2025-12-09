@@ -60,6 +60,8 @@ const ActionUpdatesTab = ({
     !shortNotifString.trim() ||
     (newUpdate.notifyType === "tag" && !newUpdate.tagId);
 
+  const [clearDraftSignal, setClearDraftSignal] = useState(0);
+
   const handleSubmit = async () => {
     if (isSubmitDisabled) {
       return;
@@ -74,6 +76,7 @@ const ActionUpdatesTab = ({
       setUpdates([...updates, response.data]);
       setNewUpdate(defaultNewUpdate);
       setPreview(false);
+      setClearDraftSignal((x) => x + 1);
     }
   };
 
@@ -116,6 +119,8 @@ const ActionUpdatesTab = ({
             />
             <EditableContentForm
               value={newUpdate.content}
+              draftKey={`action-update-${actionId}`}
+              clearDraftSignal={clearDraftSignal}
               placeholder="Action update body..."
               onChange={(content) => {
                 setNewUpdate({

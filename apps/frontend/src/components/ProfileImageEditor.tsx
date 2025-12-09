@@ -291,6 +291,7 @@ const ProfileImageEditor: FC<ProfileImageEditorProps> = ({
   const lastGeneratedRef = useRef<string | null>(initialImageUrl);
   const lastSelectionRef = useRef<PixelCrop | null>(null);
   const isDraggingRef = useRef(false);
+  const dragJustEndedRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
 
   const rotatedDimensions = useMemo(() => {
@@ -548,6 +549,11 @@ const ProfileImageEditor: FC<ProfileImageEditorProps> = ({
       activePointerIdRef.current = null;
       if (isDraggingRef.current) {
         isDraggingRef.current = false;
+        dragJustEndedRef.current = true;
+        // Reset after the click event would fire
+        requestAnimationFrame(() => {
+          dragJustEndedRef.current = false;
+        });
         setCropCommitVersion((value) => value + 1);
       }
       dragStateRef.current = null;
@@ -759,7 +765,11 @@ const ProfileImageEditor: FC<ProfileImageEditorProps> = ({
       {hasCustomImage && isCropModalOpen && imageSrc && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-2"
-          onClick={() => setIsCropModalOpen(false)}
+          onClick={() => {
+            if (!dragJustEndedRef.current) {
+              setIsCropModalOpen(false);
+            }
+          }}
         >
           <div
             className="w-full max-w-[640px] rounded-2xl bg-white p-6 shadow-2xl"

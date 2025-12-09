@@ -20,6 +20,7 @@ import { UserAwayRange } from './entities/user-away-range.entity';
 import { Community } from './entities/community.entity';
 import { CommunityInvite } from './entities/community-invite.entity';
 import { OnetimeInviteRequest } from './entities/onetime-invite-request.entity';
+import { ContractEvent } from './entities/contract-event.entity';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { OnetimeInviteRequest } from './entities/onetime-invite-request.entity';
       OnetimeInvite,
       OnetimeInviteRequest,
       UserAwayRange,
+      ContractEvent,
       Community,
       CommunityInvite,
     ]),

@@ -157,7 +157,10 @@ const PostDetailPage: React.FC = () => {
                     className="mr-2"
                   />
                 </div>
-                <UserDisplayName staff={post.author.staff}>
+                <UserDisplayName
+                  staff={post.author.staff}
+                  grouplead={post.author.isCommunityLeader}
+                >
                   {post.author.displayName}
                 </UserDisplayName>
               </Link>

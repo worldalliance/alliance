@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { href, Link } from "react-router";
 import {
   userCreateCommunity,
   userGetCommunities,
@@ -18,7 +18,7 @@ const INITIAL_COMMUNITY: CreateCommunityDto = {
   photo: "",
 };
 
-const CommunitiesPage: React.FC = () => {
+const GroupsPage: React.FC = () => {
   const [communities, setCommunities] = useState<CommunityDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,36 +95,36 @@ const CommunitiesPage: React.FC = () => {
       <div className="w-full max-w-5xl flex flex-col gap-4">
         <div className="flex flex-row items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold">Communities</h2>
+            <h2 className="text-2xl font-semibold">Groups</h2>
             <p className="text-sm text-zinc-500">
-              Manage member-facing communities and their details.
+              Manage member-facing groups and their details.
             </p>
           </div>
         </div>
 
         {loading ? (
-          <p className="text-sm text-zinc-500">Loading communities…</p>
+          <p className="text-sm text-zinc-500">Loading groups…</p>
         ) : sortedCommunities.length ? (
           sortedCommunities.map((community) => (
             <CommunityCard key={community.id} community={community} />
           ))
         ) : (
-          <p className="text-sm text-zinc-500">No communities yet.</p>
+          <p className="text-sm text-zinc-500">No groups yet.</p>
         )}
       </div>
 
       <Card className="w-full max-w-5xl" style={CardStyle.White}>
-        <p className="font-bold mb-4">Create community</p>
+        <p className="font-bold mb-4">Create group</p>
         <form className="flex flex-col gap-3" onSubmit={handleCreateCommunity}>
           <div className="flex flex-col gap-1">
             <label
               className="text-sm font-medium text-zinc-700"
-              htmlFor="community-name"
+              htmlFor="group-name"
             >
               Name
             </label>
             <input
-              id="community-name"
+              id="group-name"
               type="text"
               className="border border-zinc-300 rounded px-3 py-2 text-sm"
               value={newCommunity.name}
@@ -141,7 +141,7 @@ const CommunitiesPage: React.FC = () => {
           <div className="flex flex-col gap-1">
             <label
               className="text-sm font-medium text-zinc-700"
-              htmlFor="community-description"
+              htmlFor="group-description"
             >
               Description
             </label>
@@ -156,7 +156,7 @@ const CommunitiesPage: React.FC = () => {
                   description: event.target.value,
                 }));
               }}
-              placeholder="What is this community for?"
+              placeholder="What is this group for?"
             />
           </div>
           <Button
@@ -165,7 +165,7 @@ const CommunitiesPage: React.FC = () => {
             className="self-start"
             disabled={creating}
           >
-            {creating ? "Creating…" : "Create community"}
+            {creating ? "Creating…" : "Create group"}
           </Button>
         </form>
       </Card>
@@ -182,7 +182,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
   const leaderCount = community.leaders.length;
 
   return (
-    <Link to={`/communities/${community.id}`}>
+    <Link to={href("/groups/:id", { id: community.id.toString() })}>
       <Card className="w-full hover:border-zinc-400" style={CardStyle.White}>
         <div className="flex flex-col gap-4">
           <div className="flex flex-row items-center justify-between gap-3">
@@ -207,4 +207,4 @@ const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
   );
 };
 
-export default CommunitiesPage;
+export default GroupsPage;

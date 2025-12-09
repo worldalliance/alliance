@@ -119,7 +119,7 @@ const AwayRangesSection: React.FC = () => {
   if (loading) {
     return (
       <div>
-        <h2 className="!font-semibold !text-xl mb-4">Away periods</h2>
+        <h2 className="!font-semibold text-2xl mb-4">Away periods</h2>
         <p className="text-zinc-500">Loading...</p>
       </div>
     );
@@ -127,11 +127,11 @@ const AwayRangesSection: React.FC = () => {
 
   return (
     <div>
-      <h2 className="!font-semibold !text-xl mb-2">Away periods</h2>
+      <h2 className="!font-semibold text-2xl mb-2">Away periods</h2>
       <p className="text-sm text-zinc-600 mb-4">
-        You can schedule times here when you know you won&apos;t be able to
-        complete Alliance actions. This will let us know not to send you
-        notifications or expect you to complete tasks while you&apos;re away.
+        You can schedule a period of time when you won&apos;t be able to
+        complete Alliance actions. This will let the office know not to expect
+        you to complete tasks while you&apos;re away.
       </p>
 
       {awayRanges.length > 0 && (
@@ -189,12 +189,22 @@ const AwayRangesSection: React.FC = () => {
       )}
 
       <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-        <p className="font-medium mb-3">Schedule time away</p>
+        <p className="font-medium mb-1">Schedule time away</p>
+        <p className="text-sm text-zinc-500 mb-3">
+          If you need to be away for longer than 14 days, please{" "}
+          <a
+            href="mailto:contact@worldalliance.org"
+            className="text-green hover:underline"
+          >
+            email us
+          </a>{" "}
+          or reach out to your group lead.
+        </p>
         <div className="space-y-3">
           <div className="flex flex-col md:flex-row gap-3">
             <div className="flex-1">
               <label className="block text-sm font-medium mb-1">
-                Start Date
+                Start date
               </label>
               <FormInput
                 name="startDate"
@@ -205,7 +215,7 @@ const AwayRangesSection: React.FC = () => {
               />
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium mb-1">End Date</label>
+              <label className="block text-sm font-medium mb-1">End date</label>
               <FormInput
                 name="endDate"
                 type="date"
@@ -243,16 +253,16 @@ const AwayRangesSection: React.FC = () => {
               }
             />
             {selectedReasonIsOther && (
-              <p className="text-sm text-zinc-500">
-                See the{" "}
+              <p className="text-sm text-zinc-500 mb-2 mt-1">
+                See your{" "}
                 <Link
                   to={href("/contract")}
                   target={"_blank"}
-                  className={"text-green"}
+                  className={"text-green hover:underline"}
                 >
                   contract
                 </Link>{" "}
-                for our guidelines on reasons for away periods.
+                for guidelines on extenuating circumstances.
               </p>
             )}
           </div>
@@ -270,9 +280,6 @@ const AwayRangesSection: React.FC = () => {
           >
             {creating ? "Creating..." : "Schedule"}
           </Button>
-          <p className="text-sm text-zinc-500 mt-2">
-            Need to be away for longer than 14 days? Please email us.
-          </p>
         </div>
       </div>
     </div>

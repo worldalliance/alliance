@@ -283,7 +283,7 @@ const HomePage = () => {
           />
         ) : (
           <div className="mt-4 px-2 py-2 mx-auto flex flex-col items-center gap-y-4 h-full justify-center">
-            {user?.contractDateSuspended ? (
+            {user && !user.hasActiveContract ? (
               <p className="text-center text-zinc-500">
                 You will not be given new tasks while your contract is
                 suspended.
@@ -365,7 +365,7 @@ const HomePage = () => {
 
         <div className="">
           <div className="flex flex-row justify-between items-center mb-3">
-            <p className="font-semibold text-xl font-serif text-black">
+            <p className="font-semibold text-base font-serif text-black">
               Friend activity
             </p>
             {friendActivities.length > 0 && (

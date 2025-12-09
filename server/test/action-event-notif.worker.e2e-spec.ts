@@ -21,6 +21,10 @@ import {
 } from 'src/actions/entities/action-activity.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
 import { ActionSuite } from 'src/actions/entities/action-suite.entity';
+import {
+  ContractEvent,
+  ContractEventType,
+} from 'src/user/entities/contract-event.entity';
 
 describe('ActionEventNotifWorker (e2e)', () => {
   let ctx: TestContext;
@@ -33,6 +37,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
   let activityRepo: Repository<ActionActivity>;
   let tagRepo: Repository<Tag>;
   let actionSuiteRepo: Repository<ActionSuite>;
+  let contractEventRepo: Repository<ContractEvent>;
 
   const baseMessages = {
     emailMessage: 'Reminder for #{firstname} on #{action}',
@@ -54,16 +59,53 @@ describe('ActionEventNotifWorker (e2e)', () => {
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
     tagRepo = ctx.dataSource.getRepository(Tag);
     actionSuiteRepo = ctx.dataSource.getRepository(ActionSuite);
+    contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
   });
 
   afterAll(async () => {
     await ctx.app.close();
   });
 
+  const setUserContractSigned = async (userId: number, signedDate: Date) => {
+    await contractEventRepo.delete({ user: { id: userId } });
+    await contractEventRepo.save(
+      contractEventRepo.create({
+        user: { id: userId },
+        type: ContractEventType.SIGNED,
+        date: signedDate,
+        automatic: false,
+      }),
+    );
+  };
+
+  const setUserContractSuspended = async (
+    userId: number,
+    signedDate: Date,
+    suspendedDate: Date,
+  ) => {
+    await contractEventRepo.delete({ user: { id: userId } });
+    await contractEventRepo.save([
+      contractEventRepo.create({
+        user: { id: userId },
+        type: ContractEventType.SIGNED,
+        date: signedDate,
+        automatic: false,
+      }),
+      contractEventRepo.create({
+        user: { id: userId },
+        type: ContractEventType.SUSPENDED,
+        date: suspendedDate,
+        automatic: false,
+      }),
+    ]);
+  };
+
+  const clearUserContract = async (userId: number) => {
+    await contractEventRepo.delete({ user: { id: userId } });
+  };
+
   const resetPrimaryUser = async () => {
     await userRepo.update(ctx.testUserId, {
-      contractDateSigned: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      contractDateSuspended: null,
       turnedOffAllNotifs: false,
       emailNotifsEnabled: false,
       textNotifsEnabled: true,
@@ -71,6 +113,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
       phoneNumberValidated: true,
       name: 'Reminder Tester',
     });
+    await setUserContractSigned(
+      ctx.testUserId,
+      new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    );
   };
 
   const getPrimaryUser = () =>
@@ -174,9 +220,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
   it('sends email reminders for absolute timing groups to eligible users', async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 24 * 60 * 60 * 1000),
-    });
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('absolute-action'),
@@ -203,9 +247,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
   it('does not send reminders older than the 3 hour lookback window', async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 24 * 60 * 60 * 1000),
-    });
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('lookback-blocked'),
@@ -230,9 +272,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
   it('sends reminders that are within the 3 hour lookback window', async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 24 * 60 * 60 * 1000),
-    });
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('lookback-allowed'),
@@ -258,9 +298,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
   it('guards against duplicate reminders via idempotency keys', async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 24 * 60 * 60 * 1000),
-    });
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('duplicate-action'),
@@ -287,9 +325,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
   it('skips users who have already completed the action', async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 7 * 24 * 60 * 60 * 1000),
-    });
+    await setUserContractSigned(
+      user.id,
+      new Date(now - 7 * 24 * 60 * 60 * 1000),
+    );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('completed-action'),
@@ -324,9 +363,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
   it('sends reminders to joined users who have not completed the action', async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 5 * 24 * 60 * 60 * 1000),
-    });
+    await setUserContractSigned(
+      user.id,
+      new Date(now - 5 * 24 * 60 * 60 * 1000),
+    );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('joined-action'),
@@ -361,9 +401,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
   it('does not send reminders to users without signed contracts', async () => {
     const now = Date.now();
-    await userRepo.update(ctx.testUserId, {
-      contractDateSigned: null,
-    });
+    await clearUserContract(ctx.testUserId);
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('no-contract-action'),
@@ -389,12 +427,11 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
   it('blocks notifications for users with suspended contracts', async () => {
     const now = Date.now();
-    await userRepo.update(ctx.testUserId, {
-      contractDateSigned: new Date(now - 24 * 60 * 60 * 1000),
-      contractDateSuspended: new Date(now - 60 * 60 * 1000),
-    });
-
-    const user = await getPrimaryUser();
+    await setUserContractSuspended(
+      ctx.testUserId,
+      new Date(now - 24 * 60 * 60 * 1000),
+      new Date(now - 60 * 60 * 1000),
+    );
 
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('suspended-action'),
@@ -414,16 +451,15 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const notifs = await fetchNotifsForGroup(reminderGroup);
     expect(notifs.map((notif) => notif.user.id)).toHaveLength(0);
-
-    await userRepo.update(user.id, { contractDateSuspended: null });
   });
 
   it('sends reminders only to members of a custom cohort', async () => {
     const now = Date.now();
     const primaryUser = await getPrimaryUser();
-    await userRepo.update(primaryUser.id, {
-      contractDateSigned: new Date(now - 48 * 60 * 60 * 1000),
-    });
+    await setUserContractSigned(
+      primaryUser.id,
+      new Date(now - 48 * 60 * 60 * 1000),
+    );
 
     const customUser = await userRepo.save(
       userRepo.create({
@@ -431,7 +467,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
         password: 'pass',
         name: 'Custom User',
         tags: primaryUser.tags,
-        contractDateSigned: new Date(now - 48 * 60 * 60 * 1000),
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(now - 48 * 60 * 60 * 1000),
+            automatic: false,
+          } as ContractEvent,
+        ],
         textNotifsEnabled: true,
         phoneNumber: '+15555550200',
         phoneNumberValidated: true,
@@ -482,7 +524,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
         password: 'pass',
         name: 'Cohort User',
         tags: [tag],
-        contractDateSigned: new Date(now - 48 * 60 * 60 * 1000),
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(now - 48 * 60 * 60 * 1000),
+            automatic: false,
+          } as ContractEvent,
+        ],
         textNotifsEnabled: true,
         phoneNumber: '+15555550300',
         phoneNumberValidated: true,
@@ -522,9 +570,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
   it('respects deadlines when scheduling reminders from a deadline offset', async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
-    await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 5 * 24 * 60 * 60 * 1000),
-    });
+    await setUserContractSigned(
+      user.id,
+      new Date(now - 5 * 24 * 60 * 60 * 1000),
+    );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('deadline-action'),
@@ -569,8 +618,11 @@ describe('ActionEventNotifWorker (e2e)', () => {
       .toZonedDateTimeISO('UTC')
       .toPlainTime();
 
+    await setUserContractSigned(
+      user.id,
+      new Date(now - 6 * 24 * 60 * 60 * 1000),
+    );
     await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 6 * 24 * 60 * 60 * 1000),
       timeZone: 'UTC',
       preferredReminderTime: preferredTime,
     });
@@ -607,8 +659,11 @@ describe('ActionEventNotifWorker (e2e)', () => {
       .toZonedDateTimeISO('UTC')
       .toPlainTime();
 
+    await setUserContractSigned(
+      user.id,
+      new Date(now - 7 * 24 * 60 * 60 * 1000),
+    );
     await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 7 * 24 * 60 * 60 * 1000),
       timeZone: 'UTC',
       preferredReminderTime: preferredTime,
     });
@@ -651,7 +706,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
   it('sends suite reminders to users missing any suite actions', async () => {
     const now = Date.now();
-    await userRepo.update(ctx.testUserId, { contractDateSigned: null });
+    await clearUserContract(ctx.testUserId);
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
@@ -691,8 +746,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
           password: 'pass',
           name: `Suite ${label}`,
           tags: [ctx.defaultTag],
-          contractDateSigned: new Date(now - 72 * 60 * 60 * 1000),
-          contractDateSuspended: null,
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: new Date(now - 72 * 60 * 60 * 1000),
+              automatic: false,
+            } as ContractEvent,
+          ],
           textNotifsEnabled: true,
           phoneNumber: `+1555555${phoneSuffix}`,
           phoneNumberValidated: true,
@@ -745,7 +805,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
   it('does not send suite reminders when users completed every suite action', async () => {
     const now = Date.now();
-    await userRepo.update(ctx.testUserId, { contractDateSigned: null });
+    await clearUserContract(ctx.testUserId);
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
@@ -788,8 +848,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
         password: 'pass',
         name: 'Suite Completer',
         tags: [savedTag],
-        contractDateSigned: new Date(now - 6 * 24 * 60 * 60 * 1000),
-        contractDateSuspended: null,
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(now - 6 * 24 * 60 * 60 * 1000),
+            automatic: false,
+          } as ContractEvent,
+        ],
         textNotifsEnabled: true,
         phoneNumber: '+15555552005',
         phoneNumberValidated: true,
@@ -922,8 +987,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
   it('replaces placeholders in custom reminder text', async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
     await userRepo.update(user.id, {
-      contractDateSigned: new Date(now - 24 * 60 * 60 * 1000),
       name: 'Reminder Tester',
     });
 

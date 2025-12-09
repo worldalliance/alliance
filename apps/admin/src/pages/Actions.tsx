@@ -280,7 +280,7 @@ const ActionsList: React.FC = () => {
         <p className="font-bold ">All actions</p>
         <Button
           onClick={() => navigate("/actions/new")}
-          className="bg-green-3 hover:bg-green-2 text-white !px-3 !py-1 rounded-md text-sm"
+          className="hover:bg-green-2 text-white !px-3 !py-1 rounded-md text-sm"
           color={ButtonColor.Green}
         >
           New action

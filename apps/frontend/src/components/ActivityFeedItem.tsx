@@ -42,9 +42,7 @@ const ActivityFeedItem = ({
             to={href("/member/:id", { id: user.id.toString() })}
             onClick={(e) => e.stopPropagation()}
           >
-            <UserDisplayName staff={user.staff}>
-              {user.displayName}
-            </UserDisplayName>
+            {user.displayName}
           </Link>{" "}
           {content}
         </p>

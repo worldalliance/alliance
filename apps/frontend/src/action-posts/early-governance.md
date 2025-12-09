@@ -21,7 +21,7 @@ Certain premises, such as our vision, are unlikely to change; others, such as th
 2. **Initial round of feedback**: Members filled out a form which contained some initial proposals. We reviewed responses to the form, having discussions with members who had questions, concerns, and feedback.
 3. **Final approval**: We produced a document summarizing the proposals in the form, taking into account the feedback we received from members. We refined this document with members until 100% of members explicitly approved it. Our hope was that achievement of such high consensus would, in part, compensate for the lack of representativeness in our initial group of members.
 
-# What we saw and learned
+# What we learned
 
 1. Some members initially joined with the understanding that they could contribute in a flexible manner. However, through discussions and clearer communication, we believe there is now a shared understanding—at least in principle—of the importance of consistent and reliable participation for the success of the Alliance.
 2. It is important to emphasize the low initial time commitment and general respect for members’ time.

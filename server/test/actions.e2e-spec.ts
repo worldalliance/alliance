@@ -22,6 +22,7 @@ import {
   Notification,
   NotificationCategory,
 } from 'src/notifs/entities/notification.entity';
+import { ContractEventType } from 'src/user/entities/contract-event.entity';
 
 describe('Actions (e2e)', () => {
   let ctx: TestContext;
@@ -115,8 +116,7 @@ describe('Actions (e2e)', () => {
     const defaultUser = await userRepo.findOneOrFail({
       where: { id: ctx.testUserId },
     });
-    defaultUser.contractDateSigned = new Date();
-    await userRepo.save(defaultUser);
+    await userService.signContract(defaultUser.id);
 
     restrictedTag = await tagRepo.save(
       tagRepo.create({
@@ -489,7 +489,13 @@ describe('Actions (e2e)', () => {
         email: `late-${Date.now()}@example.com`,
         password: 'Password123!',
         name: 'Late Signer',
-        contractDateSigned: new Date(event.date.getTime() + 1000),
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(event.date.getTime() + 1000),
+            automatic: false,
+          },
+        ],
         tags: [ctx.defaultTag],
       });
 
@@ -497,7 +503,13 @@ describe('Actions (e2e)', () => {
         email: `eligible-${Date.now()}@example.com`,
         password: 'Password123!',
         name: 'Eligible User',
-        contractDateSigned: new Date(event.date.getTime() - 1000),
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(event.date.getTime() - 1000),
+            automatic: false,
+          },
+        ],
         tags: [ctx.defaultTag],
       });
 

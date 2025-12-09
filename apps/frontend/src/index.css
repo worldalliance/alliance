@@ -2,88 +2,9 @@
 @source "../../../shared/";
 
 @font-face {
-  font-family: "Adobe Clean Serif";
-  src: url("/assets/fonts/AdobeCleanSerif-Regular.otf") format("opentype");
-}
-
-@font-face {
-  font-family: "Adobe Clean Serif";
-  src: url("/assets/fonts/AdobeCleanSerif-Bold.otf") format("opentype");
-  font-weight: bold;
-}
-
-@font-face {
   font-family: "Berlingske";
   font-display: swap;
   src: url("/assets/fonts/BerlingskeSerif-Blk.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Toledo";
-  src: url("/assets/fonts/Toledo-Serial\ Regular.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Public";
-  src: url("/assets/fonts/PublicSans-VariableFont_wght.ttf") format("woff2");
-}
-
-@font-face {
-  font-family: "EB-Garamond";
-  font-display: swap;
-  src: url("/assets/fonts/EBGaramond-VariableFont_wght.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Garamond";
-  src: url("/assets/fonts/Adobe\ Garamond\ Pro\ Regular.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Bueno";
-  src: url("/assets/fonts/bueno-regular.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Sabon";
-  src: url("/assets/fonts/sabon-regular.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Sabon";
-  src: url("/assets/fonts/sabon-bold.ttf") format("truetype");
-  font-weight: bold;
-}
-
-@font-face {
-  font-family: "Avenir";
-  src: url("/assets/fonts/Avenir_Next_W00_400.woff2") format("woff2");
-  font-weight: 400;
-}
-
-@font-face {
-  font-family: "Avenir";
-  src: url("/assets/fonts/Avenir_Next_W00_600.woff2") format("woff2");
-  font-weight: 600;
-}
-
-@font-face {
-  font-family: "Roboto";
-  src: url("/assets/fonts/Roboto-VariableFont_wdth\,wght.ttf")
-    format("truetype");
-}
-
-@font-face {
-  font-family: "Playfair";
-  src: url("/assets/fonts/PlayfairDisplay-VariableFont_wght.ttf")
-    format("truetype");
-}
-
-@font-face {
-  font-family: "IBM Plex Sans";
-  font-display: swap;
-  src: url("/assets/fonts/IBMPlexSans-VariableFont_wdth,wght.ttf")
-    format("truetype");
 }
 
 @font-face {
@@ -93,25 +14,24 @@
 }
 
 @font-face {
-  font-family: "Noto Sans";
-  font-display: swap;
-  src: url("/assets/fonts/NotoSans-VariableFont_wdth,wght.ttf")
-    format("truetype");
+  font-family: "Source Sans 3";
+  src: url("/assets/fonts/SourceSans3-VariableFont_wght.ttf") format("truetype");
 }
 
 @font-face {
-  font-family: "Hedvig";
-  src: url("/assets/fonts/HedvigLettersSerif-Regular-VariableFont_opsz.ttf")
+  font-family: "Libre Baskerville";
+  src: url("/assets/fonts/LibreBaskerville-VariableFont_wght.ttf")
     format("truetype");
 }
 
 @theme {
-  --color-blue: #318dde;
+  --color-blue: #399ee6;
   /* --color-page: oklch(99% 0 0); */
   --color-page: #fff;
   --color-green: rgb(98, 161, 36);
   --color-navy: rgb(7, 30, 64);
-  --color-staff: #5598da;
+  --color-staff: #399ee6;
+  --color-grouplead: #f2ae49;
   --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.03), 0 2px 4px -2px rgb(0 0 0 / 0.05);
   --color-gray-1: #fafafa;
   --color-gray-2: #d6d6d6;
@@ -131,7 +51,7 @@ label,
 input,
 textarea,
 button {
-  font-family: "Inter", sans-serif;
+  font-family: "Source Sans 3", sans-serif;
 }
 
 .none {
@@ -162,16 +82,6 @@ html.white {
   background-color: white !important;
 }
 
-h1 {
-  font-weight: 600;
-  font-size: 30px;
-}
-
-h2 {
-  font-weight: 600;
-  font-size: 20px;
-}
-
 img {
   user-select: none;
 }
@@ -182,39 +92,16 @@ select {
 }
 
 .font-serif {
-  font-family: "EB-Garamond", "Georgia", serif;
-}
-
-.font-ibm {
-  font-family: "IBM Plex Sans";
+  font-family: "Libre Baskerville", "Georgia", serif;
 }
 
 .font-sans {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-.font-sabon {
-  font-family: "Sabon";
+  font-family: "Source Sans 3", system-ui, -apple-system, BlinkMacSystemFont,
+    sans-serif;
 }
 
 .font-berlingske {
   font-family: "Berlingske";
-}
-
-.font-roboto {
-  font-family: "Roboto";
-}
-
-.font-toledo {
-  font-family: "Toledo";
-}
-
-.font-avenir {
-  font-family: "Avenir";
-}
-
-.font-public {
-  font-family: "Public";
 }
 
 .goob {
@@ -252,7 +139,10 @@ select {
 
 .text-link {
   color: var(--color-green);
-  text-decoration: underline;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
 
 a,

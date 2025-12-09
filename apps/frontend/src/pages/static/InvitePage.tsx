@@ -1,4 +1,3 @@
-import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import React, { useEffect, useState } from "react";
 import { Link, href, useSearchParams, useNavigate } from "react-router";
 import LargeActionCard from "../app/LargeActionCard";
@@ -127,12 +126,9 @@ const InvitePage: React.FC = () => {
       <PrelaunchNavbar transparent={false} absolute={false} />
       <div className="flex flex-col flex-grow items-center justify-center ">
         <div className="w-full max-w-4xl px-4 md:px-8 py-12 md:py-12">
-          <Card
-            className="p-4 md:p-18 flex flex-col gap-y-6"
-            style={CardStyle.White}
-          >
+          <div className="p-4 md:p-18 flex flex-col gap-y-6">
             <div className="mb-4">
-              <h2 className="font-serif !text-4xl md:!text-5xl text-center mb-4">
+              <h2 className="font-serif font-semibold !text-4xl md:!text-5xl text-center mb-4">
                 Invitation to the Alliance
               </h2>
               {inviterProfile !== null && (
@@ -153,7 +149,7 @@ const InvitePage: React.FC = () => {
               is a straightforward, effective way to take action.
             </p>
 
-            <h3 className="font-serif !text-3xl font-bold mt-2">
+            <h3 className="!text-2xl font-semibold mt-2">
               What is the Alliance?
             </h3>
             <p>
@@ -200,7 +196,7 @@ const InvitePage: React.FC = () => {
               </p>
             </div>
 
-            <h3 className="font-serif !text-3xl font-bold mt-2">
+            <h3 className="font-semibold !text-2xl mt-2">
               Why should you join?
             </h3>
             <p>
@@ -229,7 +225,7 @@ const InvitePage: React.FC = () => {
               neglected by governments and markets.
             </p>
 
-            <h3 className="font-serif !text-3xl font-bold mt-2">
+            <h3 className="font-semibold !text-2xl mt-2">
               What do members say?
             </h3>
             <div className="flex flex-col gap-y-2">
@@ -239,9 +235,7 @@ const InvitePage: React.FC = () => {
                 </div>
               ))}
             </div>
-            <h3 className="font-serif !text-3xl font-bold mt-2">
-              How do you join?
-            </h3>
+            <h3 className="font-semibold !text-2xl mt-2">How do you join?</h3>
             <ol className="list-decimal list-inside space-y-3">
               <li>
                 Skim our{" "}
@@ -281,7 +275,7 @@ const InvitePage: React.FC = () => {
             >
               Sign up
             </Button>
-          </Card>
+          </div>
         </div>
       </div>
     </div>

@@ -92,8 +92,7 @@ export class UserController {
   @ApiOkResponse({ type: String })
   @ApiUnauthorizedResponse()
   async signContract(@Request() req: JwtRequest) {
-    const user = await this.userService.signContract(req.user.sub);
-    return user.contractDateSigned;
+    return this.userService.signContract(req.user.sub);
   }
 
   @Post('suspendcontract')
@@ -101,8 +100,7 @@ export class UserController {
   @ApiOkResponse({ type: String })
   @ApiUnauthorizedResponse()
   async suspendContract(@Request() req: JwtRequest) {
-    const user = await this.userService.suspendContract(req.user.sub);
-    return user.contractDateSigned;
+    return this.userService.suspendContract(req.user.sub);
   }
 
   @Post('awayranges')
@@ -285,7 +283,9 @@ export class UserController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: UserDto, isArray: true })
   async list(): Promise<UserDto[]> {
-    return (await this.userService.findAll()).map((user) => new UserDto(user));
+    return (await this.userService.findAll(['contractEvents'])).map(
+      (user) => new UserDto(user),
+    );
   }
 
   // @Get('action-relations')
@@ -346,7 +346,7 @@ export class UserController {
   async findOne(
     @Param('id', ParseIntPipe) id: number,
   ): Promise<ProfileDto | null> {
-    return userToDto(await this.userService.findOne(id));
+    return userToDto(await this.userService.findOne(id, ['contractEvents']));
   }
 
   @Post('verifyEmail')

@@ -18,6 +18,10 @@ import {
   ReminderGroup,
 } from 'src/actions/entities/reminder-group.entity';
 import { ActionSuite } from 'src/actions/entities/action-suite.entity';
+import {
+  ContractEvent,
+  ContractEventType,
+} from 'src/user/entities/contract-event.entity';
 
 @Injectable()
 export class ActionEventRecipientService {
@@ -26,6 +30,26 @@ export class ActionEventRecipientService {
     private readonly actionActivityRepository: Repository<ActionActivity>,
     private readonly userService: UserService,
   ) {}
+
+  private isContractActiveAtDate(
+    contractEvents: ContractEvent[] | null,
+    date: Date,
+  ): boolean {
+    if (contractEvents === null || contractEvents === undefined) {
+      throw new Error('user contract events not loaded');
+    }
+
+    const eventsBefore = contractEvents
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .filter((event) => event.date <= date);
+
+    if (!eventsBefore.length) {
+      return false;
+    }
+
+    const lastEvent = eventsBefore[eventsBefore.length - 1];
+    return lastEvent.type === ContractEventType.SIGNED;
+  }
 
   public userShouldCompleteEvent(
     user: User,
@@ -39,9 +63,7 @@ export class ActionEventRecipientService {
       return manualCohortUsers?.some((m) => m.id === user.id) ?? false;
     }
     return (
-      ((!!user.contractDateSigned &&
-        user.contractDateSigned <= eventDate &&
-        !user.contractDateSuspended) ||
+      (this.isContractActiveAtDate(user.contractEvents, eventDate) ||
         everyoneShouldComplete) &&
       user.tags.some((tag) => targetTagIds.has(tag.id))
     );
@@ -73,7 +95,12 @@ export class ActionEventRecipientService {
           actionId: action.id,
           type: ActionActivityType.USER_JOINED,
         },
-        relations: ['user', 'user.tags', 'user.awayRanges'],
+        relations: [
+          'user',
+          'user.tags',
+          'user.awayRanges',
+          'user.contractEvents',
+        ],
       });
       return filterToEligible(activities.map((activity) => activity.user));
     }
@@ -98,7 +125,7 @@ export class ActionEventRecipientService {
     );
     const usersWithTags = await this.userService.findByIds(
       users.map((user) => user.id),
-      ['tags', 'awayRanges'],
+      ['tags', 'awayRanges', 'contractEvents'],
     );
     const idToUser = new Map(usersWithTags.map((user) => [user.id, user]));
 

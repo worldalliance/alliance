@@ -76,7 +76,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
     : "Remove current selection to choose another";
 
   return (
-    <div>
+    <div className="relative min-h-20">
       {label && (
         <label className="block text-sm font-medium text-zinc-700 mb-1">
           {label}
@@ -93,7 +93,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
         />
       )}
       {query && filteredUsers.length > 0 && (
-        <div className="border border-zinc-200 rounded bg-white max-h-48 overflow-y-auto">
+        <div className="border border-zinc-200 rounded bg-white max-h-48 overflow-y-auto absolute left-0 w-full z-10">
           {filteredUsers.map((user) => (
             <button
               type="button"
@@ -114,7 +114,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
           No users match that search.
         </p>
       )}
-      <div className="my-3 space-y-2">
+      <div className="my-1 space-y-2">
         {selectedUsers.map((user) => (
           <div
             key={user.id}

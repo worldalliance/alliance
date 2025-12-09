@@ -1,6 +1,9 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { getApiUrl } from "../lib/config";
+
+// TOOD add heading, body color enums
 
 interface AppMarkdownWrapperProps {
   markdownContent: string;
@@ -14,6 +17,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   return (
     <div className={className}>
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         components={{
           h1: ({ ...props }) => (
             <h1
@@ -47,7 +51,14 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
             <ul className="list-disc list-inside pl-2" {...props} />
           ),
           li: ({ ...props }) => <li className="my-1" {...props} />,
-          a: ({ ...props }) => <a className="text-link" {...props} />,
+          a: ({ ...props }) => (
+            <a
+              className="text-link"
+              target="_blank"
+              rel="noreferrer"
+              {...props}
+            />
+          ),
           blockquote: ({ ...props }) => (
             <blockquote
               className="border-l-2 border-gray-300 pl-4 my-4"
@@ -85,10 +96,11 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           },
         }}
         urlTransform={(url) => {
-          if (url.startsWith("http")) {
-            return url;
+          // TODO: better way to identify images
+          if (url.includes(".webp") && !url.startsWith("http")) {
+            return `${getApiUrl()}/images/${url}`;
           }
-          return `${getApiUrl()}/images/${url}`;
+          return url;
         }}
       >
         {markdownContent}

@@ -193,12 +193,13 @@ export class ActionsController {
   }
 
   @Get('activities/feed')
-  @Public()
+  @UseGuards(AuthOptionalGuard)
   @ApiOkResponse({ type: [ActionActivityDto] })
   @ApiOperation({
     summary: 'Get recent activities from all actions for the feed',
   })
   async getActivityFeed(
+    @Request() req: JwtRequest,
     @Query('limit') limit?: string,
     @Query('before') before?: string,
     @Query('comments', new ParseBoolPipe({ optional: true }))
@@ -210,14 +211,22 @@ export class ActionsController {
       throw new BadRequestException('Invalid "before" cursor');
     }
 
-    return this.actionsService.getActivityFeed(limitNum, beforeDate, comments);
+    return this.actionsService.getActivityFeed(
+      limitNum,
+      beforeDate,
+      comments,
+      req.user?.sub,
+    );
   }
 
   @Get('activities/:id')
-  @Public()
+  @UseGuards(AuthOptionalGuard)
   @ApiOkResponse({ type: ActionActivityDto })
-  async getActivity(@Param('id', ParseIntPipe) id: number) {
-    return this.actionsService.getActivity(id);
+  async getActivity(
+    @Request() req: JwtRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.actionsService.getActivity(id, req.user?.sub);
   }
 
   @Get('events/:id')
@@ -246,16 +255,22 @@ export class ActionsController {
   }
 
   @Get(':id/activities')
-  @Public()
+  @UseGuards(AuthOptionalGuard)
   @ApiOkResponse({ type: [ActionActivityDto] })
   @ApiOperation({ summary: 'Get recent activities for an action' })
   async getActionActivities(
+    @Request() req: JwtRequest,
     @Param('id', ParseIntPipe) id: number,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('comments', new ParseBoolPipe({ optional: true }))
     comments?: boolean,
   ): Promise<ActionActivityDto[]> {
-    return this.actionsService.getActionActivities(id, limit, comments);
+    return this.actionsService.getActionActivities(
+      id,
+      limit,
+      comments,
+      req.user?.sub,
+    );
   }
 
   @Get('all')
@@ -351,6 +366,7 @@ export class ActionsController {
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ActionActivityDto] })
   async communityActivity(
+    @Request() req: JwtRequest,
     @Query('communityId', ParseIntPipe) communityId: number,
     @Query('limit') limit?: string,
     @Query('before') before?: string,
@@ -368,6 +384,7 @@ export class ActionsController {
       beforeDate,
       communityId,
       comments,
+      req.user.sub,
     );
   }
 
@@ -419,13 +436,19 @@ export class ActionsController {
   }
 
   @Get('completed/:id')
+  @UseGuards(AuthOptionalGuard)
   @ApiOkResponse({ type: [ActionActivityDto] })
   async findCompletedForUser(
+    @Request() req: JwtRequest,
     @Param('id', ParseIntPipe) id: number,
     @Query('comments', new ParseBoolPipe({ optional: true }))
     comments?: boolean,
   ): Promise<ActionActivityDto[]> {
-    return this.actionsService.findCompletedForUser(+id, comments);
+    return this.actionsService.findCompletedForUser(
+      +id,
+      comments,
+      req.user?.sub,
+    );
   }
 
   @Post(':id/events')
@@ -592,6 +615,13 @@ export class ActionsController {
   @ApiOkResponse()
   deleteUpdate(@Param('id', ParseIntPipe) id: number) {
     return this.actionsService.deleteActionUpdate(id);
+  }
+
+  @Get('allUpdates')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: ActionUpdateDto, isArray: true })
+  async allUpdates(): Promise<ActionUpdateDto[]> {
+    return this.actionsService.getAllActionUpdates();
   }
 
   @Get('suites')

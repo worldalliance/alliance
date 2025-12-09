@@ -16,11 +16,11 @@ const UserProfileTab: React.FC<UserProfileTabProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`border flex gap-x-1 items-center rounded py-1.5 px-4 text-sm cursor-pointer ${
+      className={`border flex gap-x-1 items-center rounded py-1.5 px-4 text-base cursor-pointer ${
         selected ? "bg-black" : "bg-white hover:bg-zinc-50 border-zinc-200"
       }`}
     >
-      <span className={`${selected ? "text-white" : "text-black"}`}>
+      <span className={`font-medium ${selected ? "text-white" : "text-black"}`}>
         {number}
       </span>
       <span className={`${selected ? "text-white/90" : "text-zinc-600"}`}>

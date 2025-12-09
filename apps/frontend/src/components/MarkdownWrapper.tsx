@@ -35,7 +35,7 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
           ),
           p: ({ ...props }) => (
             <p
-              className="text-zinc-900 text-lg first:!mt-0 !mt-2 md:!mt-6"
+              className="text-zinc-900 text-lg first:!mt-0 !mt-2 md:!mt-5"
               {...props}
             />
           ),
@@ -44,17 +44,17 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
           ),
           ol: ({ ...props }) => (
             <ol
-              className="text-lg list-decimal list-inside first:!mt-0 !mt-2 md:!mt-4 pl-4"
+              className="text-lg list-decimal list-inside first:!mt-0 !mt-2 md:!mt-5 pl-4"
               {...props}
             />
           ),
           ul: ({ ...props }) => (
             <ul
-              className="text-lg list-disc list-inside first:!mt-0 !mt-2 md:!mt-4 pl-4"
+              className="text-lg list-disc list-inside first:!mt-0 !mt-2 md:!mt-5 pl-4"
               {...props}
             />
           ),
-          li: ({ ...props }) => <li className="my-2" {...props} />,
+          li: ({ ...props }) => <li className="first:!mt-0 !mt-2" {...props} />,
           a: ({ ...props }) => <a className="text-link" {...props} />,
         }}
       >

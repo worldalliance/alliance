@@ -6,11 +6,11 @@ import {
   paymentsClearPaymentMethods,
   paymentsPaymentMethod,
   PublicFormResponseDefault,
-  UserDto,
   userMyLocation,
   userUpdate,
   authForgotPassword,
   authMe,
+  UpdateProfileDto,
 } from "@alliance/shared/client";
 import Badge from "@alliance/shared/ui/Badge";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
@@ -25,36 +25,16 @@ import { useAuth } from "../../lib/AuthContext";
 import AwayRangesSection from "../../components/AwayRangesSection";
 import TimeZoneSelect from "@alliance/shared/forms/TimeZoneSelect";
 
-type EditableUserFields = Pick<
-  UserDto,
-  | "name"
-  | "phoneNumber"
-  | "anonymous"
-  | "emailNotifsEnabled"
-  | "pushNotifsEnabled"
-  | "textNotifsEnabled"
-  | "shareEmailWithCommunityLead"
-  | "sharePhoneNumberWithCommunityLead"
-  | "cityId"
-  | "forumDigestPreference"
-  | "preferredActionReminderChannel"
-  | "preferredReminderTime"
-  | "timeZone"
-  | "formDataPreference"
->;
-
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [location, setLocation] = useState<City | null>(null);
-  const [editableUser, setEditableUser] = useState<EditableUserFields | null>(
+  const [editableUser, setEditableUser] = useState<UpdateProfileDto | null>(
     null
   );
-  const [initialUser, setInitialUser] = useState<EditableUserFields | null>(
-    null
-  );
+  const [initialUser, setInitialUser] = useState<UpdateProfileDto | null>(null);
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodDto | null>(
     null
@@ -71,7 +51,7 @@ const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
 
   const updateEditableUser = useCallback(
-    (updates: Partial<EditableUserFields>) => {
+    (updates: Partial<UpdateProfileDto>) => {
       setEditableUser((prev) => (prev ? { ...prev, ...updates } : prev));
     },
     []
@@ -93,7 +73,7 @@ const SettingsPage: React.FC = () => {
     if (!editableUser || !initialUser) {
       return false;
     }
-    const keys = Object.keys(editableUser) as (keyof EditableUserFields)[];
+    const keys = Object.keys(editableUser) as (keyof UpdateProfileDto)[];
 
     return keys.some((key) => editableUser[key] !== initialUser[key]);
   }, [editableUser, initialUser]);
@@ -153,7 +133,7 @@ const SettingsPage: React.FC = () => {
     }
   }, [user?.email]);
 
-  const handleSave = useCallback(async (userPayload: EditableUserFields) => {
+  const handleSave = useCallback(async (userPayload: UpdateProfileDto) => {
     setSaving(true);
     try {
       await userUpdate({
@@ -232,7 +212,9 @@ const SettingsPage: React.FC = () => {
     return (
       <div className="bg-page pt-20 px-2 md:px-16">
         <div className="max-w-4xl mx-auto">
-          <h1 className="!text-3xl !font-serif !font-semibold mb-2">Account</h1>
+          <h1 className="text-2xl sm:text-4xl font-serif !font-semibold mb-2">
+            Settings
+          </h1>
           <Card style={CardStyle.White} className="p-8">
             <p className="text-center text-zinc-500">
               Loading your account information...
@@ -253,8 +235,8 @@ const SettingsPage: React.FC = () => {
         <div className="mb-6 relative flex flex-col gap-y-4">
           <div className="flex justify-between mb-2">
             <div className="gap-x-2">
-              <h1 className="!text-2xl sm:!text-4xl font-serif !font-semibold mb-2">
-                Account
+              <h1 className="text-2xl sm:text-4xl font-serif !font-semibold mb-2">
+                Settings
               </h1>
               <AdminOnly>
                 <Badge className="!bg-yellow-600 text-white">Admin</Badge>
@@ -273,7 +255,7 @@ const SettingsPage: React.FC = () => {
                 color={ButtonColor.Stone}
                 className="px-4"
               >
-                Log Out
+                Log out
               </Button>
             </div>
           </div>
@@ -363,7 +345,7 @@ const SettingsPage: React.FC = () => {
           <hr className="border-zinc-300 mt-4" />
 
           <div>
-            <h2 className="!font-semibold !text-xl mb-4">Notifications</h2>
+            <h2 className="!font-semibold !text-2xl mb-4">Notifications</h2>
 
             <div className="flex flex-col gap-y-2 mb-4">
               <p className="!font-medium mb-0">Send action reminders via:</p>
@@ -398,14 +380,14 @@ const SettingsPage: React.FC = () => {
             <div className="flex flex-col gap-y-2 mt-2">
               <LargeCheckbox
                 label="Email"
-                checked={editableUser.emailNotifsEnabled}
+                checked={!!editableUser.emailNotifsEnabled}
                 onChange={(checked) =>
                   updateEditableUser({ emailNotifsEnabled: checked })
                 }
               />
               <LargeCheckbox
                 label="Text/SMS"
-                checked={editableUser.textNotifsEnabled}
+                checked={!!editableUser.textNotifsEnabled}
                 onChange={(checked) =>
                   updateEditableUser({ textNotifsEnabled: checked })
                 }
@@ -447,19 +429,19 @@ const SettingsPage: React.FC = () => {
 
           {user.communities.length > 0 && (
             <div>
-              <h2 className="!font-semibold !text-xl mb-4">Groups</h2>
+              <h2 className="!font-semibold !text-2xl mb-4">Groups</h2>
               <p>Contact info shared with your group lead:</p>
               <div className="flex flex-col gap-y-2 mt-2">
                 <LargeCheckbox
                   label="Email"
-                  checked={editableUser.shareEmailWithCommunityLead}
+                  checked={!!editableUser.shareEmailWithCommunityLead}
                   onChange={(checked) =>
                     updateEditableUser({ shareEmailWithCommunityLead: checked })
                   }
                 />
                 <LargeCheckbox
                   label="Phone number"
-                  checked={editableUser.sharePhoneNumberWithCommunityLead}
+                  checked={!!editableUser.sharePhoneNumberWithCommunityLead}
                   onChange={(checked) =>
                     updateEditableUser({
                       sharePhoneNumberWithCommunityLead: checked,
@@ -476,8 +458,10 @@ const SettingsPage: React.FC = () => {
             <AwayRangesSection />
           </div>
 
+          <hr className="border-zinc-300 mt-4" />
+
           <div>
-            <h2 className="!font-semibold !text-xl mb-4 mt-2">Privacy</h2>
+            <h2 className="!font-semibold text-2xl mb-4 ">Privacy</h2>
             <div className="flex flex-col gap-y-2 mb-4">
               <p className="mb-0">
                 Some parts of your completed tasks can be visible to other

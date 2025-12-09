@@ -6,11 +6,13 @@ interface ActivityLikesButtonRowProps {
   isLiked: boolean;
   handleLike: (() => void) | null;
   labelText?: boolean;
-  likes: ProfileDto[];
+  likes?: ProfileDto[];
+  likesCount?: number;
 }
 const ActivityLikesButtonRow = ({
   isLiked,
   likes,
+  likesCount,
   handleLike,
   labelText = false,
 }: ActivityLikesButtonRowProps) => {
@@ -18,11 +20,11 @@ const ActivityLikesButtonRow = ({
     <div className="flex flex-row items-center justify-between w-full gap-x-2">
       <ActivityLikeButton
         liked={isLiked}
-        likes={likes.length}
+        likes={likesCount ?? likes?.length ?? 0}
         handleLike={handleLike}
         labelText={labelText}
       />
-      <UserProfilePicRow users={likes} />
+      {likes && <UserProfilePicRow users={likes} />}
     </div>
   );
 };

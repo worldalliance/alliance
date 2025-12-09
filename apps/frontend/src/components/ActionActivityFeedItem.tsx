@@ -90,8 +90,8 @@ const ActionActivityFeedItem = ({
           </div>
 
           <ActivityLikeButton
-            liked={activity.likes.some((like) => like.id === user?.id)}
-            likes={activity.likes.length}
+            liked={activity.likedByMe ?? false}
+            likes={activity.likesCount}
             handleLike={() => handleLike(activity)}
           />
         </div>

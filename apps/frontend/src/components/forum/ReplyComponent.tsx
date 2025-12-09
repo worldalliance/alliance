@@ -188,7 +188,10 @@ const ReplyContent: React.FC<ReplyContentProps> = ({
               to={href("/member/:id", { id: reply.author.id.toString() })}
               className="text-black font-medium"
             >
-              <UserDisplayName staff={reply.author.staff}>
+              <UserDisplayName
+                staff={reply.author.staff}
+                grouplead={reply.author.isCommunityLeader}
+              >
                 {reply.author.displayName}
               </UserDisplayName>
             </Link>

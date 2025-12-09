@@ -24,6 +24,7 @@ import { ActionSuite } from './entities/action-suite.entity';
 import { ForumModule } from 'src/forum/forum.module';
 import { Form } from 'src/tasks/entities/form.entity';
 import { ReloadUsersJoinedWorker } from './reload-users-joined.worker';
+import { ContractSuspenderWorker } from './contract-suspender.worker';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { ReloadUsersJoinedWorker } from './reload-users-joined.worker';
     ActionEventRecipientService,
     ActionEventReminderService,
     ReloadUsersJoinedWorker,
+    ContractSuspenderWorker,
   ],
   exports: [ActionsService],
 })

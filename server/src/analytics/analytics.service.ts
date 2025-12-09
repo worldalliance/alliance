@@ -2,6 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { UserService } from 'src/user/user.service';
 import { TimeSpentForUserDto } from './timespent.dto';
+import { DailyStatsRecord } from './dailystats.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Between, Repository } from 'typeorm';
+import {
+  ActionActivity,
+  ActionActivityType,
+} from 'src/actions/entities/action-activity.entity';
+import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
+import { User } from 'src/user/entities/user.entity';
+import { ContractEventType } from 'src/user/entities/contract-event.entity';
 
 @Injectable()
 export class AnalyticsService {
@@ -55,7 +65,17 @@ ORDER BY pp.total_session_duration_seconds DESC
           `;
   }
 
-  constructor(private readonly userService: UserService) {
+  constructor(
+    private readonly userService: UserService,
+    @InjectRepository(DailyStatsRecord)
+    private readonly dailyStatsRepository: Repository<DailyStatsRecord>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(ActionActivity)
+    private readonly actionActivityRepository: Repository<ActionActivity>,
+    @InjectRepository(OnetimeInvite)
+    private readonly onetimeInviteRepository: Repository<OnetimeInvite>,
+  ) {
     if (!process.env.POSTHOG_QUERY_KEY || !process.env.POSTHOG_PROJECT_ID) {
       this.logger.warn('POSTHOG_QUERY_KEY or POSTHOG_PROJECT_ID is not set');
       return;
@@ -138,5 +158,65 @@ ORDER BY pp.total_session_duration_seconds DESC
 
   async getTimeSpentPerUserTotal(): Promise<TimeSpentForUserDto[]> {
     return this.timeSpentPerUserTotal;
+  }
+
+  @Cron('0 8,20 * * *')
+  async calculateDailyStats() {
+    const now = new Date();
+    const dayId = now.toISOString().split('T')[0];
+
+    if (await this.dailyStatsRepository.findOne({ where: { dayId } })) {
+      return;
+    }
+
+    const users = await this.userRepository.find({
+      relations: ['contractEvents'],
+    });
+
+    const signedUsers = users.filter(
+      (user) => user.hasActiveContract === true,
+    ).length;
+
+    const suspendedUsers = users.filter(
+      (user) =>
+        user.contractEvents!.some(
+          (event) => event.type === ContractEventType.SUSPENDED,
+        ) && user.hasActiveContract === false,
+    ).length;
+
+    const completionActivities = await this.actionActivityRepository.count({
+      where: {
+        type: ActionActivityType.USER_COMPLETED,
+      },
+    });
+
+    const createdInvites = await this.onetimeInviteRepository.count();
+    const acceptedInvites = await this.onetimeInviteRepository.count({
+      where: {
+        isValid: false,
+      },
+    });
+
+    const record = await this.dailyStatsRepository.create({
+      dayId,
+      date: now,
+      signedMembers: signedUsers,
+      suspendedMembers: suspendedUsers,
+      actionsCompleted: completionActivities,
+      invitesCreated: createdInvites,
+      invitesAccepted: acceptedInvites,
+    });
+    await this.dailyStatsRepository.save(record);
+  }
+
+  async getDailyStats(
+    startDate: string,
+    endDate: string,
+  ): Promise<DailyStatsRecord[]> {
+    return this.dailyStatsRepository.find({
+      where: {
+        date: Between(new Date(startDate), new Date(endDate)),
+      },
+    });
   }
 }

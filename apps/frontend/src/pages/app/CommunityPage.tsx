@@ -28,7 +28,7 @@ import CommunityActivityTab from "../../components/CommunityActivityTab";
 import { parseTimeInput } from "@alliance/shared/forms/timeUtils";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import FloatingChatPanel from "../../components/FloatingChatpanel";
-import { MessageCircleMore } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../../lib/config";
 import CommunityInvitesTabMember from "../../components/CommunityInvitesTabMember";
@@ -39,6 +39,7 @@ type Tab = "activity" | "members" | "invites" | "about" | "edit" | "resources";
 
 export enum FilterMode {
   All = "All members",
+  Completed = "Completed",
   NotYetCompleted = "Not yet completed",
 }
 
@@ -218,6 +219,9 @@ const CommunityPage = () => {
     [FilterMode.NotYetCompleted]: nonLeaderMembers.filter(
       (user) => !completedAllCurrentActions[user.id]
     ),
+    [FilterMode.Completed]: nonLeaderMembers.filter(
+      (user) => completedAllCurrentActions[user.id]
+    ),
   };
   const filteredSortedMembers = membersByFilterMode[filterMode].sort((a, b) => {
     // if leader, sort by preferred contact time in leader's time zone
@@ -250,11 +254,11 @@ const CommunityPage = () => {
   return (
     <TwoColumnLayout
       main={
-        <div className="p-5 xl:p-15 max-w-[900px] mx-auto">
+        <div className="p-5 xl:p-10 max-w-[900px] mx-auto">
           <div className="flex flex-col gap-y-2 my-8">
             <div className="flex flex-row gap-x-2 items-start justify-between">
               <div className="flex flex-col gap-y-4 mb-8">
-                <p className="font-serif font-semibold text-3xl md:text-5xl">
+                <p className="font-serif font-semibold text-3xl md:text-4xl">
                   {community.name}
                 </p>
                 <AppMarkdownWrapper markdownContent={community.description} />
@@ -268,7 +272,7 @@ const CommunityPage = () => {
                   Edit
                 </Button>
               ) : (
-                <Button color={ButtonColor.Light} onClick={handleLeave}>
+                <Button color={ButtonColor.White} onClick={handleLeave}>
                   Leave group
                 </Button>
               )}
@@ -446,13 +450,13 @@ const CommunityPage = () => {
             </Card>
           )}
           {!chatOpen && messagingEnabled && (
-            <div className="absolute bottom-5 right-7">
+            <div className="absolute bottom-5 right-7 bg-white hover:bg-zinc-100">
               <Button
                 color={ButtonColor.Outline}
                 onClick={() => setChatOpen(true)}
                 className="!px-3 !py-3"
               >
-                <MessageCircleMore size="20" />
+                <MessageSquare size="20" />
               </Button>
             </div>
           )}

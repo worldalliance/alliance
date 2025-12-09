@@ -14,7 +14,7 @@ const GovernancePage: React.FC = () => {
       <div className="flex flex-col md:flex-row mx-2 sm:mx-4 md:mx-12 pt-8 md:pt-32 pb-56 justify-center">
         <div className="flex flex-col max-w-[46rem]">
           <div className="mx-auto w-full mb-2">
-            <h2 className="font-serif !font-semibold !text-4xl md:!text-6xl text-black">
+            <h2 className="font-serif font-semibold !text-4xl text-black">
               Governance
             </h2>
           </div>
@@ -40,7 +40,7 @@ const GovernancePage: React.FC = () => {
               id="foundation"
               className=""
               markdownContent="
-# Membership
+## Membership
 Members of the Alliance are individuals that have signed and abide by the following membership contract. 
 
 "
@@ -56,7 +56,7 @@ This membership contract may be revised with signed members’ consent.
 
 Additional membership contracts can be offered at the office’s discretion.
 
-# Strategic office
+## Strategic office
 The office of the Alliance is the set of members responsible for ensuring the Alliance will fulfill its purpose given that members abide by their contracts.
 
 In particular, the office is responsible for:
@@ -68,7 +68,7 @@ In designing actions, the office aims to satisfy both:
 1. The collective interests of members, as can be reasonably determined through internal democratic processes.
 2. The collective interests of humanity, as can be reasonably determined using available data about global preferences.
 
-# Oversight
+## Oversight
 These procedures are in effect until they are modified by a governance review process that will require the participation of all members. The office will schedule this review process at its discretion.
 
 The Alliance meets its approval threshold when more than 75% of members indicate that they expect more than 80% of their contributions to the Alliance will result in outcomes they approve of.

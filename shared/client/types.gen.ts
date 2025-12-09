@@ -26,6 +26,15 @@ export type AccessToken = {
     access_token: string;
 };
 
+export type ContractEventType = 'signed' | 'suspended';
+
+export type ContractEvent = {
+    type: ContractEventType;
+    date: string;
+    automatic: boolean;
+    autoSuspendKey?: string;
+};
+
 export type NotificationChannel = 'text' | 'email' | 'push';
 
 export type NotificationPreference = 'all' | 'digest' | 'none';
@@ -73,13 +82,13 @@ export type Participant = {
 export type User = {
     id: number;
     name: string;
+    phoneNumber?: string;
     phoneNumberValidated: boolean;
     sentTextOptInMessageAt?: string;
     emailVerified: boolean;
     preferredReminderTime?: string;
     timeZone?: string;
-    contractDateSigned: string | null;
-    contractDateSuspended: string | null;
+    contractEvents: Array<ContractEvent>;
     preferredActionReminderChannel: NotificationChannel;
     emailNotifsEnabled: boolean;
     textNotifsEnabled: boolean;
@@ -101,6 +110,7 @@ export type User = {
     onboardingComplete: boolean;
     anonymous: boolean;
     communities: Array<Community>;
+    isCommunityLeader: boolean;
     invitedCommunities: Array<CommunityInvite>;
     formDataPreference: PublicFormResponseDefault;
     participants: Array<Participant>;
@@ -116,7 +126,7 @@ export type OnetimeInvite = {
     community?: Community;
 };
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_rejected' | 'community_invite_accepted' | 'community_invite_created';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_rejected' | 'community_invite_accepted' | 'community_invite_created' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
 
 /**
  * Type of the action
@@ -126,7 +136,7 @@ export type ActionTaskType = 'Funding' | 'Activity' | 'Ongoing';
 /**
  * New status of the action after the event
  */
-export type ActionStatus = 'draft' | 'upcoming' | 'gathering_commitments' | 'office_action' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
+export type ActionStatus = 'draft' | 'planned' | 'gathering_commitments' | 'office_action' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
 
 export type ActionEvent = {
     /**
@@ -220,6 +230,7 @@ export type ActionActivity = {
     dollar_amount?: number;
     editableContent?: EditableContent;
     likes: Array<User>;
+    likesCount: number;
     taskFormResponse?: FormResponse;
     declineReason?: string;
     isMoral?: boolean;
@@ -232,7 +243,7 @@ export type ReminderCohortType = 'all_uncompleted' | 'tag' | 'custom';
 
 export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder' | 'personalreminder';
 
-export type EmailType = 'verification' | 'password_reset' | 'partial_signup' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder';
+export type EmailType = 'verification' | 'password_reset' | 'partial_signup' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder' | 'contract_suspended';
 
 export type Mail = {
     id: number;
@@ -416,6 +427,7 @@ export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 
 export type ActionUpdate = {
     id: number;
     action: Action;
+    actionId: number;
     title: string;
     content: EditableContent;
     date: string;
@@ -497,10 +509,10 @@ export type Community = {
 export type UserDto = {
     id: number;
     name: string;
+    phoneNumber?: string;
     preferredReminderTime?: string;
     timeZone?: string;
-    contractDateSigned: string | null;
-    contractDateSuspended: string | null;
+    contractEvents: Array<ContractEvent>;
     preferredActionReminderChannel: NotificationChannel;
     emailNotifsEnabled: boolean;
     textNotifsEnabled: boolean;
@@ -521,7 +533,6 @@ export type UserDto = {
     formDataPreference: PublicFormResponseDefault;
     cityId?: number;
     email: string;
-    phoneNumber?: string;
     hasActiveContract: boolean;
 };
 
@@ -536,13 +547,14 @@ export type ResetPasswordDto = {
 
 export type ProfileDto = {
     id: number;
-    contractDateSigned: string | null;
     admin: boolean;
     staff: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
     displayName: string;
     hasActiveContract: boolean;
+    isCommunityLeader: boolean;
+    lastContractEvent?: ContractEvent;
 };
 
 export type OnboardingDto = {
@@ -570,39 +582,22 @@ export type UserAwayRangeDto = {
 };
 
 export type UpdateProfileDto = {
-    id?: number;
     name?: string;
-    phoneNumberValidated?: boolean;
-    sentTextOptInMessageAt?: string;
-    emailVerified?: boolean;
+    phoneNumber?: string;
     preferredReminderTime?: string;
     timeZone?: string;
-    contractDateSigned?: string | null;
-    contractDateSuspended?: string | null;
     preferredActionReminderChannel?: NotificationChannel;
     emailNotifsEnabled?: boolean;
     textNotifsEnabled?: boolean;
     pushNotifsEnabled?: boolean;
     shareEmailWithCommunityLead?: boolean;
     sharePhoneNumberWithCommunityLead?: boolean;
-    socialNotifsPreference?: NotificationPreference;
-    turnedOffAllNotifs?: boolean;
     forumDigestPreference?: ForumDigestPreference;
-    password?: string;
-    admin?: boolean;
-    staff?: boolean;
     profilePicture?: string | null;
     profileDescription?: string | null;
-    referralCode?: string | null;
-    stripeCustomerId?: string | null;
     isNotSignedUpPartialProfile?: boolean;
-    over18?: boolean | null;
-    onboardingComplete?: boolean;
     anonymous?: boolean;
-    communities?: Array<Community>;
-    invitedCommunities?: Array<CommunityInvite>;
     formDataPreference?: PublicFormResponseDefault;
-    participants?: Array<Participant>;
     cityId?: number;
 };
 
@@ -626,13 +621,14 @@ export type FriendStatusDto = {
 
 export type ProfileDtoWithFriends = {
     id: number;
-    contractDateSigned: string | null;
     admin: boolean;
     staff: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
     displayName: string;
     hasActiveContract: boolean;
+    isCommunityLeader: boolean;
+    lastContractEvent?: ContractEvent;
     friends: Array<ProfileDto>;
 };
 
@@ -886,9 +882,11 @@ export type ActionActivityDto = {
     type: ActionActivityType;
     actionId: number;
     createdAt: string;
+    likesCount: number;
     user: ProfileDto;
     actionName: string;
-    likes: Array<ProfileDto>;
+    likes?: Array<ProfileDto>;
+    likedByMe?: boolean;
     comments: Array<CommentDto>;
     formResponseOutput?: FormResponseOutputDto;
     editableContent: EditableContentDto;
@@ -940,8 +938,8 @@ export type ActionEventDto = {
 
 export type ActionUpdateDto = {
     id: number;
+    actionId: number;
     title: string;
-    content: EditableContent;
     date: string;
     visibleAt: string;
     shortNotifString: string;
@@ -949,6 +947,8 @@ export type ActionUpdateDto = {
     associatedEventId?: number;
     notifyType: ActionUpdateNotifyType;
     tag?: Tag;
+    content: EditableContentDto;
+    actionName?: string;
 };
 
 export type ActionDto = {
@@ -1849,7 +1849,7 @@ export type FormDto = {
     usedInAction?: ActionDto;
 };
 
-export type CustomValidatorType = 'UploadedPhoto' | 'SignedContract' | 'AddedProfileDescription' | 'RepliedToForumPost' | 'HasPhoneNumber' | 'IsPhoneNumberValid' | 'MemberTag' | 'MemberCommunity';
+export type CustomValidatorType = 'UploadedPhoto' | 'SignedContract' | 'AddedProfileDescription' | 'RepliedToForumPost' | 'HasPhoneNumber' | 'IsPhoneNumberValid' | 'MemberTag' | 'MemberCommunity' | 'AnyCommunity';
 
 export type CustomValidatorTypeDto = {
     name: string;
@@ -1885,6 +1885,17 @@ export type CreateCustomValidatorResponseDto = {
 export type TimeSpentForUserDto = {
     userId: number;
     timeSpent: number;
+};
+
+export type DailyStatsRecord = {
+    id: number;
+    dayId: string;
+    date: string;
+    signedMembers: number;
+    suspendedMembers: number;
+    actionsCompleted: number;
+    invitesCreated: number;
+    invitesAccepted: number;
 };
 
 export type AppHealthCheckData = {
@@ -3825,6 +3836,19 @@ export type ActionsDeleteUpdateResponses = {
     200: unknown;
 };
 
+export type ActionsAllUpdatesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/allUpdates';
+};
+
+export type ActionsAllUpdatesResponses = {
+    200: Array<ActionUpdateDto>;
+};
+
+export type ActionsAllUpdatesResponse = ActionsAllUpdatesResponses[keyof ActionsAllUpdatesResponses];
+
 export type ActionsSuitesData = {
     body?: never;
     path?: never;
@@ -4863,6 +4887,22 @@ export type AnalyticsGetTimeSpentPerUserTotalResponses = {
 };
 
 export type AnalyticsGetTimeSpentPerUserTotalResponse = AnalyticsGetTimeSpentPerUserTotalResponses[keyof AnalyticsGetTimeSpentPerUserTotalResponses];
+
+export type AnalyticsGetDailyStatsData = {
+    body?: never;
+    path?: never;
+    query: {
+        date: string;
+        endDate: string;
+    };
+    url: '/analytics/daily-stats';
+};
+
+export type AnalyticsGetDailyStatsResponses = {
+    200: Array<DailyStatsRecord>;
+};
+
+export type AnalyticsGetDailyStatsResponse = AnalyticsGetDailyStatsResponses[keyof AnalyticsGetDailyStatsResponses];
 
 export type ClientOptions = {
     baseUrl: string;

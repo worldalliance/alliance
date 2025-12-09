@@ -28,7 +28,7 @@ export interface TaskPanelContext
   extends Omit<ActionTaskPanelProps, "userRelation"> {
   userRelation: UserActionRelation | null;
   activities: ActionActivityDto[];
-  handleLikeActivity: (activityId: number) => Promise<void>;
+  handleLikeActivity: (activityId: number) => Promise<unknown>;
   setActivities: (activities: ActionActivityDto[]) => void;
 }
 

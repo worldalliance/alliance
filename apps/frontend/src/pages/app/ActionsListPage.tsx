@@ -15,7 +15,7 @@ export const filterActions = (
 ): ActionWithRelation[] => {
   switch (mode) {
     case FilterMode.All:
-      return actions;
+      return actions.filter((action) => action.status !== "planned");
     case FilterMode.GatheringCommitments:
       return actions.filter(
         (action) => action.status === "gathering_commitments"

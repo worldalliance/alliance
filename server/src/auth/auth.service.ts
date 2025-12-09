@@ -159,6 +159,8 @@ export class AuthService {
     const user = await this.usersService.findOneByEmail(email, [
       'communities',
       'invitedCommunities',
+      'contractEvents',
+      'city',
     ]);
     if (!user) {
       throw new UnauthorizedException();

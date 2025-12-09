@@ -7,6 +7,20 @@ import { useAuth } from "../lib/AuthContext";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../lib/config";
 import { useMessagingUnread } from "../pages/app/messages";
+import {
+  MessageSquare,
+  Search,
+  Bell,
+  ListTodo,
+  BookText,
+  Settings,
+  Users,
+  Globe,
+  Layers,
+  Menu,
+  FileText,
+  MessagesSquare,
+} from "lucide-react";
 
 export enum NavbarPage {
   Tasks = "Tasks",
@@ -14,7 +28,7 @@ export enum NavbarPage {
   CurrentActions = "Actions",
   Activity = "Activity",
   Forum = "Forum",
-  Priorities = "Priorities",
+  Information = "Information",
   Profile = "Profile",
   Contract = "Contract",
   Settings = "Settings",
@@ -30,12 +44,41 @@ export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.Search]: href("/search"),
   [NavbarPage.Activity]: href("/feed"),
   [NavbarPage.Forum]: href("/forum"),
-  [NavbarPage.Priorities]: href("/priorities"),
+  [NavbarPage.Information]: href("/information"),
   [NavbarPage.Profile]: href("/profile"),
   [NavbarPage.Contract]: href("/contract"),
   [NavbarPage.Settings]: href("/settings"),
   [NavbarPage.Groups]: href("/groups"),
   [NavbarPage.Messages]: href("/messages"),
+};
+
+const getIcon = (page: NavbarPage, size: number) => {
+  switch (page) {
+    case NavbarPage.Tasks:
+      return <ListTodo size={size} />;
+    case NavbarPage.Notifications:
+      return <Bell size={size} />;
+    case NavbarPage.CurrentActions:
+      return <Layers size={size} />;
+    case NavbarPage.Search:
+      return <Search size={size} />;
+    case NavbarPage.Messages:
+      return <MessageSquare size={size} />;
+    case NavbarPage.Information:
+      return <BookText size={size} />;
+    case NavbarPage.Forum:
+      return <MessagesSquare size={size} />;
+    case NavbarPage.Contract:
+      return <FileText size={size} />;
+    case NavbarPage.Settings:
+      return <Settings size={size} />;
+    case NavbarPage.Groups:
+      return <Users size={size} />;
+    case NavbarPage.Activity:
+      return <Globe size={size} />;
+    default:
+      return null;
+  }
 };
 
 const NavbarVertical: React.FC<{ todoActions: number }> = ({
@@ -76,6 +119,20 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
           page: NavbarPage.CurrentActions,
           destination: destinations[NavbarPage.CurrentActions],
         },
+
+        {
+          page: NavbarPage.Information,
+          destination: destinations[NavbarPage.Information],
+        },
+        {
+          page: NavbarPage.Search,
+          destination: destinations[NavbarPage.Search],
+        },
+      ],
+    },
+    {
+      title: "Social",
+      items: [
         {
           page: NavbarPage.Activity,
           destination: destinations[NavbarPage.Activity],
@@ -83,14 +140,6 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
         {
           page: NavbarPage.Forum,
           destination: destinations[NavbarPage.Forum],
-        },
-        {
-          page: NavbarPage.Priorities,
-          destination: destinations[NavbarPage.Priorities],
-        },
-        {
-          page: NavbarPage.Search,
-          destination: destinations[NavbarPage.Search],
         },
         ...(user?.communities.length ||
         user?.invitedCommunities.filter((invite) => invite.status === "pending")
@@ -194,19 +243,19 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
     <>
       {/* MOBILE TOP BAR */}
       <div
-        className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-zinc-200 fixed top-0 left-0 right-0 z-30"
+        className="md:hidden flex items-center justify-between px-3 py-4 bg-white border-b border-zinc-200 fixed top-0 left-0 right-0 z-30"
         ref={mobileNavRef}
       >
         <button
           onClick={() => setOpen(!open)}
-          className="p-2 text-xl rounded-md hover:bg-zinc-100 focus:outline-none"
+          className="text-xl rounded-md hover:bg-zinc-100 focus:outline-none"
           aria-label="Toggle navigation"
         >
-          <div className="relative text-4xl -mt-1">
-            ☰
+          <div className="relative text-4xl">
+            <Menu size={24} />
             {(unreadCount > 0 ||
               (todoActions > 0 && currentLocation !== NavbarPage.Tasks)) && (
-              <div className="absolute -right-0.5 top-1.5 w-2 h-2 bg-red-500 rounded-full"></div>
+              <div className="absolute -right-0.5 top-0 w-2 h-2 bg-red-500 rounded-full"></div>
             )}
           </div>
         </button>
@@ -253,7 +302,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
                       prefetch="render"
                       className={`hidden md:flex p-3 hover:bg-zinc-100 rounded items-center justify-between w-full`}
                     >
-                      <div className="text-zinc-700 flex items-center gap-x-3">
+                      <div className="text-zinc-700 flex items-center gap-x-2.5">
                         <ProfileImage pfp={profilePicture} size="small" />
                         <span>{profile?.displayName}</span>
                       </div>
@@ -270,7 +319,10 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
                       }`}
                       onClick={() => setOpen(false)}
                     >
-                      <p>{item.page}</p>
+                      <div className="flex items-center gap-x-2">
+                        {getIcon(item.page, 16)}
+                        <p>{item.page}</p>
+                      </div>
                       {!!unreadNotifsForPage[item.page] && (
                         <div
                           className={`font-semibold text-xs text-white ${

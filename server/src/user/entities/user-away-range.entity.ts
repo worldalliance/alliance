@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Allow, IsEnum, IsOptional } from 'class-validator';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -11,6 +10,10 @@ import {
 import { User } from './user.entity';
 import { Type } from 'class-transformer';
 import { Ty } from 'src/tasks/entities/type';
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from 'src/datasources/basecolumns';
 
 export enum UserAwayRangeReason {
   VACATION = 'vacation',
@@ -48,11 +51,17 @@ export class UserAwayRange {
   @Type(() => Date)
   endDate: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   @Allow()
   @ApiProperty()
   @Type(() => Date)
   createdAt: Date;
+
+  @UpdateDateColumnTz()
+  @Allow()
+  @ApiProperty()
+  @Type(() => Date)
+  updatedAt: Date;
 
   @Column({
     type: 'enum',

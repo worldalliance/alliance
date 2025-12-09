@@ -32,7 +32,7 @@ export type CreateEventFormProps = {
 
 const statusOptions: Record<ActionStatus, string> = {
   draft: "Draft",
-  upcoming: "Upcoming",
+  planned: "Planned",
   gathering_commitments: "Gathering Commitments",
   office_action: "Office Action",
   member_action: "Member Action",
@@ -51,7 +51,7 @@ const defaultEventNames: Record<ActionStatus, string> = {
   completed: "Action completed",
   failed: "Action failed",
   abandoned: "Action dropped",
-  upcoming: "Upcoming",
+  planned: "Planned",
 };
 
 const CreateEventForm = (props: CreateEventFormProps) => {

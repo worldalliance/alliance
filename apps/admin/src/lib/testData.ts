@@ -3,8 +3,6 @@ import { CreateActionDto, UserDto } from "@alliance/shared/client";
 export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   id: 0,
   name: "Preview User",
-  contractDateSigned: new Date().toISOString(),
-  contractDateSuspended: null,
   emailNotifsEnabled: false,
   textNotifsEnabled: false,
   pushNotifsEnabled: false,
@@ -25,6 +23,13 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   onboardingComplete: true,
   anonymous: false,
   email: "preview@example.com",
+  contractEvents: [
+    {
+      type: "signed",
+      date: new Date().toISOString(),
+      automatic: false,
+    },
+  ],
 };
 
 export const testActions: CreateActionDto[] = [

@@ -5,7 +5,6 @@ import {
   UserActionRelationStatus,
   UserDto,
 } from "@alliance/shared/client/types.gen";
-import { getApiUrl } from "@alliance/shared/lib/config";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
 import { Duration, formatDuration, intervalToDuration } from "date-fns";
@@ -105,30 +104,31 @@ const UserCard = ({
   const time = formatTime(timeSpent);
   const timeTotal = formatTime(timeSpentTotal);
 
-  const contractStatusColor = user.contractDateSuspended
-    ? "text-red-500"
-    : user.contractDateSigned
-    ? "text-green"
-    : "text-zinc-500";
+  const latestEvent = user.contractEvents?.length
+    ? user.contractEvents.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      )[0]
+    : null;
 
-  const contractStatus = user.contractDateSuspended
-    ? "Suspended"
-    : user.contractDateSigned
-    ? "Signed"
-    : "Not signed";
+  const contractStatusColor =
+    latestEvent === null
+      ? "text-zinc-500"
+      : latestEvent.type === "signed"
+      ? "text-green"
+      : "text-red-500";
+
+  const contractStatus =
+    latestEvent === null
+      ? "Not signed"
+      : latestEvent.type === "signed"
+      ? "Signed"
+      : "Suspended";
 
   return (
     <Card style={CardStyle.White} className="flex-1 text-sm">
       <div className="flex flex-row items-center justify-between gap-x-3 border-b pb-2 mb-2 border-zinc-200">
         <div className="flex flex-row items-center gap-x-3">
-          <ProfileImage
-            pfp={
-              user.profilePicture
-                ? getApiUrl() + "/images/" + user.profilePicture
-                : null
-            }
-            size="large"
-          />
+          <ProfileImage pfp={user.profilePicture} size="large" />
           <Link to={`/member/${user.id}`} className="text-base">
             {user.name}
           </Link>

@@ -98,6 +98,7 @@ export class MailService {
     [EmailType.MissedDeadline]: 'misseddeadline',
     [EmailType.MissedSecondDeadline]: 'missedseconddeadline',
     [EmailType.CustomActionReminder]: 'customactionreminder',
+    [EmailType.ContractSuspended]: 'contractsuspended',
   };
 
   async renderHtml(emailType: EmailType, context: ISendMailOptions['context']) {
@@ -215,6 +216,20 @@ export class MailService {
         name,
         email,
         url,
+      },
+    );
+  }
+
+  public async sendContractSuspendedEmail(
+    email: string,
+    name: string,
+  ): Promise<Mail> {
+    return this.sendMail(
+      email,
+      EmailType.ContractSuspended,
+      'Alliance contract suspended',
+      {
+        name,
       },
     );
   }

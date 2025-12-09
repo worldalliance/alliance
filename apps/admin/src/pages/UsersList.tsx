@@ -138,10 +138,12 @@ const UsersList: React.FC = () => {
     return USER_FILTER_MODES.reduce((acc, mode) => {
       acc[mode] = filteredByTags.filter((user) => {
         if (mode === "All") return true;
-        if (mode === "Signed")
-          return user.contractDateSigned && !user.contractDateSuspended;
-        if (mode === "Suspended") return user.contractDateSuspended;
-        return !user.contractDateSigned;
+        const lastEvent = user.contractEvents.sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        )[0];
+        if (mode === "Not signed") return user.contractEvents.length === 0;
+        if (mode === "Signed") return lastEvent?.type === "signed";
+        if (mode === "Suspended") return lastEvent?.type === "suspended";
       });
       return acc;
     }, {} as Record<UserFilterMode, UserDto[]>);

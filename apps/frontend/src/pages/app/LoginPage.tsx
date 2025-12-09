@@ -19,6 +19,7 @@ import FormInput from "@alliance/shared/ui/FormInput";
 import { useAuth } from "../../lib/AuthContext";
 import { isFeatureEnabled } from "../../lib/config";
 import { setRevalidate } from "../../applayout";
+import { EyeOff, Eye } from "lucide-react";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
@@ -126,7 +127,7 @@ const LoginPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <FormInput
-                  label="Email Address"
+                  label="Email address"
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
@@ -155,7 +156,7 @@ const LoginPage: React.FC = () => {
                   className="absolute right-0 top-1 text-sm text-green hover:underline"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? "Hide" : "Show"}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
 
@@ -166,7 +167,7 @@ const LoginPage: React.FC = () => {
                   type="submit"
                   disabled={loading}
                 >
-                  Log In
+                  Log in
                 </Button>
               </div>
             </form>
@@ -175,7 +176,10 @@ const LoginPage: React.FC = () => {
             <div className="mt-6 text-center">
               <p className="text-[11pt] text-zinc-600">
                 Don&apos;t have an account?{" "}
-                <Link to={href("/signup")} className="text-blue hover:underline">
+                <Link
+                  to={href("/signup")}
+                  className="text-blue hover:underline"
+                >
                   Register
                 </Link>
               </p>

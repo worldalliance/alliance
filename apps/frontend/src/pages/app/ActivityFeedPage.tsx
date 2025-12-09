@@ -1,4 +1,3 @@
-import { ActionActivityDto, userListFriends } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import { useCallback, useEffect, useRef, useState } from "react";
 import UserActivityCard from "../../components/UserActivityCard";
@@ -6,6 +5,7 @@ import { useAuth } from "../../lib/AuthContext";
 import useActivities, { ActivityList } from "./useActivities";
 import CenterLayout from "@alliance/shared/ui/CenterLayout";
 import { Link, href } from "react-router";
+import { ActionActivityDto } from "@alliance/shared/client";
 
 type Mode = "friends" | "everyone";
 
@@ -14,39 +14,66 @@ const ActivityFeedPage = () => {
   const [mode, setMode] = useState<Mode>("friends");
 
   const { user } = useAuth();
-  const { activities, handleLikeActivity, updateActivity, loading } =
-    useActivities({
-      list: ActivityList.Global,
-      comments: true,
-      limit: 50,
-    });
+  const {
+    activities,
+    handleLikeActivity: handleGlobalLikeActivity,
+    updateActivity: updateGlobalActivity,
+    loading,
+    setActivities: setGlobalActivities,
+  } = useActivities({
+    list: ActivityList.Global,
+    comments: true,
+    limit: 30,
+  });
 
-  const [myFriends, setMyFriends] = useState<number[]>([]);
+  const {
+    activities: friendActivities,
+    handleLikeActivity: handleLikeFriendActivity,
+    updateActivity: updateFriendActivity,
+    loading: loadingFriend,
+    setActivities: setFriendActivities,
+  } = useActivities({
+    list: ActivityList.Friends,
+    comments: true,
+    limit: 30,
+  });
 
-  useEffect(() => {
-    const loadMyFriends = async () => {
-      if (!user) return;
-      const friendsRes = await userListFriends({
-        path: { id: user.id },
-      });
-      if (!friendsRes.data) return;
-      setMyFriends(friendsRes.data.map((friend) => friend.id));
-    };
-    loadMyFriends();
-  }, [user]);
+  const handleLikeActivity = useCallback(
+    async (activityId: number, mode: Mode) => {
+      if (mode === "friends") {
+        const liked = await handleLikeFriendActivity(activityId);
+        if (liked) {
+          setGlobalActivities((prev) =>
+            prev.map((a) => (a.id === activityId ? liked : a))
+          );
+        }
+      } else {
+        const liked = await handleGlobalLikeActivity(activityId);
+        if (liked) {
+          setFriendActivities((prev) =>
+            prev.map((a) => (a.id === activityId ? liked : a))
+          );
+        }
+      }
+    },
+    [
+      handleLikeFriendActivity,
+      handleGlobalLikeActivity,
+      setGlobalActivities,
+      setFriendActivities,
+    ]
+  );
 
-  const [friendsActivities, setFriendsActivities] = useState<
-    ActionActivityDto[]
-  >([]);
-
-  useEffect(() => {
-    setFriendsActivities(
-      activities.filter(
-        (activity) =>
-          activity.user.id === user?.id || myFriends.includes(activity.user.id)
-      )
-    );
-  }, [activities, user, myFriends]);
+  const updateActivity = useCallback(
+    (activity: ActionActivityDto, mode: Mode) => {
+      if (mode === "friends") {
+        updateFriendActivity(activity);
+      } else {
+        updateGlobalActivity(activity);
+      }
+    },
+    [updateFriendActivity, updateGlobalActivity]
+  );
 
   const friendsRef = useRef<HTMLDivElement>(null);
   const everyoneRef = useRef<HTMLDivElement>(null);
@@ -77,7 +104,7 @@ const ActivityFeedPage = () => {
   }, [mode, updateHeight]);
 
   const renderActivityColumn = (mode: Mode) => {
-    const list = mode === "friends" ? friendsActivities : activities;
+    const list = mode === "friends" ? friendActivities : activities;
     return (
       <div className="w-1/2">
         <div
@@ -88,15 +115,17 @@ const ActivityFeedPage = () => {
             <UserActivityCard
               activity={activity}
               key={activity.id}
-              handleLike={handleLikeActivity}
-              onActivityUpdate={updateActivity}
+              handleLike={() => handleLikeActivity(activity.id, mode)}
+              onActivityUpdate={(updatedActivity) =>
+                updateActivity(updatedActivity, mode)
+              }
               canEdit={activity.user.id === user?.id}
             />
           ))}
           {list.length === 0 && (
             <div className="flex flex-col items-center justify-center h-64 text-zinc-500 p-8">
               <p>
-                {loading
+                {(mode === "friends" ? loadingFriend : loading)
                   ? "Loading..."
                   : `No ${mode === "friends" ? "friend " : ""}activity yet`}
               </p>
@@ -123,7 +152,7 @@ const ActivityFeedPage = () => {
                   : "!border-b-transparent hover:!border-b-zinc-200 text-zinc-500"
               }`}
             >
-              <p className="capitalize">{m}</p>
+              <p className="capitalize text-base">{m}</p>
             </Button>
           ))}
         </div>

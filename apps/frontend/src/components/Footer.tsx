@@ -7,16 +7,40 @@ interface FooterProps {
 
 const Footer: React.FC<FooterProps> = ({ className }) => {
   return (
-    <footer
-      className={`w-full bg-navy text-white border-t border-zinc-200 py-5 md:py-12 px-5 ${className}`}
-    >
+    <footer className={`w-full text-zinc-500  py-5 md:py-12 px-5 ${className}`}>
       <div className="container mx-auto flex flex-col">
-        <div className="flex flex-row items-start justify-between">
+        <div className="flex flex-col items-center justify-center">
+          <div className="flex flex-row flex-wrap gap-4 md:gap-6 text-sm sm:text-base">
+            <Link to={href("/people")} className="hover:underline">
+              People
+            </Link>
+            <Link to={href("/guide")} className="hover:underline">
+              Guide
+            </Link>
+            <Link to={href("/progress")} className="hover:underline">
+              Progress
+            </Link>
+            <Link to={href("/privacypolicy")} className="hover:underline">
+              Privacy
+            </Link>
+            <Link to={href("/terms")} className="hover:underline">
+              Terms
+            </Link>
+            <a href="mailto:contact@worldalliance.org" className="">
+              Contact
+            </a>
+          </div>
+          <p className="text-sm md:text-base mt-4">
+            &copy; {new Date().getFullYear()} Alliance Foundation
+          </p>
+        </div>
+
+        {/* <div className="flex flex-row items-start justify-between">
           <div className="mb-4 md:mb-0 h-full flex-1 flex flex-col items-between">
-            <p className="text-lg sm:text-2xl font-berlingske uppercase">
+            <p className="text-lg sm:text-xl font-berlingske uppercase">
               The Alliance
             </p>
-            <p className="text-sm md:text-base text-white/50 mt-4 sm:mt-32">
+            <p className="text-sm md:text-base mt-4 sm:mt-32">
               &copy; {new Date().getFullYear()} Alliance Foundation
             </p>
           </div>
@@ -43,27 +67,8 @@ const Footer: React.FC<FooterProps> = ({ className }) => {
                 Contact
               </a>
             </div>
-
-            {/* <div className="flex flex-col gap-2">
-              <p className="font-bold text-gray-800">Platform</p>
-              <Link to="/issues" className="text-gray-600 hover:text-black">
-                Issues
-              </Link>
-              <Link to="/forum" className="text-gray-600 hover:text-black">
-                Forum
-              </Link>
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="font-bold text-gray-800">About</p>
-              <Link to="/" className="text-gray-600 hover:text-black">
-                Mission
-              </Link>
-              <Link to="/" className="text-gray-600 hover:text-black">
-                Team
-              </Link>
-            </div> */}
           </div>
-        </div>
+        </div> */}
       </div>
     </footer>
   );

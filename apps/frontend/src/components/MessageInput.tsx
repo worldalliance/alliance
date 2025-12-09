@@ -1,6 +1,5 @@
 import {
   type ClipboardEvent,
-  type DragEvent,
   type KeyboardEvent,
   type Dispatch,
   type SetStateAction,
@@ -26,7 +25,10 @@ interface MessageInputProps {
   clearReplyingTo: () => void;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
   compact?: boolean;
+  existingConversation?: boolean;
 }
+
+const SPINNER_DELAY_MS = 150;
 
 const MessageInput = ({
   message,
@@ -39,11 +41,21 @@ const MessageInput = ({
   clearReplyingTo,
   inputRef,
   compact = false,
+  existingConversation = true,
 }: MessageInputProps) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const dragCounterRef = useRef(0);
+  const [showSpinner, setShowSpinner] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const canSend = message.trim().length > 0 || attachments.length > 0;
+
+  // Only show spinner after a short delay to avoid flicker
+  useEffect(() => {
+    if (isSending) {
+      const timer = setTimeout(() => setShowSpinner(true), SPINNER_DELAY_MS);
+      return () => clearTimeout(timer);
+    } else {
+      setShowSpinner(false);
+    }
+  }, [isSending]);
 
   const readImagesFromFiles = useCallback(async (files: File[]) => {
     const readers: Promise<string>[] = [];
@@ -68,12 +80,13 @@ const MessageInput = ({
         const base64s = await readImagesFromFiles(Array.from(files));
         if (base64s.length > 0) {
           setAttachments((prev) => [...prev, ...base64s]);
+          inputRef.current?.focus();
         }
       } catch (err) {
         console.error("Failed reading image file(s)", err);
       }
     },
-    [readImagesFromFiles, setAttachments]
+    [readImagesFromFiles, setAttachments, inputRef]
   );
 
   const handlePaste = useCallback(
@@ -107,35 +120,6 @@ const MessageInput = ({
     [handleFilesSelected]
   );
 
-  const onDragEnter = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current += 1;
-    setIsDragging(true);
-  };
-
-  const onDragOver = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const onDragLeave = (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current -= 1;
-    if (dragCounterRef.current <= 0) {
-      setIsDragging(false);
-    }
-  };
-
-  const onDrop = async (e: DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    dragCounterRef.current = 0;
-    await handleFilesSelected(e.dataTransfer?.files ?? null);
-  };
-
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -164,10 +148,6 @@ const MessageInput = ({
       className={`flex flex-col gap-y-3 bg-white pb-15 relative ${
         compact ? "px-4 md:pb-2" : "px-8  md:pb-4"
       }`}
-      onDragEnter={onDragEnter}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
     >
       {replyingTo && (
         <Card className="p-3 flex flex-row items-center justify-between">
@@ -215,11 +195,11 @@ const MessageInput = ({
         </div>
       )}
 
-      <div className="relative border border-zinc-200 rounded-md bg-gray-200/80 focus-within:ring-1 focus-within:ring-zinc-400">
+      <div className="relative border border-zinc-200 rounded-md bg-zinc-100 focus-within:ring-1 focus-within:ring-zinc-400">
         <textarea
           ref={inputRef}
           value={message}
-          autoFocus={!compact}
+          autoFocus={!compact && existingConversation}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
@@ -241,7 +221,7 @@ const MessageInput = ({
               }
             }}
           />
-          {isSending ? (
+          {showSpinner ? (
             <div className="pr-2">
               <Spinner size="small" />
             </div>
@@ -256,12 +236,6 @@ const MessageInput = ({
           )}
         </div>
       </div>
-      {isDragging && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded-md pointer-events-none">
-          <div className="text-white font-medium">Drop images to attach</div>
-        </div>
-      )}
-
       <div className="flex items-center justify-between gap-3 text-sm text-zinc-600 px-1"></div>
     </div>
   );

@@ -38,6 +38,12 @@ export class ActionUpdate {
   @ApiProperty({ type: () => Action })
   action: Ty<Action>;
 
+  @RelationId((update: ActionUpdate) => update.action)
+  @Type(() => Number)
+  @ApiProperty()
+  @IsNotEmpty()
+  actionId: number;
+
   @Column({ type: 'text' })
   @IsNotEmpty()
   @Allow()

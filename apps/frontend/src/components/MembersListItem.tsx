@@ -26,7 +26,11 @@ export default function MembersListItem({
             size="medium"
             className="mr-2"
           />
-          <UserDisplayName staff={profile.staff} underline={false}>
+          <UserDisplayName
+            staff={profile.staff}
+            grouplead={profile.isCommunityLeader}
+            underline={false}
+          >
             {profile.displayName}
           </UserDisplayName>
         </div>

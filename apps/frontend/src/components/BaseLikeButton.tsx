@@ -34,7 +34,7 @@ const BaseLikeButton = ({
 
   const sizeClass = {
     small: 16,
-    medium: 18,
+    medium: 19,
     large: 20,
   };
 
