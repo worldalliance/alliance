@@ -116,6 +116,359 @@ export type OnetimeInvite = {
     community?: Community;
 };
 
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_rejected' | 'community_invite_accepted' | 'community_invite_created';
+
+/**
+ * Type of the action
+ */
+export type ActionTaskType = 'Funding' | 'Activity' | 'Ongoing';
+
+/**
+ * New status of the action after the event
+ */
+export type ActionStatus = 'draft' | 'upcoming' | 'gathering_commitments' | 'office_action' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
+
+export type ActionEvent = {
+    /**
+     * Unique identifier for the action event
+     */
+    id: number;
+    /**
+     * Title of the event
+     */
+    title: string;
+    /**
+     * secondary text
+     */
+    description: string;
+    /**
+     * New status of the action after the event
+     */
+    newStatus: ActionStatus;
+    /**
+     * time of the event (for display)
+     */
+    date: string;
+    /**
+     * Timestamp when the event was last updated
+     */
+    updatedAt: string;
+    /**
+     * The action associated with this event
+     */
+    action: Action;
+    updates: Array<ActionUpdate>;
+    suiteManaged: boolean;
+};
+
+export type Tag = {
+    id: number;
+    users: Array<User>;
+    participatingIn: Array<Action>;
+    name: string;
+    description: string;
+    publicDisplayName?: string;
+    createdAt: string;
+    updatedAt: string;
+};
+
+/**
+ * Type of action activity
+ */
+export type ActionActivityType = 'user_joined' | 'user_completed' | 'user_declined' | 'user_wont_complete';
+
+export type EditableContent = {
+    /**
+     * Markdown or plain text body
+     */
+    body: string;
+    /**
+     * Image keys attached to the content
+     */
+    attachments: Array<string>;
+};
+
+export type FormResponse = {
+    id: number;
+    formId: number;
+    answers: {
+        [key: string]: unknown;
+    };
+    visibilityValidatorResults: {
+        [key: string]: unknown;
+    };
+    publicAnswers: {
+        [key: string]: unknown;
+    };
+    deviceType?: string;
+    user: User;
+    createdAt: string;
+    schemaSnapshot: {
+        [key: string]: unknown;
+    };
+};
+
+export type ActionActivity = {
+    id: number;
+    /**
+     * Type of action activity
+     */
+    type: ActionActivityType;
+    actionId: number;
+    userId: number;
+    createdAt: string;
+    dollar_amount?: number;
+    editableContent?: EditableContent;
+    likes: Array<User>;
+    taskFormResponse?: FormResponse;
+    declineReason?: string;
+    isMoral?: boolean;
+    outOfTime?: boolean;
+};
+
+export type ReminderGroupTimingMode = 'absolute' | 'from_deadline' | 'within_range' | 'within_relative_range' | 'event_launch';
+
+export type ReminderCohortType = 'all_uncompleted' | 'tag' | 'custom';
+
+export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder' | 'personalreminder';
+
+export type EmailType = 'verification' | 'password_reset' | 'partial_signup' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder';
+
+export type Mail = {
+    id: number;
+    sentMessageId?: string;
+    renderedHtml?: string;
+    to: string;
+    status: string;
+    emailType: EmailType;
+    createdAt: string;
+    cid?: string;
+    clickedLink: boolean;
+};
+
+export type Mms = {
+    id: number;
+    to: string;
+    from: string;
+    body: string;
+    status: {
+        [key: string]: unknown;
+    };
+    twilioSid: string;
+    errorCode?: number;
+    errorMessage?: string;
+    createdAt: string;
+    updatedAt: string;
+    cid?: string;
+    clickedLink: boolean;
+};
+
+export type ActionEventNotif = {
+    id: number;
+    type: ActionEventNotifType;
+    channel: NotificationChannel;
+    mail: Mail | null;
+    mms: Mms | null;
+    reminderGroup?: ReminderGroup;
+    /**
+     * Indicates whether the notification has been sent
+     */
+    sent: boolean;
+    idempotency_key?: string;
+    createdAt: string;
+};
+
+export type ReminderGroup = {
+    id: number;
+    name: string;
+    timingMode: ReminderGroupTimingMode;
+    actionSuite?: ActionSuite;
+    memberActionEvent: ActionEvent;
+    cohortType: ReminderCohortType;
+    userTag?: Tag;
+    users?: Array<User>;
+    emailMessage: string;
+    emailSubject: string;
+    textMessage: string;
+    notifications: Array<ActionEventNotif>;
+    send_range_start?: string;
+    send_range_end?: string;
+    sendAtAbsolute?: string;
+    sendAtSecondsFromDeadline?: number;
+    relative_range_start_seconds_from_deadline?: number;
+    relative_range_end_seconds_from_deadline?: number;
+    deadlineEvent?: ActionEvent;
+    useSuiteTaskCount: boolean;
+    allSent: boolean;
+};
+
+export type ActionSuite = {
+    id: number;
+    name: string;
+    actions: Array<Action>;
+    reminderGroups: Array<ReminderGroup>;
+    createdAt: string;
+    updatedAt: string;
+    events: Array<ActionEvent>;
+};
+
+export type Action = {
+    /**
+     * Unique identifier for the action
+     */
+    id: number;
+    /**
+     * Name of the action
+     */
+    name: string;
+    /**
+     * Category of the action
+     */
+    category: string;
+    /**
+     * Image URL for the action
+     */
+    image?: string;
+    /**
+     * Number of commitments needed to start the action
+     */
+    commitmentThreshold?: number;
+    /**
+     * Suggested donation amount (cents)
+     */
+    donationAmount?: number;
+    /**
+     * e.g. onboarding
+     */
+    commitmentless: boolean;
+    /**
+     * markdown page body
+     */
+    body: string;
+    /**
+     * markdown contents for activity task card (instructions)
+     */
+    taskContents?: string;
+    /**
+     * Short description shown in cards
+     */
+    shortDescription: string;
+    /**
+     * Time estimate in minutes
+     */
+    timeEstimate?: number;
+    /**
+     * Type of the action
+     */
+    type: ActionTaskType;
+    /**
+     * Form associated with the action
+     */
+    taskFormId?: number;
+    /**
+     * Timestamp when the action was created
+     */
+    createdAt: string;
+    /**
+     * Timestamp when the action was last updated
+     */
+    updatedAt: string;
+    /**
+     * Events associated with the action
+     */
+    events: Array<ActionEvent>;
+    participatingTags: Array<Tag>;
+    /**
+     * Whether to use a manual cohort for the action
+     */
+    useManualCohort: boolean;
+    manualCohortUsers?: Array<User>;
+    /**
+     * Whether to show the action to members who are not of participating groups
+     */
+    showToNonparticipating?: boolean;
+    usersJoined: number;
+    activities: Array<Array<ActionActivity>>;
+    status: ActionStatus;
+    /**
+     * Number of users who have completed the action
+     */
+    usersCompleted: number;
+    /**
+     * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
+     */
+    everyoneShouldComplete: boolean;
+    archived: boolean;
+    updates: Array<ActionUpdate>;
+    suite?: ActionSuite;
+    /**
+     * Priority of the action
+     */
+    priority: number;
+    /**
+     * Prevent completion of the action (for old actions)
+     */
+    preventCompletion: boolean;
+};
+
+export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 'tag';
+
+export type ActionUpdate = {
+    id: number;
+    action: Action;
+    title: string;
+    content: EditableContent;
+    date: string;
+    visibleAt: string;
+    shortNotifString: string;
+    associatedEvent?: ActionEvent;
+    associatedEventId?: number;
+    notifyType: ActionUpdateNotifyType;
+    notifs: Array<Notification>;
+    tag?: Tag;
+};
+
+export type CommentParentObject = 'post' | 'action' | 'activity';
+
+export type Comment = {
+    id: number;
+    editableContent: EditableContent;
+    author: {
+        [key: string]: unknown;
+    };
+    authorId: number;
+    parentObjectType: CommentParentObject;
+    parentObjectId: number;
+    deleted: boolean;
+    createdAt: string;
+    updatedAt: string;
+    parent?: Comment;
+    parentId?: number;
+    children?: Array<Comment>;
+    pinned: boolean;
+    likes: Array<User>;
+    likesCount: number;
+};
+
+export type Notification = {
+    id: number;
+    category: NotificationCategory;
+    message: string;
+    targetContent?: string;
+    webAppLocation: string | null;
+    mobileAppLocation: string | null;
+    read: boolean;
+    cleared: boolean;
+    createdAt: string;
+    updatedAt: string;
+    sendTime: string;
+    groupingKey?: string;
+    groupingCount?: number;
+    actionUpdate?: ActionUpdate;
+    comment?: Comment;
+    onetimeInviteRequest?: OnetimeInviteRequest;
+};
+
 export type OnetimeInviteRequest = {
     id: number;
     invitee: string;
@@ -123,6 +476,7 @@ export type OnetimeInviteRequest = {
     invitingUser: User;
     createdAt: string;
     community: Community;
+    notifs: Array<Notification>;
 };
 
 export type Community = {
@@ -476,13 +830,6 @@ export type CreateMessageDto = {
     replyToId?: string;
 };
 
-/**
- * Type of action activity
- */
-export type ActionActivityType = 'user_joined' | 'user_completed' | 'user_declined' | 'user_wont_complete';
-
-export type CommentParentObject = 'post' | 'action' | 'activity';
-
 export type EditableContentDto = {
     /**
      * Markdown or plain text body
@@ -561,351 +908,6 @@ export type UserActionRelation = 'joined' | 'completed' | 'none' | 'declined';
 
 export type UserActionRelationDto = {
     relation: UserActionRelation;
-};
-
-/**
- * Type of the action
- */
-export type ActionTaskType = 'Funding' | 'Activity' | 'Ongoing';
-
-/**
- * New status of the action after the event
- */
-export type ActionStatus = 'draft' | 'upcoming' | 'gathering_commitments' | 'office_action' | 'member_action' | 'resolution' | 'completed' | 'failed' | 'abandoned';
-
-export type EditableContent = {
-    /**
-     * Markdown or plain text body
-     */
-    body: string;
-    /**
-     * Image keys attached to the content
-     */
-    attachments: Array<string>;
-};
-
-export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 'tag';
-
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_rejected' | 'community_invite_accepted' | 'community_invite_created';
-
-export type Comment = {
-    id: number;
-    editableContent: EditableContent;
-    author: {
-        [key: string]: unknown;
-    };
-    authorId: number;
-    parentObjectType: CommentParentObject;
-    parentObjectId: number;
-    deleted: boolean;
-    createdAt: string;
-    updatedAt: string;
-    parent?: Comment;
-    parentId?: number;
-    children?: Array<Comment>;
-    pinned: boolean;
-    likes: Array<User>;
-    likesCount: number;
-};
-
-export type Notification = {
-    id: number;
-    category: NotificationCategory;
-    message: string;
-    targetContent?: string;
-    webAppLocation: string | null;
-    mobileAppLocation: string | null;
-    read: boolean;
-    cleared: boolean;
-    createdAt: string;
-    updatedAt: string;
-    sendTime: string;
-    groupingKey?: string;
-    groupingCount?: number;
-    actionUpdate?: ActionUpdate;
-    comment?: Comment;
-};
-
-export type ActionUpdate = {
-    id: number;
-    action: Action;
-    title: string;
-    content: EditableContent;
-    date: string;
-    visibleAt: string;
-    shortNotifString: string;
-    associatedEvent?: ActionEvent;
-    associatedEventId?: number;
-    notifyType: ActionUpdateNotifyType;
-    notifs: Array<Notification>;
-    tag?: Tag;
-};
-
-export type ActionEvent = {
-    /**
-     * Unique identifier for the action event
-     */
-    id: number;
-    /**
-     * Title of the event
-     */
-    title: string;
-    /**
-     * secondary text
-     */
-    description: string;
-    /**
-     * New status of the action after the event
-     */
-    newStatus: ActionStatus;
-    /**
-     * time of the event (for display)
-     */
-    date: string;
-    /**
-     * Timestamp when the event was last updated
-     */
-    updatedAt: string;
-    /**
-     * The action associated with this event
-     */
-    action: Action;
-    updates: Array<ActionUpdate>;
-    suiteManaged: boolean;
-};
-
-export type FormResponse = {
-    id: number;
-    formId: number;
-    answers: {
-        [key: string]: unknown;
-    };
-    visibilityValidatorResults: {
-        [key: string]: unknown;
-    };
-    publicAnswers: {
-        [key: string]: unknown;
-    };
-    deviceType?: string;
-    user: User;
-    createdAt: string;
-    schemaSnapshot: {
-        [key: string]: unknown;
-    };
-};
-
-export type ActionActivity = {
-    id: number;
-    /**
-     * Type of action activity
-     */
-    type: ActionActivityType;
-    actionId: number;
-    userId: number;
-    createdAt: string;
-    dollar_amount?: number;
-    editableContent?: EditableContent;
-    likes: Array<User>;
-    taskFormResponse?: FormResponse;
-    declineReason?: string;
-    isMoral?: boolean;
-    outOfTime?: boolean;
-};
-
-export type ReminderGroupTimingMode = 'absolute' | 'from_deadline' | 'within_range' | 'within_relative_range' | 'event_launch';
-
-export type ReminderCohortType = 'all_uncompleted' | 'tag' | 'custom';
-
-export type ActionEventNotifType = 'announcement' | 'misseddeadline' | 'reminder' | 'personalreminder';
-
-export type EmailType = 'verification' | 'password_reset' | 'partial_signup' | 'welcome' | 'other' | 'commitment' | 'memberaction' | 'commitmentreminder' | 'memberactionreminder' | 'forum_digest' | 'missed_deadline' | 'missed_second_deadline' | 'custom_action_reminder';
-
-export type Mail = {
-    id: number;
-    sentMessageId?: string;
-    renderedHtml?: string;
-    to: string;
-    status: string;
-    emailType: EmailType;
-    createdAt: string;
-    cid?: string;
-    clickedLink: boolean;
-};
-
-export type Mms = {
-    id: number;
-    to: string;
-    from: string;
-    body: string;
-    status: {
-        [key: string]: unknown;
-    };
-    twilioSid: string;
-    errorCode?: number;
-    errorMessage?: string;
-    createdAt: string;
-    updatedAt: string;
-    cid?: string;
-    clickedLink: boolean;
-};
-
-export type ActionEventNotif = {
-    id: number;
-    type: ActionEventNotifType;
-    channel: NotificationChannel;
-    mail: Mail | null;
-    mms: Mms | null;
-    reminderGroup?: ReminderGroup;
-    /**
-     * Indicates whether the notification has been sent
-     */
-    sent: boolean;
-    idempotency_key?: string;
-    createdAt: string;
-};
-
-export type ReminderGroup = {
-    id: number;
-    name: string;
-    timingMode: ReminderGroupTimingMode;
-    actionSuite?: ActionSuite;
-    memberActionEvent: ActionEvent;
-    cohortType: ReminderCohortType;
-    userTag?: Tag;
-    users?: Array<User>;
-    emailMessage: string;
-    emailSubject: string;
-    textMessage: string;
-    notifications: Array<ActionEventNotif>;
-    send_range_start?: string;
-    send_range_end?: string;
-    sendAtAbsolute?: string;
-    sendAtSecondsFromDeadline?: number;
-    relative_range_start_seconds_from_deadline?: number;
-    relative_range_end_seconds_from_deadline?: number;
-    deadlineEvent?: ActionEvent;
-    useSuiteTaskCount: boolean;
-    allSent: boolean;
-};
-
-export type ActionSuite = {
-    id: number;
-    name: string;
-    actions: Array<Action>;
-    reminderGroups: Array<ReminderGroup>;
-    createdAt: string;
-    updatedAt: string;
-    events: Array<ActionEvent>;
-};
-
-export type Action = {
-    /**
-     * Unique identifier for the action
-     */
-    id: number;
-    /**
-     * Name of the action
-     */
-    name: string;
-    /**
-     * Category of the action
-     */
-    category: string;
-    /**
-     * Image URL for the action
-     */
-    image?: string;
-    /**
-     * Number of commitments needed to start the action
-     */
-    commitmentThreshold?: number;
-    /**
-     * Suggested donation amount (cents)
-     */
-    donationAmount?: number;
-    /**
-     * e.g. onboarding
-     */
-    commitmentless: boolean;
-    /**
-     * markdown page body
-     */
-    body: string;
-    /**
-     * markdown contents for activity task card (instructions)
-     */
-    taskContents?: string;
-    /**
-     * Short description shown in cards
-     */
-    shortDescription: string;
-    /**
-     * Time estimate in minutes
-     */
-    timeEstimate?: number;
-    /**
-     * Type of the action
-     */
-    type: ActionTaskType;
-    /**
-     * Form associated with the action
-     */
-    taskFormId?: number;
-    /**
-     * Timestamp when the action was created
-     */
-    createdAt: string;
-    /**
-     * Timestamp when the action was last updated
-     */
-    updatedAt: string;
-    /**
-     * Events associated with the action
-     */
-    events: Array<ActionEvent>;
-    participatingTags: Array<Tag>;
-    /**
-     * Whether to use a manual cohort for the action
-     */
-    useManualCohort: boolean;
-    manualCohortUsers?: Array<User>;
-    /**
-     * Whether to show the action to members who are not of participating groups
-     */
-    showToNonparticipating?: boolean;
-    usersJoined: number;
-    activities: Array<Array<ActionActivity>>;
-    status: ActionStatus;
-    /**
-     * Number of users who have completed the action
-     */
-    usersCompleted: number;
-    /**
-     * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
-     */
-    everyoneShouldComplete: boolean;
-    archived: boolean;
-    updates: Array<ActionUpdate>;
-    suite?: ActionSuite;
-    /**
-     * Priority of the action
-     */
-    priority: number;
-    /**
-     * Prevent completion of the action (for old actions)
-     */
-    preventCompletion: boolean;
-};
-
-export type Tag = {
-    id: number;
-    users: Array<User>;
-    participatingIn: Array<Action>;
-    name: string;
-    description: string;
-    publicDisplayName?: string;
-    createdAt: string;
-    updatedAt: string;
 };
 
 export type ActionEventDto = {

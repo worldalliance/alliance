@@ -3,6 +3,7 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from './user.entity';
@@ -12,6 +13,7 @@ import { Allow, IsOptional } from 'class-validator';
 import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 import { Community } from './community.entity';
 import { Ty } from 'src/tasks/entities/type';
+import { Notification } from 'src/notifs/entities/notification.entity';
 
 @Entity()
 export class OnetimeInviteRequest {
@@ -52,4 +54,10 @@ export class OnetimeInviteRequest {
   @JoinColumn({ name: 'communityId' })
   @Allow()
   community: Ty<Community>;
+
+  @OneToMany(() => Notification, (notif) => notif.onetimeInviteRequest)
+  @Type(() => Notification)
+  @ApiProperty({ type: () => Notification, isArray: true })
+  @Allow()
+  notifs: Ty<Notification>[];
 }

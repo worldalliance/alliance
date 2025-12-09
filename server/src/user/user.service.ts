@@ -1020,13 +1020,13 @@ export class UserService {
         ? user
         : await this.findOneOrFail(invitingUserId);
 
-    const request = this.onetimeInviteRequestRepository.create({
-      ...rest,
-      invitingUser,
-      community,
-    });
-    const savedRequest =
-      await this.onetimeInviteRequestRepository.save(request);
+    const savedRequest = await this.onetimeInviteRequestRepository.save(
+      this.onetimeInviteRequestRepository.create({
+        ...rest,
+        invitingUser,
+        community,
+      }),
+    );
 
     sendNotificationToLeaders: {
       const communityWithLeaders = await this.communityRepository.findOne({
@@ -1044,6 +1044,7 @@ export class UserService {
           message: `${invitingUser.name} has requested a new member to join the Alliance`,
           webAppLocation: groupInvitesUrl(),
           associatedUsers: [invitingUser],
+          onetimeInviteRequest: savedRequest,
         });
         this.notifRepository.save(notif);
       }
@@ -1103,6 +1104,7 @@ export class UserService {
   ): Promise<OnetimeInviteRequest[]> {
     return this.onetimeInviteRequestRepository.find({
       where: { community: { id: communityId } },
+      relations: ['invitingUser', 'community'],
     });
   }
 

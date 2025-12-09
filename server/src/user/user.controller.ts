@@ -640,7 +640,7 @@ export class UserController {
     @Param('communityId', ParseIntPipe) communityId: number,
   ) {
     return (await this.userService.findOnetimeInviteRequests(communityId)).map(
-      (invite) => new OnetimeInviteRequestDto(invite),
+      (request) => new OnetimeInviteRequestDto(request),
     );
   }
 
