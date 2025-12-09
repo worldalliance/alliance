@@ -379,6 +379,11 @@ const CommunityInvitesTabLeader = ({
                     <OneTimeInviteListItem
                       key={entry.data.id}
                       invite={entry.data}
+                      selfInvited={
+                        !user ||
+                        !entry.data.invitingUser ||
+                        entry.data.invitingUser.id === user.id
+                      }
                       onDelete={handleDeleteInvite}
                       onCopy={copyToClipboard}
                     />

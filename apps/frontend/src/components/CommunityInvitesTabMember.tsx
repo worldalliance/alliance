@@ -202,6 +202,7 @@ const CommunityInvitesTabMember = ({
               <OneTimeInviteListItem
                 key={invite.id}
                 invite={invite}
+                selfInvited={true}
                 onCopy={copyToClipboard}
                 onDelete={handleDeleteInvite}
               />

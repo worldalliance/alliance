@@ -40,8 +40,8 @@ const OneTimeInviteRequestListItem = ({
         key={request.id}
         className="flex flex-row gap-x-2 justify-between items-center"
       >
-        {(type === "leader_rejected" || type === "leader_pending") && (
-          <div className="flex break-words items-center">
+        <div className="flex flex-row gap-x-2 items-center">
+          {(type === "leader_rejected" || type === "leader_pending") && (
             <Link
               to={href("/member/:id", {
                 id: request.invitingUser.id.toString(),
@@ -49,14 +49,28 @@ const OneTimeInviteRequestListItem = ({
               className="flex flex-2 items-center hover:underline gap-x-3"
             >
               <ProfileImage pfp={request.invitingUser.profilePicture} />
-              <p>{request.invitingUser.displayName}</p>
             </Link>
-            <span>{`'s request for: ${request.invitee}`}</span>
-          </div>
-        )}
-        {type === "member" && (
-          <div className="break-words">{request.invitee}</div>
-        )}
+          )}
+          <span className="break-words">
+            {(type === "leader_rejected" || type === "leader_pending") && (
+              <>
+                <Link
+                  to={href("/member/:id", {
+                    id: request.invitingUser.id.toString(),
+                  })}
+                  className="hover:underline"
+                >
+                  {request.invitingUser.displayName}
+                </Link>
+                {" would like to invite "}
+                {request.invitee}
+              </>
+            )}
+            {type === "member" && (
+              <div className="break-words">{request.invitee}</div>
+            )}
+          </span>
+        </div>
 
         <div className="flex space-x-2 -my-1">
           {type === "leader_rejected" && (

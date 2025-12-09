@@ -1,14 +1,18 @@
 import { OnetimeInviteDto } from "@alliance/shared/client";
 import CopyIcon from "@alliance/shared/ui/icons/CopyIcon";
 import DeleteIcon from "@alliance/shared/ui/icons/DeleteIcon";
+import ProfileImage from "@alliance/shared/ui/ProfileImage";
+import { href, Link } from "react-router";
 
 export interface OneTimeInviteListItemProps {
+  selfInvited: boolean;
   invite: OnetimeInviteDto;
   onDelete: (inviteId: number) => void;
   onCopy: (code: string) => void;
 }
 
 const OneTimeInviteListItem = ({
+  selfInvited,
   invite,
   onDelete,
   onCopy,
@@ -18,7 +22,36 @@ const OneTimeInviteListItem = ({
       key={invite.id}
       className="flex flex-row gap-x-2 p-4 justify-between items-center"
     >
-      <p>{invite.invitee}</p>
+      <div className="gap-x-2 flex flex-row items-center">
+        {!selfInvited && invite.invitingUser && (
+          <Link
+            to={href("/member/:id", {
+              id: invite.invitingUser.id.toString(),
+            })}
+            className="hover:underline gap-x-3"
+          >
+            <ProfileImage pfp={invite.invitingUser.profilePicture} />
+          </Link>
+        )}
+
+        <span className="">
+          {!selfInvited && invite.invitingUser && (
+            <>
+              <Link
+                to={href("/member/:id", {
+                  id: invite.invitingUser.id.toString(),
+                })}
+                className="items-center hover:underline gap-x-3"
+              >
+                <span>{invite.invitingUser.displayName}</span>
+              </Link>
+              <span>{" invited "}</span>
+            </>
+          )}
+          {invite.invitee}
+        </span>
+      </div>
+
       <div className="flex flex-row gap-3 items-center">
         <p className="text-gray-500">{invite.code}</p>
         {invite.isValid ? (
