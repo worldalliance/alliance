@@ -1154,6 +1154,7 @@ export class UserService {
   async findOnetimeInvites(communityId: number): Promise<OnetimeInvite[]> {
     return this.onetimeInviteRepository.find({
       where: { community: { id: communityId } },
+      relations: ['invitingUser'],
     });
   }
 
@@ -1181,6 +1182,7 @@ export class UserService {
   ): Promise<OnetimeInviteRequest[]> {
     return this.onetimeInviteRequestRepository.find({
       where: { invitingUser: { id: userId }, community: { id: communityId } },
+      relations: ['invitingUser'],
     });
   }
 

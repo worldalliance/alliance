@@ -674,10 +674,10 @@ export class UserController {
     @Request() req: JwtRequest,
     @Param('communityId', ParseIntPipe) communityId: number,
   ) {
-    return this.userService.findOnetimeInviteRequestsByRequester(
+    return (await this.userService.findOnetimeInviteRequestsByRequester(
       req.user.sub,
       communityId,
-    );
+    )).map((request) => new OnetimeInviteRequestDto(request));
   }
 
   @Get('myCommunity')

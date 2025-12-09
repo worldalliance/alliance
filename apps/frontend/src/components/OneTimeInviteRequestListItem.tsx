@@ -1,6 +1,8 @@
 import { OnetimeInviteRequestDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import DeleteIcon from "@alliance/shared/ui/icons/DeleteIcon";
+import ProfileImage from "@alliance/shared/ui/ProfileImage";
+import { href, Link } from "react-router";
 
 export type OneTimeInviteRequestListItemProps = {
   request: OnetimeInviteRequestDto;
@@ -38,30 +40,48 @@ const OneTimeInviteRequestListItem = ({
         key={request.id}
         className="flex flex-row gap-x-2 justify-between items-center"
       >
-        <div>
-          <p className="break-words">{request.invitee}</p>
-        </div>
+        {(type === "leader_rejected" || type === "leader_pending") && (
+          <div className="flex break-words items-center">
+            <Link
+              to={href("/member/:id", {
+                id: request.invitingUser.id.toString(),
+              })}
+              className="flex flex-2 items-center hover:underline gap-x-3"
+            >
+              <ProfileImage pfp={request.invitingUser.profilePicture} />
+              <p>{request.invitingUser.displayName}</p>
+            </Link>
+            <span>{`'s request for: ${request.invitee}`}</span>
+          </div>
+        )}
+        {type === "member" && (
+          <div className="break-words">{request.invitee}</div>
+        )}
 
         <div className="flex space-x-2 -my-1">
-          {(type === "leader_pending" || type === "leader_rejected") && (
+          {type === "leader_rejected" && (
             <Button
               onClick={() => onApprove(request.id)}
-              color={
-                type === "leader_pending"
-                  ? ButtonColor.Green
-                  : ButtonColor.White
-              }
+              color={ButtonColor.White}
             >
               Approve
             </Button>
           )}
           {type === "leader_pending" && (
-            <Button
-              onClick={() => onReject(request.id)}
-              color={ButtonColor.White}
-            >
-              Reject
-            </Button>
+            <>
+              <Button
+                onClick={() => onApprove(request.id)}
+                color={ButtonColor.Green}
+              >
+                Approve
+              </Button>
+              <Button
+                onClick={() => onReject(request.id)}
+                color={ButtonColor.White}
+              >
+                Reject
+              </Button>
+            </>
           )}
         </div>
 
