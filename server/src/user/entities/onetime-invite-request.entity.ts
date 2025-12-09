@@ -15,6 +15,12 @@ import { Community } from './community.entity';
 import { Ty } from 'src/tasks/entities/type';
 import { Notification } from 'src/notifs/entities/notification.entity';
 
+export enum OnetimeInviteRequestStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
 @Entity()
 export class OnetimeInviteRequest {
   @PrimaryGeneratedColumn()
@@ -60,4 +66,16 @@ export class OnetimeInviteRequest {
   @ApiProperty({ type: () => Notification, isArray: true })
   @Allow()
   notifs: Ty<Notification>[];
+
+  @Column({
+    type: 'enum',
+    enum: OnetimeInviteRequestStatus,
+    default: OnetimeInviteRequestStatus.PENDING,
+  })
+  @ApiProperty({
+    enum: OnetimeInviteRequestStatus,
+    enumName: 'OnetimeInviteRequestStatus',
+  })
+  @Allow()
+  status: OnetimeInviteRequestStatus;
 }

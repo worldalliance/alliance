@@ -532,6 +532,29 @@ export class UserController {
     return this.userService.createOnetimeInviteRequest(body, req.user.sub);
   }
 
+  @Post('onetimeInviteRequest/:requestId/approve')
+  @UseGuards(CommunityLeaderGuard)
+  @ApiOkResponse({ type: OnetimeInviteDto })
+  async approveOnetimeInviteRequest(
+    @Param('requestId', ParseIntPipe) requestId: number,
+    @Request() req: JwtRequest,
+  ) {
+    return this.userService.approveOnetimeInviteRequest(
+      requestId,
+      req.user.sub,
+    );
+  }
+
+  @Post('onetimeInviteRequest/:requestId/reject')
+  @UseGuards(CommunityLeaderGuard)
+  @ApiOkResponse()
+  async rejectOnetimeInviteRequest(
+    @Param('requestId', ParseIntPipe) requestId: number,
+    @Request() req: JwtRequest,
+  ) {
+    return this.userService.rejectOnetimeInviteRequest(requestId, req.user.sub);
+  }
+
   @Post('createOnetimeInvite')
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse({ type: OnetimeInviteDto })

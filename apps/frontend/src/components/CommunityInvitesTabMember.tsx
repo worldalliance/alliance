@@ -1,5 +1,5 @@
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import { useAuth } from "../lib/AuthContext";
 import {
@@ -81,6 +81,14 @@ const CommunityInvitesTabMember = ({
   requests.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+  const pendingRequests = useMemo(
+    () => requests.filter((request) => request.status === "pending"),
+    [requests]
+  );
+  const rejectedRequests = useMemo(
+    () => requests.filter((request) => request.status === "rejected"),
+    [requests]
+  );
 
   return (
     <div className="flex flex-col gap-y-8 py-4">
@@ -138,15 +146,31 @@ const CommunityInvitesTabMember = ({
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </div>
 
-      {requests.length > 0 && (
+      {pendingRequests.length > 0 && (
         <div className="flex flex-col gap-y-2">
           <p className="font-semibold text-xl">Pending requests</p>
           <List>
-            {requests.map((request) => (
+            {pendingRequests.map((request) => (
               <OneTimeInviteRequestListItem
                 key={request.id}
+                type={"member"}
                 request={request}
-                isLeader={false}
+                onDelete={handleDeleteRequest}
+              />
+            ))}
+          </List>
+        </div>
+      )}
+
+      {rejectedRequests.length > 0 && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-semibold text-xl">Rejected requests</p>
+          <List>
+            {rejectedRequests.map((request) => (
+              <OneTimeInviteRequestListItem
+                key={request.id}
+                type={"member"}
+                request={request}
                 onDelete={handleDeleteRequest}
               />
             ))}

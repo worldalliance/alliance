@@ -49,7 +49,10 @@ import {
 } from './entities/community-invite.entity';
 import { ConversationService } from 'src/messaging/conversation.service';
 import { RelationString } from 'src/tasks/entities/type';
-import { OnetimeInviteRequest } from './entities/onetime-invite-request.entity';
+import {
+  OnetimeInviteRequest,
+  OnetimeInviteRequestStatus,
+} from './entities/onetime-invite-request.entity';
 
 const defaultTimeZone = 'America/Los_Angeles';
 const communityDefaultRelations: readonly RelationString<Community>[] = [
@@ -1051,6 +1054,70 @@ export class UserService {
     }
 
     return savedRequest;
+  }
+
+  async approveOnetimeInviteRequest(
+    requestId: number,
+    userId: number,
+  ): Promise<OnetimeInvite> {
+    const user = await this.findOneOrFail(userId, ['leaderOf']);
+    const isAdmin = user.admin;
+
+    const request = await this.onetimeInviteRequestRepository.findOneOrFail({
+      where: { id: requestId },
+      relations: ['invitingUser', 'community'],
+    });
+
+    if (request.status === 'approved') {
+      throw new BadRequestException('Request already approved');
+    }
+
+    const community: Community = request.community;
+    if (!isAdmin && !user.leaderOf.some((c) => c.id === community.id)) {
+      throw new UnauthorizedException(
+        `User is not a leader of community ${community.id}`,
+      );
+    }
+
+    request.status = OnetimeInviteRequestStatus.APPROVED;
+    await this.onetimeInviteRequestRepository.save(request);
+
+    const code = Math.random().toString(36).substring(2, 15);
+
+    const invite = this.onetimeInviteRepository.create({
+      ...request,
+      code,
+    });
+    return await this.onetimeInviteRepository.save(invite);
+  }
+
+  async rejectOnetimeInviteRequest(
+    requestId: number,
+    userId: number,
+  ): Promise<void> {
+    const user = await this.findOneOrFail(userId, ['leaderOf']);
+    const isAdmin = user.admin;
+
+    const request = await this.onetimeInviteRequestRepository.findOneOrFail({
+      where: { id: requestId },
+      relations: ['invitingUser', 'community'],
+    });
+
+    if (request.status !== 'pending') {
+      throw new BadRequestException(
+        `Request has already been ${request.status}`,
+      );
+    }
+
+    const community: Community = request.community;
+    if (!isAdmin && !user.leaderOf.some((c) => c.id === community.id)) {
+      throw new UnauthorizedException(
+        `User is not a leader of community ${community.id}`,
+      );
+    }
+
+    request.status = OnetimeInviteRequestStatus.REJECTED;
+    await this.onetimeInviteRequestRepository.save(request);
   }
 
   async deleteCommunityInvite(inviteId: number, userId: number): Promise<void> {

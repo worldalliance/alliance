@@ -94,6 +94,7 @@ export class OnetimeInviteRequestDto extends PickType(OnetimeInviteRequest, [
   'inviteeDescription',
   'createdAt',
   'community',
+  'status',
 ]) {
   @ApiProperty({ type: ProfileDto })
   @Type(() => ProfileDto)

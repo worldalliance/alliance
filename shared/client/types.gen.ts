@@ -469,6 +469,8 @@ export type Notification = {
     onetimeInviteRequest?: OnetimeInviteRequest;
 };
 
+export type OnetimeInviteRequestStatus = 'pending' | 'approved' | 'rejected';
+
 export type OnetimeInviteRequest = {
     id: number;
     invitee: string;
@@ -477,6 +479,7 @@ export type OnetimeInviteRequest = {
     createdAt: string;
     community: Community;
     notifs: Array<Notification>;
+    status: OnetimeInviteRequestStatus;
 };
 
 export type Community = {
@@ -707,6 +710,7 @@ export type OnetimeInviteRequestDto = {
     inviteeDescription?: string;
     createdAt: string;
     community: Community;
+    status: OnetimeInviteRequestStatus;
     invitingUser: ProfileDto;
 };
 
@@ -2660,6 +2664,34 @@ export type UserCreateOnetimeInviteRequestResponses = {
 };
 
 export type UserCreateOnetimeInviteRequestResponse = UserCreateOnetimeInviteRequestResponses[keyof UserCreateOnetimeInviteRequestResponses];
+
+export type UserApproveOnetimeInviteRequestData = {
+    body?: never;
+    path: {
+        requestId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInviteRequest/{requestId}/approve';
+};
+
+export type UserApproveOnetimeInviteRequestResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserApproveOnetimeInviteRequestResponse = UserApproveOnetimeInviteRequestResponses[keyof UserApproveOnetimeInviteRequestResponses];
+
+export type UserRejectOnetimeInviteRequestData = {
+    body?: never;
+    path: {
+        requestId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInviteRequest/{requestId}/reject';
+};
+
+export type UserRejectOnetimeInviteRequestResponses = {
+    200: unknown;
+};
 
 export type UserCreateOnetimeInviteData = {
     body: CreateOnetimeInviteDto;

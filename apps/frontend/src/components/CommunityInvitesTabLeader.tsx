@@ -11,6 +11,8 @@ import {
   userGetOnetimeInvitesByCommunity,
   userGetOnetimeInviteRequestsByCommunity,
   OnetimeInviteRequestDto,
+  userApproveOnetimeInviteRequest,
+  userRejectOnetimeInviteRequest,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import { useEffect, useMemo, useState } from "react";
@@ -47,7 +49,10 @@ const CommunityInvitesTabLeader = ({
 
   const [creatingInvite, setCreatingInvite] = useState(false);
 
-  const [newUserInviteRequests, setNewUserInviteRequests] = useState<
+  const [pendingRequests, setPendingRequests] = useState<
+    OnetimeInviteRequestDto[]
+  >([]);
+  const [rejectedRequests, setRejectedRequests] = useState<
     OnetimeInviteRequestDto[]
   >([]);
 
@@ -100,7 +105,12 @@ const CommunityInvitesTabLeader = ({
     userGetOnetimeInviteRequestsByCommunity({ path: { communityId } }).then(
       (response) => {
         if (response.data) {
-          setNewUserInviteRequests(response.data);
+          setPendingRequests(
+            response.data.filter((request) => request.status === "pending")
+          );
+          setRejectedRequests(
+            response.data.filter((request) => request.status === "rejected")
+          );
         } else {
           setError("Failed to load new member requests");
         }
@@ -163,6 +173,47 @@ const CommunityInvitesTabLeader = ({
       });
   };
 
+  const onApproveOnetimeInviteRequest = (requestId: number) => {
+    (async () => {
+      const response = await userApproveOnetimeInviteRequest({
+        path: { requestId },
+      });
+      if (!response.data) {
+        return;
+      }
+
+      setPendingRequests((prev) =>
+        prev.filter((request) => request.id !== requestId)
+      );
+      setRejectedRequests((prev) =>
+        prev.filter((request) => request.id !== requestId)
+      );
+      setNewUserPastInvites((prev) => [...prev, response.data]);
+    })();
+  };
+
+  const onRejectOnetimeInviteRequest = (requestId: number) => {
+    (async () => {
+      const response = await userRejectOnetimeInviteRequest({
+        path: { requestId },
+      });
+
+      if (response.error) {
+        return;
+      }
+
+      const request = pendingRequests.find(
+        (request) => request.id === requestId
+      );
+      setPendingRequests((prev) =>
+        prev.filter((request) => request.id !== requestId)
+      );
+      if (request) {
+        setRejectedRequests((prev) => [...prev, request]);
+      }
+    })();
+  };
+
   const handleDeleteInvite = (inviteId: number) => {
     userDeleteOnetimeInvite({ path: { inviteId } }).then((response) => {
       if (response.data) {
@@ -183,20 +234,34 @@ const CommunityInvitesTabLeader = ({
     });
   };
 
-  const combinedPastInvites = useMemo(() => {
-    return [...newUserPastInvites, ...existingMemberInvites].sort((a, b) => {
+  useEffect(() => {
+    pendingRequests.sort((a, b) => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
+  }, [pendingRequests]);
+  useEffect(() => {
+    rejectedRequests.sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [rejectedRequests]);
+
+  const combinedPastInvites = useMemo(() => {
+    return [
+      ...newUserPastInvites.map((invite) => ({
+        type: "new_member" as const,
+        data: invite,
+      })),
+      ...existingMemberInvites.map((invite) => ({
+        type: "existing_member" as const,
+        data: invite,
+      })),
+    ].sort((a, b) => {
+      return (
+        new Date(b.data.createdAt).getTime() -
+        new Date(a.data.createdAt).getTime()
+      );
+    });
   }, [newUserPastInvites, existingMemberInvites]);
-  useMemo(
-    () =>
-      newUserInviteRequests.sort((a, b) => {
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      }),
-    [newUserInviteRequests]
-  );
 
   return (
     <div className="flex flex-col gap-y-8 py-4">
@@ -289,46 +354,69 @@ const CommunityInvitesTabLeader = ({
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </div>
 
-      <div className="flex flex-col gap-y-2">
-        <p className="font-semibold text-xl">Invite requests</p>
-        <List>
-          {newUserInviteRequests.map((request) => (
-            <OneTimeInviteRequestListItem
-              key={request.id}
-              request={request}
-              isLeader={true}
-              onApprove={() => {
-                /* TODO asdf */
-              }}
-              onReject={() => {
-                /* TODO asdf */
-              }}
-            />
-          ))}
-        </List>
-      </div>
+      {pendingRequests.length > 0 && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-semibold text-xl">Invite requests</p>
+          <List>
+            {pendingRequests.map((request) => (
+              <OneTimeInviteRequestListItem
+                key={request.id}
+                type={"leader_pending"}
+                request={request}
+                onApprove={onApproveOnetimeInviteRequest}
+                onReject={onRejectOnetimeInviteRequest}
+              />
+            ))}
+          </List>
+        </div>
+      )}
 
-      <div className="flex flex-col gap-y-2">
-        <p className="font-semibold text-xl">Past invites</p>
-        <List>
-          {combinedPastInvites.map((invite) =>
-            "invitee" in invite ? (
-              <OneTimeInviteListItem
-                key={invite.id}
-                invite={invite}
-                onDelete={handleDeleteInvite}
-                onCopy={copyToClipboard}
+      {combinedPastInvites.length > 0 && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-semibold text-xl">Past invites</p>
+          <List>
+            {combinedPastInvites.map((entry) => {
+              switch (entry.type) {
+                case "new_member":
+                  return (
+                    <OneTimeInviteListItem
+                      key={entry.data.id}
+                      invite={entry.data}
+                      onDelete={handleDeleteInvite}
+                      onCopy={copyToClipboard}
+                    />
+                  );
+                case "existing_member":
+                  return (
+                    <CommunityInviteListItem
+                      key={entry.data.id}
+                      invite={entry.data}
+                      onDelete={handleDeleteCommunityInvite}
+                    />
+                  );
+                default:
+                  entry satisfies never;
+              }
+            })}
+          </List>
+        </div>
+      )}
+
+      {rejectedRequests.length > 0 && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-semibold text-xl">Rejected invite requests</p>
+          <List>
+            {rejectedRequests.map((request) => (
+              <OneTimeInviteRequestListItem
+                key={request.id}
+                type={"leader_rejected"}
+                request={request}
+                onApprove={onApproveOnetimeInviteRequest}
               />
-            ) : (
-              <CommunityInviteListItem
-                key={invite.id}
-                invite={invite}
-                onDelete={handleDeleteCommunityInvite}
-              />
-            )
-          )}
-        </List>
-      </div>
+            ))}
+          </List>
+        </div>
+      )}
     </div>
   );
 };
