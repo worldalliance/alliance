@@ -1099,8 +1099,13 @@ export class UserService {
       relations: ['invitingUser', 'community'],
     });
 
-    if (request.status === 'approved') {
-      throw new BadRequestException('Request already approved');
+    if (
+      request.status === OnetimeInviteRequestStatus.APPROVED ||
+      request.status === OnetimeInviteRequestStatus.REJECTED
+    ) {
+      throw new BadRequestException(
+        `Request has already been ${request.status}`,
+      );
     }
 
     const community: Community = request.community;
@@ -1146,7 +1151,10 @@ export class UserService {
       relations: ['invitingUser', 'community'],
     });
 
-    if (request.status !== 'pending') {
+    if (
+      request.status === OnetimeInviteRequestStatus.APPROVED ||
+      request.status === OnetimeInviteRequestStatus.REJECTED
+    ) {
       throw new BadRequestException(
         `Request has already been ${request.status}`,
       );

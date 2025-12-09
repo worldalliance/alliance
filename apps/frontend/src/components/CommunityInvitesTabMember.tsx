@@ -1,5 +1,5 @@
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import { useAuth } from "../lib/AuthContext";
 import {
@@ -30,7 +30,9 @@ const CommunityInvitesTabMember = ({
   const [inviteeName, setInviteeName] = useState("");
   const [inviteeDescription, setInviteeDescription] = useState("");
   const [creatingRequest, setCreatingInvite] = useState(false);
-  const [requests, setRequests] = useState<OnetimeInviteRequestDto[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<
+    OnetimeInviteRequestDto[]
+  >([]);
   const { error: errorToast } = useToast();
   const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
 
@@ -38,12 +40,14 @@ const CommunityInvitesTabMember = ({
     userGetOnetimeInviteRequestsByRequester({ path: { communityId } }).then(
       (response) => {
         if (response.data) {
-          setRequests(
-            response.data.sort(
-              (a, b) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime()
-            )
+          setPendingRequests(
+            response.data
+              .filter((request) => request.status === "pending")
+              .sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime()
+              )
           );
         } else {
           setError("Failed to load new member invites");
@@ -92,7 +96,7 @@ const CommunityInvitesTabMember = ({
         if (response.data) {
           setInviteeName("");
           setInviteeDescription("");
-          setRequests((prev) => [response.data, ...prev]);
+          setPendingRequests((prev) => [response.data, ...prev]);
           setError(null);
         }
       })
@@ -104,7 +108,7 @@ const CommunityInvitesTabMember = ({
   const handleDeleteRequest = (requestId: number) => {
     userDeleteOnetimeInviteRequest({ path: { requestId } }).then((response) => {
       if (response.response.ok) {
-        setRequests((prev) =>
+        setPendingRequests((prev) =>
           prev.filter((request) => request.id !== requestId)
         );
       } else {
@@ -112,15 +116,6 @@ const CommunityInvitesTabMember = ({
       }
     });
   };
-
-  const pendingRequests = useMemo(
-    () => requests.filter((request) => request.status === "pending"),
-    [requests]
-  );
-  const rejectedRequests = useMemo(
-    () => requests.filter((request) => request.status === "rejected"),
-    [requests]
-  );
 
   return (
     <div className="flex flex-col gap-y-8 py-4">
@@ -205,22 +200,6 @@ const CommunityInvitesTabMember = ({
                 selfInvited={true}
                 onCopy={copyToClipboard}
                 onDelete={handleDeleteInvite}
-              />
-            ))}
-          </List>
-        </div>
-      )}
-
-      {rejectedRequests.length > 0 && (
-        <div className="flex flex-col gap-y-2">
-          <p className="font-semibold text-xl">Rejected requests</p>
-          <List>
-            {rejectedRequests.map((request) => (
-              <OneTimeInviteRequestListItem
-                key={request.id}
-                type={"member"}
-                request={request}
-                onDelete={handleDeleteRequest}
               />
             ))}
           </List>

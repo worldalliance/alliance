@@ -40,10 +40,6 @@ export enum InviteMode {
   CurrentMember = "Current Alliance member",
 }
 
-function dateComparator(a: { createdAt: string }, b: { createdAt: string }) {
-  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-}
-
 const CommunityInvitesTabLeader = ({
   communityId,
   existingMembers,
@@ -54,9 +50,6 @@ const CommunityInvitesTabLeader = ({
   const [creatingInvite, setCreatingInvite] = useState(false);
 
   const [pendingRequests, setPendingRequests] = useState<
-    OnetimeInviteRequestDto[]
-  >([]);
-  const [rejectedRequests, setRejectedRequests] = useState<
     OnetimeInviteRequestDto[]
   >([]);
 
@@ -110,12 +103,11 @@ const CommunityInvitesTabLeader = ({
           setPendingRequests(
             response.data
               .filter((request) => request.status === "pending")
-              .sort(dateComparator)
-          );
-          setRejectedRequests(
-            response.data
-              .filter((request) => request.status === "rejected")
-              .sort(dateComparator)
+              .sort(
+                (a, b) =>
+                  new Date(b.createdAt).getTime() -
+                  new Date(a.createdAt).getTime()
+              )
           );
         } else {
           setError("Failed to load new member requests");
@@ -191,9 +183,6 @@ const CommunityInvitesTabLeader = ({
       setPendingRequests((prev) =>
         prev.filter((request) => request.id !== requestId)
       );
-      setRejectedRequests((prev) =>
-        prev.filter((request) => request.id !== requestId)
-      );
       setNewUserInvites((prev) => [...prev, response.data]);
     })();
   };
@@ -208,15 +197,9 @@ const CommunityInvitesTabLeader = ({
         return;
       }
 
-      const request = pendingRequests.find(
-        (request) => request.id === requestId
-      );
       setPendingRequests((prev) =>
         prev.filter((request) => request.id !== requestId)
       );
-      if (request) {
-        setRejectedRequests((prev) => [request, ...prev]);
-      }
     })();
   };
 
@@ -398,22 +381,6 @@ const CommunityInvitesTabLeader = ({
                   entry satisfies never;
               }
             })}
-          </List>
-        </div>
-      )}
-
-      {rejectedRequests.length > 0 && (
-        <div className="flex flex-col gap-y-2">
-          <p className="font-semibold text-xl">Rejected invite requests</p>
-          <List>
-            {rejectedRequests.map((request) => (
-              <OneTimeInviteRequestListItem
-                key={request.id}
-                type={"leader_rejected"}
-                request={request}
-                onApprove={onApproveOnetimeInviteRequest}
-              />
-            ))}
           </List>
         </div>
       )}
