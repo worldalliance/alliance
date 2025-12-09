@@ -131,15 +131,10 @@ const CommunityInvitesTabMember = ({
               </p>
               <p className="text-zinc-500">
                 The group leader will first need to approve the request for the
-                new member.
-              </p>
-              <p className="text-zinc-500">
-                Once approved, this will create a personalized invite page that
-                explains the Alliance and how to sign up.
-              </p>
-              <p className="text-zinc-500">
-                When the new member signs up, they will automatically be added
-                to your group.
+                new member. Once approved, this will create a personalized
+                invite page that explains the Alliance and how to sign up. When
+                the new member signs up, they will automatically be added to
+                your group.
               </p>
               <input
                 type="text"
