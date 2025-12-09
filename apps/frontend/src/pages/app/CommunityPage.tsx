@@ -34,7 +34,6 @@ import { isFeatureEnabled } from "../../lib/config";
 import CommunityInvitesTabMember from "../../components/CommunityInvitesTabMember";
 import CommunityInvitesTabLeader from "../../components/CommunityInvitesTabLeader";
 
-
 type Tab = "activity" | "members" | "invites" | "about" | "edit" | "resources";
 
 export enum FilterMode {
@@ -191,7 +190,7 @@ const CommunityPage = () => {
   }, [community, navigate, confirm]);
 
   const tabs: Tab[] = amLeader
-    ? ["activity", "members", "invites", "about", "resources"]
+    ? ["activity", "members", "invites", "resources"]
     : ["activity", "members", "invites", "about"];
 
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
