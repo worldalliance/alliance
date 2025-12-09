@@ -4,14 +4,19 @@ import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import { useAuth } from "../lib/AuthContext";
 import {
   CreateOnetimeInviteRequestDto,
+  OnetimeInviteDto,
   OnetimeInviteRequestDto,
   userCreateOnetimeInviteRequest,
+  userDeleteOnetimeInvite,
   userDeleteOnetimeInviteRequest,
   userGetOnetimeInviteRequestsByRequester,
+  userGetOnetimeInvitesByRequester,
 } from "@alliance/shared/client";
 import List from "@alliance/shared/ui/List";
 import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
 import { useToast } from "@alliance/shared/ui/ToastProvider";
+import OneTimeInviteListItem from "./OneTimeInviteListItem";
+import { getBaseUrl } from "@alliance/shared/lib/config";
 
 export interface CommunityInvitesTabMemberProps {
   communityId: number;
@@ -27,6 +32,7 @@ const CommunityInvitesTabMember = ({
   const [creatingRequest, setCreatingInvite] = useState(false);
   const [requests, setRequests] = useState<OnetimeInviteRequestDto[]>([]);
   const { error: errorToast } = useToast();
+  const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
 
   useEffect(() => {
     userGetOnetimeInviteRequestsByRequester({ path: { communityId } }).then(
@@ -38,7 +44,30 @@ const CommunityInvitesTabMember = ({
         }
       }
     );
+    userGetOnetimeInvitesByRequester({ path: { communityId } }).then(
+      (response) => {
+        if (response.data) {
+          setInvites(response.data);
+        } else {
+          setError("Failed to load new member invites");
+        }
+      }
+    );
   }, [communityId]);
+
+  const copyToClipboard = (text: string) => {
+    const baseUrl = getBaseUrl();
+    const url = `${baseUrl}/signup?ref=${text}`;
+    navigator.clipboard.writeText(url);
+  };
+
+  const handleDeleteInvite = (inviteId: number) => {
+    userDeleteOnetimeInvite({ path: { inviteId } }).then((response) => {
+      if (response.data) {
+        setInvites((prev) => prev.filter((invite) => invite.id !== inviteId));
+      }
+    });
+  };
 
   const handleRequest = () => {
     if (!user) {
@@ -78,9 +107,13 @@ const CommunityInvitesTabMember = ({
     });
   };
 
-  requests.sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  useEffect(() => {
+    requests.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [requests]);
+
   const pendingRequests = useMemo(
     () => requests.filter((request) => request.status === "pending"),
     [requests]
@@ -156,6 +189,22 @@ const CommunityInvitesTabMember = ({
                 type={"member"}
                 request={request}
                 onDelete={handleDeleteRequest}
+              />
+            ))}
+          </List>
+        </div>
+      )}
+
+      {invites.length > 0 && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-semibold text-xl">Approved requests</p>
+          <List>
+            {invites.map((invite) => (
+              <OneTimeInviteListItem
+                key={invite.id}
+                invite={invite}
+                onCopy={copyToClipboard}
+                onDelete={handleDeleteInvite}
               />
             ))}
           </List>

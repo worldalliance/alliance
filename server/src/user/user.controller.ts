@@ -597,7 +597,7 @@ export class UserController {
   }
 
   @Delete('onetimeInvites/:inviteId')
-  @UseGuards(CommunityLeaderGuard)
+  @UseGuards(AuthGuard)
   @ApiOkResponse()
   async deleteOnetimeInvite(
     @Param('inviteId', ParseIntPipe) inviteId: number,
