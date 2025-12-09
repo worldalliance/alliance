@@ -60,9 +60,7 @@ const CommunityInvitesTabLeader = ({
     OnetimeInviteRequestDto[]
   >([]);
 
-  const [newUserPastInvites, setNewUserPastInvites] = useState<
-    OnetimeInviteDto[]
-  >([]);
+  const [newUserInvites, setNewUserInvites] = useState<OnetimeInviteDto[]>([]);
   const [existingMemberInvites, setExistingMemberInvites] = useState<
     CommunityInviteDto[]
   >([]);
@@ -93,7 +91,7 @@ const CommunityInvitesTabLeader = ({
     userGetOnetimeInvitesByCommunity({ path: { communityId } }).then(
       (response) => {
         if (response.data) {
-          setNewUserPastInvites(response.data);
+          setNewUserInvites(response.data);
         } else {
           setError("Failed to load new member invites");
         }
@@ -148,7 +146,7 @@ const CommunityInvitesTabLeader = ({
         if (response.data) {
           console.log("Invite created", response.data);
           setName("");
-          setNewUserPastInvites((prev) => [response.data, ...prev]);
+          setNewUserInvites((prev) => [response.data, ...prev]);
           setError(null);
         }
       })
@@ -196,7 +194,7 @@ const CommunityInvitesTabLeader = ({
       setRejectedRequests((prev) =>
         prev.filter((request) => request.id !== requestId)
       );
-      setNewUserPastInvites((prev) => [...prev, response.data]);
+      setNewUserInvites((prev) => [...prev, response.data]);
     })();
   };
 
@@ -225,7 +223,7 @@ const CommunityInvitesTabLeader = ({
   const handleDeleteInvite = (inviteId: number) => {
     userDeleteOnetimeInvite({ path: { inviteId } }).then((response) => {
       if (response.data) {
-        setNewUserPastInvites((prev) =>
+        setNewUserInvites((prev) =>
           prev.filter((invite) => invite.id !== inviteId)
         );
       }
@@ -244,7 +242,7 @@ const CommunityInvitesTabLeader = ({
 
   const combinedPastInvites = useMemo(() => {
     return [
-      ...newUserPastInvites.map((invite) => ({
+      ...newUserInvites.map((invite) => ({
         type: "new_member" as const,
         data: invite,
       })),
@@ -258,7 +256,7 @@ const CommunityInvitesTabLeader = ({
         new Date(a.data.createdAt).getTime()
       );
     });
-  }, [newUserPastInvites, existingMemberInvites]);
+  }, [newUserInvites, existingMemberInvites]);
 
   return (
     <div className="flex flex-col gap-y-8 py-4">
