@@ -40,6 +40,10 @@ export enum InviteMode {
   CurrentMember = "Current Alliance member",
 }
 
+function dateComparator(a: { createdAt: string }, b: { createdAt: string }) {
+  return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+}
+
 const CommunityInvitesTabLeader = ({
   communityId,
   existingMembers,
@@ -106,10 +110,14 @@ const CommunityInvitesTabLeader = ({
       (response) => {
         if (response.data) {
           setPendingRequests(
-            response.data.filter((request) => request.status === "pending")
+            response.data
+              .filter((request) => request.status === "pending")
+              .sort(dateComparator)
           );
           setRejectedRequests(
-            response.data.filter((request) => request.status === "rejected")
+            response.data
+              .filter((request) => request.status === "rejected")
+              .sort(dateComparator)
           );
         } else {
           setError("Failed to load new member requests");
@@ -209,7 +217,7 @@ const CommunityInvitesTabLeader = ({
         prev.filter((request) => request.id !== requestId)
       );
       if (request) {
-        setRejectedRequests((prev) => [...prev, request]);
+        setRejectedRequests((prev) => [request, ...prev]);
       }
     })();
   };
@@ -233,17 +241,6 @@ const CommunityInvitesTabLeader = ({
       }
     });
   };
-
-  useEffect(() => {
-    pendingRequests.sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }, [pendingRequests]);
-  useEffect(() => {
-    rejectedRequests.sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-  }, [rejectedRequests]);
 
   const combinedPastInvites = useMemo(() => {
     return [

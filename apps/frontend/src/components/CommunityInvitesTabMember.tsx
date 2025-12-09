@@ -38,7 +38,13 @@ const CommunityInvitesTabMember = ({
     userGetOnetimeInviteRequestsByRequester({ path: { communityId } }).then(
       (response) => {
         if (response.data) {
-          setRequests(response.data);
+          setRequests(
+            response.data.sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime()
+            )
+          );
         } else {
           setError("Failed to load new member invites");
         }
@@ -106,13 +112,6 @@ const CommunityInvitesTabMember = ({
       }
     });
   };
-
-  useEffect(() => {
-    requests.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [requests]);
 
   const pendingRequests = useMemo(
     () => requests.filter((request) => request.status === "pending"),
