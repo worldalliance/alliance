@@ -1043,7 +1043,7 @@ export class UserService {
       for (const leader of communityWithLeaders.leaders) {
         const notif = this.notifRepository.create({
           user: leader,
-          category: NotificationCategory.CommunityInviteCreated,
+          category: NotificationCategory.OnetimeInviteRequestCreated,
           message: `${invitingUser.name} has requested a new member to join the Alliance`,
           webAppLocation: groupInvitesUrl(),
           associatedUsers: [invitingUser],
@@ -1084,11 +1084,23 @@ export class UserService {
 
     const code = Math.random().toString(36).substring(2, 15);
 
-    const invite = this.onetimeInviteRepository.create({
-      ...request,
-      code,
-    });
-    return await this.onetimeInviteRepository.save(invite);
+    const invite = await this.onetimeInviteRepository.save(
+      this.onetimeInviteRepository.create({
+        ...request,
+        code,
+      }),
+    );
+
+    this.notifRepository.save(
+      this.notifRepository.create({
+        user: invite.invitingUser,
+        category: NotificationCategory.OnetimeInviteRequestApproved,
+        message: `Your request to invite ${invite.invitee} has been approved`,
+        webAppLocation: groupInvitesUrl(),
+      }),
+    );
+
+    return invite;
   }
 
   async rejectOnetimeInviteRequest(
@@ -1117,7 +1129,17 @@ export class UserService {
     }
 
     request.status = OnetimeInviteRequestStatus.REJECTED;
-    await this.onetimeInviteRequestRepository.save(request);
+    const savedRequest =
+      await this.onetimeInviteRequestRepository.save(request);
+
+    await this.notifRepository.save(
+      this.notifRepository.create({
+        user: savedRequest.invitingUser,
+        category: NotificationCategory.OnetimeInviteRequestRejected,
+        message: `Your request to invite ${request.invitee} has been rejected`,
+        webAppLocation: groupInvitesUrl(),
+      }),
+    );
   }
 
   async deleteCommunityInvite(inviteId: number, userId: number): Promise<void> {

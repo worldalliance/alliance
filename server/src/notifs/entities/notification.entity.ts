@@ -28,6 +28,9 @@ export enum NotificationCategory {
   CommunityInviteRejected = 'community_invite_rejected',
   CommunityInviteAccepted = 'community_invite_accepted',
   CommunityInviteCreated = 'community_invite_created',
+  OnetimeInviteRequestCreated = 'onetime_invite_request_created',
+  OnetimeInviteRequestApproved = 'onetime_invite_request_approved',
+  OnetimeInviteRequestRejected = 'onetime_invite_request_rejected',
 }
 
 @Entity()
