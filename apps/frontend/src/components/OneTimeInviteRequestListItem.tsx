@@ -110,7 +110,7 @@ const OneTimeInviteRequestListItem = ({
       {request.inviteeDescription && (
         <AppMarkdownWrapper
           markdownContent={request.inviteeDescription}
-          className="break-words text-zinc-500"
+          className="break-words"
         />
       )}
     </div>
