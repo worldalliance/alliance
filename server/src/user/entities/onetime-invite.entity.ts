@@ -3,6 +3,7 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from './user.entity';
@@ -12,8 +13,11 @@ import { Allow, IsOptional } from 'class-validator';
 import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 import { Community } from './community.entity';
 import { Ty } from 'src/tasks/entities/type';
+import { Notification } from 'src/notifs/entities/notification.entity';
 
 export enum OnetimeInviteStatus {
+  REQUEST_PENDING = 'request_pending',
+  REQUEST_REJECTED = 'request_rejected',
   LINK_UNUSED = 'link_unused',
   LINK_USED = 'link_used',
 }
@@ -29,6 +33,11 @@ export class OnetimeInvite {
   @ApiProperty()
   @Allow()
   invitee: string;
+
+  @Column({ nullable: true })
+  @ApiPropertyOptional()
+  @IsOptional()
+  inviteeDescription?: string;
 
   @ApiProperty()
   @Column()
@@ -68,4 +77,10 @@ export class OnetimeInvite {
   @JoinColumn({ name: 'communityId' })
   @IsOptional()
   community?: Ty<Community>;
+
+  @OneToMany(() => Notification, (notif) => notif.onetimeInvite)
+  @Type(() => Notification)
+  @ApiProperty({ type: () => Notification, isArray: true })
+  @Allow()
+  notifs: Ty<Notification>[];
 }

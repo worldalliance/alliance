@@ -17,6 +17,7 @@ import { Comment } from 'src/forum/entities/comment.entity';
 import { Type } from 'class-transformer';
 import { Ty } from 'src/tasks/entities/type';
 import { OnetimeInviteRequest } from 'src/user/entities/onetime-invite-request.entity';
+import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
 
 export enum NotificationCategory {
   ActionEvent = 'action_event',
@@ -116,4 +117,11 @@ export class Notification {
     onDelete: 'CASCADE',
   })
   onetimeInviteRequest?: Ty<OnetimeInviteRequest>;
+
+  @ApiPropertyOptional({ type: () => OnetimeInvite })
+  @ManyToOne(() => OnetimeInvite, (invite) => invite.notifs, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  onetimeInvite?: Ty<OnetimeInvite>;
 }
