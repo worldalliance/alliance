@@ -9,7 +9,6 @@ import {
   userGetOnetimeInvitesByRequester,
 } from "@alliance/shared/client";
 import { getBaseUrl } from "@alliance/shared/lib/config";
-import AppMarkdownWrapper from "@alliance/shared/ui/AppMarkdownWrapper";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import List from "@alliance/shared/ui/List";
@@ -190,15 +189,6 @@ const CommunityInvitesTabMember = ({
                 rows={2}
                 style={{ resize: "none" }}
               />
-              {inviteeDescription && (
-                <div>
-                  <p>Preview:</p>
-                  <AppMarkdownWrapper
-                    className="text-zinc-500"
-                    markdownContent={inviteeDescription}
-                  />
-                </div>
-              )}
               <Button
                 color={ButtonColor.Black}
                 onClick={handleRequest}
