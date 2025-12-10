@@ -144,11 +144,11 @@ const CommunityInvitesTabMember = ({
   };
 
   const pendingInvites = useMemo(
-    () => invites.filter((invite) => invite.isValid),
+    () => invites.filter((invite) => invite.status === 'link_unused'),
     [invites]
   );
   const usedInvites = useMemo(
-    () => invites.filter((invite) => !invite.isValid),
+    () => invites.filter((invite) => invite.status === 'link_used'),
     [invites]
   );
 

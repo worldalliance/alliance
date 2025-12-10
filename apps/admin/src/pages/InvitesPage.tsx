@@ -120,7 +120,7 @@ const InvitesPage = () => {
               </div>
               <div className="flex flex-row gap-3 items-center">
                 <p className="text-gray-500">{invite.code}</p>
-                {invite.isValid ? (
+                {invite.status === 'link_unused' ? (
                   <p className="text-green">Active</p>
                 ) : (
                   <p className="text-gray-500">used</p>

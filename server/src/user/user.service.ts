@@ -30,7 +30,10 @@ import { CreateTagDto } from './tag.dto';
 import { Community } from './entities/community.entity';
 import { CreateCommunityDto, UpdateCommunityDto } from './community.dto';
 import { CommunityMemberContactInfoDto } from './dto/user-action-relations.dto';
-import { OnetimeInvite } from './entities/onetime-invite.entity';
+import {
+  OnetimeInvite,
+  OnetimeInviteStatus,
+} from './entities/onetime-invite.entity';
 import {
   CommunityInviteDto,
   CreateCommunityInviteDto,
@@ -1123,6 +1126,7 @@ export class UserService {
     const invite = await this.onetimeInviteRepository.save(
       this.onetimeInviteRepository.create({
         ...request,
+        status: OnetimeInviteStatus.LINK_UNUSED,
         code,
       }),
     );
@@ -1201,7 +1205,7 @@ export class UserService {
 
   async findValidInviteByCode(code: string): Promise<OnetimeInvite | null> {
     return this.onetimeInviteRepository.findOne({
-      where: { code, isValid: true },
+      where: { code, status: OnetimeInviteStatus.LINK_UNUSED },
       relations: ['invitingUser', 'community'],
     });
   }
@@ -1248,7 +1252,9 @@ export class UserService {
   }
 
   async invalidateInvite(inviteId: number): Promise<void> {
-    await this.onetimeInviteRepository.update(inviteId, { isValid: false });
+    await this.onetimeInviteRepository.update(inviteId, {
+      status: OnetimeInviteStatus.LINK_USED,
+    });
   }
 
   async createCommunityInvite(

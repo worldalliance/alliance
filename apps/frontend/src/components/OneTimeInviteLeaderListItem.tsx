@@ -57,29 +57,26 @@ const OneTimeInviteLeaderListItem = ({
           type === "leader_self_invited") && (
           <p className="text-gray-500">{invite.code}</p>
         )}
-        {!invite.isValid ? (
+        {invite.status === "link_used" ? (
           <p className="text-gray-500">Accepted</p>
         ) : (
-          <p className="text-green">Pending</p>
-        )}
-        {invite.isValid && (
-          <div
-            className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
-            onClick={() => {
-              onCopy(invite.code);
-            }}
-          >
-            <CopyIcon size="medium" fill="gray" />
-          </div>
-        )}
-
-        {invite.isValid && (
-          <div
-            className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
-            onClick={(e) => onDelete(invite.id, e)}
-          >
-            <X size={15} />
-          </div>
+          <>
+            <p className="text-green">Pending</p>
+            <div
+              className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
+              onClick={() => {
+                onCopy(invite.code);
+              }}
+            >
+              <CopyIcon size="medium" fill="gray" />
+            </div>
+            <div
+              className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
+              onClick={(e) => onDelete(invite.id, e)}
+            >
+              <X size={15} />
+            </div>
+          </>
         )}
       </div>
     </div>

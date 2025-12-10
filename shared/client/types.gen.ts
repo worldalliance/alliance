@@ -116,13 +116,15 @@ export type User = {
     participants: Array<Participant>;
 };
 
+export type OnetimeInviteStatus = 'link_unused' | 'link_used';
+
 export type OnetimeInvite = {
     id: number;
     invitee: string;
     code: string;
     invitingUser: User;
     createdAt: string;
-    isValid: boolean;
+    status: OnetimeInviteStatus;
     community?: Community;
 };
 
@@ -688,7 +690,7 @@ export type OnetimeInviteDto = {
     invitee: string;
     code: string;
     createdAt: string;
-    isValid: boolean;
+    status: OnetimeInviteStatus;
     community?: Community;
     invitingUser?: ProfileDto;
 };

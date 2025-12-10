@@ -37,26 +37,26 @@ const OneTimeInviteMemberListItem = ({
       </div>
 
       <div className="flex flex-row gap-3 items-center">
-        {!invite.isValid ? <p className="text-gray-500">Accepted</p> : null}
-        {invite.isValid && (
-          <Button
-            onClick={() => {
-              onCopy(invite.code);
-              setCopiedAndTimeout();
-            }}
-            color={copied ? ButtonColor.Green : ButtonColor.Black}
-          >
-            {copied ? "Copied!" : "Share"}
-          </Button>
-        )}
-
-        {invite.isValid && (
-          <Button
-            onClick={(e) => onDelete(invite.id, e)}
-            color={ButtonColor.Red}
-          >
-            Delete
-          </Button>
+        {invite.status === "link_used" ? (
+          <p className="text-gray-500">Accepted</p>
+        ) : (
+          <>
+            <Button
+              onClick={() => {
+                onCopy(invite.code);
+                setCopiedAndTimeout();
+              }}
+              color={copied ? ButtonColor.Green : ButtonColor.Black}
+            >
+              {copied ? "Copied!" : "Share"}
+            </Button>
+            <Button
+              onClick={(e) => onDelete(invite.id, e)}
+              color={ButtonColor.Red}
+            >
+              Delete
+            </Button>
+          </>
         )}
       </div>
     </div>

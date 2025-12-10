@@ -58,7 +58,7 @@ export class OnetimeInviteDto extends PickType(OnetimeInvite, [
   'id',
   'invitee',
   'code',
-  'isValid',
+  'status',
   'createdAt',
   'community',
 ]) {

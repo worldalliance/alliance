@@ -13,6 +13,11 @@ import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 import { Community } from './community.entity';
 import { Ty } from 'src/tasks/entities/type';
 
+export enum OnetimeInviteStatus {
+  LINK_UNUSED = 'link_unused',
+  LINK_USED = 'link_used',
+}
+
 @Entity()
 export class OnetimeInvite {
   @PrimaryGeneratedColumn()
@@ -43,10 +48,16 @@ export class OnetimeInvite {
   @Type(() => Date)
   createdAt: Date;
 
-  @Column({ default: true })
-  @ApiProperty()
+  @Column({
+    type: 'enum',
+    enum: OnetimeInviteStatus,
+  })
+  @ApiProperty({
+    enum: OnetimeInviteStatus,
+    enumName: 'OnetimeInviteStatus',
+  })
   @Allow()
-  isValid: boolean;
+  status: OnetimeInviteStatus;
 
   @ManyToOne(() => Community, (community) => community.invites, {
     nullable: true,
