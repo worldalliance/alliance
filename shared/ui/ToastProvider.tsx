@@ -6,6 +6,7 @@ import {
   type ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -240,6 +241,7 @@ type ConfirmToastItemProps = {
 
 const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
   const [inputValue, setInputValue] = useState("");
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const requiresText = toast.requiredText;
   const isFullscreen = toast.mode === "fullscreen";
@@ -278,8 +280,31 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
     }
   };
 
+  // ️Close on outside click
+  useEffect(() => {
+    const handleDocumentMouseDown = (event: MouseEvent) => {
+      const el = containerRef.current;
+      if (!el) return;
+
+      const target = event.target as Node | null;
+      // If click is inside the toast, do nothing
+      if (target && el.contains(target)) return;
+
+      // Otherwise treat as cancel
+      onConfirm(toast, false);
+    };
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+    };
+  }, [onConfirm, toast]);
+
   const modalContent = (
-    <div className="pointer-events-auto w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+    <div
+      ref={containerRef}
+      className="pointer-events-auto w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl"
+    >
       {toast.title && <h3 className="text-lg font-semibold">{toast.title}</h3>}
       <p className="mt-2 text-sm text-zinc-700">{toast.message}</p>
       {requiresText && (
@@ -407,6 +432,7 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
 
   return (
     <div
+      ref={containerRef}
       style={style}
       className="pointer-events-auto mb-2 w-full max-w-sm rounded-xl border border-zinc-200 bg-zinc-50 text-black shadow-lg ring-1 ring-black/5"
     >

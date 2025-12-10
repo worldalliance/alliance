@@ -7,7 +7,7 @@ import { href, Link } from "react-router";
 export interface OneTimeInviteListItemProps {
   selfInvited: boolean;
   invite: OnetimeInviteDto;
-  onDelete: (inviteId: number) => void;
+  onDelete: (inviteId: number, e: React.MouseEvent<HTMLElement>) => void;
   onCopy: (code: string) => void;
 }
 
@@ -67,7 +67,7 @@ const OneTimeInviteListItem = ({
         </div>
         <div
           className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
-          onClick={() => onDelete(invite.id)}
+          onClick={(e) => onDelete(invite.id, e)}
         >
           <DeleteIcon size="medium" fill="gray" />
         </div>

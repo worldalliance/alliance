@@ -33,7 +33,7 @@ const CommunityInvitesTabMember = ({
   const [pendingRequests, setPendingRequests] = useState<
     OnetimeInviteRequestDto[]
   >([]);
-  const { error: errorToast } = useToast();
+  const { error: errorToast, confirm } = useToast();
   const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
   const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -81,12 +81,28 @@ const CommunityInvitesTabMember = ({
     navigator.clipboard.writeText(url);
   };
 
-  const handleDeleteInvite = (inviteId: number) => {
-    userDeleteOnetimeInvite({ path: { inviteId } }).then((response) => {
-      if (response.data) {
-        setInvites((prev) => prev.filter((invite) => invite.id !== inviteId));
+  const handleDeleteInvite = (
+    inviteId: number,
+    e: React.MouseEvent<HTMLElement>
+  ) => {
+    (async () => {
+      const ok = await confirm({
+        message: "Are you sure you want to delete this invite?",
+        confirmLabel: "Yes, delete it!",
+        cancelLabel: "No, keep it",
+        anchorEl: e.currentTarget,
+        placement: "topleft",
+      });
+      if (!ok) {
+        return;
       }
-    });
+
+      userDeleteOnetimeInvite({ path: { inviteId } }).then((response) => {
+        if (response.data) {
+          setInvites((prev) => prev.filter((invite) => invite.id !== inviteId));
+        }
+      });
+    })();
   };
 
   const handleRequest = () => {
