@@ -14,7 +14,7 @@ import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import List from "@alliance/shared/ui/List";
 import { useToast } from "@alliance/shared/ui/ToastProvider";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import OneTimeInviteListItem from "./OneTimeInviteListItem";
 import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
@@ -144,6 +144,15 @@ const CommunityInvitesTabMember = ({
     });
   };
 
+  const pendingInvites = useMemo(
+    () => invites.filter((invite) => invite.isValid),
+    [invites]
+  );
+  const usedInvites = useMemo(
+    () => invites.filter((invite) => !invite.isValid),
+    [invites]
+  );
+
   return (
     <div className="flex flex-col gap-y-8 py-4">
       <div className="flex flex-col gap-y-3">
@@ -224,11 +233,28 @@ const CommunityInvitesTabMember = ({
         </div>
       )}
 
-      {invites.length > 0 && (
+      {pendingInvites.length > 0 && (
         <div className="flex flex-col gap-y-2">
-          <p className="font-semibold text-xl">Approved requests</p>
+          <p className="font-semibold text-xl">Approved invites</p>
           <List>
-            {invites.map((invite) => (
+            {pendingInvites.map((invite) => (
+              <OneTimeInviteListItem
+                key={invite.id}
+                type="member"
+                invite={invite}
+                onCopy={(id) => copyToClipboard(id)}
+                onDelete={handleDeleteInvite}
+              />
+            ))}
+          </List>
+        </div>
+      )}
+
+      {usedInvites.length > 0 && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-semibold text-xl">Past invites</p>
+          <List>
+            {usedInvites.map((invite) => (
               <OneTimeInviteListItem
                 key={invite.id}
                 type="member"
