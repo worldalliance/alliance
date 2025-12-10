@@ -539,9 +539,11 @@ export class UserController {
     @Param('requestId', ParseIntPipe) requestId: number,
     @Request() req: JwtRequest,
   ) {
-    return this.userService.approveOnetimeInviteRequest(
-      requestId,
-      req.user.sub,
+    return new OnetimeInviteDto(
+      await this.userService.approveOnetimeInviteRequest(
+        requestId,
+        req.user.sub,
+      ),
     );
   }
 
@@ -562,7 +564,9 @@ export class UserController {
     @Body() body: CreateOnetimeInviteDto,
     @Request() req: JwtRequest,
   ) {
-    return this.userService.createOnetimeInvite(body, req.user.sub);
+    return new OnetimeInviteDto(
+      await this.userService.createOnetimeInvite(body, req.user.sub),
+    );
   }
 
   @Post('createCommunityInvite')
@@ -674,10 +678,12 @@ export class UserController {
     @Request() req: JwtRequest,
     @Param('communityId', ParseIntPipe) communityId: number,
   ) {
-    return (await this.userService.findOnetimeInviteRequestsByRequester(
-      req.user.sub,
-      communityId,
-    )).map((request) => new OnetimeInviteRequestDto(request));
+    return (
+      await this.userService.findOnetimeInviteRequestsByRequester(
+        req.user.sub,
+        communityId,
+      )
+    ).map((request) => new OnetimeInviteRequestDto(request));
   }
 
   @Get('myCommunity')
