@@ -7,6 +7,7 @@ import {
   actionsGetCommunityMemberInfo,
   userGetMyCommunity,
   userLeaveCommunity,
+  userGetOnetimeInviteRequestsByCommunity,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Spinner from "../../components/Spinner";
@@ -64,6 +65,7 @@ const CommunityPage = () => {
   const [activeActions, setActiveActions] = useState<UserActionSummaryDto[]>(
     []
   );
+  const [inviteNotifCount, setInviteNotifCount] = useState(0);
 
   const [chatOpen, setChatOpen] = useState(true);
 
@@ -117,6 +119,23 @@ const CommunityPage = () => {
   const amLeader = useMemo(() => {
     return community?.leaders.some((leader) => leader.id === user?.id);
   }, [community, user]);
+
+  useEffect(() => {
+    if (!community || !amLeader) {
+      return;
+    }
+    (async () => {
+      const requests = await userGetOnetimeInviteRequestsByCommunity({
+        path: { communityId: community.id },
+      });
+      if (!requests.data) {
+        return;
+      }
+      setInviteNotifCount(
+        requests.data.filter((request) => request.status === "pending").length
+      );
+    })();
+  }, [amLeader, community]);
 
   useEffect(() => {
     actionsGetCommunityMemberInfo().then((resp) => {
@@ -301,7 +320,14 @@ const CommunityPage = () => {
                   m === tab ? "!border-b-green" : "!border-b-transparent"
                 }`}
               >
-                <p className="capitalize">{m}</p>
+                <div className="flex flex-row gap-x-2">
+                  <span className="capitalize">{m}</span>
+                  {m === "invites" && inviteNotifCount > 0 && (
+                    <div className="font-semibold text-xs text-white bg-zinc-500 rounded-full rounded-md flex justify-center items-center w-5 h-5">
+                      {inviteNotifCount}
+                    </div>
+                  )}
+                </div>
               </Button>
             ))}
           </div>
@@ -433,6 +459,7 @@ const CommunityPage = () => {
               <CommunityInvitesTabLeader
                 communityId={community.id}
                 existingMembers={community.users}
+                setInviteNotifCount={setInviteNotifCount}
               />
             ) : (
               <CommunityInvitesTabMember communityId={community.id} />

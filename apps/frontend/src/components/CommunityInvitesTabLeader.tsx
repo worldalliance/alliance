@@ -33,6 +33,7 @@ import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
 export interface CommunityInvitesTabLeaderProps {
   communityId: number;
   existingMembers: ProfileDto[];
+  setInviteNotifCount: (count: number) => void;
 }
 
 export enum InviteMode {
@@ -43,6 +44,7 @@ export enum InviteMode {
 const CommunityInvitesTabLeader = ({
   communityId,
   existingMembers,
+  setInviteNotifCount,
 }: CommunityInvitesTabLeaderProps) => {
   const [name, setName] = useState("");
   const { user } = useAuth();
@@ -115,6 +117,10 @@ const CommunityInvitesTabLeader = ({
       }
     );
   }, [communityId]);
+
+  useEffect(() => {
+    setInviteNotifCount(pendingRequests.length);
+  }, [pendingRequests, setInviteNotifCount]);
 
   const copyToClipboard = (text: string) => {
     const baseUrl = getBaseUrl();
