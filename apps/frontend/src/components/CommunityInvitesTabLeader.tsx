@@ -25,10 +25,10 @@ import UserSelect, {
 } from "@alliance/shared/ui/UserSelect";
 import DropdownSelect from "@alliance/shared/ui/DropdownSelect";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
-import OneTimeInviteListItem from "./OneTimeInviteListItem";
 import CommunityInviteListItem from "./CommunityInviteListItem";
 import { Link } from "react-router";
 import OneTimeInviteRequestLeaderListItem from "./OneTimeInviteRequestLeaderListItem";
+import OneTimeInviteLeaderListItem from "./OneTimeInviteLeaderListItem";
 
 export interface CommunityInvitesTabLeaderProps {
   communityId: number;
@@ -362,7 +362,7 @@ const CommunityInvitesTabLeader = ({
               switch (entry.type) {
                 case "new_member":
                   return (
-                    <OneTimeInviteListItem
+                    <OneTimeInviteLeaderListItem
                       key={entry.data.id}
                       type={
                         !user ||

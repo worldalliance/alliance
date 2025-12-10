@@ -15,8 +15,8 @@ import List from "@alliance/shared/ui/List";
 import { useToast } from "@alliance/shared/ui/ToastProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
-import OneTimeInviteListItem from "./OneTimeInviteListItem";
 import OneTimeInviteRequestMemberListItem from "./OneTimeInviteRequestMemberListItem";
+import OneTimeInviteMemberListItem from "./OneTimeInviteMemberListItem";
 
 export interface CommunityInvitesTabMemberProps {
   communityId: number;
@@ -230,9 +230,8 @@ const CommunityInvitesTabMember = ({
           </p>
           <List>
             {pendingInvites.map((invite) => (
-              <OneTimeInviteListItem
+              <OneTimeInviteMemberListItem
                 key={invite.id}
-                type="member"
                 invite={invite}
                 onCopy={(id) => copyToClipboard(id)}
                 onDelete={handleDeleteInvite}
@@ -247,9 +246,8 @@ const CommunityInvitesTabMember = ({
           <p className="font-semibold text-xl">Past invites</p>
           <List>
             {usedInvites.map((invite) => (
-              <OneTimeInviteListItem
+              <OneTimeInviteMemberListItem
                 key={invite.id}
-                type="member"
                 invite={invite}
                 onCopy={(id) => copyToClipboard(id)}
                 onDelete={handleDeleteInvite}
