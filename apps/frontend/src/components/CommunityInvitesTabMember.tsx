@@ -34,7 +34,7 @@ const CommunityInvitesTabMember = ({
   const [pendingRequests, setPendingRequests] = useState<
     OnetimeInviteRequestDto[]
   >([]);
-  const { error: errorToast, confirm } = useToast();
+  const { error: errorToast, confirm, success } = useToast();
   const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
   const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -76,10 +76,11 @@ const CommunityInvitesTabMember = ({
     );
   }, [communityId]);
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, invitee: string) => {
     const baseUrl = getBaseUrl();
     const url = `${baseUrl}/signup?ref=${text}`;
     navigator.clipboard.writeText(url);
+    success(`Invite link copied to clipboard! Send it to ${invitee}.`);
   };
 
   const handleDeleteInvite = (
@@ -233,9 +234,9 @@ const CommunityInvitesTabMember = ({
             {invites.map((invite) => (
               <OneTimeInviteListItem
                 key={invite.id}
+                type="member"
                 invite={invite}
-                selfInvited={true}
-                onCopy={copyToClipboard}
+                onCopy={(id) => copyToClipboard(id, invite.invitee)}
                 onDelete={handleDeleteInvite}
               />
             ))}

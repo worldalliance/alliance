@@ -1,18 +1,19 @@
 import { OnetimeInviteDto } from "@alliance/shared/client";
+import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import CopyIcon from "@alliance/shared/ui/icons/CopyIcon";
 import DeleteIcon from "@alliance/shared/ui/icons/DeleteIcon";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
 import { href, Link } from "react-router";
 
 export interface OneTimeInviteListItemProps {
-  selfInvited: boolean;
+  type: "member" | "leader_self_invited" | "leader_member_invited";
   invite: OnetimeInviteDto;
   onDelete: (inviteId: number, e: React.MouseEvent<HTMLElement>) => void;
   onCopy: (code: string) => void;
 }
 
 const OneTimeInviteListItem = ({
-  selfInvited,
+  type,
   invite,
   onDelete,
   onCopy,
@@ -23,7 +24,7 @@ const OneTimeInviteListItem = ({
       className="flex flex-row gap-x-2 p-4 justify-between items-center"
     >
       <div className="gap-x-2 flex flex-row items-center">
-        {!selfInvited && invite.invitingUser && (
+        {type === "leader_member_invited" && invite.invitingUser && (
           <Link
             to={href("/member/:id", {
               id: invite.invitingUser.id.toString(),
@@ -35,7 +36,7 @@ const OneTimeInviteListItem = ({
         )}
 
         <span className="">
-          {!selfInvited && invite.invitingUser && (
+          {type === "leader_member_invited" && invite.invitingUser && (
             <>
               <Link
                 to={href("/member/:id", {
@@ -53,24 +54,48 @@ const OneTimeInviteListItem = ({
       </div>
 
       <div className="flex flex-row gap-3 items-center">
-        <p className="text-gray-500">{invite.code}</p>
-        {invite.isValid ? (
-          <p className="text-green">Pending</p>
-        ) : (
-          <p className="text-gray-500">Accepted</p>
+        {(type === "leader_member_invited" ||
+          type === "leader_self_invited") && (
+          <p className="text-gray-500">{invite.code}</p>
         )}
-        <div
-          className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
-          onClick={() => onCopy(invite.code)}
-        >
-          <CopyIcon size="medium" fill="gray" />
-        </div>
-        <div
-          className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
-          onClick={(e) => onDelete(invite.id, e)}
-        >
-          <DeleteIcon size="medium" fill="gray" />
-        </div>
+        {!invite.isValid ? (
+          <p className="text-gray-500">Accepted</p>
+        ) : type === "member" ? null : (
+          <p className="text-green">Pending</p>
+        )}
+        {invite.isValid &&
+          (type === "member" ? (
+            <Button
+              onClick={() => onCopy(invite.code)}
+              color={ButtonColor.Black}
+            >
+              Share
+            </Button>
+          ) : (
+            <div
+              className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
+              onClick={() => onCopy(invite.code)}
+            >
+              <CopyIcon size="medium" fill="gray" />
+            </div>
+          ))}
+
+        {invite.isValid &&
+          (type === "member" ? (
+            <Button
+              onClick={(e) => onDelete(invite.id, e)}
+              color={ButtonColor.Red}
+            >
+              Delete
+            </Button>
+          ) : (
+            <div
+              className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
+              onClick={(e) => onDelete(invite.id, e)}
+            >
+              <DeleteIcon size="medium" fill="gray" />
+            </div>
+          ))}
       </div>
     </div>
   );
