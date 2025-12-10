@@ -1,4 +1,5 @@
 import { OnetimeInviteRequestDto } from "@alliance/shared/client";
+import AppMarkdownWrapper from "@alliance/shared/ui/AppMarkdownWrapper";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import DeleteIcon from "@alliance/shared/ui/icons/DeleteIcon";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
@@ -46,7 +47,6 @@ const OneTimeInviteRequestListItem = ({
               to={href("/member/:id", {
                 id: request.invitingUser.id.toString(),
               })}
-              className="flex flex-2 items-center hover:underline gap-x-3"
             >
               <ProfileImage pfp={request.invitingUser.profilePicture} />
             </Link>
@@ -65,12 +65,9 @@ const OneTimeInviteRequestListItem = ({
                 <span className="text-gray-500">
                   {" would like to invite "}
                 </span>
-                {request.invitee}
               </>
             )}
-            {type === "member" && (
-              <div className="break-words">{request.invitee}</div>
-            )}
+            {request.invitee}
           </span>
         </div>
 
@@ -111,9 +108,10 @@ const OneTimeInviteRequestListItem = ({
         )}
       </div>
       {request.inviteeDescription && (
-        <p className="break-words text-zinc-500">
-          {request.inviteeDescription}
-        </p>
+        <AppMarkdownWrapper
+          markdownContent={request.inviteeDescription}
+          className="break-words text-zinc-500"
+        />
       )}
     </div>
   );
