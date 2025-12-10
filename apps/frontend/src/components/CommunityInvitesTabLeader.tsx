@@ -28,7 +28,7 @@ import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import OneTimeInviteListItem from "./OneTimeInviteListItem";
 import CommunityInviteListItem from "./CommunityInviteListItem";
 import { Link } from "react-router";
-import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
+import OneTimeInviteRequestLeaderListItem from "./OneTimeInviteRequestLeaderListItem";
 
 export interface CommunityInvitesTabLeaderProps {
   communityId: number;
@@ -343,9 +343,8 @@ const CommunityInvitesTabLeader = ({
           <p className="font-semibold text-xl">Invite requests</p>
           <List>
             {pendingRequests.map((request) => (
-              <OneTimeInviteRequestListItem
+              <OneTimeInviteRequestLeaderListItem
                 key={request.id}
-                type={"leader_pending"}
                 request={request}
                 onApprove={onApproveOnetimeInviteRequest}
                 onReject={onRejectOnetimeInviteRequest}

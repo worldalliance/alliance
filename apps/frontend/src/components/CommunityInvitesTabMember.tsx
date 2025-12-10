@@ -16,7 +16,7 @@ import { useToast } from "@alliance/shared/ui/ToastProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import OneTimeInviteListItem from "./OneTimeInviteListItem";
-import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
+import OneTimeInviteRequestMemberListItem from "./OneTimeInviteRequestMemberListItem";
 
 export interface CommunityInvitesTabMemberProps {
   communityId: number;
@@ -212,9 +212,8 @@ const CommunityInvitesTabMember = ({
           <p className="font-semibold text-xl">Pending requests</p>
           <List>
             {pendingRequests.map((request) => (
-              <OneTimeInviteRequestListItem
+              <OneTimeInviteRequestMemberListItem
                 key={request.id}
-                type={"member"}
                 request={request}
                 onDelete={handleDeleteRequest}
               />
