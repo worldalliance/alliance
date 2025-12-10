@@ -17,6 +17,7 @@ import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
 import { useToast } from "@alliance/shared/ui/ToastProvider";
 import OneTimeInviteListItem from "./OneTimeInviteListItem";
 import { getBaseUrl } from "@alliance/shared/lib/config";
+import AppMarkdownWrapper from "@alliance/shared/ui/AppMarkdownWrapper";
 
 export interface CommunityInvitesTabMemberProps {
   communityId: number;
@@ -182,6 +183,15 @@ const CommunityInvitesTabMember = ({
                 rows={2}
                 style={{ resize: "none" }}
               />
+              {inviteeDescription && (
+                <div>
+                  <p>Preview:</p>
+                  <AppMarkdownWrapper
+                    className="text-zinc-500"
+                    markdownContent={inviteeDescription}
+                  />
+                </div>
+              )}
               <Button
                 color={ButtonColor.Black}
                 onClick={handleRequest}
