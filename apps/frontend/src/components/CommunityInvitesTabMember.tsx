@@ -173,14 +173,14 @@ const CommunityInvitesTabMember = ({
               </p>
               <input
                 type="text"
-                className="border border-zinc-300 rounded px-3 py-2"
+                className="border border-zinc-300 rounded px-3 py-2 bg-white"
                 placeholder="Enter the invitee's first name"
                 value={inviteeName}
                 onChange={(e) => setInviteeName(e.target.value)}
               />
               <textarea
                 ref={descriptionInputRef}
-                className="border border-zinc-300 rounded px-3 py-2"
+                className="border border-zinc-300 rounded px-3 py-2 bg-white"
                 placeholder="Description"
                 value={inviteeDescription}
                 onChange={(e) => {
