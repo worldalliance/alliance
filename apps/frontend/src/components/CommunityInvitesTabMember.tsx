@@ -38,14 +38,14 @@ const CommunityInvitesTabMember = ({
   const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
   const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const onDescriptionChange = () => {
+  useEffect(() => {
     const descriptionInput = descriptionInputRef.current;
     if (!descriptionInput) {
       return;
     }
     descriptionInput.style.height = "auto";
     descriptionInput.style.height = descriptionInput.scrollHeight + 2 + "px";
-  };
+  }, [inviteeDescription, descriptionInputRef]);
 
   useEffect(() => {
     userGetOnetimeInviteRequestsByRequester({ path: { communityId } }).then(
@@ -126,7 +126,6 @@ const CommunityInvitesTabMember = ({
           setInviteeDescription("");
           setPendingRequests((prev) => [response.data, ...prev]);
           setError(null);
-          requestAnimationFrame(onDescriptionChange);
         }
       })
       .finally(() => {
@@ -179,7 +178,6 @@ const CommunityInvitesTabMember = ({
                 value={inviteeDescription}
                 onChange={(e) => {
                   setInviteeDescription(e.target.value);
-                  onDescriptionChange();
                 }}
                 rows={2}
                 style={{ resize: "none" }}
