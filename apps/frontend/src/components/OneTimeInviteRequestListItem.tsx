@@ -1,8 +1,8 @@
 import { OnetimeInviteRequestDto } from "@alliance/shared/client";
 import AppMarkdownWrapper from "@alliance/shared/ui/AppMarkdownWrapper";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
-import DeleteIcon from "@alliance/shared/ui/icons/DeleteIcon";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
+import { X } from "lucide-react";
 import { href, Link } from "react-router";
 
 export type OneTimeInviteRequestListItemProps = {
@@ -103,7 +103,7 @@ const OneTimeInviteRequestListItem = ({
             className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
             onClick={() => onDelete(request.id)}
           >
-            <DeleteIcon size="medium" fill="gray" />
+            <X size={15} />
           </div>
         )}
       </div>

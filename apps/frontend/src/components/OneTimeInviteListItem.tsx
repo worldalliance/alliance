@@ -2,9 +2,9 @@ import { OnetimeInviteDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import { useCallback, useRef, useState } from "react";
 import CopyIcon from "@alliance/shared/ui/icons/CopyIcon";
-import DeleteIcon from "@alliance/shared/ui/icons/DeleteIcon";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
 import { href, Link } from "react-router";
+import { X } from "lucide-react";
 
 export interface OneTimeInviteListItemProps {
   type: "member" | "leader_self_invited" | "leader_member_invited";
@@ -114,7 +114,7 @@ const OneTimeInviteListItem = ({
               className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
               onClick={(e) => onDelete(invite.id, e)}
             >
-              <DeleteIcon size="medium" fill="gray" />
+              <X size={15} />
             </div>
           ))}
       </div>
