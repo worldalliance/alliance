@@ -352,7 +352,7 @@ const MessagesPage = () => {
     >
       <div
         className={` overflow-x-hidden flex flex-col bg-zinc-50 border-r border-zinc-200 transition-width duration-100 ease-in-out ${
-          !isSmall ? "md:max-w-[300px]" : "max-w-full"
+          !isSmall ? "min-w-[300px] max-w-[300px]" : "max-w-full"
         }`}
         style={{ flex: isSmall && messagesOpen ? 0 : 1 }}
       >

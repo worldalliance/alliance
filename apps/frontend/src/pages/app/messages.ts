@@ -188,7 +188,8 @@ const useLiveConvoMessages = (
         // Check if there are any optimistic messages to replace from this user
         // When a real message comes in, replace the oldest optimistic message from the same author
         const optimisticToRemove = prev.find(
-          (msg) => msg.id.startsWith("temp-") && msg.author.id === incoming.author.id
+          (msg) =>
+            msg.id.startsWith("temp-") && msg.author.id === incoming.author.id
         );
         if (optimisticToRemove) {
           optimisticIdsRef.current.delete(optimisticToRemove.id);
@@ -198,7 +199,6 @@ const useLiveConvoMessages = (
         }
         return [...prev, incoming];
       });
-
       conversationMarkRead({
         path: { conversationId: incoming.conversationId },
       });
@@ -316,55 +316,40 @@ const useLiveConvoMessages = (
     });
   }, []);
 
-  return { messages: convoMessages, addOptimisticMessage, removeOptimisticMessage };
+  return {
+    messages: convoMessages,
+    addOptimisticMessage,
+    removeOptimisticMessage,
+  };
 };
 
 export default useLiveConvoMessages;
-
-interface UnreadPayload {
-  conversationId: number;
-  unreadCount: number;
-}
 
 /**
  * Lightweight unread counter for messaging; listens for overview socket updates
  * and increments/decrements local unread count without loading conversation lists.
  */
-const useMessagingUnread = (activeConversationId?: number | null) => {
+const useMessagingUnread = () => {
   const [unread, setUnread] = useState<number>(0);
+  const [hasUpdates, setHasUpdates] = useState<boolean>(false);
   const socketRef = useRef<Socket | null>(null);
-  const unreadByConversationRef = useRef<Map<number, number>>(new Map());
-  const unknownUnreadRef = useRef<number>(0);
-  const activeConversationRef = useRef<number | null>(
-    activeConversationId ?? null
-  );
 
-  useEffect(() => {
-    activeConversationRef.current =
-      typeof activeConversationId === "number"
-        ? activeConversationId
-        : activeConversationId ?? null;
-  }, [activeConversationId]);
-
-  useEffect(() => {
-    let cancelled = false;
+  const refreshUnreadCount = useCallback(() => {
     conversationGetUnreadMessages()
       .then((res) => {
-        if (!cancelled) {
-          const count = res.data?.count ?? 0;
-          setUnread(count);
-          unknownUnreadRef.current = count;
-          unreadByConversationRef.current = new Map();
+        if (res.data) {
+          setUnread(res.data.count);
+          setHasUpdates(false);
         }
       })
       .catch((err) => {
         console.error("Failed to load unread messages count", err);
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    refreshUnreadCount();
+  }, [refreshUnreadCount]);
 
   useEffect(() => {
     const socket = io(`${getWebSocketUrl()}/messaging/overview`, {
@@ -373,60 +358,8 @@ const useMessagingUnread = (activeConversationId?: number | null) => {
     });
     socketRef.current = socket;
 
-    socket.on("conversation:unread", (payload: UnreadPayload) => {
-      const newCountRaw =
-        typeof payload.unreadCount === "number" ? payload.unreadCount : null;
-
-      if (newCountRaw === null) {
-        return;
-      }
-
-      const newCount =
-        activeConversationRef.current === payload.conversationId
-          ? 0
-          : newCountRaw;
-
-      setUnread((prevTotal) => {
-        const map = unreadByConversationRef.current;
-        const prevForConvo = map.get(payload.conversationId);
-        const wasTracked = prevForConvo !== undefined;
-        const prevCount = prevForConvo ?? 0;
-
-        map.set(payload.conversationId, newCount);
-
-        const hadUnread = prevCount > 0;
-        const hasUnread = newCount > 0;
-
-        // Conversation wasn't tracked before and is now marked as read.
-        // It was likely part of the "unknown" unread pool from initial load.
-        if (!wasTracked && !hasUnread) {
-          if (unknownUnreadRef.current > 0) {
-            unknownUnreadRef.current = Math.max(
-              unknownUnreadRef.current - 1,
-              0
-            );
-            return Math.max(prevTotal - 1, 0);
-          }
-          return prevTotal;
-        }
-
-        if (!hadUnread && hasUnread) {
-          if (unknownUnreadRef.current > 0) {
-            unknownUnreadRef.current = Math.max(
-              unknownUnreadRef.current - 1,
-              0
-            );
-            return prevTotal;
-          }
-          return prevTotal + 1;
-        }
-
-        if (hadUnread && !hasUnread) {
-          return Math.max(prevTotal - 1, 0);
-        }
-
-        return prevTotal;
-      });
+    socket.on("conversation:unread", () => {
+      setHasUpdates(true);
     });
 
     socket.on("messaging:error", (error) => {
@@ -439,13 +372,7 @@ const useMessagingUnread = (activeConversationId?: number | null) => {
     };
   }, []);
 
-  const clearUnread = () => {
-    unreadByConversationRef.current.clear();
-    unknownUnreadRef.current = 0;
-    setUnread(0);
-  };
-
-  return { unread, setUnread, clearUnread };
+  return { unread, refreshUnreadCount, hasUpdates, setUnread };
 };
 
 export { useMessagingUnread };

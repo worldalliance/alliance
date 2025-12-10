@@ -113,7 +113,15 @@ ORDER BY pp.total_session_duration_seconds DESC
       },
     );
 
-    const data = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {}
+
+    if (!data) {
+      return [];
+    }
 
     const results = data.results.map((result) => {
       return {

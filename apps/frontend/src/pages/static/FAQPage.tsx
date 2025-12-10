@@ -172,7 +172,14 @@ const FAQPage: React.FC = () => {
                 and build capacity.
               </p>
 
-              <p>Some recent actions we have completed:</p>
+              <ExampleActionCardList />
+            </FAQExpandable>
+            <FAQExpandable title="What are some examples of actions?">
+              <p>
+                Right now, we are taking small-scale actions focused on
+                learning, not direct impact. Here are examples of actions we
+                have taken recently:
+              </p>
 
               <ExampleActionCardList />
             </FAQExpandable>
@@ -202,11 +209,11 @@ const FAQPage: React.FC = () => {
               <p>
                 Strategically, the Alliance operates like a sports team,
                 orchestra, or company—not like a loose crowd. A crowd can be
-                large, energetic, and well-intentioned, but it is unpredictable:
-                people drift in and out, and no one knows exactly who will act
-                when needed. By contrast, a sports team, orchestra, or company
-                can set specific goals and execute precise strategies because
-                every member will show up and do their part.
+                large and energetic, but it is unpredictable: people drift in
+                and out, and no one knows exactly who will act when needed. By
+                contrast, a sports team, orchestra, or company can set specific
+                goals and execute precise strategies because every person will
+                show up and do their part.
               </p>
 
               <p>

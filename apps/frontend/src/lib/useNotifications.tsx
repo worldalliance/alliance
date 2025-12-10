@@ -15,6 +15,7 @@ import {
 } from "@alliance/shared/client";
 import { useNavigate } from "react-router";
 import { useAuth } from "./AuthContext";
+import posthog from "posthog-js";
 
 export function getWebAppLocation(webAppLocation: string) {
   return webAppLocation.startsWith("/") ? webAppLocation : "/" + webAppLocation;
@@ -88,6 +89,12 @@ export const NotificationsProvider = ({
         ? getWebAppLocation(webAppLocation)
         : window.location.pathname;
 
+      posthog.capture("notification_clicked", {
+        notificationId: id,
+        category: clickedNotif?.category ?? "unknown category",
+        webAppLocation: path,
+      });
+
       if (clickedNotif?.category === "friend_request") {
         navigate(path, { state: { openFriendRequest: true } });
       } else if (clickedNotif?.category === "friend_request_accepted") {
@@ -105,6 +112,8 @@ export const NotificationsProvider = ({
     setAllNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
+
+    posthog.capture("notifications_marked_all_as_read");
   }, []);
 
   const handleClearAll = useCallback(() => {

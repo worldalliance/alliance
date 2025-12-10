@@ -21,23 +21,50 @@ const GuidePage: React.FC = () => {
             </h2>
             <ol className="flex flex-col gap-y-1 *:hover:underline">
               <li>
-                <a href="#priorities" className="">
-                  Priorities
+                <a href="#priorities">Priorities</a>
+              </li>
+              <li>
+                <a href="#structure">How we work</a>
+              </li>
+              <li className="ml-4">
+                <a href="#structure" className="text-zinc-500">
+                  Responsibilities
+                </a>
+              </li>
+              <li className="ml-4">
+                <a href="#structure-3" className="text-zinc-500">
+                  Coordination
                 </a>
               </li>
               <li>
-                <a href="#structure" className="">
-                  How we work
+                <a href="#decisions">How we make decisions</a>
+              </li>
+              <li className="ml-4">
+                <a href="#decisions" className="text-zinc-500">
+                  The office plans actions
+                </a>
+              </li>
+              <li className="ml-4">
+                <a href="#decisions-2" className="text-zinc-500">
+                  Members oversee the office
                 </a>
               </li>
               <li>
-                <a href="#governance" className="">
-                  How we make decisions
+                <a href="#resources">Resources</a>
+              </li>
+              <li className="ml-4">
+                <a href="#governance" className="text-zinc-500">
+                  Foundation
                 </a>
               </li>
-              <li>
-                <a href="#resources" className="">
-                  Resources
+              <li className="ml-4">
+                <a href="#governance" className="text-zinc-500">
+                  Governance
+                </a>
+              </li>
+              <li className="ml-4">
+                <a href="#faq" className="text-zinc-500">
+                  FAQ
                 </a>
               </li>
             </ol>
@@ -86,7 +113,7 @@ Our immediate goal is to end global crises that harm or will harm billions of cu
 
 # How we work
 
-## Responsibilities and trust
+## Responsibilities
 
 The Alliance is composed of a body of members and a full-time strategic office.
 
@@ -98,7 +125,7 @@ The Alliance is composed of a body of members and a full-time strategic office.
 
               <div className="my-12 flex flex-col gap-y-4">
                 <MemberContract id="contract" />
-                <p className="text-center text-sm text-zinc-800">
+                <p className="text-center text-zinc-800">
                   Our current membership contract
                 </p>
               </div>
@@ -119,7 +146,7 @@ The foundation of the Alliance is trust.
                 id="structure-3"
                 markdownContent="
 
-## Current and future coordination
+## Coordination
 
 Right now, we are taking small-scale actions focused on learning, not direct impact. Here are examples of actions we have taken recently:
 
@@ -175,9 +202,10 @@ A few broad categories of actions include:
               </div>
             </div>
 
-            <MarkdownWrapper
-              id="governance"
-              markdownContent="
+            <div>
+              <MarkdownWrapper
+                id="decisions"
+                markdownContent="
 
 # How we make decisions
 
@@ -193,11 +221,17 @@ In ideation for and development of an action plan, the office weighs many consid
 - Will the action produce a tangible impact on the world?
 - Will the action make effective use of members’ time?
 - Will the action have any compounding effects – for instance, by providing an educational opportunity or growing the Alliance’s network?
+"
+              />
+
+              <MarkdownWrapper
+                id="decisions-2"
+                markdownContent="
 
 ## Members oversee the office
 Our governance guarantees that the majority of members believe the majority of their contributions improve the world.
 
-We conduct a membership-wide oversight process that occurs on a regular basis, or whenever it is requested by a majority of members. In the process, the office asks members what they think about the direction of the Alliance and whether or not they have any major concerns. The office collects and responds to feedback until we reach an approval threshold of 75%.
+We conduct a membership-wide oversight process that occurs on a regular basis. In the process, the office asks members what they think about the direction of the Alliance and whether or not they have any major concerns. The office collects and responds to feedback until we reach an approval threshold of 75%.
 
 This procedure achieves two goals:
 1. Members determine the high-level goals and methods of the Alliance.
@@ -207,7 +241,8 @@ It is inevitable, though rare, that some members are assigned tasks whose justif
 
 In addition to formal governance, the office incorporates member input by other means. For instance, the office hosts discussions, asks members for action proposals, solicits open-ended feedback, and so on.
 "
-            />
+              />
+            </div>
 
             <div className="flex flex-col gap-y-2">
               <MarkdownWrapper
@@ -219,21 +254,25 @@ In addition to formal governance, the office incorporates member input by other 
 "
               />
 
-              <ResourceButton className="mt-4" to={href("/foundation")}>
+              <ResourceButton
+                className="mt-4"
+                to={href("/foundation")}
+                id="foundation"
+              >
                 <p className="text-base">
                   <span className="font-semibold">Our foundation</span>{" "}
                   describes how we derived our priorities.
                 </p>
               </ResourceButton>
 
-              <ResourceButton to={href("/governance")}>
+              <ResourceButton to={href("/governance")} id="governance">
                 <p className="text-base">
                   <span className="font-semibold">Our governance</span>{" "}
                   describes office and member obligations.
                 </p>
               </ResourceButton>
 
-              <ResourceButton to={href("/faq")}>
+              <ResourceButton to={href("/faq")} id="faq">
                 <p className="text-base">
                   <span className="font-semibold">Our FAQ</span> answers common
                   questions.

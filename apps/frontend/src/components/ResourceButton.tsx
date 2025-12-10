@@ -5,12 +5,19 @@ export interface ResourceButtonProps {
   children: React.ReactNode;
   className?: string;
   to: string;
+  id?: string;
 }
 
-const ResourceButton = ({ children, className, to }: ResourceButtonProps) => {
+const ResourceButton = ({
+  children,
+  className,
+  to,
+  id,
+}: ResourceButtonProps) => {
   return (
     <Link
       to={to}
+      id={id}
       className={`border border-zinc-200 hover:bg-zinc-50 p-4 text-lg w-full ${className}`}
     >
       <div className="flex flex-row items-center justify-between w-full">

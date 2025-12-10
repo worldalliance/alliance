@@ -125,7 +125,7 @@ const ConversationInfoPanel = ({
 
   return (
     <div className="flex-1 relative flex flex-col items-center justify-center">
-      <div className="flex flex-col items-center p-8 w-full gap-y-2">
+      <div className="flex flex-col items-center px-8 w-full gap-y-2 mt-20">
         {isEditingGroup ? (
           <ProfileImageEditor
             key={0}
@@ -196,7 +196,7 @@ const ConversationInfoPanel = ({
         )}
       </div>
       {selectedConvo.type !== "direct" && (
-        <div className="flex flex-col p-2 px-5 gap-4 w-full items-center max-w-[500px]">
+        <div className="flex flex-col p-2 px-5 gap-4 w-full items-center max-w-[500px] mb-20">
           <p className="text-center">
             {selectedConvo.participants.length} members
           </p>

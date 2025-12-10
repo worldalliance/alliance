@@ -362,6 +362,29 @@ describe('ConversationController (e2e)', () => {
       return response.body.count;
     };
 
+    const createDirectConversationWithUnread = async (
+      readerToken: string,
+      senderId: number,
+      senderToken: string,
+    ): Promise<number> => {
+      const conversationResponse = await request(ctx.app.getHttpServer())
+        .post('/messaging/conversations/direct')
+        .set('Authorization', `Bearer ${readerToken}`)
+        .send({ targetUserId: senderId })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post('/messaging/messages')
+        .set('Authorization', `Bearer ${senderToken}`)
+        .send({
+          conversationId: conversationResponse.body.id,
+          body: 'Unread message for total count checks',
+        })
+        .expect(201);
+
+      return conversationResponse.body.id;
+    };
+
     it('returns zero when the user has no conversations or unread messages', async () => {
       const { token } = await createUserAndToken();
       const unreadCount = await getUnreadCount(token);
@@ -462,6 +485,139 @@ describe('ConversationController (e2e)', () => {
 
       const unreadCount = await getUnreadCount(readerToken);
       expect(unreadCount).toBe(2);
+    });
+
+    describe('overall unread totals across multiple conversations', () => {
+      it('adjusts totals when conversations are toggled read and new messages arrive across threads', async () => {
+        const { token: readerToken } = await createUserAndToken();
+        const { user: senderA, token: senderAToken } = await createUserAndToken();
+        const { user: senderB, token: senderBToken } = await createUserAndToken();
+        const { user: senderC, token: senderCToken } = await createUserAndToken();
+
+        const conversationAId = await createDirectConversationWithUnread(
+          readerToken,
+          senderA.id,
+          senderAToken,
+        );
+        const conversationBId = await createDirectConversationWithUnread(
+          readerToken,
+          senderB.id,
+          senderBToken,
+        );
+        const conversationCId = await createDirectConversationWithUnread(
+          readerToken,
+          senderC.id,
+          senderCToken,
+        );
+
+        await request(ctx.app.getHttpServer())
+          .post('/messaging/messages')
+          .set('Authorization', `Bearer ${senderBToken}`)
+          .send({
+            conversationId: conversationBId,
+            body: 'Another unread from B',
+          })
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(3);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationAId}/read`)
+          .set('Authorization', `Bearer ${readerToken}`)
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(2);
+
+        await request(ctx.app.getHttpServer())
+          .post('/messaging/messages')
+          .set('Authorization', `Bearer ${senderAToken}`)
+          .send({
+            conversationId: conversationAId,
+            body: 'New activity after read',
+          })
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(3);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationBId}/read`)
+          .set('Authorization', `Bearer ${readerToken}`)
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(2);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationAId}/read`)
+          .set('Authorization', `Bearer ${readerToken}`)
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(1);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationCId}/read`)
+          .set('Authorization', `Bearer ${readerToken}`)
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(0);
+      });
+
+      it('handles re-reading threads and new activity after clearing all unreads', async () => {
+        const { token: readerToken } = await createUserAndToken();
+        const { user: senderA, token: senderAToken } = await createUserAndToken();
+        const { user: senderB, token: senderBToken } = await createUserAndToken();
+
+        const conversationAId = await createDirectConversationWithUnread(
+          readerToken,
+          senderA.id,
+          senderAToken,
+        );
+        const conversationBId = await createDirectConversationWithUnread(
+          readerToken,
+          senderB.id,
+          senderBToken,
+        );
+
+        expect(await getUnreadCount(readerToken)).toBe(2);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationAId}/read`)
+          .set('Authorization', `Bearer ${readerToken}`)
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(1);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationAId}/read`)
+          .set('Authorization', `Bearer ${readerToken}`)
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(1);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationBId}/read`)
+          .set('Authorization', `Bearer ${readerToken}`)
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(0);
+
+        await request(ctx.app.getHttpServer())
+          .post('/messaging/messages')
+          .set('Authorization', `Bearer ${senderBToken}`)
+          .send({
+            conversationId: conversationBId,
+            body: 'Fresh unread message',
+          })
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(1);
+
+        await request(ctx.app.getHttpServer())
+          .post(`/messaging/conversations/${conversationAId}/read`)
+          .set('Authorization', `Bearer ${readerToken}`)
+          .expect(201);
+
+        expect(await getUnreadCount(readerToken)).toBe(1);
+      });
     });
   });
 });

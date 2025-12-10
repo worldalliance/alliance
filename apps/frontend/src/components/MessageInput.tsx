@@ -157,7 +157,7 @@ const MessageInput = ({
               <div className="text-black">{replyingTo.body}</div>
             )}
             {!replyingTo.body && replyingTo.attachments.length && (
-              <div className="text-black">[img]</div>
+              <div className="text-black">image</div>
             )}
           </div>
           <Button
@@ -205,7 +205,7 @@ const MessageInput = ({
           onPaste={handlePaste}
           placeholder="Message"
           className="w-full border-none bg-transparent p-3 text-black resize-none focus:outline-none pr-9"
-          rows={Math.max(1, Math.min(4, message.split("\n").length || 1))}
+          rows={1}
         />
         <div className="absolute right-2 top-0 bottom-0 flex items-center">
           <input

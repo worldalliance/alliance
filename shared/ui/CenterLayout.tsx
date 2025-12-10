@@ -1,3 +1,5 @@
+import BottomSpacer from "./BottomSpacer";
+
 export interface CenterLayoutProps extends React.PropsWithChildren {
   className?: string;
   width?: "4xl" | "3xl";
@@ -15,7 +17,7 @@ const CenterLayout: React.FC<CenterLayoutProps> = ({
       } mx-auto px-3 py-3 md:py-12 ${className}`}
     >
       {children}
-      <div className="h-15 block md:h-5"></div>
+      <BottomSpacer />
     </div>
   );
 };

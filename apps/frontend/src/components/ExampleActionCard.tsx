@@ -15,9 +15,15 @@ const ExampleActionCard: React.FC<ExampleActionCardProps> = ({
         <div className="flex flex-row items-center justify-between gap-x-2">
           <p className="font-semibold text-green">{name}</p>
         </div>
-        <p className="text-zinc-500">{description}</p>
+        <p className="mt-2 text-zinc-800">
+          <span className="font-semibold">What we did:</span> {description}
+        </p>
 
-        {purpose && <p className="text-zinc-500">{purpose}</p>}
+        {purpose && (
+          <p className="text-zinc-800 mt-2">
+            <span className="font-semibold">Why we did it:</span> {purpose}
+          </p>
+        )}
       </div>
     </div>
   );

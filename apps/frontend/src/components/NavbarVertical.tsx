@@ -1,7 +1,14 @@
 import { Link, href, useOutletContext } from "react-router";
 import { AppLayoutOutletContext } from "../applayout";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNotifications } from "../lib/useNotifications";
 import { useAuth } from "../lib/AuthContext";
 import { Features } from "@alliance/shared/lib/features";
@@ -21,6 +28,7 @@ import {
   FileText,
   MessagesSquare,
 } from "lucide-react";
+import BottomSpacer from "@alliance/shared/ui/BottomSpacer";
 
 export enum NavbarPage {
   Tasks = "Tasks",
@@ -90,7 +98,12 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
 
   const { unreadCount } = useNotifications();
 
-  const { unread: unreadMessages } = useMessagingUnread();
+  const {
+    unread: unreadMessages,
+    hasUpdates,
+    setUnread,
+    refreshUnreadCount,
+  } = useMessagingUnread();
 
   const [open, setOpen] = useState(false);
   const navRef = useRef<HTMLDivElement | null>(null);
@@ -213,6 +226,27 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
     };
   }, [updateNavWidth, updateMobileNavHeight]);
 
+  useEffect(() => {
+    const handleDocumentMouseDown = (event: MouseEvent) => {
+      const el = navRef.current;
+      if (!el) return;
+
+      const target = event.target as Node | null;
+
+      // If click is outside the navbar, close the navbar
+      if (target && el.contains(target)) {
+        return;
+      }
+
+      setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleDocumentMouseDown);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentMouseDown);
+    };
+  });
+
   const profilePicture = profile?.profilePicture || null;
 
   //   if (!isAuthenticated && !loading) return null;
@@ -222,6 +256,18 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
       .flatMap((section) => section.items)
       .find((item) => item.destination === window.location.pathname)?.page ||
     null;
+
+  useEffect(() => {
+    if (currentLocation !== NavbarPage.Messages && hasUpdates) {
+      refreshUnreadCount();
+    }
+  }, [hasUpdates, refreshUnreadCount, currentLocation]);
+
+  useEffect(() => {
+    if (currentLocation === NavbarPage.Messages) {
+      setUnread(0);
+    }
+  }, [currentLocation, setUnread]);
 
   const unreadNotifsForPage = useMemo((): Partial<
     Record<NavbarPage, number>
@@ -340,6 +386,8 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
               </nav>
             ))}
           </div>
+
+          <BottomSpacer />
         </div>
       </aside>
     </>

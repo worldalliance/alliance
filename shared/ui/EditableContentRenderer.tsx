@@ -1,5 +1,6 @@
 import { EditableContentDto } from "@alliance/shared/client";
 import AppMarkdownWrapper from "@alliance/shared/ui/AppMarkdownWrapper";
+import { X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 
 interface EditableContentRendererProps {
@@ -100,7 +101,7 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
           onClick={closeLightbox}
         >
           <div
-            className="relative max-w-5xl px-6"
+            className="relative max-w-5xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <img
@@ -127,10 +128,10 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
             )}
             <button
               onClick={closeLightbox}
-              className="absolute right-6 -top-10 bg-white/20 hover:bg-white/30 text-black rounded-full w-9 h-9 flex items-center justify-center font-avenir"
+              className="absolute -right-5 -top-5 hover:bg-black text-white rounded-full w-9 h-9 flex items-center justify-center font-avenir"
               aria-label="Close"
             >
-              &times;
+              <X size={18} strokeWidth={3} />
             </button>
           </div>
         </div>

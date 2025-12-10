@@ -33,7 +33,7 @@ import { MessageSquare } from "lucide-react";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../../lib/config";
 import CommunityInvitesTabMember from "../../components/CommunityInvitesTabMember";
-import CommunityInvitesTabLeader from "../../components/CommunityInvitesTabLeader";
+import BottomSpacer from "@alliance/shared/ui/BottomSpacer";
 
 type Tab = "activity" | "members" | "invites" | "about" | "edit" | "resources";
 
@@ -475,6 +475,7 @@ const CommunityPage = () => {
               />
             </Card>
           )}
+          <BottomSpacer />
           {!chatOpen && messagingEnabled && (
             <div className="absolute bottom-5 right-7 bg-white hover:bg-zinc-100">
               <Button

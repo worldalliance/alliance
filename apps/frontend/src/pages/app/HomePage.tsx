@@ -307,7 +307,7 @@ const HomePage = () => {
       <div className="px-4 pt-12 flex flex-col divide-y *:py-6 *:px-2 divide-zinc-200">
         {todoActions.length + newActions.length > 0 && (
           <div className="flex flex-col gap-y-2">
-            <p className="font-semibold text-xl font-serif text-black">
+            <p className="font-semibold text-base font-serif text-black">
               Progress
             </p>
             {currentWeekTodoActions.length + newActions.length > 0 && (
