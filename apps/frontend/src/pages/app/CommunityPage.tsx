@@ -32,6 +32,7 @@ import FloatingChatPanel from "../../components/FloatingChatpanel";
 import { MessageSquare } from "lucide-react";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../../lib/config";
+import CommunityInvitesTabLeader from "../../components/CommunityInvitesTabLeader";
 import CommunityInvitesTabMember from "../../components/CommunityInvitesTabMember";
 import BottomSpacer from "@alliance/shared/ui/BottomSpacer";
 
