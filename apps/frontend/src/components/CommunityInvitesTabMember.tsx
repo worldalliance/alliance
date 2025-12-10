@@ -1,5 +1,5 @@
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import { useAuth } from "../lib/AuthContext";
 import {
@@ -35,6 +35,16 @@ const CommunityInvitesTabMember = ({
   >([]);
   const { error: errorToast } = useToast();
   const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
+  const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const onDescriptionChange = () => {
+    const descriptionInput = descriptionInputRef.current;
+    if (!descriptionInput) {
+      return;
+    }
+    descriptionInput.style.height = "auto";
+    descriptionInput.style.height = descriptionInput.scrollHeight + 2 + "px";
+  };
 
   useEffect(() => {
     userGetOnetimeInviteRequestsByRequester({ path: { communityId } }).then(
@@ -98,6 +108,7 @@ const CommunityInvitesTabMember = ({
           setInviteeDescription("");
           setPendingRequests((prev) => [response.data, ...prev]);
           setError(null);
+          requestAnimationFrame(onDescriptionChange);
         }
       })
       .finally(() => {
@@ -138,18 +149,23 @@ const CommunityInvitesTabMember = ({
               </p>
               <input
                 type="text"
-                className="border border-zinc-300 rounded px-3 h-10"
+                className="border border-zinc-300 rounded px-3 py-2"
                 placeholder="Enter the invitee's first name"
                 value={inviteeName}
                 onChange={(e) => setInviteeName(e.target.value)}
               />
-              <input
-                type="text"
-                className="border border-zinc-300 rounded px-3 h-10"
+              <textarea
+                ref={descriptionInputRef}
+                className="border border-zinc-300 rounded px-3 py-2"
                 placeholder="Description"
                 value={inviteeDescription}
-                onChange={(e) => setInviteeDescription(e.target.value)}
-              ></input>
+                onChange={(e) => {
+                  setInviteeDescription(e.target.value);
+                  onDescriptionChange();
+                }}
+                rows={2}
+                style={{ resize: "none" }}
+              />
               <Button
                 color={ButtonColor.Black}
                 onClick={handleRequest}
