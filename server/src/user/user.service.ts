@@ -1075,7 +1075,7 @@ export class UserService {
         const notif = this.notifRepository.create({
           user: leader,
           category: NotificationCategory.OnetimeInviteRequestCreated,
-          message: `${invitingUser.name} has requested that ${rest.invitee} join the Alliance and your group. Click here to approve or reject this request`,
+          message: `${invitingUser.name} has requested that ${rest.invitee} join the Alliance and your group`,
           webAppLocation: groupInvitesUrl(),
           associatedUsers: [invitingUser],
           onetimeInviteRequest: savedRequest,
@@ -1131,7 +1131,7 @@ export class UserService {
       this.notifRepository.create({
         user: invite.invitingUser,
         category: NotificationCategory.OnetimeInviteRequestApproved,
-        message: `Your request to invite ${invite.invitee} has been approved. Click here to get a link to send to them`,
+        message: `Your request to invite ${invite.invitee} has been approved and is ready to be shared`,
         webAppLocation: groupInvitesUrl(),
       }),
     );
