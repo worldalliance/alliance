@@ -35,7 +35,7 @@ const OneTimeInviteRequestListItem = ({
   onDelete,
 }: OneTimeInviteRequestListItemProps) => {
   return (
-    <div className="p-4">
+    <div className="p-4 gap-y-2 flex flex-col">
       <div
         key={request.id}
         className="flex flex-row gap-x-2 justify-between items-center"
@@ -62,7 +62,9 @@ const OneTimeInviteRequestListItem = ({
                 >
                   {request.invitingUser.displayName}
                 </Link>
-                {" would like to invite "}
+                <span className="text-gray-500">
+                  {" would like to invite "}
+                </span>
                 {request.invitee}
               </>
             )}

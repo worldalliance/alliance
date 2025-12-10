@@ -45,7 +45,7 @@ const OneTimeInviteListItem = ({
               >
                 <span>{invite.invitingUser.displayName}</span>
               </Link>
-              <span>{" invited "}</span>
+              <span className="text-gray-500">{" invited "}</span>
             </>
           )}
           {invite.invitee}
