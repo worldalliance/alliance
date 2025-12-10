@@ -236,6 +236,9 @@ const CommunityInvitesTabMember = ({
       {pendingInvites.length > 0 && (
         <div className="flex flex-col gap-y-2">
           <p className="font-semibold text-xl">Approved invites</p>
+          <p className="text-gray-500">
+            {'Click "Share" to copy the link and send it to the invitee.'}
+          </p>
           <List>
             {pendingInvites.map((invite) => (
               <OneTimeInviteListItem
