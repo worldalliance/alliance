@@ -1,5 +1,6 @@
 import { OnetimeInviteDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
+import { useCallback, useRef, useState } from "react";
 import CopyIcon from "@alliance/shared/ui/icons/CopyIcon";
 import DeleteIcon from "@alliance/shared/ui/icons/DeleteIcon";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
@@ -18,6 +19,20 @@ const OneTimeInviteListItem = ({
   onDelete,
   onCopy,
 }: OneTimeInviteListItemProps) => {
+  const [copied, setCopied] = useState(false);
+  const copiedResetTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  const setCopiedAndTimeout = useCallback(() => {
+    setCopied(true);
+    if (copiedResetTimeout.current) {
+      clearTimeout(copiedResetTimeout.current);
+    }
+    copiedResetTimeout.current = setTimeout(() => {
+      setCopied(false);
+      copiedResetTimeout.current = null;
+    }, 4000);
+  }, [setCopied]);
+
   return (
     <div
       key={invite.id}
@@ -66,15 +81,21 @@ const OneTimeInviteListItem = ({
         {invite.isValid &&
           (type === "member" ? (
             <Button
-              onClick={() => onCopy(invite.code)}
-              color={ButtonColor.Black}
+              onClick={() => {
+                onCopy(invite.code);
+                setCopiedAndTimeout();
+              }}
+              color={copied ? ButtonColor.Green : ButtonColor.Black}
             >
-              Share
+              {copied ? "Copied!" : "Share"}
             </Button>
           ) : (
             <div
               className="cursor-pointer active:scale-85 transition-all duration-100 hover:brightness-50"
-              onClick={() => onCopy(invite.code)}
+              onClick={() => {
+                onCopy(invite.code);
+                setCopiedAndTimeout();
+              }}
             >
               <CopyIcon size="medium" fill="gray" />
             </div>

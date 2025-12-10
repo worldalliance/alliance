@@ -1,7 +1,3 @@
-import Button, { ButtonColor } from "@alliance/shared/ui/Button";
-import { useEffect, useRef, useState } from "react";
-import Card, { CardStyle } from "@alliance/shared/ui/Card";
-import { useAuth } from "../lib/AuthContext";
 import {
   CreateOnetimeInviteRequestDto,
   OnetimeInviteDto,
@@ -12,12 +8,16 @@ import {
   userGetOnetimeInviteRequestsByRequester,
   userGetOnetimeInvitesByRequester,
 } from "@alliance/shared/client";
-import List from "@alliance/shared/ui/List";
-import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
-import { useToast } from "@alliance/shared/ui/ToastProvider";
-import OneTimeInviteListItem from "./OneTimeInviteListItem";
 import { getBaseUrl } from "@alliance/shared/lib/config";
 import AppMarkdownWrapper from "@alliance/shared/ui/AppMarkdownWrapper";
+import Button, { ButtonColor } from "@alliance/shared/ui/Button";
+import Card, { CardStyle } from "@alliance/shared/ui/Card";
+import List from "@alliance/shared/ui/List";
+import { useToast } from "@alliance/shared/ui/ToastProvider";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "../lib/AuthContext";
+import OneTimeInviteListItem from "./OneTimeInviteListItem";
+import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
 
 export interface CommunityInvitesTabMemberProps {
   communityId: number;
@@ -34,7 +34,7 @@ const CommunityInvitesTabMember = ({
   const [pendingRequests, setPendingRequests] = useState<
     OnetimeInviteRequestDto[]
   >([]);
-  const { error: errorToast, confirm, success } = useToast();
+  const { error: errorToast, confirm } = useToast();
   const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
   const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -76,11 +76,10 @@ const CommunityInvitesTabMember = ({
     );
   }, [communityId]);
 
-  const copyToClipboard = (text: string, invitee: string) => {
+  const copyToClipboard = (text: string) => {
     const baseUrl = getBaseUrl();
     const url = `${baseUrl}/signup?ref=${text}`;
     navigator.clipboard.writeText(url);
-    success(`Invite link copied to clipboard! Send it to ${invitee}.`);
   };
 
   const handleDeleteInvite = (
@@ -234,7 +233,7 @@ const CommunityInvitesTabMember = ({
                 key={invite.id}
                 type="member"
                 invite={invite}
-                onCopy={(id) => copyToClipboard(id, invite.invitee)}
+                onCopy={(id) => copyToClipboard(id)}
                 onDelete={handleDeleteInvite}
               />
             ))}
