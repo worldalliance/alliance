@@ -181,7 +181,7 @@ const CommunityInvitesTabMember = ({
               <textarea
                 ref={descriptionInputRef}
                 className="border border-zinc-300 rounded px-3 py-2 bg-white overflow-hidden"
-                placeholder="Description"
+                placeholder="Message to group leader"
                 value={inviteeDescription}
                 onChange={(e) => {
                   setInviteeDescription(e.target.value);
