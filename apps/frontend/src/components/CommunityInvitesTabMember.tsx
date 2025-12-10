@@ -43,7 +43,7 @@ const CommunityInvitesTabMember = ({
       return;
     }
     descriptionInput.style.height = "auto";
-    descriptionInput.style.height = descriptionInput.scrollHeight + 2 + "px";
+    descriptionInput.style.height = descriptionInput.scrollHeight + "px";
   }, [inviteeDescription, descriptionInputRef]);
 
   useEffect(() => {
@@ -180,7 +180,7 @@ const CommunityInvitesTabMember = ({
               />
               <textarea
                 ref={descriptionInputRef}
-                className="border border-zinc-300 rounded px-3 py-2 bg-white"
+                className="border border-zinc-300 rounded px-3 py-2 bg-white overflow-hidden"
                 placeholder="Description"
                 value={inviteeDescription}
                 onChange={(e) => {
