@@ -183,6 +183,7 @@ const CommunityInvitesTabLeader = ({
         path: { inviteId },
       });
       if (!response.data) {
+        setError("Failed to approve invite");
         return;
       }
 
@@ -200,6 +201,7 @@ const CommunityInvitesTabLeader = ({
       });
 
       if (response.error) {
+        setError("Failed to reject invite");
         return;
       }
 
