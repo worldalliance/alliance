@@ -486,6 +486,7 @@ export type OnetimeInvite = {
     createdAt: string;
     status: OnetimeInviteStatus;
     community?: Community;
+    communityId?: number;
     notifs: Array<Notification>;
 };
 

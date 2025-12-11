@@ -5,6 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  RelationId,
 } from 'typeorm';
 import { User } from './user.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -77,6 +78,12 @@ export class OnetimeInvite {
   @JoinColumn({ name: 'communityId' })
   @IsOptional()
   community?: Ty<Community>;
+
+  @RelationId((invite: OnetimeInvite) => invite.community)
+  @Type(() => Number)
+  @ApiPropertyOptional()
+  @IsOptional()
+  communityId?: number;
 
   @OneToMany(() => Notification, (notif) => notif.onetimeInvite)
   @Type(() => Notification)

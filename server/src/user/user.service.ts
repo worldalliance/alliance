@@ -1003,13 +1003,13 @@ export class UserService {
   async deleteOnetimeInvite(inviteId: number, userId: number): Promise<void> {
     const invite = await this.onetimeInviteRepository.findOneOrFail({
       where: { id: inviteId },
-      relations: ['invitingUser', 'community'],
+      relations: ['invitingUser'],
     });
     const user = await this.findOneOrFail(userId);
     if (
       !(
         invite.invitingUser.id === userId ||
-        user.leaderOfIds.some((cid) => cid === invite.community?.id) ||
+        user.leaderOfIds.some((cid) => cid === invite.communityId) ||
         user.admin
       )
     ) {
@@ -1104,7 +1104,7 @@ export class UserService {
 
     const request = await this.onetimeInviteRepository.findOneOrFail({
       where: { id: inviteId },
-      relations: ['invitingUser', 'community'],
+      relations: ['invitingUser'],
     });
 
     if (request.status === OnetimeInviteStatus.REQUEST_REJECTED) {
@@ -1123,9 +1123,9 @@ export class UserService {
       );
     }
 
-    if (!user.leaderOfIds.some((cid) => cid === request.community?.id)) {
+    if (!user.leaderOfIds.some((cid) => cid === request.communityId)) {
       throw new UnauthorizedException(
-        `User is not a leader of community ${request.community?.id}`,
+        `User is not a leader of community ${request.communityId}`,
       );
     }
 
