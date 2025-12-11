@@ -24,7 +24,7 @@ const OneTimeInviteLeaderListItem = ({
       className="flex flex-row gap-x-2 p-4 justify-between items-center"
     >
       <div className="gap-x-2 flex flex-row items-center">
-        {isSelfInvited && (
+        {!isSelfInvited && (
           <Link
             to={href("/member/:id", {
               id: invite.invitingUser.id.toString(),
