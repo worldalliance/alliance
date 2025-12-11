@@ -7,7 +7,7 @@ import {
   actionsGetCommunityMemberInfo,
   userGetMyCommunity,
   userLeaveCommunity,
-  userGetOnetimeInviteRequestsByCommunity,
+  userGetOnetimeInvitesByCommunity,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Spinner from "../../components/Spinner";
@@ -126,14 +126,15 @@ const CommunityPage = () => {
       return;
     }
     (async () => {
-      const requests = await userGetOnetimeInviteRequestsByCommunity({
+      const invites = await userGetOnetimeInvitesByCommunity({
         path: { communityId: community.id },
       });
-      if (!requests.data) {
+      if (!invites.data) {
         return;
       }
       setInviteNotifCount(
-        requests.data.filter((request) => request.status === "pending").length
+        invites.data.filter((invite) => invite.status === "request_pending")
+          .length
       );
     })();
   }, [amLeader, community]);

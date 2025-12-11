@@ -1,9 +1,9 @@
-import { OnetimeInviteRequestDto } from "@alliance/shared/client";
+import { OnetimeInviteDto } from "@alliance/shared/client";
 import AppMarkdownWrapper from "@alliance/shared/ui/AppMarkdownWrapper";
 import { X } from "lucide-react";
 
 export type OneTimeInviteRequestMemberListItemProps = {
-  request: OnetimeInviteRequestDto;
+  request: OnetimeInviteDto;
   onApprove?: undefined;
   onReject?: undefined;
   onDelete: (requestId: number) => void;

@@ -116,17 +116,7 @@ export type User = {
     participants: Array<Participant>;
 };
 
-export type OnetimeInviteStatus = 'link_unused' | 'link_used';
-
-export type OnetimeInvite = {
-    id: number;
-    invitee: string;
-    code: string;
-    invitingUser: User;
-    createdAt: string;
-    status: OnetimeInviteStatus;
-    community?: Community;
-};
+export type OnetimeInviteStatus = 'request_pending' | 'request_rejected' | 'link_unused' | 'link_used';
 
 export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
 
@@ -480,20 +470,19 @@ export type Notification = {
     groupingCount?: number;
     actionUpdate?: ActionUpdate;
     comment?: Comment;
-    onetimeInviteRequest?: OnetimeInviteRequest;
+    onetimeInvite?: OnetimeInvite;
 };
 
-export type OnetimeInviteRequestStatus = 'pending' | 'approved' | 'rejected';
-
-export type OnetimeInviteRequest = {
+export type OnetimeInvite = {
     id: number;
     invitee: string;
     inviteeDescription?: string;
+    code: string;
     invitingUser: User;
     createdAt: string;
-    community: Community;
+    status: OnetimeInviteStatus;
+    community?: Community;
     notifs: Array<Notification>;
-    status: OnetimeInviteRequestStatus;
 };
 
 export type Community = {
@@ -504,7 +493,6 @@ export type Community = {
     users?: Array<User>;
     leaders?: Array<User>;
     invites?: Array<OnetimeInvite>;
-    requests?: Array<OnetimeInviteRequest>;
     internalInvites: Array<CommunityInvite>;
 };
 
@@ -649,7 +637,6 @@ export type CommunityDto = {
     name: string;
     description: string;
     photo?: string;
-    requests?: Array<OnetimeInviteRequest>;
     internalInvites: Array<CommunityInvite>;
     users: Array<ProfileDto>;
     leaders: Array<ProfileDto>;
@@ -688,28 +675,19 @@ export type AddUserToTagDto = {
 export type OnetimeInviteDto = {
     id: number;
     invitee: string;
+    inviteeDescription?: string;
     code: string;
     createdAt: string;
     status: OnetimeInviteStatus;
     community?: Community;
-    invitingUser?: ProfileDto;
+    invitingUser: ProfileDto;
 };
 
-export type CreateOnetimeInviteRequestDto = {
+export type RequestOnetimeInviteDto = {
     invitee: string;
     inviteeDescription?: string;
     invitingUserId?: number;
     communityId: number;
-};
-
-export type OnetimeInviteRequestDto = {
-    id: number;
-    invitee: string;
-    inviteeDescription?: string;
-    createdAt: string;
-    community: Community;
-    status: OnetimeInviteRequestStatus;
-    invitingUser: ProfileDto;
 };
 
 export type CreateOnetimeInviteDto = {
@@ -2665,44 +2643,44 @@ export type UserOnetimeInviteResponses = {
 
 export type UserOnetimeInviteResponse = UserOnetimeInviteResponses[keyof UserOnetimeInviteResponses];
 
-export type UserCreateOnetimeInviteRequestData = {
-    body: CreateOnetimeInviteRequestDto;
+export type UserRequestOnetimeInviteData = {
+    body: RequestOnetimeInviteDto;
     path?: never;
     query?: never;
-    url: '/user/createOnetimeInviteRequest';
+    url: '/user/onetimeInvite/request';
 };
 
-export type UserCreateOnetimeInviteRequestResponses = {
-    200: OnetimeInviteRequestDto;
-};
-
-export type UserCreateOnetimeInviteRequestResponse = UserCreateOnetimeInviteRequestResponses[keyof UserCreateOnetimeInviteRequestResponses];
-
-export type UserApproveOnetimeInviteRequestData = {
-    body?: never;
-    path: {
-        requestId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInviteRequest/{requestId}/approve';
-};
-
-export type UserApproveOnetimeInviteRequestResponses = {
+export type UserRequestOnetimeInviteResponses = {
     200: OnetimeInviteDto;
 };
 
-export type UserApproveOnetimeInviteRequestResponse = UserApproveOnetimeInviteRequestResponses[keyof UserApproveOnetimeInviteRequestResponses];
+export type UserRequestOnetimeInviteResponse = UserRequestOnetimeInviteResponses[keyof UserRequestOnetimeInviteResponses];
 
-export type UserRejectOnetimeInviteRequestData = {
+export type UserApproveOnetimeInviteData = {
     body?: never;
     path: {
-        requestId: number;
+        inviteId: number;
     };
     query?: never;
-    url: '/user/onetimeInviteRequest/{requestId}/reject';
+    url: '/user/onetimeInvite/{inviteId}/approve';
 };
 
-export type UserRejectOnetimeInviteRequestResponses = {
+export type UserApproveOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserApproveOnetimeInviteResponse = UserApproveOnetimeInviteResponses[keyof UserApproveOnetimeInviteResponses];
+
+export type UserRejectOnetimeInviteData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvite/{inviteId}/reject';
+};
+
+export type UserRejectOnetimeInviteResponses = {
     200: unknown;
 };
 
@@ -2710,7 +2688,7 @@ export type UserCreateOnetimeInviteData = {
     body: CreateOnetimeInviteDto;
     path?: never;
     query?: never;
-    url: '/user/createOnetimeInvite';
+    url: '/user/onetimeInvite/create';
 };
 
 export type UserCreateOnetimeInviteResponses = {
@@ -2746,19 +2724,6 @@ export type UserGetCommunityInvitesResponses = {
 };
 
 export type UserGetCommunityInvitesResponse = UserGetCommunityInvitesResponses[keyof UserGetCommunityInvitesResponses];
-
-export type UserDeleteOnetimeInviteRequestData = {
-    body?: never;
-    path: {
-        requestId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInviteRequests/{requestId}';
-};
-
-export type UserDeleteOnetimeInviteRequestResponses = {
-    200: unknown;
-};
 
 export type UserDeleteOnetimeInviteData = {
     body?: never;
@@ -2841,36 +2806,6 @@ export type UserGetOnetimeInvitesByRequesterResponses = {
 };
 
 export type UserGetOnetimeInvitesByRequesterResponse = UserGetOnetimeInvitesByRequesterResponses[keyof UserGetOnetimeInvitesByRequesterResponses];
-
-export type UserGetOnetimeInviteRequestsByCommunityData = {
-    body?: never;
-    path: {
-        communityId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInviteRequests/{communityId}';
-};
-
-export type UserGetOnetimeInviteRequestsByCommunityResponses = {
-    200: Array<OnetimeInviteRequestDto>;
-};
-
-export type UserGetOnetimeInviteRequestsByCommunityResponse = UserGetOnetimeInviteRequestsByCommunityResponses[keyof UserGetOnetimeInviteRequestsByCommunityResponses];
-
-export type UserGetOnetimeInviteRequestsByRequesterData = {
-    body?: never;
-    path: {
-        communityId: number;
-    };
-    query?: never;
-    url: '/user/onetimeInviteRequests/{communityId}/my';
-};
-
-export type UserGetOnetimeInviteRequestsByRequesterResponses = {
-    200: Array<OnetimeInviteRequestDto>;
-};
-
-export type UserGetOnetimeInviteRequestsByRequesterResponse = UserGetOnetimeInviteRequestsByRequesterResponses[keyof UserGetOnetimeInviteRequestsByRequesterResponses];
 
 export type UserGetMyCommunityData = {
     body?: never;

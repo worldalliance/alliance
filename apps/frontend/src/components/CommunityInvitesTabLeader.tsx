@@ -9,10 +9,9 @@ import {
   userDeleteOnetimeInvite,
   userGetCommunityInvites,
   userGetOnetimeInvitesByCommunity,
-  userGetOnetimeInviteRequestsByCommunity,
-  OnetimeInviteRequestDto,
-  userApproveOnetimeInviteRequest,
-  userRejectOnetimeInviteRequest,
+  userApproveOnetimeInvite,
+  userRejectOnetimeInvite,
+
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import { useEffect, useMemo, useState } from "react";
@@ -51,9 +50,9 @@ const CommunityInvitesTabLeader = ({
 
   const [creatingInvite, setCreatingInvite] = useState(false);
 
-  const [pendingRequests, setPendingRequests] = useState<
-    OnetimeInviteRequestDto[]
-  >([]);
+  const [pendingRequests, setPendingRequests] = useState<OnetimeInviteDto[]>(
+    []
+  );
 
   const [newUserInvites, setNewUserInvites] = useState<OnetimeInviteDto[]>([]);
   const [existingMemberInvites, setExistingMemberInvites] = useState<
@@ -99,12 +98,12 @@ const CommunityInvitesTabLeader = ({
         setError("Failed to load existing member invites");
       }
     });
-    userGetOnetimeInviteRequestsByCommunity({ path: { communityId } }).then(
+    userGetOnetimeInvitesByCommunity({ path: { communityId } }).then(
       (response) => {
         if (response.data) {
           setPendingRequests(
             response.data
-              .filter((request) => request.status === "pending")
+              .filter((request) => request.status === "request_pending")
               .sort(
                 (a, b) =>
                   new Date(b.createdAt).getTime() -
@@ -177,26 +176,26 @@ const CommunityInvitesTabLeader = ({
       });
   };
 
-  const onApproveOnetimeInviteRequest = (requestId: number) => {
+  const onApproveOnetimeInvite = (inviteId: number) => {
     (async () => {
-      const response = await userApproveOnetimeInviteRequest({
-        path: { requestId },
+      const response = await userApproveOnetimeInvite({
+        path: { inviteId },
       });
       if (!response.data) {
         return;
       }
 
       setPendingRequests((prev) =>
-        prev.filter((request) => request.id !== requestId)
+        prev.filter((request) => request.id !== inviteId)
       );
       setNewUserInvites((prev) => [...prev, response.data]);
     })();
   };
 
-  const onRejectOnetimeInviteRequest = (requestId: number) => {
+  const onRejectOnetimeInvite = (inviteId: number) => {
     (async () => {
-      const response = await userRejectOnetimeInviteRequest({
-        path: { requestId },
+      const response = await userRejectOnetimeInvite({
+        path: { inviteId },
       });
 
       if (response.error) {
@@ -204,7 +203,7 @@ const CommunityInvitesTabLeader = ({
       }
 
       setPendingRequests((prev) =>
-        prev.filter((request) => request.id !== requestId)
+        prev.filter((request) => request.id !== inviteId)
       );
     })();
   };
@@ -346,8 +345,8 @@ const CommunityInvitesTabLeader = ({
               <OneTimeInviteRequestLeaderListItem
                 key={request.id}
                 request={request}
-                onApprove={onApproveOnetimeInviteRequest}
-                onReject={onRejectOnetimeInviteRequest}
+                onApprove={onApproveOnetimeInvite}
+                onReject={onRejectOnetimeInvite}
               />
             ))}
           </List>

@@ -16,7 +16,6 @@ import {
 } from 'src/datasources/basecolumns';
 import { OnetimeInvite } from './onetime-invite.entity';
 import { CommunityInvite } from './community-invite.entity';
-import { OnetimeInviteRequest } from './onetime-invite-request.entity';
 
 @Entity()
 export class Community {
@@ -69,12 +68,6 @@ export class Community {
   @Type(() => OnetimeInvite)
   @IsOptional()
   invites?: OnetimeInvite[];
-
-  @OneToMany(() => OnetimeInviteRequest, (request) => request.community)
-  @ApiPropertyOptional({ type: () => OnetimeInviteRequest, isArray: true })
-  @Type(() => OnetimeInviteRequest)
-  @IsOptional()
-  requests?: OnetimeInviteRequest[];
 
   @OneToMany(() => CommunityInvite, (invite) => invite.community)
   @ApiProperty({ type: () => CommunityInvite, isArray: true })

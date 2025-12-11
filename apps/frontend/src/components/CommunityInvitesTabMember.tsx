@@ -1,12 +1,9 @@
 import {
-  CreateOnetimeInviteRequestDto,
+  RequestOnetimeInviteDto,
   OnetimeInviteDto,
-  OnetimeInviteRequestDto,
-  userCreateOnetimeInviteRequest,
   userDeleteOnetimeInvite,
-  userDeleteOnetimeInviteRequest,
-  userGetOnetimeInviteRequestsByRequester,
   userGetOnetimeInvitesByRequester,
+  userRequestOnetimeInvite,
 } from "@alliance/shared/client";
 import { getBaseUrl } from "@alliance/shared/lib/config";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
@@ -30,9 +27,9 @@ const CommunityInvitesTabMember = ({
   const [inviteeName, setInviteeName] = useState("");
   const [inviteeDescription, setInviteeDescription] = useState("");
   const [creatingRequest, setCreatingInvite] = useState(false);
-  const [pendingRequests, setPendingRequests] = useState<
-    OnetimeInviteRequestDto[]
-  >([]);
+  const [pendingRequests, setPendingRequests] = useState<OnetimeInviteDto[]>(
+    []
+  );
   const { error: errorToast, confirm } = useToast();
   const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
   const descriptionInputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -47,12 +44,12 @@ const CommunityInvitesTabMember = ({
   }, [inviteeDescription, descriptionInputRef]);
 
   useEffect(() => {
-    userGetOnetimeInviteRequestsByRequester({ path: { communityId } }).then(
+    userGetOnetimeInvitesByRequester({ path: { communityId } }).then(
       (response) => {
         if (response.data) {
           setPendingRequests(
             response.data
-              .filter((request) => request.status === "pending")
+              .filter((request) => request.status === "request_pending")
               .sort(
                 (a, b) =>
                   new Date(b.createdAt).getTime() -
@@ -115,9 +112,9 @@ const CommunityInvitesTabMember = ({
       inviteeDescription,
       communityId,
       invitingUserId: user.id,
-    } satisfies CreateOnetimeInviteRequestDto;
+    } satisfies RequestOnetimeInviteDto;
 
-    userCreateOnetimeInviteRequest({ body })
+    userRequestOnetimeInvite({ body })
       .then((response) => {
         if (response.data) {
           setInviteeName("");
@@ -131,11 +128,11 @@ const CommunityInvitesTabMember = ({
       });
   };
 
-  const handleDeleteRequest = (requestId: number) => {
-    userDeleteOnetimeInviteRequest({ path: { requestId } }).then((response) => {
+  const handleDeleteRequest = (inviteId: number) => {
+    userDeleteOnetimeInvite({ path: { inviteId } }).then((response) => {
       if (response.response.ok) {
         setPendingRequests((prev) =>
-          prev.filter((request) => request.id !== requestId)
+          prev.filter((request) => request.id !== inviteId)
         );
       } else {
         errorToast(`Failed to delete request: ${response.response.statusText}`);
@@ -144,11 +141,11 @@ const CommunityInvitesTabMember = ({
   };
 
   const pendingInvites = useMemo(
-    () => invites.filter((invite) => invite.status === 'link_unused'),
+    () => invites.filter((invite) => invite.status === "link_unused"),
     [invites]
   );
   const usedInvites = useMemo(
-    () => invites.filter((invite) => invite.status === 'link_used'),
+    () => invites.filter((invite) => invite.status === "link_used"),
     [invites]
   );
 
