@@ -58,7 +58,7 @@ const CommunityInvitesTabLeader = ({
   const [existingMemberInvites, setExistingMemberInvites] = useState<
     CommunityInviteDto[]
   >([]);
-  const { confirm } = useToast();
+  const { error: errorToast, confirm } = useToast();
 
   const allUsers = useSelectableUserIds();
 
@@ -183,7 +183,7 @@ const CommunityInvitesTabLeader = ({
         path: { inviteId },
       });
       if (!response.data) {
-        setError("Failed to approve invite");
+        errorToast(`Failed to approve invite: ${response.response.statusText}`);
         return;
       }
 
@@ -201,7 +201,7 @@ const CommunityInvitesTabLeader = ({
       });
 
       if (response.error) {
-        setError("Failed to reject invite");
+        errorToast(`Failed to reject invite: ${response.response.statusText}`);
         return;
       }
 
