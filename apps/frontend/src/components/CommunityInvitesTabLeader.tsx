@@ -11,7 +11,6 @@ import {
   userGetOnetimeInvitesByCommunity,
   userApproveOnetimeInvite,
   userRejectOnetimeInvite,
-
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import { useEffect, useMemo, useState } from "react";
@@ -28,6 +27,7 @@ import CommunityInviteListItem from "./CommunityInviteListItem";
 import { Link } from "react-router";
 import OneTimeInviteRequestLeaderListItem from "./OneTimeInviteRequestLeaderListItem";
 import OneTimeInviteLeaderListItem from "./OneTimeInviteLeaderListItem";
+import { useToast } from "@alliance/shared/ui/ToastProvider";
 
 export interface CommunityInvitesTabLeaderProps {
   communityId: number;
@@ -58,6 +58,7 @@ const CommunityInvitesTabLeader = ({
   const [existingMemberInvites, setExistingMemberInvites] = useState<
     CommunityInviteDto[]
   >([]);
+  const { confirm } = useToast();
 
   const allUsers = useSelectableUserIds();
 
@@ -208,14 +209,30 @@ const CommunityInvitesTabLeader = ({
     })();
   };
 
-  const handleDeleteInvite = (inviteId: number) => {
-    userDeleteOnetimeInvite({ path: { inviteId } }).then((response) => {
-      if (response.data) {
-        setNewUserInvites((prev) =>
-          prev.filter((invite) => invite.id !== inviteId)
-        );
+  const handleDeleteInvite = (
+    inviteId: number,
+    event: React.MouseEvent<HTMLElement>
+  ) => {
+    void (async () => {
+      const ok = await confirm({
+        message: "Are you sure you want to delete this invite?",
+        confirmLabel: "Yes, delete it!",
+        cancelLabel: "No, keep it",
+        anchorEl: event.currentTarget,
+        placement: "topleft",
+      });
+      if (!ok) {
+        return;
       }
-    });
+
+      userDeleteOnetimeInvite({ path: { inviteId } }).then((response) => {
+        if (response.data) {
+          setNewUserInvites((prev) =>
+            prev.filter((invite) => invite.id !== inviteId)
+          );
+        }
+      });
+    })();
   };
 
   const handleDeleteCommunityInvite = (inviteId: number) => {
@@ -363,13 +380,7 @@ const CommunityInvitesTabLeader = ({
                   return (
                     <OneTimeInviteLeaderListItem
                       key={entry.data.id}
-                      type={
-                        !user ||
-                        !entry.data.invitingUser ||
-                        entry.data.invitingUser.id === user.id
-                          ? "leader_self_invited"
-                          : "leader_member_invited"
-                      }
+                      leaderId={user?.id}
                       invite={entry.data}
                       onDelete={handleDeleteInvite}
                       onCopy={copyToClipboard}

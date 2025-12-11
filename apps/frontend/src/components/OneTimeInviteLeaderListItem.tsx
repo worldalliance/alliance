@@ -5,25 +5,26 @@ import { href, Link } from "react-router";
 import { X } from "lucide-react";
 
 export interface OneTimeInviteLeaderListItemProps {
-  type: "leader_self_invited" | "leader_member_invited";
+  leaderId: number | undefined;
   invite: OnetimeInviteDto;
   onDelete: (inviteId: number, e: React.MouseEvent<HTMLElement>) => void;
   onCopy: (code: string) => void;
 }
 
 const OneTimeInviteLeaderListItem = ({
-  type,
+  leaderId,
   invite,
   onDelete,
   onCopy,
 }: OneTimeInviteLeaderListItemProps) => {
+  const isSelfInvited = leaderId === invite.invitingUser.id;
   return (
     <div
       key={invite.id}
       className="flex flex-row gap-x-2 p-4 justify-between items-center"
     >
       <div className="gap-x-2 flex flex-row items-center">
-        {type === "leader_member_invited" && invite.invitingUser && (
+        {isSelfInvited && (
           <Link
             to={href("/member/:id", {
               id: invite.invitingUser.id.toString(),
@@ -35,7 +36,7 @@ const OneTimeInviteLeaderListItem = ({
         )}
 
         <span className="">
-          {type === "leader_member_invited" && invite.invitingUser && (
+          {!isSelfInvited && (
             <>
               <Link
                 to={href("/member/:id", {
@@ -53,10 +54,7 @@ const OneTimeInviteLeaderListItem = ({
       </div>
 
       <div className="flex flex-row gap-3 items-center">
-        {(type === "leader_member_invited" ||
-          type === "leader_self_invited") && (
-          <p className="text-gray-500">{invite.code}</p>
-        )}
+        <p className="text-gray-500">{invite.code}</p>
         {invite.status === "link_used" ? (
           <p className="text-gray-500">Accepted</p>
         ) : (
