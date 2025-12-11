@@ -1,16 +1,16 @@
-import { useState } from "react";
 import {
   ActionDto,
-  actionsAddEvent,
-  ActionStatus,
-  CreateActionEventDto,
-  actionsAddSuiteEvent,
   ActionEventDto,
+  actionsAddEvent,
+  actionsAddSuiteEvent,
+  ActionStatus,
   ActionSuiteDto,
+  CreateActionEventDto,
 } from "@alliance/shared/client";
 import DateTimePicker, {
   DateTimePickerChange,
 } from "@alliance/shared/ui/DateTimePicker";
+import { useState } from "react";
 
 export type CreateEventFormProps = {
   action: ActionDto;
@@ -43,7 +43,7 @@ const statusOptions: Record<ActionStatus, string> = {
 };
 
 const defaultEventNames: Record<ActionStatus, string> = {
-  draft: "",
+  draft: "Draft",
   gathering_commitments: "Gathering commitments",
   office_action: "Pending office action",
   member_action: "Members taking action",

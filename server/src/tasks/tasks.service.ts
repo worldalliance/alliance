@@ -1,3 +1,4 @@
+import { Temporal } from '@js-temporal/polyfill';
 import {
   BadRequestException,
   Injectable,
@@ -5,12 +6,29 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Temporal } from '@js-temporal/polyfill';
 import { parsePhoneNumberWithError } from 'libphonenumber-js';
+import { parsePhoneNumber } from 'libphonenumber-js/max';
+import { ActionsService } from 'src/actions/actions.service';
+import { ActionActivityType } from 'src/actions/entities/action-activity.entity';
 import { Action } from 'src/actions/entities/action.entity';
+import { ForumService } from 'src/forum/forum.service';
 import { getImageSource } from 'src/images/images.service';
+import { MmsService } from 'src/mms/mms.service';
+import { welcomeMessage } from 'src/notifs/textnotifcontents';
 import { UserService } from 'src/user/user.service';
 import { Repository } from 'typeorm';
+import {
+  CustomValidatorDto,
+  CustomValidatorResponseDto,
+  CustomValidatorTypeDto,
+} from './customvalidator.dto';
+import {
+  CustomValidator,
+  CustomValidatorType,
+  typeName,
+  typeUsableForVisibility,
+  typeUsesIdArgument,
+} from './entities/customvalidator.entity';
 import { Form } from './entities/form.entity';
 import { FormResponse } from './entities/formresponse.entity';
 import {
@@ -20,24 +38,6 @@ import {
   SubmitFormDto,
 } from './form.dto';
 import { FormSchema, isQuestionField, isQuestionVisible, Page } from './schema';
-import {
-  CustomValidatorTypeDto,
-  CustomValidatorResponseDto,
-  CustomValidatorDto,
-} from './customvalidator.dto';
-import { ForumService } from 'src/forum/forum.service';
-import { ActionsService } from 'src/actions/actions.service';
-import { MmsService } from 'src/mms/mms.service';
-import { welcomeMessage } from 'src/notifs/textnotifcontents';
-import {
-  CustomValidator,
-  CustomValidatorType,
-  typeName,
-  typeUsableForVisibility,
-  typeUsesIdArgument,
-} from './entities/customvalidator.entity';
-import { ActionActivityType } from 'src/actions/entities/action-activity.entity';
-import { parsePhoneNumber } from 'libphonenumber-js/max';
 
 @Injectable()
 export class TasksService {
@@ -294,6 +294,26 @@ export class TasksService {
       userId,
       savedForm,
     );
+
+    return savedForm;
+  }
+
+  async submitFormPublic(
+    formId: number,
+    submitFormDto: SubmitFormDto,
+  ): Promise<FormResponse> {
+    const form = await this.getForm(formId);
+
+    const formResponse = this.formResponseRepository.create({
+      ...submitFormDto,
+      form,
+      formId,
+      schemaSnapshot: submitFormDto.schemaSnapshot,
+      visibilityValidatorResults: submitFormDto.visibilityValidatorResults,
+      deviceType: submitFormDto.deviceType,
+      publicAnswers: submitFormDto.publicAnswers ?? {},
+    });
+    const savedForm = await this.formResponseRepository.save(formResponse);
 
     return savedForm;
   }

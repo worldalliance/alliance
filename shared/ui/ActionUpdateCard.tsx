@@ -1,9 +1,9 @@
+import { Link } from "react-router";
 import { ActionUpdateDto } from "../client";
 import { formatTime } from "../lib/utils";
-import EditableContentRenderer from "./EditableContentRenderer";
 import Button, { ButtonColor } from "./Button";
+import EditableContentRenderer from "./EditableContentRenderer";
 import DatabaseIcon from "./icons/DatabaseIcon";
-import { Link } from "react-router";
 
 export interface ActionUpdateCardProps {
   update: ActionUpdateDto;

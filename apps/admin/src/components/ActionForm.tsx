@@ -5,8 +5,8 @@ import {
   FormDto,
   TagDto,
 } from "@alliance/shared/client";
-import React, { useMemo, useRef } from "react";
 import UserSelect, { UserSelectUser } from "@alliance/shared/ui/UserSelect";
+import React, { useMemo, useRef } from "react";
 import { MarkdownTextArea } from "./MarkdownTextArea";
 
 interface ActionFormProps {
@@ -194,6 +194,12 @@ const ActionForm: React.FC<ActionFormProps> = ({
         type: "number",
         helpText: "Number of commitments needed",
         show: (f) => !f.commitmentless,
+        inGrid: true,
+      },
+      {
+        name: "publicOnly",
+        label: "Public Only",
+        type: "checkbox",
         inGrid: true,
       },
       {

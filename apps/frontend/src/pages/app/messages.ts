@@ -372,7 +372,7 @@ const useMessagingUnread = () => {
     };
   }, []);
 
-  return { unread, refreshUnreadCount, hasUpdates, setUnread };
+  return { unread, refreshUnreadCount, hasUpdates, setUnread, setHasUpdates };
 };
 
 export { useMessagingUnread };

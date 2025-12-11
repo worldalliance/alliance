@@ -18,6 +18,7 @@ import UserDisplayName from "./UserDisplayName";
 import EditableContentForm from "@alliance/shared/ui/EditableContentForm";
 import EditableContentRenderer from "@alliance/shared/ui/EditableContentRenderer";
 import { OutputRenderer } from "@alliance/shared/forms/OutputRenderer";
+import BasicErrorMessage from "./BasicErrorMessage";
 
 export function ErrorBoundary(error: unknown) {
   console.error(error);
@@ -134,6 +135,10 @@ const ActionActivityDetail = () => {
     setEditContent(activity?.editableContent ?? null);
     setEditing(false);
   };
+
+  if (activity?.actionId !== action.id) {
+    return <BasicErrorMessage>Activity not found</BasicErrorMessage>;
+  }
 
   return (
     <>

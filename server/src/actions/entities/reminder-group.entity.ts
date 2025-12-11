@@ -1,5 +1,11 @@
+import { Temporal } from '@js-temporal/polyfill';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import { Allow, IsDefined, IsOptional } from 'class-validator';
+import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
+import { Ty } from 'src/tasks/entities/type';
+import { Tag } from 'src/user/entities/tag.entity';
+import { User } from 'src/user/entities/user.entity';
 import {
   Check,
   Column,
@@ -10,14 +16,8 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { Type } from 'class-transformer';
 import { ActionEvent } from './action-event.entity';
-import { Tag } from 'src/user/entities/tag.entity';
 import { ActionSuite } from './action-suite.entity';
-import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
-import { Temporal } from '@js-temporal/polyfill';
-import { User } from 'src/user/entities/user.entity';
-import { Ty } from 'src/tasks/entities/type';
 
 export enum ReminderGroupTimingMode {
   Absolute = 'absolute',
@@ -97,7 +97,7 @@ export class ReminderGroup {
   @ApiPropertyOptional({ type: () => Tag })
   @Type(() => Tag)
   @IsOptional()
-  userTag?: Tag;
+  userTag?: Ty<Tag>;
 
   // for custom cohort
   @ManyToMany(() => User)

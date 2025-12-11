@@ -1,11 +1,11 @@
 import { ActionActivityDto, UserActionRelation } from "@alliance/shared/client";
+import { getLatestEvent } from "@alliance/shared/lib/actionUtils";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
 import { isRouteErrorResponse, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import ActionTaskPanel, { ActionTaskPanelProps } from "./ActionTaskPanel";
 import ActionTaskPanelCompleted from "./ActionTaskPanelCompleted";
 import ActionTaskPanelDeclined from "./ActionTaskPanelDeclined";
-import { getLatestEvent } from "@alliance/shared/lib/actionUtils";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   console.error(error);
@@ -35,6 +35,19 @@ export interface TaskPanelContext
 const ActionPageTaskPanel = () => {
   const { userRelation, action, ...panelHandlers } =
     useOutletContext<TaskPanelContext>();
+
+  if (action.publicOnly) {
+    return (
+      <ActionTaskPanel
+        userRelation={"none"}
+        action={action}
+        {...panelHandlers}
+        missedDeadline={false}
+        disabled={false}
+        card={false}
+      />
+    );
+  }
 
   if (!action.reqAuthenticated) {
     return (

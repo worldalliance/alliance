@@ -183,7 +183,6 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       );
     }
   }
-
   let completionElement = null;
   if (canCompleteAction(action)) {
     if (action.type === "Funding") {
@@ -198,6 +197,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
     if (action.type === "Activity" && action.taskFormId) {
       completionElement = (
         <ActionTaskPanelForm
+          publicAction={action.publicOnly}
           taskFormId={action.taskFormId}
           onCompleteAction={handleCompleteWithTracking}
           onFormStarted={handleFormStarted}

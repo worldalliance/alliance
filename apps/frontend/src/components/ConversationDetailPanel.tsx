@@ -189,6 +189,12 @@ const ConversationDetailPanel = ({
     }
   }, []);
 
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "instant" });
+  }, [convoMessages]);
+
   const replyingToMessage = useMemo(() => {
     return convoMessages?.find((message) => message.id === replyingTo);
   }, [convoMessages, replyingTo]);
@@ -395,7 +401,9 @@ const ConversationDetailPanel = ({
               )}
               {mode === "existing" && (
                 <div className="flex flex-col justify-center">
-                  <p className="font-semibold text-lg">{selectedConvo.title}</p>
+                  <p className="font-semibold text-lg line-clamp-1">
+                    {selectedConvo.title}
+                  </p>
                   {selectedConvo.type !== "direct" && (
                     <div className="flex flex-row items-center gap-x-1 text-zinc-500">
                       <Users size="17" />
@@ -471,6 +479,7 @@ const ConversationDetailPanel = ({
                     isFocused={focusedMessageId === message.id}
                   />
                 ))}
+                <div ref={bottomRef} />
               </div>
             ) : null}
             {mode === "existing" &&

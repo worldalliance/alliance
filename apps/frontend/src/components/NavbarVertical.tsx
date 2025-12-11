@@ -1,6 +1,20 @@
-import { Link, href, useOutletContext } from "react-router";
-import { AppLayoutOutletContext } from "../applayout";
+import { Features } from "@alliance/shared/lib/features";
+import BottomSpacer from "@alliance/shared/ui/BottomSpacer";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
+import {
+  Bell,
+  BookText,
+  FileText,
+  Globe,
+  Layers,
+  ListTodo,
+  Menu,
+  MessageSquare,
+  MessagesSquare,
+  Search,
+  Settings,
+  Users,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -9,26 +23,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { useNotifications } from "../lib/useNotifications";
+import { Link, href, useOutletContext } from "react-router";
+import { AppLayoutOutletContext } from "../applayout";
 import { useAuth } from "../lib/AuthContext";
-import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../lib/config";
+import { useNotifications } from "../lib/useNotifications";
 import { useMessagingUnread } from "../pages/app/messages";
-import {
-  MessageSquare,
-  Search,
-  Bell,
-  ListTodo,
-  BookText,
-  Settings,
-  Users,
-  Globe,
-  Layers,
-  Menu,
-  FileText,
-  MessagesSquare,
-} from "lucide-react";
-import BottomSpacer from "@alliance/shared/ui/BottomSpacer";
 
 export enum NavbarPage {
   Tasks = "Tasks",
@@ -102,6 +102,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
     unread: unreadMessages,
     hasUpdates,
     setUnread,
+    setHasUpdates,
     refreshUnreadCount,
   } = useMessagingUnread();
 
@@ -249,8 +250,6 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
 
   const profilePicture = profile?.profilePicture || null;
 
-  //   if (!isAuthenticated && !loading) return null;
-
   const currentLocation: NavbarPage | null =
     navSections
       .flatMap((section) => section.items)
@@ -266,8 +265,9 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
   useEffect(() => {
     if (currentLocation === NavbarPage.Messages) {
       setUnread(0);
+      setHasUpdates(true);
     }
-  }, [currentLocation, setUnread]);
+  }, [currentLocation, setUnread, setHasUpdates]);
 
   const unreadNotifsForPage = useMemo((): Partial<
     Record<NavbarPage, number>
@@ -284,6 +284,12 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
         currentLocation !== NavbarPage.Messages ? unreadMessages : 0,
     };
   }, [unreadCount, todoActions, user, unreadMessages, currentLocation]);
+
+  const { isAuthenticated, loading } = useAuth();
+  if (!isAuthenticated && !loading) {
+    document.documentElement.style.setProperty("--nav-width", `0px`);
+    return null;
+  }
 
   return (
     <>

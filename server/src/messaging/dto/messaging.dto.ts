@@ -228,14 +228,14 @@ export class CreateDirectConversationDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   @IsString()
-  @MaxLength(160)
+  @MaxLength(500)
   title?: string;
 }
 
 export class CreateGroupConversationDto {
   @ApiProperty({ type: String })
   @IsString()
-  @MaxLength(160)
+  @MaxLength(500)
   title: string;
 
   @ApiPropertyOptional({ type: String })
@@ -284,7 +284,7 @@ export class UpdateConversationDto {
   @ApiPropertyOptional({ type: String })
   @IsOptional()
   @IsString()
-  @MaxLength(160)
+  @MaxLength(500)
   title?: string;
 
   @ApiPropertyOptional({ type: String })

@@ -45,7 +45,7 @@ import {
   UserAwayRange,
   UserAwayRangeReason,
 } from './entities/user-away-range.entity';
-import { CreateAwayRangeDto } from './dto/away-range.dto';
+import { CreateAwayRangeDto, UserAwayRangeDto } from './dto/away-range.dto';
 import { Temporal } from '@js-temporal/polyfill';
 import {
   CommunityInvite,
@@ -635,7 +635,8 @@ export class UserService {
       throw new BadRequestException('End date must be after start date.');
     }
 
-    if (startDate.epochMilliseconds < now.getTime()) {
+    // buffer to let ranges start in the current day
+    if (startDate.epochMilliseconds + 1000 * 60 * 60 * 24 < now.getTime()) {
       throw new BadRequestException('Start date must be in the future.');
     }
 
@@ -860,14 +861,31 @@ export class UserService {
   ): Promise<CommunityMemberContactInfoDto[]> {
     const leader = await this.findOneOrFail(userId);
     const userIds = await this.getUserIdsForUserCommunity(userId);
-    const contactInfos: CommunityMemberContactInfoDto[] = [];
-    for (const userId of userIds) {
-      const user = await this.findOneOrFail(userId);
-      contactInfos.push(
-        new CommunityMemberContactInfoDto(user, leader.timeZone),
+    const users = await this.userRepository.find({
+      where: { id: In(userIds) },
+      relations: ['awayRanges'],
+    });
+    return users.map((user) => {
+      const awayRanges: UserAwayRangeDto[] = (user.awayRanges ?? [])
+        .slice()
+        .sort((a, b) => a.startDate.getTime() - b.startDate.getTime())
+        .map((awayRange) =>
+          Object.assign(new UserAwayRangeDto(), {
+            id: awayRange.id,
+            startDate: awayRange.startDate,
+            endDate: awayRange.endDate,
+            createdAt: awayRange.createdAt,
+            reason: awayRange.reason,
+            note: awayRange.note,
+          }),
+        );
+
+      return new CommunityMemberContactInfoDto(
+        user,
+        leader.timeZone,
+        awayRanges,
       );
-    }
-    return contactInfos;
+    });
   }
 
   async createTag(body: CreateTagDto): Promise<Tag> {

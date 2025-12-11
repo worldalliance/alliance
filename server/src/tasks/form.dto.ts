@@ -1,14 +1,14 @@
 // src/forms/dto/create-form.dto.ts
 import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { IsDefined, IsEnum, IsOptional } from 'class-validator';
+import { ActionDto } from 'src/actions/dto/action.dto';
+import { UserDto } from 'src/user/user.dto';
 import { Form } from './entities/form.entity';
 import { FormResponse } from './entities/formresponse.entity';
-import { ActionDto } from 'src/actions/dto/action.dto';
-import { IsDefined, IsEnum, IsOptional } from 'class-validator';
-import { Type } from 'class-transformer';
-import { UserDto } from 'src/user/user.dto';
-import { DEVICE_VISIBILITY_TARGETS } from './schema';
-import type { DeviceVisibilityTarget } from './schema';
 import { Ty } from './entities/type';
+import type { DeviceVisibilityTarget } from './schema';
+import { DEVICE_VISIBILITY_TARGETS } from './schema';
 
 export class CreateFormDto extends PickType(Form, ['title', 'schema']) {}
 
@@ -51,6 +51,8 @@ export class FormResponseDto extends PickType(FormResponse, [
   'deviceType',
   'publicAnswers',
 ]) {
-  @ApiProperty()
-  user: UserDto;
+  @ApiPropertyOptional({ type: () => UserDto })
+  @IsOptional()
+  @Type(() => UserDto)
+  user?: UserDto;
 }

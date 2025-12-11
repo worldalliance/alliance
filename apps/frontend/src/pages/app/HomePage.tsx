@@ -1,17 +1,17 @@
+import { getPastEvents } from "@alliance/shared/lib/actionUtils";
 import CheckIcon from "@alliance/shared/ui/icons/CheckIcon";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, href, useNavigate, useOutletContext } from "react-router";
 import { ActionWithRelation, AppLayoutOutletContext } from "../../applayout";
 import ActionActivityFeedItem from "../../components/ActionActivityFeedItem";
+import BasicErrorMessage from "../../components/BasicErrorMessage";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
+import Spinner from "../../components/Spinner";
+import TwoColumnLayout from "../../components/TwoColumnLayout";
+import { useAuth } from "../../lib/AuthContext";
+import { useCIDFromParams } from "../../lib/utils";
 import LargeActionCard from "./LargeActionCard";
 import useActivities, { ActivityList } from "./useActivities";
-import BasicErrorMessage from "../../components/BasicErrorMessage";
-import { useAuth } from "../../lib/AuthContext";
-import Spinner from "../../components/Spinner";
-import { getPastEvents } from "@alliance/shared/lib/actionUtils";
-import { useCIDFromParams } from "../../lib/utils";
-import TwoColumnLayout from "../../components/TwoColumnLayout";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export function canCompleteAction(action: ActionWithRelation) {
   return (
@@ -21,7 +21,7 @@ export function canCompleteAction(action: ActionWithRelation) {
     (action.relation === "joined" ||
       (action.commitmentless && action.relation !== "completed")) &&
     action.relation !== "declined" &&
-    action.canParticipate
+    (action.canParticipate || action.publicOnly)
   );
 }
 
@@ -30,7 +30,8 @@ export function shouldCompleteAction(action: ActionWithRelation) {
     canCompleteAction(action) &&
     action.shouldParticipate &&
     (action.status === "member_action" ||
-      action.status === "gathering_commitments")
+      action.status === "gathering_commitments") &&
+    !action.publicOnly
   );
 }
 
@@ -221,7 +222,7 @@ const HomePage = () => {
     const availableHeight =
       window.innerHeight -
       friendActivityListRef.current.getBoundingClientRect().top -
-      12;
+      24;
     const firstActivityHeight =
       firstFriendActivityRef.current?.getBoundingClientRect().height;
 

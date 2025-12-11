@@ -59,3 +59,7 @@ export function commentUrl(
 export function withCid(url: string, cid: string) {
   return url.includes('?') ? `${url}&cid=${cid}` : `${url}?cid=${cid}`;
 }
+
+export function withSid(url: string, sid: string) {
+  return url.includes('?') ? `${url}&sid=${sid}` : `${url}?sid=${sid}`;
+}

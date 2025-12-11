@@ -279,7 +279,7 @@ export function FieldWrapper<T extends AnyField>({
       <div className="space-y-3">
         <div className="bg-gray-100 p-4 rounded-t-lg space-y-2">
           {children}
-          {isCurrentFormField && (
+          {isCurrentFormField && field.kind !== "custom" && (
             <OutputFieldToggle
               checked={Boolean(field.output?.output)}
               onChange={handleOutputFieldToggle}

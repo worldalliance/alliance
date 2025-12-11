@@ -119,7 +119,7 @@ export function EditableCustomComponentField({
             <select
               value={field.componentId || customComponentRegistry[0].id}
               onChange={(event) => handleComponentChange(event.target.value)}
-              className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="bg-white w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               {customComponentRegistry.map((component) => (
                 <option key={component.id} value={component.id}>

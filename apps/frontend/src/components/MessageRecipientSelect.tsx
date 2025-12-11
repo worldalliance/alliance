@@ -1,8 +1,8 @@
 import { ProfileDto, userMembers } from "@alliance/shared/client";
-import React, { useEffect, useMemo, useState } from "react";
-import ProfileImage from "@alliance/shared/ui/ProfileImage";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
+import ProfileImage from "@alliance/shared/ui/ProfileImage";
 import { X } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
 
 export type UserSelectUser = Pick<
   ProfileDto,
@@ -119,7 +119,7 @@ const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
             placeholder={placeholder}
             autoFocus
             disabled={inputDisabled}
-            className="border-zinc-300 rounded-md py-2.5 disabled:bg-zinc-100 disabled:text-zinc-500 focus:outline-none min-w-48"
+            className="border-zinc-300 rounded-md py-2.5 disabled:bg-zinc-100 disabled:text-zinc-500 focus:outline-none min-w-48 text-[16px]"
           />
         )}
         {query && filteredUsers.length > 0 && (

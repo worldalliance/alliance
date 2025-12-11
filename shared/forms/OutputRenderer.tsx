@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import type { FormResponseDto, FormResponseOutputDto } from "../client";
+import { getApiUrl } from "../lib/config";
+import Card, { CardStyle } from "../ui/Card";
 import RenderDisplayBlock from "./RenderDisplayBlock";
+import RenderField from "./RenderField";
 import type {
   AnyField,
   Condition,
@@ -9,9 +12,6 @@ import type {
   FormValue,
   OutputViewSchema,
 } from "./formschema";
-import Card, { CardStyle } from "../ui/Card";
-import RenderField from "./RenderField";
-import { getApiUrl } from "../lib/config";
 
 type OutputRendererProps = {
   schema?: FormSchema;
@@ -308,6 +308,7 @@ export function OutputRenderer({
           const withLabel: AnyField = {
             ...field,
             label: block.showLabel ? block.labelOverride ?? field.label : null,
+            required: false,
           };
           return (
             <div key={key} className="space-y-1">

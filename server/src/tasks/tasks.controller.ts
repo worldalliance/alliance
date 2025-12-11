@@ -12,8 +12,18 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
+import { ActionActivityDto, OptOutActionDto } from 'src/actions/dto/action.dto';
 import { AdminGuard } from 'src/auth/guards/admin.guard';
 import { AuthGuard, JwtRequest } from 'src/auth/guards/auth.guard';
+import { Public } from 'src/auth/public.decorator';
+import {
+  CreateCustomValidatorDto,
+  CreateCustomValidatorResponseDto,
+  CustomValidatorDto,
+  CustomValidatorResponseDto,
+  CustomValidatorTypeDto,
+  RunValidatorDto,
+} from './customvalidator.dto';
 import {
   CreateFormDto,
   FormDto,
@@ -21,15 +31,6 @@ import {
   SubmitFormDto,
 } from './form.dto';
 import { TasksService } from './tasks.service';
-import {
-  CustomValidatorTypeDto,
-  CustomValidatorResponseDto,
-  CreateCustomValidatorDto,
-  CreateCustomValidatorResponseDto,
-  CustomValidatorDto,
-  RunValidatorDto,
-} from './customvalidator.dto';
-import { ActionActivityDto, OptOutActionDto } from 'src/actions/dto/action.dto';
 
 @Controller('tasks')
 export class TasksController {
@@ -44,6 +45,16 @@ export class TasksController {
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
     return this.tasksService.submitForm(+id, req.user.sub, body);
+  }
+
+  @Post('submitPublicForm/:id')
+  @Public()
+  @ApiOkResponse({ type: FormResponseDto })
+  async submitPublicForm(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: SubmitFormDto,
+  ): Promise<FormResponseDto> {
+    return this.tasksService.submitFormPublic(+id, body);
   }
 
   @Post('createForm')

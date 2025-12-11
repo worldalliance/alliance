@@ -40,6 +40,7 @@ const ActivityFeedItem = ({
         <p className="text-sm lg:text-base text-zinc-900">
           <Link
             to={href("/member/:id", { id: user.id.toString() })}
+            className="hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
             {user.displayName}

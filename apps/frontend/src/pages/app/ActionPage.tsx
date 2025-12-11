@@ -3,16 +3,16 @@ import {
   actionsFindOne,
   UserActionRelation,
 } from "@alliance/shared/client";
-import { Outlet, href, useNavigate, useParams } from "react-router";
+import { useCallback, useEffect, useState } from "react";
+import { href, Navigate, Outlet, useNavigate, useParams } from "react-router";
 import ActionActivityList from "../../components/ActionActivityList";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
-import useActivities, { ActivityList } from "./useActivities";
-import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "../../lib/AuthContext";
 import Spinner from "../../components/Spinner";
+import { useAuth } from "../../lib/AuthContext";
 import { useCIDFromParams } from "../../lib/utils";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
+import useActivities, { ActivityList } from "./useActivities";
 
 export default function ActionPage() {
   const { id: idParam } = useParams();
@@ -26,6 +26,8 @@ export default function ActionPage() {
 
   const [action, setAction] = useState<ActionDto | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const { user, loading: userLoading } = useAuth();
 
   const fetchAction = useCallback(async () => {
     try {
@@ -55,6 +57,17 @@ export default function ActionPage() {
     limit: 10,
   });
 
+  if (!action && !user && !userLoading) {
+    return (
+      <Navigate
+        to={href("/login") + `?redirect=${window.location.pathname}`}
+        replace
+      />
+    );
+  }
+
+  const viewingPublicOnly = action?.publicOnly && !user;
+
   if (!action) {
     return (
       <div className="bg-page pt-20 px-8 md:px-16">
@@ -70,7 +83,7 @@ export default function ActionPage() {
   }
 
   return (
-    <div className="w-full flex flex-row justify-between py-10 sm:py-20 px-4 md:px-4 xl:px-18">
+    <div className="w-full flex flex-row justify-between py-10 sm:py-20 px-4 md:px-4 xl:px-18 md:min-h-[calc(100vh-var(--mobile-nav-height))]">
       <div className="flex flex-col md:pr-4 xl:pr-12 max-w-2xl lg:max-w-3xl mx-auto w-full">
         <Outlet
           context={
@@ -118,22 +131,24 @@ export default function ActionPage() {
           }
         />
       </div>
-      <div className="hidden lg:flex flex-col max-w-[320px] xl:max-w-[380px] rounded gap-y-12 border-l border-zinc-200 pl-4 lg:pl-12">
-        <ActionCompletedBarWithInfo
-          friendActivities={[]}
-          action={action}
-          textSize="base"
-          textColor="zinc-800"
-        />
-        <ActionActivityList
-          actionId={action.id}
-          activities={activities}
-          loading={false}
-          onLikeActivity={(activityId) => handleLikeActivity(activityId)}
-          setActivities={setActivities}
-          maxN={10}
-        />
-      </div>
+      {!viewingPublicOnly && (
+        <div className="hidden lg:flex flex-col max-w-[320px] xl:max-w-[380px] rounded gap-y-12 border-l border-zinc-200 pl-4 lg:pl-12">
+          <ActionCompletedBarWithInfo
+            friendActivities={[]}
+            action={action}
+            textSize="base"
+            textColor="zinc-800"
+          />
+          <ActionActivityList
+            actionId={action.id}
+            activities={activities}
+            loading={false}
+            onLikeActivity={(activityId) => handleLikeActivity(activityId)}
+            setActivities={setActivities}
+            maxN={10}
+          />
+        </div>
+      )}
     </div>
   );
 }

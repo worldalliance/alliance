@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import type { UserDto } from "../client";
 import {
   FormResponseDto,
   SubmitFormDto,
@@ -20,11 +21,11 @@ import type {
   RangeField,
 } from "./formschema";
 import { parseTimeToMinutes } from "./timeUtils";
-import type { UserDto } from "../client";
 
 type FormRendererProps = {
   form: FormSchema;
   id: number;
+  publicAction?: boolean;
   actionId: number;
   persistKey?: string | null;
   initialPageIndex?: number;
@@ -213,6 +214,7 @@ function filterAnswersByFieldIds(
 const FormRenderer = ({
   form,
   id,
+  publicAction,
   onSubmit,
   persistKey,
   userId,
@@ -1376,7 +1378,7 @@ const FormRenderer = ({
             )}
           </div>
 
-          {onAbandonAction && !readOnly && (
+          {onAbandonAction && !readOnly && !publicAction && (
             <div className="relative">
               <Button
                 color={ButtonColor.White}

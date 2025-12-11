@@ -325,7 +325,9 @@ export class UserController {
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ProfileDto })
   async myProfile(@Request() req: JwtRequest): Promise<ProfileDto | null> {
-    const user = await this.userService.findOne(req.user.sub);
+    const user = await this.userService.findOne(req.user.sub, [
+      'contractEvents',
+    ]);
     if (!user) {
       throw new NotFoundException('User not found');
     }

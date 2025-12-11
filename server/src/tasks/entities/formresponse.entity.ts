@@ -11,8 +11,8 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
-import { Form } from './form.entity';
 import type { DeviceVisibilityTarget } from '../schema';
+import { Form } from './form.entity';
 import { Ty } from './type';
 
 @Entity()
@@ -58,11 +58,11 @@ export class FormResponse {
   @Type(() => String)
   deviceType?: DeviceVisibilityTarget;
 
-  @ApiProperty({ type: () => User })
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @IsDefined()
+  @ApiPropertyOptional({ type: () => User })
+  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
+  @IsOptional()
   @Type(() => User)
-  user: Ty<User>;
+  user?: Ty<User>;
 
   @CreateDateColumn()
   @ApiProperty()

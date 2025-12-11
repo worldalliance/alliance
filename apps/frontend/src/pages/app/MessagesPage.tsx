@@ -11,16 +11,16 @@ import {
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
+import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
+import ConversationDetailPanel from "../../components/ConversationDetailPanel";
 import Spinner from "../../components/Spinner";
 import { useAuth } from "../../lib/AuthContext";
 import useLiveConvoMessages, {
   sortConversations,
   useConversations,
 } from "./messages";
-import { useSearchParams } from "react-router";
-import ConversationDetailPanel from "../../components/ConversationDetailPanel";
-import { Plus } from "lucide-react";
 
 const MessagesPage = () => {
   const [params, setParams] = useSearchParams();
@@ -100,21 +100,8 @@ const MessagesPage = () => {
   const [friends, setFriends] = useState<ProfileDto[] | null>(null);
 
   const [messagesOpen, setMessagesOpen] = useState(false);
-  const [isSmall, setIsSmall] = useState(false);
+  const isSmall = document.body.clientWidth < 768;
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      setIsSmall(document.body.clientWidth < 768);
-    };
-    window.addEventListener("resize", handleResize);
-    handleResize();
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [containerRef.current]);
 
   useEffect(() => {
     if (!user) return;
@@ -182,7 +169,11 @@ const MessagesPage = () => {
         if (user && !user.anonymous) {
           names.push(user.name);
         }
-        const title = names.join(", ");
+        const moreThan5 = names.length > 3;
+        const title = moreThan5
+          ? names.slice(0, 3).join(", ") + ` +${names.length - 3} more`
+          : names.join(", ");
+
         const response = await conversationCreateGroupConversation({
           body: {
             participantIds: sendingNewMessageToIds,
@@ -294,10 +285,11 @@ const MessagesPage = () => {
   );
 
   useEffect(() => {
+    if (!conversations) return;
     const param = params.get("to");
     if (param) {
       const userId = parseInt(param);
-      const existing = conversations?.find(
+      const existing = conversations.find(
         (convo) =>
           convo.type === "direct" &&
           convo.participants.some(
@@ -347,7 +339,7 @@ const MessagesPage = () => {
 
   return (
     <div
-      className="flex flex-row w-full h-[calc(100vh-var(--mobile-nav-height))]"
+      className="flex flex-row w-full h-[calc(100dvh-var(--mobile-nav-height))] overflow-hidden"
       ref={containerRef}
     >
       <div
@@ -371,7 +363,7 @@ const MessagesPage = () => {
             </div>
             <input
               placeholder="Search"
-              className="w-full border border-zinc-200 rounded-md p-2 !bg-zinc-100 text-black focus:outline-none"
+              className="w-full border border-zinc-200 rounded-md p-2 !bg-zinc-100 text-black focus:outline-none text-[16px]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               autoFocus

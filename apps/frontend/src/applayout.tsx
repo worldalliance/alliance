@@ -3,28 +3,27 @@ import {
   ActionDto,
   actionsFindAllLoggedIn,
   actionsMyActivity,
-  authMe,
   forumFindAllPosts,
   PostDto,
   ProfileDto,
   UserActionRelation,
   userMyProfile,
 } from "@alliance/shared/client";
+import { isStaging } from "@alliance/shared/lib/config";
 import { Features } from "@alliance/shared/lib/features";
 import { useEffect, useState } from "react";
 import {
+  href,
   Outlet,
   useLoaderData,
-  href,
   useNavigate,
   useNavigation,
   useRouteLoaderData,
 } from "react-router";
 import BugReportButton from "./components/BugReportButton";
+import Spinner from "./components/Spinner";
 import { useAuth } from "./lib/AuthContext";
 import { isFeatureEnabled } from "./lib/config";
-import Spinner from "./components/Spinner";
-import { isStaging } from "@alliance/shared/lib/config";
 
 export interface RouteMatch {
   data: unknown;
@@ -181,12 +180,9 @@ export function HydrateFallback() {
 // ];
 
 export function isAuthOnly() {
-  //   if (authOnlyRoutes.includes(path)) {
-  //     return true;
-  //   }
-  //   if (path.includes("/forum")) {
-  //     return true;
-  //   }
+  if (window.location.pathname.includes("/actions/")) {
+    return false;
+  }
   return true;
 }
 export default function AppLayout() {
@@ -272,7 +268,7 @@ export default function AppLayout() {
     };
 
     window.addEventListener("auth:unauthorized", handleUnauthorized);
-    authMe();
+    // authMe();
     return () => {
       window.removeEventListener("auth:unauthorized", handleUnauthorized);
     };

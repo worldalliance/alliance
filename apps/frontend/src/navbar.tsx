@@ -1,10 +1,10 @@
+import { useMemo } from "react";
 import { Outlet, useNavigation, useOutletContext } from "react-router";
 import { AppLayoutOutletContext } from "./applayout";
-import { canJoinAction, shouldCompleteAction } from "./pages/app/HomePage";
-import { useMemo } from "react";
-import Spinner from "./components/Spinner";
 import NavbarVertical from "./components/NavbarVertical";
+import Spinner from "./components/Spinner";
 import { NotificationsProvider } from "./lib/useNotifications";
+import { canJoinAction, shouldCompleteAction } from "./pages/app/HomePage";
 
 function Navbar() {
   const context = useOutletContext<AppLayoutOutletContext>();

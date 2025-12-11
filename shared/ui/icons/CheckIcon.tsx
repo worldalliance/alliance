@@ -2,7 +2,7 @@ const CheckIcon = ({
   size = "small",
   filled = true,
 }: {
-  size?: "line" | "small" | "large" | "mini";
+  size?: "line" | "small" | "large" | "mini" | "xl";
   filled?: boolean;
 }) => {
   const sizeClass = {
@@ -10,6 +10,7 @@ const CheckIcon = ({
     mini: "w-5 h-5",
     small: "w-6 h-6",
     large: "w-8 h-8",
+    xl: "w-10 h-10",
   };
 
   return (

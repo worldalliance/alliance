@@ -3,6 +3,7 @@ import { ActionStatus } from 'src/actions/entities/action-event.entity';
 import { ActionActivityType } from 'src/actions/entities/action-activity.entity';
 import { User } from '../entities/user.entity';
 import { Temporal } from '@js-temporal/polyfill';
+import { UserAwayRangeDto } from './away-range.dto';
 
 export enum UserActionRelationStatus {
   None = 'none',
@@ -79,7 +80,14 @@ export class CommunityMemberContactInfoDto extends PickType(User, [
   @ApiPropertyOptional({ type: 'string' })
   preferredReminderTimeLeaderTz?: string;
 
-  constructor(user: User, viewerTz?: Temporal.TimeZoneLike) {
+  @ApiProperty({ type: () => UserAwayRangeDto, isArray: true })
+  awayRanges: UserAwayRangeDto[];
+
+  constructor(
+    user: User,
+    viewerTz?: Temporal.TimeZoneLike,
+    awayRanges: UserAwayRangeDto[] = [],
+  ) {
     super(user);
     this.id = user.id;
     this.email = user.shareEmailWithCommunityLead ? user.email : undefined;
@@ -88,6 +96,7 @@ export class CommunityMemberContactInfoDto extends PickType(User, [
       : undefined;
     this.timeZone = user.timeZone?.toString();
     this.preferredActionReminderChannel = user.preferredActionReminderChannel;
+    this.awayRanges = awayRanges;
 
     if (!user.preferredReminderTime) {
       return;

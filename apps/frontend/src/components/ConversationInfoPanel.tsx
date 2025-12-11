@@ -87,6 +87,7 @@ const ConversationInfoPanel = ({
 
   const [justAddedMember, setJustAddedMember] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (justAddedMember) {
@@ -107,6 +108,9 @@ const ConversationInfoPanel = ({
       setIsEditingGroup(false);
       setEditingGroupTitle(response.data.title);
       setEditingGroupPhoto(response.data.photo ?? null);
+      setError(null);
+    } else {
+      setError((response.error as Error).message ?? "Failed to save group");
     }
     setIsSaving(false);
   };
@@ -125,6 +129,7 @@ const ConversationInfoPanel = ({
 
   return (
     <div className="flex-1 relative flex flex-col items-center justify-center">
+      {error && <p className="text-red-500">{error}</p>}
       <div className="flex flex-col items-center px-8 w-full gap-y-2 mt-20">
         {isEditingGroup ? (
           <ProfileImageEditor

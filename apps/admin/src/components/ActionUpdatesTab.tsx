@@ -1,9 +1,9 @@
 import {
   ActionDto,
-  ActionUpdateNotifyType,
   actionsCreateUpdate,
-  CreateActionUpdateDto,
   actionsDeleteUpdate,
+  ActionUpdateNotifyType,
+  CreateActionUpdateDto,
   TagDto,
 } from "@alliance/shared/client";
 import ActionUpdateCard from "@alliance/shared/ui/ActionUpdateCard";
@@ -103,7 +103,7 @@ const ActionUpdatesTab = ({
         </div>
       </div>
       {preview ? (
-        <ActionUpdateCard update={{ ...newUpdate, id: 0 }} />
+        <ActionUpdateCard update={{ ...newUpdate, id: 0, actionId }} />
       ) : (
         <Card className="space-y-2">
           <div className="p-2 bg-zinc-100 rounded-md">

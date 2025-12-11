@@ -1,3 +1,4 @@
+import type { ActionSuite, Tag, TagDto, User } from "@alliance/shared/client";
 import {
   ActionDto,
   actionsArchive,
@@ -18,21 +19,20 @@ import {
   userGetTags,
   userMembers,
 } from "@alliance/shared/client";
-import type { ActionSuite, Tag, TagDto, User } from "@alliance/shared/client";
+import { getApiUrl, getBaseUrl } from "@alliance/shared/lib/config";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import Card, { CardStyle } from "@alliance/shared/ui/Card";
+import Dropdown from "@alliance/shared/ui/Dropdown";
+import CopyIcon from "@alliance/shared/ui/icons/CopyIcon";
 import DatabaseIcon from "@alliance/shared/ui/icons/DatabaseIcon";
+import LargeCheckbox from "@alliance/shared/ui/LargeCheckbox";
+import { UserSelectUser } from "@alliance/shared/ui/UserSelect";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import ActionForm from "../components/ActionForm";
-import EventManagementTab from "../components/EventManagementTab";
-import CopyIcon from "@alliance/shared/ui/icons/CopyIcon";
-import { FormBuilder } from "../components/FormBuilder";
 import ActionUpdatesTab from "../components/ActionUpdatesTab";
-import { getApiUrl, getBaseUrl } from "@alliance/shared/lib/config";
-import Dropdown from "@alliance/shared/ui/Dropdown";
-import LargeCheckbox from "@alliance/shared/ui/LargeCheckbox";
-import { UserSelectUser } from "@alliance/shared/ui/UserSelect";
+import EventManagementTab from "../components/EventManagementTab";
+import { FormBuilder } from "../components/FormBuilder";
 
 // Status color mapping
 export const getStatusColor = (status: ActionDto["status"]) => {
@@ -214,6 +214,7 @@ const ActionDashboard: React.FC = () => {
     taskFormId: undefined,
     participatingTags: [],
     everyoneShouldComplete: false,
+    publicOnly: false,
     suiteId: undefined,
     priority: 0,
     manualCohortUsers: [],
@@ -235,6 +236,7 @@ const ActionDashboard: React.FC = () => {
         preventCompletion: false,
         taskFormId: undefined,
         participatingTags: [],
+        publicOnly: false,
         everyoneShouldComplete: false,
         suiteId: undefined,
         priority: 0,

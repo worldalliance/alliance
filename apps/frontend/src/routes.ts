@@ -22,6 +22,7 @@ export default [
 
   route("/memberquotes", "pages/static/oneoff/MemberQuotesPage.tsx"),
 
+  route("/actions/completed", "pages/app/PublicActionCompletedPage.tsx"),
   layout("applayout.tsx", [
     layout("navbar.tsx", [
       ...prefix("/actions", [
@@ -56,6 +57,8 @@ export default [
       route("/commit", "pages/app/CommitActionPage.tsx"),
       route("/information", "pages/app/InformationPage.tsx"),
       route("/members", "pages/app/MembersListPage.tsx"),
+
+      route("/flyerexport", "pages/app/FlyerExportPage.tsx"),
     ]),
   ]),
   layout("loggedoutonly.tsx", [

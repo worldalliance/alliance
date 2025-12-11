@@ -7,6 +7,10 @@ import {
   IsNotEmpty,
   IsOptional,
 } from 'class-validator';
+import { UpdateDateColumnTz } from 'src/datasources/basecolumns';
+import { Ty } from 'src/tasks/entities/type';
+import { Tag } from 'src/user/entities/tag.entity';
+import { User } from 'src/user/entities/user.entity';
 import {
   Column,
   CreateDateColumn,
@@ -19,12 +23,8 @@ import {
 } from 'typeorm';
 import { ActionActivity, ActionActivityType } from './action-activity.entity';
 import { ActionEvent, ActionStatus } from './action-event.entity';
-import { Tag } from 'src/user/entities/tag.entity';
-import { UpdateDateColumnTz } from 'src/datasources/basecolumns';
-import { ActionUpdate } from './action-update.entity';
 import { ActionSuite } from './action-suite.entity';
-import { Ty } from 'src/tasks/entities/type';
-import { User } from 'src/user/entities/user.entity';
+import { ActionUpdate } from './action-update.entity';
 
 export enum ActionTaskType {
   Funding = 'Funding', //giving money to a particular cause
@@ -255,4 +255,12 @@ export class Action {
   })
   @Allow()
   preventCompletion: boolean;
+
+  @Column({ default: false })
+  @ApiProperty({
+    description:
+      'Whether the action is visible to and supposed to only be completed by non-members',
+  })
+  @Allow()
+  publicOnly: boolean;
 }

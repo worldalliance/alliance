@@ -202,6 +202,12 @@ const Sidebar: React.FC = () => {
             >
               Groups
             </Link>
+            <Link
+              to={href("/scheduled")}
+              className="w-full bg-white pl-6 hover:bg-gray-200/50 border border-gray-300 text-black px-4 py-2 rounded-md text-sm "
+            >
+              Scheduled Plans
+            </Link>
           </div>
           <div className="flex flex-row justify-between items-center mt-3 relative">
             <p className="font-bold">Current Actions</p>
@@ -286,7 +292,7 @@ const Sidebar: React.FC = () => {
           </div>
         )}
         <div
-          className="absolute top-7 right-6 cursor-pointer"
+          className="absolute top-7 right-3 cursor-pointer"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
         >
           <SidebarIcon size="large" fill="black" />

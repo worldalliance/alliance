@@ -142,7 +142,6 @@ const UserProfilePage: React.FC = () => {
         });
 
         if (!userRes.data) {
-          setLoading(false);
           return;
         }
 
@@ -356,7 +355,7 @@ const UserProfilePage: React.FC = () => {
                     </div>
                   </div>
                 )}
-                {!profile.hasActiveContract && (
+                {!profile.hasActiveContract && !loading && (
                   <div className="text-xs bg-zinc-100 text-zinc-600 px-2 py-1 rounded-sm self-center relative group">
                     Observer
                     <div className="pointer-events-none absolute -top-8 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded border border-zinc-200 bg-white px-2 py-1 text-[12px] font-medium text-zinc-700 opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">

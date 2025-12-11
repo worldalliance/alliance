@@ -28,3 +28,14 @@ export const useCIDFromParams = () => {
     }
   }, [cid, setSearchParams, searchParams]);
 };
+
+export const generateBarcodeUrl = (url: string, size: number) => {
+  return (
+    "https://api.qrserver.com/v1/create-qr-code/?data=" +
+    encodeURIComponent(url) +
+    "&size=" +
+    size +
+    "x" +
+    size
+  );
+};

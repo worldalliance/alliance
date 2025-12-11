@@ -1,17 +1,17 @@
+import { MessageDto } from "@alliance/shared/client";
+import Button, { ButtonColor } from "@alliance/shared/ui/Button";
+import Card from "@alliance/shared/ui/Card";
+import { Plus, X } from "lucide-react";
 import {
   type ClipboardEvent,
-  type KeyboardEvent,
   type Dispatch,
+  type KeyboardEvent,
   type SetStateAction,
   useCallback,
+  useEffect,
   useRef,
   useState,
-  useEffect,
 } from "react";
-import { Plus, X } from "lucide-react";
-import Button, { ButtonColor } from "@alliance/shared/ui/Button";
-import { MessageDto } from "@alliance/shared/client";
-import Card from "@alliance/shared/ui/Card";
 import Spinner from "./Spinner";
 
 interface MessageInputProps {
@@ -145,8 +145,8 @@ const MessageInput = ({
 
   return (
     <div
-      className={`flex flex-col gap-y-3 bg-white pb-15 relative ${
-        compact ? "px-4 md:pb-2" : "px-8  md:pb-4"
+      className={`flex flex-col gap-y-3 bg-white relative ${
+        compact ? "px-4 pb-2" : "px-8 pb-4"
       }`}
     >
       {replyingTo && (
@@ -204,7 +204,7 @@ const MessageInput = ({
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder="Message"
-          className="w-full border-none bg-transparent p-3 text-black resize-none focus:outline-none pr-9"
+          className="w-full border-none bg-transparent p-3 text-black resize-none focus:outline-none pr-9 text-[16px]"
           rows={1}
         />
         <div className="absolute right-2 top-0 bottom-0 flex items-center">

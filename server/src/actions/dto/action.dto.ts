@@ -31,6 +31,7 @@ import { ActionSuite } from '../entities/action-suite.entity';
 import { Form } from 'src/tasks/entities/form.entity';
 import { SubmitFormDto } from 'src/tasks/form.dto';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
+import { PreviewNotificationPlan } from 'src/notifs/action-event-reminder.service';
 
 export class CreateReminderGroupDto extends PickType(ReminderGroup, [
   'name',
@@ -414,4 +415,28 @@ export class PasteJsonDto {
   @ApiProperty()
   @IsString()
   body: string;
+}
+
+export class SuspensionPlanDto {
+  @ApiProperty({ type: Date })
+  @IsDefined()
+  @Type(() => Date)
+  date: Date;
+
+  @ApiProperty({ type: () => ProfileDto, isArray: true })
+  @Type(() => ProfileDto)
+  @IsDefined()
+  users: ProfileDto[];
+}
+
+export class ReminderGroupPlanDto {
+  @ApiProperty({ type: () => ReminderGroup })
+  @Type(() => ReminderGroup)
+  @IsDefined()
+  reminderGroup: ReminderGroup;
+
+  @ApiProperty({ type: () => PreviewNotificationPlan, isArray: true })
+  @Type(() => PreviewNotificationPlan)
+  @IsDefined()
+  willNotify: PreviewNotificationPlan[];
 }

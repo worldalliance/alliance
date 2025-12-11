@@ -33,6 +33,7 @@ const AwayRangesSection: React.FC = () => {
   const [startDateInput, setStartDateInput] = useState("");
   const [endDateInput, setEndDateInput] = useState("");
   const [noteInput, setNoteInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedReason, setSelectedReason] =
     useState<keyof typeof REASON_DROPDOWN_OPTIONS>("Select a reason");
@@ -92,6 +93,11 @@ const AwayRangesSection: React.FC = () => {
       setEndDateInput("");
       setSelectedReason("Select a reason");
       setNoteInput("");
+    } else {
+      setError(
+        (resp.error as { message: string }).message ??
+          "An unknown error occurred."
+      );
     }
     setCreating(false);
     await loadAwayRanges();
@@ -280,6 +286,7 @@ const AwayRangesSection: React.FC = () => {
           >
             {creating ? "Creating..." : "Schedule"}
           </Button>
+          {error && <p className="text-red-500">{error}</p>}
         </div>
       </div>
     </div>

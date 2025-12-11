@@ -3,6 +3,7 @@ import {
   SubmitFormDto,
   tasksGetForm,
   tasksSubmitForm,
+  tasksSubmitPublicForm,
 } from "@alliance/shared/client";
 import FormRenderer, {
   computeFormStorageKey,
@@ -26,6 +27,7 @@ interface ActionTaskPanelActivityProps {
   card?: boolean;
   actionId: number;
   disabled?: boolean;
+  publicAction?: boolean;
 }
 
 const ActionTaskPanelForm = ({
@@ -36,6 +38,7 @@ const ActionTaskPanelForm = ({
   card = false,
   actionId,
   disabled = false,
+  publicAction = false,
 }: ActionTaskPanelActivityProps) => {
   const [form, setForm] = useState<FormDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,11 +64,19 @@ const ActionTaskPanelForm = ({
     ? async (data: SubmitFormDto) => {
         setError(null);
 
-        const response = await tasksSubmitForm({
-          path: { id: taskFormId },
-          body: data,
-        });
+        const response = publicAction
+          ? await tasksSubmitPublicForm({
+              path: { id: taskFormId },
+              body: data,
+            })
+          : await tasksSubmitForm({
+              path: { id: taskFormId },
+              body: data,
+            });
         if (response.response.ok) {
+          if (publicAction) {
+            window.location.href = "/actions/completed";
+          }
           if (typeof window !== "undefined" && form) {
             const storageKey = computeFormStorageKey({
               formId: form.id,
@@ -131,6 +142,7 @@ const ActionTaskPanelForm = ({
           onFormStarted={onFormStarted}
           onAbandonAction={onAbandonAction}
           renderFormAsCompleted={disabled}
+          publicAction={publicAction}
         />
       </div>
       {error && (

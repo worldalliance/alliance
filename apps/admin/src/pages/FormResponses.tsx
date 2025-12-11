@@ -190,11 +190,11 @@ const FormResponses: React.FC = () => {
     const headers = [...metaHeaders, ...questionHeaders];
 
     const rows = responses.map((resp) => {
-      const user = resp?.user ?? {};
-      const userName = [user?.name].filter(Boolean).join(" ");
+      const user = resp?.user;
+      const userName = [user?.name ?? resp.id].filter(Boolean).join(" ");
       const values = [
         String(resp.id ?? ""),
-        String(user.id ?? ""),
+        String(user?.id ?? ""),
         userName,
         ...orderedFieldIds.map((id) => formatValue(resp.answers?.[id])),
       ];
@@ -310,7 +310,7 @@ const FormResponses: React.FC = () => {
                 </span>
                 {pageItems[0] && (
                   <div className="text-black flex items-center gap-3">
-                    <span>{pageItems[0].user.name}</span>
+                    <span>{pageItems[0].user?.name ?? "anonymous"}</span>
                     <span className="text-gray-500 text-sm">
                       {new Date(pageItems[0].createdAt).toLocaleString()}
                     </span>

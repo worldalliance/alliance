@@ -1,14 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { ActionsService } from 'src/actions/actions.service';
 import { MailService } from 'src/mail/mail.service';
 import { MmsService } from 'src/mms/mms.service';
+import { generateCIDForNotif } from 'src/notifs/notif-utils';
+import { shouldEmailUser, shouldTextUser } from 'src/notifs/notifs.service';
+import { suspensionMessage } from 'src/notifs/textnotifcontents';
+import { UserService } from 'src/user/user.service';
 import { DataSource } from 'typeorm';
 import { withPgAdvisoryLock } from '../notifs/lock-utils';
-import { ActionsService } from 'src/actions/actions.service';
-import { UserService } from 'src/user/user.service';
-import { shouldEmailUser, shouldTextUser } from 'src/notifs/notifs.service';
-import { generateCIDForNotif } from 'src/notifs/notif-utils';
-import { suspensionMessage } from 'src/notifs/textnotifcontents';
 
 const PROCESS_ONE_LOCK_KEY1 = 0xa11a;
 const PROCESS_ONE_LOCK_KEY2 = 0xce01;
@@ -30,10 +30,6 @@ export class ContractSuspenderWorker {
       process.env.NODE_ENV === 'development' &&
       process.env.SEND_DEV_NOTIFS !== '1'
     ) {
-      return;
-    }
-
-    if (process.env.NODE_ENV === 'production') {
       return;
     }
 

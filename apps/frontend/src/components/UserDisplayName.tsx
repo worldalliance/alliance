@@ -24,7 +24,7 @@ const UserDisplayName: React.FC<UserDisplayNameProps> = ({
         </span>
       )}
       {!staff && grouplead && (
-        <span className="ml-1 text-sm !bg-grouplead text-white rounded-xs px-1.5">
+        <span className="ml-1 text-xs !bg-grouplead text-white rounded-xs px-1.5">
           Lead
         </span>
       )}

@@ -8,6 +8,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiProperty } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { instanceToPlain } from 'class-transformer';
+import { randomBytes } from 'crypto';
 import { from, Observable } from 'rxjs';
 import { CommentDto, CreateCommentDto } from 'src/forum/dto/comment.dto';
 import {
@@ -15,12 +16,32 @@ import {
   CommentParentObject,
 } from 'src/forum/entities/comment.entity';
 import { EditableContent } from 'src/forum/entities/editablecontent.entity';
+import { ForumService } from 'src/forum/forum.service';
 import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
 import {
   ActionEventReminderService,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
   PreviewNotificationPlan,
 } from 'src/notifs/action-event-reminder.service';
+import { LikeNotificationService } from 'src/notifs/like-notification.service';
+import { NotifsService, shouldTextUser } from 'src/notifs/notifs.service';
+import { actionActivityUrl, actionUrl, withSid } from 'src/search/approutes';
+import { Form } from 'src/tasks/entities/form.entity';
+import { FormResponse } from 'src/tasks/entities/formresponse.entity';
+import { RelationString } from 'src/tasks/entities/type';
+import { FormSchema } from 'src/tasks/schema';
+import {
+  CommunityUserInfoDto,
+  UserActionRelationDetailDto,
+  UserActionRelationsForUserDto,
+  UserActionRelationsResponseDto,
+  UserActionRelationStatus,
+  UserActionSummaryDto,
+} from 'src/user/dto/user-action-relations.dto';
+import { ContractEventType } from 'src/user/entities/contract-event.entity';
+import { Tag } from 'src/user/entities/tag.entity';
+import { User } from 'src/user/entities/user.entity';
+import { ProfileDto } from 'src/user/user.dto';
 import { ILike, In, Repository } from 'typeorm';
 import { UserService } from '../user/user.service';
 import {
@@ -38,6 +59,8 @@ import {
   ExportActionDto,
   FormResponseOutputDto,
   LatLonDto,
+  ReminderGroupPlanDto,
+  SuspensionPlanDto,
   UpdateActionActivityDto,
   UpdateActionDto,
   UpdateActionEventDto,
@@ -47,35 +70,17 @@ import {
   ActionActivityType,
 } from './entities/action-activity.entity';
 import { ActionEvent, ActionStatus } from './entities/action-event.entity';
-import { Action, ActionTaskType } from './entities/action.entity';
-import { Tag } from 'src/user/entities/tag.entity';
-import { FormResponse } from 'src/tasks/entities/formresponse.entity';
-import { User } from 'src/user/entities/user.entity';
+import { ActionShareUrl } from './entities/action-share-url.entity';
+import { ActionSuite } from './entities/action-suite.entity';
 import {
   ActionUpdate,
   ActionUpdateNotifyType,
 } from './entities/action-update.entity';
+import { Action, ActionTaskType } from './entities/action.entity';
 import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from './entities/reminder-group.entity';
-import { ActionSuite } from './entities/action-suite.entity';
-import { NotifsService, shouldTextUser } from 'src/notifs/notifs.service';
-import { LikeNotificationService } from 'src/notifs/like-notification.service';
-import { actionActivityUrl } from 'src/search/approutes';
-import { ForumService } from 'src/forum/forum.service';
-import { Form } from 'src/tasks/entities/form.entity';
-import { FormSchema } from 'src/tasks/schema';
-import {
-  CommunityUserInfoDto,
-  UserActionRelationDetailDto,
-  UserActionRelationsForUserDto,
-  UserActionRelationsResponseDto,
-  UserActionRelationStatus,
-  UserActionSummaryDto,
-} from 'src/user/dto/user-action-relations.dto';
-import { RelationString } from 'src/tasks/entities/type';
-import { ContractEventType } from 'src/user/entities/contract-event.entity';
 
 export enum UserActionRelation {
   Joined = 'joined',
@@ -110,6 +115,8 @@ export class ActionsService {
     private readonly actionSuiteRepository: Repository<ActionSuite>,
     @InjectRepository(Form)
     private readonly formRepository: Repository<Form>,
+    @InjectRepository(ActionShareUrl)
+    private readonly actionShareUrlRepository: Repository<ActionShareUrl>,
     private userService: UserService,
     public eventEmitter: EventEmitter2,
     private readonly notifsService: NotifsService,
@@ -330,7 +337,7 @@ export class ActionsService {
 
     const filtered: Action[] = [];
     for (const action of actions) {
-      if (await this.userCanSeeAction(action, user)) {
+      if ((await this.userCanSeeAction(action, user)) && !action.publicOnly) {
         filtered.push(action);
       }
     }
@@ -425,6 +432,10 @@ export class ActionsService {
         'suite',
       ] satisfies RelationString<Action>[],
     });
+
+    if (action?.publicOnly) {
+      return instanceToPlain(action) as Action;
+    }
 
     if (
       !action ||
@@ -2178,5 +2189,57 @@ export class ActionsService {
       ),
       suspendReasonKeys,
     };
+  }
+
+  async getSuspendPlans(
+    rangeStart: Date,
+    rangeEnd: Date,
+    stepHours: number = 1,
+  ): Promise<SuspensionPlanDto[]> {
+    const plans: SuspensionPlanDto[] = [];
+    let date = rangeStart;
+    const suspendedUsers = new Set<number>();
+    while (new Date(date).getTime() <= new Date(rangeEnd).getTime()) {
+      const { usersToSuspend } = await this.findUsersToSuspend(date);
+      const notAlreadySuspended = usersToSuspend.filter(
+        (user) => !suspendedUsers.has(user.id),
+      );
+      if (notAlreadySuspended.length > 0) {
+        for (const user of notAlreadySuspended) {
+          suspendedUsers.add(user.id);
+        }
+        plans.push({
+          date,
+          users: notAlreadySuspended.map((user) => new ProfileDto(user)),
+        });
+      }
+      date = new Date(new Date(date).getTime() + stepHours * 60 * 60 * 1000);
+    }
+    return plans;
+  }
+
+  async getReminderPlansOverview(): Promise<ReminderGroupPlanDto[]> {
+    return [];
+  }
+
+  private generateCIDForShareUrl() {
+    return 'share-' + randomBytes(5).toString('hex');
+  }
+
+  async getShareLink(actionId: number, userId: number): Promise<string> {
+    const sid = this.generateCIDForShareUrl();
+    const url = withSid(actionUrl(actionId, true), sid);
+
+    const shareUrl = await this.actionShareUrlRepository.create({
+      url,
+      user: { id: userId },
+      action: { id: actionId },
+      data: {
+        sid,
+      },
+    });
+
+    await this.actionShareUrlRepository.save(shareUrl);
+    return shareUrl.url;
   }
 }

@@ -23,10 +23,20 @@ import {
   ApiOperation,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { instanceToPlain } from 'class-transformer';
 import { Observable, from, fromEvent, merge } from 'rxjs';
 import { bufferTime, filter, map, scan, share } from 'rxjs/operators';
 import { AuthOptionalGuard } from 'src/auth/guards/authoptional.guard';
 import { CommentDto, CreateCommentDto } from 'src/forum/dto/comment.dto';
+import {
+  ActionEventReminderService,
+  PreviewNotificationPlan,
+} from 'src/notifs/action-event-reminder.service';
+import { ActionEventNotifDto } from 'src/notifs/entities/action-event-notif.dto';
+import {
+  CommunityUserInfoDto,
+  UserActionRelationsResponseDto,
+} from 'src/user/dto/user-action-relations.dto';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { AuthGuard, JwtRequest } from '../auth/guards/auth.guard';
 import { Public } from '../auth/public.decorator';
@@ -51,6 +61,8 @@ import {
   PreviewEmailHtmlDto,
   PreviewTextDto,
   PreviewTextMessageResponse,
+  ReminderGroupPlanDto,
+  SuspensionPlanDto,
   UpdateActionActivityDto,
   UpdateActionDto,
   UpdateActionEventDto,
@@ -60,19 +72,9 @@ import {
   NotificationScheduleQueryDto,
 } from './dto/notification-schedule.dto';
 import { ActionEvent } from './entities/action-event.entity';
-import { ReminderGroup } from './entities/reminder-group.entity';
-import {
-  ActionEventReminderService,
-  PreviewNotificationPlan,
-} from 'src/notifs/action-event-reminder.service';
 import { ActionSuite } from './entities/action-suite.entity';
-import { ActionEventNotifDto } from 'src/notifs/entities/action-event-notif.dto';
-import {
-  CommunityUserInfoDto,
-  UserActionRelationsResponseDto,
-} from 'src/user/dto/user-action-relations.dto';
 import { Action } from './entities/action.entity';
-import { instanceToPlain } from 'class-transformer';
+import { ReminderGroup } from './entities/reminder-group.entity';
 
 @Controller('actions')
 export class ActionsController {
@@ -748,8 +750,34 @@ export class ActionsController {
     return this.actionsService.importAction(body.body);
   }
 
-  // TODO move ====================================
+  @Get('reminderPlansOverview')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ReminderGroupPlanDto, isArray: true })
+  reminderPlansOverview(): Promise<ReminderGroupPlanDto[]> {
+    return this.actionsService.getReminderPlansOverview();
+  }
 
+  @Get('suspendPlans')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: SuspensionPlanDto, isArray: true })
+  suspendPlans(
+    @Query('rangeStart') rangeStart: Date,
+    @Query('rangeEnd') rangeEnd: Date,
+  ): Promise<SuspensionPlanDto[]> {
+    return this.actionsService.getSuspendPlans(rangeStart, rangeEnd, 6);
+  }
+
+  @Post('getShareLink/:id')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: String })
+  getShareLink(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: JwtRequest,
+  ): Promise<string> {
+    return this.actionsService.getShareLink(id, req.user.sub);
+  }
+
+  // TODO move ====================================
   @Get('action-relations')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: UserActionRelationsResponseDto })

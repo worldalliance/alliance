@@ -203,7 +203,7 @@ export type FormResponse = {
         [key: string]: unknown;
     };
     deviceType?: string;
-    user: User;
+    user?: User;
     createdAt: string;
     schemaSnapshot: {
         [key: string]: unknown;
@@ -412,6 +412,10 @@ export type Action = {
      * Prevent completion of the action (for old actions)
      */
     preventCompletion: boolean;
+    /**
+     * Whether the action is visible to and supposed to only be completed by non-members
+     */
+    publicOnly: boolean;
 };
 
 export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 'tag';
@@ -719,6 +723,7 @@ export type CommunityMemberContactInfoDto = {
     phoneNumber?: string;
     preferredReminderTimeUserTz?: string;
     preferredReminderTimeLeaderTz?: string;
+    awayRanges: Array<UserAwayRangeDto>;
 };
 
 export type StreamableFile = {
@@ -1015,6 +1020,10 @@ export type ActionDto = {
      * Prevent completion of the action (for old actions)
      */
     preventCompletion: boolean;
+    /**
+     * Whether the action is visible to and supposed to only be completed by non-members
+     */
+    publicOnly: boolean;
     events: Array<ActionEventDto>;
     updates: Array<ActionUpdateDto>;
     canParticipate?: boolean;
@@ -1114,6 +1123,10 @@ export type CreateActionDto = {
      * Prevent completion of the action (for old actions)
      */
     preventCompletion: boolean;
+    /**
+     * Whether the action is visible to and supposed to only be completed by non-members
+     */
+    publicOnly: boolean;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: string;
@@ -1188,6 +1201,10 @@ export type UpdateActionDto = {
      * Prevent completion of the action (for old actions)
      */
     preventCompletion?: boolean;
+    /**
+     * Whether the action is visible to and supposed to only be completed by non-members
+     */
+    publicOnly?: boolean;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: string;
@@ -1446,12 +1463,26 @@ export type ExportActionDto = {
      * Prevent completion of the action (for old actions)
      */
     preventCompletion: boolean;
+    /**
+     * Whether the action is visible to and supposed to only be completed by non-members
+     */
+    publicOnly: boolean;
     taskForm?: Form;
     reminderGroups?: Array<ReminderGroup>;
 };
 
 export type PasteJsonDto = {
     body: string;
+};
+
+export type ReminderGroupPlanDto = {
+    reminderGroup: ReminderGroup;
+    willNotify: Array<PreviewNotificationPlan>;
+};
+
+export type SuspensionPlanDto = {
+    date: string;
+    users: Array<ProfileDto>;
 };
 
 export type UserActionSummaryDto = {
@@ -1810,7 +1841,7 @@ export type FormResponseDto = {
     schemaSnapshot: {
         [key: string]: unknown;
     };
-    user: UserDto;
+    user?: UserDto;
 };
 
 export type CreateFormDto = {
@@ -3961,6 +3992,50 @@ export type ActionsPasteJsonResponses = {
 
 export type ActionsPasteJsonResponse = ActionsPasteJsonResponses[keyof ActionsPasteJsonResponses];
 
+export type ActionsReminderPlansOverviewData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/actions/reminderPlansOverview';
+};
+
+export type ActionsReminderPlansOverviewResponses = {
+    200: Array<ReminderGroupPlanDto>;
+};
+
+export type ActionsReminderPlansOverviewResponse = ActionsReminderPlansOverviewResponses[keyof ActionsReminderPlansOverviewResponses];
+
+export type ActionsSuspendPlansData = {
+    body?: never;
+    path?: never;
+    query: {
+        rangeStart: string;
+        rangeEnd: string;
+    };
+    url: '/actions/suspendPlans';
+};
+
+export type ActionsSuspendPlansResponses = {
+    200: Array<SuspensionPlanDto>;
+};
+
+export type ActionsSuspendPlansResponse = ActionsSuspendPlansResponses[keyof ActionsSuspendPlansResponses];
+
+export type ActionsGetShareLinkData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/getShareLink/{id}';
+};
+
+export type ActionsGetShareLinkResponses = {
+    200: string;
+};
+
+export type ActionsGetShareLinkResponse = ActionsGetShareLinkResponses[keyof ActionsGetShareLinkResponses];
+
 export type ActionsActionRelationsData = {
     body?: never;
     path?: never;
@@ -4628,6 +4703,21 @@ export type TasksSubmitFormResponses = {
 };
 
 export type TasksSubmitFormResponse = TasksSubmitFormResponses[keyof TasksSubmitFormResponses];
+
+export type TasksSubmitPublicFormData = {
+    body: SubmitFormDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/tasks/submitPublicForm/{id}';
+};
+
+export type TasksSubmitPublicFormResponses = {
+    200: FormResponseDto;
+};
+
+export type TasksSubmitPublicFormResponse = TasksSubmitPublicFormResponses[keyof TasksSubmitPublicFormResponses];
 
 export type TasksCreateFormData = {
     body: CreateFormDto;

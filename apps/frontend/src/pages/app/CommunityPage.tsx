@@ -1,6 +1,5 @@
 import {
   CommunityDto,
-  CommunityMemberContactInfoDto,
   UserActionRelationDetailDto,
   UserActionSummaryDto,
   userGetCommunityMemberContactInfo,
@@ -8,6 +7,7 @@ import {
   userGetMyCommunity,
   userLeaveCommunity,
   userGetOnetimeInvitesByCommunity,
+  CommunityMemberContactInfoDto,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Spinner from "../../components/Spinner";
