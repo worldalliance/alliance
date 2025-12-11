@@ -962,13 +962,9 @@ export class UserService {
 
     if (isAdmin) {
       if (communityId) {
-        community =
-          (await this.communityRepository.findOne({
-            where: { id: communityId },
-          })) ?? undefined;
-        if (!community) {
-          throw new NotFoundException(`Community ${communityId} not found`);
-        }
+        community = await this.communityRepository.findOneOrFail({
+          where: { id: communityId },
+        });
       }
     } else {
       if (communityId === undefined) {
