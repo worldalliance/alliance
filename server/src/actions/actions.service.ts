@@ -321,19 +321,27 @@ export class ActionsService {
       where: {
         actionId: action.id,
         type: ActionActivityType.USER_COMPLETED,
+        user: {
+          communities: {
+            id: communityId,
+          },
+        },
       },
     });
     const withdrawalActivities = await this.actionActivityRepository.find({
       where: {
         actionId: action.id,
         type: ActionActivityType.USER_WONT_COMPLETE,
+        user: {
+          communities: {
+            id: communityId,
+          },
+        },
       },
     });
     const baseUsersMinusWithdrawals = baseUsers.filter(
       (user) =>
-        !withdrawalActivities.some((activity) => activity.userId === user.id) &&
-        (communityId === undefined ||
-          user.communities.some((c) => c.id === communityId)),
+        !withdrawalActivities.some((activity) => activity.userId === user.id),
     );
     const set = new Set([
       ...baseUsersMinusWithdrawals.map((user) => user.id),
