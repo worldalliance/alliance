@@ -74,9 +74,9 @@ const CommunityPage = () => {
     Record<number, boolean>
   >({});
 
-  const nCompleted = useMemo(() => {
+  const { nCompleted, nTotal } = useMemo(() => {
     if (!community?.users || !userActionRelations) {
-      return 0;
+      return { nCompleted: 0, nTotal: 0 };
     }
 
     const completedAll: Record<number, boolean> = {};
@@ -97,7 +97,11 @@ const CommunityPage = () => {
       }
     }
     setCompletedAllCurrentActions(completedAll);
-    return Object.values(completedAll).filter((completed) => completed).length;
+    const completedAllValues = Object.values(completedAll);
+    return {
+      nCompleted: completedAllValues.filter((completed) => completed).length,
+      nTotal: completedAllValues.length,
+    };
   }, [activeActions, community, userActionRelations]);
 
   const [loading, setLoading] = useState(true);
@@ -307,12 +311,11 @@ const CommunityPage = () => {
 
             <div className="max-w-[400px]">
               <p className="text-sm">
-                {nCompleted} / {community.users.length} have completed current
-                action
+                {nCompleted} / {nTotal} have completed current action action
                 {activeActions.length !== 1 ? "s" : ""}
               </p>
               <CompletedBar
-                percentage={(nCompleted / community.users.length) * 100}
+                percentage={nTotal === 0 ? 0 : (nCompleted / nTotal) * 100}
                 height="h-4"
                 dark
               />
