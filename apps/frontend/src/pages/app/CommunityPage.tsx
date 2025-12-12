@@ -79,23 +79,25 @@ const CommunityPage = () => {
       return 0;
     }
 
-    const completedall: Record<number, boolean> = {};
-    for (const member of community.users) {
-      completedall[member.id] = true;
+    const completedAll: Record<number, boolean> = {};
+    for (const action of activeActions) {
+      for (const userId of action.joinedUserIds) {
+        completedAll[userId] = true;
+      }
     }
 
     for (const action of activeActions) {
-      for (const member of community?.users ?? []) {
-        const relation = userActionRelations?.[member.id]?.find(
+      for (const userId of action.joinedUserIds) {
+        const relation = userActionRelations[userId]?.find(
           (relation) => relation.actionId === action.id
         );
         if (relation?.status !== "completed") {
-          completedall[member.id] = false;
+          completedAll[userId] = false;
         }
       }
     }
-    setCompletedAllCurrentActions(completedall);
-    return Object.values(completedall).filter((completed) => completed).length;
+    setCompletedAllCurrentActions(completedAll);
+    return Object.values(completedAll).filter((completed) => completed).length;
   }, [activeActions, community, userActionRelations]);
 
   const [loading, setLoading] = useState(true);

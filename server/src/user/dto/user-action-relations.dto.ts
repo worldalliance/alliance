@@ -23,6 +23,9 @@ export class UserActionSummaryDto {
 
   @ApiProperty({ enum: ActionStatus, enumName: 'ActionStatus' })
   status: ActionStatus;
+
+  @ApiProperty({ type: Number, isArray: true })
+  joinedUserIds: number[];
 }
 
 export class UserActionRelationDetailDto {

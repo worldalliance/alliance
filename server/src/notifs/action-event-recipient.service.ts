@@ -100,6 +100,7 @@ export class ActionEventRecipientService {
           'user.tags',
           'user.awayRanges',
           'user.contractEvents',
+          'user.communities',
         ],
       });
       return filterToEligible(activities.map((activity) => activity.user));
@@ -109,7 +110,9 @@ export class ActionEventRecipientService {
       eventStatus === ActionStatus.GatheringCommitments ||
       eventStatus === ActionStatus.MemberAction
     ) {
-      return filterToEligible(await this.userService.findActiveUsersWithTags());
+      return filterToEligible(
+        await this.userService.findActiveUsersWithTags(['communities']),
+      );
     }
 
     return [];

@@ -1512,6 +1512,7 @@ export type UserActionSummaryDto = {
     id: number;
     name: string;
     status: ActionStatus;
+    joinedUserIds: Array<number>;
 };
 
 export type UserActionRelationStatus = 'none' | 'joined' | 'completed' | 'declined' | 'wont_complete' | 'missed_deadline';
