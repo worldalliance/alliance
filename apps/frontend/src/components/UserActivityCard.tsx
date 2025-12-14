@@ -6,7 +6,7 @@ import {
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/shared/ui/Button";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Link, href, useNavigate } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { formatTime } from "@alliance/shared/lib/utils";
@@ -283,4 +283,4 @@ const UserActivityCard = ({
   );
 };
 
-export default UserActivityCard;
+export default React.memo(UserActivityCard);

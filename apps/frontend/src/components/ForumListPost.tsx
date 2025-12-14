@@ -1,4 +1,5 @@
 import { CommentDto, PostDto } from "@alliance/shared/client";
+import React from "react";
 import PinnedIcon from "@alliance/shared/ui/icons/PinnedIcon";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
 import { Link, href, useNavigate } from "react-router";
@@ -170,4 +171,4 @@ const ForumListPost = ({
   }
 };
 
-export default ForumListPost;
+export default React.memo(ForumListPost);

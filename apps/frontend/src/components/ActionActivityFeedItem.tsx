@@ -1,4 +1,5 @@
 import { ActionActivityDto } from "@alliance/shared/client";
+import React from "react";
 import { Link, href, useNavigate } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { formatTime } from "@alliance/shared/lib/utils";
@@ -100,4 +101,4 @@ const ActionActivityFeedItem = ({
   }
 };
 
-export default ActionActivityFeedItem;
+export default React.memo(ActionActivityFeedItem);

@@ -6,7 +6,7 @@ import {
   UserAwayRangeDto,
 } from "@alliance/shared/client";
 import UserDisplayName from "./UserDisplayName";
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import UserProgressPills from "@alliance/shared/ui/UserProgressPills";
 import ProfileImage from "@alliance/shared/ui/ProfileImage";
 import DropdownIcon from "@alliance/shared/ui/icons/DropdownIcon";
@@ -224,4 +224,4 @@ const CommunityMemberTableRow = ({
   );
 };
 
-export default CommunityMemberTableRow;
+export default React.memo(CommunityMemberTableRow);
