@@ -173,76 +173,68 @@ export class ActionsService {
     // 2. Latest past member action event (later first)
     // 3. Priority (higher priority first)
 
-    const qb = this.actionRepository
-      .createQueryBuilder('a')
-      .leftJoin('a.events', 'e')
+    // Use a subquery to get sorted action IDs with the complex ordering logic
+    const sortedIdsSubquery = this.actionRepository
+      .createQueryBuilder('a_sort')
+      .select('a_sort.id', 'id')
+      .leftJoin('a_sort.events', 'e_sort')
       .addSelect(
         `
-    MIN(CASE WHEN e.date > NOW() THEN e.date END)
+    MIN(CASE WHEN e_sort.date > NOW() THEN e_sort.date END)
   `,
         'soonest_future_event_date',
       )
       .addSelect(
         `
-    MAX(CASE 
-      WHEN e.newStatus = :memberAction THEN e.date 
+    MAX(CASE
+      WHEN e_sort.newStatus = :memberAction THEN e_sort.date
     END)
   `,
         'latest_memberaction_event_date',
       )
       .setParameter('memberAction', ActionStatus.MemberAction)
-      .groupBy('a.id')
+      .groupBy('a_sort.id')
       .orderBy(
-        'CASE WHEN MIN(CASE WHEN e.date > NOW() THEN e.date END) IS NULL THEN 1 ELSE 0 END',
+        'CASE WHEN MIN(CASE WHEN e_sort.date > NOW() THEN e_sort.date END) IS NULL THEN 1 ELSE 0 END',
         'ASC',
-      ) // actions with future events first
-      .addOrderBy('soonest_future_event_date', 'ASC') // earliest future event first
+      )
+      .addOrderBy('soonest_future_event_date', 'ASC')
       .addOrderBy(
-        'CASE WHEN MAX(CASE WHEN e.newStatus = :memberAction THEN e.date END) IS NULL THEN 1 ELSE 0 END',
+        'CASE WHEN MAX(CASE WHEN e_sort.newStatus = :memberAction THEN e_sort.date END) IS NULL THEN 1 ELSE 0 END',
         'ASC',
-      ) // actions with past member-action events next
-      .addOrderBy('latest_memberaction_event_date', 'DESC') // latest member-action event first
-      .addOrderBy('a.priority', 'ASC'); // higher priority first
+      )
+      .addOrderBy('latest_memberaction_event_date', 'DESC')
+      .addOrderBy('a_sort.priority', 'ASC');
 
     if (limit) {
-      qb.limit(limit);
+      sortedIdsSubquery.limit(limit);
     }
+
+    // Get sorted IDs first
+    const sortedIdRows = await sortedIdsSubquery.getRawMany<{ id: number }>();
+    const sortedIds = sortedIdRows.map((row) => row.id);
+
+    if (sortedIds.length === 0) {
+      return [];
+    }
+
+    // Build a query with all relations loaded via leftJoinAndSelect
+    const qb = this.actionRepository.createQueryBuilder('a');
+
+    // Add requested relations using leftJoinAndSelect to avoid N+1 queries
+    for (const rel of relations) {
+      qb.leftJoinAndSelect(`a.${rel}`, rel);
+    }
+
+    qb.where('a.id IN (:...sortedIds)', { sortedIds });
+
     const actions = await qb.getMany();
 
-    if (relations.length > 0) {
-      const metadata = this.actionRepository.metadata;
-      await Promise.all(
-        actions.map(async (action) => {
-          for (const rel of relations) {
-            const relationMeta = metadata.relations.find(
-              (r) => r.propertyName === rel,
-            );
-
-            if (!relationMeta) {
-              continue;
-            }
-
-            const relationQb = this.actionRepository
-              .createQueryBuilder()
-              .relation(Action, rel)
-              .of(action);
-
-            let loaded: unknown;
-
-            if (relationMeta.isOneToOne || relationMeta.isManyToOne) {
-              loaded = await relationQb.loadOne();
-            } else {
-              loaded = await relationQb.loadMany();
-            }
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (action as any)[rel] = loaded;
-          }
-        }),
-      );
-    }
-
-    return actions;
+    // Restore the original sort order from the subquery
+    const actionMap = new Map(actions.map((action) => [action.id, action]));
+    return sortedIds
+      .map((id) => actionMap.get(id))
+      .filter((action): action is Action => action !== undefined);
   }
 
   async reloadAllActionUsersJoined(): Promise<void> {
