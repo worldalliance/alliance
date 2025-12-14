@@ -72,23 +72,29 @@ const MembersListPage = () => {
     loadMyFriends();
   }, [user]);
 
-  const friendsOfFriends = members.filter(
-    (member) =>
+  // Convert to Set for O(1) lookups instead of O(n)
+  const myFriendsSet = new Set(myFriends);
+
+  // Pre-compute friend-of-friend status to avoid O(n²) in sort comparator
+  const friendOfFriendIds = new Set<number>();
+  members.forEach((member) => {
+    if (
       member.id !== user?.id &&
-      !myFriends.includes(member.id) &&
-      member.friends.some((friend) => myFriends.includes(friend.id))
+      !myFriendsSet.has(member.id) &&
+      member.friends.some((friend) => myFriendsSet.has(friend.id))
+    ) {
+      friendOfFriendIds.add(member.id);
+    }
+  });
+
+  const friendsOfFriends = members.filter((member) =>
+    friendOfFriendIds.has(member.id)
   );
 
   // Put friends of friends at top to make them easier to find
   const sortedMembers = [...members].sort((a, b) => {
-    const aIsFriendOfFriend =
-      a.id !== user?.id &&
-      !myFriends.includes(a.id) &&
-      a.friends.some((friend) => myFriends.includes(friend.id));
-    const bIsFriendOfFriend =
-      b.id !== user?.id &&
-      !myFriends.includes(b.id) &&
-      b.friends.some((friend) => myFriends.includes(friend.id));
+    const aIsFriendOfFriend = friendOfFriendIds.has(a.id);
+    const bIsFriendOfFriend = friendOfFriendIds.has(b.id);
 
     if (aIsFriendOfFriend && !bIsFriendOfFriend) return -1;
     if (!aIsFriendOfFriend && bIsFriendOfFriend) return 1;
@@ -133,7 +139,7 @@ const MembersListPage = () => {
               key={member.id}
               profile={member}
               sentFriendRequest={userSentFriendRequestIds?.includes(member.id)}
-              isFriend={myFriends.includes(member.id)}
+              isFriend={myFriendsSet.has(member.id)}
             />
           ))}
         </List>
