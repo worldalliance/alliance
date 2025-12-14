@@ -102,12 +102,13 @@ const ActionActivityFeedPage = () => {
     if (everyoneRef.current) roEveryone.observe(everyoneRef.current);
 
     window.addEventListener("resize", updateHeight);
-    requestAnimationFrame(updateHeight);
+    const rafId = requestAnimationFrame(updateHeight);
 
     return () => {
       roFriends.disconnect();
       roEveryone.disconnect();
       window.removeEventListener("resize", updateHeight);
+      cancelAnimationFrame(rafId);
     };
   }, [mode, updateHeight]);
 
