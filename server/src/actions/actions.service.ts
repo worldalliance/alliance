@@ -1559,9 +1559,10 @@ export class ActionsService {
       users = await this.userService.findAllUsers();
     }
 
-    for (const user of users) {
-      await this.notifsService.createActionUpdateNotif(actionUpdate, user);
-    }
+    await this.notifsService.createActionUpdateNotifsInBulk(
+      actionUpdate,
+      users,
+    );
   }
 
   async getSuites(): Promise<ActionSuite[]> {

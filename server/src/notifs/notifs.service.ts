@@ -116,4 +116,22 @@ export class NotifsService {
     });
     return this.notifsRepository.save(notif);
   }
+
+  async createActionUpdateNotifsInBulk(
+    actionUpdate: ActionUpdate,
+    users: User[],
+  ) {
+    const notifs = users.map((user) =>
+      this.notifsRepository.create({
+        user,
+        actionUpdate,
+        category: NotificationCategory.ActionUpdate,
+        message: actionUpdate.shortNotifString,
+        webAppLocation: actionUrl(actionUpdate.action.id),
+        mobileAppLocation: actionUrl(actionUpdate.action.id),
+        sendTime: actionUpdate.date,
+      }),
+    );
+    return this.notifsRepository.save(notifs);
+  }
 }
