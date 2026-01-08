@@ -19,22 +19,21 @@ const CommunityMemberTableRow = ({
   contactInfo,
   actionRelations,
   actions,
+  maxActionsPerWeek,
 }: {
   profile: ProfileDto;
   canExpand?: boolean;
   amLeader?: boolean;
   contactInfo?: CommunityMemberContactInfoDto;
-  actions?: UserActionSummaryDto[];
+  actions: UserActionSummaryDto[];
+  maxActionsPerWeek: Record<number, number> | null;
   actionRelations: UserActionRelationDetailDto[];
 }) => {
   const relationByActionId = useMemo(() => {
-    return actionRelations.reduce(
-      (acc, relation) => {
-        acc[relation.actionId] = relation;
-        return acc;
-      },
-      {} as Record<number, UserActionRelationDetailDto>,
-    );
+    return actionRelations.reduce((acc, relation) => {
+      acc[relation.actionId] = relation;
+      return acc;
+    }, {} as Record<number, UserActionRelationDetailDto>);
   }, [actionRelations]);
 
   const [expanded, setExpanded] = useState(false);
@@ -44,7 +43,7 @@ const CommunityMemberTableRow = ({
     }
     return [...contactInfo.awayRanges].sort(
       (a, b) =>
-        new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
     );
   }, [contactInfo?.awayRanges]);
 
@@ -120,9 +119,10 @@ const CommunityMemberTableRow = ({
         </td>
         <td>
           <div>
-            {!!actions && (
+            {actions && (
               <UserProgressPills
                 actions={actions}
+                maxActionsPerWeek={maxActionsPerWeek}
                 relationByActionId={relationByActionId}
                 pillHeight="h-4"
               />

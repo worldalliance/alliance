@@ -3,13 +3,21 @@ import {
   UserActionRelationPillStatus,
   UserActionSummaryDto,
 } from "@alliance/shared/client";
+import { JSX, useMemo } from "react";
 
 export type PillStatusData = {
   pillLabel: string;
-  pillStyle: string;
-  pillSubtitleText: string;
   pillTextStyle: string;
-};
+} & (
+  | {
+      pillStyle: string;
+      pillSubtitleText: string;
+    }
+  | {
+      pillStyle: null;
+      pillSubtitleText: null;
+    }
+);
 export const PILL_STATUS_DATA = Object.freeze({
   completed: Object.freeze({
     pillLabel: "Completed",
@@ -19,15 +27,15 @@ export const PILL_STATUS_DATA = Object.freeze({
   }) satisfies PillStatusData,
   missed_deadline: Object.freeze({
     pillLabel: "Missed deadline",
-    pillStyle: "bg-zinc-700",
+    pillStyle: "bg-orange-600",
     pillSubtitleText: "Missed deadline",
-    pillTextStyle: "text-black",
+    pillTextStyle: "text-red-400",
   }) satisfies PillStatusData,
   not_required: Object.freeze({
     pillLabel: "Not required",
-    pillStyle: "bg-zinc-100 border border-zinc-200",
-    pillSubtitleText: "Member not expected to complete",
-    pillTextStyle: "text-zinc-500",
+    pillStyle: null,
+    pillSubtitleText: null,
+    pillTextStyle: "text-zinc-400",
   }) satisfies PillStatusData,
   todo: Object.freeze({
     pillLabel: "Not started",
@@ -43,41 +51,159 @@ export const PILL_STATUS_DATA = Object.freeze({
   }) satisfies PillStatusData,
 }) satisfies Record<UserActionRelationPillStatus, PillStatusData>;
 
+export function useMaxActionsPerWeek(params: {
+  actionSummaries: UserActionSummaryDto[] | null;
+  userActionRelations: Record<number, UserActionRelationDetailDto[]> | null;
+}): Record<number, number> | null {
+  const { actionSummaries, userActionRelations } = params;
+
+  return useMemo(() => {
+    if (!actionSummaries || !userActionRelations) {
+      return null;
+    }
+    const weekNumberByActionId = actionSummaries.reduce((acc, action) => {
+      if (action.weekNumber !== null) {
+        acc[action.id] = action.weekNumber;
+      }
+      return acc;
+    }, {} as Record<number, number>);
+
+    const maxActionsPerWeek: Record<number, number> = {};
+    for (const relations of Object.values(userActionRelations)) {
+      const counts = relations.reduce((acc, relation) => {
+        if (PILL_STATUS_DATA[relation.status].pillStyle) {
+          const weekNumber = weekNumberByActionId[relation.actionId];
+          acc[weekNumber] = (acc[weekNumber] ?? 0) + 1;
+        }
+        return acc;
+      }, {} as Record<number, number>);
+
+      for (const [weekNumberKey, count] of Object.entries(counts)) {
+        const weekNumber = Number(weekNumberKey);
+        maxActionsPerWeek[weekNumber] = Math.max(
+          maxActionsPerWeek[weekNumber] ?? 0,
+          count
+        );
+      }
+    }
+    return maxActionsPerWeek;
+  }, [actionSummaries, userActionRelations]);
+}
+
 export interface UserProgressPillsProps {
   actions: UserActionSummaryDto[];
+  maxActionsPerWeek: Record<number, number> | null;
   relationByActionId: Record<number, UserActionRelationDetailDto>;
   pillHeight?: string;
 }
 
+function EmptyPill() {
+  return <div className="relative group flex-1" />;
+}
+function Pill({
+  action,
+  pillStatusData,
+  pillHeight,
+}: {
+  action: UserActionSummaryDto;
+  pillStatusData: PillStatusData & { pillStyle: string };
+  pillHeight: string;
+}) {
+  const { pillLabel, pillStyle, pillSubtitleText, pillTextStyle } =
+    pillStatusData;
+  return (
+    <div key={action.id} className="relative group flex-1">
+      <div
+        className={`rounded flex items-center justify-center text-xs font-semibold min-w-2 ${pillStyle} ${pillHeight}`}
+        aria-label={`${action.name} – ${pillLabel}`}
+      ></div>
+      {pillStyle && (
+        <div className="pointer-events-none absolute bottom-full mb-1 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded border border-zinc-200 bg-white px-2 py-1 text-[12px] font-medium text-zinc-700 opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">
+          <div className="flex flex-col items-center justify-center">
+            {action.name}
+            <span className={pillTextStyle}>{pillSubtitleText}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const UserProgressPills = ({
   actions,
+  maxActionsPerWeek,
   relationByActionId,
   pillHeight = "h-3",
 }: UserProgressPillsProps) => {
-  return (
-    <div className="flex gap-1 w-full">
-      {actions
-        .filter((action) => action.status !== "planned")
-        .map((action) => {
-          const { pillLabel, pillStyle, pillSubtitleText, pillTextStyle } =
-            PILL_STATUS_DATA[relationByActionId[action.id].status];
-          return (
-            <div key={action.id} className="relative group flex-1">
-              <div
-                className={`rounded flex items-center justify-center text-xs font-semibold min-w-2 ${pillStyle} ${pillHeight}`}
-                aria-label={`${action.name} – ${pillLabel}`}
-              ></div>
-              <div className="pointer-events-none absolute bottom-full mb-1 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded border border-zinc-200 bg-white px-2 py-1 text-[12px] font-medium text-zinc-700 opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">
-                <div className="flex flex-col items-center justify-center">
-                  {action.name}
-                  <span className={pillTextStyle}>{pillSubtitleText}</span>
-                </div>
-              </div>
-            </div>
+  const pills: (JSX.Element | null)[] = useMemo(() => {
+    if (!maxActionsPerWeek) {
+      return actions.map((action) => {
+        const pillStatusData =
+          PILL_STATUS_DATA[relationByActionId[action.id].status];
+        if (!pillStatusData.pillStyle) {
+          return null;
+        }
+        return (
+          <Pill
+            action={action}
+            pillStatusData={pillStatusData}
+            pillHeight={pillHeight}
+          />
+        );
+      });
+    }
+
+    const actionMap = actions.reduce((acc, action) => {
+      acc.set(action.id, action);
+      return acc;
+    }, new Map<number, UserActionSummaryDto>());
+
+    const weekNumbers =
+      maxActionsPerWeek && Object.keys(maxActionsPerWeek).map(Number).sort();
+    const relationsPerWeek = actions.reduce((acc, action) => {
+      if (action.weekNumber) {
+        acc.set(action.weekNumber, [
+          ...(acc.get(action.weekNumber) ?? []),
+          relationByActionId[action.id],
+        ]);
+      }
+      return acc;
+    }, new Map<number, UserActionRelationDetailDto[]>());
+
+    const pills: JSX.Element[] = [];
+    for (const weekNumber of weekNumbers) {
+      const pillsForWeek: JSX.Element[] = [];
+      const relations = relationsPerWeek.get(weekNumber);
+      if (relations) {
+        for (const relation of relations) {
+          const action = actionMap.get(relation.actionId);
+          const pillStatusData = PILL_STATUS_DATA[relation.status];
+          if (!action || !pillStatusData.pillStyle) {
+            continue;
+          }
+          pillsForWeek.push(
+            <Pill
+              action={action}
+              pillStatusData={pillStatusData}
+              pillHeight={pillHeight}
+            />
           );
-        })}
-    </div>
-  );
+        }
+      }
+
+      // fill rest of pills with invisible pills
+      pills.push(...pillsForWeek);
+      pills.push(
+        ...Array(maxActionsPerWeek[weekNumber] - pillsForWeek.length).fill(
+          <EmptyPill />
+        )
+      );
+    }
+
+    return pills;
+  }, [actions, maxActionsPerWeek, relationByActionId]);
+
+  return <div className="flex gap-1 w-full">{pills}</div>;
 };
 
 export default UserProgressPills;

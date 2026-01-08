@@ -23,6 +23,9 @@ export class UserActionSummaryDto {
   @ApiProperty({ enum: ActionStatus, enumName: 'ActionStatus' })
   status: ActionStatus;
 
+  @ApiProperty({ type: Number, nullable: true })
+  weekNumber: number | null;
+
   @ApiProperty()
   allMembersParticipating: boolean;
 

@@ -18,7 +18,7 @@ import {
   UserActionSummaryDto,
   UserDto,
 } from "@alliance/shared/client/types.gen";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import UserCard from "../components/UserCard";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
@@ -26,6 +26,7 @@ import { href, Link, useSearchParams } from "react-router";
 import { LayoutGrid, List } from "lucide-react";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
+import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 
 type ViewMode = "cards" | "rows";
 
@@ -54,6 +55,10 @@ const UsersList: React.FC = () => {
   const [userActionRelations, setUserActionRelations] = useState<
     Record<number, UserActionRelationDetailDto[]>
   >({});
+  const maxActionsPerWeek = useMaxActionsPerWeek({
+    actionSummaries,
+    userActionRelations,
+  });
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [filterMode, setFilterMode] = useState<UserFilterMode>(
     UserFilterMode.ALL
@@ -100,7 +105,7 @@ const UsersList: React.FC = () => {
       // latest on the right
       data.actions.reverse();
 
-      setActionSummaries(data.actions ?? []);
+      setActionSummaries(data.actions);
       setActiveActions(
         data.actions.filter((action) => action.status === "member_action")
       );
@@ -468,6 +473,7 @@ const UsersList: React.FC = () => {
               }
               isTagPending={(tagId) => pendingTagOps.has(`${user.id}-${tagId}`)}
               actions={actionSummaries}
+              maxActionsPerWeek={maxActionsPerWeek}
               actionRelations={userActionRelations[user.id] || []}
             />
           ))}
@@ -481,6 +487,7 @@ const UsersList: React.FC = () => {
             userActionRelations={userActionRelations}
             memberContactInfo={memberContactInfo}
             actions={actionSummaries}
+            maxActionsPerWeek={maxActionsPerWeek}
             completedAllCurrentActions={completedAllCurrentActions}
           />
         </div>

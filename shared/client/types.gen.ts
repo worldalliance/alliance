@@ -1668,6 +1668,7 @@ export type UserActionSummaryDto = {
     id: number;
     name: string;
     status: ActionStatus;
+    weekNumber: number | null;
     allMembersParticipating: boolean;
     suiteId?: number;
 };

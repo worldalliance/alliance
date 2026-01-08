@@ -26,6 +26,7 @@ import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
+import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 
 const CommunityDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -93,6 +94,10 @@ const CommunityDetailPage: React.FC = () => {
   const [actionSummaries, setActionSummaries] = useState<
     UserActionSummaryDto[]
   >([]);
+  const maxActionsPerWeek = useMaxActionsPerWeek({
+    actionSummaries: actionSummaries,
+    userActionRelations,
+  });
   const [activeActions, setActiveActions] = useState<UserActionSummaryDto[]>(
     []
   );
@@ -115,12 +120,12 @@ const CommunityDetailPage: React.FC = () => {
               (action) => action.status === "member_action"
             )
           );
-          setUserActionRelations(
+          const relationMap: Record<number, UserActionRelationDetailDto[]> =
             resp.data.users.reduce((acc, user) => {
               acc[user.userId] = user.relations;
               return acc;
-            }, {} as Record<number, UserActionRelationDetailDto[]>)
-          );
+            }, {} as Record<number, UserActionRelationDetailDto[]>);
+          setUserActionRelations(relationMap);
         }
       }
     );
@@ -701,6 +706,7 @@ const CommunityDetailPage: React.FC = () => {
           amLeader={true}
           userActionRelations={userActionRelations ?? undefined}
           actions={actionSummaries}
+          maxActionsPerWeek={maxActionsPerWeek}
           memberContactInfo={memberContactInfo ?? undefined}
           completedAllCurrentActions={completedAllCurrentActions}
         />

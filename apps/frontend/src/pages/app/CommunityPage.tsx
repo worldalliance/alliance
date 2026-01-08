@@ -39,6 +39,7 @@ import { useMediaQuery } from "../../lib/useMediaQuery";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
+import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 
 type Tab = "activity" | "members" | "invites" | "about" | "edit" | "resources";
 
@@ -64,6 +65,10 @@ const CommunityPage = () => {
   const [activeActions, setActiveActions] = useState<UserActionSummaryDto[]>(
     []
   );
+  const maxActionsPerWeek = useMaxActionsPerWeek({
+    actionSummaries: actionSummaries,
+    userActionRelations,
+  });
   const [inviteNotifCount, setInviteNotifCount] = useState(0);
   const [activeActionSuites, setActiveActionSuites] = useState<
     ActionSuiteSummaryDto[] | null
@@ -401,6 +406,7 @@ const CommunityPage = () => {
               memberContactInfo={memberContactInfo ?? undefined}
               userActionRelations={userActionRelations ?? undefined}
               actions={actionSummaries}
+              maxActionsPerWeek={maxActionsPerWeek}
               completedAllCurrentActions={completedAllCurrentActions}
             />
           )}

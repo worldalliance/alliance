@@ -26,6 +26,7 @@ export interface UserCardProps {
   onToggleTag: (tagId: number, nextChecked: boolean) => void | Promise<void>;
   isTagPending: (tagId: number) => boolean;
   actions: UserActionSummaryDto[];
+  maxActionsPerWeek: Record<number, number> | null;
   actionRelations: UserActionRelationDetailDto[];
 }
 
@@ -36,6 +37,7 @@ const UserCard = ({
   onToggleTag,
   isTagPending,
   actions,
+  maxActionsPerWeek,
   actionRelations,
 }: UserCardProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -195,6 +197,7 @@ const UserCard = ({
           </div>
           <UserProgressPills
             actions={actions}
+            maxActionsPerWeek={maxActionsPerWeek}
             relationByActionId={relationByActionId}
           />
           {isActionDetailsOpen && (

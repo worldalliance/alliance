@@ -21,8 +21,9 @@ type CommunityMembersTableProps = {
   amLeader: boolean;
   memberContactInfo?: Record<number, CommunityMemberContactInfoDto>;
   userActionRelations?: Record<number, UserActionRelationDetailDto[]>;
-  actions?: UserActionSummaryDto[];
+  actions: UserActionSummaryDto[];
   completedAllCurrentActions?: Record<number, boolean>;
+  maxActionsPerWeek: Record<number, number> | null;
 };
 
 const CommunityMembersTable = ({
@@ -31,8 +32,9 @@ const CommunityMembersTable = ({
   amLeader,
   memberContactInfo = {},
   userActionRelations = {},
-  actions = [],
+  actions,
   completedAllCurrentActions = {},
+  maxActionsPerWeek,
 }: CommunityMembersTableProps) => {
   const [filterMode, setFilterMode] = useState<CommunityMembersFilterMode>(
     CommunityMembersFilterMode.All
@@ -131,6 +133,7 @@ const CommunityMembersTable = ({
                     contactInfo={memberContactInfo?.[user.id]}
                     actionRelations={userActionRelations?.[user.id] ?? []}
                     actions={visibleActions}
+                    maxActionsPerWeek={maxActionsPerWeek}
                   />
                 ))}
               </tbody>
@@ -181,6 +184,7 @@ const CommunityMembersTable = ({
                 contactInfo={memberContactInfo?.[user.id]}
                 actionRelations={userActionRelations?.[user.id] ?? []}
                 actions={visibleActions}
+                maxActionsPerWeek={maxActionsPerWeek}
               />
             ))}
           </tbody>
