@@ -6,11 +6,12 @@ import { Temporal } from '@js-temporal/polyfill';
 import { UserAwayRangeDto } from './away-range.dto';
 
 export enum UserActionRelationPillStatus {
-  Todo = 'todo',
+  Away = 'away',
   Completed = 'completed',
-  NotRequired = 'not_required',
-  WontComplete = 'wont_complete',
   MissedDeadline = 'missed_deadline',
+  NotRequired = 'not_required',
+  Todo = 'todo',
+  WontComplete = 'wont_complete',
 }
 
 export class UserActionSummaryDto {

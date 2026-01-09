@@ -19,6 +19,12 @@ export type PillStatusData = {
     }
 );
 export const PILL_STATUS_DATA = Object.freeze({
+  away: Object.freeze({
+    pillLabel: "Away",
+    pillStyle: "bg-zinc-100 border border-zinc-200",
+    pillSubtitleText: "Member away",
+    pillTextStyle: "text-zinc-400",
+  }) satisfies PillStatusData,
   completed: Object.freeze({
     pillLabel: "Completed",
     pillStyle: "bg-green",
@@ -191,9 +197,9 @@ const UserProgressPills = ({
         }
       }
 
-      // fill rest of pills with invisible pills
-      pills.push(...pillsForWeek);
+      // fill rest of pills with empty pills
       pills.push(
+        ...pillsForWeek,
         ...Array(maxActionsPerWeek[weekNumber] - pillsForWeek.length).fill(
           <EmptyPill />
         )
