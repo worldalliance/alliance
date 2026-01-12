@@ -17,7 +17,8 @@ import {
   userDeleteAwayRange,
   userGetAwayRanges,
 } from "@alliance/shared/client";
-import { Button, ButtonColor } from "./system";
+import Button, { ButtonColor } from "./system/Button";
+import { awayRangesDescription } from "@alliance/shared/lib/copy";
 
 const REASON_OPTIONS: { value: UserAwayRangeReason; label: string }[] = [
   { value: "vacation", label: "Vacation" },
@@ -180,8 +181,7 @@ export default function AwayRangesSection() {
     <View>
       <Text className="text-2xl font-semibold mb-2">Away periods</Text>
       <Text className="text-sm text-zinc-600 mb-4">
-        You can schedule a period of time when you won't be able to complete
-        Alliance actions.
+        {awayRangesDescription}
       </Text>
 
       {awayRanges.length > 0 && (
@@ -357,7 +357,9 @@ export default function AwayRangesSection() {
                       <View className="w-2.5 h-2.5 rounded-full bg-green-600" />
                     )}
                   </View>
-                  <Text className="text-base text-zinc-800">{option.label}</Text>
+                  <Text className="text-base text-zinc-800">
+                    {option.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>

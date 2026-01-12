@@ -44,6 +44,7 @@ __metadata:
     "@storybook/react-vite": "npm:^8.6.12"
     "@storybook/test": "npm:^8.6.12"
     "@tailwindcss/vite": "npm:^4.1.4"
+    "@types/chroma-js": "npm:^2.4.4"
     "@types/compression": "npm:^1"
     "@types/d3": "npm:^7.4.3"
     "@types/express": "npm:^5"
@@ -52,6 +53,7 @@ __metadata:
     "@types/react-dom": "npm:^19.0.4"
     "@vitejs/plugin-react": "npm:^4.3.4"
     autoprefixer: "npm:^10.4.21"
+    chroma-js: "npm:^2.4.2"
     classnames: "npm:^2.5.1"
     clsx: "npm:^2.1.1"
     compression: "npm:^1.8.0"
@@ -176,10 +178,12 @@ __metadata:
     "@babel/core": "npm:^7.25.2"
     "@hey-api/client-fetch": "npm:^0.10.0"
     "@hey-api/openapi-ts": "npm:^0.67.3"
+    "@legendapp/list": "npm:^2.0.19"
     "@react-native-community/cli": "npm:latest"
     "@react-navigation/bottom-tabs": "npm:^7.3.10"
     "@react-navigation/elements": "npm:^2.3.8"
     "@react-navigation/native": "npm:^7.1.6"
+    "@tanstack/react-query": "npm:^5.90.16"
     "@types/react": "npm:~19.0.10"
     eslint: "npm:^9.25.0"
     eslint-config-expo: "npm:~9.2.0"
@@ -2504,6 +2508,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@legendapp/list@npm:^2.0.19":
+  version: 2.0.19
+  resolution: "@legendapp/list@npm:2.0.19"
+  dependencies:
+    use-sync-external-store: "npm:^1.5.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/8201cd3ebf59bb885b8289e0e65df3134a3d59f9b7fce9b30884a50fab8b268ed601dec742bfa48beeb4fec45fdba8d69af56bf1e16e5afbdce0e1db7a1c56d8
+  languageName: node
+  linkType: hard
+
 "@mdx-js/react@npm:^3.0.0":
   version: 3.1.0
   resolution: "@mdx-js/react@npm:3.1.0"
@@ -4307,6 +4323,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tanstack/query-core@npm:5.90.16":
+  version: 5.90.16
+  resolution: "@tanstack/query-core@npm:5.90.16"
+  checksum: 10c0/f6a4827feeed2b4118323056bbda8d5099823202d1f29b538204ae2591be4e80f2946f3311eed30fefe866643f431c04b560457f03415d40caf2f353ba1efac0
+  languageName: node
+  linkType: hard
+
+"@tanstack/react-query@npm:^5.90.16":
+  version: 5.90.16
+  resolution: "@tanstack/react-query@npm:5.90.16"
+  dependencies:
+    "@tanstack/query-core": "npm:5.90.16"
+  peerDependencies:
+    react: ^18 || ^19
+  checksum: 10c0/03bd2aa23187003b45dc3d4b465a68f19806369283487a004acd6dd2ad8ba1fa0ec343da616cb1c43c342609202d0776fee68867246caa5ad6915f090539c168
+  languageName: node
+  linkType: hard
+
 "@testing-library/dom@npm:10.4.0":
   version: 10.4.0
   resolution: "@testing-library/dom@npm:10.4.0"
@@ -4434,6 +4468,13 @@ __metadata:
     "@types/connect": "npm:*"
     "@types/node": "npm:*"
   checksum: 10c0/aebeb200f25e8818d8cf39cd0209026750d77c9b85381cdd8deeb50913e4d18a1ebe4b74ca9b0b4d21952511eeaba5e9fbbf739b52731a2061e206ec60d568df
+  languageName: node
+  linkType: hard
+
+"@types/chroma-js@npm:^2.4.4":
+  version: 2.4.5
+  resolution: "@types/chroma-js@npm:2.4.5"
+  checksum: 10c0/2860bb40e29bc034464324c53291164d5a665edb6a3f7adff80ef968fe468f3484435a9b7a3735874e979bfd189d026989d9aa6743cb8a7ca0d99b64555904b3
   languageName: node
   linkType: hard
 
@@ -6729,6 +6770,13 @@ __metadata:
   version: 3.0.0
   resolution: "chownr@npm:3.0.0"
   checksum: 10c0/43925b87700f7e3893296c8e9c56cc58f926411cce3a6e5898136daaf08f08b9a8eb76d37d3267e707d0dcc17aed2e2ebdf5848c0c3ce95cf910a919935c1b10
+  languageName: node
+  linkType: hard
+
+"chroma-js@npm:^2.4.2":
+  version: 2.6.0
+  resolution: "chroma-js@npm:2.6.0"
+  checksum: 10c0/6e17f43246f9b3eba8a9db67f5ee9a2d0ef1360077211887da09ec1f0934bb98a358eefaf021003c0bd47cbab540f573a373f362d6b2ba04d0e80ab7677e1640
   languageName: node
   linkType: hard
 

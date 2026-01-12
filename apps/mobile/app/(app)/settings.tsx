@@ -27,7 +27,7 @@ import {
   FormDataPreferenceOption,
 } from "@alliance/shared/lib/settings";
 import { useAuth } from "../../lib/AuthContext";
-import { Button, ButtonColor } from "../../components/system";
+import Button, { ButtonColor } from "../../components/system/Button";
 import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
 import AwayRangesSection from "../../components/AwayRangesSection";
 
@@ -189,7 +189,7 @@ export default function SettingsPage() {
   }
 
   const inputClasses =
-    "border border-zinc-300 rounded-lg bg-white px-3 py-3 text-base";
+    "border border-zinc-300 rounded-lg bg-white px-3 py-3 text-base pt-2";
 
   return (
     <ScrollView className="flex-1 bg-white">
@@ -605,7 +605,6 @@ export default function SettingsPage() {
         </View>
       </Modal>
 
-      {/* Form Data Preference Modal */}
       <Modal
         visible={formDataModalOpen}
         transparent

@@ -5,7 +5,9 @@ import {
   LargeActionCardPropsShared,
 } from "@alliance/shared/lib/largeActionCard";
 import { ActionCompletedBarWithInfo } from "./ActionCompletedBarWithInfo";
-import { Button, ButtonColor, ButtonSize, Card, Text } from "./system";
+import Button, { ButtonColor, ButtonSize } from "./system/Button";
+import Card from "./system/Card";
+import Text from "./system/Text";
 import TaskTimeInfo from "./TaskTimeInfo";
 import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";

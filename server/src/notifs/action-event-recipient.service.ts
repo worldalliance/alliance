@@ -22,6 +22,7 @@ import {
   ContractEvent,
   ContractEventType,
 } from 'src/user/entities/contract-event.entity';
+import { computeIsAwayInRange } from 'src/utils/user';
 
 @Injectable()
 export class ActionEventRecipientService {
@@ -52,7 +53,7 @@ export class ActionEventRecipientService {
     return lastEventBefore?.type === ContractEventType.SIGNED;
   }
 
-  public userShouldParticipate(params: {
+  public computeShouldParticipate(params: {
     eventDate: Date;
     everyoneShouldComplete: boolean;
     manualCohortUserIds?: number[];
@@ -60,6 +61,7 @@ export class ActionEventRecipientService {
     useManualCohort: boolean;
     user: User;
     userDismissed: boolean;
+    includeSuspended?: boolean;
   }): boolean {
     const {
       eventDate,
@@ -69,6 +71,7 @@ export class ActionEventRecipientService {
       useManualCohort,
       user,
       userDismissed,
+      includeSuspended = false,
     } = params;
 
     if (userDismissed) {
@@ -80,6 +83,9 @@ export class ActionEventRecipientService {
 
     if (!user.tags.some((tag) => targetTagIds.has(tag.id))) {
       return false;
+    }
+    if (includeSuspended) {
+      return true;
     }
     return (
       this.isContractActiveAtDate(user.contractEvents, eventDate) ||
@@ -104,11 +110,13 @@ export class ActionEventRecipientService {
     return sortedEvents[currentEventIndex + 1] ?? null;
   }
 
-  public async getBaseUsersForEvent(
+  public async computeBaseUsersForEvent(
     eventStatus: ActionStatus,
     action: Action,
     eventId: number,
+    options?: { includeSuspended?: boolean },
   ): Promise<User[]> {
+    const includeSuspended = options?.includeSuspended ?? false;
     const targetTagIds = new Set(action.participatingTags.map((tag) => tag.id));
     const events =
       action.events ??
@@ -135,7 +143,7 @@ export class ActionEventRecipientService {
       ).map((a) => a.userId),
     );
     const filterToEligible = (user: User) =>
-      this.userShouldParticipate({
+      this.computeShouldParticipate({
         eventDate: event.date,
         everyoneShouldComplete: action.everyoneShouldComplete,
         manualCohortUserIds: action.manualCohortUserIds,
@@ -143,8 +151,10 @@ export class ActionEventRecipientService {
         useManualCohort: action.useManualCohort,
         user,
         userDismissed: usersDismissed.has(user.id),
+        includeSuspended,
       }) &&
-      !this.userService.isUserAwayInRange(user, {
+      !computeIsAwayInRange({
+        user,
         startDate: event.date,
         endDate: this.getNextEvent({
           events,
@@ -208,7 +218,7 @@ export class ActionEventRecipientService {
       ).map((a) => a.userId),
     );
     const filterToEligible = (user: User) =>
-      this.userShouldParticipate({
+      this.computeShouldParticipate({
         eventDate: event.date,
         everyoneShouldComplete: event.action.everyoneShouldComplete,
         manualCohortUserIds: event.action.manualCohortUserIds,
@@ -255,7 +265,7 @@ export class ActionEventRecipientService {
     type: ActionEventNotifType,
     suite?: ActionSuite,
   ): Promise<User[]> {
-    const users = await this.getBaseUsersForEvent(
+    const users = await this.computeBaseUsersForEvent(
       event.newStatus,
       event.action,
       event.id,

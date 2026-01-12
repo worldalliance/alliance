@@ -11,14 +11,13 @@ import { Link, href } from "react-router";
 import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import DeleteIcon from "@alliance/sharedweb/ui/icons/DeleteIcon";
 import { useAuth } from "../lib/AuthContext";
 import { useEffect, useMemo, useState } from "react";
 import CreateIcon from "@alliance/sharedweb/ui/icons/CreateIcon";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import ProfileImageEditor from "./ProfileImageEditor";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import Spinner from "./Spinner";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { CardStyle } from "@alliance/shared/styles/card";
 
 export interface ConversationInfoPanelProps {
@@ -237,26 +236,28 @@ const ConversationInfoPanel = ({
                     />
                     <p>{participant.user.displayName}</p>
                   </div>
-                  {isAdmin &&
-                    participant.user.id !== user?.id &&
-                    selectedConvo.type === "multiple" && (
-                      <Button
-                        color={ButtonColor.Transparent}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleRemoveParticipant(participant.user.id);
-                        }}
-                        className="hover:!bg-zinc-200 !px-2"
-                      >
-                        <DeleteIcon size="large" fill="var(--color-red-400)" />
-                      </Button>
-                    )}
-                  {participant.state == "invited" &&
-                    (justAddedMember === participant.user.id ? (
-                      <p className="text-green">Invite sent!</p>
-                    ) : (
-                      <p className="text-zinc-500 mr-2">Invited</p>
-                    ))}
+                  <div className="flex flex-row items-center gap-x-2">
+                    {participant.state == "invited" &&
+                      (justAddedMember === participant.user.id ? (
+                        <p className="text-green">Invite sent!</p>
+                      ) : (
+                        <p className="text-zinc-500 mr-2">Invited</p>
+                      ))}
+                    {isAdmin &&
+                      participant.user.id !== user?.id &&
+                      selectedConvo.type === "multiple" && (
+                        <Button
+                          color={ButtonColor.Transparent}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleRemoveParticipant(participant.user.id);
+                          }}
+                          className="hover:!bg-zinc-200 !px-2"
+                        >
+                          <X size="18" color="var(--color-red-400)" />
+                        </Button>
+                      )}
+                  </div>
                 </Link>
               ))}
             </List>

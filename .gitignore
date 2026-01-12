@@ -43,3 +43,4 @@ uploads/
 
 .yarn/*
 **/tsconfig.tsbuildinfo
+db_dumps/

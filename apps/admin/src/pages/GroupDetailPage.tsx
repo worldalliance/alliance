@@ -464,242 +464,244 @@ const CommunityDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 pt-20 flex flex-col gap-6 max-w-5xl">
-      <div className="flex flex-row items-center justify-between gap-3">
-        <div>
-          <Link
-            to={href("/groups")}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            ← Back to groups
-          </Link>
-          <h1 className="text-2xl font-semibold mt-2">{community.name}</h1>
-          <p className="text-sm text-zinc-500">
-            Manage group details, membership, and leadership.
-          </p>
-        </div>
-        <Button
-          type="button"
-          color={ButtonColor.Red}
-          onClick={handleDelete}
-          disabled={deleting}
-        >
-          {deleting ? "Deleting…" : "Delete group"}
-        </Button>
-      </div>
-
-      {error && (
-        <p className="text-sm text-red-500" role="alert">
-          {error}
-        </p>
-      )}
-
-      <Card style={CardStyle.White}>
-        <form className="flex flex-col gap-4" onSubmit={handleUpdateDetails}>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-zinc-700">Name</label>
-            <input
-              type="text"
-              className="border border-zinc-300 rounded px-3 py-2 text-sm"
-              value={formValues.name}
-              onChange={(event) =>
-                setFormValues((prev) => ({
-                  ...prev,
-                  name: event.target.value,
-                }))
-              }
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-zinc-700">
-              Description
-            </label>
-            <textarea
-              className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
-              value={formValues.description}
-              onChange={(event) =>
-                setFormValues((prev) => ({
-                  ...prev,
-                  description: event.target.value,
-                }))
-              }
-            />
+    <div className="bg-white">
+      <div className="p-6 pt-20 flex flex-col gap-6 max-w-5xl">
+        <div className="flex flex-row items-center justify-between gap-3">
+          <div>
+            <Link
+              to={href("/groups")}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              ← Back to groups
+            </Link>
+            <h1 className="text-2xl font-semibold mt-2">{community.name}</h1>
+            <p className="text-sm text-zinc-500">
+              Manage group details, membership, and leadership.
+            </p>
           </div>
           <Button
-            type="submit"
-            color={ButtonColor.Blue}
-            className="self-start"
-            disabled={savingDetails}
+            type="button"
+            color={ButtonColor.Red}
+            onClick={handleDelete}
+            disabled={deleting}
           >
-            {savingDetails ? "Saving…" : "Save changes"}
+            {deleting ? "Deleting…" : "Delete group"}
           </Button>
-        </form>
-      </Card>
+        </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+        {error && (
+          <p className="text-sm text-red-500" role="alert">
+            {error}
+          </p>
+        )}
+
         <Card style={CardStyle.White}>
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2 className="font-semibold text-lg">Members</h2>
-              <p className="text-sm text-zinc-500">
-                {community.users.length} total members
-              </p>
-            </div>
-            <form
-              className="flex flex-col gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void mutateMembers("add");
-              }}
-            >
-              <UserSelect
-                users={users}
-                selectedUserIds={memberSelection}
-                onChange={setMemberSelection}
-                loading={usersLoading}
-                label="Add member"
-                single
+          <form className="flex flex-col gap-4" onSubmit={handleUpdateDetails}>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-zinc-700">Name</label>
+              <input
+                type="text"
+                className="border border-zinc-300 rounded px-3 py-2 text-sm"
+                value={formValues.name}
+                onChange={(event) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }))
+                }
               />
-              <Button
-                type="submit"
-                color={ButtonColor.Blue}
-                className="self-start"
-                disabled={addingMember || memberSelection.length === 0}
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-sm font-medium text-zinc-700">
+                Description
+              </label>
+              <textarea
+                className="border border-zinc-300 rounded px-3 py-2 text-sm min-h-[80px]"
+                value={formValues.description}
+                onChange={(event) =>
+                  setFormValues((prev) => ({
+                    ...prev,
+                    description: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <Button
+              type="submit"
+              color={ButtonColor.Blue}
+              className="self-start"
+              disabled={savingDetails}
+            >
+              {savingDetails ? "Saving…" : "Save changes"}
+            </Button>
+          </form>
+        </Card>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card style={CardStyle.White}>
+            <div className="flex flex-col gap-4">
+              <div>
+                <h2 className="font-semibold text-lg">Members</h2>
+                <p className="text-sm text-zinc-500">
+                  {community.users.length} total members
+                </p>
+              </div>
+              <form
+                className="flex flex-col gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void mutateMembers("add");
+                }}
               >
-                {addingMember ? "Adding…" : "Add member"}
-              </Button>
-            </form>
-            <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto">
-              {sortedMembers.length ? (
-                sortedMembers.map((member) => {
-                  const isLeader = leaderIds.has(member.id);
-                  const memberPending = pendingMemberIds.has(member.id);
-                  const leaderPending = pendingLeaderIds.has(member.id);
-                  return (
-                    <div
-                      key={member.id}
-                      className="flex flex-row items-center justify-between border border-zinc-200 rounded px-3 py-2"
-                    >
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-medium text-sm">
-                          {member.displayName ?? `User #${member.id}`}
-                        </span>
-                        {isLeader && (
-                          <span className="text-xs text-zinc-500">Leader</span>
-                        )}
-                      </div>
-                      <div className="flex flex-row gap-2">
-                        {!isLeader && (
+                <UserSelect
+                  users={users}
+                  selectedUserIds={memberSelection}
+                  onChange={setMemberSelection}
+                  loading={usersLoading}
+                  label="Add member"
+                  single
+                />
+                <Button
+                  type="submit"
+                  color={ButtonColor.Blue}
+                  className="self-start"
+                  disabled={addingMember || memberSelection.length === 0}
+                >
+                  {addingMember ? "Adding…" : "Add member"}
+                </Button>
+              </form>
+              <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto">
+                {sortedMembers.length ? (
+                  sortedMembers.map((member) => {
+                    const isLeader = leaderIds.has(member.id);
+                    const memberPending = pendingMemberIds.has(member.id);
+                    const leaderPending = pendingLeaderIds.has(member.id);
+                    return (
+                      <div
+                        key={member.id}
+                        className="flex flex-row items-center justify-between border border-zinc-200 rounded px-3 py-2"
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-sm">
+                            {member.displayName ?? `User #${member.id}`}
+                          </span>
+                          {isLeader && (
+                            <span className="text-xs text-zinc-500">
+                              Leader
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-row gap-2">
+                          {!isLeader && (
+                            <Button
+                              type="button"
+                              color={ButtonColor.Light}
+                              className="text-xs"
+                              onClick={(event) =>
+                                void confirmLeaderPromotion(
+                                  event,
+                                  member.id,
+                                  member.displayName
+                                )
+                              }
+                              disabled={leaderPending}
+                            >
+                              {leaderPending ? "Updating…" : "Make leader"}
+                            </Button>
+                          )}
                           <Button
                             type="button"
-                            color={ButtonColor.Light}
+                            color={ButtonColor.Red}
                             className="text-xs"
-                            onClick={(event) =>
-                              void confirmLeaderPromotion(
-                                event,
-                                member.id,
-                                member.displayName
-                              )
+                            onClick={() =>
+                              void mutateMembers("remove", member.id)
                             }
-                            disabled={leaderPending}
+                            disabled={memberPending}
                           >
-                            {leaderPending ? "Updating…" : "Make leader"}
+                            {memberPending ? "Removing…" : "Remove"}
                           </Button>
-                        )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-zinc-500">
+                    No members yet. Add someone above.
+                  </p>
+                )}
+              </div>
+            </div>
+          </Card>
+
+          <Card style={CardStyle.White}>
+            <div className="flex flex-col gap-4">
+              <div>
+                <h2 className="font-semibold text-lg">Leaders</h2>
+                <p className="text-sm text-zinc-500">
+                  {community.leaders.length} total leaders
+                </p>
+              </div>
+              <form
+                className="flex flex-col gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void mutateMembers("add-leader");
+                }}
+              >
+                <UserSelect
+                  users={users}
+                  selectedUserIds={leaderSelection}
+                  onChange={setLeaderSelection}
+                  loading={usersLoading}
+                  label="Add leader"
+                  single
+                />
+                <Button
+                  type="submit"
+                  color={ButtonColor.Blue}
+                  className="self-start"
+                  disabled={addingLeader || leaderSelection.length === 0}
+                >
+                  {addingLeader ? "Adding…" : "Add leader"}
+                </Button>
+              </form>
+              <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto">
+                {sortedLeaders.length ? (
+                  sortedLeaders.map((leader) => {
+                    const leaderPending = pendingLeaderIds.has(leader.id);
+                    return (
+                      <div
+                        key={leader.id}
+                        className="flex flex-row items-center justify-between border border-zinc-200 rounded px-3 py-2"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">
+                            {leader.displayName ?? `User #${leader.id}`}
+                          </span>
+                        </div>
                         <Button
                           type="button"
-                          color={ButtonColor.Red}
+                          color={ButtonColor.Light}
                           className="text-xs"
                           onClick={() =>
-                            void mutateMembers("remove", member.id)
+                            void mutateMembers("remove-leader", leader.id)
                           }
-                          disabled={memberPending}
+                          disabled={leaderPending}
                         >
-                          {memberPending ? "Removing…" : "Remove"}
+                          {leaderPending ? "Updating…" : "Remove leader"}
                         </Button>
                       </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-sm text-zinc-500">
-                  No members yet. Add someone above.
-                </p>
-              )}
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-zinc-500">
+                    No leaders yet. Promote a member or add directly.
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        </Card>
-
-        <Card style={CardStyle.White}>
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2 className="font-semibold text-lg">Leaders</h2>
-              <p className="text-sm text-zinc-500">
-                {community.leaders.length} total leaders
-              </p>
-            </div>
-            <form
-              className="flex flex-col gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void mutateMembers("add-leader");
-              }}
-            >
-              <UserSelect
-                users={users}
-                selectedUserIds={leaderSelection}
-                onChange={setLeaderSelection}
-                loading={usersLoading}
-                label="Add leader"
-                single
-              />
-              <Button
-                type="submit"
-                color={ButtonColor.Blue}
-                className="self-start"
-                disabled={addingLeader || leaderSelection.length === 0}
-              >
-                {addingLeader ? "Adding…" : "Add leader"}
-              </Button>
-            </form>
-            <div className="flex flex-col gap-2 max-h-[320px] overflow-y-auto">
-              {sortedLeaders.length ? (
-                sortedLeaders.map((leader) => {
-                  const leaderPending = pendingLeaderIds.has(leader.id);
-                  return (
-                    <div
-                      key={leader.id}
-                      className="flex flex-row items-center justify-between border border-zinc-200 rounded px-3 py-2"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-medium text-sm">
-                          {leader.displayName ?? `User #${leader.id}`}
-                        </span>
-                      </div>
-                      <Button
-                        type="button"
-                        color={ButtonColor.Light}
-                        className="text-xs"
-                        onClick={() =>
-                          void mutateMembers("remove-leader", leader.id)
-                        }
-                        disabled={leaderPending}
-                      >
-                        {leaderPending ? "Updating…" : "Remove leader"}
-                      </Button>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-sm text-zinc-500">
-                  No leaders yet. Promote a member or add directly.
-                </p>
-              )}
-            </div>
-          </div>
-        </Card>
-      </div>
-      <Card style={CardStyle.White}>
+          </Card>
+        </div>
         <CommunityMembersTable
           leaders={sortedLeaders}
           members={sortedMembers}
@@ -710,7 +712,7 @@ const CommunityDetailPage: React.FC = () => {
           memberContactInfo={memberContactInfo ?? undefined}
           completedAllCurrentActions={completedAllCurrentActions}
         />
-      </Card>
+      </div>
     </div>
   );
 };

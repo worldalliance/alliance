@@ -20,6 +20,7 @@ import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import {
   defaultEmailContents,
   defaultEmailSubject,
+  defaultPushMessage,
   defaultTextMessage,
 } from "./defaultReminderContents";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -33,6 +34,7 @@ type ReminderGroupContentFields = Pick<
   | "emailSubject"
   | "emailMessage"
   | "textMessage"
+  | "pushMessage"
   | "useSuiteTaskCount"
 >;
 
@@ -205,6 +207,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [textMessage, setTextMessage] = useState<string>(
     initialValues.reminderGroup?.textMessage ?? defaultTextMessage
   );
+  const [pushMessage, setPushMessage] = useState<string>(
+    initialValues.reminderGroup?.pushMessage ?? defaultPushMessage
+  );
   const [cohortType, setCohortType] = useState<ReminderCohortType>(
     initialValues.reminderGroup?.cohortType ?? "all_uncompleted"
   );
@@ -231,6 +236,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [previewText1Task, setPreviewText1Task] = useState<string | null>(null);
   const [previewingText2Task, setPreviewingText2Task] = useState(false);
   const [previewText2Task, setPreviewText2Task] = useState<string | null>(null);
+
+  const [previewingPushTask, setPreviewingPushTask] = useState(false);
+  const [previewPushTask, setPreviewPushTask] = useState<string | null>(null);
+  const [previewingPush2Task, setPreviewingPush2Task] = useState(false);
+  const [previewPush2Task, setPreviewPush2Task] = useState<string | null>(null);
 
   const computedInitialSnapshot = useMemo(() => {
     const userIds = [...initialValues.users.map((user) => user.id)].sort(
@@ -289,6 +299,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
         emailSubject,
         emailMessage,
         textMessage,
+        pushMessage,
         timingMode,
         useSuiteTaskCount,
         userTagId:
@@ -328,6 +339,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     emailSubject,
     emailMessage,
     textMessage,
+    pushMessage,
     timingMode,
     sendAtAbsolute,
     sendAtHoursFromDeadline,
@@ -421,6 +433,43 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       });
     }
   }, [previewingText1Task, previewingText2Task, textMessage, selectedEventId]);
+
+  useEffect(() => {
+    if (previewingPushTask) {
+      actionsPreviewTextMessage({
+        path: {
+          eventId: selectedEventId ?? 0,
+        },
+        body: {
+          textMessage: pushMessage,
+          taskCount: 1,
+        },
+      }).then((response) => {
+        if (response.error) {
+          setLocalError((response.error as Error).message);
+          return;
+        }
+        setPreviewPushTask(response.data?.text ?? "");
+      });
+    }
+    if (previewingPush2Task) {
+      actionsPreviewTextMessage({
+        path: {
+          eventId: selectedEventId ?? 0,
+        },
+        body: {
+          textMessage: pushMessage,
+          taskCount: 2,
+        },
+      }).then((response) => {
+        if (response.error) {
+          setLocalError((response.error as Error).message);
+          return;
+        }
+        setPreviewPush2Task(response.data?.text ?? "");
+      });
+    }
+  }, [previewingPushTask, previewingPush2Task, pushMessage, selectedEventId]);
 
   useEffect(() => {
     if (computedInitialSnapshot === initialSnapshotRef.current) {
@@ -579,6 +628,7 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       emailSubject,
       emailMessage,
       textMessage,
+      pushMessage,
       timingMode,
       memberActionEventId: selectedEventId,
       userIds,
@@ -642,6 +692,17 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     setPreviewingText2Task(!previewingText2Task);
     setPreviewingText1Task(false);
   };
+
+  const handlePreviewPushTask = async () => {
+    setPreviewingPushTask(!previewingPushTask);
+    setPreviewingPush2Task(false);
+  };
+
+  const handlePreviewPush2Task = async () => {
+    setPreviewingPush2Task(!previewingPush2Task);
+    setPreviewingPushTask(false);
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
       {combinedError && (
@@ -965,6 +1026,53 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
             keywords={keywords}
             value={textMessage}
             onChange={setTextMessage}
+            rows={2}
+          />
+        )}
+      </div>
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Push Message
+          </label>
+          <Button
+            onClick={handlePreviewPushTask}
+            size={"small"}
+            color={previewingPushTask ? ButtonColor.Stone : ButtonColor.Light}
+            className="!px-2 !py-1"
+          >
+            Preview Push (1 task)
+          </Button>
+          <Button
+            onClick={handlePreviewPush2Task}
+            size={"small"}
+            color={previewingPush2Task ? ButtonColor.Stone : ButtonColor.Light}
+            className="!px-2 !py-1"
+          >
+            Preview Push (2 tasks)
+          </Button>
+        </div>
+        {previewingPushTask ? (
+          <Card className="p-4">
+            <p
+              dangerouslySetInnerHTML={{
+                __html: previewPushTask?.replace(/\n/g, "<br>") ?? "",
+              }}
+            />
+          </Card>
+        ) : previewingPush2Task ? (
+          <Card className="p-4">
+            <p
+              dangerouslySetInnerHTML={{
+                __html: previewPush2Task?.replace(/\n/g, "<br>") ?? "",
+              }}
+            />
+          </Card>
+        ) : (
+          <TextareaWithHighlights
+            keywords={keywords}
+            value={pushMessage}
+            onChange={setPushMessage}
             rows={2}
           />
         )}

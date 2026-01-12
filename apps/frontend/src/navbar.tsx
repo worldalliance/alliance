@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Outlet, useNavigation, useOutletContext } from "react-router";
 import { AppLayoutOutletContext } from "./applayout";
 import NavbarVertical from "./components/NavbarVertical";
-import Spinner from "./components/Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { NotificationsProvider } from "@alliance/shared/lib/useNotifications";
 import { todoActionIsMandatory } from "@alliance/shared/lib/actionUtils";
 

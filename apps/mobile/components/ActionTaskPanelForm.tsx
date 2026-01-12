@@ -1,18 +1,17 @@
 import {
-  FormDto,
   SubmitFormDto,
   tasksGetForm,
   tasksSubmitForm,
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import FormRenderer from "./forms/FormRenderer";
 import { FormSchema } from "@alliance/shared/forms/formschema";
 import { ActivityIndicator, View } from "react-native";
-import { useAuth } from "../lib/AuthContext";
 import { usePostHog } from "posthog-react-native";
 import SuccessOverlay from "./SuccessOverlay";
-import { Text } from "./system";
+import Text from "./system/Text";
+import { useQuery } from "@tanstack/react-query";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
@@ -25,7 +24,7 @@ interface ActionTaskPanelFormProps {
   ) => void;
   actionId: number;
   publicAction?: boolean;
-  scrollPageTo: (y: number) => void;
+  scrollPageTo?: (y: number) => void;
 }
 
 const ActionTaskPanelForm = ({
@@ -37,12 +36,10 @@ const ActionTaskPanelForm = ({
   publicAction = false,
   scrollPageTo,
 }: ActionTaskPanelFormProps) => {
-  const [form, setForm] = useState<FormDto | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  const { user } = useAuth();
 
   const posthog = usePostHog();
+  const [error, setError] = useState<string | null>(null);
 
   const handleSuccessComplete = useCallback(() => {
     setShowSuccess(false);
@@ -51,15 +48,17 @@ const ActionTaskPanelForm = ({
     }
   }, [onCompleteAction]);
 
-  useEffect(() => {
-    const fetchForm = async () => {
-      const form = await tasksGetForm({
-        path: { id: taskFormId },
-      });
-      setForm(form.data ?? null);
-    };
-    fetchForm();
-  }, [taskFormId]);
+  const {
+    data: form,
+    error: formError,
+    isPending,
+  } = useQuery({
+    queryKey: ["form", taskFormId],
+    queryFn: () =>
+      tasksGetForm({ path: { id: taskFormId } }).then(
+        (response) => response.data
+      ),
+  });
 
   const handleSubmitForm = onCompleteAction
     ? async (data: SubmitFormDto) => {
@@ -103,8 +102,16 @@ const ActionTaskPanelForm = ({
     };
   }, [posthog]);
 
-  if (!form) {
+  if (isPending) {
     return <ActivityIndicator />;
+  }
+
+  if (!form) {
+    return (
+      <View className="flex-1 items-center justify-center">
+        <Text className="text-red-500">{formError?.message}</Text>
+      </View>
+    );
   }
 
   return (
@@ -118,7 +125,10 @@ const ActionTaskPanelForm = ({
         actionId={actionId}
         scrollPageTo={scrollPageTo}
       />
-      {error && <Text className="text-red-500">{error}</Text>}
+      {error ? <Text className="text-red-500">{error}</Text> : null}
+      {formError ? (
+        <Text className="text-red-500">{formError.message}</Text>
+      ) : null}
       <SuccessOverlay
         visible={showSuccess}
         onComplete={handleSuccessComplete}

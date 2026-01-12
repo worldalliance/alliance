@@ -1,10 +1,11 @@
 import { View, ScrollView, ActivityIndicator } from "react-native";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import {
   actionsFindAllLoggedIn,
   userGetAwayRanges,
 } from "@alliance/shared/client";
-import { colors, Text } from "../../components/system";
+import { colors } from "../../lib/style/colors";
+import Text from "../../components/system/Text";
 import { useHomePageActions } from "@alliance/shared/lib/homePage";
 import LargeActionCard from "../../components/LargeActionCard";
 import useActivities, {
@@ -16,48 +17,38 @@ import {
   ActionWithAwayStatus,
   getAwayStatus,
 } from "@alliance/shared/lib/actionUtils";
+import { useQuery } from "@tanstack/react-query";
 
 export default function HomeScreen() {
-  const [actions, setActions] = useState<ActionWithAwayStatus[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: actions,
+    isPending,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ["actions"],
+    queryFn: () =>
+      actionsFindAllLoggedIn({ query: { sorted: true } }).then(
+        (response) => response.data ?? []
+      ),
+  });
 
-  const fetchActions = useCallback(async () => {
-    try {
-      const [actionsResponse, awayRangesResponse] = await Promise.all([
-        actionsFindAllLoggedIn({
-          query: { sorted: true },
-        }),
-        userGetAwayRanges(),
-      ]);
+  const { data: awayRanges, isPending: awayRangesPending } = useQuery({
+    queryKey: ["awayRanges"],
+    queryFn: () => userGetAwayRanges().then((response) => response.data ?? []),
+  });
 
-      if (actionsResponse.error || awayRangesResponse.error) {
-        setError("Failed to fetch actions");
-      }
+  const loading = isPending || awayRangesPending;
 
-      if (actionsResponse.data && awayRangesResponse.data) {
-        const now = new Date();
-        setActions(
-          actionsResponse.data.map((action) => ({
-            ...action,
-            awayStatus: getAwayStatus(action, awayRangesResponse.data, now),
-          }))
-        );
-        setError(null);
-      }
-      setLoading(false);
-    } catch (err) {
-      setError("Failed to load actions");
-      setLoading(false);
-      console.error("Error fetching actions:", err);
-    }
-  }, []);
+  const actionsWithAwayStatus = useMemo((): ActionWithAwayStatus[] => {
+    if (!actions || !awayRanges) return [];
+    return actions.map((action) => ({
+      ...action,
+      awayStatus: getAwayStatus(action, awayRanges, new Date()),
+    }));
+  }, [actions, awayRanges]);
 
-  useEffect(() => {
-    fetchActions();
-  }, [fetchActions]);
-
-  const { currentTask } = useHomePageActions(actions);
+  const { currentTask } = useHomePageActions(actionsWithAwayStatus);
 
   const { activities: friendActivities } = useActivities({
     list: ActivityList.Friends,
@@ -98,12 +89,16 @@ export default function HomeScreen() {
 
   return (
     <ScrollView ref={scrollViewRef} className="flex-1 bg-white">
-      <Text className="text-green text-lg font-semibold p-6 mt-2 pb-0">
-        Current task
-      </Text>
+      <View className="bg-green p-4 pt-11">
+        <Text className="text-white font-bold text-base mt-2 pb-0">
+          Current task
+        </Text>
+      </View>
       <View className="">
         {!currentTask ? (
-          <Text className="text-red-500 text-center py-4">{error}</Text>
+          <Text className="text-red-500 text-center py-4">
+            {error?.message}
+          </Text>
         ) : (
           <LargeActionCard
             action={currentTask}
@@ -111,7 +106,7 @@ export default function HomeScreen() {
             friendActivities={friendActivities.filter(
               (activity) => activity.actionId === currentTask.id
             )}
-            onUpdateActionState={fetchActions}
+            onUpdateActionState={refetch}
             scrollPageTo={scrollPageTo}
           />
         )}

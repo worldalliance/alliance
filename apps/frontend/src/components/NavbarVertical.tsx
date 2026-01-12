@@ -286,11 +286,19 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
     };
   }, [unreadCount, todoActions, user, unreadMessages, currentLocation]);
 
-  const { isAuthenticated, loading } = useAuth();
-  if (!isAuthenticated && !loading) {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
     document.documentElement.style.setProperty("--nav-width", `0px`);
     document.documentElement.style.setProperty("--mobile-nav-height", `0px`);
     return null;
+  } else if (
+    document.documentElement.style.getPropertyValue("--nav-width") === "0px"
+  ) {
+    requestAnimationFrame(() => {
+      updateNavWidth();
+      updateMobileNavHeight();
+    });
   }
 
   return (

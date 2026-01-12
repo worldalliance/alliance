@@ -39,6 +39,7 @@ export class CreateReminderGroupDto extends PickType(ReminderGroup, [
   'timingMode',
   'emailSubject',
   'textMessage',
+  'pushMessage',
   'sendAtAbsolute',
   'sendAtSecondsFromDeadline',
   'send_range_start',
@@ -114,7 +115,6 @@ export enum UserActionRelation {
   Declined = 'declined',
   Dismissed = 'dismissed',
 }
-
 
 export class ActionDto extends OmitType(Action, [
   'events',

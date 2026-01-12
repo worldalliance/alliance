@@ -4,7 +4,11 @@ import {
   ActionStatus,
 } from '../src/actions/entities/action-event.entity';
 import { ActionSuite } from '../src/actions/entities/action-suite.entity';
-import { Action, ActionTaskType } from '../src/actions/entities/action.entity';
+import {
+  Action,
+  ActionTaskType,
+  VisibilityMode,
+} from '../src/actions/entities/action.entity';
 import {
   ActionActivity,
   ActionActivityType,
@@ -55,7 +59,7 @@ describe('findUsersToSuspend (e2e)', () => {
         suite,
         useManualCohort: false,
         everyoneShouldComplete: false,
-        showToNonparticipating: true,
+        visibilityMode: VisibilityMode.Public,
         priority: 0,
         preventCompletion: false,
         type: ActionTaskType.Activity,

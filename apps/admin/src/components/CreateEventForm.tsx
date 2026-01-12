@@ -1,5 +1,5 @@
 import {
-  Action,
+  ActionDto,
   ActionEvent,
   actionsAddEvent,
   actionsAddSuiteEvent,
@@ -13,7 +13,7 @@ import DateTimePicker, {
 import { useState } from "react";
 
 export type CreateEventFormProps = {
-  action: Action;
+  action: ActionDto;
   creatingEvent: boolean;
   setCreatingEvent: (creatingEvent: boolean) => void;
   setEventCreatedSuccess: (eventCreatedSuccess: boolean) => void;
@@ -21,7 +21,7 @@ export type CreateEventFormProps = {
 } & (
   | {
       suiteMode: false;
-      setAction: (action: Action) => void;
+      setAction: (action: ActionDto) => void;
     }
   | {
       suiteMode: true;

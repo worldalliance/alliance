@@ -32,6 +32,9 @@ You have #{timeremaining} left to complete the task#{s}. Please do so at this li
 export const defaultTextMessage =
   "You have #{timeremaining} left to complete #{n} Alliance task#{s} (#{link})";
 
+export const defaultPushMessage =
+  "You have #{timeremaining} left to complete #{n} Alliance task#{s}";
+
 // missed deadline
 
 export const defaultMissedDeadlineEmailSubject =

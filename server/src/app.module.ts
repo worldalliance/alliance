@@ -27,6 +27,7 @@ import { UserModule } from './user/user.module';
 import { UserService } from './user/user.service';
 import { MessagingModule } from './messaging/messaging.module';
 import { PushModule } from './push/push.module';
+import { SlackModule } from './slack/slack.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { PushModule } from './push/push.module';
     AnalyticsModule,
     MessagingModule,
     PushModule,
+    SlackModule,
   ],
   controllers: [AppController],
 })

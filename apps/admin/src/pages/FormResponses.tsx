@@ -15,11 +15,12 @@ import type {
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { CirclePlay } from "lucide-react";
 import { CardStyle } from "@alliance/shared/styles/card";
+import FormResponseStatistics from "../components/FormResponseStatistics";
 
-type FormWithSchema = Pick<FormDto, "id" | "title"> & {
+export type FormWithSchema = Pick<FormDto, "id" | "title"> & {
   schema: FormSchema;
   pages?: Page[];
 };
@@ -42,6 +43,8 @@ const ANSWER_FIELD_KINDS = new Set<FieldKind>([
   "city",
   "file",
 ]);
+
+type Tab = "responses" | "stats";
 
 const isAnswerField = (
   node: unknown
@@ -76,6 +79,9 @@ const FormResponses: React.FC = () => {
   const [sidsToUserMap, setSidsToUserMap] = useState<
     Record<string, ProfileDto>
   >({});
+
+  const [params, setParams] = useSearchParams();
+  const tab = (params.get("tab") as Tab) ?? "responses";
 
   const numericFormId = useMemo(
     () => (formId ? Number(formId) : NaN),
@@ -276,7 +282,29 @@ const FormResponses: React.FC = () => {
                   {total} response{total === 1 ? "" : "s"}
                 </p>
               </div>
+              <div className="flex items-center gap-2 ml-3">
+                <Button
+                  onClick={() => setParams({ tab: "responses" })}
+                  color={
+                    tab === "responses" ? ButtonColor.Black : ButtonColor.White
+                  }
+                  size="small"
+                >
+                  Responses
+                </Button>
+                <Button
+                  onClick={() => setParams({ tab: "stats" })}
+                  color={
+                    tab === "stats" ? ButtonColor.Black : ButtonColor.White
+                  }
+                  size="small"
+                  disabled={tab === "stats"}
+                >
+                  Stats
+                </Button>
+              </div>
             </div>
+
             <div className="flex items-center gap-2">
               <Button onClick={loadData} color={ButtonColor.White} size="small">
                 Refresh
@@ -294,127 +322,134 @@ const FormResponses: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-2">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <p className="text-gray-500">Loading responses...</p>
-          </div>
-        ) : error ? (
-          <div className="flex items-center justify-center py-12">
-            <p className="text-red-500">{error}</p>
-          </div>
-        ) : total === 0 ? (
-          <Card style={CardStyle.White}>
-            <p className="text-gray-600">No responses yet for this form.</p>
-          </Card>
-        ) : (
-          <>
-            {/* Response Navigator */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-              <div className="flex items-center justify-between flex-wrap md:flex-nowrap">
-                {/* Pagination Controls */}
-                <div className="flex items-center gap-1">
-                  <Button
-                    disabled={page <= 1}
-                    onClick={() => setPage(1)}
-                    color={ButtonColor.Black}
-                    size="small"
-                  >
-                    First
-                  </Button>
-                  <Button
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    color={ButtonColor.Black}
-                    size="small"
-                  >
-                    &larr; Prev
-                  </Button>
-                  <div className="px-4 py-1.5 text-sm font-medium text-gray-700 min-w-[100px] text-center">
-                    {page} of {totalPages}
-                  </div>
-                  <Button
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    color={ButtonColor.Black}
-                    size="small"
-                  >
-                    Next &rarr;
-                  </Button>
-                  <Button
-                    disabled={page >= totalPages}
-                    onClick={() => setPage(totalPages)}
-                    color={ButtonColor.Black}
-                    size="small"
-                  >
-                    Last
-                  </Button>
-                </div>
-
-                {/* Response Info - Fixed width to prevent layout shift */}
-                {currentResponse && (
-                  <div className="flex items-center gap-4">
-                    <div className="text-right min-w-[200px]">
-                      <p className="font-medium text-gray-900 truncate max-w-[700px]">
-                        {respondentName}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(currentResponse.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                    {currentResponse.sessionReplayUrl && (
-                      <Button
-                        size="small"
-                        color={ButtonColor.BlueOutline}
-                        onClick={() =>
-                          window.open(
-                            "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=" +
-                              currentResponse.sessionReplayUrl!.substring(
-                                currentResponse.sessionReplayUrl!.lastIndexOf(
-                                  "/"
-                                ) + 1
-                              ),
-                            "_blank"
-                          )
-                        }
-                      >
-                        <CirclePlay size={14} className="mr-1.5" />
-                        Replay
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
+      {tab === "responses" && (
+        <div className="p-2">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-gray-500">Loading responses...</p>
             </div>
-
-            {/* Form Response */}
-            {form !== null && (
-              <div className="max-w-[600px] mx-auto">
-                {(() => {
-                  const responseSchema =
-                    (currentResponse?.schemaSnapshot as unknown as FormSchema) ??
-                    form.schema;
-                  return (
-                    <div className="bg-white p-6 border border-gray-200 rounded-lg">
-                      <FormRenderer
-                        id={form.id}
-                        actionId={0}
-                        form={responseSchema}
-                        completedFormResponse={currentResponse}
-                        renderFormAsCompleted
-                        onSubmit={null}
-                        userId={currentResponse?.user?.id}
-                        user={currentResponse?.user ?? undefined}
-                        disableOptionRandomization
-                      />
+          ) : error ? (
+            <div className="flex items-center justify-center py-12">
+              <p className="text-red-500">{error}</p>
+            </div>
+          ) : total === 0 ? (
+            <Card style={CardStyle.White}>
+              <p className="text-gray-600">No responses yet for this form.</p>
+            </Card>
+          ) : (
+            <>
+              {/* Response Navigator */}
+              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+                <div className="flex items-center justify-between flex-wrap md:flex-nowrap">
+                  {/* Pagination Controls */}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      disabled={page <= 1}
+                      onClick={() => setPage(1)}
+                      color={ButtonColor.Black}
+                      size="small"
+                    >
+                      First
+                    </Button>
+                    <Button
+                      disabled={page <= 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      color={ButtonColor.Black}
+                      size="small"
+                    >
+                      &larr; Prev
+                    </Button>
+                    <div className="px-4 py-1.5 text-sm font-medium text-gray-700 min-w-[100px] text-center">
+                      {page} of {totalPages}
                     </div>
-                  );
-                })()}
+                    <Button
+                      disabled={page >= totalPages}
+                      onClick={() =>
+                        setPage((p) => Math.min(totalPages, p + 1))
+                      }
+                      color={ButtonColor.Black}
+                      size="small"
+                    >
+                      Next &rarr;
+                    </Button>
+                    <Button
+                      disabled={page >= totalPages}
+                      onClick={() => setPage(totalPages)}
+                      color={ButtonColor.Black}
+                      size="small"
+                    >
+                      Last
+                    </Button>
+                  </div>
+
+                  {/* Response Info - Fixed width to prevent layout shift */}
+                  {currentResponse && (
+                    <div className="flex items-center gap-4">
+                      <div className="text-right min-w-[200px]">
+                        <p className="font-medium text-gray-900 truncate max-w-[700px]">
+                          {respondentName}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {new Date(currentResponse.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                      {currentResponse.sessionReplayUrl && (
+                        <Button
+                          size="small"
+                          color={ButtonColor.BlueOutline}
+                          onClick={() =>
+                            window.open(
+                              "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=" +
+                                currentResponse.sessionReplayUrl!.substring(
+                                  currentResponse.sessionReplayUrl!.lastIndexOf(
+                                    "/"
+                                  ) + 1
+                                ),
+                              "_blank"
+                            )
+                          }
+                        >
+                          <CirclePlay size={14} className="mr-1.5" />
+                          Replay
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-          </>
-        )}
-      </div>
+
+              {/* Form Response */}
+              {form !== null && (
+                <div className="max-w-[600px] mx-auto">
+                  {(() => {
+                    const responseSchema =
+                      (currentResponse?.schemaSnapshot as unknown as FormSchema) ??
+                      form.schema;
+                    return (
+                      <div className="bg-white p-6 border border-gray-200 rounded-lg">
+                        <FormRenderer
+                          id={form.id}
+                          actionId={0}
+                          form={responseSchema}
+                          completedFormResponse={currentResponse}
+                          renderFormAsCompleted
+                          onSubmit={null}
+                          userId={currentResponse?.user?.id}
+                          user={currentResponse?.user ?? undefined}
+                          disableOptionRandomization
+                        />
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {tab === "stats" && (
+        <FormResponseStatistics form={form} responses={responses} />
+      )}
     </div>
   );
 };

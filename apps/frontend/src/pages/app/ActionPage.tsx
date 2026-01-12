@@ -3,7 +3,7 @@ import { href, Navigate, Outlet, useNavigate, useParams } from "react-router";
 import ActionActivityList from "../../components/ActionActivityList";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
-import Spinner from "../../components/Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useAuth } from "../../lib/AuthContext";
 import { useCIDFromParams } from "../../lib/utils";
 import ActionCompletedBarWithInfo from "./ActionCompletedBarWithInfo";
@@ -61,6 +61,8 @@ export default function ActionPage() {
     onOptOutAction,
   } = useActionHandlers(actionId, isAuthenticated, reloadTasks);
 
+  const publicMode = !isAuthenticated;
+
   // TODO: hack because some action pages are public and some are private. we should handle this in a more general way elsehwere (ie applayout.tsx logic)
   if (!action && !loading && !user && !userLoading) {
     return (
@@ -87,9 +89,7 @@ export default function ActionPage() {
 
   return (
     <>
-      {action.publicOnly && !isAuthenticated && (
-        <PrelaunchNavbar transparent={false} absolute={false} />
-      )}
+      {publicMode && <PrelaunchNavbar transparent={false} absolute={false} />}
       <div className="w-full flex flex-row justify-between py-10 sm:py-20 px-4 md:px-8 xl:px-16">
         <div className="flex flex-col md:pr-4 xl:pr-12 max-w-2xl lg:max-w-3xl mx-auto w-full">
           <Outlet
@@ -99,6 +99,7 @@ export default function ActionPage() {
                 userRelation: action.userRelation ?? null,
                 onCompleteAction,
                 onJoinAction,
+                publicMode,
                 onDeclineAction,
                 onOptOutAction,
                 activities,
@@ -108,7 +109,7 @@ export default function ActionPage() {
             }
           />
         </div>
-        {!action.publicOnly && (
+        {!publicMode && !action.publicOnly && (
           <div className="hidden lg:flex flex-col w-[320px] xl:w-[340px] rounded gap-y-12 border-l border-zinc-200 pl-4 xl:pl-10">
             <ActionCompletedBarWithInfo
               friendActivities={[]}

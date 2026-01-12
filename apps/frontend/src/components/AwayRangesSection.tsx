@@ -4,11 +4,13 @@ import {
   userCreateAwayRange,
   userDeleteAwayRange,
   userGetAwayRanges,
+  userUpdateAwayRange,
 } from "@alliance/shared/client";
+import { awayRangesDescription } from "@alliance/shared/lib/copy";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
-import { X } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { href, Link } from "react-router";
 
@@ -21,9 +23,9 @@ enum ReasonDropdownOption {
 
 const REASON_DROPDOWN_OPTION_TO_REASON_DTO = {
   [ReasonDropdownOption.UNSELECTED]: null,
-  [ReasonDropdownOption.VACATION]: "vacation",
-  [ReasonDropdownOption.EMERGENCY]: "emergency",
-  [ReasonDropdownOption.OTHER]: "other",
+  [ReasonDropdownOption.VACATION]: "vacation" as const,
+  [ReasonDropdownOption.EMERGENCY]: "emergency" as const,
+  [ReasonDropdownOption.OTHER]: "other" as const,
 } satisfies Record<ReasonDropdownOption, UserAwayRangeReason | null>;
 
 function reasonDisplayName(reason: UserAwayRangeReason): string {
@@ -40,6 +42,30 @@ function reasonDisplayName(reason: UserAwayRangeReason): string {
   }
 }
 
+function reasonToDropdownOption(
+  reason: UserAwayRangeReason
+): ReasonDropdownOption {
+  switch (reason) {
+    case "vacation":
+      return ReasonDropdownOption.VACATION;
+    case "emergency":
+      return ReasonDropdownOption.EMERGENCY;
+    case "other":
+      return ReasonDropdownOption.OTHER;
+    default:
+      const x: never = reason;
+      throw new Error(`Unknown reason: ${x}`);
+  }
+}
+
+function formatDateForInput(date: Date | string): string {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const AwayRangesSection: React.FC = () => {
   const [awayRanges, setAwayRanges] = useState<UserAwayRangeDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +79,18 @@ const AwayRangesSection: React.FC = () => {
     ReasonDropdownOption.UNSELECTED
   );
   const selectedReasonIsOther = selectedReason === "Other";
+
+  // Edit state
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editReason, setEditReason] = useState<ReasonDropdownOption>(
+    ReasonDropdownOption.UNSELECTED
+  );
+  const [updating, setUpdating] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const editReasonIsOther = editReason === "Other";
 
   const loadAwayRanges = useCallback(async () => {
     try {
@@ -129,6 +167,61 @@ const AwayRangesSection: React.FC = () => {
     }
   };
 
+  const startEditing = (range: UserAwayRangeDto) => {
+    setEditingId(range.id);
+    setEditStartDate(formatDateForInput(range.startDate));
+    setEditEndDate(formatDateForInput(range.endDate));
+    setEditNote(range.note ?? "");
+    setEditReason(reasonToDropdownOption(range.reason));
+    setEditError(null);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditStartDate("");
+    setEditEndDate("");
+    setEditNote("");
+    setEditReason(ReasonDropdownOption.UNSELECTED);
+    setEditError(null);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingId) return;
+    setEditError(null);
+
+    if (!editStartDate || !editEndDate) {
+      alert("Please select both start and end dates.");
+      return;
+    }
+
+    const reason = REASON_DROPDOWN_OPTION_TO_REASON_DTO[editReason];
+    if (!reason) {
+      alert("Select a reason for your away period.");
+      return;
+    }
+
+    setUpdating(true);
+    const resp = await userUpdateAwayRange({
+      path: { id: editingId },
+      body: {
+        startDay: editStartDate,
+        endDay: editEndDate,
+        reason,
+        note: editNote || undefined,
+      },
+    });
+    if (resp.response.ok) {
+      cancelEditing();
+      await loadAwayRanges();
+    } else {
+      setEditError(
+        (resp.error as { message: string }).message ??
+          `Error: ${resp.response.statusText}`
+      );
+    }
+    setUpdating(false);
+  };
+
   const isCurrentlyAway = (range: UserAwayRangeDto) => {
     const now = new Date();
     return new Date(range.startDate) <= now && new Date(range.endDate) >= now;
@@ -150,11 +243,7 @@ const AwayRangesSection: React.FC = () => {
   return (
     <div>
       <h2 className="!font-semibold text-2xl mb-2">Away periods</h2>
-      <p className="text-sm text-zinc-500 mb-4">
-        You can schedule a period of time when you won&apos;t be able to
-        complete Alliance actions. This will let the office know not to expect
-        you to complete tasks while you&apos;re away.
-      </p>
+      <p className="text-sm text-zinc-500 mb-4">{awayRangesDescription}</p>
 
       {awayRanges.length > 0 && (
         <div className="mb-4 space-y-2">
@@ -167,44 +256,133 @@ const AwayRangesSection: React.FC = () => {
                   : "bg-gray-50 border-gray-200"
               }`}
             >
-              <div className="flex justify-between items-center">
-                <div className="flex-1">
-                  {isCurrentlyAway(range) && (
-                    <p className="text-xs font-semibold text-yellow-800 mb-1">
-                      Currently away
-                    </p>
-                  )}
-                  {isFutureRange(range) && (
-                    <p className="text-xs font-semibold text-green mb-1">
-                      Scheduled
-                    </p>
-                  )}
-                  <p className="font-medium">
-                    {new Date(range.startDate).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                    {" → "}
-                    {new Date(range.endDate).toLocaleDateString(undefined, {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
+              {editingId === range.id ? (
+                <div className="space-y-3">
+                  <p className="font-semibold">
+                    Editing your existing away period:
                   </p>
-                  <p className="text-sm mt-1">
-                    {reasonDisplayName(range.reason)}
-                    {range.note && ": " + range.note}
-                  </p>
+                  <div className="flex flex-col md:flex-row gap-3">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium mb-1">
+                        Start date
+                      </label>
+                      <FormInput
+                        name="editStartDate"
+                        type="date"
+                        value={editStartDate}
+                        onChange={(e) => setEditStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium mb-1">
+                        End date
+                      </label>
+                      <FormInput
+                        name="editEndDate"
+                        type="date"
+                        value={editEndDate}
+                        onChange={(e) => setEditEndDate(e.target.value)}
+                        min={editStartDate}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium">Reason</label>
+                    <DropdownSelect
+                      options={ReasonDropdownOption}
+                      value={editReason}
+                      onChange={(_, reason) => setEditReason(reason)}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="block text-sm font-medium">
+                      Note{!editReasonIsOther && " (optional)"}
+                    </label>
+                    <FormInput
+                      name="editNote"
+                      type="text"
+                      value={editNote}
+                      onChange={(e) => setEditNote(e.target.value)}
+                      placeholder={
+                        editReasonIsOther
+                          ? "Please provide more details"
+                          : undefined
+                      }
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleUpdate}
+                      color={ButtonColor.Black}
+                      disabled={
+                        updating ||
+                        !editStartDate ||
+                        !editEndDate ||
+                        editReason === "Select a reason" ||
+                        (editReasonIsOther && !editNote)
+                      }
+                    >
+                      {updating ? "Saving..." : "Save"}
+                    </Button>
+                    <Button
+                      onClick={cancelEditing}
+                      color={ButtonColor.White}
+                      disabled={updating}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                  {editError && <p className="text-red-500">{editError}</p>}
                 </div>
-                <Button
-                  onClick={() => handleDelete(range.id)}
-                  color={ButtonColor.Red}
-                  className="ml-4 !py-0 !px-1 text-sm !bg-transparent"
-                >
-                  <X size="20" />
-                </Button>
-              </div>
+              ) : (
+                <div className="flex justify-between items-center">
+                  <div className="flex-1">
+                    {isCurrentlyAway(range) && (
+                      <p className="text-xs font-semibold text-yellow-800 mb-1">
+                        Currently away
+                      </p>
+                    )}
+                    {isFutureRange(range) && (
+                      <p className="text-xs font-semibold text-green mb-1">
+                        Scheduled
+                      </p>
+                    )}
+                    <p className="font-medium">
+                      {new Date(range.startDate).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                      {" → "}
+                      {new Date(range.endDate).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                    <p className="text-sm mt-1">
+                      {reasonDisplayName(range.reason)}
+                      {range.note && ": " + range.note}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 items-center">
+                    <Button
+                      onClick={() => startEditing(range)}
+                      color={ButtonColor.Transparent}
+                      className="!py-2 !px-1 text-sm text-zinc-600"
+                    >
+                      <Pencil size="17" />
+                    </Button>
+                    <Button
+                      onClick={() => handleDelete(range.id)}
+                      color={ButtonColor.Transparent}
+                      className="!py-2 !px-1 text-sm text-red-500"
+                    >
+                      <X size="20" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

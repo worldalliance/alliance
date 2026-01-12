@@ -1,5 +1,8 @@
 import React, { useMemo } from "react";
-import type { FormResponseDto, FormResponseOutputDto } from "@alliance/shared/client";
+import type {
+  FormResponseDto,
+  FormResponseOutputDto,
+} from "@alliance/shared/client";
 import { getApiUrl } from "../lib/config";
 import Card from "../ui/Card";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -336,7 +339,7 @@ const renderOutputFieldValue = (
                 type="button"
                 key={idx}
                 className="focus:outline-none"
-                onClick={() => openLightbox(idx)}
+                onClick={(e) => openLightbox(idx, e)}
               >
                 <img
                   src={src}

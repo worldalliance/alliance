@@ -12,7 +12,7 @@ import { useAuth } from "../../lib/AuthContext";
 import { useEffect, useState } from "react";
 import BasicErrorMessage from "../../components/BasicErrorMessage";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import Spinner from "../../components/Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 
 export enum MemberFilterMode {
   All = "All",

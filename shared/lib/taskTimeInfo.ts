@@ -11,8 +11,8 @@ export interface TaskTimeInfoPropsShared {
 export function deadlineColor(nextEvent: ActionEventDto | null) {
   return !!nextEvent &&
     new Date(nextEvent.date).getTime() - Date.now() < 172800000 // 2 days
-    ? "var(--color-red-600)"
-    : "var(--color-zinc-500)";
+    ? "#dc2626"
+    : "#71717a";
 }
 
 export function formatDeadline(date: string) {

@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { RiArrowGoBackLine, RiArrowGoForwardLine } from "@remixicon/react";
-import Spinner from "./Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 
 type ProfileImageEditorProps = {

@@ -42,7 +42,7 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
             <InfoTooltip
               content={
                 <p>
-                  The denominator represents the number of members expected to
+                  The denominator is the number of members expected to
                   complete this action. Sometimes, different members are
                   expected to complete different actions, or may have marked
                   themselves as &quot;Away&quot; in settings.

@@ -1,6 +1,7 @@
 import React from "react";
 import { View } from "react-native";
-import { Text, ProgressBar } from "./system";
+import Text from "./system/Text";
+import ProgressBar from "./system/ProgressBar";
 import { UserProfilePicRow } from "./UserProfilePicRow";
 import {
   ActionCompletedBarWithInfoPropsShared,

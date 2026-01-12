@@ -1,5 +1,6 @@
 import { ActionDto } from "@alliance/shared/client";
-import { Card, CardStyle, Text } from "./system";
+import Card, { CardStyle } from "./system/Card";
+import Text from "./system/Text";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import FormRenderer from "./forms/FormRenderer";
 import { FormSchema } from "@alliance/shared/forms/formschema";

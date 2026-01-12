@@ -20,3 +20,6 @@ export const TASK_DISMISS_MESSAGE_AFTER_DEADLINE =
 
 export const externalOnly =
   "This action is intended for external participants. Members cannot complete it.";
+
+export const awayRangesDescription =
+  "You can schedule a period of time when you won't be able to complete Alliance actions. This will let the office know not to expect you to complete tasks while you're away.";

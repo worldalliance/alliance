@@ -11,7 +11,9 @@ import {
 import { Stack, Link, useRouter } from "expo-router";
 import { authRegister } from "@alliance/shared/client";
 import { authStyles } from "../../lib/style/authStyles";
-import { Button, Input, Text } from "../../components/system";
+import Button from "../../components/system/Button";
+import Input from "../../components/system/Input";
+import Text from "../../components/system/Text";
 
 const SignupScreen = () => {
   const router = useRouter();

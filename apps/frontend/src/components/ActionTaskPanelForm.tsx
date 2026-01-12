@@ -13,7 +13,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import posthog from "posthog-js";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
-import Spinner from "./Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { CardStyle } from "@alliance/shared/styles/card";
 
 interface ActionTaskPanelFormProps {

@@ -7,7 +7,11 @@ import { EmailStatus } from 'src/mail/mail.entity';
 import { MailService, processKeywordReplacements } from 'src/mail/mail.service';
 import { MmsService } from 'src/mms/mms.service';
 import { DataSource, QueryFailedError, Repository } from 'typeorm';
-import { shouldEmailUser, shouldTextUser } from '../notifs/notifs.service';
+import {
+  shouldEmailUser,
+  shouldPushUser,
+  shouldTextUser,
+} from '../notifs/notifs.service';
 import {
   ActionEventReminderService,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
@@ -19,6 +23,7 @@ import {
 } from './entities/action-event-notif.entity';
 import { withPgAdvisoryLock } from './lock-utils';
 import { generateCIDForNotif, NotificationChannel } from './notif-utils';
+import { PushService } from 'src/push/push.service';
 
 const PROCESS_ONE_LOCK_KEY1 = 0xa11a;
 const PROCESS_ONE_LOCK_KEY2 = 0xce01;
@@ -34,6 +39,7 @@ export class ActionEventNotifWorker {
     @InjectRepository(ActionEventNotif)
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
+    private readonly pushService: PushService,
   ) {}
 
   @Cron('*/3 * * * *')
@@ -123,9 +129,33 @@ export class ActionEventNotifWorker {
       throw error;
     }
 
-    let sentAnyNotif = false;
-    if (shouldTextUser(plan.user)) {
-      sentAnyNotif = true;
+    let sendingAnyNotif = false;
+    if (shouldPushUser(plan.user)) {
+      console.log('shouldPushUser', plan.user.name);
+      sendingAnyNotif = true;
+      const pushMessage = await this.processCustomReminderText(
+        plan.group.pushMessage,
+        plan,
+        cid,
+      );
+
+      const pushes = await this.pushService.getPushForAllUserDevices(
+        plan.user.id,
+        {
+          body: pushMessage,
+          screen: '/',
+          idempotencyKey: plan.group.id.toString(),
+        },
+      );
+
+      const result = await this.pushService.sendMessages(pushes);
+      notif.pushes = result;
+      if (result.length > 0) {
+        notif.sent = true;
+      }
+    }
+    if (!notif.sent && shouldTextUser(plan.user)) {
+      sendingAnyNotif = true;
       const textMessage = await this.processCustomReminderText(
         plan.group.textMessage,
         plan,
@@ -145,7 +175,7 @@ export class ActionEventNotifWorker {
       notif.mms = result;
     }
     if (!notif.sent && shouldEmailUser(plan.user)) {
-      sentAnyNotif = true;
+      sendingAnyNotif = true;
       notif.channel = NotificationChannel.Email;
 
       const emailMessage = await this.processCustomReminderText(
@@ -169,10 +199,8 @@ export class ActionEventNotifWorker {
       if (result.status === EmailStatus.Sent) {
         notif.sent = true;
       }
-    } else {
-      //TODO: pushes
     }
-    if (sentAnyNotif) {
+    if (sendingAnyNotif) {
       await this.actionEventNotifsRepository.save(notif);
     }
   }

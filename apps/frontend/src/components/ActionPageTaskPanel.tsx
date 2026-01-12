@@ -37,6 +37,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
 export interface TaskPanelContext
   extends Omit<ActionTaskPanelPropsShared, "userRelation"> {
+  publicMode: boolean;
   userRelation: UserActionRelation | null;
   activities: ActionActivityDto[];
   handleLikeActivity: (activityId: number) => Promise<unknown>;
@@ -65,9 +66,21 @@ const ActionPageTaskPanel = () => {
       );
     case ActionPageTaskPanelState.NotAuthenticated:
       return (
-        <Card style={CardStyle.Grey}>
-          Log in or reload to interact with this action
-        </Card>
+        <div>
+          <Card style={CardStyle.Grey} className="bg-zinc-200 rounded-b-none">
+            Members: Log in or reload to interact with this action
+          </Card>
+          <Card style={CardStyle.Grey} className="rounded-t-none border-t-0">
+            <ActionTaskPanel
+              userRelation={"none"}
+              action={action}
+              {...panelHandlers}
+              missedDeadline={false}
+              disabled={true}
+              card={false}
+            />
+          </Card>
+        </div>
       );
     case ActionPageTaskPanelState.ActiveButCantParticipate:
       return (

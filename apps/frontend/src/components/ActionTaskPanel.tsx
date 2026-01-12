@@ -5,8 +5,8 @@ import { useAuth } from "../lib/AuthContext";
 import ActionTaskPanelActivity from "./ActionTaskPanelActivity";
 import ActionTaskPanelCommit from "./ActionTaskPanelCommit";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
-import ActionTaskPanelFunding from "./ActionTaskPanelFunding";
-import { StripeWrapper } from "./StripeWrapper";
+// import ActionTaskPanelFunding from "./ActionTaskPanelFunding";
+// import { StripeWrapper } from "./StripeWrapper";
 import {
   ActionTaskPanelPropsShared,
   useTaskFormHandlers,
@@ -118,13 +118,13 @@ const ActionTaskPanel: React.FC<ActionTaskPanelPropsShared> = ({
   let completionElement = null;
   if (canCompleteAction(action)) {
     if (action.type === "Funding") {
-      completionElement = (
-        <StripeWrapper actionId={action.id}>
-          <ActionTaskPanelFunding
-            onPaymentSuccess={handleCompleteWithTracking}
-          />
-        </StripeWrapper>
-      );
+      //   completionElement = (
+      //     <StripeWrapper actionId={action.id}>
+      //       <ActionTaskPanelFunding
+      //         onPaymentSuccess={handleCompleteWithTracking}
+      //       />
+      //     </StripeWrapper>
+      //   );
     }
     if (action.type === "Activity" && action.taskFormId) {
       completionElement = (

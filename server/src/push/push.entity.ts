@@ -3,6 +3,7 @@ import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
 } from 'src/datasources/basecolumns';
+import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
 import { Notification } from 'src/notifs/entities/notification.entity';
 import { Ty } from 'src/tasks/entities/type';
 import {
@@ -78,4 +79,15 @@ export class Push {
   })
   @JoinColumn({ name: 'notificationId' })
   notification?: Ty<Notification>;
+
+  @ManyToOne(
+    () => ActionEventNotif,
+    (actionEventNotif) => actionEventNotif.pushes,
+    {
+      nullable: true,
+      onDelete: 'CASCADE',
+    },
+  )
+  @JoinColumn({ name: 'actionEventNotifId' })
+  actionEventNotif?: Ty<ActionEventNotif>;
 }

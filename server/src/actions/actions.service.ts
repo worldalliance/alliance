@@ -70,6 +70,7 @@ import {
 import {
   ActionActivity,
   ActionActivityType,
+  ActivitySource,
 } from './entities/action-activity.entity';
 import { ActionEvent, ActionStatus } from './entities/action-event.entity';
 import { ActionShareUrl } from './entities/action-share-url.entity';
@@ -78,13 +79,19 @@ import {
   ActionUpdate,
   ActionUpdateNotifyType,
 } from './entities/action-update.entity';
-import { Action, ActionTaskType } from './entities/action.entity';
+import {
+  Action,
+  ActionTaskType,
+  VisibilityMode,
+} from './entities/action.entity';
 import {
   ReminderGroup,
   ReminderGroupTimingMode,
 } from './entities/reminder-group.entity';
 import { ShareUrlDto, ShareUrlStatsDto } from './dto/share-url.dto';
 import { Relations } from 'src/utils/Repository';
+import { computeIsAwayAt } from 'src/utils/user';
+import { computeLatestMemberActionPhaseExistsAndIsOver } from 'src/utils/action';
 
 const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -304,7 +311,7 @@ export class ActionsService {
     if (!event) return [];
 
     const baseUsers =
-      await this.actionEventRecipientService.getBaseUsersForEvent(
+      await this.actionEventRecipientService.computeBaseUsersForEvent(
         ActionStatus.MemberAction,
         action,
         event.id,
@@ -324,8 +331,7 @@ export class ActionsService {
     const notAwayForDeadline =
       deadlineEvents.length > 0
         ? baseUsers.filter(
-            (user) =>
-              !this.userService.isUserAwayAt(user, deadlineEvents[0].date),
+            (user) => !computeIsAwayAt({ user, date: deadlineEvents[0].date }),
           )
         : baseUsers;
 
@@ -405,7 +411,7 @@ export class ActionsService {
             (action.participatingTags || []).map((tag) => tag.id),
           );
           shouldParticipate =
-            this.actionEventRecipientService.userShouldParticipate({
+            this.actionEventRecipientService.computeShouldParticipate({
               eventDate: action.events.find(
                 (event) => event.newStatus === ActionStatus.MemberAction,
               )!.date,
@@ -445,12 +451,16 @@ export class ActionsService {
     }
     if (
       !action.participatingTags?.length ||
-      action.showToNonparticipating === true
+      action.visibilityMode === VisibilityMode.Public
     ) {
       return true;
     }
+
     if (!user) {
       return false;
+    }
+    if (action.visibilityMode === VisibilityMode.AllMembers) {
+      return true;
     }
 
     if (!action.participatingTags?.length) {
@@ -573,22 +583,31 @@ export class ActionsService {
     userId: number,
     actionId: number,
   ): Promise<ActionActivityDto> {
-    return await this.createActionActivity(
+    return await this.createActionActivity({
       actionId,
       userId,
-      ActionActivityType.USER_DISMISSED,
-    );
+      type: ActionActivityType.USER_DISMISSED,
+    });
   }
 
-  async createActionActivity(
-    actionId: number,
-    userId: number,
-    type: ActionActivityType,
-    taskFormResponse?: FormResponse,
-    declineReason?: string,
-    isMoral?: boolean,
-    adminCreated?: boolean,
-  ): Promise<ActionActivityDto> {
+  async createActionActivity(options: {
+    actionId: number;
+    userId: number;
+    type: ActionActivityType;
+    taskFormResponse?: FormResponse;
+    declineReason?: string;
+    isOutOfTime?: boolean;
+    adminCreated?: boolean;
+  }): Promise<ActionActivityDto> {
+    const {
+      actionId,
+      userId,
+      type,
+      taskFormResponse,
+      declineReason,
+      isOutOfTime,
+      adminCreated,
+    } = options;
     const action = await this.findOne(actionId, userId);
 
     if (
@@ -613,7 +632,10 @@ export class ActionsService {
       user: user,
       taskFormResponse,
       declineReason,
-      isMoral,
+      outOfTime: isOutOfTime,
+      source: adminCreated
+        ? ActivitySource.ADMIN_OVERRIDE
+        : ActivitySource.USER,
     });
     const savedActivity = await this.actionActivityRepository.save(activity);
 
@@ -645,11 +667,11 @@ export class ActionsService {
       );
     }
 
-    return this.createActionActivity(
+    return this.createActionActivity({
       actionId,
       userId,
-      ActionActivityType.USER_JOINED,
-    );
+      type: ActionActivityType.USER_JOINED,
+    });
   }
 
   async declineAction(
@@ -681,14 +703,13 @@ export class ActionsService {
     reason: string,
     outOfTime: boolean,
   ): Promise<ActionActivityDto> {
-    return this.createActionActivity(
+    return this.createActionActivity({
       actionId,
       userId,
-      ActionActivityType.USER_WONT_COMPLETE,
-      undefined,
-      reason,
-      outOfTime,
-    );
+      type: ActionActivityType.USER_WONT_COMPLETE,
+      declineReason: reason,
+      isOutOfTime: outOfTime,
+    });
   }
 
   async completeAction(
@@ -696,12 +717,12 @@ export class ActionsService {
     userId: number,
     taskFormResponse?: FormResponse,
   ): Promise<ActionActivityDto> {
-    return this.createActionActivity(
+    return this.createActionActivity({
       actionId,
       userId,
-      ActionActivityType.USER_COMPLETED,
+      type: ActionActivityType.USER_COMPLETED,
       taskFormResponse,
-    );
+    });
   }
 
   async update(
@@ -1256,11 +1277,11 @@ export class ActionsService {
     });
     for (const action of actions) {
       if (action.status === ActionStatus.MemberAction) {
-        await this.createActionActivity(
-          action.id,
-          id,
-          ActionActivityType.USER_JOINED,
-        );
+        await this.createActionActivity({
+          actionId: action.id,
+          userId: id,
+          type: ActionActivityType.USER_JOINED,
+        });
       }
     }
   }
@@ -1540,15 +1561,12 @@ export class ActionsService {
   async adminCreateActivity(
     activityDto: CreateActionActivityDto,
   ): Promise<ActionActivityDto> {
-    return this.createActionActivity(
-      activityDto.actionId,
-      activityDto.userId,
-      activityDto.type,
-      undefined,
-      undefined,
-      undefined,
-      true,
-    );
+    return this.createActionActivity({
+      actionId: activityDto.actionId,
+      userId: activityDto.userId,
+      type: activityDto.type,
+      adminCreated: true,
+    });
   }
 
   async archive(id: number): Promise<ActionDto> {
@@ -2026,12 +2044,12 @@ export class ActionsService {
     return deadline <= date;
   }
 
-  calculateDeadlineWeekNumber(events: ActionEvent[]): number  | null{
+  calculateDeadlineWeekNumber(events: ActionEvent[]): number | null {
     const deadline = this.latestMemberActionPhaseDeadline(events);
     if (!deadline) {
       return null;
     }
-    return Math.floor(deadline.getTime() / MS_IN_WEEK)
+    return Math.floor(deadline.getTime() / MS_IN_WEEK);
   }
 
   async getActionRelationsForUsers(
@@ -2092,8 +2110,8 @@ export class ActionsService {
       actions.map((action) => {
         return [
           action.id,
-          this.someMemberActionPhaseIsOver({
-            events: action.events,
+          computeLatestMemberActionPhaseExistsAndIsOver({
+            action,
             date: now,
           }),
         ];
@@ -2140,6 +2158,9 @@ export class ActionsService {
         relationByUserThenAction.get(userId)!.set(actionId, {
           actionId,
           status: UserActionRelationPillStatus.NotRequired,
+          declineReason: undefined,
+          isMoral: undefined,
+          outOfTime: undefined,
         });
       }
       return relationByUserThenAction.get(userId)!.get(actionId)!;
@@ -2193,6 +2214,15 @@ export class ActionsService {
         if (status) {
           detail.status = status;
         }
+        // Capture withdrawal reason details for wont_complete and declined activities
+        if (
+          activity.type === ActionActivityType.USER_WONT_COMPLETE ||
+          activity.type === ActionActivityType.USER_DECLINED
+        ) {
+          detail.declineReason = activity.declineReason;
+          detail.isMoral = activity.isMoral;
+          detail.outOfTime = activity.outOfTime;
+        }
       }
     }
 
@@ -2207,6 +2237,9 @@ export class ActionsService {
           status: detail.status,
           latestActivityType: detail.latestActivityType,
           latestActivityAt: detail.latestActivityAt?.toISOString(),
+          declineReason: detail.declineReason,
+          isMoral: detail.isMoral,
+          outOfTime: detail.outOfTime,
         }))
         .sort(
           (a, b) =>
@@ -2256,7 +2289,7 @@ export class ActionsService {
     event: ActionEvent,
   ): Promise<User[]> {
     const baseUsers =
-      await this.actionEventRecipientService.getBaseUsersForEvent(
+      await this.actionEventRecipientService.computeBaseUsersForEvent(
         ActionStatus.MemberAction,
         action,
         event.id,
@@ -2281,11 +2314,9 @@ export class ActionsService {
   }
 
   isActionPast(action: Action, now: Date): boolean {
-    return (
-      action.events.some(
-        (event) =>
-          event.newStatus === ActionStatus.MemberAction && event.date < now,
-      ) && action.status !== ActionStatus.MemberAction
+    return action.events.some(
+      (event) =>
+        event.newStatus === ActionStatus.MemberAction && event.date < now,
     );
   }
 
@@ -2325,11 +2356,13 @@ export class ActionsService {
     const orderedSuites = Array.from(suiteMap.values()).sort(
       (a, b) => a.orderIndex - b.orderIndex,
     );
+
     const pastSuites = orderedSuites.filter(({ actions }) =>
       actions.every((action) => this.isActionPast(action, now)),
     );
 
-    const failedUsersForSuites = new Map<number, number[]>();
+    const failedBySuite = new Map<number, Set<number>>();
+    const expectedBySuite = new Map<number, Set<number>>();
 
     const idToUser = new Map<number, User>();
 
@@ -2343,6 +2376,19 @@ export class ActionsService {
     };
 
     for (const suite of pastSuites) {
+      const baseCohort =
+        await this.actionEventRecipientService.computeBaseUsersForEvent(
+          ActionStatus.MemberAction,
+          suite.actions[0],
+          suite.actions[0].events.find(
+            (event) => event.newStatus === ActionStatus.MemberAction,
+          )!.id,
+        );
+      expectedBySuite.set(
+        suite.suite.id,
+        new Set(baseCohort.map((user) => user.id)),
+      );
+
       for (const action of suite.actions) {
         const event = action.events.find(
           (event) => event.newStatus === ActionStatus.MemberAction,
@@ -2360,44 +2406,57 @@ export class ActionsService {
           idToUser.set(user.id, user);
         }
 
-        if (failedUsersForSuites.has(suite.suite.id)) {
-          failedUsersForSuites
-            .get(suite.suite.id)!
-            .push(...signedBeforeFailed.map((user) => user.id));
+        if (failedBySuite.has(suite.suite.id)) {
+          for (const user of signedBeforeFailed) {
+            failedBySuite.get(suite.suite.id)!.add(user.id);
+          }
         } else {
-          failedUsersForSuites.set(
+          failedBySuite.set(
             suite.suite.id,
-            signedBeforeFailed.map((user) => user.id),
+            new Set(signedBeforeFailed.map((user) => user.id)),
           );
         }
       }
     }
+
     const usersToSuspend = new Set<number>();
     const suspendReasonKeys = new Map<number, string>();
 
-    for (let i = 2; i < pastSuites.length; i++) {
-      const failedThis = failedUsersForSuites.get(pastSuites[i].suite.id);
-      const failedPrevious = failedUsersForSuites.get(
-        pastSuites[i - 1].suite.id,
-      );
-      const failedPreviousPrevious = failedUsersForSuites.get(
-        pastSuites[i - 2].suite.id,
-      );
-      if (!failedPrevious || !failedThis || !failedPreviousPrevious) {
-        continue;
-      }
-      const failedAll = failedThis
-        .filter((userId) => failedPrevious.includes(userId))
-        .filter((userId) => failedPreviousPrevious.includes(userId));
+    const allExpectedUsers = new Set<number>();
+    for (const s of expectedBySuite.values())
+      for (const id of s) allExpectedUsers.add(id);
 
-      for (const userId of failedAll) {
-        usersToSuspend.add(userId);
-        suspendReasonKeys.set(
-          userId,
-          `s-${pastSuites[i].suite.id}-${pastSuites[i - 1].suite.id}-${pastSuites[i - 2].suite.id}`,
-        );
+    for (const userId of allExpectedUsers) {
+      let streak = 0;
+      const lastThreeSuiteIds: number[] = [];
+
+      for (const suite of pastSuites) {
+        const suiteId = suite.suite.id;
+        const expectedSet = expectedBySuite.get(suiteId);
+        if (!expectedSet?.has(userId)) {
+          continue; // skip suites they were not expected to complete
+        }
+
+        const failedSet = failedBySuite.get(suiteId) ?? new Set<number>();
+        const failed = failedSet.has(userId);
+
+        if (failed) {
+          streak += 1;
+          lastThreeSuiteIds.push(suiteId);
+          if (lastThreeSuiteIds.length > 3) lastThreeSuiteIds.shift();
+          if (streak >= 3) {
+            usersToSuspend.add(userId);
+            suspendReasonKeys.set(userId, `s-${lastThreeSuiteIds.join('-')}`);
+            break;
+          }
+        } else {
+          // they were expected and did not fail => streak broken
+          streak = 0;
+          lastThreeSuiteIds.length = 0;
+        }
       }
     }
+
     return {
       usersToSuspend: Array.from(usersToSuspend).map(
         (userId) => idToUser.get(userId)!,

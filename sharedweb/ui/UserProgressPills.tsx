@@ -3,7 +3,7 @@ import {
   UserActionRelationPillStatus,
   UserActionSummaryDto,
 } from "@alliance/shared/client";
-import { JSX, useMemo } from "react";
+import { JSX, ReactNode, useMemo } from "react";
 
 export type PillStatusData = {
   pillLabel: string;
@@ -108,10 +108,12 @@ function EmptyPill() {
 }
 function Pill({
   action,
+  additionalSubtitleText,
   pillStatusData,
   pillHeight,
 }: {
   action: UserActionSummaryDto;
+  additionalSubtitleText?: ReactNode;
   pillStatusData: PillStatusData & { pillStyle: string };
   pillHeight: string;
 }) {
@@ -127,7 +129,10 @@ function Pill({
         <div className="pointer-events-none absolute bottom-full mb-1 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded border border-zinc-200 bg-white px-2 py-1 text-[12px] font-medium text-zinc-700 opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">
           <div className="flex flex-col items-center justify-center">
             {action.name}
-            <span className={pillTextStyle}>{pillSubtitleText}</span>
+            <span className={pillTextStyle}>
+              {pillSubtitleText}
+              {additionalSubtitleText}
+            </span>
           </div>
         </div>
       )}
@@ -144,14 +149,23 @@ const UserProgressPills = ({
   const pills: (JSX.Element | null)[] = useMemo(() => {
     if (!maxActionsPerWeek) {
       return actions.map((action) => {
-        const pillStatusData =
-          PILL_STATUS_DATA[relationByActionId[action.id].status];
+        const relation = relationByActionId[action.id];
+        const pillStatusData = PILL_STATUS_DATA[relation.status];
         if (!pillStatusData.pillStyle) {
           return null;
         }
         return (
           <Pill
             action={action}
+            additionalSubtitleText={
+              relation.status === "wont_complete"
+                ? relation.outOfTime
+                  ? ": Out of time"
+                  : relation.isMoral
+                  ? ": Moral objection"
+                  : ": Other reason"
+                : null
+            }
             pillStatusData={pillStatusData}
             pillHeight={pillHeight}
           />

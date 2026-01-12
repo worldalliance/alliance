@@ -27,7 +27,7 @@ import { Link, useLoaderData, useNavigate } from "react-router";
 import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import CreateActivityControls from "../components/CreateActivityControls";
-import { ChevronDown, ChevronRight, Mail, Phone } from "lucide-react";
+import { ChevronDown, ChevronRight, Database, Mail, Phone } from "lucide-react";
 import { PILL_STATUS_DATA } from "@alliance/sharedweb/ui/UserProgressPills";
 
 export async function clientLoader({ params }: Route.LoaderArgs) {
@@ -304,7 +304,7 @@ const UserDetailView: React.FC = () => {
             </span>
             {user.phoneNumber && (
               <span className="text-zinc-400">
-                <Phone size={16} className="text-zinc-500 inline mr-1" />+
+                <Phone size={16} className="text-zinc-500 inline mr-1" />
                 {user.phoneNumber}
               </span>
             )}
@@ -386,9 +386,35 @@ const UserDetailView: React.FC = () => {
                             {humanize(action.status)}
                           </td>
                           <td className="px-3 py-2">
-                            <span className={`font-medium ${pillTextStyle}`}>
-                              {pillLabel}
-                            </span>
+                            <div className="relative group inline-block">
+                              <span className={`font-medium ${pillTextStyle}`}>
+                                {pillLabel}
+                              </span>
+                              {relation.status === "wont_complete" &&
+                                (relation.declineReason ||
+                                  relation.isMoral ||
+                                  relation.outOfTime) && (
+                                  <div className="pointer-events-none absolute bottom-full mb-1 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded border border-zinc-200 bg-white px-2 py-1 text-[11px] font-medium text-zinc-700 opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100">
+                                    <div className="flex flex-col items-center gap-0.5">
+                                      {relation.outOfTime && (
+                                        <span className="text-orange-600">
+                                          Out of time
+                                        </span>
+                                      )}
+                                      {relation.isMoral && (
+                                        <span className="text-amber-600">
+                                          Moral objection
+                                        </span>
+                                      )}
+                                      {relation.declineReason && (
+                                        <span className="text-zinc-500">
+                                          {relation.declineReason}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
                           </td>
                           <td className="px-3 py-2 text-zinc-500">
                             {relation.latestActivityAt
@@ -440,37 +466,48 @@ const UserDetailView: React.FC = () => {
                       return (
                         <div
                           key={keyForNotif(notif)}
-                          className="px-3 py-2 text-xs hover:bg-zinc-50"
+                          className="px-3 py-2 text-xs hover:bg-zinc-50 flex flex-row items-center w-full"
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <span
-                              className={`font-medium ${
-                                ["sent", "delivered"].includes(
-                                  status.toLowerCase()
-                                )
-                                  ? "text-green-600"
-                                  : ["failed", "undelivered"].includes(
-                                      status.toLowerCase()
-                                    )
-                                  ? "text-red-600"
-                                  : "text-amber-600"
-                              }`}
-                            >
-                              {status}
-                            </span>
-                            <span className="text-zinc-400">
-                              {mms?.createdAt &&
-                                new Date(mms.createdAt).toLocaleDateString()}
-                            </span>
+                          <Link
+                            to={`/database/?table=mms&id=${mms?.id}`}
+                            target="_blank"
+                            className="p-1 shrink-0 pr-3 text-zinc-600 hover:text-black"
+                          >
+                            <Database size={12} />
+                          </Link>
+                          <div>
+                            <div className="flex items-center justify-between gap-2">
+                              <span
+                                className={`font-medium ${
+                                  ["sent", "delivered"].includes(
+                                    status.toLowerCase()
+                                  )
+                                    ? "text-green-600"
+                                    : ["failed", "undelivered"].includes(
+                                        status.toLowerCase()
+                                      )
+                                    ? "text-red-600"
+                                    : "text-amber-600"
+                                }`}
+                              >
+                                {status}
+                              </span>
+                              <span className="text-zinc-400">
+                                {mms?.createdAt &&
+                                  new Date(mms.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                            {mms?.body && (
+                              <p className="text-zinc-600 line-clamp-2 mt-0.5">
+                                {mms.body}
+                              </p>
+                            )}
+                            {mms?.clickedLink && (
+                              <span className="text-green-600">
+                                Link clicked
+                              </span>
+                            )}
                           </div>
-                          {mms?.body && (
-                            <p className="text-zinc-600 truncate mt-0.5">
-                              {mms.body}
-                            </p>
-                          )}
-                          {mms?.clickedLink && (
-                            <span className="text-green-600">Link clicked</span>
-                          )}
                         </div>
                       );
                     })}

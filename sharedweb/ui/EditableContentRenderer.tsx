@@ -60,7 +60,7 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
                   type="button"
                   key={idx}
                   className="focus:outline-none"
-                  onClick={() => openLightbox(idx)}
+                  onClick={(e) => openLightbox(idx, e)}
                 >
                   <img src={key} className="w-28 h-28 object-cover rounded" />
                 </button>

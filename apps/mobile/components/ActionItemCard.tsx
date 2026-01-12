@@ -1,6 +1,6 @@
 import React from "react";
 import { View, TouchableOpacity, Image } from "react-native";
-import { Text } from "./system";
+import Text from "./system/Text";
 import { MousePointerClick, Check } from "lucide-react-native";
 import { ActionCompletedBarWithInfo } from "./ActionCompletedBarWithInfo";
 import {

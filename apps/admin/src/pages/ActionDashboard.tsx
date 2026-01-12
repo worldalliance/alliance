@@ -229,6 +229,7 @@ const ActionDashboard: React.FC = () => {
     body: "",
     timeEstimate: 0,
     shortDescription: "",
+    visibilityMode: "all_members",
     commitmentless: true,
     type: "Activity",
     preventCompletion: false,
@@ -254,6 +255,7 @@ const ActionDashboard: React.FC = () => {
         body: "",
         timeEstimate: 0,
         shortDescription: "",
+        visibilityMode: "all_members",
         commitmentless: true,
         type: "Activity",
         preventCompletion: false,
@@ -1188,34 +1190,32 @@ const ActionDashboard: React.FC = () => {
             )}
 
             {activeTab === "details" && (
-              <Card style={CardStyle.Grey}>
-                <ActionForm
-                  form={form}
-                  onInputChange={handleInputChange}
-                  onImageChange={handleImageChange}
-                  onSubmit={handleSubmit}
-                  saving={saving}
-                  imagePreview={imagePreview}
-                  isNew={false}
-                  actionId={action?.id}
-                  onDelete={handleDelete}
-                  baseUrl={baseUrl}
-                  availableForms={availableForms}
-                  formsLoading={formsLoading}
-                  availableTags={availableTags}
-                  tagsLoading={tagsLoading}
-                  availableSuites={availableSuites}
-                  suitesLoading={suitesLoading}
-                  selectedTagIds={selectedTagIds}
-                  onTagsChange={handleTagsChange}
-                  availableUsers={availableUsers}
-                  usersLoading={usersLoading}
-                  manualCohortUserIds={manualCohortUserIds}
-                  onManualCohortChange={handleManualCohortChange}
-                  authorIds={form.authorIds ?? []}
-                  onAuthorsChange={handleAuthorsChange}
-                />
-              </Card>
+              <ActionForm
+                form={form}
+                onInputChange={handleInputChange}
+                onImageChange={handleImageChange}
+                onSubmit={handleSubmit}
+                saving={saving}
+                imagePreview={imagePreview}
+                isNew={false}
+                actionId={action?.id}
+                onDelete={handleDelete}
+                baseUrl={baseUrl}
+                availableForms={availableForms}
+                formsLoading={formsLoading}
+                availableTags={availableTags}
+                tagsLoading={tagsLoading}
+                availableSuites={availableSuites}
+                suitesLoading={suitesLoading}
+                selectedTagIds={selectedTagIds}
+                onTagsChange={handleTagsChange}
+                availableUsers={availableUsers}
+                usersLoading={usersLoading}
+                manualCohortUserIds={manualCohortUserIds}
+                onManualCohortChange={handleManualCohortChange}
+                authorIds={form.authorIds ?? []}
+                onAuthorsChange={handleAuthorsChange}
+              />
             )}
             {activeTab === "form" && action && (
               <FormBuilder

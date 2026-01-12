@@ -4,7 +4,7 @@ import {
   conversationMarkRead,
 } from "@alliance/shared/client";
 import { useEffect, useRef, useState } from "react";
-import Spinner from "./Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import ConversationDetailPanel from "./ConversationDetailPanel";
 import useLiveConvoMessages from "../pages/app/messages";
 import { Expand, Minus } from "lucide-react";

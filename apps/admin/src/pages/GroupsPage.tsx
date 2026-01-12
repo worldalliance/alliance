@@ -192,7 +192,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-row items-center justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <h3 className="font-semibold text-lg">{community.name}</h3>
+            <h3 className="font-semibold">{community.name}</h3>
             <p className="text-sm text-zinc-600">
               {community.description || "No description yet."}
             </p>

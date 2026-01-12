@@ -8,6 +8,7 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
@@ -62,10 +63,9 @@ export class ActionEventNotif {
   @JoinColumn({ name: 'mmsId' })
   mms: Mms | null;
 
-  @ApiProperty({ type: () => Push, nullable: true })
-  @OneToOne(() => Push, { nullable: true })
-  @JoinColumn({ name: 'pushId' })
-  push: Ty<Push> | null;
+  @ApiPropertyOptional({ type: () => Push, isArray: true })
+  @OneToMany(() => Push, (push) => push.actionEventNotif)
+  pushes?: Ty<Push>[];
 
   @ManyToOne(
     () => ReminderGroup,

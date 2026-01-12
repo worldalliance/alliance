@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Markdown from "react-native-markdown-display";
 import { Check, ChevronDown } from "lucide-react-native";
 import Checkbox from "../system/Checkbox";
 import * as ImagePicker from "expo-image-picker";
@@ -28,6 +27,7 @@ import {
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
+import AppMarkdownWrapper from "../AppMarkdownWrapper";
 
 export type RenderFieldProps = {
   field: AnyField;
@@ -49,16 +49,6 @@ const sharedInputClasses =
 const DEFAULT_RANGE_OPTION_COUNT = 10;
 const MIN_RANGE_OPTION_COUNT = 2;
 const MAX_RANGE_OPTION_COUNT = 50;
-
-const labelMarkdownStyles = {
-  body: {
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  strong: {
-    fontWeight: "600" as const,
-  },
-};
 
 const formatCityValue = (city: CityFieldValue): string => {
   const region = city.admin1?.trim();
@@ -102,16 +92,7 @@ export function RenderLabel({
   if (field.label === null) return null;
   return (
     <Text className="block mb-1">
-      <Markdown
-        style={labelMarkdownStyles}
-        rules={{
-          paragraph: (node, children) => <>{children}</>,
-          body: (node, children) => <>{children}</>,
-        }}
-        mergeStyle
-      >
-        {field.label}
-      </Markdown>
+      <AppMarkdownWrapper>{field.label}</AppMarkdownWrapper>
       {field.required && (
         <Text className="text-red-500 ml-px font-medium inline">*</Text>
       )}

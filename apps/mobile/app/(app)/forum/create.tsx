@@ -14,14 +14,10 @@ import {
   actionsFindAll,
   forumCreatePost,
 } from "../../../../../shared/client";
-import {
-  Card,
-  Button,
-  Input,
-  colors,
-  CardStyle,
-  ButtonColor,
-} from "../../../components/system";
+import Button, { ButtonColor } from "../../../components/system/Button";
+import Card, { CardStyle } from "../../../components/system/Card";
+import Input from "../../../components/system/Input";
+import { colors } from "../../../lib/style/colors";
 
 export default function CreatePostScreen() {
   const { user } = useAuth();

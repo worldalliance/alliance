@@ -1,4 +1,4 @@
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { v4 } from 'uuid';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -7,6 +7,7 @@ import {
 } from 'src/notifs/entities/notification.entity';
 import { CreatePushMessage, PushService } from './push.service';
 import { Injectable } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class NotifPushDispatcherWorker {
@@ -16,27 +17,51 @@ export class NotifPushDispatcherWorker {
     private readonly pushService: PushService,
   ) {}
 
-  //   @Cron(CronExpression.EVERY_10_SECONDS)
+  @Cron(CronExpression.EVERY_MINUTE)
   async dispatchPushes() {
-    const now = new Date();
-    console.log('dispatching pushes');
+    const dispatchID = v4().replace(/-/g, '');
+
+    const claimed: { id: number }[] = (
+      await this.notificationRepository.query(
+        `
+        WITH cte AS (
+          SELECT n.id
+          FROM notification n
+          WHERE n."sendTime" <= NOW()
+            AND n."shouldPush" = true
+            AND n."pushClaimedBy" IS NULL
+            AND n."pushDispatchedAt" IS NULL
+          ORDER BY n."sendTime" ASC
+          LIMIT 500
+          FOR UPDATE SKIP LOCKED
+        )
+        UPDATE notification n
+        SET "pushClaimedBy" = $1,
+            "pushClaimedAt" = NOW()
+        FROM cte
+        WHERE n.id = cte.id
+        RETURNING n.id;
+        `,
+        [dispatchID],
+      )
+    )[0];
+
+    if (!claimed.length) {
+      return;
+    }
 
     const toSend = await this.notificationRepository
       .createQueryBuilder('n')
-      .leftJoin('n.pushes', 'p')
       .leftJoinAndSelect('n.user', 'u')
-      .where('n."sendTime" <= :now', { now })
-      .andWhere('n."shouldPush" = true')
-      .andWhere('p.id IS NULL')
+      .where('n.id IN (:...ids)', { ids: claimed.map((c) => c.id) })
       .orderBy('n."sendTime"', 'ASC')
-      .limit(1000)
       .getMany();
 
     if (toSend.length === 0) {
       return;
     }
 
-    console.log(`found ${toSend.length} notifs to send`);
+    console.log(`found ${toSend.length} notifs to send pushes for`);
 
     const messagesToSend: CreatePushMessage[] = [];
     for (const notif of toSend) {
@@ -67,6 +92,7 @@ export class NotifPushDispatcherWorker {
           body: notif.message,
           screen: notif.mobileAppLocation || notif.webAppLocation,
           notification: notif,
+          idempotencyKey: notif.id.toString(),
         })),
       );
     }

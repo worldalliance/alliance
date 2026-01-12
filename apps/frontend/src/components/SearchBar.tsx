@@ -8,6 +8,22 @@ import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
+const categories: SearchItemType[] = [
+  "recent",
+  "user",
+  "action",
+  "post",
+  "other",
+];
+
+const categoryNames: Record<SearchItemType, string> = {
+  user: "Users",
+  action: "Actions",
+  post: "Posts",
+  recent: "Recent Searches",
+  other: "Other",
+};
+
 const SearchBar = ({ autofocus }: { autofocus: boolean }) => {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -18,22 +34,8 @@ const SearchBar = ({ autofocus }: { autofocus: boolean }) => {
     Record<SearchItemType, SearchItemDto[]>
   >({ user: [], action: [], post: [], recent: [], other: [] });
   const [selectedItem, setSelectedItem] = useState<SearchItemDto | null>(null);
-  const categories: SearchItemType[] = [
-    "recent",
-    "user",
-    "action",
-    "post",
-    "other",
-  ];
-  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const categoryNames: Record<SearchItemType, string> = {
-    user: "Users",
-    action: "Actions",
-    post: "Posts",
-    recent: "Recent Searches",
-    other: "Other",
-  };
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setOpen(true);
@@ -123,7 +125,7 @@ const SearchBar = ({ autofocus }: { autofocus: boolean }) => {
     return () => {
       window.removeEventListener("click", () => {});
     };
-  }, []);
+  }, [autofocus]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -197,7 +199,7 @@ const SearchBar = ({ autofocus }: { autofocus: boolean }) => {
       <input
         type="text"
         placeholder="Search for members, actions, posts..."
-        className="w-full border bg-white border-zinc-200 py-2 px-4 rounded focus:outline-none"
+        className="w-full border bg-white border-zinc-200 py-2 px-4 rounded focus:outline-none text-[16px]"
         value={search}
         onChange={onChange}
         onFocus={handleFocus}

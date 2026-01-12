@@ -11,7 +11,8 @@ import { Pin } from "lucide-react-native";
 import { PostDto, forumFindAllPosts } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import ProfileImage from "../../../components/ProfileImage";
-import { Text, colors } from "../../../components/system";
+import Text from "../../../components/system/Text";
+import { colors } from "../../../lib/style/colors";
 
 export default function ForumScreen() {
   const [posts, setPosts] = useState<PostDto[]>([]);

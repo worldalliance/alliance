@@ -4,8 +4,8 @@ import {
   TaskTimeInfoPropsShared,
 } from "@alliance/shared/lib/taskTimeInfo";
 import { View } from "react-native";
-import { Text } from "./system";
-import { ClockIcon, Calendar1 } from "lucide-react-native";
+import Text from "./system/Text";
+import { ClockIcon, Calendar } from "lucide-react-native";
 
 const TaskTimeInfo = ({
   action,
@@ -26,8 +26,8 @@ const TaskTimeInfo = ({
         </View>
       ) : null}
       {!!nextEvent ? (
-        <View>
-          <Calendar1 size={16} color={color} />
+        <View className="flex-row items-center gap-x-1">
+          <Calendar size={16} color={color} />
           <Text style={{ color: color }}>{formatDeadline(nextEvent.date)}</Text>
         </View>
       ) : null}

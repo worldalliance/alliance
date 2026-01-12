@@ -18,10 +18,11 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import { ArrowLeft, Pin } from "lucide-react-native";
 import { useAuth } from "../../../../lib/AuthContext";
 import ProfileImage from "../../../../components/ProfileImage";
-import { Text, colors } from "../../../../components/system";
+import Text from "../../../../components/system/Text";
+import { colors } from "../../../../lib/style/colors";
 import EditableContentRenderer from "../../../../components/EditableContentRenderer";
-import LikeButton from "../../../../components/LikeButton";
 import Comments from "../../../../components/Comments";
+import LikeButton from "../../../../components/LikeButton";
 
 const renderAvatar = (author: PostDto["author"]) => {
   return <ProfileImage pfp={author.profilePicture} size="small" />;

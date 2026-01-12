@@ -129,4 +129,12 @@ export class Notification {
   @ApiPropertyOptional({ type: Date })
   @Type(() => Date)
   pushDispatchedAt?: Date;
+
+  @Column({ nullable: true })
+  @ApiPropertyOptional()
+  pushClaimedBy?: string;
+
+  @Column({ nullable: true })
+  @ApiPropertyOptional()
+  pushClaimedAt?: Date;
 }

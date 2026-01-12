@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "alliance-mobile",
-    "slug": "alliance-mobile",
+    "name": "Alliance",
+    "slug": "Alliance",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/bridge.png",

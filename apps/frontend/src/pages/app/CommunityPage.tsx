@@ -12,7 +12,7 @@ import {
   ActionSuiteSummaryDto,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Spinner from "../../components/Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";

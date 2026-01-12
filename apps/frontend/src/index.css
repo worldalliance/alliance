@@ -47,18 +47,7 @@
   --color-gray-4: #404040;
 }
 
-a,
-h1,
-h2,
-h3,
-p,
-ol,
-ul,
-span,
-label,
-input,
-textarea,
-button {
+* {
   font-family: "Source Sans 3", sans-serif;
 }
 

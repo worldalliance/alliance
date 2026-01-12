@@ -24,7 +24,7 @@ export default function AppLayout() {
   }
 
   return (
-    <View className="flex-1 bg-white pt-8">
+    <View className="flex-1 bg-white">
       <Sidebar
         isOpen={sidebarOpen}
         onOpen={() => setSidebarOpen(true)}

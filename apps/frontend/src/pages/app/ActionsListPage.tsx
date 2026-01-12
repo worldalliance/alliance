@@ -8,7 +8,7 @@ import { useGrayBackground } from "../../components/HtmlBackgroundManager";
 import List from "@alliance/sharedweb/ui/List";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import { useOutletContext } from "react-router";
-import Spinner from "../../components/Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ActionDto } from "@alliance/shared/client";
 
 const ActionsListPage = () => {

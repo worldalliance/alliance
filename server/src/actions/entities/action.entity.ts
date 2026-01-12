@@ -32,6 +32,12 @@ export enum ActionTaskType {
   Ongoing = 'Ongoing', // ongoing or recurring behavior change
 }
 
+export enum VisibilityMode {
+  Public = 'public',
+  AllMembers = 'all_members',
+  ParticipatingGroups = 'participating_groups',
+}
+
 @Entity()
 export class Action {
   @PrimaryGeneratedColumn()
@@ -178,14 +184,14 @@ export class Action {
   @IsOptional()
   manualCohortUserIds?: number[];
 
-  @Column({ default: false })
-  @ApiPropertyOptional({
-    description:
-      'Whether to show the action to members who are not of participating groups',
-    default: false,
+  @Column({
+    type: 'enum',
+    enum: VisibilityMode,
+    default: VisibilityMode.Public,
   })
-  @IsOptional()
-  showToNonparticipating?: boolean;
+  @ApiProperty({ enum: VisibilityMode, enumName: 'VisibilityMode' })
+  @IsDefined()
+  visibilityMode: VisibilityMode;
 
   @Column({ default: 0 })
   @ApiProperty()

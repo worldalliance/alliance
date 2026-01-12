@@ -1,6 +1,6 @@
 import React from "react";
 import { View } from "react-native";
-import { Text } from "./system";
+import Text from "./system/Text";
 import ProfileImage from "./ProfileImage";
 
 export const UserProfilePicRow = ({

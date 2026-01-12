@@ -137,14 +137,16 @@ const ActionContents = () => {
               <AppMarkdownWrapper markdownContent={action?.body} />
             </div>
 
-            <div>
-              <p className="font-semibold text-xl mb-4">Discussion</p>
-              <p className="mb-8">
-                Questions and comments about this action that other members
-                would find helpful.
-              </p>
-              <Comments objectId={action.id} type={"action"} />
-            </div>
+            {isAuthenticated && (
+              <div>
+                <p className="font-semibold text-xl mb-4">Discussion</p>
+                <p className="mb-8">
+                  Questions and comments about this action that other members
+                  would find helpful.
+                </p>
+                <Comments objectId={action.id} type={"action"} />
+              </div>
+            )}
           </>
         )}
       </div>

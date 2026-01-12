@@ -384,14 +384,14 @@ export class TasksService {
     });
     const savedForm = await this.formResponseRepository.save(formResponse);
 
-    return this.actionsService.createActionActivity(
+    return this.actionsService.createActionActivity({
       actionId,
       userId,
-      ActionActivityType.USER_WONT_COMPLETE,
-      savedForm,
-      reason,
-      outOfTime,
-    );
+      type: ActionActivityType.USER_WONT_COMPLETE,
+      taskFormResponse: savedForm,
+      declineReason: reason,
+      isOutOfTime: outOfTime,
+    });
   }
 
   private getFirstAutoExtractAnswer(

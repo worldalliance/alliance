@@ -9,7 +9,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Check } from "lucide-react-native";
-import { Text } from "./system";
+import Text from "./system/Text";
 
 interface SuccessOverlayProps {
   visible: boolean;

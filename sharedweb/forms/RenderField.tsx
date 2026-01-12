@@ -16,6 +16,7 @@ import { getCustomComponentById } from "./components";
 import { getApiUrl } from "../lib/config";
 import TimeZoneSelect from "./TimeZoneSelect";
 import CityAutosuggest from "./CityAutosuggest";
+import ImageLightbox from "../ui/ImageLightbox";
 
 export type RenderFieldProps = {
   field: AnyField;
@@ -648,15 +649,30 @@ export function RenderField({
       const fileValue = value;
       const isUploading = !!uploading;
       const err = uploadError;
+      const imageUrl =
+        typeof fileValue === "string" && fileValue
+          ? getApiUrl() + "/images/" + fileValue
+          : null;
       return (
         <div className="space-y-2">
           <RenderLabel field={field} error={errorMessage} />
-          {typeof fileValue === "string" && fileValue && (
+          {imageUrl && (
             <div className="mb-2">
-              <img
-                src={getApiUrl() + "/images/" + fileValue}
-                alt="Uploaded file"
-                className="max-w-full h-auto max-h-32 rounded"
+              <ImageLightbox
+                images={[imageUrl]}
+                renderPreview={(openLightbox) => (
+                  <button
+                    type="button"
+                    className="focus:outline-none cursor-zoom-in"
+                    onClick={(e) => openLightbox(0, e)}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt="Uploaded file"
+                      className="max-w-full h-auto max-h-32 rounded"
+                    />
+                  </button>
+                )}
               />
             </div>
           )}

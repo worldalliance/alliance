@@ -56,7 +56,7 @@ export class PushService {
       .filter((device) => !!device.expoPushToken)
       .map((device) => ({
         expoPushToken: device.expoPushToken!,
-        idempotencyKey: `${message.notification?.id}-${device.id}`,
+        idempotencyKey: `${message.idempotencyKey}-${device.id}`,
         ...message,
       }));
     return messages;

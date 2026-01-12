@@ -17,7 +17,7 @@ import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import { useAuth } from "../../lib/AuthContext";
 import { formatTime } from "@alliance/shared/lib/utils";
-import Spinner from "../../components/Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useCIDFromParams } from "../../lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
 

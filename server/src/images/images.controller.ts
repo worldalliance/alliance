@@ -81,7 +81,9 @@ export class ImagesController {
     } catch (err) {
       if (err?.name === 'AbortError') return;
 
-      console.error('Error getting image:', err);
+      if (process.env.NODE_ENV !== 'development') {
+        console.error('Error getting image:', err);
+      }
       throw new NotFoundException();
     }
   }

@@ -15,7 +15,7 @@ import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import ConversationDetailPanel from "../../components/ConversationDetailPanel";
-import Spinner from "../../components/Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useAuth } from "../../lib/AuthContext";
 import useLiveConvoMessages, {
   sortConversations,
@@ -302,6 +302,7 @@ const MessagesPage = () => {
             (participant) => participant.user.id === userId
           )
       );
+      setMessagesOpen(true);
       if (existing) {
         setSelectedConvoId(existing.id);
         setCreatingNewConversation(false);
@@ -376,51 +377,10 @@ const MessagesPage = () => {
             />
           </div>
           <div className="border-t border-zinc-200">
-            {filteredConversations?.map((conversation) => (
-              <div
-                key={conversation.id}
-                className={`p-4 hover:bg-zinc-100 cursor-pointer border-b border-zinc-200 flex flex-row justify-between items-center gap-x-3 ${
-                  selectedConvoId === conversation.id
-                    ? "bg-zinc-100"
-                    : "bg-white"
-                }`}
-                onClick={handleConversationClick(conversation.id)}
-              >
-                <div className="flex flex-row items-center gap-x-3">
-                  <ProfileImage pfp={conversation.photo ?? null} size="large" />
-                  <div className="flex flex-col">
-                    <span className="font-medium line-clamp-1">
-                      {conversation.title}
-                    </span>
-                    <span className="text-sm text-zinc-500 line-clamp-1">
-                      {!!conversation.lastMessage
-                        ? conversation.type === "direct"
-                          ? conversation.lastMessage.author.id === user?.id
-                            ? "you: " + conversation.lastMessage.body
-                            : conversation.lastMessage.body
-                          : conversation.lastMessage.author.displayName +
-                            ": " +
-                            conversation.lastMessage.body
-                        : "No messages yet"}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  {conversation.unreadCount > 0 && (
-                    <div
-                      className={`font-semibold text-xs text-white bg-red-500
-                    } rounded-md flex justify-center items-center w-6 h-6`}
-                    >
-                      {conversation.unreadCount}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
             {pendingInvites && pendingInvites.length > 0 && (
               <div className="mt-2">
                 <p className="text-sm text-zinc-500 font-medium px-4">
-                  Message requests
+                  New message requests
                 </p>
                 <div className="flex flex-col border-t border-zinc-200 mt-2">
                   {pendingInvites?.map((conversation) => (
@@ -464,8 +424,52 @@ const MessagesPage = () => {
                     </div>
                   ))}
                 </div>
+                <p className="text-sm text-zinc-500 font-medium px-4 py-2 border-b border-zinc-200">
+                  Conversations
+                </p>
               </div>
             )}
+            {filteredConversations?.map((conversation) => (
+              <div
+                key={conversation.id}
+                className={`p-4 hover:bg-zinc-100 cursor-pointer border-b border-zinc-200 flex flex-row justify-between items-center gap-x-3 ${
+                  selectedConvoId === conversation.id
+                    ? "bg-zinc-100"
+                    : "bg-white"
+                }`}
+                onClick={handleConversationClick(conversation.id)}
+              >
+                <div className="flex flex-row items-center gap-x-3">
+                  <ProfileImage pfp={conversation.photo ?? null} size="large" />
+                  <div className="flex flex-col">
+                    <span className="font-medium line-clamp-1">
+                      {conversation.title}
+                    </span>
+                    <span className="text-sm text-zinc-500 line-clamp-1">
+                      {!!conversation.lastMessage
+                        ? conversation.type === "direct"
+                          ? conversation.lastMessage.author.id === user?.id
+                            ? "you: " + conversation.lastMessage.body
+                            : conversation.lastMessage.body
+                          : conversation.lastMessage.author.displayName +
+                            ": " +
+                            conversation.lastMessage.body
+                        : "No messages yet"}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  {conversation.unreadCount > 0 && (
+                    <div
+                      className={`font-semibold text-xs text-white bg-red-500
+                    } rounded-md flex justify-center items-center w-6 h-6`}
+                    >
+                      {conversation.unreadCount}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

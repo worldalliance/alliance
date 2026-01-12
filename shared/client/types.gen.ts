@@ -159,6 +159,8 @@ export type Notification = {
     onetimeInvite?: OnetimeInvite;
     shouldPush: boolean;
     pushDispatchedAt?: string;
+    pushClaimedBy?: string;
+    pushClaimedAt?: string;
 };
 
 export type Tag = {
@@ -221,6 +223,8 @@ export type ActionEvent = {
     suiteManaged: boolean;
 };
 
+export type VisibilityMode = 'public' | 'all_members' | 'participating_groups';
+
 /**
  * Type of action activity
  */
@@ -249,6 +253,11 @@ export type FormResponse = {
     sid?: string;
 };
 
+/**
+ * Source of the activity
+ */
+export type ActivitySource = 'user' | 'admin_override';
+
 export type ActionActivity = {
     id: number;
     /**
@@ -266,6 +275,10 @@ export type ActionActivity = {
     declineReason?: string;
     isMoral?: boolean;
     outOfTime?: boolean;
+    /**
+     * Source of the activity
+     */
+    source: ActivitySource;
 };
 
 export type ReminderGroupTimingMode = 'absolute' | 'from_deadline' | 'within_range' | 'within_relative_range' | 'event_launch';
@@ -325,7 +338,7 @@ export type ActionEventNotif = {
     channel: NotificationChannel;
     mail: Mail | null;
     mms: Mms | null;
-    push: Push | null;
+    pushes?: Array<Push>;
     reminderGroup?: ReminderGroup;
     /**
      * Indicates whether the notification has been sent
@@ -347,6 +360,7 @@ export type ReminderGroup = {
     emailMessage: string;
     emailSubject: string;
     textMessage: string;
+    pushMessage: string;
     notifications: Array<ActionEventNotif>;
     send_range_start?: string;
     send_range_end?: string;
@@ -451,10 +465,7 @@ export type Action = {
      * User IDs in the manual cohort
      */
     manualCohortUserIds?: Array<number>;
-    /**
-     * Whether to show the action to members who are not of participating groups
-     */
-    showToNonparticipating?: boolean;
+    visibilityMode: VisibilityMode;
     usersJoined: number;
     /**
      * Number of users who have completed the action
@@ -626,6 +637,13 @@ export type UserAwayRangeDto = {
     createdAt: string;
     reason: UserAwayRangeReason;
     note?: string | null;
+};
+
+export type UpdateAwayRangeDto = {
+    reason: UserAwayRangeReason;
+    note?: string | null;
+    startDay?: string;
+    endDay?: string;
 };
 
 export type UpdateProfileDto = {
@@ -1105,10 +1123,7 @@ export type ActionDto = {
      * User IDs in the manual cohort
      */
     manualCohortUserIds?: Array<number>;
-    /**
-     * Whether to show the action to members who are not of participating groups
-     */
-    showToNonparticipating?: boolean;
+    visibilityMode: VisibilityMode;
     usersJoined: number;
     /**
      * Number of users who have completed the action
@@ -1233,10 +1248,7 @@ export type CreateActionDto = {
      * User IDs in the manual cohort
      */
     manualCohortUserIds?: Array<number>;
-    /**
-     * Whether to show the action to members who are not of participating groups
-     */
-    showToNonparticipating?: boolean;
+    visibilityMode: VisibilityMode;
     /**
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
@@ -1327,10 +1339,7 @@ export type UpdateActionDto = {
      * User IDs in the manual cohort
      */
     manualCohortUserIds?: Array<number>;
-    /**
-     * Whether to show the action to members who are not of participating groups
-     */
-    showToNonparticipating?: boolean;
+    visibilityMode?: VisibilityMode;
     /**
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
@@ -1385,6 +1394,7 @@ export type CreateReminderGroupDto = {
     emailMessage: string;
     emailSubject: string;
     textMessage: string;
+    pushMessage: string;
     send_range_start?: string;
     send_range_end?: string;
     sendAtAbsolute?: string;
@@ -1409,7 +1419,7 @@ export type ActionEventNotifDto = {
     channel: NotificationChannel;
     mail: Mail | null;
     mms: Mms | null;
-    push: Push | null;
+    pushes?: Array<Push>;
     reminderGroup?: ReminderGroup;
     /**
      * Indicates whether the notification has been sent
@@ -1602,10 +1612,7 @@ export type ExportActionDto = {
      * User IDs in the manual cohort
      */
     manualCohortUserIds?: Array<number>;
-    /**
-     * Whether to show the action to members who are not of participating groups
-     */
-    showToNonparticipating?: boolean;
+    visibilityMode: VisibilityMode;
     activities: Array<Array<ActionActivity>>;
     /**
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
@@ -1685,6 +1692,9 @@ export type UserActionRelationDetailDto = {
     status: UserActionRelationPillStatus;
     latestActivityType?: ActionActivityType;
     latestActivityAt?: string;
+    declineReason?: string;
+    isMoral?: boolean;
+    outOfTime?: boolean;
 };
 
 export type UserActionRelationsForUserDto = {
@@ -2105,6 +2115,67 @@ export type DailyStatsRecord = {
     invitesAccepted: number;
 };
 
+export type ActionStatsRecord = {
+    id: number;
+    /**
+     * ID of the action this record is for
+     */
+    actionId: number;
+    /**
+     * Name of the action (for display purposes)
+     */
+    actionName: string;
+    /**
+     * Number of users who have completed this action
+     */
+    usersCompleted: number;
+    /**
+     * Number of users who joined/were expected to complete
+     */
+    usersJoined: number;
+    /**
+     * Completion rate as a fraction (usersCompleted / usersJoined)
+     */
+    completionRate: number;
+    /**
+     * When these stats were last calculated
+     */
+    lastCalculatedAt: string;
+    /**
+     * When the action was completed (if applicable)
+     */
+    actionCompletedAt?: string;
+    /**
+     * Whether to show this action in the chart (false for publicOnly or actions without member_action event)
+     */
+    showInChart: boolean;
+    /**
+     * When the member_action phase started
+     */
+    memberActionStartDate?: string;
+    /**
+     * When the member_action phase ended (next status event date)
+     */
+    memberActionEndDate?: string;
+};
+
+export type MemberCompletionRetentionPointDto = {
+    weekIndex: number;
+    completionRate: number;
+    joinedCount: number;
+    completedCount: number;
+};
+
+export type MemberCompletionRetentionCohortDto = {
+    cohortStart: string;
+    cohortSize: number;
+    points: Array<MemberCompletionRetentionPointDto>;
+};
+
+export type AggregateStatsDto = {
+    signedUsers: number;
+};
+
 export type AppHealthCheckData = {
     body?: never;
     path?: never;
@@ -2391,6 +2462,25 @@ export type UserGetAwayRangeForUserResponses = {
 
 export type UserGetAwayRangeForUserResponse = UserGetAwayRangeForUserResponses[keyof UserGetAwayRangeForUserResponses];
 
+export type UserUpdateAwayRangeData = {
+    body: UpdateAwayRangeDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/awayranges/{id}';
+};
+
+export type UserUpdateAwayRangeErrors = {
+    401: unknown;
+};
+
+export type UserUpdateAwayRangeResponses = {
+    200: UserAwayRangeDto;
+};
+
+export type UserUpdateAwayRangeResponse = UserUpdateAwayRangeResponses[keyof UserUpdateAwayRangeResponses];
+
 export type UserUpdateData = {
     body: UpdateProfileDto;
     path?: never;
@@ -2597,6 +2687,19 @@ export type UserListResponses = {
 
 export type UserListResponse = UserListResponses[keyof UserListResponses];
 
+export type UserListPublicData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/list-public';
+};
+
+export type UserListPublicResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserListPublicResponse = UserListPublicResponses[keyof UserListPublicResponses];
+
 export type UserMembersData = {
     body?: never;
     path?: never;
@@ -2609,6 +2712,19 @@ export type UserMembersResponses = {
 };
 
 export type UserMembersResponse = UserMembersResponses[keyof UserMembersResponses];
+
+export type UserMembersPublicData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/members-public';
+};
+
+export type UserMembersPublicResponses = {
+    200: Array<ProfileDto>;
+};
+
+export type UserMembersPublicResponse = UserMembersPublicResponses[keyof UserMembersPublicResponses];
 
 export type UserMembersWithFriendsData = {
     body?: never;
@@ -5342,6 +5458,58 @@ export type AnalyticsGetDailyStatsResponses = {
 };
 
 export type AnalyticsGetDailyStatsResponse = AnalyticsGetDailyStatsResponses[keyof AnalyticsGetDailyStatsResponses];
+
+export type AnalyticsGetActionStatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/analytics/action-stats';
+};
+
+export type AnalyticsGetActionStatsResponses = {
+    200: Array<ActionStatsRecord>;
+};
+
+export type AnalyticsGetActionStatsResponse = AnalyticsGetActionStatsResponses[keyof AnalyticsGetActionStatsResponses];
+
+export type AnalyticsRecalculateActionStatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/analytics/action-stats/recalculate';
+};
+
+export type AnalyticsRecalculateActionStatsResponses = {
+    200: Array<ActionStatsRecord>;
+};
+
+export type AnalyticsRecalculateActionStatsResponse = AnalyticsRecalculateActionStatsResponses[keyof AnalyticsRecalculateActionStatsResponses];
+
+export type AnalyticsGetMemberCompletionRetentionData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/analytics/member-completion-retention';
+};
+
+export type AnalyticsGetMemberCompletionRetentionResponses = {
+    200: Array<MemberCompletionRetentionCohortDto>;
+};
+
+export type AnalyticsGetMemberCompletionRetentionResponse = AnalyticsGetMemberCompletionRetentionResponses[keyof AnalyticsGetMemberCompletionRetentionResponses];
+
+export type AnalyticsGetAggregateStatsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/analytics/aggregate-stats';
+};
+
+export type AnalyticsGetAggregateStatsResponses = {
+    200: AggregateStatsDto;
+};
+
+export type AnalyticsGetAggregateStatsResponse = AnalyticsGetAggregateStatsResponses[keyof AnalyticsGetAggregateStatsResponses];
 
 export type ClientOptions = {
     baseUrl: string;

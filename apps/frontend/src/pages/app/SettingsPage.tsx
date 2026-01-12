@@ -377,6 +377,7 @@ const SettingsPage: React.FC = () => {
                 >
                   <option value={"email"}>Email</option>
                   <option value={"text"}>Text</option>
+                  {showPushSettings && <option value={"push"}>Push</option>}
                 </select>
               </div>
               <p className="!font-medium mb-0">
@@ -410,13 +411,15 @@ const SettingsPage: React.FC = () => {
                     updateEditableUser({ textNotifsEnabled: checked })
                   }
                 />
-                {/* <LargeCheckbox
-                label="Push"
-                checked={editableUser.textNotifsEnabled}
-                onChange={(checked) =>
-                  updateEditableUser({ textNotifsEnabled: checked })
-                }
-              /> */}
+                {showPushSettings && (
+                  <LargeCheckbox
+                    label="Push"
+                    checked={!!editableUser.pushNotifsEnabled}
+                    onChange={(checked) =>
+                      updateEditableUser({ pushNotifsEnabled: checked })
+                    }
+                  />
+                )}
               </div>
             </div>
             <div className="flex flex-col md:flex-row gap-y-2 gap-x-12 font-medium">

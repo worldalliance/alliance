@@ -25,7 +25,6 @@ jobs:
         uses: openai/codex-action@v1
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          codex-version: 0.61.0
           prompt: |
             This is commit for ${{ github.repository }}.
             Commit SHA: ${{ github.sha }}

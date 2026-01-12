@@ -510,6 +510,7 @@ jobs:
             export NOTIF_TEST_EMAIL=${{ secrets.NOTIF_TEST_EMAIL }}
             export USE_CLOUDFRONT=${{ vars.USE_CLOUDFRONT }}
             export CLOUDFRONT_DOMAIN=${{ secrets.CLOUDFRONT_DOMAIN }}
+            export SLACK_WEBHOOK_URL=${{ secrets.SLACK_WEBHOOK_URL }}
 
             rollback () {
               echo "Deployment failed - rolling back"

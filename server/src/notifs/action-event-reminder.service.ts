@@ -32,7 +32,7 @@ import {
   ActionEventNotifType,
 } from './entities/action-event-notif.entity';
 import { generateCIDForNotif } from './notif-utils';
-import { shouldTextUser } from './notifs.service';
+import { shouldPushUser, shouldTextUser } from './notifs.service';
 import { testUser } from './test-users';
 
 export interface MissedDeadlineCandidate {
@@ -64,7 +64,7 @@ export class NotificationPlan {
 
 export class PreviewNotificationPlan extends NotificationPlan {
   @ApiProperty()
-  channel: 'email' | 'text';
+  channel: 'email' | 'text' | 'push';
 }
 
 @Injectable()
@@ -91,7 +91,6 @@ export class ActionEventReminderService {
     const plans: NotificationPlan[] = [];
 
     const users = await this.recipientService.getReminderGroupCohort(group);
-
     for (const user of users) {
       const reminderSendTime = getGroupSendTimeForUser(user, group);
 
@@ -271,6 +270,7 @@ export class ActionEventReminderService {
       .leftJoinAndSelect('rg.deadlineEvent', 'deadline')
       .leftJoinAndSelect('rg.users', 'users')
       .leftJoinAndSelect('users.tags', 'userTags')
+      .leftJoinAndSelect('users.contractEvents', 'contractEvents')
       .leftJoinAndSelect('rg.userTag', 'userTag')
       .leftJoinAndSelect('rg.actionSuite', 'actionSuite')
       .leftJoinAndSelect('actionSuite.actions', 'actionSuiteActions')
@@ -310,7 +310,7 @@ export class ActionEventReminderService {
           },
         },
         deadlineEvent: true,
-        users: true,
+        users: { contractEvents: true },
         userTag: true,
         actionSuite: { actions: true },
       },
@@ -318,19 +318,23 @@ export class ActionEventReminderService {
 
     const plans = await this.getPlansForGroup(
       group,
-      new Date(),
+      new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
       new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),
     );
     return plans.map((plan) => ({
       ...plan,
-      channel: shouldTextUser(plan.user) ? 'text' : 'email',
+      channel: shouldPushUser(plan.user)
+        ? 'push'
+        : shouldTextUser(plan.user)
+          ? 'text'
+          : 'email',
     }));
   }
 
   async getSentNotifsForGroup(groupId: number): Promise<ActionEventNotifDto[]> {
     const notifs = await this.actionEventNotifRepository.find({
       where: { reminderGroup: { id: groupId }, sent: true },
-      relations: { user: true },
+      relations: { user: true, mms: true, mail: true },
     });
     return notifs.map((notif) => new ActionEventNotifDto(notif));
   }
@@ -386,7 +390,19 @@ export class ActionEventReminderService {
       relations: { memberActionEvent: { action: true } },
     });
 
+    let userTag: Tag | undefined = undefined;
+    if (dto.cohortType === ReminderCohortType.Tag && dto.userTagId) {
+      userTag = await this.userService.findTagOrFail(dto.userTagId);
+    }
+
+    let users: User[] | undefined = undefined;
+    if (dto.cohortType === ReminderCohortType.Custom && dto.userIds) {
+      users = await this.userService.findByIds(dto.userIds);
+    }
+
     Object.assign(group, dto);
+    group.userTag = userTag;
+    group.users = users;
 
     const withDeadline = await this.attachDeadlineEvent(group);
 
@@ -402,7 +418,7 @@ export class ActionEventReminderService {
   async getReminderGroupsForEvent(id: number): Promise<ReminderGroup[]> {
     return this.reminderGroupRepository.find({
       where: { memberActionEvent: { id } },
-      relations: { memberActionEvent: true },
+      relations: { memberActionEvent: true, userTag: true, users: true },
     });
   }
 

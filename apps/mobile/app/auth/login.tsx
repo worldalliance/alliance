@@ -11,14 +11,10 @@ import {
 import { Stack, Link, useRouter } from "expo-router";
 import { useAuth } from "../../lib/AuthContext";
 import { authStyles } from "../../lib/style/authStyles";
-import {
-  Button,
-  ButtonColor,
-  colors,
-  Input,
-  Text,
-  TextStyle,
-} from "../../components/system";
+import { colors } from "../../lib/style/colors";
+import Button, { ButtonColor } from "../../components/system/Button";
+import Input from "../../components/system/Input";
+import Text, { TextStyle } from "../../components/system/Text";
 
 const LoginScreen = () => {
   const router = useRouter();

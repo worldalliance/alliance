@@ -13,10 +13,9 @@ const PrelaunchLandingPage: React.FC = () => {
           <div className="flex flex-col md:flex-row gap-y-12 md:gap-x-24 items-center mx-auto my-auto py-12">
             {/* <img src={earth} className="mx-auto mb-12 w-50" /> */}
 
-            <div className="max-w-2xl w-full flex flex-col gap-y-6 text-lg md:text-xl">
-              <p className="font-medium text-3xl sm:text-4xl lg:text-5xl">
-                The Alliance is a group of individuals cooperating to improve
-                the world
+            <div className="max-w-2xl w-full flex flex-col gap-y-6 text-lg md:text-xl text-zinc-900">
+              <p className="font-medium font-serif text-4xl sm:text-5xl lg:text-6xl text-black">
+                Individuals cooperating to improve the world
               </p>
 
               <p>

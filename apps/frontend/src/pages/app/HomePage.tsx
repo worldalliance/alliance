@@ -5,7 +5,7 @@ import { AppLayoutOutletContext } from "../../applayout";
 import ActionActivityFeedItem from "../../components/ActionActivityFeedItem";
 import BasicErrorMessage from "../../components/BasicErrorMessage";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
-import Spinner from "../../components/Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
 import { useCIDFromParams } from "../../lib/utils";
@@ -28,10 +28,12 @@ import {
   deadlineHasPassed,
   TaskAwayStatus,
 } from "@alliance/shared/lib/actionUtils";
+import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
+import { formatTime } from "@alliance/shared/lib/utils";
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { actions, loading, handleDismissAction } =
+  const { posts, actions, loading, handleDismissAction } =
     useOutletContext<AppLayoutOutletContext>();
 
   const { user } = useAuth();
@@ -174,7 +176,8 @@ const HomePage = () => {
 
     return (
       <div className="px-4 pt-12 flex flex-col *:py-6 *:px-2 divide-y divide-zinc-200">
-        {todoActions.length + newActions.length > 0 && (
+        {(currentWeekMandatoryTodoActions.length > 0 ||
+          completedActions.length > 0) && (
           <div className="flex flex-col gap-y-2">
             <p className="font-semibold text-base font-serif text-black">
               Progress
@@ -234,6 +237,44 @@ const HomePage = () => {
           </div>
         )}
 
+        <div>
+          <div className="flex flex-row justify-between items-center mb-3">
+            <p className="font-semibold text-base font-serif text-black">
+              Forum activity
+            </p>
+          </div>
+          {posts &&
+            posts.slice(0, 1).map((post) => {
+              return (
+                <Link
+                  to={href("/forum/post/:id", { id: post.id.toString() })}
+                  key={post.id}
+                  className="flex flex-row gap-x-2 items-center flex-1 hover:bg-zinc-50 hover:p-2 hover:-m-2 rounded"
+                >
+                  <ProfileImage
+                    pfp={post.author.profilePicture}
+                    size="medium"
+                    className="self-start mt-1.5"
+                  />
+                  <div className="flex-1 text-zinc-700">
+                    <p className="font-medium">{post.author.displayName}</p>
+
+                    <p className="">
+                      <span className="text-zinc-500 text-nowrap">posted </span>
+                      <span className="text-green">{post.title}</span>
+                      <span className="text-zinc-500 text-nowrap">
+                        {" "}
+                        {formatTime(new Date(post.createdAt), {
+                          addSuffix: true,
+                        })}
+                      </span>
+                    </p>
+                  </div>
+                </Link>
+              );
+            })}
+        </div>
+
         <div className="">
           <div className="flex flex-row justify-between items-center mb-3">
             <p className="font-semibold text-base font-serif text-black">
@@ -290,7 +331,7 @@ const HomePage = () => {
     newActions.length,
     nextWeekTodoActions,
     remainingTasksEstimatedTimeCurrentWeek,
-    todoActions.length,
+    posts,
     numTodo,
     visibleFriendActivityCount,
   ]);

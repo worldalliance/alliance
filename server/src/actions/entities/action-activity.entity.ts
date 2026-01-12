@@ -28,6 +28,11 @@ export enum ActionActivityType {
   USER_DISMISSED = 'user_dismissed',
 }
 
+export enum ActivitySource {
+  USER = 'user',
+  ADMIN_OVERRIDE = 'admin_override',
+}
+
 @Entity()
 @Unique('UQ_activity_user_action_type', ['userId', 'actionId', 'type'])
 @Index('IDX_action_activity_type_createdAt', ['type', 'createdAt'])
@@ -132,4 +137,13 @@ export class ActionActivity {
   @ApiPropertyOptional()
   @IsOptional()
   outOfTime?: boolean; // for opting out due to running out of time
+
+  @Column({ type: 'enum', enum: ActivitySource, default: ActivitySource.USER })
+  @ApiProperty({
+    description: 'Source of the activity',
+    enum: ActivitySource,
+    enumName: 'ActivitySource',
+  })
+  @Allow()
+  source: ActivitySource;
 }

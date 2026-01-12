@@ -2,7 +2,8 @@ import { useCallback, useMemo } from "react";
 import { ScrollView, TouchableOpacity, View, Linking } from "react-native";
 import { ChevronRight } from "lucide-react-native";
 import { useActionUpdates } from "@alliance/shared/lib/informationPage";
-import { Text, colors } from "../../components/system";
+import Text from "../../components/system/Text";
+import { colors } from "../../lib/style/colors";
 import ActionUpdateCard from "../../components/ActionUpdateCard";
 
 const WEB_BASE_URL = "https://worldalliance.org"; //TODO

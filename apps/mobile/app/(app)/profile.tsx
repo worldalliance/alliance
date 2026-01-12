@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useAuth } from "../../lib/AuthContext";
 
-import { colors } from "../../components/system";
+import { colors } from "../../lib/style/colors";
 import { router } from "expo-router";
 import ProfileImage from "../../components/ProfileImage";
 

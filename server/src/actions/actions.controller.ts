@@ -259,7 +259,7 @@ export class ActionsController {
   }
 
   @Get(':id/activities')
-  @UseGuards(AuthOptionalGuard)
+  @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ActionActivityDto] })
   @ApiOperation({ summary: 'Get recent activities for an action' })
   async getActionActivities(

@@ -23,7 +23,9 @@ import EditableContentForm from "./EditableContentForm";
 import EditableContentRenderer from "./EditableContentRenderer";
 import LikeButton from "./LikeButton";
 import ProfileImage from "./ProfileImage";
-import { Button, ButtonColor, ButtonSize, Text, colors } from "./system";
+import Button, { ButtonColor, ButtonSize } from "./system/Button";
+import Text from "./system/Text";
+import { colors } from "../lib/style/colors";
 
 export interface CommentsProps {
   objectId: number;
@@ -66,7 +68,10 @@ type ReplyFormProps = {
   autofocus?: boolean;
   objectId: number;
   isSubmitting: boolean;
-  onSubmit: (content: CreateEditableContentDto, parentId?: number | null) => void;
+  onSubmit: (
+    content: CreateEditableContentDto,
+    parentId?: number | null
+  ) => void;
 };
 
 const ReplyForm = ({
@@ -129,8 +134,14 @@ type ReplyItemSharedProps = {
   highlightedId: number | null;
   newlyAddedReplies: Set<number>;
   user: UserDto | undefined;
-  onSubmitReply: (content: CreateEditableContentDto, parentId?: number | null) => void;
-  onUpdateReply: (replyId: number, content: CreateEditableContentDto) => Promise<void>;
+  onSubmitReply: (
+    content: CreateEditableContentDto,
+    parentId?: number | null
+  ) => void;
+  onUpdateReply: (
+    replyId: number,
+    content: CreateEditableContentDto
+  ) => Promise<void>;
   onDeleteReply: (replyId: number) => void;
   onLikeReply: (replyId: number, unlike?: boolean) => void;
 };
@@ -163,7 +174,11 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
       body: reply.editableContent.body ?? "",
       attachments: reply.editableContent.attachments ?? [],
     });
-  }, [isEditing, reply.editableContent.body, reply.editableContent.attachments]);
+  }, [
+    isEditing,
+    reply.editableContent.body,
+    reply.editableContent.attachments,
+  ]);
 
   return (
     <View
@@ -267,22 +282,24 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
               </Text>
             </TouchableOpacity>
           )}
-          {shared.user && reply.author.id === shared.user.id && !reply.deleted && (
-            <View className="flex-row items-center gap-x-2">
-              <TouchableOpacity
-                onPress={() => setIsEditing(true)}
-                activeOpacity={0.7}
-              >
-                <Text className="text-xs text-zinc-500">Edit</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => shared.onDeleteReply(reply.id)}
-                activeOpacity={0.7}
-              >
-                <Text className="text-xs text-red-600">Delete</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {shared.user &&
+            reply.author.id === shared.user.id &&
+            !reply.deleted && (
+              <View className="flex-row items-center gap-x-2">
+                <TouchableOpacity
+                  onPress={() => setIsEditing(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-xs text-zinc-500">Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => shared.onDeleteReply(reply.id)}
+                  activeOpacity={0.7}
+                >
+                  <Text className="text-xs text-red-600">Delete</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           {hasChildren && depth === 0 && (
             <TouchableOpacity
               onPress={() => setIsCollapsed(!isCollapsed)}
@@ -314,16 +331,14 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
 
       {hasChildren && !isCollapsed && (
         <View className="mt-3 gap-y-3">
-          {reply.children
-            ?.filter(shouldShowComment)
-            .map((childReply) => (
-              <ReplyItem
-                key={childReply.id}
-                reply={childReply}
-                depth={depth + 1}
-                {...shared}
-              />
-            ))}
+          {reply.children?.filter(shouldShowComment).map((childReply) => (
+            <ReplyItem
+              key={childReply.id}
+              reply={childReply}
+              depth={depth + 1}
+              {...shared}
+            />
+          ))}
         </View>
       )}
     </View>
@@ -443,22 +458,26 @@ export default function Comments({
 
   const handleDeleteReply = useCallback(
     (replyId: number) => {
-      Alert.alert("Delete Reply", "Are you sure you want to delete this reply?", [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await forumDeleteComment({ path: { id: replyId } });
-              await fetchComments();
-            } catch (err) {
-              console.error("Error deleting reply:", err);
-              setError("Failed to delete reply");
-            }
+      Alert.alert(
+        "Delete Reply",
+        "Are you sure you want to delete this reply?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await forumDeleteComment({ path: { id: replyId } });
+                await fetchComments();
+              } catch (err) {
+                console.error("Error deleting reply:", err);
+                setError("Failed to delete reply");
+              }
+            },
           },
-        },
-      ]);
+        ]
+      );
     },
     [fetchComments]
   );
@@ -484,7 +503,10 @@ export default function Comments({
             if (item.id === replyId) {
               return {
                 ...item,
-                editableContent: { body: content.body, attachments: attachmentKeys },
+                editableContent: {
+                  body: content.body,
+                  attachments: attachmentKeys,
+                },
               };
             }
             if (item.children) {

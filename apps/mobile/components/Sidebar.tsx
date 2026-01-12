@@ -30,12 +30,12 @@ import {
   X,
   User,
 } from "lucide-react-native";
-import { Text } from "./system";
+import Text from "./system/Text";
 import { colors } from "../lib/style/colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SIDEBAR_WIDTH = SCREEN_WIDTH * 0.8;
-const EDGE_WIDTH = 80;
+const EDGE_WIDTH = 3;
 
 type NavItem = {
   name: string;
@@ -180,7 +180,6 @@ export default function Sidebar({
   // Edge swipe gesture to open
   const edgePanGesture = Gesture.Pan()
     .enabled(!isOpen)
-    .hitSlop({ left: EDGE_WIDTH })
     .activeOffsetX(5)
     .onBegin(() => {
       cancelAnimation(translateX);
@@ -194,7 +193,7 @@ export default function Sidebar({
       translateX.value = nextX;
     })
     .onEnd(() => {
-      const shouldOpen = translateX.value > -SIDEBAR_WIDTH * 0.7;
+      const shouldOpen = translateX.value > -SIDEBAR_WIDTH * 0.5;
       translateX.value = withTiming(shouldOpen ? 0 : -SIDEBAR_WIDTH, {
         duration: 150,
       });

@@ -37,6 +37,15 @@ export function shouldTextUser(user: User) {
   );
 }
 
+export function shouldPushUser(user: User) {
+  return (
+    !user.turnedOffAllNotifs &&
+    user.pushNotifsEnabled &&
+    user.preferredActionReminderChannel === NotificationChannel.Push &&
+    process.env.NODE_ENV === 'development'
+  );
+}
+
 @Injectable()
 export class NotifsService {
   constructor(

@@ -1,29 +1,25 @@
 import { View, TouchableOpacity } from "react-native";
 import { usePathname, router } from "expo-router";
-import { Layers, ListTodo, MessageSquare, User } from "lucide-react-native";
+import { Bell, Layers, ListTodo, User } from "lucide-react-native";
 import { colors } from "../lib/style/colors";
 
 const tabs = [
   {
-    name: "Home",
     href: "/" as const,
     icon: ListTodo,
     matchPaths: ["/", ""],
   },
   {
-    name: "Actions",
     href: "/actions" as const,
     icon: Layers,
     matchPaths: ["/actions", "/action"],
   },
   {
-    name: "Forum",
-    href: "/forum" as const,
-    icon: MessageSquare,
-    matchPaths: ["/forum"],
+    href: "/notifications" as const,
+    icon: Bell,
+    matchPaths: ["/notifications"],
   },
   {
-    name: "Profile",
     href: "/profile" as const,
     icon: User,
     matchPaths: ["/profile", "/user"],
@@ -49,7 +45,7 @@ export default function TabBar() {
         const Icon = tab.icon;
         return (
           <TouchableOpacity
-            key={tab.name}
+            key={tab.href}
             className="flex-1 items-center justify-center py-2"
             onPress={() => router.push(tab.href)}
             activeOpacity={0.7}

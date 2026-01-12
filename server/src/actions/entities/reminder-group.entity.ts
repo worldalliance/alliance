@@ -122,6 +122,11 @@ export class ReminderGroup {
   @IsDefined()
   textMessage: string;
 
+  @ApiProperty({ type: String })
+  @Column({ type: 'text', default: '' })
+  @IsDefined()
+  pushMessage: string;
+
   @ApiProperty({ type: () => ActionEventNotif, isArray: true })
   @OneToMany(
     () => ActionEventNotif,

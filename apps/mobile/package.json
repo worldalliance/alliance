@@ -7,7 +7,7 @@
     "hoistingLimits": "workspaces"
   },
   "scripts": {
-    "start": "expo start",
+    "start": "expo start --dev-client",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -22,9 +22,11 @@
   "dependencies": {
     "@alliance/shared": "workspace:*",
     "@hey-api/client-fetch": "^0.10.0",
+    "@legendapp/list": "^2.0.19",
     "@react-navigation/bottom-tabs": "^7.3.10",
     "@react-navigation/elements": "^2.3.8",
     "@react-navigation/native": "^7.1.6",
+    "@tanstack/react-query": "^5.90.16",
     "expo": "~53.0.9",
     "expo-application": "~6.1.5",
     "expo-blur": "~14.1.4",

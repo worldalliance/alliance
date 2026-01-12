@@ -5,7 +5,7 @@ import {
   userGetCommunityInvitesForUser,
   userRejectCommunityInvite,
 } from "@alliance/shared/client";
-import Spinner from "../../components/Spinner";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import List from "@alliance/sharedweb/ui/List";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";

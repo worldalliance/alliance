@@ -20,6 +20,7 @@ import { Action } from 'src/actions/entities/action.entity';
 import { User } from 'src/user/entities/user.entity';
 import { ActionEventReminderService } from './action-event-reminder.service';
 import { ActionDto } from 'src/actions/dto/action.dto';
+import { PushService } from 'src/push/push.service';
 
 describe('ActionEventNotifWorker.processCustomReminderText', () => {
   let worker: ActionEventNotifWorker;
@@ -47,6 +48,7 @@ describe('ActionEventNotifWorker.processCustomReminderText', () => {
       actionsService,
       {} as Repository<ActionEventNotif>,
       {} as ActionEventReminderService,
+      {} as PushService,
     );
   });
 

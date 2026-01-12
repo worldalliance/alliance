@@ -3,7 +3,8 @@ import { Linking, Image, View } from "react-native";
 import Markdown, { RenderRules } from "react-native-markdown-display";
 import { RelativePathString, router } from "expo-router";
 import { getApiUrl } from "../lib/config";
-import { colors, Text } from "./system";
+import { colors } from "../lib/style/colors";
+import Text from "./system/Text";
 
 /**
  * Route patterns that can be handled internally by the mobile app.
@@ -267,6 +268,8 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           </View>
         );
       },
+      paragraph: (node, children) => <>{children}</>,
+      body: (node, children) => <>{children}</>,
       fence: (node, children, parent, styles) => {
         const content = node.content || "";
         // The info string (language) for fenced code blocks can be in different properties
@@ -368,7 +371,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
         fontWeight: "600" as const,
       },
       link: {
-        color: "#2563eb",
+        color: colors.green,
         textDecorationLine: "underline" as const,
       },
       blockquote: {

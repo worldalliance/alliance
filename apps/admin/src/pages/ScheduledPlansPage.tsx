@@ -8,6 +8,7 @@ import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
 import { ChevronDown, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 
 const ScheduledPlansPage = () => {
   const [suspensionPlans, setSuspensionPlans] = useState<SuspensionPlanDto[]>(
@@ -105,7 +106,10 @@ const ScheduledPlansPage = () => {
 
       <Card className="relative gap-4">
         {isLoading && (
-          <p className="text-gray-500">Loading suspension plans...</p>
+          <div className="flex flex-row items-center justify-center gap-2">
+            <Spinner size="small" />
+            <p className="text-gray-500">Loading suspension plans...</p>
+          </div>
         )}
 
         {!isLoading && error && <p className="text-red-600">{error}</p>}

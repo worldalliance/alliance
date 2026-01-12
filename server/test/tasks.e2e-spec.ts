@@ -4,7 +4,11 @@ import { createTestApp, TestContext } from './e2e-test-utils';
 import { TasksModule } from 'src/tasks/tasks.module';
 import { Form } from 'src/tasks/entities/form.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
-import { Action, ActionTaskType } from 'src/actions/entities/action.entity';
+import {
+  Action,
+  ActionTaskType,
+  VisibilityMode,
+} from 'src/actions/entities/action.entity';
 import {
   ActionEvent,
   ActionStatus,
@@ -89,6 +93,7 @@ describe('Tasks (e2e)', () => {
         shouldCompleteAfterDeadline: false,
         participatingTags: [ctx.defaultTag],
         priority: 0,
+        visibilityMode: VisibilityMode.Public,
         preventCompletion: false,
         useManualCohort: false,
         publicOnly: false,

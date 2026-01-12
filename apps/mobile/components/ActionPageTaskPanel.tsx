@@ -7,7 +7,8 @@ import {
   getActionPageTaskPanelState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
 import ActionTaskPanel from "./ActionTaskPanel";
-import { Card, CardStyle, Text } from "./system";
+import Card, { CardStyle } from "./system/Card";
+import Text from "./system/Text";
 import {
   externalOnly,
   taskDeadlinePassed,
@@ -47,12 +48,16 @@ const ActionPageTaskPanel = ({
   switch (state) {
     case ActionPageTaskPanelState.PublicOnly:
       //TODO: should always be authenticated in app
-      return <Card cardStyle={CardStyle.Grey}>{externalOnly}</Card>;
+      return (
+        <Card cardStyle={CardStyle.Grey}>
+          <Text>{externalOnly}</Text>
+        </Card>
+      );
     case ActionPageTaskPanelState.NotAuthenticated:
       return (
         //TODO: should always be authenticated in app
         <Card cardStyle={CardStyle.Grey}>
-          Error authenticating user - please try again.
+          <Text>Error authenticating user - please try again.</Text>
         </Card>
       );
     case ActionPageTaskPanelState.ActiveButCantParticipate:
@@ -74,7 +79,7 @@ const ActionPageTaskPanel = ({
           </Card>
           <ActionTaskPanel
             action={action}
-            userRelation={userRelation ?? 'none'}
+            userRelation={userRelation ?? "none"}
             {...panelHandlers}
           />
         </View>
@@ -83,7 +88,7 @@ const ActionPageTaskPanel = ({
       return (
         <ActionTaskPanel
           action={action}
-          userRelation={userRelation ?? 'none'}
+          userRelation={userRelation ?? "none"}
           {...panelHandlers}
         />
       );

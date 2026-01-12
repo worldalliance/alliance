@@ -1,7 +1,7 @@
 import { RelativePathString, router, Slot } from "expo-router";
 import { AuthProvider } from "../lib/AuthContext";
 import { Platform } from "react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { client } from "@alliance/shared/client/client.gen";
 import WebTokenStore from "../lib/ExpoWebTokenStore";
 import SecureStorage from "../lib/SecureStorage";
@@ -16,6 +16,18 @@ import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { userRegisterDevice } from "@alliance/shared/client";
 import * as SecureStore from "expo-secure-store";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -41,7 +53,7 @@ async function registerForPushNotificationsAsync() {
     });
   }
 
-  if (Device.isDevice) {
+  if (Device.isDevice && Platform.OS !== "web") {
     const { status: existingStatus } =
       await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -148,6 +160,9 @@ export default function RootLayout() {
   const responseSub = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
+    if (Platform.OS === "web") {
+      return;
+    }
     Notifications.getLastNotificationResponseAsync().then((response) => {
       const data = response?.notification.request.content.data as
         | PushData
@@ -171,23 +186,27 @@ export default function RootLayout() {
 
   if (Platform.OS === "web") {
     return (
-      <KeyboardProvider>
-        <AuthProvider tokenStore={tokenStore}>
-          <Slot />
-        </AuthProvider>
-      </KeyboardProvider>
+      <QueryClientProvider client={queryClient}>
+        <KeyboardProvider>
+          <AuthProvider tokenStore={tokenStore}>
+            <Slot />
+          </AuthProvider>
+        </KeyboardProvider>
+      </QueryClientProvider>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardProvider>
-        <PostHogProvider apiKey="phc_4Bkir1Px9qIRnMQfMWQPcGIq6wjodf9jtme8fty3ZLt">
-          <AuthProvider tokenStore={tokenStore}>
-            <Slot />
-          </AuthProvider>
-        </PostHogProvider>
-      </KeyboardProvider>
-    </GestureHandlerRootView>
+    <QueryClientProvider client={queryClient}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <KeyboardProvider>
+          <PostHogProvider apiKey="phc_4Bkir1Px9qIRnMQfMWQPcGIq6wjodf9jtme8fty3ZLt">
+            <AuthProvider tokenStore={tokenStore}>
+              <Slot />
+            </AuthProvider>
+          </PostHogProvider>
+        </KeyboardProvider>
+      </GestureHandlerRootView>
+    </QueryClientProvider>
   );
 }
