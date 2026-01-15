@@ -41,7 +41,7 @@ In response to new members’ questions and comments, we took a number of steps 
 
 1. We simplified our [guide](https://worldalliance.org/guide) and moved more formal materials into separate documents.
 2. We combined our sign-up page with an invitation letter that provides basic information about the Alliance.
-3. We included examples of past actions on our website (and suggested inviters’ include them in verbal descriptions), which help prospective members understand the Alliance much more efficiently.
+3. We included examples of past actions on our website (and suggested that inviters include them in verbal descriptions), which help prospective members understand the Alliance much more efficiently.
 4. We gathered and answered frequently asked questions in a public [FAQ](https://worldalliance.org/faq).
 
 We chose to tie growth to the smaller Alliance groups we mentioned above: we currently require group leads to approve member invitations. While we need a more scalable solution to group assignment in the future, this constraint has ensured that most new members are accountable to and assisted by an existing member.
@@ -72,11 +72,11 @@ Ultimately, action plans must satisfy a complex set of criteria. Some of these c
 
 More importantly, at this stage, we want each action to test a specific hypothesis so that we can derive unique learning value. For instance:
 
-- In “Sign a letter requesting news coverage of a bring-your-own-cup cafe coalition” we learned that some businesses will make policy changes in exchange for assistance in acquiring media coverage.
-- In “Answer questions about nonprofit website copy and design” we learned that we can begin to build relationships with potential future partners by providing small-scale help.
-- In “Participate in an experiment to measure AI \+ follow-up friends and family campaign” we learned that Alliance members spend greater effort completing actions than external participants.
+- In [“Sign a letter requesting news coverage of a bring-your-own-cup cafe coalition”](https://worldalliance.org/actions/14) we learned that some businesses will make policy changes in exchange for assistance in acquiring media coverage.
+- In [“Answer questions about nonprofit website copy and design”](https://worldalliance.org/actions/32) we learned that we can begin to build relationships with potential future partners by providing small-scale help.
+- In [“Participate in an experiment to measure AI \+ follow-up friends and family campaign”](https://worldalliance.org/actions/52) we learned that Alliance members spend greater effort completing actions than external participants.
 
-We have also paid attention to the diversity and coherence of our full action sequence. We wanted actions to balance with and build on one another. For example, in “Decide how to allocate $1,000 next week,” many members suggested that we donate to GiveDirectly, a non-profit they learned about in “Read and discuss an article about global inequality.”
+We have also paid attention to the diversity and coherence of our full action sequence. We wanted actions to balance with and build on one another. For example, in [“Decide how to allocate $1,000 next week,”](https://worldalliance.org/actions/47) many members suggested that we donate to GiveDirectly, a non-profit they learned about in [“Read and discuss an article about global inequality.”](https://worldalliance.org/actions/26)
 
 ## Other updates
 

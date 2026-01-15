@@ -3,7 +3,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import sharp from 'sharp';
 import { Repository } from 'typeorm';
@@ -88,18 +88,24 @@ export class ImagesService {
         fit: 'inside',
       });
     }
-    const buffer = await processed.toBuffer();
+    try {
+      const buffer = await processed.toBuffer();
 
-    const key = `${Date.now()}.webp`;
-    await this.s3.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: 'image/webp',
-      }),
-    );
-    return key;
+      const key = `${Date.now()}.webp`;
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: buffer,
+          ContentType: 'image/webp',
+        }),
+      );
+      return key;
+    } catch {
+      throw new BadRequestException(
+        'Failed to process image - try a standard image format',
+      );
+    }
   }
 }
 

@@ -32,6 +32,7 @@ const MembersListPage = () => {
   const [filterMode, setFilterMode] = useState<MemberFilterMode>(
     MemberFilterMode.All
   );
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const loadData = async () => {
@@ -66,16 +67,25 @@ const MembersListPage = () => {
     loadMyFriends();
   }, [user]);
 
-  const friendsOfFriends = members.filter(
+  const filterBySearch = (member: ProfileDtoWithFriends) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return member.displayName.toLowerCase().includes(query);
+  };
+
+  const allFriendsOfFriends = members.filter(
     (member) =>
       member.id !== user?.id &&
       !myFriends.includes(member.id) &&
       member.friends.some((friend) => myFriends.includes(friend.id))
   );
 
-  const otherMembers = members.filter(
-    (member) => !friendsOfFriends.some((fof) => fof.id === member.id)
+  const allOtherMembers = members.filter(
+    (member) => !allFriendsOfFriends.some((fof) => fof.id === member.id)
   );
+
+  const friendsOfFriends = allFriendsOfFriends.filter(filterBySearch);
+  const otherMembers = allOtherMembers.filter(filterBySearch);
 
   const secondaryLabels = {
     [MemberFilterMode.All]: members.length.toString(),
@@ -99,7 +109,7 @@ const MembersListPage = () => {
     <CenterLayout className="gap-y-4" width="3xl">
       <div className="md:mt-8 flex flex-row gap-x-6 items-center">
         <p className="text-2xl md:text-3xl font-serif font-medium">
-          Members ({members.length})
+          Members {members.length > 0 ? `(${members.length})` : ""}
         </p>
 
         <DropdownSelect
@@ -120,10 +130,22 @@ const MembersListPage = () => {
 
       {!loading && !error && (
         <>
+          <div className="w-full">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search members..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full border bg-white border-zinc-200 py-2 px-3 rounded focus:outline-none"
+              />
+            </div>
+          </div>
+
           {(filterMode === MemberFilterMode.All ||
             filterMode === MemberFilterMode.FriendsOfFriends) && (
             <>
-              <p className="font-medium text-zinc-500 mt-4">
+              <p className="font-medium text-zinc-500 mt-2">
                 Friends of friends ({friendsOfFriends.length})
               </p>
               {friendsOfFriends.length > 0 ? (
@@ -136,7 +158,7 @@ const MembersListPage = () => {
 
           {filterMode === MemberFilterMode.All && (
             <>
-              <p className="font-medium text-zinc-500 mt-4">
+              <p className="font-medium text-zinc-500 mt-2">
                 Others ({otherMembers.length})
               </p>
               {otherMembers.length > 0 ? (

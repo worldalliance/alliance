@@ -117,9 +117,11 @@ export enum UserActionRelation {
 }
 
 export class ActionDto extends OmitType(Action, [
-  'events',
-  'updates',
   'authors',
+  'events',
+  'manualCohortUserIdSet',
+  'participatingTagIdSet',
+  'updates',
 ]) {
   @ApiProperty()
   usersCompleted: number;
@@ -171,7 +173,7 @@ export class ActionDto extends OmitType(Action, [
     this.squareThumbnailImageAlt =
       action.squareThumbnailImageAlt ?? action.name;
     this.usersCompleted = action.usersCompleted || 0;
-    this.status = action.status || ActionStatus.Draft;
+    this.status = (action.events && action.status) ?? ActionStatus.Draft;
     this.events =
       action.events?.map((event) => new ActionEventDto(event)) || [];
     this.canParticipate = extra?.canParticipate;
@@ -426,6 +428,9 @@ export class ActionSuiteDto extends OmitType(ActionSuite, ['actions']) {
 }
 
 export class ExportActionDto extends OmitType(Action, [
+  'latestMemberActionEvent',
+  'manualCohortUserIdSet',
+  'participatingTagIdSet',
   'status',
   'usersJoined',
   'usersCompleted',

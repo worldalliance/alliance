@@ -50,6 +50,7 @@ import {
 import { ActionDto } from 'src/actions/dto/action.dto';
 import { City } from 'src/geo/city.entity';
 import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
+import { SlackService } from 'src/slack/slack.service';
 
 @Injectable()
 export class TasksService {
@@ -69,6 +70,7 @@ export class TasksService {
     private customValidatorRepository: Repository<CustomValidator>,
     @InjectRepository(ActionShareUrl)
     private actionShareUrlRepository: Repository<ActionShareUrl>,
+    private slackService: SlackService,
   ) {}
 
   async createForm(createFormDto: CreateFormDto): Promise<Form> {
@@ -201,7 +203,19 @@ export class TasksService {
     submitFormDto: SubmitFormDto,
   ): Promise<FormResponse> {
     const form = await this.getForm(formId);
-    const user = await this.userService.findOneOrFail(userId);
+    const user = await this.userService.findOneOrFail(userId, {
+      optInMms: true,
+    });
+
+    const existingFormResponse = await this.formResponseRepository.findOne({
+      where: {
+        formId,
+        user: { id: userId },
+      },
+    });
+    if (existingFormResponse) {
+      throw new BadRequestException('Form already submitted');
+    }
 
     const validatorResults = await this.validateFormSubmission(
       form,
@@ -235,7 +249,7 @@ export class TasksService {
 
     if (phoneNumber) {
       this.logger.log(`Extracted phone number: ${phoneNumber}`);
-      const parsedNumber = parsePhoneNumberWithError(phoneNumber, 'US'); //TODO: check with non US numbers
+      const parsedNumber = parsePhoneNumberWithError(phoneNumber, 'US');
 
       if (parsedNumber.isValid()) {
         this.logger.log(`Valid phone number: ${parsedNumber.number}`);
@@ -243,14 +257,22 @@ export class TasksService {
         user.phoneNumber = parsedNumber.number;
         userNeedsUpdate = true;
 
-        if (!user.sentTextOptInMessageAt) {
-          await this.mmsService.sendMms(
+        if (!user.optInMms) {
+          const mms = await this.mmsService.sendMms(
             parsedNumber.number,
             welcomeMessage,
             [],
           );
-          user.sentTextOptInMessageAt = new Date(); //TODO: check if sent successfully?
-          userNeedsUpdate = true;
+          if (mms) {
+            user.optInMms = mms;
+            userNeedsUpdate = true;
+          } else {
+            if (process.env.NODE_ENV === 'production') {
+              await this.slackService.sendMessage(
+                `Failed to send opt-in MMS to ${parsedNumber.number}`,
+              );
+            }
+          }
         }
       } else {
         this.logger.warn(`Parsed an invalid phone number: ${phoneNumber}`);

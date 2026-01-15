@@ -109,7 +109,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-page">
       <div className="flex flex-col flex-grow items-center justify-center ">
-        <div className="w-full max-w-md px-8">
+        <div className="w-full max-w-md px-4 sm:px-8">
           {message && (
             <Card style={CardStyle.Alert} className="mb-6">
               <span className="block">{message}</span>
@@ -124,7 +124,7 @@ const LoginPage: React.FC = () => {
               <span className="text-red-700">{error}</span>
             </Card>
           )}
-          <Card className="p-8 z-10 relative" style={CardStyle.White}>
+          <Card className="p-6 sm:p-8 z-10 relative" style={CardStyle.White}>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <FormInput

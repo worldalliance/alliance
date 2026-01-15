@@ -97,6 +97,9 @@ function FormTextarea({ value, onChange, ...props }: FormTextareaProps) {
       onChange?.({
         target: {
           value: next,
+          name: ta.name,
+          id: ta.id,
+          type: ta.type,
         },
       } as React.ChangeEvent<HTMLTextAreaElement>);
     },

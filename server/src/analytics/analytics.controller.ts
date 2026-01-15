@@ -7,6 +7,7 @@ import { ActionStatsRecord } from './actionstats.entity';
 import { AdminGuard } from 'src/auth/guards/admin.guard';
 import { MemberCompletionRetentionCohortDto } from './member-completion-retention.dto';
 import { AggregateStatsDto } from './aggregatestats.dto';
+import { ContractStatusPointDto } from './contract-status-history.dto';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -65,5 +66,18 @@ export class AnalyticsController {
   @ApiOkResponse({ type: AggregateStatsDto })
   async getAggregateStats(): Promise<AggregateStatsDto> {
     return await this.analyticsService.getAggregateStats();
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('contract-status-history')
+  @ApiOkResponse({ type: [ContractStatusPointDto] })
+  async getContractStatusHistory(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ): Promise<ContractStatusPointDto[]> {
+    return await this.analyticsService.getContractStatusHistory(
+      startDate,
+      endDate,
+    );
   }
 }

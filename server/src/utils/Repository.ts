@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
+/* eslint-disable @typescript-eslint/no-unsafe-function-type */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import { Temporal } from '@js-temporal/polyfill';
 import {
   EntityManager,
   EntityTarget,
@@ -5,9 +9,9 @@ import {
   QueryRunner,
   Repository as TypeOrmRepository,
   FindManyOptions,
-  ObjectId,
   FindOneOptions,
   RemoveOptions,
+  ObjectId,
 } from 'typeorm';
 
 type Equal<A, B> =
@@ -15,89 +19,77 @@ type Equal<A, B> =
     ? true
     : false;
 type Assert<T extends true> = T;
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-type EmptyObject = {};
 
-/**
- * `Object` refers to a `Record`.
- *
- * @param T - The type that is potentially an `Object`
- * @returns `T` if `T` is an `Object`. Otherwise `never`.
- */
-type PlainObject<T> =
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [T] extends [Array<any>]
-    ? never
-    : // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-      [T] extends [Function]
-      ? never
-      : [T] extends [Buffer]
-        ? never
-        : [T] extends [Date]
-          ? never
-          : [T] extends [ObjectId]
-            ? never
-            : [T] extends [object]
-              ? T
-              : never;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-type _typecheck_PlainObject =
-  | Assert<Equal<PlainObject<number[]>, never>>
-  | Assert<Equal<PlainObject<{ param: string }[]>, never>>
-  | Assert<Equal<PlainObject<() => void>, never>>
-  | Assert<Equal<PlainObject<Buffer>, never>>
-  | Assert<Equal<PlainObject<Date>, never>>
-  | Assert<Equal<PlainObject<ObjectId>, never>>
-  | Assert<Equal<PlainObject<{ param: string }>, { param: string }>>
-  | Assert<Equal<PlainObject<string>, never>>
-  | Assert<Equal<PlainObject<number>, never>>;
+type NonRelationType =
+  | string
+  | number
+  | boolean
+  | Function
+  | Buffer
+  | Date
+  | ObjectId
+  | Temporal.PlainTime
+  | Temporal.TimeZoneLike
+  | Set<unknown>;
+type NonNullableIsRelation<T> = [T] extends [never]
+  ? false
+  : [T] extends [Promise<infer I>]
+    ? IsRelation<I>
+    : [T] extends [Array<infer I>]
+      ? IsRelation<I>
+      : [T] extends [NonRelationType]
+        ? false
+        : true;
+type IsRelation<T> = NonNullableIsRelation<NonNullable<T>>;
+type _typecheck_IsRelation =
+  | Assert<Equal<IsRelation<null>, false>>
+  | Assert<Equal<IsRelation<string>, false>>
+  | Assert<Equal<IsRelation<number>, false>>
+  | Assert<Equal<IsRelation<boolean>, false>>
+  | Assert<Equal<IsRelation<Function>, false>>
+  | Assert<Equal<IsRelation<Buffer>, false>>
+  | Assert<Equal<IsRelation<Date>, false>>
+  | Assert<Equal<IsRelation<Set<number>>, false>>
+  | Assert<Equal<IsRelation<ObjectId>, false>>
+  | Assert<Equal<IsRelation<number | null>, false>>
+  | Assert<Equal<IsRelation<number | undefined>, false>>
+  | Assert<Equal<IsRelation<number | null | undefined>, false>>
+  | Assert<Equal<IsRelation<{ param: string }>, true>>
+  | Assert<Equal<IsRelation<{ param: number } | null>, true>>
+  | Assert<Equal<IsRelation<{ param: number }[] | null>, true>>
+  | Assert<Equal<IsRelation<({ param: number } | null)[]>, true>>
+  | Assert<Equal<IsRelation<({ param: number } | null)[] | null>, true>>;
 
-/**
- * A type is "relationable" if it is an `Object`, a `Promise<Object>` or an
- * `Array<Object>` (or some combination of `Promise` and `Array`).
- *
- * @param T - The type to check for relationability.
- * @returns The innermost `Object` type or `never` if `T` is not relationable.
- */
-type Relationable<T> = [T] extends [Promise<infer I>]
-  ? Relationable<NonNullable<I>>
-  : [T] extends [Array<infer I>]
-    ? Relationable<NonNullable<I>>
-    : PlainObject<T>;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-type _typecheck_Relationable =
-  | Assert<Equal<Relationable<string>, never>>
-  | Assert<Equal<Relationable<number | undefined>, never>>
-  | Assert<Equal<Relationable<{ param: string } | undefined>, never>>
-  | Assert<Equal<Relationable<{ param: string }>, { param: string }>>
-  | Assert<Equal<Relationable<string[]>, never>>
-  | Assert<Equal<Relationable<{ param: string }[]>, { param: string }>>
-  | Assert<Equal<Relationable<Promise<{ param: string }>>, { param: string }>>;
-
-type StripItems<T> = {
-  [K in keyof T as [T[K]] extends [never]
-    ? never
-    : [T[K]] extends [undefined]
-      ? never
-      : K]: T[K];
-} & {};
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type $EagerEvaluation<T> =
+  T extends Array<infer I>
+    ? $EagerEvaluation<I>[]
+    : T extends Promise<infer I>
+      ? Promise<$EagerEvaluation<I>>
+      : IsRelation<T> extends true
+        ? {
+            [K in keyof T as [T[K]] extends [never]
+              ? never
+              : [T[K]] extends [undefined]
+                ? never
+                : K]: $EagerEvaluation<T[K]>;
+          }
+        : T;
 type _typecheck_StripItems =
-  | Assert<Equal<StripItems<{ param: string }>, { param: string }>>
+  | Assert<Equal<$EagerEvaluation<{ param: string }>, { param: string }>>
   | Assert<
       Equal<
-        StripItems<{ param?: { subparam: string } }>,
+        $EagerEvaluation<{ param?: { subparam: string } }>,
         { param?: { subparam: string } }
       >
     >
-  | Assert<Equal<StripItems<{ param: never }>, EmptyObject>>
-  | Assert<Equal<StripItems<{ param: undefined }>, EmptyObject>>
-  | Assert<Equal<StripItems<{ param?: never }>, EmptyObject>>
-  | Assert<Equal<StripItems<{ param?: undefined }>, EmptyObject>>
-  | Assert<Equal<StripItems<{ param?: null }>, { param?: null }>>
+  | Assert<Equal<$EagerEvaluation<{ param: never }>, {}>>
+  | Assert<Equal<$EagerEvaluation<{ param: undefined }>, {}>>
+  | Assert<Equal<$EagerEvaluation<{ param?: never }>, {}>>
+  | Assert<Equal<$EagerEvaluation<{ param?: undefined }>, {}>>
+  | Assert<Equal<$EagerEvaluation<{ param?: null }>, { param?: null }>>
   | Assert<
       Equal<
-        StripItems<{ param1?: string; param2: number; param3: never }>,
+        $EagerEvaluation<{ param1?: string; param2: number; param3: never }>,
         { param1?: string; param2: number }
       >
     >
@@ -110,53 +102,28 @@ type _typecheck_StripItems =
  * @returns `Default` if, `T` is `{}`. Otherwise `T`.
  */
 type NonEmpty<T, Default = never> = [keyof T] extends [never] ? Default : T;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type _typecheck_NonEmpty =
-  | Assert<Equal<NonEmpty<EmptyObject, { test: 123 }>, { test: 123 }>>
-  | Assert<Equal<NonEmpty<EmptyObject>, never>>
+  | Assert<Equal<NonEmpty<{}, { test: 123 }>, { test: 123 }>>
+  | Assert<Equal<NonEmpty<{}>, never>>
   | Assert<Equal<NonEmpty<{ param: string }>, { param: string }>>;
 
-type Prev = [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
-
-/**
- * The value of the {@link Relations} record.
- *
- * @param T - The type to convert to the `RelationsProperty`
- * @param Seen - The type to check for recursion
- * @returns `never` if `T` is not {@link Relationable}. Otherwise `true` (or a
- * recursive `Relations` type).
- */
-type RelationsProperty<T, D extends number = 9> = D extends 0
-  ? never
-  : [T] extends [never]
-    ? never
-    : [T] extends [Promise<infer I>]
-      ? RelationsProperty<NonNullable<I>, D> | true
-      : [T] extends [Array<infer I>]
-        ? RelationsProperty<NonNullable<I>, D> | true
-        : [T] extends [PlainObject<T>]
-          ? Relations<T, Prev[D]> | true
-          : never;
-
-/**
- * The `Relations` record.
- *
- * @param Entity - The type to convert to the `Relations` record
- */
-export type Relations<Entity, D extends number = 9> = NonEmpty<
-  StripItems<{
-    [K in keyof Entity]?: RelationsProperty<
-      Relationable<NonNullable<Entity[K]>>,
-      D
-    >;
-  }>,
-  true | undefined
->;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type RelationsProperty<Property> =
+  Property extends Promise<infer I>
+    ? RelationsProperty<NonNullable<I>>
+    : Property extends Array<infer I>
+      ? RelationsProperty<NonNullable<I>>
+      : IsRelation<Property> extends false
+        ? never
+        : true | NonEmpty<Relations<Property>>;
+export type Relations<Entity> = {
+  [P in keyof Entity as IsRelation<Entity[P]> extends true
+    ? P
+    : never]?: RelationsProperty<NonNullable<Entity[P]>>;
+};
 type _typecheck_Relations =
-  | Assert<Equal<Relations<{ param: string }>, true | undefined>>
-  | Assert<Equal<Relations<{ param: number[] }>, true | undefined>>
-  | Assert<Equal<Relations<{ param: Date }>, true | undefined>>
+  | Assert<Equal<Relations<{ param: string }>, {}>>
+  | Assert<Equal<Relations<{ param: number[] }>, {}>>
+  | Assert<Equal<Relations<{ param: Date }>, {}>>
   | Assert<
       Equal<
         Relations<{ param: { subparam: string } }>,
@@ -195,269 +162,295 @@ type _typecheck_Relations =
       >
     >;
 
-type StripRelationFields<T> = StripItems<{
-  [K in keyof T]: [Relationable<NonNullable<T[K]>>] extends [never]
-    ? NoRelations<T[K]>
-    : never;
-}>;
-export type NoRelations<T> = [T] extends [Promise<infer I>]
-  ? Promise<StripRelationFields<I>>
-  : [T] extends [Array<infer I>]
-    ? StripRelationFields<I>[]
-    : // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-      [T] extends [Function]
-      ? T
-      : [T] extends [Buffer]
-        ? T
-        : [T] extends [Date]
-          ? T
-          : [T] extends [ObjectId]
-            ? T
-            : [T] extends [object]
-              ? StripRelationFields<T>
-              : T;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type NoRelations<Entity> = {
+  [K in keyof Entity as IsRelation<Entity[K]> extends false
+    ? K
+    : never]: IsRelation<Entity[K]> extends false ? Entity[K] : never;
+};
 type _typecheck_NoRelations =
   | Assert<Equal<NoRelations<{ param: string }>, { param: string }>>
   | Assert<Equal<NoRelations<{ param?: number }>, { param?: number }>>
-  | Assert<Equal<NoRelations<{ param: null }>, EmptyObject>>
-  | Assert<Equal<NoRelations<{ param: { subparam: string } }>, EmptyObject>>
-  | Assert<Equal<NoRelations<{ param?: { subparam: string } }>, EmptyObject>>
-  | Assert<Equal<NoRelations<{ param: { subparam: string }[] }>, EmptyObject>>
-  | Assert<
-      Equal<NoRelations<{ param: { subparam: string }[] | null }>, EmptyObject>
-    >
+  | Assert<Equal<NoRelations<{ param: null }>, { param: null }>>
+  | Assert<Equal<NoRelations<{ param: string[] }>, { param: string[] }>>
   | Assert<
       Equal<
-        NoRelations<{ param: ({ subparam: string } | null)[] }>,
-        EmptyObject
+        NoRelations<{ param: (string | null)[] }>,
+        { param: (string | null)[] }
+      >
+    >
+  | Assert<Equal<NoRelations<{ param: { subparam: string } }>, {}>>
+  | Assert<Equal<NoRelations<{ param?: { subparam: string } }>, {}>>
+  | Assert<Equal<NoRelations<{ param: { subparam: string }[] }>, {}>>
+  | Assert<Equal<NoRelations<{ param: { subparam: string }[] | null }>, {}>>
+  | Assert<
+      Equal<
+        NoRelations<{
+          param: ({ subparam: string } | null)[];
+        }>,
+        {}
+      >
+    >
+  | Assert<Equal<NoRelations<{ param: Promise<{ subparam: string }> }>, {}>>
+  | Assert<
+      Equal<
+        NoRelations<{
+          param: Promise<{ subparam: string } | null>;
+        }>,
+        {}
       >
     >
   | Assert<
-      Equal<NoRelations<{ param: Promise<{ subparam: string }> }>, EmptyObject>
-    >
-  | Assert<
       Equal<
-        NoRelations<{ param: Promise<{ subparam: string } | null> }>,
-        EmptyObject
-      >
-    >
-  | Assert<
-      Equal<
-        NoRelations<{ param: Promise<{ subparam: string }> | null }>,
-        EmptyObject
+        NoRelations<{
+          param: Promise<{ subparam: string }> | null;
+        }>,
+        {}
       >
     >;
 
-export type WithRelations<Entity, R extends Relations<Entity>> = StripItems<
-  NoRelations<Entity> & {
-    [K in keyof Entity as K extends keyof R ? K : never]: K extends keyof R
-      ? [R[K]] extends [undefined]
-        ? never
-        : [K] extends [keyof Entity]
-          ? [R[K]] extends [true]
-            ?
-                | NoRelations<NonNullable<Entity[K]>>
-                | (Entity[K] & null)
-                | (Entity[K] & undefined)
-            : NonNullable<Entity[K]> extends Array<infer I>
-              ? R[K] extends Relations<I>
-                ?
-                    | WithRelations<I, R[K]>[]
-                    | (Entity[K] & null)
-                    | (Entity[K] & undefined)
-                : never
-              : NonNullable<Entity[K]> extends Promise<infer I>
-                ? R[K] extends Relations<I>
-                  ?
-                      | Promise<WithRelations<I, R[K]>>
-                      | (Entity[K] & null)
-                      | (Entity[K] & undefined)
-                  : never
-                : R[K] extends Relations<NonNullable<Entity[K]>>
-                  ?
-                      | WithRelations<NonNullable<Entity[K]>, R[K]>
-                      | (Entity[K] & null)
-                      | (Entity[K] & undefined)
-                  : never
-          : never
-      : never;
-  }
->;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type ResolveRelationProp<Prop, R> =
+  Prop extends Promise<infer I>
+    ? Promise<ResolveRelationProp<NonNullable<I>, R> | (I & (null | undefined))>
+    : Prop extends Array<infer I>
+      ? Array<ResolveRelationProp<NonNullable<I>, R> | (I & (null | undefined))>
+      : IsRelation<Prop> extends true
+        ? R extends true
+          ? NoRelations<Prop>
+          : R extends Relations<Prop>
+            ? WithRelations<Prop, R>
+            : never
+        : never;
+export type WithRelations<
+  Entity,
+  R extends Relations<Entity>,
+> = NoRelations<Entity> & {
+  [K in keyof R as R[K] extends undefined | never
+    ? never
+    : K]: K extends keyof Entity
+    ?
+        | ResolveRelationProp<NonNullable<Entity[K]>, R[K]>
+        | (Entity[K] & (null | undefined))
+    : never;
+};
 type _typecheck_WithRelations =
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param: string;
-          },
-          undefined
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param: string;
+            },
+            {}
+          >
         >,
         { param: string }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param?: number;
-          },
-          undefined
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param?: number;
+            },
+            {}
+          >
         >,
         { param?: number }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param: { subparam: string };
-          },
-          EmptyObject
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param: { subparam: string };
+            },
+            {}
+          >
         >,
-        EmptyObject
+        {}
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param: { subparam: string };
-          },
-          { param: undefined }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param: { subparam: string };
+            },
+            { param: undefined }
+          >
         >,
-        EmptyObject
+        {}
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param: { subparam: string };
-          },
-          { param: true }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param: { subparam: string };
+            },
+            { param: true }
+          >
         >,
         { param: { subparam: string } }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param?: { subparam: string };
-          },
-          { param: true }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param?: { subparam: string };
+            },
+            { param: true }
+          >
         >,
-        { param?: { subparam: string } }
+        { param: { subparam: string } | undefined }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param: { subparam: string }[];
-          },
-          { param: true }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param: { subparam: string }[];
+            },
+            { param: true }
+          >
         >,
         { param: { subparam: string }[] }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param?: { subparam: string }[];
-          },
-          { param: true }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param?: { subparam: string }[];
+            },
+            { param: true }
+          >
         >,
-        { param?: { subparam: string }[] }
+        { param: { subparam: string }[] | undefined }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param?: ({ subparam: string } | null)[];
-          },
-          { param: true }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param?: ({ subparam: string } | null)[];
+            },
+            { param: true }
+          >
         >,
-        { param?: ({ subparam: string } | null)[] }
+        { param: ({ subparam: string } | null)[] | undefined }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param: Promise<{ subparam: string }>;
-          },
-          { param: true }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param: Promise<{ subparam: string }>;
+            },
+            { param: true }
+          >
         >,
         { param: Promise<{ subparam: string }> }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param?: Promise<{ subparam: string }>;
-          },
-          { param: true }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param?: Promise<{ subparam: string }>;
+            },
+            { param: true }
+          >
         >,
-        { param?: Promise<{ subparam: string }> }
+        { param: Promise<{ subparam: string }> | undefined }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param?: Promise<{ subparam: string } | null>;
-          },
-          { param: true }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param?: Promise<{ subparam: string } | null>;
+            },
+            { param: true }
+          >
         >,
-        { param?: Promise<{ subparam: string } | null> }
+        { param: Promise<{ subparam: string } | null> | undefined }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param: { subparam: string; subparam2: { subsubparam: string } };
-          },
-          { param: true }
-        >,
-        { param: { subparam: string } }
-      >
-    >
-  | Assert<
-      Equal<
-        WithRelations<
-          {
-            param: { subparam: string; subparam2: { subsubparam: string } };
-          },
-          { param: { subparam2: undefined } }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param: {
+                subparam: string;
+                subparam2: { subsubparam: string };
+              };
+            },
+            { param: true }
+          >
         >,
         { param: { subparam: string } }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          {
-            param: { subparam: string; subparam2: { subsubparam: string } };
-          },
-          { param: { subparam2: true } }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param: {
+                subparam: string;
+                subparam2: { subsubparam: string };
+              };
+            },
+            { param: { subparam2: undefined } }
+          >
+        >,
+        { param: { subparam: string } }
+      >
+    >
+  | Assert<
+      Equal<
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param: {
+                subparam: string;
+                subparam2: { subsubparam: string };
+              };
+            },
+            { param: { subparam2: true } }
+          >
         >,
         { param: { subparam: string; subparam2: { subsubparam: string } } }
       >
     >
   | Assert<
       Equal<
-        WithRelations<
-          { param?: { subparam1: string; subparam2: { subsubparam: string } } },
-          { param: true }
+        $EagerEvaluation<
+          WithRelations<
+            {
+              param?: {
+                subparam1: string;
+                subparam2: { subsubparam: string };
+              };
+            },
+            { param: true }
+          >
         >,
-        { param?: { subparam1: string } }
+        { param: { subparam1: string } | undefined }
       >
     >;
 

@@ -1,18 +1,19 @@
 import { FilterMode } from "@alliance/shared/lib/actionUtils";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import { useMemo, useState } from "react";
-import { AppLayoutOutletContext } from "../../applayout";
-import { filterActions } from "@alliance/shared/lib/actionsListPage";
+import {
+  filterActions,
+  useActionsQuery,
+} from "@alliance/shared/lib/actionsListPage";
 import ActionItemCard from "../../components/ActionItemCard";
 import { useGrayBackground } from "../../components/HtmlBackgroundManager";
 import List from "@alliance/sharedweb/ui/List";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import { useOutletContext } from "react-router";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ActionDto } from "@alliance/shared/client";
 
 const ActionsListPage = () => {
-  const { actions, loading } = useOutletContext<AppLayoutOutletContext>();
+  const { data: actions, isPending } = useActionsQuery();
 
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
 
@@ -48,7 +49,7 @@ const ActionsListPage = () => {
         ))}
         {filteredActions.length === 0 && (
           <>
-            {loading ? (
+            {isPending ? (
               <div className="flex items-center justify-center py-5">
                 <Spinner size="large" />
               </div>

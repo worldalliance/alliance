@@ -56,12 +56,13 @@ export class ActionEventRecipientService {
   public computeShouldParticipate(params: {
     eventDate: Date;
     everyoneShouldComplete: boolean;
-    manualCohortUserIds?: number[];
+    manualCohortUserIds?: Set<number>;
     targetTagIds: Set<number>;
     useManualCohort: boolean;
     user: User;
     userDismissed: boolean;
     includeSuspended?: boolean;
+    includeDismissed?: boolean;
   }): boolean {
     const {
       eventDate,
@@ -72,13 +73,14 @@ export class ActionEventRecipientService {
       user,
       userDismissed,
       includeSuspended = false,
+      includeDismissed = false,
     } = params;
 
-    if (userDismissed) {
+    if (!includeDismissed && userDismissed) {
       return false;
     }
     if (useManualCohort) {
-      return manualCohortUserIds?.some((m) => m === user.id) ?? false;
+      return manualCohortUserIds?.has(user.id) ?? false;
     }
 
     if (!user.tags.some((tag) => targetTagIds.has(tag.id))) {
@@ -110,13 +112,15 @@ export class ActionEventRecipientService {
     return sortedEvents[currentEventIndex + 1] ?? null;
   }
 
-  public async computeBaseUsersForEvent(
-    eventStatus: ActionStatus,
-    action: Action,
-    eventId: number,
-    options?: { includeSuspended?: boolean },
-  ): Promise<User[]> {
-    const includeSuspended = options?.includeSuspended ?? false;
+  public async findBaseUsersForEvent(params: {
+    eventStatus: ActionStatus;
+    action: Action;
+    eventId: number;
+    includeSuspended?: boolean;
+    includeDismissed?: boolean;
+  }): Promise<User[]> {
+    const { eventStatus, action, eventId, includeSuspended, includeDismissed } =
+      params;
     const targetTagIds = new Set(action.participatingTags.map((tag) => tag.id));
     const events =
       action.events ??
@@ -142,16 +146,20 @@ export class ActionEventRecipientService {
         })
       ).map((a) => a.userId),
     );
+    const manualCohortUserIdsSet = action.manualCohortUserIds
+      ? new Set(action.manualCohortUserIds)
+      : undefined;
     const filterToEligible = (user: User) =>
       this.computeShouldParticipate({
         eventDate: event.date,
         everyoneShouldComplete: action.everyoneShouldComplete,
-        manualCohortUserIds: action.manualCohortUserIds,
+        manualCohortUserIds: manualCohortUserIdsSet,
         targetTagIds,
         useManualCohort: action.useManualCohort,
         user,
         userDismissed: usersDismissed.has(user.id),
         includeSuspended,
+        includeDismissed,
       }) &&
       !computeIsAwayInRange({
         user,
@@ -217,11 +225,14 @@ export class ActionEventRecipientService {
         })
       ).map((a) => a.userId),
     );
+    const manualCohortUserIdsSet = event.action.manualCohortUserIds
+      ? new Set(event.action.manualCohortUserIds)
+      : undefined;
     const filterToEligible = (user: User) =>
       this.computeShouldParticipate({
         eventDate: event.date,
         everyoneShouldComplete: event.action.everyoneShouldComplete,
-        manualCohortUserIds: event.action.manualCohortUserIds,
+        manualCohortUserIds: manualCohortUserIdsSet,
         targetTagIds,
         useManualCohort: event.action.useManualCohort,
         user: idToUser.get(user.id)!,
@@ -260,22 +271,22 @@ export class ActionEventRecipientService {
       .filter((user) => !userToHasCompletedAllActions.get(user.id));
   }
 
-  async getFilteredUsersForEvent(
+  async findFilteredUsersForEvent(
     event: Pick<ActionEvent, 'newStatus' | 'action' | 'date' | 'id'>,
     type: ActionEventNotifType,
     suite?: ActionSuite,
   ): Promise<User[]> {
-    const users = await this.computeBaseUsersForEvent(
-      event.newStatus,
-      event.action,
-      event.id,
-    );
+    const users = await this.findBaseUsersForEvent({
+      action: event.action,
+      eventId: event.id,
+      eventStatus: event.newStatus,
+    });
     return type === ActionEventNotifType.Announcement
       ? users
       : await this.filterForShouldRemind(users, event, suite);
   }
 
-  async getReminderGroupCohort(group: ReminderGroup): Promise<User[]> {
+  async findReminderGroupCohort(group: ReminderGroup): Promise<User[]> {
     let users: User[];
     switch (group.cohortType) {
       case ReminderCohortType.Custom:
@@ -285,7 +296,7 @@ export class ActionEventRecipientService {
         users = group.users;
         break;
       case ReminderCohortType.AllUncompleted:
-        users = await this.getFilteredUsersForEvent(
+        users = await this.findFilteredUsersForEvent(
           group.memberActionEvent,
           ActionEventNotifType.PersonalReminder,
           group.actionSuite,

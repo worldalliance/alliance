@@ -1,7 +1,7 @@
 // announcement
 
 export const defaultAnnouncementEmailSubject =
-  "new Alliance task#{s} need#{s|} completion within #{days}";
+  "#{n} new Alliance task#{s} need#{s|} completion within #{days}";
 
 export const defaultAnnouncementEmailContents = `Hi #{firstname},
 
@@ -17,6 +17,8 @@ export const defaultAnnouncementTextMessage = `#{n} new Alliance task#{s} need#{
       1. ACTION1
       2. ACTION2
       3. ...`;
+
+export const defaultAnnouncementPushMessage = `#{n} new Alliance task#{s} need#{s|} completion within #{days}`;
 
 // generic reminder
 

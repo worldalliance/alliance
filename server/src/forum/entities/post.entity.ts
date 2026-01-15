@@ -108,4 +108,27 @@ export class Post {
   @ApiProperty({ type: () => Number, isArray: true })
   @Allow()
   likesIds: number[];
+
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  qaMode: boolean;
+
+  @Column({ nullable: true })
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Allow()
+  expertLabel?: string;
+
+  @ManyToMany(() => User, { onDelete: 'CASCADE', eager: true })
+  @ApiProperty({ type: () => User, isArray: true })
+  @JoinTable()
+  @Allow()
+  @Type(() => User)
+  experts: User[];
+
+  @RelationId((post: Post) => post.experts)
+  @ApiProperty({ type: () => Number, isArray: true })
+  @Allow()
+  expertIds: number[];
 }

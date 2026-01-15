@@ -83,14 +83,14 @@ export class ActionEventReminderService {
     private readonly mailService: MailService,
   ) {}
 
-  async getPlansForGroup(
+  async findPlansForGroup(
     group: ReminderGroup,
     windowStart: Date,
     windowEnd: Date,
   ): Promise<NotificationPlan[]> {
     const plans: NotificationPlan[] = [];
 
-    const users = await this.recipientService.getReminderGroupCohort(group);
+    const users = await this.recipientService.findReminderGroupCohort(group);
     for (const user of users) {
       const reminderSendTime = getGroupSendTimeForUser(user, group);
 
@@ -166,7 +166,7 @@ export class ActionEventReminderService {
     );
 
     for (const group of groups) {
-      const groupPlans = await this.getPlansForGroup(
+      const groupPlans = await this.findPlansForGroup(
         group,
         windowStart,
         windowEnd,
@@ -298,7 +298,7 @@ export class ActionEventReminderService {
     return zoned;
   }
 
-  async getNotificationPlansForGroup(
+  async findNotificationPlansForGroup(
     groupId: number,
   ): Promise<PreviewNotificationPlan[]> {
     const group = await this.reminderGroupRepository.findOneOrFail({
@@ -316,7 +316,7 @@ export class ActionEventReminderService {
       },
     });
 
-    const plans = await this.getPlansForGroup(
+    const plans = await this.findPlansForGroup(
       group,
       new Date(Date.now() - NOTIFICATION_LOOKBACK_WINDOW_MS),
       new Date(Date.now() + 28 * 24 * 60 * 60 * 1000),

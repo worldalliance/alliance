@@ -61,6 +61,7 @@ interface FormBuilderProps {
   initialSchema?: FormSchema;
   formId?: number;
   setFormId: (formId: number) => void;
+  actionName?: string;
 }
 
 const ensureOutputViews = (schema: FormSchema): FormSchema => ({
@@ -207,12 +208,13 @@ export function FormBuilder({
   initialSchema,
   formId,
   setFormId,
+  actionName,
 }: FormBuilderProps) {
   const buildInitialSchema = () =>
     initialSchema
       ? ensureOutputViews(initialSchema)
       : {
-          title: "Untitled Form",
+          title: !!actionName ? actionName + " form" : "Untitled Form",
           description: "",
           pages: [
             {

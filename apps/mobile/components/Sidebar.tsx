@@ -35,7 +35,6 @@ import { colors } from "../lib/style/colors";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SIDEBAR_WIDTH = SCREEN_WIDTH * 0.8;
-const EDGE_WIDTH = 3;
 
 type NavItem = {
   name: string;
@@ -91,7 +90,7 @@ const navSections: NavSection[] = [
       { name: "Activity", href: "/feed", icon: Globe, matchPaths: ["/feed"] },
       {
         name: "Forum",
-        href: "/forum/forum",
+        href: "/forum",
         icon: MessagesSquare,
         matchPaths: ["/forum"],
       },
@@ -192,12 +191,21 @@ export default function Sidebar({
       );
       translateX.value = nextX;
     })
-    .onEnd(() => {
-      const shouldOpen = translateX.value > -SIDEBAR_WIDTH * 0.5;
-      translateX.value = withTiming(shouldOpen ? 0 : -SIDEBAR_WIDTH, {
-        duration: 150,
+    .onEnd((event) => {
+      const flickOpen = event.velocityX > 800;
+      const flickClose = event.velocityX < -800;
+
+      const shouldOpen = flickOpen
+        ? true
+        : flickClose
+        ? false
+        : translateX.value > -SIDEBAR_WIDTH * 0.8;
+
+      const dest = shouldOpen ? 0 : -SIDEBAR_WIDTH;
+
+      translateX.value = withTiming(dest, { duration: 150 }, (finished) => {
+        if (finished) runOnJS(handleGestureEnd)(shouldOpen);
       });
-      runOnJS(handleGestureEnd)(shouldOpen);
     });
 
   // Swipe gesture to close
@@ -215,12 +223,21 @@ export default function Sidebar({
       );
       translateX.value = nextX;
     })
-    .onEnd(() => {
-      const shouldOpen = translateX.value > -SIDEBAR_WIDTH * 0.7;
-      translateX.value = withTiming(shouldOpen ? 0 : -SIDEBAR_WIDTH, {
-        duration: 150,
+    .onEnd((event) => {
+      const flickOpen = event.velocityX > 800;
+      const flickClose = event.velocityX < -800;
+
+      const shouldOpen = flickOpen
+        ? true
+        : flickClose
+        ? false
+        : translateX.value > -SIDEBAR_WIDTH * 0.7;
+
+      const dest = shouldOpen ? 0 : -SIDEBAR_WIDTH;
+
+      translateX.value = withTiming(dest, { duration: 150 }, (finished) => {
+        if (finished) runOnJS(handleGestureEnd)(shouldOpen);
       });
-      runOnJS(handleGestureEnd)(shouldOpen);
     });
 
   const sidebarStyle = useAnimatedStyle(() => ({

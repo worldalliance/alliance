@@ -10,7 +10,10 @@ import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
 import posthog from "posthog-js";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { ActionWithAwayStatus, TaskAwayStatus } from "@alliance/shared/lib/actionUtils";
+import {
+  ActionWithAwayStatus,
+  TaskAwayStatus,
+} from "@alliance/shared/lib/actionUtils";
 
 const InvitePage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -67,6 +70,8 @@ const InvitePage: React.FC = () => {
     image: "",
     status: "member_action",
     timeEstimate: 5,
+    visibilityMode: "public",
+    optional: false,
     usersJoined: 100,
     activities: [],
     shortDescription:
@@ -191,6 +196,7 @@ const InvitePage: React.FC = () => {
                   action={exampleTask}
                   userRelation={"joined"}
                   friendActivities={[]}
+                  handleDismiss={() => {}}
                   onUpdateActionState={() => {}}
                   showDetails={false}
                   className="pointer-events-none transform-[scale(0.9)] bg-white"

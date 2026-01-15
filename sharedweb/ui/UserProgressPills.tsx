@@ -55,6 +55,12 @@ export const PILL_STATUS_DATA = Object.freeze({
     pillSubtitleText: "Won't complete",
     pillTextStyle: "text-yellow-500",
   }) satisfies PillStatusData,
+  optional_task: Object.freeze({
+    pillLabel: "Optional",
+    pillStyle: "bg-blue-300",
+    pillSubtitleText: "Optional",
+    pillTextStyle: "text-blue-500",
+  }) satisfies PillStatusData,
 }) satisfies Record<UserActionRelationPillStatus, PillStatusData>;
 
 export function useMaxActionsPerWeek(params: {

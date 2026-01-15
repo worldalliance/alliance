@@ -4,7 +4,7 @@ import { AppLayoutOutletContext } from "./applayout";
 import NavbarVertical from "./components/NavbarVertical";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { NotificationsProvider } from "@alliance/shared/lib/useNotifications";
-import { todoActionIsMandatory } from "@alliance/shared/lib/actionUtils";
+import { showActionInSidebarList } from "@alliance/shared/lib/actionUtils";
 
 function Navbar() {
   const context = useOutletContext<AppLayoutOutletContext>();
@@ -12,7 +12,7 @@ function Navbar() {
   const nTasks = useMemo(
     () =>
       context.actions
-        ? context.actions.filter(todoActionIsMandatory).length
+        ? context.actions.filter(showActionInSidebarList).length
         : 0,
     [context.actions]
   );

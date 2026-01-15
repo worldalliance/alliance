@@ -25,6 +25,7 @@ import { EditableContent } from './entities/editablecontent.entity';
 import { Post } from './entities/post.entity';
 import { Action } from 'src/actions/entities/action.entity';
 import { LikeNotificationService } from 'src/notifs/like-notification.service';
+import { SlackService } from 'src/slack/slack.service';
 
 @Injectable()
 export class ForumService {
@@ -44,6 +45,7 @@ export class ForumService {
     @InjectRepository(EditableContent)
     private editableContentRepository: Repository<EditableContent>,
     private readonly likeNotificationService: LikeNotificationService,
+    private readonly slackService: SlackService,
   ) {}
 
   async createPost(
@@ -410,6 +412,16 @@ export class ForumService {
 
     await this.commentRepository.save(reply);
 
+    // TODO: real notif system
+    if (
+      createCommentDto.parentObjectType === CommentParentObject.Action &&
+      process.env.NODE_ENV === 'production'
+    ) {
+      this.slackService.sendMessage(
+        `New comment on action ${createCommentDto.parentObjectId} <@U0A89S0NM41> <@U08P0TJ283T> - <${process.env.APP_URL}/actions/${createCommentDto.parentObjectId}?replyId=${reply.id}|Open action>`,
+      );
+    }
+
     const replyWithAuthor = await this.commentRepository.findOneOrFail({
       where: { id: reply.id },
       relations: { author: true, editableContent: true },
@@ -745,6 +757,43 @@ export class ForumService {
   async findPostsByTitle(title: string): Promise<Post[]> {
     return this.postRepository.find({
       where: { title: ILike(`%${title}%`), deleted: false },
+    });
+  }
+
+  async updatePostExperts(
+    postId: number,
+    expertIds: number[],
+    qaMode: boolean,
+    expertLabel?: string,
+  ): Promise<Post> {
+    const post = await this.postRepository.findOne({
+      where: { id: postId },
+      relations: { author: true, action: true, editableContent: true },
+    });
+
+    if (!post) {
+      throw new NotFoundException(`Post with ID "${postId}" not found`);
+    }
+
+    const experts =
+      expertIds.length > 0
+        ? await this.userRepository.find({
+            where: { id: In(expertIds) },
+          })
+        : [];
+
+    post.experts = experts;
+    post.qaMode = qaMode;
+    post.expertLabel = expertLabel;
+
+    return this.postRepository.save(post);
+  }
+
+  async getPostsForAdmin(): Promise<Post[]> {
+    return this.postRepository.find({
+      where: { deleted: false },
+      relations: { author: true, experts: true },
+      order: { createdAt: 'DESC' },
     });
   }
 }

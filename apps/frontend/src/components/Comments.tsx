@@ -20,6 +20,8 @@ import { useAuth } from "../lib/AuthContext";
 import ReplyComponent from "./forum/ReplyComponent";
 import ReplyForm from "./forum/ReplyForm";
 
+type CommentFilter = "all" | "answered" | "unanswered";
+
 export interface CommentsProps {
   objectId: number;
   type: CommentParentObject;
@@ -28,7 +30,23 @@ export interface CommentsProps {
   autofocus?: boolean;
   showForm?: boolean;
   initialComments?: CommentDto[]; // e.g. preloaded from activity fetch
+  expertIds?: number[]; // for Q&A mode expert badges
+  expertLabel?: string; // custom label for expert badge
+  commentFilter?: CommentFilter; // for Q&A mode filtering
 }
+
+const hasExpertReply = (
+  comment: CommentDto,
+  expertIds: number[]
+): boolean => {
+  if (expertIds.includes(comment.author.id)) {
+    return true;
+  }
+  if (comment.children) {
+    return comment.children.some((child) => hasExpertReply(child, expertIds));
+  }
+  return false;
+};
 
 const Comments = ({
   objectId,
@@ -38,6 +56,9 @@ const Comments = ({
   autofocus,
   showForm = true,
   initialComments,
+  expertIds = [],
+  expertLabel,
+  commentFilter = "all",
 }: CommentsProps) => {
   const [editableContent, setEditableContent] =
     useState<CreateEditableContentDto>({ body: "", attachments: [] });
@@ -291,6 +312,11 @@ const Comments = ({
         <div className={"space-y-2 mt-3"}>
           {comments
             .filter((comment) => !comment.deleted || comment.children?.length)
+            .filter((comment) => {
+              if (commentFilter === "all") return true;
+              const isAnswered = hasExpertReply(comment, expertIds);
+              return commentFilter === "answered" ? isAnswered : !isAnswered;
+            })
             .sort((a, b) => {
               const dateA = new Date(a.createdAt).getTime();
               const dateB = new Date(b.createdAt).getTime();
@@ -312,6 +338,8 @@ const Comments = ({
                 onUpdateReply={handleUpdateReply}
                 onLikeReply={handleLikeReply}
                 homeStyle={homeStyle}
+                expertIds={expertIds}
+                expertLabel={expertLabel}
               />
             ))}
         </div>

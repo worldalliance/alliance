@@ -24,7 +24,7 @@ import {
   TASK_DISMISS_MESSAGE_WILL_BE_AWAY,
 } from "@alliance/shared/lib/copy";
 import {
-  todoActionIsMandatory,
+  showActionInSidebarList,
   deadlineHasPassed,
   TaskAwayStatus,
 } from "@alliance/shared/lib/actionUtils";
@@ -115,12 +115,10 @@ const HomePage = () => {
             [TaskAwayStatus.AWAY_LATER]: TASK_DISMISS_MESSAGE_WILL_BE_AWAY,
             [TaskAwayStatus.AWAY_PREVIOUSLY]: TASK_DISMISS_MESSAGE_WAS_AWAY,
           }[currentTask?.awayStatus],
-          handleDismiss: () => handleDismissAction(currentTask.id),
         }
       : deadlineHasPassed(currentTask, new Date())
       ? {
           message: TASK_DISMISS_MESSAGE_AFTER_DEADLINE,
-          handleDismiss: () => handleDismissAction(currentTask.id),
         }
       : undefined;
 
@@ -134,10 +132,8 @@ const HomePage = () => {
           <LargeActionCard
             action={currentTask}
             dismissProps={dismissProps}
+            handleDismiss={() => handleDismissAction(currentTask.id)}
             userRelation={currentTask.userRelation as "joined" | "none"}
-            friendActivities={friendActivities.filter(
-              (activity) => activity.actionId === currentTask.id
-            )}
             onUpdateActionState={() => navigate(href("/tasks"))}
           />
         ) : (
@@ -168,29 +164,28 @@ const HomePage = () => {
     handleDismissAction,
   ]);
 
-  const numTodo = todoActions.filter(todoActionIsMandatory).length;
+  const numTodo = todoActions.filter(showActionInSidebarList).length;
   const sidebarContent = useMemo(() => {
-    const currentWeekMandatoryTodoActions = currentWeekTodoActions.filter(
-      todoActionIsMandatory
+    const currentWeekSidebarActions = currentWeekTodoActions.filter(
+      showActionInSidebarList
     );
 
     return (
       <div className="px-4 pt-12 flex flex-col *:py-6 *:px-2 divide-y divide-zinc-200">
-        {(currentWeekMandatoryTodoActions.length > 0 ||
+        {(currentWeekSidebarActions.length > 0 ||
           completedActions.length > 0) && (
           <div className="flex flex-col gap-y-2">
             <p className="font-semibold text-base font-serif text-black">
               Progress
             </p>
-            {currentWeekMandatoryTodoActions.length + newActions.length > 0 && (
+            {currentWeekSidebarActions.length + newActions.length > 0 && (
               <p className="text-zinc-600 mb-2">
                 <span className="text-green font-medium mr-0.5">
-                  {currentWeekMandatoryTodoActions.length} task
-                  {currentWeekMandatoryTodoActions.length !== 1
-                    ? "s"
-                    : ""} left{" "}
+                  {currentWeekSidebarActions.length} task
+                  {currentWeekSidebarActions.length !== 1 ? "s" : ""} left{" "}
                 </span>
                 {numTodo > 0 &&
+                  remainingTasksEstimatedTimeCurrentWeek > 0 &&
                   `for a total of ${remainingTasksEstimatedTimeCurrentWeek} minutes`}
               </p>
             )}
@@ -202,6 +197,7 @@ const HomePage = () => {
                     to={href("/actions/:id", { id: action.id.toString() })}
                     className="text-zinc-400 line-through"
                   >
+                    {action.optional && "(Optional) "}
                     {action.name}
                   </Link>
                 </div>
@@ -213,13 +209,14 @@ const HomePage = () => {
                     to={href("/actions/:id", { id: action.id.toString() })}
                     className="text-zinc-600"
                   >
+                    {action.optional && "(Optional) "}
                     {action.name}
                   </Link>
                 </div>
               ))}
               {nextWeekTodoActions.length > 0 && (
                 <>
-                  <p className="text-zinc-500 mt-3 font-medium">Next week</p>
+                  <p className="text-zinc-500 mt-3 font-medium">Upcoming</p>
                   {nextWeekTodoActions.map((action) => (
                     <div key={action.id} className="text-zinc-600 flex gap-x-2">
                       <div className="!w-4 !h-4 shrink-0 border-2 border-zinc-200 rounded-full mt-[4px]"></div>

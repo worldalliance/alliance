@@ -95,8 +95,13 @@ describe('Tasks (e2e)', () => {
         priority: 0,
         visibilityMode: VisibilityMode.Public,
         preventCompletion: false,
+        optional: false,
         useManualCohort: false,
         publicOnly: false,
+        latestMemberActionEvent: {
+          event: null,
+          deadline: null,
+        }
       } satisfies CreateActionDto),
     );
 

@@ -4,13 +4,22 @@ import {
   analyticsRecalculateActionStats,
   analyticsGetMemberCompletionRetention,
   analyticsGetAggregateStats,
+  analyticsGetContractStatusHistory,
 } from "@alliance/shared/client";
+import {
+  TimeSeriesChart,
+  formatDateAsLocal,
+  fullDateFormatter,
+  type ChartSeries,
+  type DataPoint,
+  type MultiLineSeries,
+} from "../components/TimeSeriesChart";
 import {
   DailyStatsRecord,
   ActionStatsRecord,
   MemberCompletionRetentionCohortDto,
-  MemberCompletionRetentionPointDto,
   AggregateStatsDto,
+  ContractStatusPointDto,
 } from "@alliance/shared/client/types.gen";
 import chroma from "chroma-js";
 import * as d3 from "d3";
@@ -75,19 +84,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
 });
 
-const fullDateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "long",
-  day: "numeric",
-  year: "numeric",
-});
-
-const formatDateAsLocal = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
 const getDefaultRange = () => {
   const end = new Date();
   const start = new Date();
@@ -116,23 +112,14 @@ const StatsPage: React.FC = () => {
   const [actionStatsLoading, setActionStatsLoading] = useState<boolean>(false);
   const [retentionLoading, setRetentionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [hoveredDay, setHoveredDay] = useState<ParsedDailyStats | null>(null);
-  const [hoveredActionsDay, setHoveredActionsDay] =
-    useState<ParsedDailyStats | null>(null);
   const [hoveredActionBar, setHoveredActionBar] =
     useState<ActionStatsRecord | null>(null);
   const [dailyStatsTableOpen, setDailyStatsTableOpen] = useState(false);
   const [actionStatsTableOpen, setActionStatsTableOpen] = useState(false);
-  const [hoveredCompletionPoint, setHoveredCompletionPoint] = useState<{
-    date: Date;
-    avgRate: number;
-    actionCount: number;
-  } | null>(null);
-  const [hoveredRetentionPoint, setHoveredRetentionPoint] = useState<{
-    cohort: MemberCompletionRetentionCohortDto;
-    point: MemberCompletionRetentionPointDto;
-    color: string;
-  } | null>(null);
+  const [weekRange, setWeekRange] = useState({ min: 0, max: 20 });
+  const [hoveredContractPoint, setHoveredContractPoint] = useState<
+    (ContractStatusPointDto & { parsedDate: Date }) | null
+  >(null);
   const [completionRateRange, setCompletionRateRange] = useState(() => {
     const end = new Date();
     const start = new Date();
@@ -143,10 +130,22 @@ const StatsPage: React.FC = () => {
     };
   });
   const [assumedHourlyRate, setAssumedHourlyRate] = useState<number>(15);
+  const [contractStatusHistory, setContractStatusHistory] = useState<
+    ContractStatusPointDto[]
+  >([]);
+  const [contractStatusLoading, setContractStatusLoading] =
+    useState<boolean>(false);
+  const [contractStatusRange, setContractStatusRange] = useState(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setMonth(start.getMonth() - 6);
+    return {
+      start: formatDateAsLocal(start),
+      end: formatDateAsLocal(end),
+    };
+  });
 
-  const svgRef = useRef<SVGSVGElement | null>(null);
-  const completionRateSvgRef = useRef<SVGSVGElement | null>(null);
-  const actionsSvgRef = useRef<SVGSVGElement | null>(null);
+  const contractStatusSvgRef = useRef<SVGSVGElement | null>(null);
 
   const loadStats = useCallback(async (startDate: string, endDate: string) => {
     setLoading(true);
@@ -211,7 +210,6 @@ const StatsPage: React.FC = () => {
     setRetentionLoading(true);
     try {
       const response = await analyticsGetMemberCompletionRetention();
-      console.log("response", response);
       setRetentionCohorts(response.data ?? []);
     } catch (err) {
       console.error("Failed to load retention cohorts", err);
@@ -256,6 +254,27 @@ const StatsPage: React.FC = () => {
     void loadAggregateStats();
   }, [loadAggregateStats]);
 
+  const loadContractStatusHistory = useCallback(async () => {
+    setContractStatusLoading(true);
+    try {
+      const response = await analyticsGetContractStatusHistory({
+        query: {
+          startDate: contractStatusRange.start,
+          endDate: contractStatusRange.end,
+        },
+      });
+      setContractStatusHistory(response.data ?? []);
+    } catch (err) {
+      console.error("Failed to load contract status history", err);
+    } finally {
+      setContractStatusLoading(false);
+    }
+  }, [contractStatusRange]);
+
+  useEffect(() => {
+    void loadContractStatusHistory();
+  }, [loadContractStatusHistory]);
+
   const parsedStats = useMemo<ParsedDailyStats[]>(() => {
     return stats
       .map((record) => ({
@@ -265,123 +284,49 @@ const StatsPage: React.FC = () => {
       .filter((record) => !Number.isNaN(record.parsedDate.getTime()));
   }, [stats]);
 
-  useEffect(() => {
-    if (parsedStats.length === 0) {
-      setHoveredDay(null);
-      setHoveredActionsDay(null);
-      return;
-    }
-    setHoveredDay(parsedStats[parsedStats.length - 1]);
-    setHoveredActionsDay(parsedStats[parsedStats.length - 1]);
+  // Convert parsedStats to DataPoint format for TimeSeriesChart
+  const dailyStatsChartData: DataPoint[] = useMemo(() => {
+    return parsedStats.map((d) => ({
+      date: d.parsedDate,
+      signedMembers: d.signedMembers,
+      invitesAccepted: d.invitesAccepted,
+      invitesCreated: d.invitesCreated,
+      suspendedMembers: d.suspendedMembers,
+      actionsCompleted: d.actionsCompleted,
+      anonFormSubmissions: d.anonFormSubmissions,
+    }));
   }, [parsedStats]);
 
-  const createChartGeometry = useCallback(
-    (metrics: MetricDefinition[], includeArea: boolean = false) => {
-      if (parsedStats.length === 0) {
-        return null;
-      }
-
-      const width = 1000;
-      const height = 420;
-      const margin = { top: 28, right: 32, bottom: 64, left: 72 };
-
-      const dateExtent = d3.extent(parsedStats, (d) => d.parsedDate);
-      if (!dateExtent[0] || !dateExtent[1]) {
-        return null;
-      }
-
-      const xScale = d3
-        .scaleTime()
-        .domain(dateExtent)
-        .range([margin.left, width - margin.right]);
-
-      const maxMetricValue =
-        d3.max(metrics, (metric) =>
-          d3.max(parsedStats, (d) => d[metric.key] ?? 0)
-        ) ?? 0;
-
-      const yScale = d3
-        .scaleLinear()
-        .domain([0, Math.max(maxMetricValue * 1.1, 10)])
-        .nice()
-        .range([height - margin.bottom, margin.top]);
-
-      const line = d3
-        .line<{ parsedDate: Date; value: number }>()
-        .x((d) => xScale(d.parsedDate))
-        .y((d) => yScale(d.value))
-        .curve(d3.curveMonotoneX);
-
-      const lines = metrics.map((metric) => {
-        const values = parsedStats.map((record) => ({
-          parsedDate: record.parsedDate,
-          value: record[metric.key] ?? 0,
-        }));
-
-        return {
-          metric,
-          path: line(values) ?? "",
-        };
-      });
-
-      const xTicks = xScale.ticks(Math.min(8, parsedStats.length));
-      const yTicks = yScale.ticks(6);
-
-      const bisectDate = d3.bisector<ParsedDailyStats, Date>(
-        (d) => d.parsedDate
-      ).center;
-
-      let areaPath = "";
-      if (includeArea && metrics.length > 0) {
-        const area = d3
-          .area<ParsedDailyStats>()
-          .x((d) => xScale(d.parsedDate))
-          .y0(height - margin.bottom)
-          .y1((d) => yScale(d[metrics[0].key] ?? 0))
-          .curve(d3.curveMonotoneX);
-        areaPath = area(parsedStats) ?? "";
-      }
-
-      return {
-        width,
-        height,
-        margin,
-        xScale,
-        yScale,
-        xTicks,
-        yTicks,
-        lines,
-        areaPath,
-        bisectDate,
-        metrics,
-      };
-    },
-    [parsedStats]
-  );
-
-  const mainMetrics = useMemo(
+  // Series definitions for main chart (members, invites)
+  const mainChartSeries: ChartSeries[] = useMemo(
     () =>
-      metricDefinitions.filter(
-        (m) => m.key !== "actionsCompleted" && m.key !== "anonFormSubmissions"
-      ),
-    []
-  );
-  const actionsMetric = useMemo(
-    () =>
-      metricDefinitions.filter(
-        (m) => m.key === "actionsCompleted" || m.key === "anonFormSubmissions"
-      ),
+      metricDefinitions
+        .filter(
+          (m) => m.key !== "actionsCompleted" && m.key !== "anonFormSubmissions"
+        )
+        .map((m) => ({
+          key: m.key,
+          label: m.label,
+          color: m.color,
+          getValue: (d: DataPoint) => (d[m.key] as number) ?? 0,
+        })),
     []
   );
 
-  const mainChartGeometry = useMemo(
-    () => createChartGeometry(mainMetrics, false),
-    [createChartGeometry, mainMetrics]
-  );
-
-  const actionsChartGeometry = useMemo(
-    () => createChartGeometry(actionsMetric, true),
-    [createChartGeometry, actionsMetric]
+  // Series definitions for actions chart
+  const actionsChartSeries: ChartSeries[] = useMemo(
+    () =>
+      metricDefinitions
+        .filter(
+          (m) => m.key === "actionsCompleted" || m.key === "anonFormSubmissions"
+        )
+        .map((m) => ({
+          key: m.key,
+          label: m.label,
+          color: m.color,
+          getValue: (d: DataPoint) => (d[m.key] as number) ?? 0,
+        })),
+    []
   );
 
   const chartActionStats = useMemo(
@@ -468,58 +413,25 @@ const StatsPage: React.FC = () => {
     return dataPoints;
   }, [actionStats, completionRateRange]);
 
-  const completionRateChartGeometry = useMemo(() => {
-    if (cumulativeCompletionData.length === 0) return null;
+  const completionRateChartData: DataPoint[] = useMemo(() => {
+    return cumulativeCompletionData.map((d) => ({
+      date: d.date,
+      avgRate: d.avgRate,
+      actionCount: d.actionCount,
+    }));
+  }, [cumulativeCompletionData]);
 
-    const width = 1000;
-    const height = 350;
-    const margin = { top: 28, right: 32, bottom: 64, left: 72 };
-
-    const rangeStart = new Date(completionRateRange.start);
-    const rangeEnd = new Date(completionRateRange.end);
-
-    const xScale = d3
-      .scaleTime()
-      .domain([rangeStart, rangeEnd])
-      .range([margin.left, width - margin.right]);
-
-    const yScale = d3
-      .scaleLinear()
-      .domain([0, 1])
-      .range([height - margin.bottom, margin.top]);
-
-    const line = d3
-      .line<{ date: Date; avgRate: number }>()
-      .x((d) => xScale(d.date))
-      .y((d) => yScale(d.avgRate))
-      .curve(d3.curveMonotoneX);
-
-    const linePath = line(cumulativeCompletionData) ?? "";
-
-    const area = d3
-      .area<{ date: Date; avgRate: number }>()
-      .x((d) => xScale(d.date))
-      .y0(height - margin.bottom)
-      .y1((d) => yScale(d.avgRate))
-      .curve(d3.curveMonotoneX);
-
-    const areaPath = area(cumulativeCompletionData) ?? "";
-
-    const xTicks = xScale.ticks(8);
-    const yTicks = [0, 0.25, 0.5, 0.75, 1];
-
-    return {
-      width,
-      height,
-      margin,
-      xScale,
-      yScale,
-      linePath,
-      areaPath,
-      xTicks,
-      yTicks,
-    };
-  }, [cumulativeCompletionData, completionRateRange]);
+  const completionRateSeries: ChartSeries[] = useMemo(
+    () => [
+      {
+        key: "avgRate",
+        label: "Avg Rate",
+        color: "#16a34a",
+        getValue: (d) => (d.avgRate as number) ?? 0,
+      },
+    ],
+    []
+  );
 
   const sortedRetentionCohorts = useMemo(() => {
     return retentionCohorts
@@ -539,34 +451,10 @@ const StatsPage: React.FC = () => {
     );
   }, [sortedRetentionCohorts]);
 
-  const retentionChartGeometry = useMemo(() => {
-    if (filteredRetentionCohorts.length === 0) return null;
-
-    const width = 1000;
-    const height = 360;
-    const margin = { top: 28, right: 32, bottom: 64, left: 72 };
-
-    const maxWeekIndex =
-      d3.max(filteredRetentionCohorts, (cohort) =>
-        d3.max(cohort.points, (point) => point.weekIndex)
-      ) ?? 0;
-    const maxWeek = Math.max(maxWeekIndex, 1);
-
-    const xScale = d3
-      .scaleLinear()
-      .domain([0, maxWeek])
-      .range([margin.left, width - margin.right]);
-
-    const yScale = d3
-      .scaleLinear()
-      .domain([0, 1])
-      .range([height - margin.bottom, margin.top]);
-
-    const line = d3
-      .line<MemberCompletionRetentionPointDto>()
-      .x((d) => xScale(d.weekIndex))
-      .y((d) => yScale(d.completionRate))
-      .curve(d3.curveMonotoneX);
+  const retentionChartData = useMemo(() => {
+    if (filteredRetentionCohorts.length === 0) {
+      return { multiLineData: [], legendGradient: "", cohortMap: new Map() };
+    }
 
     const cohortDates = filteredRetentionCohorts.map((cohort) =>
       new Date(cohort.cohortStart).getTime()
@@ -585,14 +473,87 @@ const StatsPage: React.FC = () => {
     });
     const legendGradient = `linear-gradient(90deg, ${legendStops.join(", ")})`;
 
-    const lines = filteredRetentionCohorts.map((cohort) => ({
-      cohort,
-      color: colorScale(new Date(cohort.cohortStart).getTime()).hex(),
-      path: line(cohort.points) ?? "",
-    }));
+    const cohortMap = new Map<string, MemberCompletionRetentionCohortDto>();
+    const multiLineData: MultiLineSeries[] = filteredRetentionCohorts.map(
+      (cohort) => {
+        cohortMap.set(cohort.cohortStart, cohort);
+        return {
+          key: cohort.cohortStart,
+          label: `Week of ${fullDateFormatter.format(
+            new Date(cohort.cohortStart)
+          )}`,
+          color: colorScale(new Date(cohort.cohortStart).getTime()).hex(),
+          data: cohort.points.map((point) => ({
+            x: point.weekIndex,
+            weekIndex: point.weekIndex,
+            completionRate: point.completionRate,
+            completedCount: point.completedCount,
+            joinedCount: point.joinedCount,
+            cohortStart: cohort.cohortStart,
+            cohortSize: cohort.cohortSize,
+          })),
+        };
+      }
+    );
 
-    const xTicks = xScale.ticks(Math.min(8, maxWeek + 1));
-    const yTicks = [0, 0.25, 0.5, 0.75, 1];
+    return { multiLineData, legendGradient, cohortMap };
+  }, [filteredRetentionCohorts]);
+
+  const parsedContractStatusHistory = useMemo(() => {
+    return contractStatusHistory.map((point) => ({
+      ...point,
+      parsedDate: new Date(point.date),
+    }));
+  }, [contractStatusHistory]);
+
+  const contractStatusChartGeometry = useMemo(() => {
+    if (parsedContractStatusHistory.length === 0) return null;
+
+    const width = 1000;
+    const height = 350;
+    const margin = { top: 28, right: 32, bottom: 64, left: 72 };
+
+    const dateExtent = d3.extent(
+      parsedContractStatusHistory,
+      (d) => d.parsedDate
+    );
+    if (!dateExtent[0] || !dateExtent[1]) return null;
+
+    const xScale = d3
+      .scaleTime()
+      .domain(dateExtent)
+      .range([margin.left, width - margin.right]);
+
+    const maxTotal =
+      d3.max(parsedContractStatusHistory, (d) => d.totalEverSigned) ?? 10;
+
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, maxTotal * 1.1])
+      .nice()
+      .range([height - margin.bottom, margin.top]);
+
+    // Area for active users (green, bottom)
+    const activeArea = d3
+      .area<(typeof parsedContractStatusHistory)[0]>()
+      .x((d) => xScale(d.parsedDate))
+      .y0(height - margin.bottom)
+      .y1((d) => yScale(d.activeCount))
+      .curve(d3.curveMonotoneX);
+
+    // Area for churned users (red, stacked on top of active)
+    const churnedArea = d3
+      .area<(typeof parsedContractStatusHistory)[0]>()
+      .x((d) => xScale(d.parsedDate))
+      .y0((d) => yScale(d.activeCount))
+      .y1((d) => yScale(d.activeCount + d.churnedCount))
+      .curve(d3.curveMonotoneX);
+
+    const activeAreaPath = activeArea(parsedContractStatusHistory) ?? "";
+    const churnedAreaPath = churnedArea(parsedContractStatusHistory) ?? "";
+
+    const xTicks = xScale.ticks(8);
+    const yTicks = yScale.ticks(6);
 
     return {
       width,
@@ -600,16 +561,13 @@ const StatsPage: React.FC = () => {
       margin,
       xScale,
       yScale,
+      activeAreaPath,
+      churnedAreaPath,
       xTicks,
       yTicks,
-      lines,
-      legendGradient,
+      maxTotal,
     };
-  }, [filteredRetentionCohorts]);
-
-  const activeDay = hoveredDay ?? parsedStats[parsedStats.length - 1];
-  const activeActionsDay =
-    hoveredActionsDay ?? parsedStats[parsedStats.length - 1];
+  }, [parsedContractStatusHistory]);
 
   const handleApplyRange = useCallback(() => {
     setQueryRange({ start: startInput, end: endInput });
@@ -626,96 +584,44 @@ const StatsPage: React.FC = () => {
     setQueryRange({ start: startValue, end: endValue });
   }, []);
 
-  const handleHover = useCallback(
-    (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-      if (!mainChartGeometry || parsedStats.length === 0 || !svgRef.current) {
-        return;
-      }
-
-      const rect = svgRef.current.getBoundingClientRect();
-      const relativeX = event.clientX - rect.left;
-      const relativeY = event.clientY - rect.top;
-      if (relativeX < 0 || relativeY < 0) {
-        return;
-      }
-
-      const scaleX = mainChartGeometry.width / rect.width;
-      const pointerX = relativeX * scaleX;
-
-      const hoveredDate = mainChartGeometry.xScale.invert(pointerX);
-      const index = mainChartGeometry.bisectDate(parsedStats, hoveredDate);
-      const clampedIndex = Math.max(0, Math.min(parsedStats.length - 1, index));
-
-      setHoveredDay(parsedStats[clampedIndex]);
-    },
-    [mainChartGeometry, parsedStats]
-  );
-
-  const handleActionsHover = useCallback(
+  const handleContractStatusHover = useCallback(
     (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
       if (
-        !actionsChartGeometry ||
-        parsedStats.length === 0 ||
-        !actionsSvgRef.current
+        !contractStatusChartGeometry ||
+        parsedContractStatusHistory.length === 0 ||
+        !contractStatusSvgRef.current
       ) {
         return;
       }
 
-      const rect = actionsSvgRef.current.getBoundingClientRect();
-      const relativeX = event.clientX - rect.left;
-      const relativeY = event.clientY - rect.top;
-      if (relativeX < 0 || relativeY < 0) {
-        return;
-      }
-
-      const scaleX = actionsChartGeometry.width / rect.width;
-      const pointerX = relativeX * scaleX;
-
-      const hoveredDate = actionsChartGeometry.xScale.invert(pointerX);
-      const index = actionsChartGeometry.bisectDate(parsedStats, hoveredDate);
-      const clampedIndex = Math.max(0, Math.min(parsedStats.length - 1, index));
-
-      setHoveredActionsDay(parsedStats[clampedIndex]);
-    },
-    [actionsChartGeometry, parsedStats]
-  );
-
-  const handleCompletionRateHover = useCallback(
-    (event: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
-      if (
-        !completionRateChartGeometry ||
-        cumulativeCompletionData.length === 0 ||
-        !completionRateSvgRef.current
-      ) {
-        return;
-      }
-
-      const rect = completionRateSvgRef.current.getBoundingClientRect();
+      const rect = contractStatusSvgRef.current.getBoundingClientRect();
       const relativeX = event.clientX - rect.left;
       if (relativeX < 0) return;
 
-      const scaleX = completionRateChartGeometry.width / rect.width;
+      const scaleX = contractStatusChartGeometry.width / rect.width;
       const pointerX = relativeX * scaleX;
 
-      const hoveredDate = completionRateChartGeometry.xScale.invert(pointerX);
+      const hoveredDate = contractStatusChartGeometry.xScale.invert(pointerX);
 
       // Find closest data point
-      let closestPoint = cumulativeCompletionData[0];
+      let closestPoint = parsedContractStatusHistory[0];
       let closestDistance = Math.abs(
-        hoveredDate.getTime() - closestPoint.date.getTime()
+        hoveredDate.getTime() - closestPoint.parsedDate.getTime()
       );
 
-      for (const point of cumulativeCompletionData) {
-        const distance = Math.abs(hoveredDate.getTime() - point.date.getTime());
+      for (const point of parsedContractStatusHistory) {
+        const distance = Math.abs(
+          hoveredDate.getTime() - point.parsedDate.getTime()
+        );
         if (distance < closestDistance) {
           closestDistance = distance;
           closestPoint = point;
         }
       }
 
-      setHoveredCompletionPoint(closestPoint);
+      setHoveredContractPoint(closestPoint);
     },
-    [completionRateChartGeometry, cumulativeCompletionData]
+    [contractStatusChartGeometry, parsedContractStatusHistory]
   );
 
   return (
@@ -743,6 +649,26 @@ const StatsPage: React.FC = () => {
                           cumulativeCompletionData.length - 1
                         ].avgRate * 100
                       ).toFixed(2)
+                    : "[No data]"}
+                  %
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <div className="text-sm text-gray-600">Churn rate</div>
+                <div className="text-3xl font-bold text-gray-900">
+                  {parsedContractStatusHistory.length > 0
+                    ? (() => {
+                        const latest =
+                          parsedContractStatusHistory[
+                            parsedContractStatusHistory.length - 1
+                          ];
+                        return latest.totalEverSigned > 0
+                          ? (
+                              (latest.churnedCount / latest.totalEverSigned) *
+                              100
+                            ).toFixed(1)
+                          : "0";
+                      })()
                     : "[No data]"}
                   %
                 </div>
@@ -840,342 +766,44 @@ const StatsPage: React.FC = () => {
       {!loading && parsedStats.length === 0 && (
         <p className="text-sm text-gray-600">No daily stats for this range.</p>
       )}
-      {!loading && parsedStats.length > 0 && mainChartGeometry && (
-        <>
-          <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-            <div className="relative p-4">
-              <svg
-                ref={svgRef}
-                viewBox={`0 0 ${mainChartGeometry.width} ${mainChartGeometry.height}`}
-                onMouseMove={handleHover}
-                onMouseLeave={() =>
-                  setHoveredDay(parsedStats[parsedStats.length - 1])
-                }
-              >
-                <g>
-                  {mainChartGeometry.yTicks.map((tick) => (
-                    <g key={`y-${tick}`}>
-                      <line
-                        x1={mainChartGeometry.margin.left}
-                        x2={
-                          mainChartGeometry.width -
-                          mainChartGeometry.margin.right
-                        }
-                        y1={mainChartGeometry.yScale(tick)}
-                        y2={mainChartGeometry.yScale(tick)}
-                        stroke="#e5e7eb"
-                        strokeDasharray="4 6"
-                      />
-                      <text
-                        x={mainChartGeometry.margin.left - 12}
-                        y={mainChartGeometry.yScale(tick)}
-                        textAnchor="end"
-                        dominantBaseline="middle"
-                        className="fill-gray-500 text-xs"
-                      >
-                        {tick}
-                      </text>
-                    </g>
-                  ))}
-                  {mainChartGeometry.xTicks.map((tick) => (
-                    <g key={`x-${tick.toISOString()}`}>
-                      <line
-                        x1={mainChartGeometry.xScale(tick)}
-                        x2={mainChartGeometry.xScale(tick)}
-                        y1={mainChartGeometry.margin.top}
-                        y2={
-                          mainChartGeometry.height -
-                          mainChartGeometry.margin.bottom
-                        }
-                        stroke="#f3f4f6"
-                      />
-                      <text
-                        x={mainChartGeometry.xScale(tick)}
-                        y={
-                          mainChartGeometry.height -
-                          mainChartGeometry.margin.bottom +
-                          24
-                        }
-                        textAnchor="middle"
-                        className="fill-gray-600 text-xs"
-                      >
-                        {dateFormatter.format(tick)}
-                      </text>
-                    </g>
-                  ))}
-                </g>
-                {mainChartGeometry.lines.map(({ metric, path }) => (
-                  <path
-                    key={metric.key}
-                    d={path}
-                    fill="none"
-                    stroke={metric.color}
-                    strokeWidth={2.4}
-                  />
-                ))}
-                {activeDay && (
-                  <>
-                    <line
-                      x1={mainChartGeometry.xScale(activeDay.parsedDate)}
-                      x2={mainChartGeometry.xScale(activeDay.parsedDate)}
-                      y1={mainChartGeometry.margin.top}
-                      y2={
-                        mainChartGeometry.height -
-                        mainChartGeometry.margin.bottom
-                      }
-                      stroke="#6b7280"
-                      strokeWidth={1}
-                      strokeDasharray="4 4"
-                    />
-                    {mainChartGeometry.metrics.map((metric) => (
-                      <circle
-                        key={`point-${metric.key}`}
-                        cx={mainChartGeometry.xScale(activeDay.parsedDate)}
-                        cy={mainChartGeometry.yScale(
-                          activeDay[metric.key] ?? 0
-                        )}
-                        r={4}
-                        fill="white"
-                        stroke={metric.color}
-                        strokeWidth={2}
-                      />
-                    ))}
-                    <rect
-                      x={Math.min(
-                        mainChartGeometry.xScale(activeDay.parsedDate) + 12,
-                        mainChartGeometry.width - 210
-                      )}
-                      y={mainChartGeometry.margin.top + 12}
-                      width={196}
-                      height={mainChartGeometry.metrics.length * 24 + 42}
-                      rx={10}
-                      fill="white"
-                      stroke="#e5e7eb"
-                      className="shadow-lg"
-                    />
-                    <text
-                      x={Math.min(
-                        mainChartGeometry.xScale(activeDay.parsedDate) + 24,
-                        mainChartGeometry.width - 196
-                      )}
-                      y={mainChartGeometry.margin.top + 32}
-                      className="fill-gray-900 text-sm font-semibold"
-                    >
-                      {fullDateFormatter.format(activeDay.parsedDate)}
-                    </text>
-                    {mainChartGeometry.metrics.map((metric, idx) => (
-                      <g
-                        key={`label-${metric.key}`}
-                        transform={`translate(${Math.min(
-                          mainChartGeometry.xScale(activeDay.parsedDate) + 24,
-                          mainChartGeometry.width - 196
-                        )}, ${mainChartGeometry.margin.top + 52 + idx * 24})`}
-                      >
-                        <rect
-                          x={0}
-                          y={-10}
-                          width={12}
-                          height={12}
-                          rx={3}
-                          fill={metric.color}
-                        />
-                        <text x={16} y={0} className="fill-gray-700 text-xs">
-                          {metric.label}
-                        </text>
-                        <text
-                          x={164}
-                          y={0}
-                          textAnchor="end"
-                          className="fill-gray-900 text-xs font-semibold"
-                        >
-                          {activeDay[metric.key] ?? 0}
-                        </text>
-                      </g>
-                    ))}
-                  </>
-                )}
-              </svg>
-            </div>
-          </div>
-          {actionsChartGeometry && (
-            <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-              <div className="relative p-4">
-                <svg
-                  ref={actionsSvgRef}
-                  viewBox={`0 0 ${actionsChartGeometry.width} ${actionsChartGeometry.height}`}
-                  className="w-full"
-                  onMouseMove={handleActionsHover}
-                  onMouseLeave={() =>
-                    setHoveredActionsDay(parsedStats[parsedStats.length - 1])
-                  }
-                >
-                  <g>
-                    {actionsChartGeometry.yTicks.map((tick) => (
-                      <g key={`y-${tick}`}>
-                        <line
-                          x1={actionsChartGeometry.margin.left}
-                          x2={
-                            actionsChartGeometry.width -
-                            actionsChartGeometry.margin.right
-                          }
-                          y1={actionsChartGeometry.yScale(tick)}
-                          y2={actionsChartGeometry.yScale(tick)}
-                          stroke="#e5e7eb"
-                          strokeDasharray="4 6"
-                        />
-                        <text
-                          x={actionsChartGeometry.margin.left - 12}
-                          y={actionsChartGeometry.yScale(tick)}
-                          textAnchor="end"
-                          dominantBaseline="middle"
-                          className="fill-gray-500 text-xs"
-                        >
-                          {tick}
-                        </text>
-                      </g>
-                    ))}
-                    {actionsChartGeometry.xTicks.map((tick) => (
-                      <g key={`x-${tick.toISOString()}`}>
-                        <line
-                          x1={actionsChartGeometry.xScale(tick)}
-                          x2={actionsChartGeometry.xScale(tick)}
-                          y1={actionsChartGeometry.margin.top}
-                          y2={
-                            actionsChartGeometry.height -
-                            actionsChartGeometry.margin.bottom
-                          }
-                          stroke="#f3f4f6"
-                        />
-                        <text
-                          x={actionsChartGeometry.xScale(tick)}
-                          y={
-                            actionsChartGeometry.height -
-                            actionsChartGeometry.margin.bottom +
-                            24
-                          }
-                          textAnchor="middle"
-                          className="fill-gray-600 text-xs"
-                        >
-                          {dateFormatter.format(tick)}
-                        </text>
-                      </g>
-                    ))}
-                  </g>
-                  <path
-                    d={actionsChartGeometry.areaPath}
-                    fill="rgba(8,145,178,0.12)"
-                    stroke="none"
-                  />
-                  {actionsChartGeometry.lines.map(({ metric, path }) => (
-                    <path
-                      key={metric.key}
-                      d={path}
-                      fill="none"
-                      stroke={metric.color}
-                      strokeWidth={2.4}
-                    />
-                  ))}
-                  {activeActionsDay && (
-                    <>
-                      <line
-                        x1={actionsChartGeometry.xScale(
-                          activeActionsDay.parsedDate
-                        )}
-                        x2={actionsChartGeometry.xScale(
-                          activeActionsDay.parsedDate
-                        )}
-                        y1={actionsChartGeometry.margin.top}
-                        y2={
-                          actionsChartGeometry.height -
-                          actionsChartGeometry.margin.bottom
-                        }
-                        stroke="#6b7280"
-                        strokeWidth={1}
-                        strokeDasharray="4 4"
-                      />
-                      {actionsChartGeometry.metrics.map((metric) => (
-                        <circle
-                          key={`point-actions-${metric.key}`}
-                          cx={actionsChartGeometry.xScale(
-                            activeActionsDay.parsedDate
-                          )}
-                          cy={actionsChartGeometry.yScale(
-                            activeActionsDay[metric.key] ?? 0
-                          )}
-                          r={4}
-                          fill="white"
-                          stroke={metric.color}
-                          strokeWidth={2}
-                        />
-                      ))}
-                      <rect
-                        x={Math.min(
-                          actionsChartGeometry.xScale(
-                            activeActionsDay.parsedDate
-                          ) + 12,
-                          actionsChartGeometry.width - 210
-                        )}
-                        y={actionsChartGeometry.margin.top + 12}
-                        width={196}
-                        height={actionsChartGeometry.metrics.length * 24 + 42}
-                        rx={10}
-                        fill="white"
-                        stroke="#e5e7eb"
-                        className="shadow-lg"
-                      />
-                      <text
-                        x={Math.min(
-                          actionsChartGeometry.xScale(
-                            activeActionsDay.parsedDate
-                          ) + 24,
-                          actionsChartGeometry.width - 196
-                        )}
-                        y={actionsChartGeometry.margin.top + 32}
-                        className="fill-gray-900 text-sm font-semibold"
-                      >
-                        {fullDateFormatter.format(activeActionsDay.parsedDate)}
-                      </text>
-                      {actionsChartGeometry.metrics.map((metric, idx) => (
-                        <g
-                          key={`label-actions-${metric.key}`}
-                          transform={`translate(${Math.min(
-                            actionsChartGeometry.xScale(
-                              activeActionsDay.parsedDate
-                            ) + 24,
-                            actionsChartGeometry.width - 196
-                          )}, ${
-                            actionsChartGeometry.margin.top + 52 + idx * 24
-                          })`}
-                        >
-                          <rect
-                            x={0}
-                            y={-10}
-                            width={12}
-                            height={12}
-                            rx={3}
-                            fill={metric.color}
-                          />
-                          <text x={16} y={0} className="fill-gray-700 text-xs">
-                            {metric.label}
-                          </text>
-                          <text
-                            x={164}
-                            y={0}
-                            textAnchor="end"
-                            className="fill-gray-900 text-xs font-semibold"
-                          >
-                            {activeActionsDay[metric.key] ?? 0}
-                          </text>
-                        </g>
-                      ))}
-                    </>
-                  )}
-                </svg>
-              </div>
-            </div>
-          )}
-        </>
-      )}
+
+      {/* Members & Invites Chart */}
+      <TimeSeriesChart
+        title="Members & Invites"
+        data={dailyStatsChartData}
+        series={mainChartSeries}
+        loading={loading}
+        emptyMessage="No daily stats for this range."
+        height={420}
+        getHoverContent={(point) => ({
+          title: fullDateFormatter.format(point.date!),
+          items: mainChartSeries.map((s) => ({
+            label: s.label,
+            value: s.getValue(point),
+            color: s.color,
+          })),
+        })}
+      />
+
+      {/* Actions & Public Responses Chart */}
+      <TimeSeriesChart
+        title="Actions & Public Responses"
+        data={dailyStatsChartData}
+        series={actionsChartSeries}
+        loading={loading}
+        emptyMessage="No daily stats for this range."
+        height={420}
+        showArea
+        areaSeriesKey="actionsCompleted"
+        getHoverContent={(point) => ({
+          title: fullDateFormatter.format(point.date!),
+          items: actionsChartSeries.map((s) => ({
+            label: s.label,
+            value: s.getValue(point),
+            color: s.color,
+          })),
+        })}
+      />
 
       {/* Action Stats Bar Chart */}
       <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -1372,10 +1000,79 @@ const StatsPage: React.FC = () => {
       </div>
 
       {/* Cumulative Average Completion Rate Chart */}
+      <TimeSeriesChart
+        title="Cumulative Completion Rate"
+        data={completionRateChartData}
+        series={completionRateSeries}
+        loading={actionStatsLoading}
+        emptyMessage="No completed actions in this date range."
+        showArea
+        areaSeriesKey="avgRate"
+        areaColor="rgba(22, 163, 74, 0.12)"
+        yDomain={[0, 1]}
+        yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+        dateRange={completionRateRange}
+        onDateRangeChange={setCompletionRateRange}
+        getHoverContent={(point) => ({
+          title: fullDateFormatter.format(point.date),
+          items: [
+            {
+              label: "Avg Rate",
+              value: `${Math.round((point.avgRate as number) * 100)}%`,
+              color: "#16a34a",
+            },
+            {
+              label: "Actions",
+              value: point.actionCount as number,
+            },
+          ],
+        })}
+      />
+
+      {/* Cohort Completion Retention Chart */}
+      <TimeSeriesChart
+        title="Cohort Completion Reliability"
+        xType="number"
+        loading={retentionLoading}
+        emptyMessage="No cohorts have completions yet."
+        multiLineData={retentionChartData.multiLineData}
+        getXValue={(d) => (d.weekIndex as number) ?? 0}
+        getYValue={(d) => (d.completionRate as number) ?? 0}
+        xAxisFormat={(v) => `${Math.round(v)}w`}
+        xAxisLabel="Week"
+        xRange={weekRange}
+        onXRangeChange={setWeekRange}
+        yDomain={[0, 1]}
+        yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+        height={360}
+        legendGradient={retentionChartData.legendGradient}
+        legendLabels={{ left: "Older", right: "Newer" }}
+        getHoverContent={(point) => ({
+          title: `Week of ${fullDateFormatter.format(
+            new Date(`${point.cohortStart}T00:00:00Z`)
+          )}`,
+          items: [
+            { label: "Weeks since join", value: point.weekIndex as number },
+            {
+              label: "Completion rate",
+              value: `${Math.round((point.completionRate as number) * 100)}%`,
+            },
+            {
+              label: "Completed",
+              value: point.completedCount as number,
+              color: "#16a34a",
+            },
+            { label: "Joined", value: point.joinedCount as number },
+            { label: "Cohort size", value: point.cohortSize as number },
+          ],
+        })}
+      />
+
+      {/* Contract Status History Chart */}
       <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 py-3 border-b border-gray-200">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 px-4 p-3 border-b border-gray-200">
           <h3 className="font-semibold text-gray-900">
-            Cumulative Completion Rate
+            Signed member retention
           </h3>
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
@@ -1384,9 +1081,9 @@ const StatsPage: React.FC = () => {
               </label>
               <input
                 type="date"
-                value={completionRateRange.start}
+                value={contractStatusRange.start}
                 onChange={(e) =>
-                  setCompletionRateRange((prev) => ({
+                  setContractStatusRange((prev) => ({
                     ...prev,
                     start: e.target.value,
                   }))
@@ -1398,9 +1095,9 @@ const StatsPage: React.FC = () => {
               <label className="text-xs font-semibold text-gray-600">To</label>
               <input
                 type="date"
-                value={completionRateRange.end}
+                value={contractStatusRange.end}
                 onChange={(e) =>
-                  setCompletionRateRange((prev) => ({
+                  setContractStatusRange((prev) => ({
                     ...prev,
                     end: e.target.value,
                   }))
@@ -1410,67 +1107,69 @@ const StatsPage: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="relative p-4">
-          {actionStatsLoading && cumulativeCompletionData.length === 0 && (
-            <p className="text-sm text-gray-600">Loading...</p>
-          )}
-          {!actionStatsLoading && cumulativeCompletionData.length === 0 && (
-            <p className="text-sm text-gray-600">
-              No completed actions in this date range.
-            </p>
-          )}
-          {completionRateChartGeometry &&
-            cumulativeCompletionData.length > 0 && (
+        <div className="relative p-4 pb-0">
+          {contractStatusLoading &&
+            parsedContractStatusHistory.length === 0 && (
+              <p className="text-sm text-gray-600">Loading...</p>
+            )}
+          {!contractStatusLoading &&
+            parsedContractStatusHistory.length === 0 && (
+              <p className="text-sm text-gray-600">
+                No contract status data in this date range.
+              </p>
+            )}
+          {contractStatusChartGeometry &&
+            parsedContractStatusHistory.length > 0 && (
               <svg
-                ref={completionRateSvgRef}
-                viewBox={`0 0 ${completionRateChartGeometry.width} ${completionRateChartGeometry.height}`}
+                ref={contractStatusSvgRef}
+                viewBox={`0 0 ${contractStatusChartGeometry.width} ${contractStatusChartGeometry.height}`}
                 className="w-full"
-                onMouseMove={handleCompletionRateHover}
-                onMouseLeave={() => setHoveredCompletionPoint(null)}
+                onMouseMove={handleContractStatusHover}
+                onMouseLeave={() => setHoveredContractPoint(null)}
               >
                 {/* Grid lines */}
                 <g>
-                  {completionRateChartGeometry.yTicks.map((tick) => (
-                    <g key={`y-${tick}`}>
+                  {contractStatusChartGeometry.yTicks.map((tick) => (
+                    <g key={`contract-y-${tick}`}>
                       <line
-                        x1={completionRateChartGeometry.margin.left}
+                        x1={contractStatusChartGeometry.margin.left}
                         x2={
-                          completionRateChartGeometry.width -
-                          completionRateChartGeometry.margin.right
+                          contractStatusChartGeometry.width -
+                          contractStatusChartGeometry.margin.right
                         }
-                        y1={completionRateChartGeometry.yScale(tick)}
-                        y2={completionRateChartGeometry.yScale(tick)}
+                        y1={contractStatusChartGeometry.yScale(tick)}
+                        y2={contractStatusChartGeometry.yScale(tick)}
                         stroke="#e5e7eb"
                         strokeDasharray="4 6"
                       />
                       <text
-                        x={completionRateChartGeometry.margin.left - 12}
-                        y={completionRateChartGeometry.yScale(tick)}
+                        x={contractStatusChartGeometry.margin.left - 12}
+                        y={contractStatusChartGeometry.yScale(tick)}
                         textAnchor="end"
                         dominantBaseline="middle"
                         className="fill-gray-500 text-xs"
                       >
-                        {Math.round(tick * 100)}%
+                        {tick}
                       </text>
                     </g>
                   ))}
-                  {completionRateChartGeometry.xTicks.map((tick) => (
-                    <g key={`x-${tick.toISOString()}`}>
+                  {contractStatusChartGeometry.xTicks.map((tick) => (
+                    <g key={`contract-x-${tick.toISOString()}`}>
                       <line
-                        x1={completionRateChartGeometry.xScale(tick)}
-                        x2={completionRateChartGeometry.xScale(tick)}
-                        y1={completionRateChartGeometry.margin.top}
+                        x1={contractStatusChartGeometry.xScale(tick)}
+                        x2={contractStatusChartGeometry.xScale(tick)}
+                        y1={contractStatusChartGeometry.margin.top}
                         y2={
-                          completionRateChartGeometry.height -
-                          completionRateChartGeometry.margin.bottom
+                          contractStatusChartGeometry.height -
+                          contractStatusChartGeometry.margin.bottom
                         }
                         stroke="#f3f4f6"
                       />
                       <text
-                        x={completionRateChartGeometry.xScale(tick)}
+                        x={contractStatusChartGeometry.xScale(tick)}
                         y={
-                          completionRateChartGeometry.height -
-                          completionRateChartGeometry.margin.bottom +
+                          contractStatusChartGeometry.height -
+                          contractStatusChartGeometry.margin.bottom +
                           24
                         }
                         textAnchor="middle"
@@ -1482,332 +1181,93 @@ const StatsPage: React.FC = () => {
                   ))}
                 </g>
 
-                {/* Area fill */}
+                {/* Churned area (red, on top) */}
                 <path
-                  d={completionRateChartGeometry.areaPath}
-                  fill="rgba(22, 163, 74, 0.12)"
+                  d={contractStatusChartGeometry.churnedAreaPath}
+                  fill="rgba(239, 68, 68, 0.9)"
                   stroke="none"
                 />
 
-                {/* Line */}
+                {/* Active area (green, bottom) */}
                 <path
-                  d={completionRateChartGeometry.linePath}
-                  fill="none"
-                  stroke="#16a34a"
-                  strokeWidth={2.5}
+                  d={contractStatusChartGeometry.activeAreaPath}
+                  fill="rgba(22, 163, 74, 0.8)"
+                  stroke="none"
                 />
 
-                {/* Data points */}
-                {cumulativeCompletionData.map((point, idx) => (
-                  <circle
-                    key={idx}
-                    cx={completionRateChartGeometry.xScale(point.date)}
-                    cy={completionRateChartGeometry.yScale(point.avgRate)}
-                    r={4}
-                    fill="white"
-                    stroke="#16a34a"
-                    strokeWidth={2}
-                  />
-                ))}
-
                 {/* Hover indicator */}
-                {hoveredCompletionPoint && (
+                {hoveredContractPoint && (
                   <>
                     <line
-                      x1={completionRateChartGeometry.xScale(
-                        hoveredCompletionPoint.date
+                      x1={contractStatusChartGeometry.xScale(
+                        hoveredContractPoint.parsedDate
                       )}
-                      x2={completionRateChartGeometry.xScale(
-                        hoveredCompletionPoint.date
+                      x2={contractStatusChartGeometry.xScale(
+                        hoveredContractPoint.parsedDate
                       )}
-                      y1={completionRateChartGeometry.margin.top}
+                      y1={contractStatusChartGeometry.margin.top}
                       y2={
-                        completionRateChartGeometry.height -
-                        completionRateChartGeometry.margin.bottom
+                        contractStatusChartGeometry.height -
+                        contractStatusChartGeometry.margin.bottom
                       }
                       stroke="#6b7280"
                       strokeWidth={1}
                       strokeDasharray="4 4"
                     />
-                    <circle
-                      cx={completionRateChartGeometry.xScale(
-                        hoveredCompletionPoint.date
-                      )}
-                      cy={completionRateChartGeometry.yScale(
-                        hoveredCompletionPoint.avgRate
-                      )}
-                      r={6}
-                      fill="white"
-                      stroke="#16a34a"
-                      strokeWidth={2.5}
-                    />
 
-                    {/* Hover box */}
+                    {/* Small hover box */}
                     <rect
                       x={Math.min(
-                        completionRateChartGeometry.xScale(
-                          hoveredCompletionPoint.date
+                        contractStatusChartGeometry.xScale(
+                          hoveredContractPoint.parsedDate
                         ) + 12,
-                        completionRateChartGeometry.width - 180
+                        contractStatusChartGeometry.width - 100
                       )}
-                      y={completionRateChartGeometry.margin.top + 12}
-                      width={164}
-                      height={90}
-                      rx={10}
+                      y={contractStatusChartGeometry.margin.top + 12}
+                      width={88}
+                      height={32}
+                      rx={6}
                       fill="white"
                       stroke="#e5e7eb"
-                      className="shadow-lg"
                     />
                     <text
                       x={Math.min(
-                        completionRateChartGeometry.xScale(
-                          hoveredCompletionPoint.date
+                        contractStatusChartGeometry.xScale(
+                          hoveredContractPoint.parsedDate
                         ) + 24,
-                        completionRateChartGeometry.width - 166
+                        contractStatusChartGeometry.width - 88
                       )}
-                      y={completionRateChartGeometry.margin.top + 34}
-                      className="fill-gray-900 text-sm font-semibold"
+                      y={contractStatusChartGeometry.margin.top + 33}
+                      className="fill-black text-sm font-semibold"
                     >
-                      {fullDateFormatter.format(hoveredCompletionPoint.date)}
-                    </text>
-                    <text
-                      x={Math.min(
-                        completionRateChartGeometry.xScale(
-                          hoveredCompletionPoint.date
-                        ) + 24,
-                        completionRateChartGeometry.width - 166
-                      )}
-                      y={completionRateChartGeometry.margin.top + 58}
-                      className="fill-gray-600 text-xs"
-                    >
-                      Avg Rate:
-                    </text>
-                    <text
-                      x={Math.min(
-                        completionRateChartGeometry.xScale(
-                          hoveredCompletionPoint.date
-                        ) + 156,
-                        completionRateChartGeometry.width - 34
-                      )}
-                      y={completionRateChartGeometry.margin.top + 58}
-                      textAnchor="end"
-                      className="fill-green-600 text-xs font-semibold"
-                    >
-                      {Math.round(hoveredCompletionPoint.avgRate * 100)}%
-                    </text>
-                    <text
-                      x={Math.min(
-                        completionRateChartGeometry.xScale(
-                          hoveredCompletionPoint.date
-                        ) + 24,
-                        completionRateChartGeometry.width - 166
-                      )}
-                      y={completionRateChartGeometry.margin.top + 78}
-                      className="fill-gray-600 text-xs"
-                    >
-                      Actions:
-                    </text>
-                    <text
-                      x={Math.min(
-                        completionRateChartGeometry.xScale(
-                          hoveredCompletionPoint.date
-                        ) + 156,
-                        completionRateChartGeometry.width - 34
-                      )}
-                      y={completionRateChartGeometry.margin.top + 78}
-                      textAnchor="end"
-                      className="fill-gray-900 text-xs font-semibold"
-                    >
-                      {hoveredCompletionPoint.actionCount}
+                      {hoveredContractPoint.totalEverSigned > 0
+                        ? `${Math.round(
+                            (hoveredContractPoint.churnedCount /
+                              hoveredContractPoint.totalEverSigned) *
+                              100
+                          )}% churn`
+                        : "0% churn"}
                     </text>
                   </>
                 )}
               </svg>
             )}
         </div>
-      </div>
-
-      {/* Cohort Completion Retention Chart */}
-      <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">
-            Cohort Completion Reliability
-          </h3>
-        </div>
-        <div className="relative p-4">
-          {retentionLoading && filteredRetentionCohorts.length === 0 && (
-            <p className="text-sm text-gray-600">Loading retention data...</p>
-          )}
-          {!retentionLoading && filteredRetentionCohorts.length === 0 && (
-            <p className="text-sm text-gray-600">
-              No cohorts have completions yet.
-            </p>
-          )}
-          {retentionChartGeometry && filteredRetentionCohorts.length > 0 && (
-            <div className="relative min-w-[600px]">
-              <svg
-                viewBox={`0 0 ${retentionChartGeometry.width} ${retentionChartGeometry.height}`}
-                className="w-full -mb-6"
-              >
-                <g>
-                  {retentionChartGeometry.yTicks.map((tick) => (
-                    <g key={`retention-y-${tick}`}>
-                      <line
-                        x1={retentionChartGeometry.margin.left}
-                        x2={
-                          retentionChartGeometry.width -
-                          retentionChartGeometry.margin.right
-                        }
-                        y1={retentionChartGeometry.yScale(tick)}
-                        y2={retentionChartGeometry.yScale(tick)}
-                        stroke="#e5e7eb"
-                        strokeDasharray="4 6"
-                      />
-                      <text
-                        x={retentionChartGeometry.margin.left - 12}
-                        y={retentionChartGeometry.yScale(tick)}
-                        textAnchor="end"
-                        dominantBaseline="middle"
-                        className="fill-gray-500 text-xs"
-                      >
-                        {Math.round(tick * 100)}%
-                      </text>
-                    </g>
-                  ))}
-                  {retentionChartGeometry.xTicks.map((tick) => (
-                    <g key={`retention-x-${tick}`}>
-                      <line
-                        x1={retentionChartGeometry.xScale(tick)}
-                        x2={retentionChartGeometry.xScale(tick)}
-                        y1={retentionChartGeometry.margin.top}
-                        y2={
-                          retentionChartGeometry.height -
-                          retentionChartGeometry.margin.bottom
-                        }
-                        stroke="#f3f4f6"
-                      />
-                      <text
-                        x={retentionChartGeometry.xScale(tick)}
-                        y={
-                          retentionChartGeometry.height -
-                          retentionChartGeometry.margin.bottom +
-                          24
-                        }
-                        textAnchor="middle"
-                        className="fill-gray-600 text-xs"
-                      >
-                        {Math.round(tick)}w
-                      </text>
-                    </g>
-                  ))}
-                </g>
-
-                {retentionChartGeometry.lines.map(({ cohort, color, path }) => {
-                  const isHovered =
-                    hoveredRetentionPoint?.cohort.cohortStart ===
-                    cohort.cohortStart;
-                  return (
-                    <path
-                      key={cohort.cohortStart}
-                      d={path}
-                      fill="none"
-                      stroke={color}
-                      strokeWidth={isHovered ? 3.2 : 2.2}
-                      opacity={
-                        hoveredRetentionPoint ? (isHovered ? 1 : 0.25) : 1
-                      }
-                    />
-                  );
-                })}
-
-                {retentionChartGeometry.lines.flatMap(({ cohort, color }) =>
-                  cohort.points.map((point) => {
-                    const isHovered =
-                      hoveredRetentionPoint?.cohort.cohortStart ===
-                        cohort.cohortStart &&
-                      hoveredRetentionPoint?.point.weekIndex ===
-                        point.weekIndex;
-                    return (
-                      <circle
-                        key={`${cohort.cohortStart}-${point.weekIndex}`}
-                        cx={retentionChartGeometry.xScale(point.weekIndex)}
-                        cy={retentionChartGeometry.yScale(point.completionRate)}
-                        r={isHovered ? 5 : 3}
-                        fill="white"
-                        stroke={color}
-                        strokeWidth={2}
-                        className="cursor-pointer"
-                        onMouseEnter={() =>
-                          setHoveredRetentionPoint({
-                            cohort,
-                            point,
-                            color,
-                          })
-                        }
-                        onMouseLeave={() => setHoveredRetentionPoint(null)}
-                      />
-                    );
-                  })
-                )}
-              </svg>
-              <div className="flex items-center gap-2 text-[11px] text-gray-500">
-                <span>Older</span>
-                <div
-                  className="h-2 w-40 rounded-full border border-gray-200"
-                  style={{ background: retentionChartGeometry.legendGradient }}
-                />
-                <span>Newer</span>
-              </div>
-
-              {hoveredRetentionPoint && (
-                <div className="absolute top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[220px] pointer-events-none">
-                  <p className="font-semibold text-gray-900 mb-2">
-                    Week of{" "}
-                    {fullDateFormatter.format(
-                      new Date(
-                        `${hoveredRetentionPoint.cohort.cohortStart}T00:00:00Z`
-                      )
-                    )}
-                  </p>
-                  <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Weeks since join:</span>
-                      <span className="font-medium text-gray-900">
-                        {hoveredRetentionPoint.point.weekIndex}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Completion rate:</span>
-                      <span className="font-semibold text-gray-900">
-                        {Math.round(
-                          hoveredRetentionPoint.point.completionRate * 100
-                        )}
-                        %
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Completed:</span>
-                      <span className="font-medium text-green-600">
-                        {hoveredRetentionPoint.point.completedCount}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Joined:</span>
-                      <span className="font-medium text-gray-700">
-                        {hoveredRetentionPoint.point.joinedCount}
-                      </span>
-                    </div>
-                    <div className="flex justify-between border-t pt-1 mt-1">
-                      <span className="text-gray-600">Cohort size:</span>
-                      <span className="font-medium text-gray-900">
-                        {hoveredRetentionPoint.cohort.cohortSize}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+        <div className="flex items-center gap-6 px-4 pb-4 -mt-4">
+          <div className="flex items-center gap-2">
+            <div
+              className="w-4 h-4 rounded"
+              style={{ backgroundColor: "rgba(22, 163, 74, 0.8)" }}
+            />
+            <span className="text-sm text-gray-600">Active Members</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className="w-4 h-4 rounded"
+              style={{ backgroundColor: "rgba(239, 68, 68, 0.9)" }}
+            />
+            <span className="text-sm text-gray-600">Churned Members</span>
+          </div>
         </div>
       </div>
 

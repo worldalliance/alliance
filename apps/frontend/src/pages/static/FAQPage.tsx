@@ -35,10 +35,14 @@ const FAQPage: React.FC = () => {
                 our priorities.
               </p>
               <p>
-                Our long-term goal is to unite humanity behind a global,
+                Our long-term goal is to unite humanity behind a democratic,
                 expert-developed plan to end global crises. Right now, we are
                 running experiments to test our organizational structures and
                 processes.
+              </p>
+              <p>
+                We define &quot;the Alliance&quot; as the body of our members,
+                not as any legal entity.
               </p>
             </FAQExpandable>
             <FAQExpandable

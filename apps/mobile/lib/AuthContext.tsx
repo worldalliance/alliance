@@ -179,14 +179,12 @@ export const AuthProvider: React.FC<
   );
 
   useEffect(() => {
-    console.log("checking auto login");
     if (
       __DEV__ &&
       process.env.EXPO_PUBLIC_DEV_AUTO_LOGIN === "true" &&
       process.env.EXPO_PUBLIC_DEV_EMAIL &&
       process.env.EXPO_PUBLIC_DEV_PASSWORD
     ) {
-      console.log("auto login enabled");
       login(
         process.env.EXPO_PUBLIC_DEV_EMAIL,
         process.env.EXPO_PUBLIC_DEV_PASSWORD

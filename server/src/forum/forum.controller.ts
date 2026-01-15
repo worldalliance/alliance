@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AuthGuard, JwtPayload, JwtRequest } from '../auth/guards/auth.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { ReqUser } from '../auth/user.decorator';
 import {
   CommentDto,
@@ -19,7 +20,12 @@ import {
   UpdateCommentDto,
   UserCommentDto,
 } from './dto/comment.dto';
-import { CreatePostDto, PostDto, UpdatePostDto } from './dto/post.dto';
+import {
+  CreatePostDto,
+  PostDto,
+  UpdatePostDto,
+  UpdatePostExpertsDto,
+} from './dto/post.dto';
 import { Post as PostEntity } from './entities/post.entity';
 import { ForumService } from './forum.service';
 
@@ -249,5 +255,31 @@ export class ForumController {
     @ReqUser() user: JwtPayload,
   ) {
     return this.forumService.deleteReply(+id, user.sub);
+  }
+
+  @Get('admin/posts')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'Get all posts for admin management' })
+  @ApiOkResponse({ type: [PostDto] })
+  async getPostsForAdmin(): Promise<PostDto[]> {
+    const posts = await this.forumService.getPostsForAdmin();
+    return posts.map((post) => new PostDto(post));
+  }
+
+  @Patch('admin/posts/:id/experts')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'Update post experts and Q&A mode' })
+  @ApiOkResponse({ type: PostDto })
+  async updatePostExperts(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updatePostExpertsDto: UpdatePostExpertsDto,
+  ): Promise<PostDto> {
+    const post = await this.forumService.updatePostExperts(
+      id,
+      updatePostExpertsDto.expertIds,
+      updatePostExpertsDto.qaMode,
+      updatePostExpertsDto.expertLabel,
+    );
+    return new PostDto(post);
   }
 }

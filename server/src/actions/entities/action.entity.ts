@@ -25,6 +25,7 @@ import { ActionActivity } from './action-activity.entity';
 import { ActionEvent, ActionStatus } from './action-event.entity';
 import { ActionSuite } from './action-suite.entity';
 import { ActionUpdate } from './action-update.entity';
+import { findLeast } from 'src/utils/filter';
 
 export enum ActionTaskType {
   Funding = 'Funding', //giving money to a particular cause
@@ -40,6 +41,8 @@ export enum VisibilityMode {
 
 @Entity()
 export class Action {
+  // Fields
+
   @PrimaryGeneratedColumn()
   @ApiProperty({ description: 'Unique identifier for the action' })
   @Allow()
@@ -51,8 +54,8 @@ export class Action {
   name: string;
 
   @Column()
-  @ApiProperty({ description: 'Category of the action' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'Category of the action', default: '' })
+  @Allow()
   category: string;
 
   @Column({ nullable: true })
@@ -147,26 +150,6 @@ export class Action {
   @Type(() => Date)
   updatedAt: Date;
 
-  @OneToMany(() => ActionEvent, (event) => event.action)
-  @ApiProperty({
-    description: 'Events associated with the action',
-    type: () => ActionEvent,
-    isArray: true,
-  })
-  @Allow()
-  @IsArray()
-  @Type(() => ActionEvent)
-  events: Ty<ActionEvent>[];
-
-  @ManyToMany(() => Tag, (tag) => tag.participatingIn, {
-    onDelete: 'CASCADE',
-  })
-  @ApiProperty({ type: () => Tag, isArray: true })
-  @Allow()
-  @JoinTable()
-  @Type(() => Tag)
-  participatingTags: Tag[];
-
   @Column({ default: false })
   @ApiProperty({
     description: 'Whether to use a manual cohort for the action',
@@ -205,32 +188,6 @@ export class Action {
   @Allow()
   usersCompleted: number;
 
-  @OneToMany(() => ActionActivity, (activity) => activity.action)
-  @ApiProperty({
-    description: 'Activities associated with the action',
-    type: () => [ActionActivity],
-    isArray: true,
-  })
-  @Allow()
-  @IsArray()
-  @Type(() => ActionActivity)
-  activities: ActionActivity[];
-
-  @Expose()
-  @ApiProperty({ enum: ActionStatus, enumName: 'ActionStatus' })
-  get status(): ActionStatus {
-    if (!this.events) {
-      return ActionStatus.Draft;
-    }
-    const pastEvents = this.events
-      .filter((e) => e.date < new Date())
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-    if (pastEvents.length === 0) {
-      return ActionStatus.Draft;
-    }
-    return pastEvents[pastEvents.length - 1].newStatus;
-  }
-
   @Column({ default: false })
   @ApiProperty({
     description:
@@ -247,25 +204,15 @@ export class Action {
   @Allow()
   archived: boolean;
 
-  @OneToMany(() => ActionUpdate, (update) => update.action)
-  @ApiProperty({
-    type: () => ActionUpdate,
-    isArray: true,
-  })
-  @Allow()
-  @Type(() => ActionUpdate)
-  updates: ActionUpdate[];
-
-  @ManyToOne(() => ActionSuite, (suite) => suite.actions, { nullable: true })
-  @ApiPropertyOptional({ type: () => ActionSuite })
-  @Type(() => ActionSuite)
-  @IsOptional()
-  suite?: ActionSuite | null;
-
   @Column({ default: 0 })
   @ApiProperty({ description: 'Priority of the action' })
   @IsDefined()
   priority: number;
+
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  optional: boolean;
 
   @Column({ default: false })
   @ApiProperty({
@@ -290,10 +237,157 @@ export class Action {
   @Allow()
   shouldCompleteAfterDeadline: boolean;
 
+  // Relations
+
+  @OneToMany(() => ActionEvent, (event) => event.action)
+  @ApiProperty({
+    description: 'Events associated with the action',
+    type: () => ActionEvent,
+    isArray: true,
+  })
+  @Allow()
+  @IsArray()
+  @Type(() => ActionEvent)
+  events: Ty<ActionEvent>[];
+
+  @ManyToMany(() => Tag, (tag) => tag.participatingIn, {
+    onDelete: 'CASCADE',
+  })
+  @ApiProperty({ type: () => Tag, isArray: true })
+  @Allow()
+  @JoinTable()
+  @Type(() => Tag)
+  participatingTags: Tag[];
+
+  @OneToMany(() => ActionActivity, (activity) => activity.action)
+  @ApiProperty({
+    description: 'Activities associated with the action',
+    type: () => [ActionActivity],
+    isArray: true,
+  })
+  @Allow()
+  @IsArray()
+  @Type(() => ActionActivity)
+  activities: ActionActivity[];
+
+  @OneToMany(() => ActionUpdate, (update) => update.action)
+  @ApiProperty({
+    type: () => ActionUpdate,
+    isArray: true,
+  })
+  @Allow()
+  @Type(() => ActionUpdate)
+  updates: ActionUpdate[];
+
+  @ManyToOne(() => ActionSuite, (suite) => suite.actions, { nullable: true })
+  @ApiPropertyOptional({ type: () => ActionSuite })
+  @Type(() => ActionSuite)
+  @IsOptional()
+  suite?: ActionSuite | null;
+
   @ManyToMany(() => User, (user) => user.authoredActions, { cascade: true })
   @JoinTable()
   @ApiPropertyOptional({ type: () => User, isArray: true })
   @Type(() => User)
   @IsOptional()
   authors?: Ty<User>[];
+
+  // Methods
+
+  @IsOptional()
+  private _status: ActionStatus | null = null;
+  @Expose()
+  @ApiProperty({ enum: ActionStatus, enumName: 'ActionStatus' })
+  get status(): ActionStatus {
+    if (!this.events) {
+      throw new Error('`events` relation is not loaded');
+    }
+    if (this._status === null) {
+      const latestPastEvent = findLeast(
+        this.events,
+        (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
+        (event) => event.date < new Date(),
+      );
+      this._status = latestPastEvent
+        ? latestPastEvent.newStatus
+        : ActionStatus.Draft;
+    }
+    return this._status;
+  }
+
+  @IsOptional()
+  private _latestMemberActionEvent:
+    | {
+        event: ActionEvent;
+        deadline: Date | null;
+      }
+    | {
+        event: null;
+        deadline: null;
+      }
+    | null = null;
+  get latestMemberActionEvent(): NonNullable<
+    typeof this._latestMemberActionEvent
+  > {
+    populateCache: if (!this._latestMemberActionEvent) {
+      if (!this.events) {
+        this._latestMemberActionEvent = {
+          event: null,
+          deadline: null,
+        };
+        break populateCache;
+      }
+
+      const latestMemberActionEvent = findLeast(
+        this.events,
+        (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
+        (event) => event.newStatus === ActionStatus.MemberAction,
+      );
+
+      if (!latestMemberActionEvent) {
+        this._latestMemberActionEvent = {
+          event: null,
+          deadline: null,
+        };
+        break populateCache;
+      }
+
+      const deadlineEvent = findLeast(
+        this.events,
+        (a, b) => a.date.getTime() - b.date.getTime(),
+        (event) =>
+          event.date > latestMemberActionEvent.date &&
+          event.newStatus !== ActionStatus.MemberAction,
+      );
+      this._latestMemberActionEvent = {
+        event: latestMemberActionEvent,
+        deadline: deadlineEvent?.date ?? null,
+      };
+    }
+    return this._latestMemberActionEvent;
+  }
+
+  @IsOptional()
+  private _manualCohortUserIdSet: Set<number> | null | undefined = undefined;
+  get manualCohortUserIdSet(): Set<number> | null {
+    populateCache: if (this._manualCohortUserIdSet === undefined) {
+      if (!this.manualCohortUserIds) {
+        this._manualCohortUserIdSet = null;
+      } else {
+        this._manualCohortUserIdSet = new Set(this.manualCohortUserIds);
+      }
+    }
+    return this._manualCohortUserIdSet;
+  }
+
+  @IsOptional()
+  private _participatingTagIdSet: Set<number> | null = null;
+  get participatingTagIdSet(): Set<number> {
+    if (!this._participatingTagIdSet) {
+      this._participatingTagIdSet = new Set(
+        this.participatingTags.map((tag) => tag.id),
+      );
+    }
+    return this._participatingTagIdSet;
+  }
 }

@@ -7,12 +7,14 @@ import {
   actionsCommunityActivity,
   actionsLikeActivity,
   actionsUnlikeActivity,
+  actionsFriendActivityForAction,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useState } from "react";
 import posthog from "posthog-js";
 
 export enum ActivityList {
   Friends = "friends",
+  FriendsForAction = "friendsForAction",
   User = "user",
   Action = "action",
   Global = "global",
@@ -23,7 +25,11 @@ export type UseActivitiesProps = {
   comments?: boolean;
 } & (
   | {
-      list: ActivityList.User | ActivityList.Action | ActivityList.Community;
+      list:
+        | ActivityList.User
+        | ActivityList.Action
+        | ActivityList.Community
+        | ActivityList.FriendsForAction;
       objectId: number;
       limit?: number;
     }
@@ -63,6 +69,15 @@ const useActivities = ({
           query: { limit: limit, comments },
         });
         break;
+      case ActivityList.FriendsForAction:
+        if (!objectId) {
+          throw new Error("objectId is required for FriendsForAction");
+        }
+        apiCall = actionsFriendActivityForAction({
+          path: { actionId: objectId },
+          query: { comments, limit: limit.toString() },
+        });
+        break;
       case ActivityList.Community:
         apiCall = actionsCommunityActivity({
           query: {
@@ -85,18 +100,9 @@ const useActivities = ({
     }
     apiCall
       .then(async (resp) => {
-        const data = resp.data ?? [];
-        // if (list === ActivityList.Global) {
-        //   const extraFriendActivity = await actionsFriendActivity({
-        //     query: { comments, limit: limit.toString() },
-        //   });
-        //   const set = new Set(data.map((a) => a.id));
-        //   extraFriendActivity.data?.forEach((a) => {
-        //     if (!set.has(a.id)) {
-        //       data.push(a);
-        //     }
-        //   });
-        // }
+        const data =
+          resp.data?.filter((a) => a.type === "user_completed") ?? [];
+
         const respActivities = data.sort(
           (a, b) =>
             new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()

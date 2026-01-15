@@ -26,6 +26,9 @@ export class PostDto extends PickType(Post, [
   'visibleAt',
   'updatedAt',
   'pinned',
+  'qaMode',
+  'expertIds',
+  'expertLabel',
 ]) {
   //redefine to use compacted dto types
   @ApiPropertyOptional({ type: () => ActionDto })
@@ -49,6 +52,9 @@ export class PostDto extends PickType(Post, [
   @ApiPropertyOptional({ type: Number })
   likeCount?: number;
 
+  @ApiPropertyOptional({ type: () => ProfileDto, isArray: true })
+  experts?: ProfileDto[];
+
   constructor(
     post: Post,
     extras?: { commentCount?: number; lastComment?: Comment },
@@ -59,6 +65,9 @@ export class PostDto extends PickType(Post, [
     this.commentCount = extras?.commentCount;
     this.likes = post.likes
       ? post.likes.map((like) => new ProfileDto(like))
+      : undefined;
+    this.experts = post.experts
+      ? post.experts.map((expert) => new ProfileDto(expert))
       : undefined;
     this.editableContent = new EditableContentDto(post.editableContent);
     this.createdAt = post.visibleAt ?? post.createdAt;
@@ -82,3 +91,16 @@ export class CreatePostDto extends PickType(Post, [
 }
 
 export class UpdatePostDto extends PartialType(CreatePostDto) {}
+
+export class UpdatePostExpertsDto {
+  @ApiProperty({ type: [Number] })
+  @IsDefined()
+  expertIds: number[];
+
+  @ApiProperty()
+  @IsDefined()
+  qaMode: boolean;
+
+  @ApiPropertyOptional()
+  expertLabel?: string;
+}

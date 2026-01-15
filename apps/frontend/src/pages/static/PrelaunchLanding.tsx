@@ -10,7 +10,7 @@ const PrelaunchLandingPage: React.FC = () => {
       <div className="min-h-screen flex flex-col bg-white">
         <PrelaunchNavbar transparent={false} absolute={false} />
         <div className="flex-1 container mx-auto flex flex-col px-5 py-5">
-          <div className="flex flex-col md:flex-row gap-y-12 md:gap-x-24 items-center mx-auto my-auto py-12">
+          <div className="flex flex-col md:flex-row gap-y-12 md:gap-x-18 items-center mx-auto my-auto py-12">
             {/* <img src={earth} className="mx-auto mb-12 w-50" /> */}
 
             <div className="max-w-2xl w-full flex flex-col gap-y-6 text-lg md:text-xl text-zinc-900">
@@ -32,11 +32,11 @@ const PrelaunchLandingPage: React.FC = () => {
               </p>
 
               <p>
-                We are in an experimental phase. Membership is by invitation
+                We are in an experimental phase: membership is by invitation
                 only.
               </p>
             </div>
-            <div className="w-full md:max-w-1/2 flex flex-col gap-y-4 items-center justify-center">
+            <div className="w-full md:max-w-[45%] flex flex-col gap-y-4 items-center justify-center">
               <img
                 src={alliancePeople}
                 alt="Alliance members"

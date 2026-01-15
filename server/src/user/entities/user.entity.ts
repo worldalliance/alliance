@@ -2,7 +2,7 @@
 /* eslint-disable @darraghor/nestjs-typed/all-properties-are-whitelisted */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import * as bcrypt from 'bcryptjs';
-import { Expose, Type } from 'class-transformer';
+import { Exclude, Expose, Type } from 'class-transformer';
 import {
   Allow,
   IsDefined,
@@ -45,6 +45,8 @@ import { Ty } from 'src/tasks/entities/type';
 import { ContractEvent, ContractEventType } from './contract-event.entity';
 import { Action } from 'src/actions/entities/action.entity';
 import { UserDevice } from './user-device.entity';
+import { Mms } from 'src/mms/mms.entity';
+import { findLeast } from 'src/utils/filter';
 
 export enum NotificationPreference {
   All = 'all',
@@ -65,6 +67,8 @@ export enum PublicFormResponseDefault {
 
 @Entity()
 export class User {
+  // Fields
+
   @PrimaryGeneratedColumn()
   @ApiProperty()
   id: number;
@@ -88,9 +92,9 @@ export class User {
   @ApiProperty()
   phoneNumberValidated: boolean;
 
-  @Column({ type: 'timestamptz', nullable: true })
-  @ApiPropertyOptional()
-  sentTextOptInMessageAt?: Date;
+  @OneToOne(() => Mms, { nullable: true })
+  @JoinColumn({ name: 'optInMmsId' })
+  optInMms?: Mms;
 
   @Column({ default: false })
   @ApiProperty()
@@ -103,22 +107,6 @@ export class User {
   @Column({ type: 'text', nullable: true })
   @ApiPropertyOptional({ type: 'string' })
   timeZone?: Temporal.TimeZoneLike;
-
-  @OneToMany(() => ContractEvent, (event) => event.user, { cascade: true })
-  @Type(() => ContractEvent)
-  @ApiProperty({ type: () => [ContractEvent] })
-  contractEvents: Ty<ContractEvent>[] | null;
-
-  @Expose()
-  get hasActiveContract(): boolean {
-    if (!this.contractEvents || this.contractEvents.length === 0) {
-      return false;
-    }
-    return (
-      this.contractEvents.sort((a, b) => b.date.getTime() - a.date.getTime())[0]
-        .type === ContractEventType.SIGNED
-    );
-  }
 
   @Column({
     type: 'enum',
@@ -143,6 +131,7 @@ export class User {
   // @IsOptional()
   // @IsEnum(NotificationChannel)
   // primaryNotificationChannel: NotificationChannel;
+
   @Column({
     default: true,
   })
@@ -228,6 +217,78 @@ export class User {
   @ApiProperty({ nullable: true })
   profileDescription: string;
 
+  @Column({ nullable: true })
+  @ApiProperty({ nullable: true })
+  referralCode: string;
+
+  @Column({ nullable: true, unique: true })
+  @ApiProperty({ nullable: true })
+  @Allow()
+  stripeCustomerId: string;
+
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  isNotSignedUpPartialProfile: boolean;
+
+  @Column({ nullable: true })
+  @ApiPropertyOptional({ nullable: true })
+  @Allow()
+  customCityString?: string;
+
+  @Column({ nullable: true })
+  @ApiProperty({ nullable: true })
+  @Allow()
+  over18: boolean;
+
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  onboardingComplete: boolean;
+
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  anonymous: boolean;
+
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  shareInfoPublicly: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: PublicFormResponseDefault,
+    default: PublicFormResponseDefault.Public,
+  })
+  @ApiProperty({
+    enum: PublicFormResponseDefault,
+    enumName: 'PublicFormResponseDefault',
+  })
+  formDataPreference: PublicFormResponseDefault;
+
+  @Column({ default: true })
+  @ApiProperty()
+  @Allow()
+  pushesForLikes: boolean;
+
+  @Column({ default: true })
+  @ApiProperty()
+  @Allow()
+  pushesForComments: boolean;
+
+  @Column({ default: true })
+  @ApiProperty()
+  @Allow()
+  pushesForFriendRequests: boolean;
+
+  // Relations
+
+  @OneToMany(() => ContractEvent, (event) => event.user, { cascade: true })
+  @Type(() => ContractEvent)
+  @ApiProperty({ type: () => ContractEvent, isArray: true })
+  contractEvents: Ty<ContractEvent>[];
+
   @OneToMany(() => ActionActivity, (activity) => activity.user)
   activities: ActionActivity[];
 
@@ -249,9 +310,66 @@ export class User {
   @OneToMany(() => User, (user) => user.referredBy)
   referredUsers: User[];
 
-  @Column({ nullable: true })
-  @ApiProperty({ nullable: true })
-  referralCode: string;
+  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
+  @IsOptional()
+  @Type(() => City)
+  city?: City | null;
+
+  @OneToMany(() => ActionEventNotif, (notif) => notif.user)
+  actionEventNotifs: ActionEventNotif[];
+
+  @OneToMany(() => UserAwayRange, (awayRange) => awayRange.user)
+  awayRanges: UserAwayRange[];
+
+  @OneToOne(() => Mail, { nullable: true })
+  @JoinColumn({ name: 'welcomeMailId' })
+  welcomeMail: Mail | null;
+
+  @ManyToMany(() => Tag, (tag) => tag.users, { onDelete: 'CASCADE' })
+  @Type(() => Tag)
+  tags: Ty<Tag>[];
+
+  @ManyToMany(() => Community, (community) => community.users, {
+    onDelete: 'CASCADE',
+  })
+  @ApiProperty({ type: () => Community, isArray: true })
+  @Type(() => Community)
+  communities: Community[];
+
+  @ManyToMany(() => Community, (community) => community.leaders, {
+    onDelete: 'CASCADE',
+  })
+  @Type(() => Community)
+  leaderOf: Community[];
+
+  @RelationId((user: User) => user.leaderOf)
+  leaderOfIds: number[];
+
+  @OneToMany(() => CommunityInvite, (invite) => invite.invitedUser)
+  @ApiProperty({ type: () => CommunityInvite, isArray: true })
+  @Type(() => CommunityInvite)
+  @IsDefined()
+  invitedCommunities: CommunityInvite[];
+
+  @OneToMany(() => Participant, (participant) => participant.user)
+  @ApiProperty({ type: () => Participant, isArray: true })
+  @Type(() => Participant)
+  participants: Ty<Participant>[];
+
+  @ManyToMany(() => Action, (action) => action.authors)
+  @ApiPropertyOptional({ type: () => Action, isArray: true })
+  @Type(() => Action)
+  authoredActions?: Ty<Action>[];
+
+  @OneToMany(() => UserDevice, (device) => device.user)
+  devices: Ty<UserDevice>[];
+
+  // Methods
+
+  @Expose()
+  get hasActiveContract(): boolean {
+    return this.hasActiveContractAt(new Date());
+  }
 
   get friends(): User[] {
     const sentAccepted =
@@ -287,78 +405,6 @@ export class User {
     return await bcrypt.compare(plainPassword, this.password);
   }
 
-  @Column({ nullable: true, unique: true })
-  @ApiProperty({ nullable: true })
-  @Allow()
-  stripeCustomerId: string;
-
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  isNotSignedUpPartialProfile: boolean;
-
-  // -- onboarding info --
-
-  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
-  @IsOptional()
-  @Type(() => City)
-  city?: City | null;
-
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ nullable: true })
-  @Allow()
-  customCityString?: string;
-
-  @Column({ nullable: true })
-  @ApiProperty({ nullable: true })
-  @Allow()
-  over18: boolean;
-
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  onboardingComplete: boolean;
-
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  anonymous: boolean;
-
-  @OneToMany(() => ActionEventNotif, (notif) => notif.user)
-  actionEventNotifs: ActionEventNotif[];
-
-  @OneToMany(() => UserAwayRange, (awayRange) => awayRange.user)
-  awayRanges: UserAwayRange[];
-
-  @OneToOne(() => Mail, { nullable: true })
-  @JoinColumn({ name: 'welcomeMailId' })
-  welcomeMail: Mail | null;
-
-  @ManyToMany(() => Tag, (tag) => tag.users, { onDelete: 'CASCADE' })
-  @Type(() => Tag)
-  tags: Ty<Tag>[];
-
-  @ManyToMany(() => Community, (community) => community.users, {
-    onDelete: 'CASCADE',
-  })
-  @ApiProperty({ type: () => Community, isArray: true })
-  @Type(() => Community)
-  communities: Community[];
-
-  @ManyToMany(() => Community, (community) => community.leaders, {
-    onDelete: 'CASCADE',
-  })
-  @Type(() => Community)
-  leaderOf: Community[];
-
-  @RelationId((user: User) => user.leaderOf)
-  leaderOfIds: number[];
-
-  @Column({ default: false })
-  @ApiProperty()
-  @Allow()
-  shareInfoPublicly: boolean;
-
   @Expose()
   @ApiProperty()
   get isCommunityLeader(): boolean {
@@ -371,48 +417,102 @@ export class User {
     return false;
   }
 
-  @OneToMany(() => CommunityInvite, (invite) => invite.invitedUser)
-  @ApiProperty({ type: () => CommunityInvite, isArray: true })
-  @Type(() => CommunityInvite)
-  @IsDefined()
-  invitedCommunities: CommunityInvite[];
+  @Exclude()
+  private _hasActiveContractAt = new Map<number, boolean>();
+  hasActiveContractAt(date: Date): boolean {
+    const key = date.getTime();
+    let hasActiveContract = this._hasActiveContractAt.get(key);
 
-  @Column({
-    type: 'enum',
-    enum: PublicFormResponseDefault,
-    default: PublicFormResponseDefault.Public,
-  })
-  @ApiProperty({
-    enum: PublicFormResponseDefault,
-    enumName: 'PublicFormResponseDefault',
-  })
-  formDataPreference: PublicFormResponseDefault;
+    if (hasActiveContract === undefined) {
+      const latestContractEvent = this.contractEvents
+        ? findLeast(
+            this.contractEvents,
+            (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
+            (event) => event.date <= date,
+          )
+        : null;
+      hasActiveContract =
+        latestContractEvent?.type === ContractEventType.SIGNED;
 
-  @OneToMany(() => Participant, (participant) => participant.user)
-  @ApiProperty({ type: () => Participant, isArray: true })
-  @Type(() => Participant)
-  participants: Ty<Participant>[];
+      this._hasActiveContractAt.set(key, hasActiveContract);
+    }
+    return hasActiveContract;
+  }
 
-  @ManyToMany(() => Action, (action) => action.authors)
-  @ApiPropertyOptional({ type: () => Action, isArray: true })
-  @Type(() => Action)
-  authoredActions?: Ty<Action>[];
+  @Exclude()
+  private _hasActiveContractInFullRange = new Map<string, boolean>();
+  hasActiveContractInFullRange(range: {
+    startDate?: Date | null;
+    endDate?: Date | null;
+  }): boolean {
+    const { startDate, endDate } = range;
+    const startTime = startDate?.getTime() ?? -Infinity;
+    const endTime = endDate?.getTime() ?? Infinity;
+    const key = `${startTime}_${endTime}`;
+    let hasActiveContract = this._hasActiveContractInFullRange.get(key);
 
-  @OneToMany(() => UserDevice, (device) => device.user)
-  devices: Ty<UserDevice>[];
+    populateCache: if (hasActiveContract === undefined) {
+      const latestContractEventBeforeStart = this.contractEvents
+        ? findLeast(
+            this.contractEvents,
+            (a, b) => b.date.getTime() - a.date.getTime(), // reverse order
+            (event) => event.date.getTime() <= startTime,
+          )
+        : null;
+      if (latestContractEventBeforeStart?.type !== ContractEventType.SIGNED) {
+        hasActiveContract = false;
+        break populateCache;
+      }
 
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForLikes: boolean;
+      hasActiveContract = !this.contractEvents?.some(
+        (event) =>
+          event.date.getTime() >= startTime &&
+          event.date.getTime() < endTime &&
+          event.type !== ContractEventType.SIGNED,
+      );
 
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForComments: boolean;
+      this._hasActiveContractInFullRange.set(key, hasActiveContract);
+    }
+    return hasActiveContract;
+  }
 
-  @Column({ default: true })
-  @ApiProperty()
-  @Allow()
-  pushesForFriendRequests: boolean;
+  @Exclude()
+  private _isAwayAt = new Map<number, boolean>();
+  isAwayAt(date: Date): boolean {
+    const key = date.getTime();
+    let isAway = this._isAwayAt.get(key);
+
+    if (isAway === undefined) {
+      isAway = !!this.awayRanges?.some(
+        (awayRange) => awayRange.startDate <= date && date <= awayRange.endDate,
+      );
+
+      this._isAwayAt.set(key, isAway);
+    }
+    return isAway;
+  }
+
+  @Exclude()
+  private _isAwayAtAnyPointInRange = new Map<string, boolean>();
+  isAwayAtAnyPointInRange(range: {
+    startDate?: Date | null;
+    endDate?: Date | null;
+  }): boolean {
+    const { startDate, endDate } = range;
+    const startTime = startDate?.getTime() ?? -Infinity;
+    const endTime = endDate?.getTime() ?? Infinity;
+    const key = `${startTime}_${endTime}`;
+
+    let isAway = this._isAwayAtAnyPointInRange.get(key);
+    if (isAway === undefined) {
+      isAway = !!this.awayRanges?.some(
+        (awayRange) =>
+          awayRange.startDate.getTime() < endTime &&
+          awayRange.endDate.getTime() > startTime,
+      );
+
+      this._isAwayAtAnyPointInRange.set(key, isAway);
+    }
+    return isAway;
+  }
 }

@@ -474,7 +474,13 @@ const ConversationDetailPanel = ({
                       focusedMessageId === message.id ? focusedMessageRef : null
                     }
                     isFirstInGroup={
-                      idx === 0 || arr[idx - 1].author.id !== message.author.id
+                      idx === 0 ||
+                      arr[idx - 1].author.id !== message.author.id ||
+                      Math.abs(
+                        new Date(message.createdAt).getTime() -
+                          new Date(arr[idx - 1].createdAt).getTime()
+                      ) >
+                        1000 * 60 * 60 * 3 // 3 hours
                     }
                     isFirstInReplyGroup={
                       idx === 0 ||

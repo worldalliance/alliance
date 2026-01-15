@@ -159,7 +159,7 @@ export function canJoinAction(action: ActionDto) {
   );
 }
 
-export function todoActionIsMandatory(action: ActionWithAwayStatus) {
+export function showActionInSidebarList(action: ActionWithAwayStatus) {
   return (
     (shouldCompleteAction(action) || canJoinAction(action)) &&
     action.awayStatus === TaskAwayStatus.NOT_AWAY &&

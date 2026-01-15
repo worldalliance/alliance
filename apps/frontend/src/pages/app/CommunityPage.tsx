@@ -320,8 +320,8 @@ const CommunityPage = () => {
   return (
     <TwoColumnLayout
       main={
-        <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-3">
-          <div className="flex flex-col gap-y-2 my-8">
+        <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-0 md:px-3">
+          <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
             <div className="flex flex-row gap-x-2 items-start justify-between">
               <div className="flex flex-col gap-y-4 mb-8">
                 <p className="font-serif font-semibold text-3xl md:text-4xl">

@@ -349,7 +349,7 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
         </div>
 
         <div className="flex flex-col items-start px-4 py-4">
-          <Link to={href("/tasks")}>
+          <Link to={href("/")}>
             <p className="p-3 font-berlingske uppercase text-xl mb-12 h-sm">
               The Alliance
             </p>

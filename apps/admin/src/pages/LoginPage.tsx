@@ -49,7 +49,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-page">
-      <div className="flex flex-col flex-grow items-center justify-center font-avenir">
+      <div className="flex flex-col flex-grow items-center justify-center">
         <div className="w-full max-w-md px-8">
           {error && (
             <div className="border-red-400 bg-red-50 mb-6 rounded-md p-4">

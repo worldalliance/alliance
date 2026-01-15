@@ -26,6 +26,7 @@ export interface ActionPageTaskPanelProps {
   onJoinAction: () => void;
   onDeclineAction: () => void;
   onOptOutAction: () => void;
+  scrollPageTo: (y: number) => void;
 }
 
 const ActionPageTaskPanel = ({
@@ -35,6 +36,7 @@ const ActionPageTaskPanel = ({
   onJoinAction,
   onDeclineAction,
   onOptOutAction,
+  scrollPageTo,
 }: ActionPageTaskPanelProps) => {
   const state = getActionPageTaskPanelState(action, userRelation);
 
@@ -80,6 +82,7 @@ const ActionPageTaskPanel = ({
           <ActionTaskPanel
             action={action}
             userRelation={userRelation ?? "none"}
+            scrollPageTo={scrollPageTo}
             {...panelHandlers}
           />
         </View>
@@ -88,6 +91,7 @@ const ActionPageTaskPanel = ({
       return (
         <ActionTaskPanel
           action={action}
+          scrollPageTo={scrollPageTo}
           userRelation={userRelation ?? "none"}
           {...panelHandlers}
         />

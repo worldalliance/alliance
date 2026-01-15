@@ -6,7 +6,7 @@ import {
   getDeadlineTimestamp,
   isCurrentlyCompletedAction,
   shouldCompleteAction,
-  todoActionIsMandatory,
+  showActionInSidebarList,
 } from "./actionUtils";
 
 export function actionPriorityComparator(
@@ -103,15 +103,19 @@ export function useHomePageActions(actions: ActionWithAwayStatus[] | null) {
     null;
 
   const currentWeekTodoActions = todoActions.filter((action) => {
-    return todoActionIsMandatory(action) && isActionInCurrentWeek(action);
+    return showActionInSidebarList(action) && isActionInCurrentWeek(action);
   });
   const nextWeekTodoActions = todoActions.filter((action) => {
-    return todoActionIsMandatory(action) && !isActionInCurrentWeek(action);
+    return showActionInSidebarList(action) && !isActionInCurrentWeek(action);
   });
 
   const remainingTasksEstimatedTimeCurrentWeek = currentWeekTodoActions.reduce(
     (sum, action) => {
-      if (todoActionIsMandatory(action) && action.timeEstimate) {
+      if (
+        showActionInSidebarList(action) &&
+        !action.optional &&
+        action.timeEstimate
+      ) {
         return sum + action.timeEstimate;
       }
       return sum;

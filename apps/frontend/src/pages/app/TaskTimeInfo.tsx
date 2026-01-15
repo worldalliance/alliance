@@ -12,7 +12,7 @@ const TaskTimeInfo = ({
   nextEvent,
   absoluteDeadline = false,
 }: TaskTimeInfoPropsShared) => {
-  const color = deadlineColor(nextEvent);
+  const color = deadlineColor(nextEvent, action);
 
   return (
     <div className="flex flex-row flex-wrap gap-x-4">

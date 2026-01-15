@@ -1,0 +1,169 @@
+name: commit review
+on:
+  push:
+    branches-ignore:
+      - production
+
+permissions:
+  contents: read
+
+jobs:
+  claude:
+    if: ${{ !contains(github.event.head_commit.message, 'Merge branch') }}
+    runs-on: ubuntu-latest
+    outputs:
+      final_message: ${{ steps.run_claude.outputs.final_message }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node (for installing Claude Code CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code CLI
+        run: npm i -g @anthropic-ai/claude-code
+
+      - name: Run Claude Code (headless, Opus)
+        id: run_claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          prompt_file="$(mktemp)"
+          cat > "$prompt_file" <<'PROMPT'
+          This is commit for ${{ github.repository }}.
+          Commit SHA: ${{ github.sha }}
+
+          1) Run `git diff ${{ github.sha }}^!` and review only this patch in the context of the repo.
+
+          Review only the changes introduced by the commit.
+          Suggest any improvements, potential bugs, or issues. Attend to high level direction also, such as if there might be a better way to accomplish the same objective.
+
+          Output a final message with your concise thoughts. Do not summarize the commit, just write one short bullet point for each specific issue you found, if any. Do not list things that do not need fixing. End the message with the phrase "[NEEDS_ATTENTION]" if there is a significant issue or possible improvement that the author should address. If everything is fine, do not include this phrase.
+          Only output [NEEDS_ATTENTION] if you are highly confident there is a substantial issue. Look around at related files to make sure you arent missing anything before doing so. If the changes remove a feature or affordance but this removal was clearly intentional by the author, this does not need attention. For example, if a useful thing was removed as the only change in a commit, the author likely intended to remove it.
+          ${{ (github.ref_name == 'main' || github.ref_name == 'staging' || github.ref_name == 'production') && '' || 'This is a WIP feature branch, do not comment on unimplemented features or clearly in-progress areas.' }}
+          PROMPT
+
+          # Run Claude Code non-interactively.
+          # -p / --print runs headless
+          # --output-format json lets us reliably extract ".result"
+          # --allowedTools auto-approves tools; we restrict Bash to git-only patterns
+          raw_json="$(
+            claude -p "$(cat "$prompt_file")" \
+              --output-format json \
+              --model claude-opus-4-5 \
+              --allowedTools "Read,Bash(git diff:*),Bash(git show:*),Bash(git status:*),Bash(git log:*)" \
+              --max-turns 12
+          )"
+
+          final_message="$(printf "%s" "$raw_json" | jq -r '.result // ""')"
+
+          # Emit as a multi-line GitHub Actions output
+          delim="EOF_$(date +%s%N)"
+          {
+            echo "final_message<<$delim"
+            printf "%s\n" "$final_message"
+            echo "$delim"
+          } >> "$GITHUB_OUTPUT"
+
+  post_feedback:
+    runs-on: ubuntu-latest
+    needs: claude
+    if: needs.claude.outputs.final_message != ''
+    steps:
+      - name: Extract Claude summary + NEEDS_ATTENTION flag
+        env:
+          CLAUDE_FINAL_MESSAGE: ${{ needs.claude.outputs.final_message }}
+        id: extract_claude
+        run: |
+          set -euo pipefail
+
+          delim="EOF_$(date +%s%N)"
+          {
+            echo "claude_final_message<<$delim"
+            printf "%s\n" "$CLAUDE_FINAL_MESSAGE"
+            echo "$delim"
+          } | sed 's|['\''"]||g' >> "$GITHUB_OUTPUT"
+
+          echo "$CLAUDE_FINAL_MESSAGE"
+
+          needs_review=$([[ "$CLAUDE_FINAL_MESSAGE" =~ NEEDS_ATTENTION ]] && echo "true" || echo "false")
+          echo "$needs_review"
+          echo "needs_review=$needs_review" >> "$GITHUB_OUTPUT"
+
+      - name: Map GitHub actor to Slack mention
+        id: actor_to_slack
+        run: |
+          actor="${{ github.actor }}"
+          mention=""
+          case "$actor" in
+            CaseyManning)
+              mention="<@U08P0THG741>"
+              ;;
+            sidsquid)
+              mention="<@U08NU231VGS>"
+              ;;
+            markzxu)
+              mention="<@U08P0TJ283T>"
+              ;;
+            charleslien)
+              mention="<@U0A0WQQM8HZ>"
+              ;;
+          esac
+          echo "mention=$mention" >> "$GITHUB_OUTPUT"
+
+      - name: Build Slack payload (needs review)
+        id: slack_body_review
+        if: ${{ steps.extract_claude.outputs.needs_review == 'true' }}
+        env:
+          SUMMARY: ${{ steps.extract_claude.outputs.claude_final_message }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SLACK_MENTION: ${{ steps.actor_to_slack.outputs.mention }}
+        run: |
+          set -euo pipefail
+
+          CLEAN_SUMMARY=$(printf "%s" "$SUMMARY" | sed -E 's/\[NEEDS[ _]ATTENTION\]//g' | sed -E 's/[[:space:]]+$//')
+
+          jq -nc \
+            --arg url "$RUN_URL" \
+            --arg summary "$CLEAN_SUMMARY" \
+            --arg mention "$SLACK_MENTION" \
+            '{
+              text: "review given",
+              blocks: [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": (if $mention != "" then ($mention + " " + $summary) else $summary end)
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": { "type": "plain_text", "text": "Open run" },
+                      "url": $url
+                    }
+                  ]
+                }
+              ]
+            }' > slack.json
+
+          {
+            echo "payload<<EOF"
+            cat slack.json
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post to Slack (NEEDS_REVIEW)
+        if: ${{ steps.extract_claude.outputs.needs_review == 'true' && (success() || failure()) }}
+        run: |
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data '${{ steps.slack_body_review.outputs.payload }}' \
+            "${{ secrets.SLACK_WEBHOOK_URL_CLA }}"

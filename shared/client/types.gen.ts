@@ -26,6 +26,14 @@ export type AccessToken = {
     access_token: string;
 };
 
+export type NotificationChannel = 'text' | 'email' | 'push';
+
+export type NotificationPreference = 'all' | 'digest' | 'none';
+
+export type ForumDigestPreference = 'off' | 'daily' | 'weekly';
+
+export type PublicFormResponseDefault = 'public' | 'private';
+
 export type ContractEventType = 'signed' | 'suspended';
 
 export type ContractEvent = {
@@ -34,12 +42,6 @@ export type ContractEvent = {
     automatic: boolean;
     autoSuspendKey?: string;
 };
-
-export type NotificationChannel = 'text' | 'email' | 'push';
-
-export type NotificationPreference = 'all' | 'digest' | 'none';
-
-export type ForumDigestPreference = 'off' | 'daily' | 'weekly';
 
 export type CommunityInviteStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled';
 
@@ -52,8 +54,6 @@ export type CommunityInvite = {
     updatedAt: string;
     community: Community;
 };
-
-export type PublicFormResponseDefault = 'public' | 'private';
 
 export type ParticipantRole = 'admin' | 'member' | 'owner';
 
@@ -83,6 +83,8 @@ export type Participant = {
  * Type of the action
  */
 export type ActionTaskType = 'Funding' | 'Activity' | 'Ongoing';
+
+export type VisibilityMode = 'public' | 'all_members' | 'participating_groups';
 
 /**
  * New status of the action after the event
@@ -222,8 +224,6 @@ export type ActionEvent = {
     updates: Array<ActionUpdate>;
     suiteManaged: boolean;
 };
-
-export type VisibilityMode = 'public' | 'all_members' | 'participating_groups';
 
 /**
  * Type of action activity
@@ -453,11 +453,6 @@ export type Action = {
      */
     updatedAt: string;
     /**
-     * Events associated with the action
-     */
-    events: Array<ActionEvent>;
-    participatingTags: Array<Tag>;
-    /**
      * Whether to use a manual cohort for the action
      */
     useManualCohort: boolean;
@@ -471,19 +466,16 @@ export type Action = {
      * Number of users who have completed the action
      */
     usersCompleted: number;
-    activities: Array<Array<ActionActivity>>;
-    status: ActionStatus;
     /**
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
     archived: boolean;
-    updates: Array<ActionUpdate>;
-    suite?: ActionSuite;
     /**
      * Priority of the action
      */
     priority: number;
+    optional: boolean;
     /**
      * Prevent completion of the action (for old actions)
      */
@@ -496,7 +488,16 @@ export type Action = {
      * Whether the action shows up in the tasks page after the deadline
      */
     shouldCompleteAfterDeadline: boolean;
+    /**
+     * Events associated with the action
+     */
+    events: Array<ActionEvent>;
+    participatingTags: Array<Tag>;
+    activities: Array<Array<ActionActivity>>;
+    updates: Array<ActionUpdate>;
+    suite?: ActionSuite;
     authors?: Array<User>;
+    status: ActionStatus;
 };
 
 export type User = {
@@ -504,11 +505,9 @@ export type User = {
     name: string;
     phoneNumber?: string;
     phoneNumberValidated: boolean;
-    sentTextOptInMessageAt?: string;
     emailVerified: boolean;
     preferredReminderTime?: string;
     timeZone?: string;
-    contractEvents: Array<ContractEvent>;
     preferredActionReminderChannel: NotificationChannel;
     emailNotifsEnabled: boolean;
     textNotifsEnabled: boolean;
@@ -530,16 +529,17 @@ export type User = {
     over18: boolean | null;
     onboardingComplete: boolean;
     anonymous: boolean;
-    communities: Array<Community>;
     shareInfoPublicly: boolean;
-    isCommunityLeader: boolean;
-    invitedCommunities: Array<CommunityInvite>;
     formDataPreference: PublicFormResponseDefault;
-    participants: Array<Participant>;
-    authoredActions?: Array<Action>;
     pushesForLikes: boolean;
     pushesForComments: boolean;
     pushesForFriendRequests: boolean;
+    contractEvents: Array<ContractEvent>;
+    communities: Array<Community>;
+    invitedCommunities: Array<CommunityInvite>;
+    participants: Array<Participant>;
+    authoredActions?: Array<Action>;
+    isCommunityLeader: boolean;
 };
 
 export type Community = {
@@ -547,7 +547,7 @@ export type Community = {
     name: string;
     description: string;
     photo?: string;
-    users?: Array<User>;
+    users: Array<User>;
     leaders?: Array<User>;
     invites?: Array<OnetimeInvite>;
     internalInvites: Array<CommunityInvite>;
@@ -559,7 +559,6 @@ export type UserDto = {
     phoneNumber?: string;
     preferredReminderTime?: string;
     timeZone?: string;
-    contractEvents: Array<ContractEvent>;
     preferredActionReminderChannel: NotificationChannel;
     emailNotifsEnabled: boolean;
     textNotifsEnabled: boolean;
@@ -577,13 +576,14 @@ export type UserDto = {
     customCityString?: string | null;
     onboardingComplete: boolean;
     anonymous: boolean;
-    communities: Array<Community>;
     shareInfoPublicly: boolean;
-    invitedCommunities: Array<CommunityInvite>;
     formDataPreference: PublicFormResponseDefault;
     pushesForLikes: boolean;
     pushesForComments: boolean;
     pushesForFriendRequests: boolean;
+    contractEvents: Array<ContractEvent>;
+    communities: Array<Community>;
+    invitedCommunities: Array<CommunityInvite>;
     cityId?: number;
     email: string;
     hasActiveContract: boolean;
@@ -1114,7 +1114,6 @@ export type ActionDto = {
      * Timestamp when the action was last updated
      */
     updatedAt: string;
-    participatingTags: Array<Tag>;
     /**
      * Whether to use a manual cohort for the action
      */
@@ -1129,18 +1128,16 @@ export type ActionDto = {
      * Number of users who have completed the action
      */
     usersCompleted: number;
-    activities: Array<Array<ActionActivity>>;
-    status: ActionStatus;
     /**
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
     archived: boolean;
-    suite?: ActionSuite;
     /**
      * Priority of the action
      */
     priority: number;
+    optional: boolean;
     /**
      * Prevent completion of the action (for old actions)
      */
@@ -1153,6 +1150,10 @@ export type ActionDto = {
      * Whether the action shows up in the tasks page after the deadline
      */
     shouldCompleteAfterDeadline: boolean;
+    participatingTags: Array<Tag>;
+    activities: Array<Array<ActionActivity>>;
+    suite?: ActionSuite;
+    status: ActionStatus;
     events: Array<ActionEventDto>;
     updates: Array<ActionUpdateDto>;
     canParticipate?: boolean;
@@ -1239,7 +1240,6 @@ export type CreateActionDto = {
      * Form associated with the action
      */
     taskFormId?: number;
-    participatingTags: Array<Tag>;
     /**
      * Whether to use a manual cohort for the action
      */
@@ -1257,6 +1257,7 @@ export type CreateActionDto = {
      * Priority of the action
      */
     priority: number;
+    optional: boolean;
     /**
      * Prevent completion of the action (for old actions)
      */
@@ -1269,6 +1270,7 @@ export type CreateActionDto = {
      * Whether the action shows up in the tasks page after the deadline
      */
     shouldCompleteAfterDeadline: boolean;
+    participatingTags: Array<Tag>;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: UserActionRelation;
@@ -1330,7 +1332,6 @@ export type UpdateActionDto = {
      * Form associated with the action
      */
     taskFormId?: number;
-    participatingTags?: Array<Tag>;
     /**
      * Whether to use a manual cohort for the action
      */
@@ -1348,6 +1349,7 @@ export type UpdateActionDto = {
      * Priority of the action
      */
     priority?: number;
+    optional?: boolean;
     /**
      * Prevent completion of the action (for old actions)
      */
@@ -1360,6 +1362,7 @@ export type UpdateActionDto = {
      * Whether the action shows up in the tasks page after the deadline
      */
     shouldCompleteAfterDeadline?: boolean;
+    participatingTags?: Array<Tag>;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
     userRelation?: UserActionRelation;
@@ -1600,11 +1603,6 @@ export type ExportActionDto = {
      */
     updatedAt: string;
     /**
-     * Events associated with the action
-     */
-    events: Array<ActionEvent>;
-    participatingTags: Array<Tag>;
-    /**
      * Whether to use a manual cohort for the action
      */
     useManualCohort: boolean;
@@ -1613,18 +1611,16 @@ export type ExportActionDto = {
      */
     manualCohortUserIds?: Array<number>;
     visibilityMode: VisibilityMode;
-    activities: Array<Array<ActionActivity>>;
     /**
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
     archived: boolean;
-    updates: Array<ActionUpdate>;
-    suite?: ActionSuite;
     /**
      * Priority of the action
      */
     priority: number;
+    optional: boolean;
     /**
      * Prevent completion of the action (for old actions)
      */
@@ -1637,6 +1633,14 @@ export type ExportActionDto = {
      * Whether the action shows up in the tasks page after the deadline
      */
     shouldCompleteAfterDeadline: boolean;
+    /**
+     * Events associated with the action
+     */
+    events: Array<ActionEvent>;
+    participatingTags: Array<Tag>;
+    activities: Array<Array<ActionActivity>>;
+    updates: Array<ActionUpdate>;
+    suite?: ActionSuite;
     authors?: Array<User>;
     taskForm?: Form;
     reminderGroups?: Array<ReminderGroup>;
@@ -1685,7 +1689,7 @@ export type ActionSuiteSummaryDto = {
     name: string;
 };
 
-export type UserActionRelationPillStatus = 'todo' | 'completed' | 'away' | 'not_required' | 'wont_complete' | 'missed_deadline';
+export type UserActionRelationPillStatus = 'away' | 'completed' | 'missed_deadline' | 'not_required' | 'optional_task' | 'todo' | 'wont_complete';
 
 export type UserActionRelationDetailDto = {
     actionId: number;
@@ -1751,6 +1755,9 @@ export type PostDto = {
     pinned: boolean;
     updatedAt: string;
     visibleAt?: string;
+    qaMode: boolean;
+    expertLabel?: string;
+    expertIds: Array<number>;
     action?: ActionDto;
     author: ProfileDto;
     commentCount?: number;
@@ -1758,6 +1765,7 @@ export type PostDto = {
     likes?: Array<ProfileDto>;
     lastComment?: CommentDto;
     likeCount?: number;
+    experts?: Array<ProfileDto>;
 };
 
 export type UserCommentDto = {
@@ -1788,6 +1796,12 @@ export type UpdateCommentDto = {
     parentObjectId?: number;
     parentId?: number;
     editableContent?: CreateEditableContentDto;
+};
+
+export type UpdatePostExpertsDto = {
+    expertIds: Array<number>;
+    qaMode: boolean;
+    expertLabel?: string;
 };
 
 export type CitySearchDto = {
@@ -2174,6 +2188,25 @@ export type MemberCompletionRetentionCohortDto = {
 
 export type AggregateStatsDto = {
     signedUsers: number;
+};
+
+export type ContractStatusPointDto = {
+    /**
+     * The date for this data point
+     */
+    date: string;
+    /**
+     * Number of users with active contracts
+     */
+    activeCount: number;
+    /**
+     * Number of users who signed but are no longer active
+     */
+    churnedCount: number;
+    /**
+     * Total users who ever signed up to this point
+     */
+    totalEverSigned: number;
 };
 
 export type AppHealthCheckData = {
@@ -3856,6 +3889,24 @@ export type ActionsLiveListResponses = {
     200: unknown;
 };
 
+export type ActionsFriendActivityForActionData = {
+    body?: never;
+    path: {
+        actionId: number;
+    };
+    query: {
+        comments: boolean;
+        limit: string;
+    };
+    url: '/actions/friendActivity/{actionId}';
+};
+
+export type ActionsFriendActivityForActionResponses = {
+    200: Array<ActionActivityDto>;
+};
+
+export type ActionsFriendActivityForActionResponse = ActionsFriendActivityForActionResponses[keyof ActionsFriendActivityForActionResponses];
+
 export type ActionsFriendActivityData = {
     body?: never;
     path?: never;
@@ -4928,6 +4979,34 @@ export type ForumUnlikePostResponses = {
 
 export type ForumUnlikePostResponse = ForumUnlikePostResponses[keyof ForumUnlikePostResponses];
 
+export type ForumGetPostsForAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/forum/admin/posts';
+};
+
+export type ForumGetPostsForAdminResponses = {
+    200: Array<PostDto>;
+};
+
+export type ForumGetPostsForAdminResponse = ForumGetPostsForAdminResponses[keyof ForumGetPostsForAdminResponses];
+
+export type ForumUpdatePostExpertsData = {
+    body: UpdatePostExpertsDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/forum/admin/posts/{id}/experts';
+};
+
+export type ForumUpdatePostExpertsResponses = {
+    200: PostDto;
+};
+
+export type ForumUpdatePostExpertsResponse = ForumUpdatePostExpertsResponses[keyof ForumUpdatePostExpertsResponses];
+
 export type GeoSearchCityData = {
     body?: never;
     path?: never;
@@ -5510,6 +5589,22 @@ export type AnalyticsGetAggregateStatsResponses = {
 };
 
 export type AnalyticsGetAggregateStatsResponse = AnalyticsGetAggregateStatsResponses[keyof AnalyticsGetAggregateStatsResponses];
+
+export type AnalyticsGetContractStatusHistoryData = {
+    body?: never;
+    path?: never;
+    query: {
+        startDate: string;
+        endDate: string;
+    };
+    url: '/analytics/contract-status-history';
+};
+
+export type AnalyticsGetContractStatusHistoryResponses = {
+    200: Array<ContractStatusPointDto>;
+};
+
+export type AnalyticsGetContractStatusHistoryResponse = AnalyticsGetContractStatusHistoryResponses[keyof AnalyticsGetContractStatusHistoryResponses];
 
 export type ClientOptions = {
     baseUrl: string;

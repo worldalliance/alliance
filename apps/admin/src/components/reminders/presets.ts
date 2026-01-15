@@ -2,12 +2,14 @@ import { CreateReminderGroupDto } from "@alliance/shared/client";
 import {
   defaultAnnouncementEmailContents,
   defaultAnnouncementEmailSubject,
+  defaultAnnouncementPushMessage,
   defaultAnnouncementTextMessage,
   defaultEmailContents,
   defaultEmailSubject,
   defaultMissedDeadlineEmailContents,
   defaultMissedDeadlineEmailSubject,
   defaultMissedDeadlineTextMessage,
+  defaultPushMessage,
   defaultTextMessage,
 } from "./defaultReminderContents";
 
@@ -37,6 +39,7 @@ export const reminderPresets: Record<
     name: "Member Action announcement",
     emailMessage: defaultAnnouncementEmailContents,
     emailSubject: defaultAnnouncementEmailSubject,
+    pushMessage: defaultAnnouncementPushMessage,
     useSuiteTaskCount: true,
   },
   "Two Day Range": {
@@ -48,6 +51,7 @@ export const reminderPresets: Record<
     emailSubject: defaultEmailSubject,
     emailMessage: defaultEmailContents,
     name: "24-48h reminder",
+    pushMessage: defaultPushMessage,
     useSuiteTaskCount: true,
   },
   "One Day Range": {
@@ -59,6 +63,7 @@ export const reminderPresets: Record<
     emailSubject: defaultEmailSubject,
     emailMessage: defaultEmailContents,
     name: "6-24h reminder",
+    pushMessage: defaultPushMessage,
     useSuiteTaskCount: true,
   },
   "Three Hour": {
@@ -69,6 +74,7 @@ export const reminderPresets: Record<
     emailSubject: defaultEmailSubject,
     emailMessage: defaultEmailContents,
     name: "3 hour reminder",
+    pushMessage: defaultPushMessage,
     useSuiteTaskCount: true,
   },
   "Missed Deadline": {
@@ -79,6 +85,7 @@ export const reminderPresets: Record<
     emailMessage: defaultMissedDeadlineEmailContents,
     emailSubject: defaultMissedDeadlineEmailSubject,
     name: "Missed deadline message",
+    pushMessage: defaultMissedDeadlineTextMessage,
     useSuiteTaskCount: true,
   },
 };

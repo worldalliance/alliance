@@ -1,6 +1,6 @@
 import { Check } from "lucide-react-native";
 import { Stack, router, useLocalSearchParams } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import AppMarkdownWrapper from "../../../components/AppMarkdownWrapper";
+import AppMarkdownWrapper from "../../../../components/AppMarkdownWrapper";
 import {
   ActionActivityDto,
   UserActionRelation,
@@ -16,20 +16,20 @@ import {
   actionsLikeActivity,
   actionsUnlikeActivity,
 } from "@alliance/shared/client";
-import Card, { CardStyle } from "../../../components/system/Card";
-import Text from "../../../components/system/Text";
-import ActionEventsPanel from "../../../components/ActionEventsPanel";
-import TaskTimeInfo from "../../../components/TaskTimeInfo";
+import Card, { CardStyle } from "../../../../components/system/Card";
+import Text from "../../../../components/system/Text";
+import ActionEventsPanel from "../../../../components/ActionEventsPanel";
+import TaskTimeInfo from "../../../../components/TaskTimeInfo";
 import { getLastAndNextEvent } from "@alliance/shared/lib/largeActionCard";
-import ActionPageTaskPanel from "../../../components/ActionPageTaskPanel";
+import ActionPageTaskPanel from "../../../../components/ActionPageTaskPanel";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
-import Button, { ButtonColor } from "../../../components/system/Button";
-import Comments from "../../../components/Comments";
-import ProfileImage from "../../../components/ProfileImage";
+import Button, { ButtonColor } from "../../../../components/system/Button";
+import Comments from "../../../../components/Comments";
+import ProfileImage from "../../../../components/ProfileImage";
 import { formatTime } from "@alliance/shared/lib/utils";
-import LikeButton from "../../../components/LikeButton";
+import LikeButton from "../../../../components/LikeButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { colors } from "../../../lib/style/colors";
+import { colors } from "../../../../lib/style/colors";
 
 type TabId = "task" | "activity" | "description" | "comments";
 
@@ -180,6 +180,8 @@ export default function ActionDetailScreen() {
     onOptOutAction,
   } = useActionHandlers(parseInt(id), true, reloadTasks);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+
   if (loading) {
     return (
       <View className="flex-1 justify-center items-center p-5 bg-white">
@@ -204,6 +206,10 @@ export default function ActionDetailScreen() {
     );
   }
 
+  const scrollPageTo = (y: number) => {
+    scrollViewRef.current?.scrollTo({ y, animated: true });
+  };
+
   const userRelation = action.userRelation as UserActionRelation | undefined;
   const { nextEvent, lastEvent } = getLastAndNextEvent(action);
 
@@ -214,7 +220,7 @@ export default function ActionDetailScreen() {
           <View>
             {action.status !== "planned" ? (
               <View>
-                <View className="mb-2 flex flex-row items-center gap-2 w-full">
+                <View className="mb-2 flex flex-row items-center gap-2 w-full flex-wrap">
                   <View className="flex-1">
                     <Text className="text-xl font-semibold text-zinc-900">
                       Task
@@ -224,9 +230,11 @@ export default function ActionDetailScreen() {
                     action={action}
                     nextEvent={nextEvent}
                     lastEvent={lastEvent}
+                    className="flex-col items-end"
                   />
                 </View>
                 <ActionPageTaskPanel
+                  scrollPageTo={scrollPageTo}
                   action={action}
                   userRelation={userRelation ?? null}
                   onCompleteAction={onCompleteAction}
@@ -282,7 +290,7 @@ export default function ActionDetailScreen() {
           headerShown: false,
         }}
       />
-      <ScrollView className="flex-1 bg-white">
+      <ScrollView className="flex-1 bg-white" ref={scrollViewRef}>
         {action.image && (
           <Image
             source={{ uri: action.image }}
@@ -290,12 +298,14 @@ export default function ActionDetailScreen() {
             resizeMode="cover"
           />
         )}
-        <View className="p-5 pt-8">
+        <View className="p-5 pt-15">
           <Text className="text-[24px] font-bold text-zinc-900 mb-2 font-serif-bold">
             {action.name}
           </Text>
           {action.shortDescription && (
-            <Text className="mb-1 text-zinc-600">{action.shortDescription}</Text>
+            <Text className="mb-1 text-zinc-600">
+              {action.shortDescription}
+            </Text>
           )}
           {action.authors && action.authors.length > 0 && (
             <Text className="mb-4 text-zinc-500">
@@ -324,7 +334,7 @@ export default function ActionDetailScreen() {
               <TouchableOpacity
                 key={tab.id}
                 onPress={() => setActiveTab(tab.id)}
-                className={`flex-1 py-3 items-center ${
+                className={`px-4 py-3 items-center ${
                   activeTab === tab.id ? "border-b-2 border-green" : ""
                 }`}
                 activeOpacity={0.7}

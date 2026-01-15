@@ -145,12 +145,26 @@ const ActionPageTaskPanel = () => {
       );
     case ActionPageTaskPanelState.ShowTask:
       return (
-        <ActionTaskPanel
-          action={action}
-          userRelation={userRelation ?? "none"}
-          card={true}
-          {...panelHandlers}
-        />
+        <>
+          {action.optional && (
+            <Card
+              style={CardStyle.Alert}
+              className="mb-3 border-none rounded-md"
+            >
+              <p className="font-semibold">This action is optional.</p>
+              <p>
+                You are not required to complete the task, but can if you would
+                like.
+              </p>
+            </Card>
+          )}
+          <ActionTaskPanel
+            action={action}
+            userRelation={userRelation ?? "none"}
+            card={true}
+            {...panelHandlers}
+          />
+        </>
       );
     default:
       throw new Error(

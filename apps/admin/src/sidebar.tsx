@@ -26,6 +26,9 @@ import {
   ImageUp,
   BarChart2,
   ChevronDown,
+  ChevronRight,
+  MessageSquare,
+  MoreHorizontal,
 } from "lucide-react";
 
 const Sidebar: React.FC = () => {
@@ -86,6 +89,8 @@ const Sidebar: React.FC = () => {
 
   const [createActionDropdownOpen, setCreateActionDropdownOpen] =
     useState<boolean>(false);
+
+  const [extrasOpen, setExtrasOpen] = useState<boolean>(false);
 
   const [pasteJsonLoading, setPasteJsonLoading] = useState<boolean>(false);
 
@@ -167,6 +172,9 @@ const Sidebar: React.FC = () => {
         className={`overflow-y-auto max-h-screen overflow-x-hidden flex flex-col justify-between relative transition-all duration-100 bg-[#f4f4f4]`}
         style={{
           width: `${sidebarWidth}px`,
+          ...(isSidebarOpen
+            ? { overflowY: `auto` }
+            : { overflowY: `hidden`, backgroundColor: `transparent` }),
         }}
       >
         <div
@@ -200,19 +208,10 @@ const Sidebar: React.FC = () => {
                 label: "Groups",
                 icon: <UsersRound size={16} />,
               },
-              {
-                to: "/scheduled",
-                label: "Scheduled Plans",
-                icon: <Calendar size={16} />,
-              },
-              {
-                to: "/image",
-                label: "Image Upload",
-                icon: <ImageUp size={16} />,
-              },
+
               {
                 to: "/stats",
-                label: "Stats (wip)",
+                label: "Stats",
                 icon: <BarChart2 size={16} />,
               },
             ].map((link) => (
@@ -225,6 +224,49 @@ const Sidebar: React.FC = () => {
                 {link.label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={() => setExtrasOpen(!extrasOpen)}
+              className="flex items-center gap-2 text-[15px] text-gray-700 hover:text-black hover:bg-zinc-200/60 py-2 px-2 rounded transition-colors w-full"
+            >
+              <MoreHorizontal size={16} />
+              Extras
+              {extrasOpen ? (
+                <ChevronDown size={14} className="ml-auto" />
+              ) : (
+                <ChevronRight size={14} className="ml-auto" />
+              )}
+            </button>
+            {extrasOpen && (
+              <div className="flex flex-col gap-y-1 pl-4 border-l border-zinc-300 ml-2">
+                {[
+                  {
+                    to: "/posts",
+                    label: "Forum Posts",
+                    icon: <MessageSquare size={16} />,
+                  },
+                  {
+                    to: "/scheduled",
+                    label: "Scheduled Plans",
+                    icon: <Calendar size={16} />,
+                  },
+                  {
+                    to: "/image",
+                    label: "Image Upload",
+                    icon: <ImageUp size={16} />,
+                  },
+                ].map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    className="flex items-center gap-2 text-[15px] text-gray-700 hover:text-black hover:bg-zinc-200/60 py-2 px-2 rounded transition-colors"
+                  >
+                    {link.icon}
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            )}
           </nav>
           <div className="flex flex-row justify-between items-center mt-3 relative">
             <p className="font-bold">Current Actions</p>

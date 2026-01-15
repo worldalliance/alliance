@@ -80,11 +80,17 @@ const ContractPage: React.FC = () => {
     <CenterLayout>
       <div className="mt-4 md:mt-8 gap-y-2 flex flex-col text-base md:text-lg">
         <p className="font-serif text-3xl md:text-4xl font-semibold mb-1">
-          Contract
+          Membership contract
         </p>
-        <div className="text-zinc-900 mb-4">
-          You can terminate your membership at any time.
-        </div>
+        <p className="text-zinc-900">Notes:</p>
+        <ul className="text-zinc-900 mb-4 list-disc list-inside">
+          <li>You can terminate your membership at any time.</li>
+          <li>
+            If you miss 3 or more of the last 10 tasks you were assigned, your
+            contract will be suspended automatically. You can re-sign the
+            contract to re-join the Alliance.
+          </li>
+        </ul>
         {lastContractEvent?.type === "suspended" && (
           <Card style={CardStyle.Red}>
             <p>

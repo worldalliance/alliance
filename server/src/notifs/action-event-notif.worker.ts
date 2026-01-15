@@ -84,7 +84,7 @@ export class ActionEventNotifWorker {
     plan: NotificationPlan,
     cid: string,
   ): Promise<string> {
-    const uncompletedTasks = await this.actionsService.getUncompletedTasks(
+    const uncompletedTasks = await this.actionsService.findUncompletedTasks(
       plan.user.id,
       plan.group.useSuiteTaskCount ? plan.group.actionSuite?.id : undefined,
     );

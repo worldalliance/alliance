@@ -44,6 +44,8 @@ interface ReplyComponentProps {
   highlightedReplyId: number | null;
   compact?: boolean;
   homeStyle?: boolean;
+  expertIds?: number[];
+  expertLabel?: string;
 }
 
 interface ReplyContentProps
@@ -56,6 +58,8 @@ interface ReplyContentProps
     | "onUpdateReply"
     | "onLikeReply"
     | "compact"
+    | "expertIds"
+    | "expertLabel"
   > {
   canNest: boolean;
   isReplyingToThis: boolean;
@@ -77,7 +81,10 @@ const ReplyContent: React.FC<ReplyContentProps> = ({
   onUpdateReply,
   onLikeReply,
   compact = false,
+  expertIds = [],
+  expertLabel,
 }) => {
+  const isExpert = expertIds.includes(reply.author.id);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.editableContent.body);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -189,9 +196,11 @@ const ReplyContent: React.FC<ReplyContentProps> = ({
               to={href("/member/:id", { id: reply.author.id.toString() })}
               className="text-zinc-800 font-medium"
             >
+              {/* we do not want to show group lead status in replies currently */}
               <UserDisplayName
                 staff={reply.author.staff}
-                grouplead={reply.author.isCommunityLeader}
+                expert={isExpert}
+                expertLabel={expertLabel}
               >
                 {reply.author.displayName}
               </UserDisplayName>
@@ -213,7 +222,7 @@ const ReplyContent: React.FC<ReplyContentProps> = ({
         </div>
 
         {/* Middle section: Reply content */}
-        <div className={`text-base mb-1`}>
+        <div className={`text-sm sm:text-base mb-1`}>
           {!isEditing && (
             <EditableContentRenderer
               content={reply.editableContent}
@@ -339,6 +348,8 @@ const ReplyComponent = ({
   onUpdateReply,
   onLikeReply,
   homeStyle = false,
+  expertIds = [],
+  expertLabel,
 }: ReplyComponentProps) => {
   const handleUpdateReply = async (
     id: number,
@@ -430,6 +441,8 @@ const ReplyComponent = ({
                 onUpdateReply={handleUpdateReply}
                 onLikeReply={onLikeReply}
                 compact={compact}
+                expertIds={expertIds}
+                expertLabel={expertLabel}
               />
             </div>
             {user && isReplyingToThis && !isCollapsed && (
@@ -478,6 +491,8 @@ const ReplyComponent = ({
                           onUpdateReply={onUpdateReply}
                           onLikeReply={onLikeReply}
                           compact={compact}
+                          expertIds={expertIds}
+                          expertLabel={expertLabel}
                         />
                       </div>
                     </div>
@@ -525,6 +540,8 @@ const ReplyComponent = ({
           onUpdateReply={handleUpdateReply}
           onLikeReply={onLikeReply}
           compact={compact}
+          expertIds={expertIds}
+          expertLabel={expertLabel}
         />
       </div>
       {user && isReplyingToThis && (
@@ -569,6 +586,8 @@ const ReplyComponent = ({
                 onUpdateReply={onUpdateReply}
                 onLikeReply={onLikeReply}
                 compact={compact}
+                expertIds={expertIds}
+                expertLabel={expertLabel}
               />
             </div>
           ))}

@@ -99,14 +99,14 @@ const CommunityMembersTable = ({
               <thead className="text-left bg-white">
                 <tr>
                   <td colSpan={amLeader ? 3 : 2} className="px-0 pb-6">
-                    <p className="text-xl md:text-2xl font-semibold">
+                    <p className="text-xl md:text-2xl font-semibold px-5 md:px-0">
                       Lead{leaders.length !== 1 ? "s" : ""}
                     </p>
                   </td>
                 </tr>
               </thead>
               <thead className="text-left bg-zinc-50">
-                <tr className="*:py-4 *:px-2 *:md:px-4 border border-zinc-200 text-xs md:text-sm text-zinc-600">
+                <tr className="*:py-4 *:px-2 *:md:px-4 border-y md:border border-zinc-200 text-xs md:text-sm text-zinc-600">
                   <th scope="col" className="font-medium">
                     Name
                   </th>
@@ -123,7 +123,7 @@ const CommunityMembersTable = ({
                   )}
                 </tr>
               </thead>
-              <tbody className="border border-zinc-200">
+              <tbody className="border-y md:border border-zinc-200">
                 {leaders.map((user) => (
                   <CommunityMemberTableRow
                     key={user.id}
@@ -141,7 +141,7 @@ const CommunityMembersTable = ({
           )}
           <thead className="text-left">
             <tr>
-              <td colSpan={amLeader ? 3 : 2} className="px-0 pb-6 pt-6">
+              <td colSpan={amLeader ? 3 : 2} className="px-5 md:px-0 pb-6 pt-6">
                 <div className="flex flex-col gap-y-2">
                   <p className="text-xl md:text-2xl font-semibold">Members</p>
                   <p className="text-zinc-500 text-sm">
@@ -160,7 +160,7 @@ const CommunityMembersTable = ({
             </tr>
           </thead>
           <thead className="text-left bg-zinc-50">
-            <tr className="*:py-4 *:px-2 *:md:px-4 border border-zinc-200 text-xs md:text-sm text-zinc-600">
+            <tr className="*:py-4 *:px-2 *:md:px-4 border-y md:border border-zinc-200 text-xs md:text-sm text-zinc-600">
               <th scope="col" className="font-medium">
                 Name
               </th>
@@ -174,7 +174,7 @@ const CommunityMembersTable = ({
               )}
             </tr>
           </thead>
-          <tbody className="border border-zinc-200">
+          <tbody className="border-y md:border border-zinc-200">
             {filteredSortedMembers.map((user) => (
               <CommunityMemberTableRow
                 key={user.id}

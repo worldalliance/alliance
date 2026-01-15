@@ -185,9 +185,14 @@ describe('Actions (e2e)', () => {
         shouldCompleteAfterDeadline: false,
         participatingTags: [],
         useManualCohort: false,
+        optional: false,
         priority: 0,
         preventCompletion: false,
         publicOnly: false,
+        latestMemberActionEvent: {
+          event: null,
+          deadline: null,
+        },
       };
 
       const res = await request(ctx.app.getHttpServer())

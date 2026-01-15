@@ -459,12 +459,12 @@ ORDER BY pp.total_session_duration_seconds DESC
       }
 
       const baseUsers =
-        await this.actionEventRecipientService.computeBaseUsersForEvent(
-          ActionStatus.MemberAction,
+        await this.actionEventRecipientService.findBaseUsersForEvent({
           action,
-          memberActionEvent.id,
-          { includeSuspended: true },
-        );
+          eventId: memberActionEvent.id,
+          eventStatus: ActionStatus.MemberAction,
+          includeSuspended: true,
+        });
 
       for (const user of baseUsers) {
         const signedAt = memberSignedAtByUserId.get(user.id);
@@ -539,5 +539,96 @@ ORDER BY pp.total_session_duration_seconds DESC
     return {
       signedUsers: signedUsers,
     };
+  }
+
+  async getContractStatusHistory(
+    startDate: string,
+    endDate: string,
+  ): Promise<
+    { date: string; activeCount: number; churnedCount: number; totalEverSigned: number }[]
+  > {
+    // Get all contract events ordered by date
+    const allEvents = await this.contractEventRepository.find({
+      relations: { user: true },
+      order: { date: 'ASC' },
+    });
+
+    // Build a timeline of user status changes
+    // For each user, track when they signed and when they churned
+    const userEvents = new Map<
+      number,
+      { date: Date; type: ContractEventType }[]
+    >();
+
+    for (const event of allEvents) {
+      const userId = event.user?.id;
+      if (!userId) continue;
+
+      const events = userEvents.get(userId) ?? [];
+      events.push({ date: event.date, type: event.type });
+      userEvents.set(userId, events);
+    }
+
+    // Sort each user's events by date
+    for (const events of userEvents.values()) {
+      events.sort((a, b) => a.date.getTime() - b.date.getTime());
+    }
+
+    // Generate daily data points
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const results: {
+      date: string;
+      activeCount: number;
+      churnedCount: number;
+      totalEverSigned: number;
+    }[] = [];
+
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dateEnd = new Date(currentDate);
+      dateEnd.setHours(23, 59, 59, 999);
+
+      let activeCount = 0;
+      let churnedCount = 0;
+      let totalEverSigned = 0;
+
+      for (const [, events] of userEvents) {
+        // Find all events up to this date
+        const relevantEvents = events.filter((e) => e.date <= dateEnd);
+
+        if (relevantEvents.length === 0) continue;
+
+        // User has at least one event, so they signed at some point
+        const hasEverSigned = relevantEvents.some(
+          (e) => e.type === ContractEventType.SIGNED,
+        );
+
+        if (!hasEverSigned) continue;
+
+        totalEverSigned++;
+
+        // Get the most recent event to determine current status
+        const latestEvent = relevantEvents[relevantEvents.length - 1];
+
+        if (latestEvent.type === ContractEventType.SIGNED) {
+          activeCount++;
+        } else {
+          churnedCount++;
+        }
+      }
+
+      results.push({
+        date: this.formatDateKey(currentDate),
+        activeCount,
+        churnedCount,
+        totalEverSigned,
+      });
+
+      // Move to next day
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return results;
   }
 }

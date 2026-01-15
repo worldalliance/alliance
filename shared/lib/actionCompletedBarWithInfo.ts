@@ -8,19 +8,13 @@ export interface ActionCompletedBarWithInfoPropsShared {
     | "everyoneShouldComplete"
     | "usersCompleted"
     | "usersJoined"
+    | "optional"
   >;
   friendActivities: ActionActivityDto[] | null;
 }
 
 export function getCompletedPercentage(
-  action: Pick<
-    ActionDto,
-    | "commitmentThreshold"
-    | "status"
-    | "everyoneShouldComplete"
-    | "usersCompleted"
-    | "usersJoined"
-  >
+  action: ActionCompletedBarWithInfoPropsShared["action"]
 ) {
   const value =
     action.status === "gathering_commitments"
@@ -38,12 +32,11 @@ export function getCompletedPercentage(
 
   const safeThreshold = Math.max(threshold, value);
 
-  const labelString = action.everyoneShouldComplete
-    ? value
-    : `${value} / ${safeThreshold}`;
+  const noDenominator = action.optional || action.everyoneShouldComplete;
 
-  const percentage =
-    (value / (action.everyoneShouldComplete ? value : safeThreshold)) * 100;
+  const labelString = noDenominator ? value : `${value} / ${safeThreshold}`;
+
+  const percentage = noDenominator ? 100 : (value / safeThreshold) * 100;
 
   return { labelString, percentage };
 }

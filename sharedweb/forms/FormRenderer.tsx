@@ -224,26 +224,26 @@ const FormRenderer = ({
     }
   });
 
-  const [publicAnswers, setPublicAnswers] = useState<Record<string, boolean>>(
-    {}
-  );
-
-  useEffect(() => {
-    if (!outputFieldIds || outputFieldIds.size === 0 || !user) return;
-
-    setPublicAnswers((prev) => {
-      if (prev && Object.keys(prev).length > 0) {
-        return prev;
-      }
-
-      const next: Record<string, boolean> = {};
-      for (const fieldId of outputFieldIds) {
-        next[fieldId] = user.formDataPreference === "public" ? true : false;
-      }
-
-      return next;
-    });
-  }, [outputFieldIds, user]);
+  const [publicAnswerOverrides, setPublicAnswerOverrides] = useState<
+    Partial<Record<string, boolean>>
+  >({});
+  const defaultPublic = user?.formDataPreference === "public";
+  const resolvedPublicAnswers = useMemo(() => {
+    if (readOnly && completedFormResponse?.publicAnswers) {
+      return completedFormResponse.publicAnswers as Record<string, boolean>;
+    }
+    const resolved: Record<string, boolean> = {};
+    for (const fieldId of outputFieldIds) {
+      resolved[fieldId] = publicAnswerOverrides[fieldId] ?? defaultPublic;
+    }
+    return resolved;
+  }, [
+    readOnly,
+    completedFormResponse?.publicAnswers,
+    outputFieldIds,
+    publicAnswerOverrides,
+    defaultPublic,
+  ]);
 
   const [uploadingFields, setUploadingFields] = useState<Set<string>>(
     new Set()
@@ -646,11 +646,17 @@ const FormRenderer = ({
       reader.onload = async () => {
         if (typeof reader.result === "string") {
           try {
-            const { data } = await imagesUploadImage({
+            const { data, error } = await imagesUploadImage({
               body: { file: reader.result },
             });
             if (data) {
               updateField(fieldId, data.key);
+            } else if (error) {
+              setUploadErrors((prev) => ({
+                ...prev,
+                [fieldId]:
+                  (error as Error)?.message ?? "Failed to upload image",
+              }));
             }
           } catch (error) {
             console.error("Failed to upload image:", error);
@@ -755,7 +761,7 @@ const FormRenderer = ({
       actionId,
       visibilityValidatorResults,
       deviceType,
-      publicAnswers,
+      publicAnswers: resolvedPublicAnswers,
       phDistinctId,
       sessionReplayUrl,
       sid: sid ?? undefined,
@@ -791,7 +797,7 @@ const FormRenderer = ({
       actionId,
       visibilityValidatorResults,
       deviceType,
-      publicAnswers,
+      publicAnswers: resolvedPublicAnswers,
     };
 
     onAbandonAction?.(outOfTimeSelected, customReason, submissionPayload);
@@ -806,14 +812,14 @@ const FormRenderer = ({
       storageKey,
       JSON.stringify({
         formData,
-        publicAnswers,
+        publicAnswers: publicAnswerOverrides,
         currentPageIndex,
         updatedAt: Date.now(),
       })
     );
   }, [
     formData,
-    publicAnswers,
+    publicAnswerOverrides,
     currentPageIndex,
     persistKey,
     storageKey,
@@ -834,10 +840,20 @@ const FormRenderer = ({
       setFormData(applyDefaultValues(filtered, defaultValueMap));
     }
     if (parsed?.publicAnswers && typeof parsed.publicAnswers === "object") {
-      setPublicAnswers((prev) => ({
-        ...prev,
-        ...(parsed.publicAnswers as Record<string, boolean>),
-      }));
+      const overrides: Record<string, boolean> = {};
+      for (const [fieldId, value] of Object.entries(
+        parsed.publicAnswers as Record<string, unknown>
+      )) {
+        if (outputFieldIds.has(fieldId) && typeof value === "boolean") {
+          overrides[fieldId] = value;
+        }
+      }
+      if (Object.keys(overrides).length > 0) {
+        setPublicAnswerOverrides((prev) => ({
+          ...prev,
+          ...overrides,
+        }));
+      }
     }
     if (typeof parsed?.currentPageIndex === "number") {
       const maxIdx = Math.max(0, (pageCount || 1) - 1);
@@ -852,6 +868,7 @@ const FormRenderer = ({
     storageKey,
     pageCount,
     defaultValueMap,
+    outputFieldIds,
   ]);
 
   // When rendering a completed form, sync provided answers into local state
@@ -866,33 +883,6 @@ const FormRenderer = ({
       );
     }
   }, [readOnly, completedFormResponse, fieldLookup]);
-
-  useEffect(() => {
-    if (!readOnly) {
-      return;
-    }
-    const snapshot = (
-      completedFormResponse as {
-        publicAnswers?: Record<string, boolean>;
-      }
-    )?.publicAnswers;
-    if (snapshot) {
-      setPublicAnswers(snapshot);
-      return;
-    }
-    setPublicAnswers((prev) => {
-      const next: Record<string, boolean> = {};
-      for (const fieldId of outputFieldIds) {
-        next[fieldId] =
-          fieldId in prev
-            ? prev[fieldId]
-            : user?.formDataPreference === "public"
-            ? true
-            : false;
-      }
-      return next;
-    });
-  }, [completedFormResponse, fieldLookup, outputFieldIds, readOnly]);
 
   useEffect(() => {
     if (!readOnly) {
@@ -975,16 +965,29 @@ const FormRenderer = ({
   }, [defaultValueMap, readOnly]);
 
   const handlePublicToggleChange = (fieldId: string, checked: boolean) => {
-    setPublicAnswers((prev) => ({
-      ...prev,
-      [fieldId]: !checked,
-    }));
+    const nextPublic = !checked;
+    setPublicAnswerOverrides((prev) => {
+      if (nextPublic === defaultPublic) {
+        if (!(fieldId in prev)) {
+          return prev;
+        }
+        const next = { ...prev };
+        delete next[fieldId];
+        return next;
+      }
+      if (prev[fieldId] === nextPublic) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [fieldId]: nextPublic,
+      };
+    });
   };
 
   const renderField = (field: AnyField, index: number) => {
     const isOutputField = Boolean(field.output?.output);
-    const sharePublicly =
-      publicAnswers[field.id] ?? user?.formDataPreference === "public";
+    const sharePublicly = resolvedPublicAnswers[field.id] ?? defaultPublic;
     return (
       <div key={field.id || index}>
         <RenderField

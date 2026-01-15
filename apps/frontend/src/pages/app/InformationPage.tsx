@@ -20,36 +20,24 @@ const InformationPage: React.FC = () => {
 
         <h2 className="text-2xl font-semibold">Resources</h2>
 
-        <div className="flex flex-col gap-y-2">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-2">
           <ResourceButton to={href("/guide")}>
-            <p className="text-base">
-              <span className="font-semibold">Our guide</span> describes how we
-              work.
-            </p>
+            <p className="text-base">Guide</p>
           </ResourceButton>
           <ResourceButton to={href("/foundation")}>
-            <p className="text-base">
-              <span className="font-semibold">Our foundation</span> describes
-              how we derived our priorities.
-            </p>
+            <p className="text-base">Foundation</p>
           </ResourceButton>
           <ResourceButton to={href("/governance")}>
-            <p className="text-base">
-              <span className="font-semibold">Our governance</span> describes
-              office and member obligations.
-            </p>
+            <p className="text-base">Governance</p>
           </ResourceButton>
           <ResourceButton to={href("/faq")}>
-            <p className="text-base">
-              <span className="font-semibold">Our FAQ</span> answers common
-              questions.
-            </p>
+            <p className="text-base">FAQ</p>
+          </ResourceButton>
+          <ResourceButton to={href("/members")}>
+            <p className="text-base">Members</p>
           </ResourceButton>
           <ResourceButton to="mailto:contact@worldalliance.org">
-            <p className="text-base">
-              <span className="font-semibold">Email the office</span> with
-              questions, feedback, or ideas.
-            </p>
+            <p className="text-base">Email the office</p>
           </ResourceButton>
         </div>
 

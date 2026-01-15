@@ -1,5 +1,16 @@
-import { ActionDto } from "../client";
+import { ActionDto, actionsFindAllLoggedIn } from "../client";
 import { FilterMode } from "./actionUtils";
+import { useQuery } from "@tanstack/react-query";
+
+export const useActionsQuery = () =>
+  useQuery({
+    queryKey: ["actions"],
+    queryFn: () =>
+      actionsFindAllLoggedIn({ query: { sorted: true } }).then(
+        (response) =>
+          response.data?.filter((action) => action.status !== "draft") ?? []
+      ),
+  });
 
 export const filterActions = (
   actions: ActionDto[],

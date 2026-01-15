@@ -27,6 +27,7 @@ export default [
         "/messaging/:conversationId",
         "pages/MessagingConversationDetail.tsx"
       ),
+      route("/posts/:postId?", "pages/PostsManagement.tsx"),
     ]),
     route("/database", "pages/DatabaseViewer.tsx"),
   ]),

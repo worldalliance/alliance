@@ -8,9 +8,13 @@ export interface TaskTimeInfoPropsShared {
   absoluteDeadline?: boolean;
 }
 
-export function deadlineColor(nextEvent: ActionEventDto | null) {
+export function deadlineColor(
+  nextEvent: ActionEventDto | null,
+  action: ActionDto
+) {
   return !!nextEvent &&
-    new Date(nextEvent.date).getTime() - Date.now() < 172800000 // 2 days
+    new Date(nextEvent.date).getTime() - Date.now() < 172800000 &&
+    !action.optional // 2 days
     ? "#dc2626"
     : "#71717a";
 }

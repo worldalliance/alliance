@@ -40,11 +40,11 @@ export class Community {
   photo?: string;
 
   @ManyToMany(() => User, (user) => user.communities)
-  @ApiPropertyOptional({ type: () => User, isArray: true })
+  @ApiProperty({ type: () => User, isArray: true })
   @JoinTable()
   @Type(() => User)
-  @IsOptional()
-  users?: User[];
+  @Allow()
+  users: User[];
 
   @ManyToMany(() => User, (user) => user.leaderOf)
   @ApiPropertyOptional({ type: () => User, isArray: true })

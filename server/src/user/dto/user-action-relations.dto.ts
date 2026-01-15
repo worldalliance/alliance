@@ -10,6 +10,7 @@ export enum UserActionRelationPillStatus {
   Completed = 'completed',
   MissedDeadline = 'missed_deadline',
   NotRequired = 'not_required',
+  OptionalTask = 'optional_task',
   Todo = 'todo',
   WontComplete = 'wont_complete',
 }

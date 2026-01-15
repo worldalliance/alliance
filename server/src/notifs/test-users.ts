@@ -7,7 +7,7 @@ import {
 import { NotificationChannel } from './notif-utils';
 import { ContractEventType } from 'src/user/entities/contract-event.entity';
 
-export const testUser: User = {
+export const testUser = new User({
   id: -1,
   name: 'Test User',
   email: 'test@example.com',
@@ -25,7 +25,6 @@ export const testUser: User = {
       user: { id: -1 } as User,
     },
   ],
-  hasActiveContract: true,
   shareInfoPublicly: false,
   emailNotifsEnabled: false,
   textNotifsEnabled: true,
@@ -40,7 +39,6 @@ export const testUser: User = {
   admin: false,
   staff: false,
   leaderOfIds: [],
-  isCommunityLeader: false,
   profilePicture: '',
   profileDescription: '',
   activities: [],
@@ -55,7 +53,6 @@ export const testUser: User = {
   shareEmailWithCommunityLead: true,
   sharePhoneNumberWithCommunityLead: true,
   referralCode: '',
-  friends: [],
   hashPassword: function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
@@ -79,4 +76,17 @@ export const testUser: User = {
   leaderOf: [],
   invitedCommunities: [],
   participants: [],
-};
+} satisfies Omit<
+  User,
+  | 'friends'
+  | 'hasActiveContract'
+  | 'isCommunityLeader'
+  | '_hasActiveContractAt'
+  | 'hasActiveContractAt'
+  | '_hasActiveContractInFullRange'
+  | 'hasActiveContractInFullRange'
+  | '_isAwayAt'
+  | 'isAwayAt'
+  | '_isAwayAtAnyPointInRange'
+  | 'isAwayAtAnyPointInRange'
+>);

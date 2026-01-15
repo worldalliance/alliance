@@ -1,6 +1,7 @@
 import { View, ScrollView, ActivityIndicator } from "react-native";
 import { useCallback, useMemo, useRef } from "react";
 import {
+  actionsDismissAction,
   actionsFindAllLoggedIn,
   userGetAwayRanges,
 } from "@alliance/shared/client";
@@ -8,6 +9,7 @@ import { colors } from "../../lib/style/colors";
 import Text from "../../components/system/Text";
 import { useHomePageActions } from "@alliance/shared/lib/homePage";
 import LargeActionCard from "../../components/LargeActionCard";
+import GreenHeader from "../../components/GreenHeader";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
@@ -32,6 +34,22 @@ export default function HomeScreen() {
         (response) => response.data ?? []
       ),
   });
+
+  const handleDismissAction = useCallback(
+    async (actionId: number) => {
+      const action = actions?.find((a) => a.id === actionId);
+      if (!action) {
+        return;
+      }
+
+      await actionsDismissAction({
+        path: { id: action.id },
+      });
+
+      refetch();
+    },
+    [actions, refetch]
+  );
 
   const { data: awayRanges, isPending: awayRangesPending } = useQuery({
     queryKey: ["awayRanges"],
@@ -88,29 +106,29 @@ export default function HomeScreen() {
   }
 
   return (
-    <ScrollView ref={scrollViewRef} className="flex-1 bg-white">
-      <View className="bg-green p-4 pt-11">
-        <Text className="text-white font-bold text-base mt-2 pb-0">
-          Current task
-        </Text>
-      </View>
-      <View className="">
-        {!currentTask ? (
-          <Text className="text-red-500 text-center py-4">
-            {error?.message}
+    <GreenHeader>
+      <ScrollView ref={scrollViewRef} className="flex-1">
+        <View className="bg-green p-4 pt-11">
+          <Text className="text-white font-bold text-base mt-2 pb-0">
+            Current task:
           </Text>
-        ) : (
-          <LargeActionCard
-            action={currentTask}
-            userRelation={currentTask.userRelation ?? "none"}
-            friendActivities={friendActivities.filter(
-              (activity) => activity.actionId === currentTask.id
-            )}
-            onUpdateActionState={refetch}
-            scrollPageTo={scrollPageTo}
-          />
-        )}
-      </View>
-    </ScrollView>
+        </View>
+        <View>
+          {!currentTask ? (
+            <Text className="text-red-500 text-center py-4">
+              {error?.message}
+            </Text>
+          ) : (
+            <LargeActionCard
+              action={currentTask}
+              userRelation={currentTask.userRelation ?? "none"}
+              onUpdateActionState={refetch}
+              scrollPageTo={scrollPageTo}
+              handleDismiss={() => handleDismissAction(currentTask.id)}
+            />
+          )}
+        </View>
+      </ScrollView>
+    </GreenHeader>
   );
 }

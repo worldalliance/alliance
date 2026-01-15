@@ -1,5 +1,10 @@
 import { useCallback, useMemo } from "react";
-import { ActivityIndicator, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { router, RelativePathString } from "expo-router";
 import {
   NotificationDto,
@@ -13,6 +18,7 @@ import Button, {
   ButtonSize,
 } from "../../components/system/Button";
 import Text from "../../components/system/Text";
+import GreenHeader from "../../components/GreenHeader";
 import { formatTime } from "@alliance/shared/lib/utils";
 import ProfileImage from "../../components/ProfileImage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +33,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Check } from "lucide-react-native";
-import { colors } from "react-native-keyboard-controller/lib/typescript/components/KeyboardToolbar/colors";
 
 const SWIPE_THRESHOLD = -80;
 
@@ -104,7 +109,7 @@ function SwipeableNotification({
   });
 
   return (
-    <View className="overflow-hidden border border-b-0 mx-px border-zinc-300">
+    <View className="overflow-hidden border-t mx-px border-zinc-300">
       {/* Background action area */}
       <Animated.View
         style={[actionStyle]}
@@ -124,7 +129,7 @@ function SwipeableNotification({
           <TouchableOpacity
             activeOpacity={0.75}
             onPress={onPress}
-            className={`px-4 py-3 ${
+            className={`px-6 py-4 ${
               notification.readAt ? "bg-white" : "bg-red-50"
             }`}
           >
@@ -173,6 +178,7 @@ export default function NotificationsScreen() {
     data: response,
     isPending,
     error,
+    refetch,
   } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => notifsFindAll(),
@@ -275,46 +281,62 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <View className="flex-1 bg-white pt-8">
+    <GreenHeader>
       {isPending ? (
-        <View className="py-5 items-center justify-center">
-          <ActivityIndicator size="large" color="#0D1B2A" />
+        <View className="flex-1">
+          <View className="bg-green p-4 pt-12 pb-3 flex-row items-center justify-between">
+            <Text className="text-white font-bold">Notifications</Text>
+          </View>
+          <View className="flex-1 items-center justify-center bg-white">
+            <ActivityIndicator size="large" color="#0D1B2A" />
+          </View>
         </View>
       ) : error ? (
-        <Text className="text-center text-red-500 py-4">{error.message}</Text>
+        <View className="flex-1">
+          <View className="bg-green p-4 pt-12 pb-3 flex-row items-center justify-between">
+            <Text className="text-white font-bold">Notifications</Text>
+          </View>
+          <View className="flex-1 items-center justify-center bg-white">
+            <Text className="text-center text-red-500">{error.message}</Text>
+          </View>
+        </View>
       ) : notifications.length === 0 ? (
-        <View className="items-center py-12">
-          <Text className="text-zinc-500">You&apos;re all caught up.</Text>
+        <View className="flex-1">
+          <View className="bg-green p-4 pt-12 pb-3 flex-row items-center justify-between">
+            <Text className="text-white font-bold">Notifications</Text>
+          </View>
+          <View className="flex-1 items-center justify-center bg-white">
+            <Text className="text-zinc-500">You&apos;re all caught up.</Text>
+          </View>
         </View>
       ) : (
         <LegendList
           ListHeaderComponent={
-            <View className="pt-6 pb-4">
-              <View className="flex-row items-center justify-between gap-x-3">
-                <Text className="text-2xl font-semibold text-zinc-900">
-                  Notifications
-                </Text>
-                {unreadCount > 0 && (
-                  <Button
-                    color={ButtonColor.White}
-                    size={ButtonSize.Medium}
-                    onPress={handleMarkAllAsRead}
-                    title="Mark all as read"
-                  />
-                )}
-              </View>
+            <View className="bg-green p-4 pt-12 pb-3 flex-row items-center justify-between">
+              <Text className="text-white font-bold">Notifications</Text>
+              {unreadCount > 0 && (
+                <Button
+                  color={ButtonColor.White}
+                  size={ButtonSize.Small}
+                  onPress={handleMarkAllAsRead}
+                  title="Mark all as read"
+                />
+              )}
             </View>
           }
           data={notifications}
           keyExtractor={(item) => item.id.toString()}
+          refreshControl={
+            <RefreshControl refreshing={isPending} onRefresh={refetch} />
+          }
           recycleItems
           renderItem={renderNotification}
           contentContainerStyle={{
-            paddingHorizontal: 16,
             paddingBottom: 40,
+            backgroundColor: "white",
           }}
         />
       )}
-    </View>
+    </GreenHeader>
   );
 }

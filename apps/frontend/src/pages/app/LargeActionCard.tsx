@@ -12,6 +12,9 @@ import {
 } from "@alliance/shared/lib/largeActionCard";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Card from "@alliance/sharedweb/ui/Card";
+import useActivities, {
+  ActivityList,
+} from "@alliance/shared/lib/useActivities";
 
 export interface LargeActionCardProps extends LargeActionCardPropsShared {
   showDetails?: boolean;
@@ -32,8 +35,8 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
   action,
   dismissProps,
   userRelation,
-  friendActivities,
   onUpdateActionState,
+  handleDismiss,
   showDetails = true,
   className = "",
 }: LargeActionCardProps) => {
@@ -42,6 +45,13 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
   const [state, setState] = useState<LargeActionCardState>(
     LargeActionCardState.Default
   );
+
+  const { activities: friendActivities } = useActivities({
+    list: ActivityList.FriendsForAction,
+    objectId: action.id,
+    comments: false,
+    limit: 8,
+  });
 
   useEffect(() => {
     setState(LargeActionCardState.Default);
@@ -66,7 +76,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
 
   return (
     <>
-      {dismissProps && (
+      {dismissProps && !action.optional && (
         <Card
           style={CardStyle.Grey}
           className="gap-y-3 rounded-b-none border-b-0"
@@ -75,7 +85,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
           <Button
             className="w-full gap-x-1"
             color={ButtonColor.Grey}
-            onClick={dismissProps.handleDismiss}
+            onClick={handleDismiss}
           >
             <X size={14} className="text-red-500" />
             Dismiss action
@@ -83,15 +93,31 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
         </Card>
       )}
       <Card
-        className={`p-6 border border-zinc-200 transition-all duration-300 ${
+        className={`p-4 sm:p-6 transition-all duration-300 ${
           state === LargeActionCardState.Closed
             ? "opacity-0 overflow-hidden"
             : "opacity-100"
         } ${className} w-full relative 
          ${state === LargeActionCardState.Minified ? "pb-4" : ""} ${
           dismissProps ? "rounded-t-none" : "rounded"
+        }
+        ${
+          action.optional ? "border-dashed border-[1.5px] !border-blue-300" : ""
         }`}
       >
+        {action.optional && (
+          <Card style={CardStyle.Alert} className="mb-3 border-none rounded-md">
+            <p className="font-semibold">This action is optional.</p>
+            <p className="mb-3">You can complete as usual or dismiss it.</p>
+            <Button
+              color={ButtonColor.White}
+              onClick={handleDismiss}
+              className="w-full"
+            >
+              Dismiss
+            </Button>
+          </Card>
+        )}
         <div className="p-0 sm:p-2">
           <div className="flex sm:flex-row gap-4 items-start mb-4 flex-col-reverse">
             <div className="flex flex-col flex-1 gap-y-2">

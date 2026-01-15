@@ -11,6 +11,7 @@ import { ActionsModule } from 'src/actions/actions.module';
 import { MmsModule } from 'src/mms/mms.module';
 import { CustomValidator } from './entities/customvalidator.entity';
 import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
+import { SlackModule } from 'src/slack/slack.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
     ForumModule,
     ActionsModule,
     MmsModule,
+    SlackModule,
   ],
   controllers: [TasksController],
   providers: [TasksService],

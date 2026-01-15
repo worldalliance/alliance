@@ -12,6 +12,7 @@ export enum CardStyle {
   Transparent = "transparent",
   Navy = "navy",
   Red = "red",
+  Orange = "orange",
 }
 
 export const cardStyleClasses: Record<CardStyle, string> = {
@@ -22,6 +23,7 @@ export const cardStyleClasses: Record<CardStyle, string> = {
   [CardStyle.Grey]: "bg-zinc-50 border-zinc-200 border-solid",
   [CardStyle.Navy]: "bg-navy text-white border-none rounded-none",
   [CardStyle.LightGrey]: "bg-[#fcfcfc] border-zinc-300",
+  [CardStyle.Orange]: "bg-orange-100 border-0",
   [CardStyle.Black]: "bg-black border-zinc-300 text-white",
   [CardStyle.Image]: "bg-transparent border-none",
   [CardStyle.Green]: "bg-green/20 border-green",

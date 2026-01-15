@@ -357,6 +357,26 @@ export class ActionsController {
     return counters$;
   }
 
+  @Get('friendActivity/:actionId')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: [ActionActivityDto] })
+  async friendActivityForAction(
+    @Param('actionId', ParseIntPipe) actionId: number,
+    @Request() req: JwtRequest,
+    @Query('comments', new ParseBoolPipe({ optional: true }))
+    comments?: boolean,
+    @Query('limit', new ParseIntPipe({ optional: true }))
+    limit?: string,
+  ) {
+    const limitNum = limit ? parseInt(limit) : 20;
+    return this.actionsService.friendActivityForAction(
+      req.user.sub,
+      actionId,
+      comments,
+      limitNum,
+    );
+  }
+
   @Get('friendActivity')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ActionActivityDto] })
@@ -504,7 +524,7 @@ export class ActionsController {
   async plansForGroup(
     @Param('groupId', ParseIntPipe) groupId: number,
   ): Promise<PreviewNotificationPlan[]> {
-    return this.actionEventReminderService.getNotificationPlansForGroup(
+    return this.actionEventReminderService.findNotificationPlansForGroup(
       groupId,
     );
   }
@@ -836,7 +856,7 @@ export class ActionsController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: UserActionRelationsResponseDto })
   async actionRelations(): Promise<UserActionRelationsResponseDto> {
-    return this.actionsService.getUserActionRelations();
+    return this.actionsService.findUserActionRelations();
   }
 
   @Get('communityMemberInfo/:communityId')
@@ -845,14 +865,14 @@ export class ActionsController {
   async getCommunityMemberInfoAdmin(
     @Param('communityId', ParseIntPipe) communityId: number,
   ) {
-    return this.actionsService.getMemberInfoByCommunityId(communityId);
+    return this.actionsService.findMemberInfoByCommunityId(communityId);
   }
 
   @Get('communityMemberInfo')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: CommunityUserInfoDto })
   async getCommunityMemberInfo(@Request() req: JwtRequest) {
-    return this.actionsService.getMemberInfo(req.user.sub);
+    return this.actionsService.findMemberInfo(req.user.sub);
   }
 
   // ====================================

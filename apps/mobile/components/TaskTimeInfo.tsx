@@ -12,11 +12,12 @@ const TaskTimeInfo = ({
   nextEvent,
   lastEvent,
   absoluteDeadline,
-}: TaskTimeInfoPropsShared) => {
-  const color = deadlineColor(nextEvent);
+  className,
+}: TaskTimeInfoPropsShared & { className?: string }) => {
+  const color = deadlineColor(nextEvent, action);
 
   return (
-    <View>
+    <View className={`${className}`}>
       {!!action.timeEstimate && action.status !== "gathering_commitments" ? (
         <View className="flex-row items-center gap-x-2">
           <ClockIcon size={19} color="rgb(98, 161, 36)" />

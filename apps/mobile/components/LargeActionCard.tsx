@@ -12,6 +12,9 @@ import TaskTimeInfo from "./TaskTimeInfo";
 import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import ActionTaskPanel from "./ActionTaskPanel";
+import useActivities, {
+  ActivityList,
+} from "@alliance/shared/lib/useActivities";
 
 export interface LargeActionCardProps extends LargeActionCardPropsShared {
   scrollPageTo: (y: number) => void;
@@ -20,13 +23,18 @@ export interface LargeActionCardProps extends LargeActionCardPropsShared {
 export default function LargeActionCard({
   action,
   userRelation,
-  friendActivities,
   onUpdateActionState,
   scrollPageTo,
 }: LargeActionCardProps) {
   const { nextEvent, lastEvent } = getLastAndNextEvent(action);
+  const { activities: friendActivities } = useActivities({
+    list: ActivityList.FriendsForAction,
+    objectId: action.id,
+    comments: false,
+    limit: 8,
+  });
   return (
-    <Card>
+    <Card className="p-7!">
       <View>
         <Text className="font-semibold text-2xl font-serif">{action.name}</Text>
         <View className="flex flex-row items-center justify-between mt-2">

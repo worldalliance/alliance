@@ -83,6 +83,51 @@ function getInternalRoute(url: string): string | null {
   return null;
 }
 
+function useHandleLinkPress() {
+  return useCallback((url: string): boolean => {
+    // Check if this is an internal route we can handle (relative URL)
+    let internalRoute = getInternalRoute(url);
+
+    // If not a relative match, check if it's an absolute URL to our domain
+    if (!internalRoute) {
+      const extractedPath = extractPathFromInternalUrl(url);
+      if (extractedPath) {
+        internalRoute = getInternalRoute(extractedPath);
+      }
+    }
+
+    if (internalRoute) {
+      router.push(internalRoute as RelativePathString);
+      return false; // Prevent default handling
+    }
+
+    // For external URLs, open in browser
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      Linking.openURL(url).catch((err) => {
+        console.error("Failed to open URL:", err);
+      });
+      return false;
+    }
+
+    // For mailto: and other protocols
+    if (url.includes(":")) {
+      Linking.openURL(url).catch((err) => {
+        console.error("Failed to open URL:", err);
+      });
+      return false;
+    }
+
+    // For relative URLs that don't match internal routes, open on web
+    const webUrl = `https://worldalliance.org${
+      url.startsWith("/") ? "" : "/"
+    }${url}`;
+    Linking.openURL(webUrl).catch((err) => {
+      console.error("Failed to open URL:", err);
+    });
+    return false;
+  }, []);
+}
+
 /**
  * Domains that should be treated as "our" website for internal route matching
  */
@@ -129,48 +174,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   children,
   style,
 }) => {
-  const handleLinkPress = useCallback((url: string): boolean => {
-    // Check if this is an internal route we can handle (relative URL)
-    let internalRoute = getInternalRoute(url);
-
-    // If not a relative match, check if it's an absolute URL to our domain
-    if (!internalRoute) {
-      const extractedPath = extractPathFromInternalUrl(url);
-      if (extractedPath) {
-        internalRoute = getInternalRoute(extractedPath);
-      }
-    }
-
-    if (internalRoute) {
-      router.push(internalRoute as RelativePathString);
-      return false; // Prevent default handling
-    }
-
-    // For external URLs, open in browser
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      Linking.openURL(url).catch((err) => {
-        console.error("Failed to open URL:", err);
-      });
-      return false;
-    }
-
-    // For mailto: and other protocols
-    if (url.includes(":")) {
-      Linking.openURL(url).catch((err) => {
-        console.error("Failed to open URL:", err);
-      });
-      return false;
-    }
-
-    // For relative URLs that don't match internal routes, open on web
-    const webUrl = `https://worldalliance.org${
-      url.startsWith("/") ? "" : "/"
-    }${url}`;
-    Linking.openURL(webUrl).catch((err) => {
-      console.error("Failed to open URL:", err);
-    });
-    return false;
-  }, []);
+  const handleLinkPress = useHandleLinkPress();
 
   const rules: RenderRules = useMemo(
     () => ({
@@ -268,7 +272,6 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           </View>
         );
       },
-      paragraph: (node, children) => <>{children}</>,
       body: (node, children) => <>{children}</>,
       fence: (node, children, parent, styles) => {
         const content = node.content || "";
@@ -384,6 +387,10 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
       bullet_list: {
         marginVertical: 8,
       },
+      bullet_list_icon: {
+        fontSize: 35,
+        top: 7,
+      },
       ordered_list: {
         marginVertical: 8,
       },
@@ -418,4 +425,5 @@ export {
   transformImageUrl,
   INTERNAL_ROUTE_PATTERNS,
   INTERNAL_DOMAINS,
+  useHandleLinkPress,
 };

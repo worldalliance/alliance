@@ -11,8 +11,9 @@ export const taskDeadlinePassedDescription =
 
 export const TASK_DISMISS_MESSAGE_CURRENTLY_AWAY =
   "You are currently away, so this task is optional for you. You can either complete it or dismiss it.";
+// We might show this while the task is in progress or after the deadline
 export const TASK_DISMISS_MESSAGE_WAS_AWAY =
-  "This task happened when you were away, so it is optional for you. You can either complete it or dismiss it.";
+  "You were away during this task, so it is optional for you. You can either complete it or dismiss it.";
 export const TASK_DISMISS_MESSAGE_WILL_BE_AWAY =
   "You will be away before this task is due, so it is optional for you. You can either complete it or dismiss it.";
 export const TASK_DISMISS_MESSAGE_AFTER_DEADLINE =
