@@ -57,7 +57,7 @@ export const PILL_STATUS_DATA = Object.freeze({
   }) satisfies PillStatusData,
   optional_task: Object.freeze({
     pillLabel: "Optional",
-    pillStyle: "bg-blue-300",
+    pillStyle: "bg-blue-200 border border-blue",
     pillSubtitleText: "Optional",
     pillTextStyle: "text-blue-500",
   }) satisfies PillStatusData,
