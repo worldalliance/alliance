@@ -92,8 +92,6 @@ import { ShareUrlDto, ShareUrlStatsDto } from './dto/share-url.dto';
 import { Relations } from 'src/utils/Repository';
 import { run } from 'src/utils/promise';
 
-const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
-
 export class UserActionRelationDto {
   @ApiProperty({ enum: UserActionRelation, enumName: 'UserActionRelation' })
   relation: UserActionRelation;
@@ -2072,53 +2070,6 @@ export class ActionsService {
 
   // TODO move ==================================
 
-  latestMemberActionPhaseDeadline(events: ActionEvent[]): Date | null {
-    let latestMemberActionDate: Date | null = null;
-    for (const event of events) {
-      if (
-        event.newStatus === ActionStatus.MemberAction &&
-        (latestMemberActionDate === null || event.date > latestMemberActionDate)
-      ) {
-        latestMemberActionDate = event.date;
-      }
-    }
-    if (!latestMemberActionDate) {
-      return null;
-    }
-
-    let earliestDeadline: Date | null = null;
-    for (const event of events) {
-      if (
-        event.newStatus !== ActionStatus.MemberAction &&
-        event.date > latestMemberActionDate &&
-        (earliestDeadline === null || event.date < earliestDeadline)
-      ) {
-        earliestDeadline = event.date;
-      }
-    }
-    return earliestDeadline;
-  }
-
-  someMemberActionPhaseIsOver(params: {
-    events: ActionEvent[];
-    date: Date;
-  }): boolean {
-    const { events, date } = params;
-    const deadline = this.latestMemberActionPhaseDeadline(events);
-    if (!deadline) {
-      return false;
-    }
-    return deadline <= date;
-  }
-
-  calculateDeadlineWeekNumber(events: ActionEvent[]): number | null {
-    const deadline = this.latestMemberActionPhaseDeadline(events);
-    if (!deadline) {
-      return null;
-    }
-    return Math.floor(deadline.getTime() / MS_IN_WEEK);
-  }
-
   async findActionRelationsForUsers(
     usersP: Promise<User[]>,
     actionLimit: number = 8,
@@ -2191,7 +2142,7 @@ export class ActionsService {
           id: action.id,
           name: action.name,
           status: action.status,
-          weekNumber: this.calculateDeadlineWeekNumber(action.events),
+          weekNumber: action.deadlineWeekNumber,
           allMembersParticipating:
             allMembersTagId !== null &&
             !!action.participatingTags.find(

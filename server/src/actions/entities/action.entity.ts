@@ -39,6 +39,8 @@ export enum VisibilityMode {
   ParticipatingGroups = 'participating_groups',
 }
 
+const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
+
 @Entity()
 export class Action {
   // Fields
@@ -365,6 +367,17 @@ export class Action {
       };
     }
     return this._latestMemberActionEvent;
+  }
+
+  @IsOptional()
+  get deadlineWeekNumber(): number | null {
+    if (!this.latestMemberActionEvent?.deadline) {
+      return null;
+    } else {
+      return Math.floor(
+        this.latestMemberActionEvent.deadline.getTime() / MS_IN_WEEK,
+      );
+    }
   }
 
   @IsOptional()

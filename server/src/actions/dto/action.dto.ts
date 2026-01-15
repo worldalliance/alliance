@@ -428,6 +428,7 @@ export class ActionSuiteDto extends OmitType(ActionSuite, ['actions']) {
 }
 
 export class ExportActionDto extends OmitType(Action, [
+  'deadlineWeekNumber',
   'latestMemberActionEvent',
   'manualCohortUserIdSet',
   'participatingTagIdSet',
