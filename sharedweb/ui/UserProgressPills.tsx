@@ -185,8 +185,7 @@ const UserProgressPills = ({
       return acc;
     }, new Map<number, UserActionSummaryDto>());
 
-    const weekNumbers =
-      maxActionsPerWeek && Object.keys(maxActionsPerWeek).map(Number).sort();
+    const weekNumbers = Object.keys(maxActionsPerWeek).map(Number).sort();
     const relationsPerWeek = actions.reduce((acc, action) => {
       if (action.weekNumber) {
         acc.set(action.weekNumber, [
