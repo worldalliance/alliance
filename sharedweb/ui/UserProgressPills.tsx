@@ -3,6 +3,7 @@ import {
   UserActionRelationPillStatus,
   UserActionSummaryDto,
 } from "@alliance/shared/client";
+import React, { Fragment } from "react";
 import { JSX, ReactNode, useMemo } from "react";
 
 export type PillStatusData = {
@@ -229,7 +230,13 @@ const UserProgressPills = ({
     return pills;
   }, [actions, maxActionsPerWeek, relationByActionId]);
 
-  return <div className="flex gap-1 w-full">{pills}</div>;
+  return (
+    <div className="flex gap-1 w-full">
+      {pills.map((pill, i) => (
+        <Fragment key={i}>{pill}</Fragment>
+      ))}
+    </div>
+  );
 };
 
 export default UserProgressPills;
