@@ -69,13 +69,10 @@ export class CachedFilter<T extends object> {
           map.set(serializedParams, filteredItems);
         }
         filteredItems.push(item);
-        console.log({ serializedParams }, 'asdf');
       }
 
       this.maps.set(key, map);
     }
-
-    console.log({ key }, 'asdf');
 
     return (map.get(
       getKey(
