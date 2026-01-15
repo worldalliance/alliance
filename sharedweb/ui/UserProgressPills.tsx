@@ -79,13 +79,16 @@ export function useMaxActionsPerWeek(params: {
         acc[action.id] = action.weekNumber;
       }
       return acc;
-    }, {} as Record<number, number>);
+    }, {} as Record<number, number | null>);
 
     const maxActionsPerWeek: Record<number, number> = {};
     for (const relations of Object.values(userActionRelations)) {
       const counts = relations.reduce((acc, relation) => {
         if (PILL_STATUS_DATA[relation.status].pillStyle) {
           const weekNumber = weekNumberByActionId[relation.actionId];
+          if (weekNumber === null) {
+            return acc;
+          }
           acc[weekNumber] = (acc[weekNumber] ?? 0) + 1;
         }
         return acc;
