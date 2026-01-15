@@ -418,7 +418,7 @@ export class ForumService {
       process.env.NODE_ENV === 'production'
     ) {
       this.slackService.sendMessage(
-        `New comment on action ${createCommentDto.parentObjectId} <@U0A89S0NM41> <@U08P0TJ283T> - <${process.env.APP_URL}/actions/${createCommentDto.parentObjectId}?replyId=${reply.id}|Open action>`,
+        `New comment on action ${createCommentDto.parentObjectId} <@U0A89S0NM41> <@U08P0TJ283T> <@U08NU231VGS> - <${process.env.APP_URL}/actions/${createCommentDto.parentObjectId}?replyId=${reply.id}|Open action>`,
       );
     }
 

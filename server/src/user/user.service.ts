@@ -1115,14 +1115,14 @@ export class UserService {
     return this.tagRepository.findOne({ where: { name } });
   }
 
-  async findTagOrFail(id: number): Promise<Tag> {
+  async findTagOrFail(id: string): Promise<Tag> {
     return this.tagRepository.findOneOrFail({
       where: { id },
       relations: { users: { contractEvents: true } },
     });
   }
 
-  async addUserToTag(tagId: number, userId: number): Promise<Tag> {
+  async addUserToTag(tagId: string, userId: number): Promise<Tag> {
     const tag = await this.tagRepository.findOneOrFail({
       where: { id: tagId },
       relations: { users: true },
@@ -1131,7 +1131,7 @@ export class UserService {
     return this.tagRepository.save(tag);
   }
 
-  async removeUserFromTag(tagId: number, userId: number): Promise<Tag> {
+  async removeUserFromTag(tagId: string, userId: number): Promise<Tag> {
     const tag = await this.tagRepository.findOneOrFail({
       where: { id: tagId },
       relations: { users: true },
@@ -1140,7 +1140,7 @@ export class UserService {
     return this.tagRepository.save(tag);
   }
 
-  async updateTag(tagId: number, body: CreateTagDto): Promise<Tag> {
+  async updateTag(tagId: string, body: CreateTagDto): Promise<Tag> {
     const tag = await this.tagRepository.findOneOrFail({
       where: { id: tagId },
     });
@@ -1148,7 +1148,7 @@ export class UserService {
     return this.tagRepository.save(tag);
   }
 
-  async deleteTag(tagId: number): Promise<void> {
+  async deleteTag(tagId: string): Promise<void> {
     await this.tagRepository.delete(tagId);
   }
 

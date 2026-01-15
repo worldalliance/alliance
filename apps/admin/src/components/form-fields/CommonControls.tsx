@@ -319,7 +319,7 @@ export function ConditionalVisibility({
   }, [usableValidators]);
 
   const [validatorConfigs, setValidatorConfigs] = useState<
-    Record<number, { type: CustomValidatorType; idArgument?: number }>
+    Record<number, { type: CustomValidatorType; idArgument?: string }>
   >({});
 
   const pendingValidatorFetch = useRef<Set<number>>(new Set());
@@ -374,7 +374,7 @@ export function ConditionalVisibility({
   }, [conditions, validatorConfigs]);
 
   const ensureValidatorRecord = useCallback(
-    async (type: CustomValidatorType, idArgument?: number) => {
+    async (type: CustomValidatorType, idArgument?: string) => {
       const result = await tasksCreateCustomValidator({
         body: { type, idArgument },
       });
@@ -393,7 +393,7 @@ export function ConditionalVisibility({
   const addValidatorCondition = useCallback(
     async (opts?: {
       type?: CustomValidatorType;
-      idArgument?: number;
+      idArgument?: string;
       resultEquals?: boolean;
     }): Promise<boolean> => {
       const desiredType = opts?.type ?? pickDefaultValidatorType();
@@ -531,7 +531,7 @@ export function ConditionalVisibility({
     async (
       index: number,
       validatorType: CustomValidatorType | undefined,
-      idArgument?: number
+      idArgument?: string
     ) => {
       if (!validatorType) {
         removeCondition(index);
@@ -983,10 +983,10 @@ function useCustomValidators(): {
 
 type CustomValidatorSelectProps = {
   type?: CustomValidatorType;
-  idArgument?: number;
+  idArgument?: string;
   onChange: (
     validatorType: CustomValidatorType | undefined,
-    idArgument?: number
+    idArgument?: string
   ) => void;
   className?: string;
   label?: string;
@@ -1051,13 +1051,10 @@ export function CustomValidatorSelect({
         {!!validators.find((validator) => validator.id === type)
           ?.withIdField && (
           <input
-            type="number"
+            type="text"
             value={idArgument ?? ""}
             onChange={(e) =>
-              onChange(
-                type,
-                e.target.value === "" ? undefined : Number(e.target.value)
-              )
+              onChange(type, e.target.value === "" ? undefined : e.target.value)
             }
             className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-24"
           />

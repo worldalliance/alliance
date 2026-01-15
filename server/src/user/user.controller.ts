@@ -526,7 +526,7 @@ export class UserController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: TagDto })
   async addUserToTag(
-    @Param('tagId', ParseIntPipe) tagId: number,
+    @Param('tagId') tagId: string,
     @Body() body: AddUserToTagDto,
   ) {
     return new TagDto(await this.userService.addUserToTag(tagId, body.userId));
@@ -536,7 +536,7 @@ export class UserController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: TagDto })
   async removeUserFromTag(
-    @Param('tagId', ParseIntPipe) tagId: number,
+    @Param('tagId') tagId: string,
     @Body() body: AddUserToTagDto,
   ) {
     return new TagDto(
@@ -547,17 +547,14 @@ export class UserController {
   @Post('tags/:tagId/update')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: TagDto })
-  async updateTag(
-    @Param('tagId', ParseIntPipe) tagId: number,
-    @Body() body: CreateTagDto,
-  ) {
+  async updateTag(@Param('tagId') tagId: string, @Body() body: CreateTagDto) {
     return new TagDto(await this.userService.updateTag(tagId, body));
   }
 
   @Delete('tags/:tagId')
   @UseGuards(AdminGuard)
   @ApiOkResponse()
-  async deleteTag(@Param('tagId', ParseIntPipe) tagId: number) {
+  async deleteTag(@Param('tagId') tagId: string) {
     await this.userService.deleteTag(tagId);
   }
 

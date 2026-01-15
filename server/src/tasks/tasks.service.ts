@@ -553,7 +553,7 @@ export class TasksService {
 
   async findOrCreateCustomValidator(
     type: CustomValidatorType,
-    idArg?: number,
+    idArg?: string,
   ): Promise<number> {
     let validator = await this.customValidatorRepository.findOne({
       where: { type, idArgument: idArg },
@@ -619,7 +619,7 @@ export class TasksService {
           throw new BadRequestException('Validator has no id argument');
         }
         const replies = await this.forumService.findCommentsForPost(
-          validator.idArgument,
+          Number(validator.idArgument),
         );
         if (
           replies.filter((reply) => reply.authorId === user.id).length === 0
@@ -676,7 +676,7 @@ export class TasksService {
         }
         if (
           user.communities.some(
-            (community) => community.id === validator.idArgument,
+            (community) => community.id === Number(validator.idArgument),
           )
         ) {
           return { isValid: true };

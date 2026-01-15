@@ -94,6 +94,8 @@ import { run } from 'src/utils/promise';
 import { CachedFilter } from 'src/utils/cached-filter';
 import { computeIsAwayDuringAnyOfLastMemberAction } from 'src/utils/action-user';
 
+const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
+
 export class UserActionRelationDto {
   @ApiProperty({ enum: UserActionRelation, enumName: 'UserActionRelation' })
   relation: UserActionRelation;
@@ -1141,7 +1143,7 @@ export class ActionsService {
 
     const ids = tags
       .map((tag) => tag?.id)
-      .filter((id): id is number => typeof id === 'number');
+      .filter((id): id is string => typeof id === 'string');
 
     if (ids.length === 0) {
       return [];
@@ -2072,6 +2074,53 @@ export class ActionsService {
 
   // TODO move ==================================
 
+  latestMemberActionPhaseDeadline(events: ActionEvent[]): Date | null {
+    let latestMemberActionDate: Date | null = null;
+    for (const event of events) {
+      if (
+        event.newStatus === ActionStatus.MemberAction &&
+        (latestMemberActionDate === null || event.date > latestMemberActionDate)
+      ) {
+        latestMemberActionDate = event.date;
+      }
+    }
+    if (!latestMemberActionDate) {
+      return null;
+    }
+
+    let earliestDeadline: Date | null = null;
+    for (const event of events) {
+      if (
+        event.newStatus !== ActionStatus.MemberAction &&
+        event.date > latestMemberActionDate &&
+        (earliestDeadline === null || event.date < earliestDeadline)
+      ) {
+        earliestDeadline = event.date;
+      }
+    }
+    return earliestDeadline;
+  }
+
+  someMemberActionPhaseIsOver(params: {
+    events: ActionEvent[];
+    date: Date;
+  }): boolean {
+    const { events, date } = params;
+    const deadline = this.latestMemberActionPhaseDeadline(events);
+    if (!deadline) {
+      return false;
+    }
+    return deadline <= date;
+  }
+
+  calculateDeadlineWeekNumber(events: ActionEvent[]): number | null {
+    const deadline = this.latestMemberActionPhaseDeadline(events);
+    if (!deadline) {
+      return null;
+    }
+    return Math.floor(deadline.getTime() / MS_IN_WEEK);
+  }
+
   async findActionRelationsForUsers(
     usersP: Promise<User[]>,
     actionLimit: number = 8,
@@ -2127,7 +2176,7 @@ export class ActionsService {
       });
     });
 
-    const allMembersTagIdP: Promise<number | null> = run(async () => {
+    const allMembersTagIdP: Promise<string | null> = run(async () => {
       const tag = await this.userService.findTagByName('All Members');
       return tag?.id ?? null;
     });

@@ -57,7 +57,7 @@ export class ActionEventRecipientService {
     eventDate: Date;
     everyoneShouldComplete: boolean;
     manualCohortUserIds?: Set<number>;
-    targetTagIds: Set<number>;
+    targetTagIds: Set<string>;
     useManualCohort: boolean;
     user: User;
     userDismissed: boolean;

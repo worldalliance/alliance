@@ -30,7 +30,7 @@ export class CreateCustomValidatorDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  idArgument?: number;
+  idArgument?: string;
 }
 
 export class CustomValidatorDto extends CustomValidator {}

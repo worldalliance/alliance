@@ -18,10 +18,10 @@ import { Ty } from 'src/tasks/entities/type';
 
 @Entity()
 export class Tag {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn('uuid')
   @ApiProperty()
   @Allow()
-  id: number;
+  id: string;
 
   @ManyToMany(() => User, (user) => user.tags, {
     onDelete: 'CASCADE',

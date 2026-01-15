@@ -68,5 +68,5 @@ export class CustomValidator {
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
-  idArgument?: number;
+  idArgument?: string;
 }

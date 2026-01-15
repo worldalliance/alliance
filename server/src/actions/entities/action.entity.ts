@@ -394,8 +394,8 @@ export class Action {
   }
 
   @IsOptional()
-  private _participatingTagIdSet: Set<number> | null = null;
-  get participatingTagIdSet(): Set<number> {
+  private _participatingTagIdSet: Set<string> | null = null;
+  get participatingTagIdSet(): Set<string> {
     if (!this._participatingTagIdSet) {
       this._participatingTagIdSet = new Set(
         this.participatingTags.map((tag) => tag.id),
