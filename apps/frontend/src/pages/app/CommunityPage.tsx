@@ -23,6 +23,7 @@ import {
   GroupOrganizerGuidelines,
 } from "../../components/GroupGuidelines";
 import CommunityEditForm from "../../components/CommunityEditForm";
+import CommunityCreateForm from "../../components/CommunityCreateForm";
 import { href, useNavigate, useSearchParams } from "react-router";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import CommunityActivityTab from "../../components/CommunityActivityTab";
@@ -50,7 +51,8 @@ type Tab =
   | "about"
   | "edit"
   | "resources"
-  | "select";
+  | "select"
+  | "create";
 
 const CURRENT_ACTION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
@@ -152,7 +154,14 @@ const CommunityPage = () => {
   }, [amLeader, community]);
 
   useEffect(() => {
-    actionsGetCommunityMemberInfo().then((resp) => {
+    if (!community) {
+      return;
+    }
+    actionsGetCommunityMemberInfo({
+      path: {
+        communityId: community.id,
+      },
+    }).then((resp) => {
       if (!resp.data) {
         return;
       }
@@ -174,7 +183,7 @@ const CommunityPage = () => {
       });
       setAllCompletionData(completionData);
     });
-  }, []);
+  }, [community]);
 
   useEffect(() => {
     if (amLeader) {
@@ -192,10 +201,14 @@ const CommunityPage = () => {
   }, [amLeader]);
 
   const setTab = useCallback(
-    (tab: Tab) => {
+    (tab: Tab | null) => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        next.set("tab", tab);
+        if (tab === null) {
+          next.delete("tab");
+        } else {
+          next.set("tab", tab);
+        }
         return next;
       });
     },
@@ -303,22 +316,16 @@ const CommunityPage = () => {
           <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
             <div className="flex flex-row gap-x-2 items-start justify-between">
               <div className="flex flex-col gap-y-4 mb-8">
-                {communities && communities.length > 1 ? (
-                  <Button
-                    color={ButtonColor.Transparent}
-                    onClick={() => {
-                      setTab("select");
-                    }}
-                    className="font-serif font-semibold text-3xl md:text-4xl"
-                  >
-                    {community.name}&nbsp;
-                    <ChevronDown />
-                  </Button>
-                ) : (
-                  <p className="font-serif font-semibold text-3xl md:text-4xl">
-                    {community.name}
-                  </p>
-                )}
+                <Button
+                  color={ButtonColor.Transparent}
+                  onClick={() => {
+                    setTab("select");
+                  }}
+                  className="font-serif font-semibold text-3xl md:text-4xl"
+                >
+                  {community.name}&nbsp;
+                  <ChevronDown />
+                </Button>
                 <AppMarkdownWrapper markdownContent={community.description} />
               </div>
 
@@ -427,7 +434,7 @@ const CommunityPage = () => {
             <Card style={CardStyle.Grey}>
               <CommunityEditForm
                 initialValue={community}
-                onCancel={() => setTab("members")}
+                onCancel={() => setTab(null)}
                 onSuccess={() => {
                   window.location.reload();
                 }}
@@ -439,6 +446,18 @@ const CommunityPage = () => {
               currentCommunityId={community.id}
               onSelectCommunity={setCommunityId}
               communities={communities}
+              isOnboardingGroupMember={user?.isIntroductoryGroupMember ?? true}
+              onCreateCommunity={() => setTab("create")}
+            />
+          )}
+          {tab === "create" && (
+            <CommunityCreateForm
+              name={user?.name}
+              onCancel={() => setTab(null)}
+              onSuccess={(community) => {
+                setCommunity(community);
+                setCommunityId(+community.id);
+              }}
             />
           )}
           <BottomSpacer />

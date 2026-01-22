@@ -1,39 +1,54 @@
 import {
   CommunityDto,
   CreateCommunityDto,
-  userUpdateCommunity,
+  userCreateCommunity,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-export interface CommunityEditFormProps {
-  initialValue: CommunityDto;
+export interface CommunityCreateFormProps {
+  name?: string;
   onCancel: () => void;
-  onSuccess: () => void;
+  onSuccess: (community: CommunityDto) => void;
 }
 
-const CommunityEditForm = ({
-  initialValue,
+const CommunityCreateForm = ({
+  name,
   onCancel,
   onSuccess,
-}: CommunityEditFormProps) => {
+}: CommunityCreateFormProps) => {
+  const defaultValues = useMemo<CreateCommunityDto>(() => {
+    if (!name) {
+      return {
+        name: "",
+        description: "",
+      };
+    }
+    const firstName = name.split(" ")[0];
+    return {
+      name: `${firstName}'s Group`,
+      description: `Reminder and discussion group for ${firstName}'s friends`,
+    };
+  }, [name]);
+
   const [formValues, setFormValues] =
-    useState<CreateCommunityDto>(initialValue);
+    useState<CreateCommunityDto>(defaultValues);
 
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = useCallback(async () => {
-    const response = await userUpdateCommunity({
-      path: { communityId: initialValue.id },
-      body: formValues,
-    });
+    const response = await userCreateCommunity({ body: formValues });
     if (response.data) {
-      setFormValues(response.data);
-      onSuccess();
+      setFormValues({
+        name: response.data.name,
+        description: response.data.description,
+        photo: response.data.photo,
+      });
+      onSuccess(response.data);
     } else {
-      setError("Failed to update community");
+      setError("Failed to create community");
     }
-  }, [formValues, onSuccess, initialValue.id]);
+  }, [formValues, onSuccess]);
 
   return (
     <div className="flex flex-col gap-y-2">
@@ -42,6 +57,7 @@ const CommunityEditForm = ({
       </label>
       <input
         value={formValues.name}
+        placeholder="Enter group name"
         onChange={(e) => setFormValues({ ...formValues, name: e.target.value })}
         className="border border-zinc-300 rounded px-3 py-2 w-full"
       />
@@ -64,7 +80,7 @@ const CommunityEditForm = ({
           className="mt-1"
           color={ButtonColor.Black}
         >
-          Save
+          Create
         </Button>
       </div>
       {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
@@ -72,4 +88,4 @@ const CommunityEditForm = ({
   );
 };
 
-export default CommunityEditForm;
+export default CommunityCreateForm;

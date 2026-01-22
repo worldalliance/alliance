@@ -2371,12 +2371,22 @@ export class ActionsService {
     return this.findActionRelationsForUsers(usersPromise);
   }
 
-  async findMemberInfo(userId: number): Promise<CommunityUserInfoDto> {
-    const usersPromise = this.userService
-      .findCommunityForUserOrFail(userId, {
-        users: { awayRanges: true, contractEvents: true, tags: true },
-      })
-      .then((community) => community.users);
+  async findMemberInfo(
+    userId: number,
+    communityId: number,
+  ): Promise<CommunityUserInfoDto> {
+    const usersPromise = run(async () => {
+      const community = await this.userService.findOneCommunityWithUserOrFail(
+        communityId,
+        userId,
+        {
+          users: { awayRanges: true, contractEvents: true, tags: true },
+        },
+      );
+
+      return community.users;
+    });
+
     return this.findActionRelationsForUsers(usersPromise);
   }
 

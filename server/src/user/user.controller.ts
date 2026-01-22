@@ -412,11 +412,23 @@ export class UserController {
     return this.userService.verifyEmail(body.token);
   }
 
-  @Post('communities')
+  @Post('communities/admin')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityDto })
-  async createCommunity(@Body() body: CreateCommunityDto) {
-    return new CommunityDto(await this.userService.createCommunity(body));
+  async createCommunityAdmin(@Body() body: CreateCommunityDto) {
+    return new CommunityDto(await this.userService.createCommunityAdmin(body));
+  }
+
+  @Post('communities')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: CommunityDto })
+  async createCommunity(
+    @Request() req: JwtRequest,
+    @Body() body: CreateCommunityDto,
+  ) {
+    return new CommunityDto(
+      await this.userService.createCommunity(req.user.sub, body),
+    );
   }
 
   @Get('communities')

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link } from "react-router";
 import {
-  userCreateCommunity,
+  userCreateCommunityAdmin,
   userGetCommunities,
 } from "@alliance/shared/client";
 import type {
@@ -64,7 +64,7 @@ const GroupsPage: React.FC = () => {
       setCreating(true);
       setError(null);
       try {
-        const response = await userCreateCommunity({
+        const response = await userCreateCommunityAdmin({
           body: {
             name,
             description,

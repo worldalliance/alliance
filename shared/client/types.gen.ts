@@ -2842,6 +2842,19 @@ export type UserVerifyEmailResponses = {
 
 export type UserVerifyEmailResponse = UserVerifyEmailResponses[keyof UserVerifyEmailResponses];
 
+export type UserCreateCommunityAdminData = {
+    body: CreateCommunityDto;
+    path?: never;
+    query?: never;
+    url: '/user/communities/admin';
+};
+
+export type UserCreateCommunityAdminResponses = {
+    200: CommunityDto;
+};
+
+export type UserCreateCommunityAdminResponse = UserCreateCommunityAdminResponses[keyof UserCreateCommunityAdminResponses];
+
 export type UserGetCommunitiesData = {
     body?: never;
     path?: never;
@@ -4642,7 +4655,7 @@ export type ActionsGetCommunityMemberInfoAdminData = {
         communityId: number;
     };
     query?: never;
-    url: '/actions/communityMemberInfo/{communityId}';
+    url: '/actions/communityMemberInfo/{communityId}/admin';
 };
 
 export type ActionsGetCommunityMemberInfoAdminResponses = {
@@ -4653,9 +4666,11 @@ export type ActionsGetCommunityMemberInfoAdminResponse = ActionsGetCommunityMemb
 
 export type ActionsGetCommunityMemberInfoData = {
     body?: never;
-    path?: never;
+    path: {
+        communityId: number;
+    };
     query?: never;
-    url: '/actions/communityMemberInfo';
+    url: '/actions/communityMemberInfo/{communityId}';
 };
 
 export type ActionsGetCommunityMemberInfoResponses = {

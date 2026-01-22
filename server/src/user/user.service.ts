@@ -883,8 +883,33 @@ export class UserService {
     });
   }
 
-  async createCommunity(body: CreateCommunityDto): Promise<Community> {
+  async createCommunityAdmin(body: CreateCommunityDto): Promise<Community> {
     const community = this.communityRepository.create(body);
+    const savedCommunity = await this.communityRepository.save(community);
+    await this.conversationService.syncCommunityConversationMembers(
+      savedCommunity.id,
+    );
+    return savedCommunity;
+  }
+
+  async createCommunity(
+    userId: number,
+    body: CreateCommunityDto,
+  ): Promise<Community> {
+    const user = await this.userRepository.findOneOrFail({
+      where: { id: userId },
+    });
+    if (user.isIntroductoryGroupMember) {
+      throw new UnauthorizedException(
+        'Introductory group members cannot create communities',
+      );
+    }
+
+    const community = this.communityRepository.create({
+      ...body,
+      leaders: [user],
+      users: [user],
+    });
     const savedCommunity = await this.communityRepository.save(community);
     await this.conversationService.syncCommunityConversationMembers(
       savedCommunity.id,
@@ -1011,6 +1036,23 @@ export class UserService {
         : 1;
     }
     return communities.sort((a, b) => leaderKey(a) - leaderKey(b));
+  }
+
+  async findOneCommunityWithUserOrFail(
+    communityId: number,
+    userId: number,
+    relations?: Relations<Community>,
+  ): Promise<Community> {
+    const community = await this.communityRepository.findOneOrFail({
+      where: { id: communityId },
+      relations: relations ?? {
+        users: true,
+      },
+    });
+    if (!community.users.some((user) => user.id === userId)) {
+      throw new NotFoundException('User is not a member of this community');
+    }
+    return community;
   }
 
   async findCommunityForUserOrFail(

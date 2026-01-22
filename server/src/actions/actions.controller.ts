@@ -868,7 +868,7 @@ export class ActionsController {
     return this.actionsService.findUserActionRelationsForUser(userId);
   }
 
-  @Get('communityMemberInfo/:communityId')
+  @Get('communityMemberInfo/:communityId/admin')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityUserInfoDto })
   async getCommunityMemberInfoAdmin(
@@ -877,11 +877,14 @@ export class ActionsController {
     return this.actionsService.findMemberInfoByCommunityId(communityId);
   }
 
-  @Get('communityMemberInfo')
+  @Get('communityMemberInfo/:communityId')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: CommunityUserInfoDto })
-  async getCommunityMemberInfo(@Request() req: JwtRequest) {
-    return this.actionsService.findMemberInfo(req.user.sub);
+  async getCommunityMemberInfo(
+    @Request() req: JwtRequest,
+    @Param('communityId', ParseIntPipe) communityId: number,
+  ) {
+    return this.actionsService.findMemberInfo(req.user.sub, communityId);
   }
 
   // ====================================
