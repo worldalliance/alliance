@@ -5,7 +5,6 @@ import {
   userGetCommunityMemberContactInfo,
   actionsGetCommunityMemberInfo,
   userGetMyCommunities,
-  userLeaveCommunity,
   userGetOnetimeInvitesByCommunity,
   CommunityMemberContactInfoDto,
   conversationGetCommunityConversations,
@@ -24,8 +23,7 @@ import {
 } from "../../components/GroupGuidelines";
 import CommunityEditForm from "../../components/CommunityEditForm";
 import CommunityCreateForm from "../../components/CommunityCreateForm";
-import { href, useNavigate, useSearchParams } from "react-router";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { useSearchParams } from "react-router";
 import CommunityActivityTab from "../../components/CommunityActivityTab";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import FloatingChatPanel from "../../components/FloatingChatpanel";
@@ -240,32 +238,6 @@ const CommunityPage = () => {
     [setSearchParams]
   );
 
-  const navigate = useNavigate();
-
-  const { confirm } = useToast();
-
-  const handleLeave = useCallback(async () => {
-    if (!community) {
-      return;
-    }
-    const ok = await confirm({
-      title: "Leave group",
-      message:
-        "Are you sure you want to leave this group? You will not be able to rejoin unless you are invited again.",
-      confirmLabel: "Leave",
-      cancelLabel: "Cancel",
-    });
-    if (!ok) {
-      return;
-    }
-
-    userLeaveCommunity({ path: { communityId: community.id } }).then((resp) => {
-      if (resp.response.ok) {
-        navigate(href("/tasks"));
-      }
-    });
-  }, [community, navigate, confirm]);
-
   const tabs: (keyof typeof TAB_DISPLAY_NAMES)[] = amLeader
     ? ["activity", "members", "invites", "resources", "groups"]
     : ["activity", "members", "invites", "about", "groups"];
@@ -332,21 +304,13 @@ const CommunityPage = () => {
                 <AppMarkdownWrapper markdownContent={community.description} />
               </div>
 
-              {amLeader ? (
+              {amLeader && (
                 <Button
                   color={ButtonColor.White}
                   onClick={() => setTab("edit")}
                   className="!text-sm"
                 >
                   Edit
-                </Button>
-              ) : (
-                <Button
-                  color={ButtonColor.White}
-                  onClick={handleLeave}
-                  className="!text-sm"
-                >
-                  Leave group
                 </Button>
               )}
             </div>
@@ -441,7 +405,9 @@ const CommunityPage = () => {
                 }}
                 canDelete={isOnlyMember}
                 onDelete={() => {
-                  setCommunities((prev) => prev?.filter((c) => c.id !== community.id) ?? null)
+                  setCommunities(
+                    (prev) => prev?.filter((c) => c.id !== community.id) ?? null
+                  );
                   setCommunityId(null);
                 }}
               />
