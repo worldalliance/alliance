@@ -54,6 +54,15 @@ type Tab =
   | "groups"
   | "create";
 
+const TAB_DISPLAY_NAMES = {
+  activity: "Activity",
+  members: "Members",
+  invites: "Invites",
+  about: "About",
+  resources: "Resources",
+  groups: "My groups",
+} satisfies Partial<Record<Tab, string>>;
+
 const CURRENT_ACTION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
 
 const CommunityPage = () => {
@@ -257,7 +266,7 @@ const CommunityPage = () => {
     });
   }, [community, navigate, confirm]);
 
-  const tabs: Tab[] = amLeader
+  const tabs: (keyof typeof TAB_DISPLAY_NAMES)[] = amLeader
     ? ["activity", "members", "invites", "resources", "groups"]
     : ["activity", "members", "invites", "about", "groups"];
 
@@ -373,7 +382,7 @@ const CommunityPage = () => {
                 }`}
               >
                 <div className="flex flex-row gap-x-2">
-                  <span className="capitalize">{m}</span>
+                  <span>{TAB_DISPLAY_NAMES[m]}</span>
                   {m === "invites" && inviteNotifCount > 0 && (
                     <div className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
                       {inviteNotifCount}
