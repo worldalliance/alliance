@@ -972,8 +972,10 @@ export class UserService {
     communityId: number,
     userId: number,
   ): Promise<Community> {
-    const community = await this.findCommunityOrFail(communityId);
-    const user = await this.findOneOrFail(userId);
+    const [community, user] = await Promise.all([
+      this.findCommunityOrFail(communityId),
+      this.findOneOrFail(userId),
+    ]);
 
     community.users = community.users ?? [];
     if (!community.users.some((existing) => existing.id === userId)) {
@@ -1550,7 +1552,6 @@ export class UserService {
     }
 
     invite.status = CommunityInviteStatus.Accepted;
-    await this.communityInviteRepository.save(invite);
 
     const community = await this.findCommunityOrFail(invite.community.id, {
       users: true,
@@ -1560,17 +1561,26 @@ export class UserService {
       throw new BadRequestException();
     }
 
+    const saveInvite = this.communityInviteRepository.save(invite);
+
     community.users!.push(invite.invitedUser);
-    await this.communityRepository.save(community);
+    const saveCommunity = this.communityRepository
+      .save(community)
+      .then((savedCommunity) =>
+        this.conversationService.syncCommunityConversationMembers(
+          savedCommunity.id,
+        ),
+      );
 
     const notif = this.notifRepository.create({
       user: invite.invitingUser,
       category: NotificationCategory.CommunityInviteAccepted,
-      message: `${invite.invitedUser?.name} has joined your community`,
-      webAppLocation: groupInvitesUrl(),
+      message: `${invite.invitedUser.name} has joined your community`,
+      webAppLocation: groupInvitesUrl(community.id),
       associatedUsers: [invite.invitedUser],
     });
-    await this.notifRepository.save(notif);
+    const saveNotif = this.notifRepository.save(notif);
+    await Promise.all([saveInvite, saveCommunity, saveNotif]);
   }
 
   async rejectCommunityInvite(inviteId: number, userId: number): Promise<void> {

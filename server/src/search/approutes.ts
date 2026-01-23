@@ -16,8 +16,8 @@ export function actionUrl(actionId: number, full = false) {
   return full ? `${process.env.APP_URL}${path}` : path;
 }
 
-export function groupInvitesUrl() {
-  return `/groups?tab=invites`;
+export function groupInvitesUrl(communityId?: number) {
+  return `/groups?tab=invites${communityId !== undefined ? `&communityId=${communityId}` : ''}`;
 }
 
 export function actionActivityUrl(
