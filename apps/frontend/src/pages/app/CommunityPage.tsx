@@ -115,9 +115,9 @@ const CommunityPage = () => {
       if (resp.data) {
         resp.data.forEach(
           (community) =>
-          (community.users = community.users.filter(
-            (user) => user.hasActiveContract
-          ))
+            (community.users = community.users.filter(
+              (user) => user.hasActiveContract
+            ))
         );
         setCommunities(resp.data);
         setCommunity(
@@ -126,7 +126,7 @@ const CommunityPage = () => {
               (community) => community.id.toString() === communityId
             )) ||
             resp.data?.[0]) ??
-          null
+            null
         );
       }
       setLoading(false);
@@ -241,7 +241,6 @@ const CommunityPage = () => {
     ? ["activity", "members", "invites", "groups", "resources"]
     : ["activity", "members", "groups", "about"];
 
-
   const isLargeScreen = useMediaQuery("(min-width: 1250px)");
   const isChatOpen = messagingEnabled && chatOpen;
 
@@ -321,8 +320,9 @@ const CommunityPage = () => {
             </div>
 
             <div
-              className={`max-w-[400px] ${completionData.nTotal === 0 ? " invisible" : ""
-                }`}
+              className={`max-w-[400px] ${
+                completionData.nTotal === 0 ? " invisible" : ""
+              }`}
             >
               <p className="text-sm">
                 {completionData.nCompleted} / {completionData.nTotal} have
@@ -346,8 +346,9 @@ const CommunityPage = () => {
                 key={m}
                 onClick={() => setTab(m)}
                 aria-pressed={m === tab}
-                className={`!border-b-[1.5px] rounded-none ${m === tab ? "!border-b-green" : "!border-b-transparent"
-                  }`}
+                className={`!border-b-[1.5px] rounded-none ${
+                  m === tab ? "!border-b-green" : "!border-b-transparent"
+                }`}
               >
                 <div className="flex flex-row gap-x-2">
                   <span>{TAB_DISPLAY_NAMES[m]}</span>
