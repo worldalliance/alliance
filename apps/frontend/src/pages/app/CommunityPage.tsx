@@ -428,7 +428,7 @@ const CommunityPage = () => {
           {tab === "create" && (
             <CommunityCreateForm
               name={user?.name}
-              onCancel={() => setTab(null)}
+              onCancel={() => setTab("groups")}
               onSuccess={(community) => {
                 setCommunity(community);
                 setCommunityId(community.id);
