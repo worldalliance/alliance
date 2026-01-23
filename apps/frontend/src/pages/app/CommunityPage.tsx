@@ -29,7 +29,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import CommunityActivityTab from "../../components/CommunityActivityTab";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import FloatingChatPanel from "../../components/FloatingChatpanel";
-import { ChevronDown, MessageSquare } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../../lib/config";
 import CommunityInvitesTabLeader from "../../components/CommunityInvitesTabLeader";
@@ -313,19 +313,20 @@ const CommunityPage = () => {
     <TwoColumnLayout
       main={
         <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-0 md:px-3">
+          <Button
+            color={ButtonColor.White}
+            onClick={() => {
+              setTab("select");
+            }}
+          >
+            My groups
+          </Button>
           <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
             <div className="flex flex-row gap-x-2 items-start justify-between">
               <div className="flex flex-col gap-y-4 mb-8">
-                <Button
-                  color={ButtonColor.Transparent}
-                  onClick={() => {
-                    setTab("select");
-                  }}
-                  className="font-serif font-semibold text-3xl md:text-4xl"
-                >
-                  {community.name}&nbsp;
-                  <ChevronDown />
-                </Button>
+                <p className="font-serif font-semibold text-3xl md:text-4xl">
+                  {community.name}
+                </p>
                 <AppMarkdownWrapper markdownContent={community.description} />
               </div>
 
