@@ -51,7 +51,7 @@ type Tab =
   | "about"
   | "edit"
   | "resources"
-  | "select"
+  | "groups"
   | "create";
 
 const CURRENT_ACTION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
@@ -258,8 +258,8 @@ const CommunityPage = () => {
   }, [community, navigate, confirm]);
 
   const tabs: Tab[] = amLeader
-    ? ["activity", "members", "invites", "resources"]
-    : ["activity", "members", "invites", "about"];
+    ? ["activity", "members", "invites", "resources", "groups"]
+    : ["activity", "members", "invites", "about", "groups"];
 
   const isLargeScreen = useMediaQuery("(min-width: 1250px)");
   const isChatOpen = messagingEnabled && chatOpen;
@@ -313,14 +313,6 @@ const CommunityPage = () => {
     <TwoColumnLayout
       main={
         <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-0 md:px-3">
-          <Button
-            color={ButtonColor.White}
-            onClick={() => {
-              setTab("select");
-            }}
-          >
-            My groups
-          </Button>
           <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
             <div className="flex flex-row gap-x-2 items-start justify-between">
               <div className="flex flex-col gap-y-4 mb-8">
@@ -442,7 +434,7 @@ const CommunityPage = () => {
               />
             </Card>
           )}
-          {tab === "select" && (
+          {tab === "groups" && (
             <CommunitySelect
               currentCommunityId={community.id}
               onSelectCommunity={setCommunityId}
