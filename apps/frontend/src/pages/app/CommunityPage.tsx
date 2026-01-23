@@ -289,7 +289,12 @@ const CommunityPage = () => {
   const nonLeaderMembers = community.users.filter(
     (user) => !leaders.some((leader) => leader.id === user.id)
   );
-  const isOnlyMember = community.users.length === 1;
+  const canDelete =
+    (amLeader &&
+      community.users.length === 1 &&
+      communities &&
+      communities.length > 1) ??
+    false;
 
   return (
     <TwoColumnLayout
@@ -403,7 +408,7 @@ const CommunityPage = () => {
                 onSuccess={() => {
                   window.location.reload();
                 }}
-                canDelete={isOnlyMember}
+                canDelete={canDelete}
                 onDelete={() => {
                   setCommunities(
                     (prev) => prev?.filter((c) => c.id !== community.id) ?? null
