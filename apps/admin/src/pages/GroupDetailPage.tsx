@@ -4,7 +4,7 @@ import {
   actionsGetCommunityMemberInfoAdmin,
   userAddLeaderToCommunity,
   userAddMemberToCommunity,
-  userDeleteCommunity,
+  userDeleteCommunityAdmin,
   userGetCommunities,
   userGetCommunityMemberContactInfoAdmin,
   userList,
@@ -378,7 +378,7 @@ const CommunityDetailPage: React.FC = () => {
     setDeleting(true);
     setError(null);
     try {
-      await userDeleteCommunity({ path: { communityId } });
+      await userDeleteCommunityAdmin({ path: { communityId } });
       success("Community deleted", community.name);
       navigate(href("/groups"));
     } catch (err) {

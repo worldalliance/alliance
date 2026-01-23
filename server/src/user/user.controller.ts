@@ -453,13 +453,23 @@ export class UserController {
     );
   }
 
-  @Delete('communities/:communityId')
+  @Delete('communities/:communityId/admin')
   @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  async deleteCommunityAdmin(
+    @Param('communityId', ParseIntPipe) communityId: number,
+  ) {
+    await this.userService.deleteCommunityAdmin(communityId);
+  }
+
+  @Delete('communities/:communityId')
+  @UseGuards(AuthGuard)
   @ApiOkResponse()
   async deleteCommunity(
     @Param('communityId', ParseIntPipe) communityId: number,
+    @Request() req: JwtRequest,
   ) {
-    await this.userService.deleteCommunity(communityId);
+    await this.userService.deleteCommunity(req.user.sub, communityId);
   }
 
   @Post('communities/:communityId/addMember')

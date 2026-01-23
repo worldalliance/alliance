@@ -2909,6 +2909,19 @@ export type UserUpdateCommunityResponses = {
 
 export type UserUpdateCommunityResponse = UserUpdateCommunityResponses[keyof UserUpdateCommunityResponses];
 
+export type UserDeleteCommunityAdminData = {
+    body?: never;
+    path: {
+        communityId: number;
+    };
+    query?: never;
+    url: '/user/communities/{communityId}/admin';
+};
+
+export type UserDeleteCommunityAdminResponses = {
+    200: unknown;
+};
+
 export type UserAddMemberToCommunityData = {
     body: CommunityMemberDto;
     path: {
