@@ -6,9 +6,8 @@ import {
   userRejectCommunityInvite,
 } from "@alliance/shared/client";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import List from "@alliance/sharedweb/ui/List";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
+import CommunityInviteList from "../../components/CommunityInviteList";
 
 const NoCommunityPage = () => {
   const [communityInvites, setCommunityInvites] = useState<
@@ -67,30 +66,11 @@ const NoCommunityPage = () => {
       <div className="flex flex-col gap-y-2 m-4">
         <p className="font-medium">You have pending group invites</p>
       </div>
-      <List>
-        {communityInvites.map((invite) => (
-          <div
-            key={invite.id}
-            className="flex flex-row gap-x-2 p-4 justify-between items-center"
-          >
-            <p>{invite.community.name}</p>
-            <div className="flex flex-row gap-3 items-center">
-              <Button
-                onClick={() => handleAcceptInvite(invite.id)}
-                color={ButtonColor.Green}
-              >
-                Accept
-              </Button>
-              <Button
-                onClick={() => handleDeclineInvite(invite.id)}
-                color={ButtonColor.Light}
-              >
-                Decline
-              </Button>
-            </div>
-          </div>
-        ))}
-      </List>
+      <CommunityInviteList
+        invites={communityInvites}
+        onAccept={handleAcceptInvite}
+        onDecline={handleDeclineInvite}
+      />
     </CenterLayout>
   );
 };

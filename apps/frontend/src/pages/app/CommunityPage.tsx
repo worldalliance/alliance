@@ -8,6 +8,10 @@ import {
   userGetOnetimeInvitesByCommunity,
   CommunityMemberContactInfoDto,
   conversationGetCommunityConversations,
+  CommunityInviteDto,
+  userGetCommunityInvitesForUser,
+  userAcceptCommunityInvite,
+  userRejectCommunityInvite,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -40,6 +44,7 @@ import {
   CompletionData,
 } from "@alliance/shared/lib/actionUtils";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
+import CommunityInviteList from "../../components/CommunityInviteList";
 
 type Tab =
   | "activity"
@@ -93,6 +98,22 @@ const CommunityPage = () => {
 
   const [chatOpen, setChatOpen] = useState(false);
   const [community, setCommunity] = useState<CommunityDto | null>(null);
+  const [communityInvites, setCommunityInvites] = useState<
+    CommunityInviteDto[]
+  >([]);
+  const communityInvitesById = useMemo(() => {
+    return new Map<number, CommunityInviteDto>(
+      communityInvites.map((invite) => [invite.id, invite])
+    );
+  }, [communityInvites]);
+
+  useEffect(() => {
+    userGetCommunityInvitesForUser().then((response) => {
+      if (response.data) {
+        setCommunityInvites(response.data);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (!community?.id) {
@@ -237,6 +258,27 @@ const CommunityPage = () => {
     [setSearchParams]
   );
 
+  const handleAcceptInvite = useCallback(
+    (inviteId: number) => {
+      userAcceptCommunityInvite({ path: { inviteId } }).then((response) => {
+        if (response.data) {
+          setCommunityId(communityInvitesById.get(inviteId)?.id ?? null);
+        }
+      });
+    },
+    [setCommunityId, communityInvitesById]
+  );
+
+  const handleDeclineInvite = useCallback((inviteId: number) => {
+    userRejectCommunityInvite({ path: { inviteId } }).then((response) => {
+      if (response.data) {
+        setCommunityInvites((prev) =>
+          prev.filter((invite) => invite.id !== inviteId)
+        );
+      }
+    });
+  }, []);
+
   const tabs: (keyof typeof TAB_DISPLAY_NAMES)[] = amLeader
     ? ["activity", "members", "invites", "groups", "resources"]
     : ["activity", "members", "groups", "about"];
@@ -357,6 +399,11 @@ const CommunityPage = () => {
                       {inviteNotifCount}
                     </div>
                   )}
+                  {m === "groups" && communityInvites.length > 0 && (
+                    <div className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
+                      {communityInvites.length}
+                    </div>
+                  )}
                 </div>
               </Button>
             ))}
@@ -417,13 +464,27 @@ const CommunityPage = () => {
             </Card>
           )}
           {tab === "groups" && (
-            <CommunitySelect
-              currentCommunityId={community.id}
-              onSelectCommunity={setCommunityId}
-              communities={communities}
-              isOnboardingGroupMember={user?.isIntroductoryGroupMember ?? true}
-              onCreateCommunity={() => setTab("create")}
-            />
+            <div className="flex flex-col gap-y-6">
+              <CommunitySelect
+                currentCommunityId={community.id}
+                onSelectCommunity={setCommunityId}
+                communities={communities}
+                isOnboardingGroupMember={
+                  user?.isIntroductoryGroupMember ?? true
+                }
+                onCreateCommunity={() => setTab("create")}
+              />
+              {communityInvites.length > 0 && (
+                <div className="flex flex-col gap-y-2">
+                  <p className="font-medium">You have pending group invites</p>
+                  <CommunityInviteList
+                    invites={communityInvites}
+                    onAccept={handleAcceptInvite}
+                    onDecline={handleDeclineInvite}
+                  />
+                </div>
+              )}
+            </div>
           )}
           {tab === "create" && (
             <CommunityCreateForm
