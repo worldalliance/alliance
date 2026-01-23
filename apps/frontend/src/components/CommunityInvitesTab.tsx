@@ -25,8 +25,8 @@ import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import Card from "@alliance/sharedweb/ui/Card";
 import CommunityInviteListItem from "./CommunityInviteListItem";
 import { Link } from "react-router";
-import OneTimeInviteRequestLeaderListItem from "./OneTimeInviteRequestLeaderListItem";
-import OneTimeInviteLeaderListItem from "./OneTimeInviteLeaderListItem";
+import OneTimeInviteRequestListItem from "./OneTimeInviteRequestListItem";
+import OneTimeInviteListItem from "./OneTimeInviteListItem";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CardStyle } from "@alliance/shared/styles/card";
 
@@ -365,7 +365,7 @@ const CommunityInvitesTab = ({
           <p className="font-semibold text-xl">Invite requests</p>
           <List>
             {pendingRequests.map((request) => (
-              <OneTimeInviteRequestLeaderListItem
+              <OneTimeInviteRequestListItem
                 key={request.id}
                 request={request}
                 onApprove={onApproveOnetimeInvite}
@@ -384,7 +384,7 @@ const CommunityInvitesTab = ({
               switch (entry.type) {
                 case "new_member":
                   return (
-                    <OneTimeInviteLeaderListItem
+                    <OneTimeInviteListItem
                       key={entry.data.id}
                       leaderId={user?.id}
                       invite={entry.data}

@@ -4,19 +4,19 @@ import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
 import { href, Link } from "react-router";
 import { X } from "lucide-react";
 
-export interface OneTimeInviteLeaderListItemProps {
+export interface OneTimeInviteListItemProps {
   leaderId: number | undefined;
   invite: OnetimeInviteDto;
   onDelete: (inviteId: number, e: React.MouseEvent<HTMLElement>) => void;
   onCopy: (code: string) => void;
 }
 
-const OneTimeInviteLeaderListItem = ({
+const OneTimeInviteListItem = ({
   leaderId,
   invite,
   onDelete,
   onCopy,
-}: OneTimeInviteLeaderListItemProps) => {
+}: OneTimeInviteListItemProps) => {
   const isSelfInvited = leaderId === invite.invitingUser.id;
   return (
     <div
@@ -84,4 +84,4 @@ const OneTimeInviteLeaderListItem = ({
   );
 };
 
-export default OneTimeInviteLeaderListItem;
+export default OneTimeInviteListItem;

@@ -4,17 +4,17 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
 import { href, Link } from "react-router";
 
-export type OneTimeInviteRequestLeaderListItemProps = {
+export type OneTimeInviteRequestListItemProps = {
   request: OnetimeInviteDto;
   onApprove: (requestId: number) => void;
   onReject: (requestId: number) => void;
 };
 
-const OneTimeInviteRequestLeaderListItem = ({
+const OneTimeInviteRequestListItem = ({
   request,
   onApprove,
   onReject,
-}: OneTimeInviteRequestLeaderListItemProps) => {
+}: OneTimeInviteRequestListItemProps) => {
   return (
     <div className="p-4 gap-y-2 flex flex-col">
       <div
@@ -74,4 +74,4 @@ const OneTimeInviteRequestLeaderListItem = ({
   );
 };
 
-export default OneTimeInviteRequestLeaderListItem;
+export default OneTimeInviteRequestListItem;
