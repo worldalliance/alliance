@@ -30,8 +30,7 @@ import FloatingChatPanel from "../../components/FloatingChatpanel";
 import { MessageSquare } from "lucide-react";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../../lib/config";
-import CommunityInvitesTabLeader from "../../components/CommunityInvitesTabLeader";
-import CommunityInvitesTabMember from "../../components/CommunityInvitesTabMember";
+import CommunityInvitesTab from "../../components/CommunityInvitesTab";
 import CommunitySelect from "../../components/CommunitySelect";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import { useMediaQuery } from "../../lib/useMediaQuery";
@@ -239,8 +238,9 @@ const CommunityPage = () => {
   );
 
   const tabs: (keyof typeof TAB_DISPLAY_NAMES)[] = amLeader
-    ? ["activity", "members", "invites", "resources", "groups"]
-    : ["activity", "members", "invites", "about", "groups"];
+    ? ["activity", "members", "invites", "groups", "resources"]
+    : ["activity", "members", "groups", "about"];
+
 
   const isLargeScreen = useMediaQuery("(min-width: 1250px)");
   const isChatOpen = messagingEnabled && chatOpen;
@@ -390,16 +390,13 @@ const CommunityPage = () => {
               <GroupOrganizerGuidelines />
             </div>
           )}
-          {tab === "invites" &&
-            (amLeader ? (
-              <CommunityInvitesTabLeader
-                communityId={community.id}
-                existingMembers={community.users}
-                setInviteNotifCount={setInviteNotifCount}
-              />
-            ) : (
-              <CommunityInvitesTabMember communityId={community.id} />
-            ))}
+          {tab === "invites" && amLeader && (
+            <CommunityInvitesTab
+              communityId={community.id}
+              existingMembers={community.users}
+              setInviteNotifCount={setInviteNotifCount}
+            />
+          )}
           {tab === "edit" && amLeader && (
             <Card style={CardStyle.Grey}>
               <CommunityEditForm

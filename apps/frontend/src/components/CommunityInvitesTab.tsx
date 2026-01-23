@@ -30,7 +30,7 @@ import OneTimeInviteLeaderListItem from "./OneTimeInviteLeaderListItem";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CardStyle } from "@alliance/shared/styles/card";
 
-export interface CommunityInvitesTabLeaderProps {
+export interface CommunityInvitesTabProps {
   communityId: number;
   existingMembers: ProfileDto[];
   setInviteNotifCount: (count: number) => void;
@@ -48,11 +48,11 @@ function createdAtComparator(
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 }
 
-const CommunityInvitesTabLeader = ({
+const CommunityInvitesTab = ({
   communityId,
   existingMembers,
   setInviteNotifCount,
-}: CommunityInvitesTabLeaderProps) => {
+}: CommunityInvitesTabProps) => {
   const [name, setName] = useState("");
   const { user } = useAuth();
 
@@ -411,4 +411,4 @@ const CommunityInvitesTabLeader = ({
   );
 };
 
-export default CommunityInvitesTabLeader;
+export default CommunityInvitesTab;
