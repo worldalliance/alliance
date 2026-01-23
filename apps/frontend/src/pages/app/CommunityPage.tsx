@@ -286,9 +286,9 @@ const CommunityPage = () => {
         : "previous actions";
     }
 
-      return allCompletionData.current.nActions !== 1
-        ? "current actions"
-        : "the current action";
+    return allCompletionData.current.nActions !== 1
+      ? "current actions"
+      : "the current action";
   }, [allCompletionData]);
 
   if (!community) {
@@ -456,7 +456,7 @@ const CommunityPage = () => {
               onCancel={() => setTab(null)}
               onSuccess={(community) => {
                 setCommunity(community);
-                setCommunityId(+community.id);
+                setCommunityId(community.id);
               }}
             />
           )}

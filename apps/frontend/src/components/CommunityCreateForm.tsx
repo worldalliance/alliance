@@ -39,11 +39,6 @@ const CommunityCreateForm = ({
   const handleSubmit = useCallback(async () => {
     const response = await userCreateCommunity({ body: formValues });
     if (response.data) {
-      setFormValues({
-        name: response.data.name,
-        description: response.data.description,
-        photo: response.data.photo,
-      });
       onSuccess(response.data);
     } else {
       setError("Failed to create community");
