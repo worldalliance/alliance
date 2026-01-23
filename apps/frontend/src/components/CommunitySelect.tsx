@@ -44,9 +44,7 @@ const CommunitySelect = ({
             return (
               <Button
                 key={community.id}
-                color={
-                  isCurrent ? ButtonColor.LightHover : ButtonColor.Transparent
-                }
+                color={isCurrent ? ButtonColor.LightHover : ButtonColor.White}
                 className="w-full !rounded-none"
                 onClick={() => onSelectCommunity(community.id)}
               >
@@ -68,7 +66,7 @@ const CommunitySelect = ({
             <Button
               key="create"
               onClick={onCreateCommunity}
-              color={ButtonColor.Transparent}
+              color={ButtonColor.White}
               className="w-full !rounded-none"
             >
               <div className="w-full flex flex-row gap-x-2 items-center justify-center m-3 text-zinc-500">
