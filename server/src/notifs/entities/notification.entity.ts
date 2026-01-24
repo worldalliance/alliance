@@ -29,6 +29,8 @@ export enum NotificationCategory {
   Likes = 'likes',
   CommunityInviteRejected = 'community_invite_rejected',
   CommunityInviteAccepted = 'community_invite_accepted',
+
+  // Legacy
   OnetimeInviteRequestCreated = 'onetime_invite_request_created',
   OnetimeInviteRequestApproved = 'onetime_invite_request_approved',
   OnetimeInviteRequestRejected = 'onetime_invite_request_rejected',

@@ -9,7 +9,6 @@ import { createTestApp, TestContext } from './e2e-test-utils';
 import { UserService } from 'src/user/user.service';
 import { Community } from '../src/user/entities/community.entity';
 import {
-  OnetimeInvite,
   OnetimeInviteStatus,
 } from 'src/user/entities/onetime-invite.entity';
 
@@ -18,7 +17,6 @@ describe('Users (e2e)', () => {
   let userRepo: Repository<User>;
   let cityRepo: Repository<City>;
   let communityRepo: Repository<Community>;
-  let onetimeInviteRepo: Repository<OnetimeInvite>;
   let userService: UserService;
 
   let userAId: number;
@@ -37,7 +35,6 @@ describe('Users (e2e)', () => {
     userRepo = ctx.dataSource.getRepository(User);
     cityRepo = ctx.dataSource.getRepository(City);
     communityRepo = ctx.dataSource.getRepository(Community);
-    onetimeInviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
     userService = ctx.app.get(UserService);
     const userA = userRepo.create({
       name: 'Friend A',
@@ -420,265 +417,115 @@ describe('Users (e2e)', () => {
       expect(res.body.invitedUser.id).toBe(alternateInviteTargetUserId);
     });
 
-    describe('onetime invite workflows', () => {
-      const createPendingInviteRequest = async (
-        overrides: {
-          token?: string;
-          invitee?: string;
-          inviteeDescription?: string;
-          communityId?: number;
-        } = {},
-      ) => {
+    describe('createOnetimeInvite', () => {
+      it('rejects requests without a community id for non-admins', async () => {
         const res = await request(ctx.app.getHttpServer())
-          .post('/user/onetimeInvite/request')
-          .set(
-            'Authorization',
-            `Bearer ${overrides.token ?? communityMemberToken}`,
-          )
+          .post('/user/onetimeInvite/create')
+          .set('Authorization', `Bearer ${userAToken}`)
           .send({
-            invitee:
-              overrides.invitee ??
-              `pending-${Date.now()}-${Math.random().toString(36).slice(2)}@example.com`,
-            inviteeDescription:
-              overrides.inviteeDescription ?? 'Pending invite request',
-            communityId: overrides.communityId ?? communityLedByUserA.id,
+            invitee: 'missing-community@example.com',
+          });
+
+        expect(res.status).toBe(401);
+        expect(res.body.message).toContain('Community ID not provided');
+      });
+
+      it('rejects requests for communities the user does not lead', async () => {
+        const res = await request(ctx.app.getHttpServer())
+          .post('/user/onetimeInvite/create')
+          .set('Authorization', `Bearer ${userAToken}`)
+          .send({
+            invitee: 'outsider@example.com',
+            communityId: communityLedByUserB.id,
+          });
+
+        expect(res.status).toBe(401);
+        expect(res.body.message).toContain('leader of community');
+      });
+
+      it('ignores provided invitingUserId for non-admins and uses the authenticated user', async () => {
+        const res = await request(ctx.app.getHttpServer())
+          .post('/user/onetimeInvite/create')
+          .set('Authorization', `Bearer ${userAToken}`)
+          .send({
+            invitingUserId: userBId,
+            invitee: 'mismatch@example.com',
+            communityId: communityLedByUserA.id,
           });
 
         expect(res.status).toBe(201);
-        return res.body;
-      };
-
-      describe('createOnetimeInvite', () => {
-        it('rejects requests without a community id for non-admins', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/create')
-            .set('Authorization', `Bearer ${userAToken}`)
-            .send({
-              invitee: 'missing-community@example.com',
-            });
-
-          expect(res.status).toBe(401);
-          expect(res.body.message).toContain('Community ID not provided');
-        });
-
-        it('rejects requests for communities the user does not lead', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/create')
-            .set('Authorization', `Bearer ${userAToken}`)
-            .send({
-              invitee: 'outsider@example.com',
-              communityId: communityLedByUserB.id,
-            });
-
-          expect(res.status).toBe(401);
-          expect(res.body.message).toContain('leader of community');
-        });
-
-        it('ignores provided invitingUserId for non-admins and uses the authenticated user', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/create')
-            .set('Authorization', `Bearer ${userAToken}`)
-            .send({
-              invitingUserId: userBId,
-              invitee: 'mismatch@example.com',
-              communityId: communityLedByUserA.id,
-            });
-
-          expect(res.status).toBe(201);
-          expect(res.body.invitingUser.id).toBe(userAId);
-        });
-
-        it('creates invites for communities led by the requester', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/create')
-            .set('Authorization', `Bearer ${userAToken}`)
-            .send({
-              invitingUserId: userAId,
-              invitee: 'leader@example.com',
-              communityId: communityLedByUserA.id,
-            });
-
-          expect(res.status).toBe(201);
-          expect(res.body.community.id).toBe(communityLedByUserA.id);
-          expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
-        });
-
-        it('prevents non-leaders from creating invites even if they are members', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/create')
-            .set('Authorization', `Bearer ${communityMemberToken}`)
-            .send({
-              invitee: 'member-cannot-create@example.com',
-              communityId: communityLedByUserA.id,
-            });
-
-          expect(res.status).toBe(401);
-        });
-
-        it('allows admins to create onetime invites for any community', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/create')
-            .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-            .send({
-              invitingUserId: ctx.adminUserId,
-              invitee: 'admin-community@example.com',
-              communityId: communityLedByUserB.id,
-            });
-
-          expect(res.status).toBe(201);
-          expect(res.body.community.id).toBe(communityLedByUserB.id);
-          expect(res.body.invitingUser.id).toBe(ctx.adminUserId);
-          expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
-        });
-
-        it('allows admins to create onetime invites on behalf of another user without specifying a community', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/create')
-            .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-            .send({
-              invitingUserId: userAId,
-              invitee: 'admin-onbehalf@example.com',
-            });
-
-          expect(res.status).toBe(201);
-          expect(res.body.community).toBeUndefined();
-          expect(res.body.invitingUser.id).toBe(userAId);
-          expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
-        });
-
-        it('returns not found when admins reference communities that do not exist', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/create')
-            .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-            .send({
-              invitingUserId: ctx.adminUserId,
-              invitee: 'missing-community@example.com',
-              communityId: 999999,
-            });
-
-          expect(res.ok).toBeFalsy();
-        });
+        expect(res.body.invitingUser.id).toBe(userAId);
       });
 
-      describe('requestOnetimeInvite', () => {
-        it('rejects requests from users that are not members of the community', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/request')
-            .set('Authorization', `Bearer ${userBToken}`)
-            .send({
-              invitee: 'nonmember@example.com',
-              inviteeDescription: 'Trying to request as an outsider',
-              communityId: communityLedByUserA.id,
-            });
-
-          expect(res.status).toBe(401);
-          expect(res.body.message).toContain('not a member');
-        });
-
-        it('creates a pending request when a community member submits it', async () => {
-          const res = await request(ctx.app.getHttpServer())
-            .post('/user/onetimeInvite/request')
-            .set('Authorization', `Bearer ${communityMemberToken}`)
-            .send({
-              invitee: 'member-request@example.com',
-              inviteeDescription: 'Member request for manual review',
-              communityId: communityLedByUserA.id,
-            });
-
-          expect(res.status).toBe(201);
-          expect(res.body.status).toBe(OnetimeInviteStatus.REQUEST_PENDING);
-          expect(res.body.community.id).toBe(communityLedByUserA.id);
-          expect(res.body.invitingUser.id).toBe(communityMemberId);
-          expect(res.body.inviteeDescription).toBe(
-            'Member request for manual review',
-          );
-        });
-      });
-
-      describe('approveOnetimeInvite', () => {
-        it('allows community leaders to approve pending requests', async () => {
-          const pendingInvite = await createPendingInviteRequest();
-
-          const res = await request(ctx.app.getHttpServer())
-            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
-            .set('Authorization', `Bearer ${userAToken}`)
-            .send();
-
-          expect(res.status).toBe(201);
-          expect(res.body.id).toBe(pendingInvite.id);
-          expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
-          expect(res.body.invitingUser.id).toBe(communityMemberId);
-        });
-
-        it('rejects approval attempts from non-leaders', async () => {
-          const pendingInvite = await createPendingInviteRequest();
-
-          const res = await request(ctx.app.getHttpServer())
-            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
-            .set('Authorization', `Bearer ${communityMemberToken}`)
-            .send();
-
-          expect(res.status).toBe(401);
-        });
-
-        it('rejects approval attempts from leaders of other communities', async () => {
-          const pendingInvite = await createPendingInviteRequest();
-
-          const res = await request(ctx.app.getHttpServer())
-            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
-            .set('Authorization', `Bearer ${userBToken}`)
-            .send();
-
-          expect(res.status).toBe(401);
-          expect(res.body.message).toContain('not a leader');
-        });
-      });
-
-      describe('rejectOnetimeInvite', () => {
-        it('allows community leaders to reject pending requests', async () => {
-          const pendingInvite = await createPendingInviteRequest();
-
-          const res = await request(ctx.app.getHttpServer())
-            .post(`/user/onetimeInvite/${pendingInvite.id}/reject`)
-            .set('Authorization', `Bearer ${userAToken}`)
-            .send();
-
-          expect(res.status).toBe(201);
-          const refreshed = await onetimeInviteRepo.findOne({
-            where: { id: pendingInvite.id },
+      it('creates invites for communities led by the requester', async () => {
+        const res = await request(ctx.app.getHttpServer())
+          .post('/user/onetimeInvite/create')
+          .set('Authorization', `Bearer ${userAToken}`)
+          .send({
+            invitingUserId: userAId,
+            invitee: 'leader@example.com',
+            communityId: communityLedByUserA.id,
           });
-          expect(refreshed?.status).toBe(OnetimeInviteStatus.REQUEST_REJECTED);
-        });
 
-        it('rejects rejection attempts from leaders of other communities', async () => {
-          const pendingInvite = await createPendingInviteRequest();
+        expect(res.status).toBe(201);
+        expect(res.body.community.id).toBe(communityLedByUserA.id);
+        expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+      });
 
-          const res = await request(ctx.app.getHttpServer())
-            .post(`/user/onetimeInvite/${pendingInvite.id}/reject`)
-            .set('Authorization', `Bearer ${userBToken}`)
-            .send();
+      it('prevents non-leaders from creating invites even if they are members', async () => {
+        const res = await request(ctx.app.getHttpServer())
+          .post('/user/onetimeInvite/create')
+          .set('Authorization', `Bearer ${communityMemberToken}`)
+          .send({
+            invitee: 'member-cannot-create@example.com',
+            communityId: communityLedByUserA.id,
+          });
 
-          expect(res.status).toBe(401);
-          expect(res.body.message).toContain('not a leader');
-        });
+        expect(res.status).toBe(401);
+      });
 
-        it('prevents processing an invite that has already been approved', async () => {
-          const pendingInvite = await createPendingInviteRequest();
+      it('allows admins to create onetime invites for any community', async () => {
+        const res = await request(ctx.app.getHttpServer())
+          .post('/user/onetimeInvite/create')
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            invitingUserId: ctx.adminUserId,
+            invitee: 'admin-community@example.com',
+            communityId: communityLedByUserB.id,
+          });
 
-          await request(ctx.app.getHttpServer())
-            .post(`/user/onetimeInvite/${pendingInvite.id}/approve`)
-            .set('Authorization', `Bearer ${userAToken}`)
-            .send()
-            .expect(201);
+        expect(res.status).toBe(201);
+        expect(res.body.community.id).toBe(communityLedByUserB.id);
+        expect(res.body.invitingUser.id).toBe(ctx.adminUserId);
+        expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+      });
 
-          const res = await request(ctx.app.getHttpServer())
-            .post(`/user/onetimeInvite/${pendingInvite.id}/reject`)
-            .set('Authorization', `Bearer ${userAToken}`)
-            .send();
+      it('allows admins to create onetime invites on behalf of another user without specifying a community', async () => {
+        const res = await request(ctx.app.getHttpServer())
+          .post('/user/onetimeInvite/create')
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            invitingUserId: userAId,
+            invitee: 'admin-onbehalf@example.com',
+          });
 
-          expect(res.status).toBe(400);
-          expect(res.body.message).toContain('already been approved');
-        });
+        expect(res.status).toBe(201);
+        expect(res.body.community).toBeUndefined();
+        expect(res.body.invitingUser.id).toBe(userAId);
+        expect(res.body.status).toBe(OnetimeInviteStatus.LINK_UNUSED);
+      });
+
+      it('returns not found when admins reference communities that do not exist', async () => {
+        const res = await request(ctx.app.getHttpServer())
+          .post('/user/onetimeInvite/create')
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send({
+            invitingUserId: ctx.adminUserId,
+            invitee: 'missing-community@example.com',
+            communityId: 999999,
+          });
+
+        expect(res.ok).toBeFalsy();
       });
     });
   });
