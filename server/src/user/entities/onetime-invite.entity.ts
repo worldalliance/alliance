@@ -17,8 +17,6 @@ import { Ty } from 'src/tasks/entities/type';
 import { Notification } from 'src/notifs/entities/notification.entity';
 
 export enum OnetimeInviteStatus {
-  REQUEST_PENDING = 'request_pending',
-  REQUEST_REJECTED = 'request_rejected',
   LINK_UNUSED = 'link_unused',
   LINK_USED = 'link_used',
 }

@@ -91,7 +91,6 @@ const CommunityPage = () => {
     actionSummaries: actionSummaries,
     userActionRelations,
   });
-  const [inviteNotifCount, setInviteNotifCount] = useState(0);
   const [allCompletionData, setAllCompletionData] = useState<ReturnType<
     typeof calculateAllCompletionData
   > | null>(null);
@@ -173,10 +172,6 @@ const CommunityPage = () => {
       if (!invites.data) {
         return;
       }
-      setInviteNotifCount(
-        invites.data.filter((invite) => invite.status === "request_pending")
-          .length
-      );
     })();
   }, [amLeader, community]);
 
@@ -394,11 +389,6 @@ const CommunityPage = () => {
               >
                 <div className="flex flex-row gap-x-2">
                   <span>{TAB_DISPLAY_NAMES[m]}</span>
-                  {m === "invites" && inviteNotifCount > 0 && (
-                    <div className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
-                      {inviteNotifCount}
-                    </div>
-                  )}
                   {m === "groups" && communityInvites.length > 0 && (
                     <div className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
                       {communityInvites.length}
@@ -442,7 +432,6 @@ const CommunityPage = () => {
             <CommunityInvitesTab
               communityId={community.id}
               existingMembers={community.users}
-              setInviteNotifCount={setInviteNotifCount}
             />
           )}
           {tab === "edit" && amLeader && (
