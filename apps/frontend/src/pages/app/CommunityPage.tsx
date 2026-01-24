@@ -222,31 +222,17 @@ const CommunityPage = () => {
     }
   }, [amLeader]);
 
-  const setTab = useCallback(
-    (tab: Tab | null) => {
+  const setParams = useCallback(
+    (params: { tab?: Tab | null; communityId?: number | null }) => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        if (tab === null) {
-          next.delete("tab");
-        } else {
-          next.set("tab", tab);
+        for (const [key, value] of Object.entries(params)) {
+          if (value === null || value === undefined) {
+            next.delete(key);
+          } else {
+            next.set(key, value.toString());
+          }
         }
-        return next;
-      });
-    },
-    [setSearchParams]
-  );
-
-  const setCommunityId = useCallback(
-    (communityId: number | null) => {
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        if (communityId === null) {
-          next.delete("communityId");
-        } else {
-          next.set("communityId", communityId.toString());
-        }
-        next.delete("tab");
         return next;
       });
     },
@@ -257,11 +243,16 @@ const CommunityPage = () => {
     (inviteId: number) => {
       userAcceptCommunityInvite({ path: { inviteId } }).then((response) => {
         if (response.data) {
-          setCommunityId(communityInvitesById.get(inviteId)?.id ?? null);
+          setCommunityInvites((prev) =>
+            prev.filter((invite) => invite.id !== inviteId)
+          );
+          setParams({
+            communityId: communityInvitesById.get(inviteId)?.community.id,
+          });
         }
       });
     },
-    [setCommunityId, communityInvitesById]
+    [setParams, communityInvitesById]
   );
 
   const handleDeclineInvite = useCallback((inviteId: number) => {
@@ -348,7 +339,7 @@ const CommunityPage = () => {
               {amLeader && (
                 <Button
                   color={ButtonColor.White}
-                  onClick={() => setTab("edit")}
+                  onClick={() => setParams({ tab: "edit" })}
                   className="!text-sm"
                 >
                   Edit
@@ -381,7 +372,7 @@ const CommunityPage = () => {
               <Button
                 color={ButtonColor.Transparent}
                 key={m}
-                onClick={() => setTab(m)}
+                onClick={() => setParams({ tab: m })}
                 aria-pressed={m === tab}
                 className={`!border-b-[1.5px] rounded-none ${
                   m === tab ? "!border-b-green" : "!border-b-transparent"
@@ -438,7 +429,7 @@ const CommunityPage = () => {
             <Card style={CardStyle.Grey}>
               <CommunityEditForm
                 initialValue={community}
-                onCancel={() => setTab(null)}
+                onCancel={() => setParams({ tab: null })}
                 onSuccess={() => {
                   window.location.reload();
                 }}
@@ -447,7 +438,7 @@ const CommunityPage = () => {
                   setCommunities(
                     (prev) => prev?.filter((c) => c.id !== community.id) ?? null
                   );
-                  setCommunityId(null);
+                  setParams({ communityId: null, tab: null });
                 }}
               />
             </Card>
@@ -456,12 +447,12 @@ const CommunityPage = () => {
             <div className="flex flex-col gap-y-6">
               <CommunitySelect
                 currentCommunityId={community.id}
-                onSelectCommunity={setCommunityId}
+                onSelectCommunity={(communityId) => setParams({ communityId })}
                 communities={communities}
                 isOnboardingGroupMember={
                   user?.isIntroductoryGroupMember ?? true
                 }
-                onCreateCommunity={() => setTab("create")}
+                onCreateCommunity={() => setParams({ tab: "create" })}
               />
               {communityInvites.length > 0 && (
                 <div className="flex flex-col gap-y-2">
@@ -478,10 +469,10 @@ const CommunityPage = () => {
           {tab === "create" && (
             <CommunityCreateForm
               name={user?.name}
-              onCancel={() => setTab("groups")}
+              onCancel={() => setParams({ tab: "groups" })}
               onSuccess={(community) => {
                 setCommunity(community);
-                setCommunityId(community.id);
+                setParams({ communityId: community.id, tab: "groups" });
               }}
             />
           )}
