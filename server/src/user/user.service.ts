@@ -1500,6 +1500,9 @@ export class UserService {
       (community) => community.id !== communityId,
     );
     await this.userRepository.save(user);
+    await this.conversationService.syncCommunityConversationMembers(
+      communityId,
+    );
   }
 
   async getAllUserIds(): Promise<number[]> {
