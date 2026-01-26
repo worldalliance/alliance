@@ -68,6 +68,7 @@ import { RegisterDeviceDto, UserDeviceDto } from './dto/device.dto';
 import { UserDevice } from './entities/user-device.entity';
 import { PushService } from 'src/push/push.service';
 import { Push } from 'src/push/push.entity';
+import { run } from 'src/utils/promise';
 
 const defaultTimeZone = 'America/Los_Angeles';
 const COMMUNITY_DEFAULT_RELATIONS: Readonly<Relations<Community>> =
@@ -1426,7 +1427,13 @@ export class UserService {
   async acceptCommunityInvite(inviteId: number, userId: number): Promise<void> {
     const invite = await this.communityInviteRepository.findOneOrFail({
       where: { id: inviteId },
-      relations: { invitedUser: true, invitingUser: true, community: true },
+      relations: {
+        invitedUser: {
+          communities: true,
+        },
+        invitingUser: true,
+        community: true,
+      },
     });
     if (invite.invitedUser.id !== userId) {
       throw new BadRequestException();
@@ -1456,6 +1463,30 @@ export class UserService {
         ),
       );
 
+    // Remove user from all other communities that they are not a leader of
+    const updatedCommunities: number[] = [community.id];
+    invite.invitedUser.communities = invite.invitedUser.communities.filter(
+      (c) => {
+        const keep =
+          c.id === community.id || invite.invitedUser.leaderOfIdSet.has(c.id);
+        if (!keep) {
+          updatedCommunities.push(c.id);
+        }
+        return keep;
+      },
+    );
+
+    const saveUser = this.userRepository.save(invite.invitedUser);
+    const syncConversationMembers = run(async () => {
+      await saveCommunity;
+      await saveUser;
+      await Promise.all(
+        updatedCommunities.map((cid) =>
+          this.conversationService.syncCommunityConversationMembers(cid),
+        ),
+      );
+    });
+
     const notif = this.notifRepository.create({
       user: invite.invitingUser,
       category: NotificationCategory.CommunityInviteAccepted,
@@ -1464,7 +1495,7 @@ export class UserService {
       associatedUsers: [invite.invitedUser],
     });
     const saveNotif = this.notifRepository.save(notif);
-    await Promise.all([saveInvite, saveCommunity, saveNotif]);
+    await Promise.all([saveInvite, syncConversationMembers, saveNotif]);
   }
 
   async rejectCommunityInvite(inviteId: number, userId: number): Promise<void> {

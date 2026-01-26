@@ -90,4 +90,6 @@ export const testUser = new User({
   | 'isAwayAt'
   | '_isAwayAtAnyPointInRange'
   | 'isAwayAtAnyPointInRange'
+  | '_leaderOfIdSet'
+  | 'leaderOfIdSet'
 >);

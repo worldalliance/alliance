@@ -520,4 +520,13 @@ export class User {
     }
     return isAway;
   }
+
+  @Exclude()
+  private _leaderOfIdSet: Set<number> | null = null;
+  get leaderOfIdSet(): Set<number> {
+    if (this._leaderOfIdSet === null) {
+      this._leaderOfIdSet = new Set(this.leaderOfIds);
+    }
+    return this._leaderOfIdSet;
+  }
 }

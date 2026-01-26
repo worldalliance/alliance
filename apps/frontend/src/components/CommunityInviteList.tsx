@@ -4,7 +4,7 @@ import List from "@alliance/sharedweb/ui/List";
 
 type CommunityInviteListProps = {
   invites: CommunityInviteDto[];
-  onAccept: (inviteId: number) => void;
+  onAccept: (inviteId: number, anchor?: HTMLElement | null) => void;
   onDecline: (inviteId: number) => void;
 };
 
@@ -22,7 +22,7 @@ const CommunityInviteList = ({
         <p>{invite.community.name}</p>
         <div className="flex flex-row gap-3 items-center">
           <Button
-            onClick={() => onAccept(invite.id)}
+            onClick={(event) => onAccept(invite.id, event.currentTarget)}
             color={ButtonColor.Green}
           >
             Accept

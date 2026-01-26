@@ -42,6 +42,7 @@ import {
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import CommunityInviteList from "../../components/CommunityInviteList";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 
 type Tab =
   | "activity"
@@ -83,6 +84,8 @@ const CommunityPage = () => {
 
   const tab = searchParams.get("tab") ?? "activity";
   const communityId = searchParams.get("communityId");
+
+  const { confirm } = useToast();
 
   const maxActionsPerWeek = useMaxActionsPerWeek({
     actionSummaries: actionSummaries,
@@ -227,14 +230,47 @@ const CommunityPage = () => {
   );
 
   const handleAcceptInvite = useCallback(
-    (inviteId: number) => {
-      void acceptCommunityInvite(inviteId).then(() => {
-        setParams({
-          communityId: incomingCommunityInvitesById.get(inviteId)?.community.id,
+    async (inviteId: number, anchor?: HTMLElement | null) => {
+      const nonLeaderCommunities = communities
+        ?.filter(
+          (c) => !c.leaders.some(({ id: userId }) => userId === user?.id)
+        )
+        .map((c) => c.name);
+      const message = !nonLeaderCommunities?.length
+        ? null
+        : nonLeaderCommunities.length === 1
+        ? `You will be removed from your current group (${nonLeaderCommunities[0]})`
+        : `You will be removed from the following groups: (${nonLeaderCommunities.join(
+            ", "
+          )})`;
+      const ok = message
+        ? await confirm({
+            title: "Accept invite?",
+            message,
+            confirmLabel: "Accept",
+            cancelLabel: "Cancel",
+            anchorEl: anchor,
+            placement: "topleft",
+          })
+        : true;
+
+      if (ok) {
+        void acceptCommunityInvite(inviteId).then(() => {
+          setParams({
+            communityId:
+              incomingCommunityInvitesById.get(inviteId)?.community.id,
+          });
         });
-      });
+      }
     },
-    [setParams, incomingCommunityInvitesById, acceptCommunityInvite]
+    [
+      setParams,
+      incomingCommunityInvitesById,
+      acceptCommunityInvite,
+      confirm,
+      communities,
+      user,
+    ]
   );
 
   const handleDeclineInvite = useCallback(
