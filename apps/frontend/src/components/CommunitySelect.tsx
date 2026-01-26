@@ -128,58 +128,67 @@ const CommunitySelect = ({
   }
 
   return (
-    <div className="flex flex-col gap-y-3 py-4">
-      {!!(leaderCommunities.length || !isOnboardingGroupMember) && (
-        <>
-          <p className="font-semibold text-xl md:text-2xl">Leader groups</p>
-          <List>
-            {[
-              ...(leaderCommunities.map((community) => {
-                const isCurrent = community.id === currentCommunityId;
-                return (
-                  <Button
-                    key={community.id}
-                    color={
-                      isCurrent ? ButtonColor.LightHover : ButtonColor.White
-                    }
-                    className="w-full !rounded-none"
-                    onClick={() => onSelectCommunity(community.id)}
-                  >
-                    <div className={"w-full flex flex-row justify-between m-2"}>
-                      <div className="flex flex-col gap-y-1 text-left">
-                        <p className="text-xl font-semibold">
-                          {community.name}
-                        </p>
-                        <p className="text-zinc-500">{community.description}</p>
-                        <span className="text-zinc-500">
-                          {community.users.length}{" "}
-                          {community.users.length === 1 ? "member" : "members"}
-                        </span>
+    <div className="flex flex-col gap-y-8 py-8">
+      <div>
+        {!!(leaderCommunities.length || !isOnboardingGroupMember) && (
+          <>
+            <p className="font-semibold text-xl md:text-2xl">Leader groups</p>
+            <List>
+              {[
+                ...(leaderCommunities.map((community) => {
+                  const isCurrent = community.id === currentCommunityId;
+                  return (
+                    <Button
+                      key={community.id}
+                      color={
+                        isCurrent ? ButtonColor.LightHover : ButtonColor.White
+                      }
+                      className="w-full !rounded-none"
+                      onClick={() => onSelectCommunity(community.id)}
+                    >
+                      <div
+                        className={"w-full flex flex-row justify-between m-2"}
+                      >
+                        <div className="flex flex-col gap-y-1 text-left">
+                          <p className="text-xl font-semibold">
+                            {community.name}
+                          </p>
+                          <p className="text-zinc-500">
+                            {community.description}
+                          </p>
+                          <span className="text-zinc-500">
+                            {community.users.length}{" "}
+                            {community.users.length === 1
+                              ? "member"
+                              : "members"}
+                          </span>
+                        </div>
                       </div>
+                    </Button>
+                  );
+                }) ?? []),
+                !isOnboardingGroupMember && (
+                  <Button
+                    key="create"
+                    onClick={onCreateCommunity}
+                    color={ButtonColor.White}
+                    className="w-full !rounded-none"
+                  >
+                    <div className="w-full flex flex-row gap-x-2 items-center justify-center m-3 text-zinc-500">
+                      <Plus size="14" /> Create a new group
                     </div>
                   </Button>
-                );
-              }) ?? []),
-              !isOnboardingGroupMember && (
-                <Button
-                  key="create"
-                  onClick={onCreateCommunity}
-                  color={ButtonColor.White}
-                  className="w-full !rounded-none"
-                >
-                  <div className="w-full flex flex-row gap-x-2 items-center justify-center m-3 text-zinc-500">
-                    <Plus size="14" /> Create a new group
-                  </div>
-                </Button>
-              ),
-            ]}
-          </List>
-        </>
-      )}
-      {!!nonLeaderCommunities.length && (
-        <>
-          <p className="font-semibold text-xl md:text-2xl">Member groups</p>
-          {nonLeaderCommunities.map((community) => {
+                ),
+              ]}
+            </List>
+          </>
+        )}
+      </div>
+
+      <div>
+        <p className="font-semibold text-xl md:text-2xl">Member groups</p>
+        {nonLeaderCommunities.length ? (
+          nonLeaderCommunities.map((community) => {
             const isCurrent = community.id === currentCommunityId;
             return (
               <React.Fragment key={community.id}>
@@ -211,19 +220,26 @@ const CommunitySelect = ({
                 </div>
               </React.Fragment>
             );
-          })}
-        </>
-      )}
-      {!!pendingCommunityInvites.length && (
-        <div className="flex flex-col gap-y-2">
-          <p className="font-medium">You have pending group invites</p>
-          <CommunityInviteList
-            invites={pendingCommunityInvites}
-            onAccept={handleAcceptInvite}
-            onDecline={handleDeclineInvite}
-          />
-        </div>
-      )}
+          })
+        ) : (
+          <span>You are not a member of any groups</span>
+        )}
+      </div>
+
+      <div>
+        {!!pendingCommunityInvites.length && (
+          <div className="flex flex-col gap-y-2">
+            <p className="font-semibold text-xl md:text-2xl">
+              You have pending group invites
+            </p>
+            <CommunityInviteList
+              invites={pendingCommunityInvites}
+              onAccept={handleAcceptInvite}
+              onDecline={handleDeclineInvite}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
