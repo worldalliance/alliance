@@ -51,8 +51,12 @@ const CommunitySelect = ({
         placement: "topleft",
       });
       if (ok) {
-        await userLeaveCommunity({ path: { communityId: community.id } });
-        onSelectCommunity(null);
+        const response = await userLeaveCommunity({
+          path: { communityId: community.id },
+        });
+        if (response.data) {
+          onSelectCommunity(null);
+        }
       }
     },
     [confirm, onSelectCommunity]
