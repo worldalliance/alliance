@@ -28,7 +28,7 @@ const CommunityInviteListItem = ({
         ) : invite.status === "accepted" ? (
           <p className="text-zinc-500">Accepted</p>
         ) : invite.status === "rejected" ? (
-          <p className="text-red">Rejected</p>
+          <p className="text-red-400">Rejected</p>
         ) : (
           <p className="text-zinc-500">Cancelled</p>
         )}

@@ -3156,18 +3156,18 @@ export type UserDeleteCommunityInviteResponses = {
     200: unknown;
 };
 
-export type UserGetCommunityInvitesForUserData = {
+export type UserGetIncomingCommunityInvitesForUserData = {
     body?: never;
     path?: never;
     query?: never;
     url: '/user/communityInvites';
 };
 
-export type UserGetCommunityInvitesForUserResponses = {
+export type UserGetIncomingCommunityInvitesForUserResponses = {
     200: Array<CommunityInviteDto>;
 };
 
-export type UserGetCommunityInvitesForUserResponse = UserGetCommunityInvitesForUserResponses[keyof UserGetCommunityInvitesForUserResponses];
+export type UserGetIncomingCommunityInvitesForUserResponse = UserGetIncomingCommunityInvitesForUserResponses[keyof UserGetIncomingCommunityInvitesForUserResponses];
 
 export type UserGetOnetimeInvitesData = {
     body?: never;

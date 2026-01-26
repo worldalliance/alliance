@@ -1411,13 +1411,12 @@ export class UserService {
     return invites.map((invite) => new CommunityInviteDto(invite));
   }
 
-  async findCommunityInvitesForUser(
+  async findIncomingCommunityInvitesForUser(
     userId: number,
   ): Promise<CommunityInviteDto[]> {
     const invites = await this.communityInviteRepository.find({
       where: {
         invitedUser: { id: userId },
-        status: CommunityInviteStatus.Pending,
       },
       relations: { invitingUser: true, community: true },
     });

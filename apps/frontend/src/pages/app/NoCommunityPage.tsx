@@ -1,53 +1,32 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  CommunityInviteDto,
-  userAcceptCommunityInvite,
-  userGetCommunityInvitesForUser,
-  userRejectCommunityInvite,
-} from "@alliance/shared/client";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { useCallback } from "react";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import CommunityInviteList from "../../components/CommunityInviteList";
+import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 
 const NoCommunityPage = () => {
-  const [communityInvites, setCommunityInvites] = useState<
-    CommunityInviteDto[]
-  >([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    pendingCommunityInvites,
+    acceptCommunityInvite,
+    declineCommunityInvite,
+  } = useIncomingCommunityInvites();
 
-  useEffect(() => {
-    userGetCommunityInvitesForUser()
-      .then((response) => {
-        if (response.data) {
-          setCommunityInvites(response.data);
-        }
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
-
-  const handleAcceptInvite = useCallback((inviteId: number) => {
-    userAcceptCommunityInvite({ path: { inviteId } }).then((response) => {
-      if (response.data) {
+  const handleAcceptInvite = useCallback(
+    (inviteId: number) => {
+      void acceptCommunityInvite(inviteId).then(() => {
         window.location.reload();
-      }
-    });
-  }, []);
+      });
+    },
+    [acceptCommunityInvite]
+  );
 
-  const handleDeclineInvite = useCallback((inviteId: number) => {
-    userRejectCommunityInvite({ path: { inviteId } }).then((response) => {
-      if (response.data) {
-        setCommunityInvites((prev) =>
-          prev.filter((invite) => invite.id !== inviteId)
-        );
-      }
-    });
-  }, []);
-  if (loading) {
-    return <Spinner />;
-  }
-  if (communityInvites.length === 0) {
+  const handleDeclineInvite = useCallback(
+    (inviteId: number) => {
+      void declineCommunityInvite(inviteId);
+    },
+    [declineCommunityInvite]
+  );
+
+  if (pendingCommunityInvites.length === 0) {
     return (
       <div className="flex justify-center items-center h-[calc(100vh-var(--nav-height))]">
         <div className="flex flex-col gap-y-2 m-4">
@@ -67,7 +46,7 @@ const NoCommunityPage = () => {
         <p className="font-medium">You have pending group invites</p>
       </div>
       <CommunityInviteList
-        invites={communityInvites}
+        invites={pendingCommunityInvites}
         onAccept={handleAcceptInvite}
         onDecline={handleDeclineInvite}
       />

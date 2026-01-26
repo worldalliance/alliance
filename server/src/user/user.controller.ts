@@ -652,8 +652,8 @@ export class UserController {
   @Get('communityInvites')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [CommunityInviteDto] })
-  async getCommunityInvitesForUser(@Request() req: JwtRequest) {
-    return this.userService.findCommunityInvitesForUser(req.user.sub);
+  async getIncomingCommunityInvitesForUser(@Request() req: JwtRequest) {
+    return this.userService.findIncomingCommunityInvitesForUser(req.user.sub);
   }
 
   @Get('onetimeInvites')

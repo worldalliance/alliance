@@ -29,6 +29,7 @@ import { useAuth } from "../lib/AuthContext";
 import { isFeatureEnabled } from "../lib/config";
 import { useNotifications } from "@alliance/shared/lib/useNotifications";
 import { useMessagingUnread } from "../pages/app/messages";
+import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 
 export enum NavbarPage {
   Tasks = "Tasks",
@@ -97,6 +98,8 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
   const { profile } = useOutletContext<AppLayoutOutletContext>();
 
   const { unreadCount } = useNotifications();
+
+  const { pendingCommunityInvites } = useIncomingCommunityInvites();
 
   const {
     unread: unreadMessages,
@@ -275,16 +278,17 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
     return {
       [NavbarPage.Notifications]: unreadCount,
       [NavbarPage.Tasks]: todoActions,
-      [NavbarPage.Groups]:
-        !!user && user.communities.length
-          ? 0
-          : user?.invitedCommunities.filter(
-              (invite) => invite.status === "pending"
-            ).length,
+      [NavbarPage.Groups]: pendingCommunityInvites.length,
       [NavbarPage.Messages]:
         currentLocation !== NavbarPage.Messages ? unreadMessages : 0,
     };
-  }, [unreadCount, todoActions, user, unreadMessages, currentLocation]);
+  }, [
+    unreadCount,
+    todoActions,
+    pendingCommunityInvites,
+    unreadMessages,
+    currentLocation,
+  ]);
 
   const { isAuthenticated } = useAuth();
 

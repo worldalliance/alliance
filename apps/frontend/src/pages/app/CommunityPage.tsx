@@ -8,10 +8,6 @@ import {
   userGetOnetimeInvitesByCommunity,
   CommunityMemberContactInfoDto,
   conversationGetCommunityConversations,
-  CommunityInviteDto,
-  userGetCommunityInvitesForUser,
-  userAcceptCommunityInvite,
-  userRejectCommunityInvite,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
@@ -45,6 +41,7 @@ import {
 } from "@alliance/shared/lib/actionUtils";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import CommunityInviteList from "../../components/CommunityInviteList";
+import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 
 type Tab =
   | "activity"
@@ -97,22 +94,12 @@ const CommunityPage = () => {
 
   const [chatOpen, setChatOpen] = useState(false);
   const [community, setCommunity] = useState<CommunityDto | null>(null);
-  const [communityInvites, setCommunityInvites] = useState<
-    CommunityInviteDto[]
-  >([]);
-  const communityInvitesById = useMemo(() => {
-    return new Map<number, CommunityInviteDto>(
-      communityInvites.map((invite) => [invite.id, invite])
-    );
-  }, [communityInvites]);
-
-  useEffect(() => {
-    userGetCommunityInvitesForUser().then((response) => {
-      if (response.data) {
-        setCommunityInvites(response.data);
-      }
-    });
-  }, []);
+  const {
+    pendingCommunityInvites,
+    incomingCommunityInvitesById,
+    acceptCommunityInvite,
+    declineCommunityInvite,
+  } = useIncomingCommunityInvites();
 
   useEffect(() => {
     if (!community?.id) {
@@ -241,29 +228,25 @@ const CommunityPage = () => {
 
   const handleAcceptInvite = useCallback(
     (inviteId: number) => {
-      userAcceptCommunityInvite({ path: { inviteId } }).then((response) => {
-        if (response.data) {
-          setCommunityInvites((prev) =>
-            prev.filter((invite) => invite.id !== inviteId)
-          );
-          setParams({
-            communityId: communityInvitesById.get(inviteId)?.community.id,
-          });
-        }
+      void acceptCommunityInvite(inviteId).then(() => {
+        setParams({
+          communityId: incomingCommunityInvitesById.get(inviteId)?.community.id,
+        });
       });
     },
-    [setParams, communityInvitesById]
+    [setParams, incomingCommunityInvitesById, acceptCommunityInvite]
   );
 
-  const handleDeclineInvite = useCallback((inviteId: number) => {
-    userRejectCommunityInvite({ path: { inviteId } }).then((response) => {
-      if (response.data) {
-        setCommunityInvites((prev) =>
-          prev.filter((invite) => invite.id !== inviteId)
-        );
-      }
-    });
-  }, []);
+  const handleDeclineInvite = useCallback(
+    (inviteId: number) => {
+      void declineCommunityInvite(inviteId).then(() => {
+        setParams({
+          communityId: incomingCommunityInvitesById.get(inviteId)?.community.id,
+        });
+      });
+    },
+    [setParams, incomingCommunityInvitesById, declineCommunityInvite]
+  );
 
   const tabs: (keyof typeof TAB_DISPLAY_NAMES)[] = amLeader
     ? ["activity", "members", "invites", "groups", "resources"]
@@ -380,9 +363,9 @@ const CommunityPage = () => {
               >
                 <div className="flex flex-row gap-x-2">
                   <span>{TAB_DISPLAY_NAMES[m]}</span>
-                  {m === "groups" && communityInvites.length > 0 && (
+                  {m === "groups" && pendingCommunityInvites.length > 0 && (
                     <div className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
-                      {communityInvites.length}
+                      {pendingCommunityInvites.length}
                     </div>
                   )}
                 </div>
@@ -454,11 +437,11 @@ const CommunityPage = () => {
                 }
                 onCreateCommunity={() => setParams({ tab: "create" })}
               />
-              {communityInvites.length > 0 && (
+              {pendingCommunityInvites.length > 0 && (
                 <div className="flex flex-col gap-y-2">
                   <p className="font-medium">You have pending group invites</p>
                   <CommunityInviteList
-                    invites={communityInvites}
+                    invites={pendingCommunityInvites}
                     onAccept={handleAcceptInvite}
                     onDecline={handleDeclineInvite}
                   />
