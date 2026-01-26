@@ -40,9 +40,7 @@ import {
   CompletionData,
 } from "@alliance/shared/lib/actionUtils";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
-import CommunityInviteList from "../../components/CommunityInviteList";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 
 type Tab =
   | "activity"
@@ -85,8 +83,6 @@ const CommunityPage = () => {
   const tab = searchParams.get("tab") ?? "activity";
   const communityId = searchParams.get("communityId");
 
-  const { confirm } = useToast();
-
   const maxActionsPerWeek = useMaxActionsPerWeek({
     actionSummaries: actionSummaries,
     userActionRelations,
@@ -97,12 +93,7 @@ const CommunityPage = () => {
 
   const [chatOpen, setChatOpen] = useState(false);
   const [community, setCommunity] = useState<CommunityDto | null>(null);
-  const {
-    pendingCommunityInvites,
-    incomingCommunityInvitesById,
-    acceptCommunityInvite,
-    declineCommunityInvite,
-  } = useIncomingCommunityInvites();
+  const { pendingCommunityInvites } = useIncomingCommunityInvites();
 
   useEffect(() => {
     if (!community?.id) {
@@ -227,61 +218,6 @@ const CommunityPage = () => {
       });
     },
     [setSearchParams]
-  );
-
-  const handleAcceptInvite = useCallback(
-    async (inviteId: number, anchor?: HTMLElement | null) => {
-      const nonLeaderCommunities = communities
-        ?.filter(
-          (c) => !c.leaders.some(({ id: userId }) => userId === user?.id)
-        )
-        .map((c) => c.name);
-      const message = !nonLeaderCommunities?.length
-        ? null
-        : nonLeaderCommunities.length === 1
-        ? `You will be removed from your current group (${nonLeaderCommunities[0]})`
-        : `You will be removed from the following groups: (${nonLeaderCommunities.join(
-            ", "
-          )})`;
-      const ok = message
-        ? await confirm({
-            title: "Accept invite?",
-            message,
-            confirmLabel: "Accept",
-            cancelLabel: "Cancel",
-            anchorEl: anchor,
-            placement: "topleft",
-          })
-        : true;
-
-      if (ok) {
-        void acceptCommunityInvite(inviteId).then(() => {
-          setParams({
-            communityId:
-              incomingCommunityInvitesById.get(inviteId)?.community.id,
-          });
-        });
-      }
-    },
-    [
-      setParams,
-      incomingCommunityInvitesById,
-      acceptCommunityInvite,
-      confirm,
-      communities,
-      user,
-    ]
-  );
-
-  const handleDeclineInvite = useCallback(
-    (inviteId: number) => {
-      void declineCommunityInvite(inviteId).then(() => {
-        setParams({
-          communityId: incomingCommunityInvitesById.get(inviteId)?.community.id,
-        });
-      });
-    },
-    [setParams, incomingCommunityInvitesById, declineCommunityInvite]
   );
 
   const tabs: (keyof typeof TAB_DISPLAY_NAMES)[] = amLeader
@@ -473,16 +409,6 @@ const CommunityPage = () => {
                 }
                 onCreateCommunity={() => setParams({ tab: "create" })}
               />
-              {pendingCommunityInvites.length > 0 && (
-                <div className="flex flex-col gap-y-2">
-                  <p className="font-medium">You have pending group invites</p>
-                  <CommunityInviteList
-                    invites={pendingCommunityInvites}
-                    onAccept={handleAcceptInvite}
-                    onDecline={handleDeclineInvite}
-                  />
-                </div>
-              )}
             </div>
           )}
           {tab === "create" && (

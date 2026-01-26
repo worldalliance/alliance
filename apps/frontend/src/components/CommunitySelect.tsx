@@ -6,11 +6,13 @@ import { Plus } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React from "react";
+import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
+import CommunityInviteList from "./CommunityInviteList";
 
 export type CommunitySelectProps = {
   communities: CommunityDto[] | null;
   currentCommunityId?: number | null;
-  onSelectCommunity: (communityId: number | null) => void;
+  onSelectCommunity: (communityId: number | null | undefined) => void;
   isOnboardingGroupMember: boolean;
   onCreateCommunity: () => void;
 };
@@ -23,6 +25,67 @@ const CommunitySelect = ({
   onCreateCommunity,
 }: CommunitySelectProps) => {
   const { user } = useAuth();
+  const { confirm } = useToast();
+  const {
+    pendingCommunityInvites,
+    incomingCommunityInvitesById,
+    acceptCommunityInvite,
+    declineCommunityInvite,
+  } = useIncomingCommunityInvites();
+
+  const handleAcceptInvite = useCallback(
+    async (inviteId: number, anchor?: HTMLElement | null) => {
+      const nonLeaderCommunities = communities
+        ?.filter(
+          (c) => !c.leaders.some(({ id: userId }) => userId === user?.id)
+        )
+        .map((c) => c.name);
+      const message = !nonLeaderCommunities?.length
+        ? null
+        : nonLeaderCommunities.length === 1
+        ? `You will be removed from your current group (${nonLeaderCommunities[0]})`
+        : `You will be removed from the following groups: (${nonLeaderCommunities.join(
+            ", "
+          )})`;
+      const ok = message
+        ? await confirm({
+            title: "Accept invite?",
+            message,
+            confirmLabel: "Accept",
+            cancelLabel: "Cancel",
+            anchorEl: anchor,
+            placement: "topleft",
+          })
+        : true;
+
+      if (ok) {
+        void acceptCommunityInvite(inviteId).then(() => {
+          onSelectCommunity(
+            incomingCommunityInvitesById.get(inviteId)?.community.id
+          );
+        });
+      }
+    },
+    [
+      onSelectCommunity,
+      incomingCommunityInvitesById,
+      acceptCommunityInvite,
+      confirm,
+      communities,
+      user,
+    ]
+  );
+
+  const handleDeclineInvite = useCallback(
+    (inviteId: number) => {
+      void declineCommunityInvite(inviteId).then(() => {
+        onSelectCommunity(
+          incomingCommunityInvitesById.get(inviteId)?.community.id
+        );
+      });
+    },
+    [onSelectCommunity, incomingCommunityInvitesById, declineCommunityInvite]
+  );
 
   const { leaderCommunities, nonLeaderCommunities } = useMemo(() => {
     return {
@@ -37,8 +100,6 @@ const CommunitySelect = ({
         ) ?? [],
     };
   }, [communities, user?.id]);
-
-  const { confirm } = useToast();
 
   const onLeaveGroup = useCallback(
     async (community: CommunityDto, anchor: HTMLElement | null) => {
@@ -156,6 +217,16 @@ const CommunitySelect = ({
             );
           })}
         </>
+      )}
+      {!!pendingCommunityInvites.length && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-medium">You have pending group invites</p>
+          <CommunityInviteList
+            invites={pendingCommunityInvites}
+            onAccept={handleAcceptInvite}
+            onDecline={handleDeclineInvite}
+          />
+        </div>
       )}
     </div>
   );
