@@ -25,7 +25,11 @@ import {
   UpdateProfileDto,
 } from './dto/user.dto';
 import { User } from './entities/user.entity';
-import { groupInvitesUrl, profileUrl } from 'src/search/approutes';
+import {
+  groupInvitesUrl,
+  groupMygroupsUrl,
+  profileUrl,
+} from 'src/search/approutes';
 import { Tag } from './entities/tag.entity';
 import { CreateTagDto } from './dto/tag.dto';
 import { Community } from './entities/community.entity';
@@ -1382,8 +1386,19 @@ export class UserService {
       community,
       invitingUser,
     });
+    const notif = this.notifRepository.create({
+      user: invitedUser,
+      category: NotificationCategory.CommunityInviteCreated,
+      message: `${invitingUser.name} has invited you to join their group (${community.name})`,
+      webAppLocation: groupMygroupsUrl(),
+      associatedUsers: [invitingUser],
+    });
 
-    return this.communityInviteRepository.save(invite);
+    const [savedInvite] = await Promise.all([
+      this.communityInviteRepository.save(invite),
+      this.notifRepository.save(notif),
+    ]);
+    return savedInvite;
   }
 
   async findCommunityInvites(

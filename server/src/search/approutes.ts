@@ -20,6 +20,10 @@ export function groupInvitesUrl(communityId?: number) {
   return `/groups?tab=invites${communityId !== undefined ? `&communityId=${communityId}` : ''}`;
 }
 
+export function groupMygroupsUrl() {
+  return `/groups?tab=groups`;
+}
+
 export function actionActivityUrl(
   actionId: number,
   activityId: number,

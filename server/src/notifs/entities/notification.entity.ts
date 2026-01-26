@@ -27,6 +27,7 @@ export enum NotificationCategory {
   FriendRequestAccepted = 'friend_request_accepted',
   ActionUpdate = 'action_update',
   Likes = 'likes',
+  CommunityInviteCreated = 'community_invite_created',
   CommunityInviteRejected = 'community_invite_rejected',
   CommunityInviteAccepted = 'community_invite_accepted',
 
