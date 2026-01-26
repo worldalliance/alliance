@@ -287,6 +287,11 @@ export class User {
   @Allow()
   isIntroductoryGroupMember: boolean;
 
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  undergoingGroupAssignment: boolean;
+
   // Relations
 
   @OneToMany(() => ContractEvent, (event) => event.user, { cascade: true })
