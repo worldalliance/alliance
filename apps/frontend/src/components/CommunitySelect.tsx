@@ -78,13 +78,9 @@ const CommunitySelect = ({
 
   const handleDeclineInvite = useCallback(
     (inviteId: number) => {
-      void declineCommunityInvite(inviteId).then(() => {
-        onSelectCommunity(
-          incomingCommunityInvitesById.get(inviteId)?.community.id
-        );
-      });
+      void declineCommunityInvite(inviteId);
     },
-    [onSelectCommunity, incomingCommunityInvitesById, declineCommunityInvite]
+    [declineCommunityInvite]
   );
 
   const { leaderCommunities, nonLeaderCommunities } = useMemo(() => {
