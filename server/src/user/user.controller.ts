@@ -749,6 +749,18 @@ export class UserController {
     await this.userService.rejectCommunityInvite(inviteId, req.user.sub);
   }
 
+   @Post('communities/:communityId/leave')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse()
+  async leaveCommunity(
+    @Param('communityId', ParseIntPipe) communityId: number,
+    @Request() req: JwtRequest,
+  ) {
+    await this.userService.leaveCommunity(communityId, req.user.sub);
+  }
+
+
+
   @Post('registerDevice')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: UserDeviceDto })

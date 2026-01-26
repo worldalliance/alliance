@@ -1491,6 +1491,17 @@ export class UserService {
     await this.notifRepository.save(notif);
   }
 
+  async leaveCommunity(communityId: number, userId: number): Promise<void> {
+    const user = await this.findOneOrFail(userId, { communities: true });
+    if (!user.communities?.some((community) => community.id === communityId)) {
+      throw new BadRequestException();
+    }
+    user.communities = user.communities.filter(
+      (community) => community.id !== communityId,
+    );
+    await this.userRepository.save(user);
+  }
+
   async getAllUserIds(): Promise<number[]> {
     return this.userRepository
       .find({ select: ['id'] })
