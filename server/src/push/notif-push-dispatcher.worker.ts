@@ -74,6 +74,7 @@ export class NotifPushDispatcherWorker {
         [NotificationCategory.FriendRequestAccepted]:
           notif.user.pushesForFriendRequests,
         [NotificationCategory.Likes]: notif.user.pushesForLikes,
+        [NotificationCategory.CommunityInviteCreated]: true,
         [NotificationCategory.CommunityInviteRejected]: true,
         [NotificationCategory.CommunityInviteAccepted]: true,
         [NotificationCategory.OnetimeInviteRequestCreated]: true,
