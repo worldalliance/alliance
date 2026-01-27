@@ -1,4 +1,9 @@
-import { CommunityDto, userLeaveCommunity } from "@alliance/shared/client";
+import {
+  CommunityDto,
+  userJoinGroupReassignment,
+  userLeaveCommunity,
+  userLeaveGroupReassignment,
+} from "@alliance/shared/client";
 import List from "@alliance/sharedweb/ui/List";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useAuth } from "../lib/AuthContext";
@@ -8,6 +13,10 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React from "react";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import CommunityInviteList from "./CommunityInviteList";
+import {
+  leaveGroupConfirmation,
+  requestGroupReassignmentConfirmation,
+} from "@alliance/shared/lib/copy";
 
 export type CommunitySelectProps = {
   communities: CommunityDto[] | null;
@@ -24,7 +33,7 @@ const CommunitySelect = ({
   isOnboardingGroupMember,
   onCreateCommunity,
 }: CommunitySelectProps) => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { confirm } = useToast();
   const {
     pendingCommunityInvites,
@@ -101,7 +110,7 @@ const CommunitySelect = ({
     async (community: CommunityDto, anchor: HTMLElement | null) => {
       const ok = await confirm({
         title: `Leave group? (${community.name})`,
-        message: `Are you sure you want to leave this group? You will not be able to rejoin unless you are invited again.`,
+        message: leaveGroupConfirmation,
         anchorEl: anchor,
         confirmLabel: "Leave",
         cancelLabel: "Cancel",
@@ -118,6 +127,31 @@ const CommunitySelect = ({
     },
     [confirm, onSelectCommunity]
   );
+
+  const handleRequestReassignment = useCallback(
+    async (anchor?: HTMLElement | null) => {
+      const ok = !!nonLeaderCommunities.length
+        ? await confirm({
+            title: "Group assignment",
+            message: requestGroupReassignmentConfirmation,
+            confirmLabel: "Yes, reassign me!",
+            cancelLabel: "No",
+            anchorEl: anchor,
+            placement: "topleft",
+          })
+        : true;
+      if (ok) {
+        await userJoinGroupReassignment();
+        await refreshUser();
+      }
+    },
+    [confirm, nonLeaderCommunities.length, refreshUser]
+  );
+
+  const handleCancelReassignment = useCallback(async () => {
+    await userLeaveGroupReassignment();
+    await refreshUser();
+  }, [refreshUser]);
 
   if ((!communities || communities.length === 0) && isOnboardingGroupMember) {
     return (
@@ -185,8 +219,39 @@ const CommunitySelect = ({
         )}
       </div>
 
-      <div>
-        <p className="font-semibold text-xl md:text-2xl">Member groups</p>
+      <div className="flex flex-col gap-y-2">
+        <div className="flex flex-row w-full justify-between items-center">
+          <p className="font-semibold text-xl md:text-2xl">
+            Member groups
+            {!user?.undergoingGroupAssignment
+              ? ""
+              : nonLeaderCommunities.length
+              ? " (reassigning...)"
+              : " (assigning...)"}
+          </p>
+          {user?.undergoingGroupAssignment ? (
+            <Button
+              color={ButtonColor.Black}
+              onClick={handleCancelReassignment}
+            >
+              {nonLeaderCommunities.length
+                ? "Cancel reassignment"
+                : "Cancel assignment"}
+            </Button>
+          ) : (
+            <Button
+              className="justify-self-end"
+              color={ButtonColor.Grey}
+              onClick={(event) =>
+                void handleRequestReassignment(event.currentTarget)
+              }
+            >
+              {nonLeaderCommunities.length
+                ? "Request reassignment"
+                : "Request assignment"}
+            </Button>
+          )}
+        </div>
         {nonLeaderCommunities.length ? (
           nonLeaderCommunities.map((community) => {
             const isCurrent = community.id === currentCommunityId;

@@ -1536,6 +1536,18 @@ export class UserService {
     );
   }
 
+  async joinGroupReassignment(userId: number): Promise<void> {
+    const user = await this.findOneOrFail(userId);
+    user.undergoingGroupAssignment = true;
+    await this.userRepository.save(user);
+  }
+
+  async leaveGroupReassignment(userId: number): Promise<void> {
+    const user = await this.findOneOrFail(userId);
+    user.undergoingGroupAssignment = false;
+    await this.userRepository.save(user);
+  }
+
   async getAllUserIds(): Promise<number[]> {
     return this.userRepository
       .find({ select: ['id'] })

@@ -24,3 +24,8 @@ export const externalOnly =
 
 export const awayRangesDescription =
   "You can schedule a period of time when you won't be able to complete Alliance actions. This will let the office know not to expect you to complete tasks while you're away.";
+
+export const leaveGroupConfirmation =
+  "Are you sure you want to leave this group? You will not be able to rejoin unless you are invited again.";
+export const requestGroupReassignmentConfirmation =
+  "Are you sure you want to be reassigned to a different group? During this process, you will be removed from your current group. Note that this process may take a few days.";

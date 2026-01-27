@@ -749,7 +749,7 @@ export class UserController {
     await this.userService.rejectCommunityInvite(inviteId, req.user.sub);
   }
 
-   @Post('communities/:communityId/leave')
+  @Post('communities/:communityId/leave')
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async leaveCommunity(
@@ -759,7 +759,23 @@ export class UserController {
     await this.userService.leaveCommunity(communityId, req.user.sub);
   }
 
+  @Post('groupReassignment/join')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse()
+  async joinGroupReassignment(
+    @Request() req: JwtRequest,
+  ) {
+    await this.userService.joinGroupReassignment(req.user.sub);
+  }
 
+  @Post('groupReassignment/leave')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse()
+  async leaveGroupReassignment(
+    @Request() req: JwtRequest,
+  ) {
+    await this.userService.leaveGroupReassignment(req.user.sub);
+  }
 
   @Post('registerDevice')
   @UseGuards(AuthGuard)

@@ -584,6 +584,7 @@ export type UserDto = {
     pushesForComments: boolean;
     pushesForFriendRequests: boolean;
     isIntroductoryGroupMember: boolean;
+    undergoingGroupAssignment: boolean;
     contractEvents: Array<ContractEvent>;
     communities: Array<Community>;
     invitedCommunities: Array<CommunityInvite>;
@@ -3303,6 +3304,28 @@ export type UserLeaveCommunityData = {
 };
 
 export type UserLeaveCommunityResponses = {
+    200: unknown;
+};
+
+export type UserJoinGroupReassignmentData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/groupReassignment/join';
+};
+
+export type UserJoinGroupReassignmentResponses = {
+    200: unknown;
+};
+
+export type UserLeaveGroupReassignmentData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/groupReassignment/leave';
+};
+
+export type UserLeaveGroupReassignmentResponses = {
     200: unknown;
 };
 
