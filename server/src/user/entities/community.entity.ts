@@ -58,7 +58,7 @@ export class Community {
   @Allow()
   public: boolean;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'int', nullable: true, default: 15 })
   @ApiProperty({ type: Number, nullable: true })
   @IsOptional()
   maxCapacity: number | null;
