@@ -1423,7 +1423,7 @@ export class UserService {
     const notif = this.notifRepository.create({
       user: invitedUser,
       category: NotificationCategory.CommunityInviteCreated,
-      message: `${invitingUser.name} has invited you to join their group (${community.name})`,
+      message: `${invitingUser.name} invited you to join their group (${community.name})`,
       webAppLocation: groupMygroupsUrl(),
       associatedUsers: [invitingUser],
     });
@@ -1523,7 +1523,7 @@ export class UserService {
     const notif = this.notifRepository.create({
       user: invite.invitingUser,
       category: NotificationCategory.CommunityInviteAccepted,
-      message: `${invite.invitedUser.name} has joined your community`,
+      message: `${invite.invitedUser.name} accepted your invitation to join your group (${community.name})`,
       webAppLocation: groupInvitesUrl(community.id),
       associatedUsers: [invite.invitedUser],
     });
