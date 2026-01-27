@@ -108,7 +108,7 @@ const CommunityPage = () => {
   }, [community?.id]);
 
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   useEffect(() => {
     userGetMyCommunities().then((resp) => {
@@ -410,9 +410,14 @@ const CommunityPage = () => {
                 }}
                 canDelete={canDelete}
                 onDelete={() => {
-                  setCommunities(
-                    (prev) => prev?.filter((c) => c.id !== community.id) ?? null
-                  );
+                  setCommunities((prev) => {
+                    const next =
+                      prev?.filter((c) => c.id !== community.id) ?? null;
+                    if (!next?.length) {
+                      refreshUser();
+                    }
+                    return next;
+                  });
                   setParams({ communityId: null, tab: null });
                 }}
               />
