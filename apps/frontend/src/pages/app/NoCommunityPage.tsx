@@ -29,22 +29,31 @@ const NoCommunityPage = () => {
     [setSearchParams]
   );
 
-  return tab === "create" ? (
-    <CommunityCreateForm
-      name={user?.name}
-      onCancel={() => setParams({ tab: "groups" })}
-      onSuccess={(community) => {
-        setParams({ communityId: community.id, tab: "groups" });
-        refreshUser();
-      }}
-    />
-  ) : (
-    <CommunitySelect
-      onSelectCommunity={(communityId) => setParams({ communityId })}
-      communities={[]}
-      isOnboardingGroupMember={user?.isIntroductoryGroupMember ?? true}
-      onCreateCommunity={() => setParams({ tab: "create" })}
-    />
+  return (
+    <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-0 md:px-3">
+      <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
+        <p className="font-serif font-semibold text-3xl md:text-4xl">
+          Manage groups
+        </p>
+        {tab === "create" ? (
+          <CommunityCreateForm
+            name={user?.name}
+            onCancel={() => setParams({ tab: "groups" })}
+            onSuccess={(community) => {
+              setParams({ communityId: community.id, tab: "groups" });
+              refreshUser();
+            }}
+          />
+        ) : (
+          <CommunitySelect
+            onSelectCommunity={(communityId) => setParams({ communityId })}
+            communities={[]}
+            isOnboardingGroupMember={user?.isIntroductoryGroupMember ?? true}
+            onCreateCommunity={() => setParams({ tab: "create" })}
+          />
+        )}
+      </div>
+    </div>
   );
 };
 
