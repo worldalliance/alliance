@@ -1,8 +1,8 @@
 import {
   CommunityDto,
-  userJoinGroupReassignment,
+  userJoinGroupAssignment,
   userLeaveCommunity,
-  userLeaveGroupReassignment,
+  userLeaveGroupAssignment,
 } from "@alliance/shared/client";
 import List from "@alliance/sharedweb/ui/List";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -15,7 +15,7 @@ import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommuni
 import CommunityInviteList from "./CommunityInviteList";
 import {
   leaveGroupConfirmation,
-  requestGroupReassignmentConfirmation,
+  requestGroupAssignmentConfirmation,
 } from "@alliance/shared/lib/copy";
 
 export type CommunitySelectProps = {
@@ -128,12 +128,12 @@ const CommunitySelect = ({
     [confirm, onSelectCommunity]
   );
 
-  const handleRequestReassignment = useCallback(
+  const handleRequestAssignment = useCallback(
     async (anchor?: HTMLElement | null) => {
       const ok = !!nonLeaderCommunities.length
         ? await confirm({
             title: "Group assignment",
-            message: requestGroupReassignmentConfirmation,
+            message: requestGroupAssignmentConfirmation,
             confirmLabel: "Yes, reassign me!",
             cancelLabel: "No",
             anchorEl: anchor,
@@ -141,15 +141,15 @@ const CommunitySelect = ({
           })
         : true;
       if (ok) {
-        await userJoinGroupReassignment();
+        await userJoinGroupAssignment();
         await refreshUser();
       }
     },
     [confirm, nonLeaderCommunities.length, refreshUser]
   );
 
-  const handleCancelReassignment = useCallback(async () => {
-    await userLeaveGroupReassignment();
+  const handleCancelAssignment = useCallback(async () => {
+    await userLeaveGroupAssignment();
     await refreshUser();
   }, [refreshUser]);
 
@@ -232,7 +232,7 @@ const CommunitySelect = ({
           {user?.undergoingGroupAssignment ? (
             <Button
               color={ButtonColor.Black}
-              onClick={handleCancelReassignment}
+              onClick={handleCancelAssignment}
             >
               {nonLeaderCommunities.length
                 ? "Cancel reassignment"
@@ -243,7 +243,7 @@ const CommunitySelect = ({
               className="justify-self-end"
               color={ButtonColor.Grey}
               onClick={(event) =>
-                void handleRequestReassignment(event.currentTarget)
+                void handleRequestAssignment(event.currentTarget)
               }
             >
               {nonLeaderCommunities.length

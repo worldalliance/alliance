@@ -11,7 +11,7 @@ import { AuthProvider } from "./lib/AuthContext";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { client } from "@alliance/shared/client/client.gen";
 import { getApiUrl } from "@alliance/sharedweb/lib/config";
-import { GroupAssignmentProvider } from "./lib/GroupReassignmentContext";
+import { GroupAssignmentProvider } from "./lib/GroupAssignmentContext";
 
 client.setConfig({
   baseUrl: getApiUrl(),

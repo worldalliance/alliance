@@ -1,4 +1,4 @@
-import { useGroupAssignment } from "../lib/GroupReassignmentContext";
+import { useGroupAssignment } from "../lib/GroupAssignmentContext";
 
 const GroupAssignmentPage: React.FC = () => {
   const { membersUndergoingGroupAssignment } = useGroupAssignment();

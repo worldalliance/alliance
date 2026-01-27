@@ -31,7 +31,7 @@ import {
   MoreHorizontal,
   UserRoundPen,
 } from "lucide-react";
-import { useGroupAssignment } from "./lib/GroupReassignmentContext";
+import { useGroupAssignment } from "./lib/GroupAssignmentContext";
 
 const Sidebar: React.FC = () => {
   const [actions, setActions] = useState<Action[]>([]);

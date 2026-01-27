@@ -27,5 +27,5 @@ export const awayRangesDescription =
 
 export const leaveGroupConfirmation =
   "Are you sure you want to leave this group? You will not be able to rejoin unless you are invited again.";
-export const requestGroupReassignmentConfirmation =
+export const requestGroupAssignmentConfirmation =
   "Are you sure you want to be reassigned to a different group? During this process, you will be removed from your current group. Note that this process may take a few days.";
