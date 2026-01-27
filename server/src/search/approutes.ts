@@ -16,12 +16,16 @@ export function actionUrl(actionId: number, full = false) {
   return full ? `${process.env.APP_URL}${path}` : path;
 }
 
-export function groupInvitesUrl(communityId?: number) {
-  return `/groups?tab=invites${communityId !== undefined ? `&communityId=${communityId}` : ''}`;
-}
-
-export function groupMygroupsUrl() {
-  return `/groups?tab=groups`;
+export function groupUrl(params?: {
+  tab?: 'invites' | 'groups' | 'members';
+  communityId?: number;
+}) {
+  return `/groups?${new URLSearchParams({
+    ...(params?.tab !== undefined && { tab: params.tab }),
+    ...(params?.communityId !== undefined && {
+      communityId: params.communityId.toString(),
+    }),
+  }).toString()}`;
 }
 
 export function actionActivityUrl(

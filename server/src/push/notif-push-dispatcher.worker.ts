@@ -79,6 +79,7 @@ export class NotifPushDispatcherWorker {
         [NotificationCategory.CommunityInviteAccepted]: true,
         [NotificationCategory.RemovedFromCommunity]: true,
         [NotificationCategory.MemberLeftCommunity]: true,
+        [NotificationCategory.CommunityAssigned]: true,
         [NotificationCategory.OnetimeInviteRequestCreated]: true,
         [NotificationCategory.OnetimeInviteRequestApproved]: true,
         [NotificationCategory.OnetimeInviteRequestRejected]: true,

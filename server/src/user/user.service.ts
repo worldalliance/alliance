@@ -26,11 +26,7 @@ import {
   UpdateProfileDto,
 } from './dto/user.dto';
 import { User } from './entities/user.entity';
-import {
-  groupInvitesUrl,
-  groupMygroupsUrl,
-  profileUrl,
-} from 'src/search/approutes';
+import { groupUrl, profileUrl } from 'src/search/approutes';
 import { Tag } from './entities/tag.entity';
 import { CreateTagDto } from './dto/tag.dto';
 import { Community } from './entities/community.entity';
@@ -1017,7 +1013,9 @@ export class UserService {
       user: removee,
       category: NotificationCategory.RemovedFromCommunity,
       message: `${user.name} removed you from their group (${community.name})`,
-      webAppLocation: groupMygroupsUrl(),
+      webAppLocation: groupUrl({
+        tab: 'groups',
+      }),
       associatedUsers: [user],
     });
     await this.notifRepository.save(notif);
@@ -1425,7 +1423,9 @@ export class UserService {
       user: invitedUser,
       category: NotificationCategory.CommunityInviteCreated,
       message: `${invitingUser.name} invited you to join their group (${community.name})`,
-      webAppLocation: groupMygroupsUrl(),
+      webAppLocation: groupUrl({
+        tab: 'groups',
+      }),
       associatedUsers: [invitingUser],
     });
 
@@ -1516,7 +1516,10 @@ export class UserService {
           user: leader,
           category: NotificationCategory.MemberLeftCommunity,
           message: `${invite.invitedUser.name} left your group (${community.name})`,
-          webAppLocation: groupMygroupsUrl(),
+          webAppLocation: groupUrl({
+            tab: 'members',
+            communityId: community.id,
+          }),
           associatedUsers: [invite.invitedUser],
         }),
       ),
@@ -1538,7 +1541,10 @@ export class UserService {
       user: invite.invitingUser,
       category: NotificationCategory.CommunityInviteAccepted,
       message: `${invite.invitedUser.name} accepted your invitation to join your group (${community.name})`,
-      webAppLocation: groupInvitesUrl(community.id),
+      webAppLocation: groupUrl({
+        tab: 'invites',
+        communityId: community.id,
+      }),
       associatedUsers: [invite.invitedUser],
     });
     const saveNotif = this.notifRepository.save(notif);
@@ -1548,7 +1554,7 @@ export class UserService {
   async rejectCommunityInvite(inviteId: number, userId: number): Promise<void> {
     const invite = await this.communityInviteRepository.findOneOrFail({
       where: { id: inviteId },
-      relations: { invitedUser: true, invitingUser: true },
+      relations: { invitedUser: true, invitingUser: true, community: true },
     });
     if (invite.invitedUser.id !== userId) {
       throw new BadRequestException();
@@ -1563,7 +1569,10 @@ export class UserService {
       user: invite.invitingUser,
       category: NotificationCategory.CommunityInviteRejected,
       message: `${invite.invitedUser?.name} declined your community invitation`,
-      webAppLocation: groupInvitesUrl(),
+      webAppLocation: groupUrl({
+        tab: 'invites',
+        communityId: invite.community.id,
+      }),
       associatedUsers: [invite.invitedUser],
     });
     await this.notifRepository.save(notif);
@@ -1595,7 +1604,11 @@ export class UserService {
         user: leader,
         category: NotificationCategory.MemberLeftCommunity,
         message: `${user.name} left your group (${community.name})`,
-        webAppLocation: groupMygroupsUrl(),
+        webAppLocation: groupUrl({
+          tab: 'members',
+          communityId: community.id,
+        }),
+        associatedUsers: [user],
       }),
     );
     await Promise.all([
@@ -1626,10 +1639,17 @@ export class UserService {
   }
 
   async assignGroupsAdmin(body: AssignGroupsDto): Promise<void> {
+    const userIds = body.assignments.map(({ userId }) => userId);
+    if (userIds.length !== new Set(userIds).size) {
+      throw new BadRequestException(
+        'Cannot assign the same user multiple times',
+      );
+    }
+
     const userByIdP = this.userRepository
       .find({
         where: {
-          id: In(body.assignments.map(({ userId }) => userId)),
+          id: In(userIds),
           undergoingGroupAssignment: true,
         },
         relations: {
@@ -1642,6 +1662,9 @@ export class UserService {
         where: {
           id: In(body.assignments.map(({ communityId }) => communityId)),
         },
+        relations: {
+          leaders: true,
+        },
       })
       .then(
         (communities) =>
@@ -1651,6 +1674,7 @@ export class UserService {
     const userById = await userByIdP;
     const communityById = await communityByIdP;
 
+    const notifs: Notification[] = [];
     const updatedCommunities = new Set<number>();
     for (const { userId, communityId } of body.assignments) {
       const user = userById.get(userId);
@@ -1666,12 +1690,36 @@ export class UserService {
         const keep = user.leaderOfIdSet.has(community.id);
         if (!keep) {
           updatedCommunities.add(community.id);
+          notifs.push(
+            ...community.leaders!.map((leader) =>
+              this.notifRepository.create({
+                user: leader,
+                category: NotificationCategory.MemberLeftCommunity,
+                message: `${user.name} left your group (${community.name})`,
+                webAppLocation: groupUrl({
+                  tab: 'members',
+                  communityId: community.id,
+                }),
+                associatedUsers: [user],
+              }),
+            ),
+          );
         }
         return keep;
       });
       user.communities.push(community);
       updatedCommunities.add(community.id);
       user.undergoingGroupAssignment = false;
+      notifs.push(
+        this.notifRepository.create({
+          user,
+          category: NotificationCategory.CommunityAssigned,
+          message: `You were assigned to a new group (${community.name})`,
+          webAppLocation: groupUrl({
+            communityId: community.id,
+          }),
+        }),
+      );
     }
 
     await Promise.all(
@@ -1679,11 +1727,12 @@ export class UserService {
         this.userRepository.save(user),
       ),
     );
-    await Promise.all(
-      Array.from(updatedCommunities.values()).map((communityId) =>
+    await Promise.all([
+      ...Array.from(updatedCommunities.values()).map((communityId) =>
         this.conversationService.syncCommunityConversationMembers(communityId),
       ),
-    );
+      this.notifRepository.save(notifs),
+    ]);
   }
 
   async getAllUserIds(): Promise<number[]> {
