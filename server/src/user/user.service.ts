@@ -1527,7 +1527,6 @@ export class UserService {
       await saveCommunity;
       await saveUser;
       await Promise.all([
-        this.conversationService.syncCommunityConversationMembers(community.id),
         ...updatedCommunities.map((c) =>
           this.conversationService.syncCommunityConversationMembers(c.id),
         ),
