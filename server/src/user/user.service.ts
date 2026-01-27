@@ -1498,7 +1498,7 @@ export class UserService {
       );
 
     // Remove user from all other communities that they are not a leader of
-    const updatedCommunities: Community[] = [community];
+    const updatedCommunities: Community[] = [];
     invite.invitedUser.communities = invite.invitedUser.communities.filter(
       (c) => {
         const keep =
@@ -1527,6 +1527,7 @@ export class UserService {
       await saveCommunity;
       await saveUser;
       await Promise.all([
+        this.conversationService.syncCommunityConversationMembers(community.id),
         ...updatedCommunities.map((c) =>
           this.conversationService.syncCommunityConversationMembers(c.id),
         ),
