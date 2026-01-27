@@ -37,20 +37,14 @@ const CommunityEditForm = (props: CommunityFormProps) => {
     if (props.mode === "edit") {
       return props.initialValue;
     }
-    if (!props.name) {
-      return {
-        name: "",
-        description: "",
-        public: false,
-        maxCapacity: null,
-      };
-    }
-    const firstName = props.name.split(" ")[0];
+    const firstName = props.name?.split(" ")[0];
     return {
-      name: `${firstName}'s Group`,
-      description: `Reminder and discussion group for ${firstName}'s friends`,
+      name: firstName ? `${firstName}'s Group` : "",
+      description: firstName
+        ? `Reminder and discussion group for ${firstName}'s friends`
+        : "",
       public: false,
-      maxCapacity: null,
+      maxCapacity: 15,
     };
   }, [props.mode, props.initialValue, props.name]);
 
@@ -59,7 +53,7 @@ const CommunityEditForm = (props: CommunityFormProps) => {
   const [allowStaffAssignments, setAllowStaffAssignments] = useState(
     props.mode === "edit"
       ? props.initialValue.public || props.initialValue.maxCapacity !== null
-      : false
+      : true
   );
 
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +64,10 @@ const CommunityEditForm = (props: CommunityFormProps) => {
   );
 
   const handleSubmit = useCallback(async () => {
+    if (!formValues.name.trim()) {
+      setError("Name is required");
+      return;
+    }
     const normalizedMaxCapacity =
       allowStaffAssignments || formValues.public
         ? formValues.maxCapacity
@@ -145,6 +143,7 @@ const CommunityEditForm = (props: CommunityFormProps) => {
       </label>
       <textarea
         id="description"
+        placeholder={"Enter group description"}
         value={formValues.description}
         onChange={(e) =>
           setFormValues({ ...formValues, description: e.target.value })

@@ -905,9 +905,13 @@ export class UserService {
         'Introductory group members cannot create communities',
       );
     }
+    if (body.name.trim().length === 0) {
+      throw new BadRequestException('Name cannot be empty');
+    }
 
     const community = this.communityRepository.create({
       ...body,
+      name: body.name.trim(),
       leaders: [user],
       users: [user],
     });
@@ -947,6 +951,10 @@ export class UserService {
 
     const community = await this.findCommunityOrFail(communityId);
     Object.assign(community, body);
+    community.name = community.name.trim();
+    if (community.name.length === 0) {
+      throw new BadRequestException('Name cannot be empty');
+    }
     const updated = await this.communityRepository.save(community);
     await this.conversationService.syncCommunityConversationMembers(updated.id);
     return updated;
