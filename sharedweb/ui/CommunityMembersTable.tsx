@@ -30,6 +30,8 @@ type CommunityMembersTableProps = {
   leaders: ProfileDto[];
   members: ProfileDto[];
   amLeader: boolean;
+  communityId: number;
+  onRemoveMember: (memberId: number) => void;
   memberContactInfo?: Record<number, CommunityMemberContactInfoDto>;
   userActionRelations?: Record<number, UserActionRelationDetailDto[]>;
   actions: UserActionSummaryDto[];
@@ -41,6 +43,8 @@ const CommunityMembersTable = ({
   leaders,
   members,
   amLeader,
+  communityId,
+  onRemoveMember,
   memberContactInfo = {},
   userActionRelations = {},
   actions,
@@ -189,6 +193,7 @@ const CommunityMembersTable = ({
                   <CommunityMemberTableRow
                     key={user.id}
                     profile={user}
+                    communityId={communityId}
                     canExpand={amLeader}
                     canRemove={false}
                     amLeader={amLeader}
@@ -247,6 +252,8 @@ const CommunityMembersTable = ({
               <CommunityMemberTableRow
                 key={user.id}
                 profile={user}
+                communityId={communityId}
+                onRemoveMember={onRemoveMember}
                 canExpand={amLeader}
                 amLeader={amLeader}
                 canRemove={amLeader}

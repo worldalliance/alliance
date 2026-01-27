@@ -21,6 +21,8 @@ const CommunityMemberTableRow = ({
   canExpand = false,
   amLeader,
   canRemove,
+  communityId,
+  onRemoveMember,
   contactInfo,
   actionRelations,
   actions,
@@ -31,6 +33,8 @@ const CommunityMemberTableRow = ({
   canExpand?: boolean;
   amLeader?: boolean;
   canRemove?: boolean;
+  communityId: number;
+  onRemoveMember?: (memberId: number) => void;
   contactInfo?: CommunityMemberContactInfoDto;
   actions: UserActionSummaryDto[];
   maxActionsPerWeek: Record<number, number> | null;
@@ -100,11 +104,12 @@ const CommunityMemberTableRow = ({
     });
     if (ok) {
       await userRemoveMemberFromCommunity({
-        path: { communityId: profile.id },
+        path: { communityId },
         body: {
           userId: profile.id,
         },
       });
+      onRemoveMember?.(profile.id);
     }
   }, []);
 

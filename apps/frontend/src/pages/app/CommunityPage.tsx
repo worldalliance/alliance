@@ -220,6 +220,18 @@ const CommunityPage = () => {
     [setSearchParams]
   );
 
+  const onRemoveMember = useCallback((memberId: number) => {
+    setCommunity((prev) => {
+      if (!prev) {
+        return null;
+      }
+      return {
+        ...prev,
+        users: prev.users.filter((member) => member.id !== memberId),
+      };
+    });
+  }, []);
+
   const tabs: (keyof typeof TAB_DISPLAY_NAMES)[] = amLeader
     ? ["activity", "members", "invites", "groups", "resources"]
     : ["activity", "members", "groups", "about"];
@@ -354,6 +366,8 @@ const CommunityPage = () => {
             <CommunityMembersTable
               leaders={leaders}
               members={nonLeaderMembers}
+              communityId={community.id}
+              onRemoveMember={onRemoveMember}
               amLeader={amLeader ?? false}
               memberContactInfo={memberContactInfo ?? undefined}
               userActionRelations={userActionRelations ?? undefined}
