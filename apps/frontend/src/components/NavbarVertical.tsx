@@ -113,8 +113,6 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
   const navRef = useRef<HTMLDivElement | null>(null);
   const mobileNavRef = useRef<HTMLDivElement | null>(null);
 
-  const { user } = useAuth();
-
   const navSections = [
     {
       title: "",
@@ -158,16 +156,10 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
           page: NavbarPage.Forum,
           destination: destinations[NavbarPage.Forum],
         },
-        ...((!!user && user.communities.length) ||
-        user?.invitedCommunities.filter((invite) => invite.status === "pending")
-          .length
-          ? [
-              {
-                page: NavbarPage.Groups,
-                destination: destinations[NavbarPage.Groups],
-              },
-            ]
-          : []),
+        {
+          page: NavbarPage.Groups,
+          destination: destinations[NavbarPage.Groups],
+        },
         ...(isFeatureEnabled(Features.Messaging)
           ? [
               {

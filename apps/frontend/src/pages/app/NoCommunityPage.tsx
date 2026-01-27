@@ -1,56 +1,50 @@
+import { useSearchParams } from "react-router";
+import CommunitySelect from "../../components/CommunitySelect";
+import { useAuth } from "../../lib/AuthContext";
 import { useCallback } from "react";
-import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import CommunityInviteList from "../../components/CommunityInviteList";
-import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
+import { Tab } from "./CommunityPage";
+import CommunityCreateForm from "../../components/CommunityCreateForm";
 
 const NoCommunityPage = () => {
-  const {
-    pendingCommunityInvites,
-    acceptCommunityInvite,
-    declineCommunityInvite,
-  } = useIncomingCommunityInvites();
+  const { user, refreshUser } = useAuth();
 
-  const handleAcceptInvite = useCallback(
-    (inviteId: number) => {
-      void acceptCommunityInvite(inviteId).then(() => {
-        window.location.reload();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tab = (searchParams.get("tab") as Tab | undefined) ?? "groups";
+
+  const setParams = useCallback(
+    (params: { tab?: Tab; communityId?: number | null }) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(params)) {
+          if (value === null || value === undefined) {
+            next.delete(key);
+          } else {
+            next.set(key, value.toString());
+          }
+        }
+        return next;
       });
     },
-    [acceptCommunityInvite]
+    [setSearchParams]
   );
 
-  const handleDeclineInvite = useCallback(
-    (inviteId: number) => {
-      void declineCommunityInvite(inviteId);
-    },
-    [declineCommunityInvite]
-  );
-
-  if (pendingCommunityInvites.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-[calc(100vh-var(--nav-height))]">
-        <div className="flex flex-col gap-y-2 m-4">
-          <p className="font-medium">You are not a member of a group yet</p>
-          <p>
-            If you receive a group invite, you will be able to join the
-            community here.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <CenterLayout>
-      <div className="flex flex-col gap-y-2 m-4">
-        <p className="font-medium">You have pending group invites</p>
-      </div>
-      <CommunityInviteList
-        invites={pendingCommunityInvites}
-        onAccept={handleAcceptInvite}
-        onDecline={handleDeclineInvite}
-      />
-    </CenterLayout>
+  return tab === "create" ? (
+    <CommunityCreateForm
+      name={user?.name}
+      onCancel={() => setParams({ tab: "groups" })}
+      onSuccess={(community) => {
+        setParams({ communityId: community.id, tab: "groups" });
+        refreshUser();
+      }}
+    />
+  ) : (
+    <CommunitySelect
+      onSelectCommunity={(communityId) => setParams({ communityId })}
+      communities={[]}
+      isOnboardingGroupMember={user?.isIntroductoryGroupMember ?? true}
+      onCreateCommunity={() => setParams({ tab: "create" })}
+    />
   );
 };
 

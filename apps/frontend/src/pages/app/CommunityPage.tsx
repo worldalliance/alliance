@@ -42,7 +42,7 @@ import {
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 
-type Tab =
+export type Tab =
   | "activity"
   | "members"
   | "invites"
@@ -79,7 +79,7 @@ const CommunityPage = () => {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const tab = searchParams.get("tab") ?? "activity";
+  const tab = (searchParams.get("tab") as Tab | undefined) ?? "activity";
   const communityId = searchParams.get("communityId");
 
   const maxActionsPerWeek = useMaxActionsPerWeek({
