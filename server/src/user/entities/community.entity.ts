@@ -1,5 +1,6 @@
 import { Allow, IsDefined, IsOptional } from 'class-validator';
 import {
+  Check,
   Column,
   Entity,
   JoinTable,
@@ -18,7 +19,10 @@ import { OnetimeInvite } from './onetime-invite.entity';
 import { CommunityInvite } from './community-invite.entity';
 
 @Entity()
+@Check(`("public" = false) OR ("maxCapacity" IS NOT NULL)`)
 export class Community {
+  // Fields
+
   @PrimaryGeneratedColumn()
   @ApiProperty()
   @Allow()
@@ -39,6 +43,28 @@ export class Community {
   @IsOptional()
   photo?: string;
 
+  @CreateDateColumnTz()
+  @Allow()
+  @Type(() => Date)
+  createdAt: Date;
+
+  @UpdateDateColumnTz()
+  @Allow()
+  @Type(() => Date)
+  updatedAt: Date;
+
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  public: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  @ApiProperty()
+  @IsOptional()
+  maxCapacity: number | null;
+
+  // Relations
+
   @ManyToMany(() => User, (user) => user.communities)
   @ApiProperty({ type: () => User, isArray: true })
   @JoinTable()
@@ -52,16 +78,6 @@ export class Community {
   @Type(() => User)
   @IsOptional()
   leaders?: User[];
-
-  @CreateDateColumnTz()
-  @Allow()
-  @Type(() => Date)
-  createdAt: Date;
-
-  @UpdateDateColumnTz()
-  @Allow()
-  @Type(() => Date)
-  updatedAt: Date;
 
   @OneToMany(() => OnetimeInvite, (invite) => invite.community)
   @ApiPropertyOptional({ type: () => OnetimeInvite, isArray: true })
