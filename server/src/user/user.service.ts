@@ -1653,7 +1653,7 @@ export class UserService {
           undergoingGroupAssignment: true,
         },
         relations: {
-          communities: true,
+          communities: { leaders: true },
         },
       })
       .then((users) => new Map(users.map((user) => [user.id, user])));
