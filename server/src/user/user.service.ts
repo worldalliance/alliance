@@ -1584,6 +1584,9 @@ export class UserService {
   async findGroupAssignmentMembers(): Promise<User[]> {
     return this.userRepository.find({
       where: { undergoingGroupAssignment: true },
+      relations: {
+        communities: { leaders: true },
+      },
     });
   }
 
