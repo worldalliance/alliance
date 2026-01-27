@@ -31,6 +31,7 @@ export enum NotificationCategory {
   CommunityInviteRejected = 'community_invite_rejected',
   CommunityInviteAccepted = 'community_invite_accepted',
   RemovedFromCommunity = 'removed_from_community',
+  MemberLeftCommunity = 'member_left_community',
 
   // Legacy
   OnetimeInviteRequestCreated = 'onetime_invite_request_created',

@@ -1557,17 +1557,38 @@ export class UserService {
   }
 
   async leaveCommunity(communityId: number, userId: number): Promise<void> {
-    const user = await this.findOneOrFail(userId, { communities: true });
-    if (!user.communities?.some((community) => community.id === communityId)) {
+    const community = await this.communityRepository.findOneOrFail({
+      where: {
+        id: communityId,
+        users: { id: userId },
+      },
+      relations: {
+        users: true,
+        leaders: true,
+      },
+    });
+    const user = community.users.find((user) => user.id === userId);
+    if (!user) {
       throw new BadRequestException();
     }
-    user.communities = user.communities.filter(
-      (community) => community.id !== communityId,
-    );
+    if (community.leaders?.some((leader) => leader.id === userId)) {
+      throw new BadRequestException();
+    }
+    community.users = community.users.filter((user) => user.id !== user.id);
+
     await this.userRepository.save(user);
-    await this.conversationService.syncCommunityConversationMembers(
-      communityId,
+    const notifs = community.leaders!.map((leader) =>
+      this.notifRepository.create({
+        user: leader,
+        category: NotificationCategory.MemberLeftCommunity,
+        message: `${user.name} left your group (${community.name})`,
+        webAppLocation: groupMygroupsUrl(),
+      }),
     );
+    await Promise.all([
+      this.conversationService.syncCommunityConversationMembers(communityId),
+      this.notifRepository.save(notifs),
+    ]);
   }
 
   async joinGroupAssignment(userId: number): Promise<void> {
