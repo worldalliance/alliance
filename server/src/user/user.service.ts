@@ -991,7 +991,23 @@ export class UserService {
     return updated;
   }
 
-  async removeUserFromCommunity(
+  async removeUserFromCommunity(params: {
+    userId: number;
+    removeeId: number;
+    communityId: number;
+  }) {
+    const { userId, removeeId, communityId } = params;
+
+    const user = await this.userRepository.findOneOrFail({
+      where: { id: userId },
+    });
+    if (!user.leaderOfIdSet.has(communityId)) {
+      throw new UnauthorizedException();
+    }
+    return await this.removeUserFromCommunityAdmin(communityId, removeeId);
+  }
+
+  async removeUserFromCommunityAdmin(
     communityId: number,
     userId: number,
   ): Promise<Community> {

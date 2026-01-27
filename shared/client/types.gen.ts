@@ -2932,6 +2932,21 @@ export type UserAddMemberToCommunityResponses = {
 
 export type UserAddMemberToCommunityResponse = UserAddMemberToCommunityResponses[keyof UserAddMemberToCommunityResponses];
 
+export type UserRemoveMemberFromCommunityAdminData = {
+    body: CommunityMemberDto;
+    path: {
+        communityId: number;
+    };
+    query?: never;
+    url: '/user/communities/{communityId}/removeMember/admin';
+};
+
+export type UserRemoveMemberFromCommunityAdminResponses = {
+    200: CommunityDto;
+};
+
+export type UserRemoveMemberFromCommunityAdminResponse = UserRemoveMemberFromCommunityAdminResponses[keyof UserRemoveMemberFromCommunityAdminResponses];
+
 export type UserRemoveMemberFromCommunityData = {
     body: CommunityMemberDto;
     path: {

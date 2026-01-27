@@ -483,15 +483,35 @@ export class UserController {
     );
   }
 
-  @Post('communities/:communityId/removeMember')
+  @Post('communities/:communityId/removeMember/admin')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityDto })
-  async removeMemberFromCommunity(
+  async removeMemberFromCommunityAdmin(
     @Param('communityId', ParseIntPipe) communityId: number,
     @Body() body: CommunityMemberDto,
   ) {
     return new CommunityDto(
-      await this.userService.removeUserFromCommunity(communityId, body.userId),
+      await this.userService.removeUserFromCommunityAdmin(
+        communityId,
+        body.userId,
+      ),
+    );
+  }
+
+  @Post('communities/:communityId/removeMember')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: CommunityDto })
+  async removeMemberFromCommunity(
+    @Request() req: JwtRequest,
+    @Param('communityId', ParseIntPipe) communityId: number,
+    @Body() body: CommunityMemberDto,
+  ) {
+    return new CommunityDto(
+      await this.userService.removeUserFromCommunity({
+        userId: req.user.sub,
+        removeeId: body.userId,
+        communityId,
+      }),
     );
   }
 
@@ -762,18 +782,14 @@ export class UserController {
   @Post('groupReassignment/join')
   @UseGuards(AuthGuard)
   @ApiOkResponse()
-  async joinGroupReassignment(
-    @Request() req: JwtRequest,
-  ) {
+  async joinGroupReassignment(@Request() req: JwtRequest) {
     await this.userService.joinGroupReassignment(req.user.sub);
   }
 
   @Post('groupReassignment/leave')
   @UseGuards(AuthGuard)
   @ApiOkResponse()
-  async leaveGroupReassignment(
-    @Request() req: JwtRequest,
-  ) {
+  async leaveGroupReassignment(@Request() req: JwtRequest) {
     await this.userService.leaveGroupReassignment(req.user.sub);
   }
 
