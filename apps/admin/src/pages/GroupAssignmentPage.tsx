@@ -14,6 +14,7 @@ import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useGroupAssignment } from "../lib/GroupAssignmentContext";
 
+const storageKey = "admin.groupAssignmentSelections";
 const GroupAssignmentPage: React.FC = () => {
   const { membersUndergoingGroupAssignment, assignMembers } =
     useGroupAssignment();
@@ -28,7 +29,6 @@ const GroupAssignmentPage: React.FC = () => {
   const [assignmentSelections, setAssignmentSelections] = useState<
     Record<number, string>
   >({});
-  const storageKey = "admin.groupAssignmentSelections";
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -49,7 +49,7 @@ const GroupAssignmentPage: React.FC = () => {
     } catch (error) {
       console.warn("Failed to read group assignment selections", error);
     }
-  }, [storageKey]);
+  }, []);
 
   useEffect(() => {
     setAssignmentSelections((prev) => {
