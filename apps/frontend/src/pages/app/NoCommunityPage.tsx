@@ -3,7 +3,7 @@ import CommunitySelect from "../../components/CommunitySelect";
 import { useAuth } from "../../lib/AuthContext";
 import { useCallback } from "react";
 import { Tab } from "./CommunityPage";
-import CommunityCreateForm from "../../components/CommunityCreateForm";
+import CommunityEditForm from "../../components/CommunityEditForm";
 
 const NoCommunityPage = () => {
   const { user, refreshUser } = useAuth();
@@ -36,7 +36,8 @@ const NoCommunityPage = () => {
           Manage groups
         </p>
         {tab === "create" ? (
-          <CommunityCreateForm
+          <CommunityEditForm
+            mode="create"
             name={user?.name}
             onCancel={() => setParams({ tab: "groups" })}
             onSuccess={(community) => {

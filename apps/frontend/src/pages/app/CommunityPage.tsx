@@ -22,7 +22,6 @@ import {
   GroupOrganizerGuidelines,
 } from "../../components/GroupGuidelines";
 import CommunityEditForm from "../../components/CommunityEditForm";
-import CommunityCreateForm from "../../components/CommunityCreateForm";
 import { useSearchParams } from "react-router";
 import CommunityActivityTab from "../../components/CommunityActivityTab";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
@@ -400,6 +399,7 @@ const CommunityPage = () => {
           )}
           {tab === "edit" && amLeader && (
             <CommunityEditForm
+              mode="edit"
               initialValue={community}
               onCancel={() => setParams({ tab: null })}
               onSuccess={() => {
@@ -434,7 +434,8 @@ const CommunityPage = () => {
             </div>
           )}
           {tab === "create" && (
-            <CommunityCreateForm
+            <CommunityEditForm
+              mode="create"
               name={user?.name}
               onCancel={() => setParams({ tab: "groups" })}
               onSuccess={(community) => {
