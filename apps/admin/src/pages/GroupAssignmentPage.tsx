@@ -120,7 +120,7 @@ const GroupAssignmentPage: React.FC = () => {
           member.id,
           member.communities.filter(
             (community) =>
-              !community.leaders!.some((leader) => leader.id === member.id)
+              !community.leaders?.some((leader) => leader.id === member.id)
           ),
         ])
       ),
