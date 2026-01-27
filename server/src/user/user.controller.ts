@@ -779,18 +779,27 @@ export class UserController {
     await this.userService.leaveCommunity(communityId, req.user.sub);
   }
 
-  @Post('groupReassignment/join')
+  @Post('groupAssignment/join')
   @UseGuards(AuthGuard)
   @ApiOkResponse()
-  async joinGroupReassignment(@Request() req: JwtRequest) {
-    await this.userService.joinGroupReassignment(req.user.sub);
+  async joinGroupAssignment(@Request() req: JwtRequest) {
+    await this.userService.joinGroupAssignment(req.user.sub);
   }
 
-  @Post('groupReassignment/leave')
+  @Post('groupAssignment/leave')
   @UseGuards(AuthGuard)
   @ApiOkResponse()
-  async leaveGroupReassignment(@Request() req: JwtRequest) {
-    await this.userService.leaveGroupReassignment(req.user.sub);
+  async leaveGroupAssignment(@Request() req: JwtRequest) {
+    await this.userService.leaveGroupAssignment(req.user.sub);
+  }
+
+  @Post('groupAssignment/members')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: UserDto, isArray: true })
+  async getGroupAssignmentMembers(): Promise<UserDto[]> {
+    return (await this.userService.findGroupAssignmentMembers()).map(
+      (user) => new UserDto(user),
+    );
   }
 
   @Post('registerDevice')

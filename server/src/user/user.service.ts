@@ -1569,16 +1569,22 @@ export class UserService {
     );
   }
 
-  async joinGroupReassignment(userId: number): Promise<void> {
+  async joinGroupAssignment(userId: number): Promise<void> {
     const user = await this.findOneOrFail(userId);
     user.undergoingGroupAssignment = true;
     await this.userRepository.save(user);
   }
 
-  async leaveGroupReassignment(userId: number): Promise<void> {
+  async leaveGroupAssignment(userId: number): Promise<void> {
     const user = await this.findOneOrFail(userId);
     user.undergoingGroupAssignment = false;
     await this.userRepository.save(user);
+  }
+
+  async findGroupAssignmentMembers(): Promise<User[]> {
+    return this.userRepository.find({
+      where: { undergoingGroupAssignment: true },
+    });
   }
 
   async getAllUserIds(): Promise<number[]> {

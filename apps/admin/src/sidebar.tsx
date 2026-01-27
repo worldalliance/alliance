@@ -29,7 +29,9 @@ import {
   ChevronRight,
   MessageSquare,
   MoreHorizontal,
+  UserRoundPen,
 } from "lucide-react";
+import { useGroupAssignment } from "./lib/GroupReassignmentContext";
 
 const Sidebar: React.FC = () => {
   const [actions, setActions] = useState<Action[]>([]);
@@ -37,6 +39,7 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
 
   const { logout, user, loading: authLoading } = useAuth();
+  const { membersUndergoingGroupAssignment } = useGroupAssignment();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
 
@@ -208,7 +211,12 @@ const Sidebar: React.FC = () => {
                 label: "Groups",
                 icon: <UsersRound size={16} />,
               },
-
+              {
+                to: "/group-assignment",
+                label: "Group Assignment",
+                icon: <UserRoundPen size={16} />,
+                notifCount: membersUndergoingGroupAssignment.length,
+              },
               {
                 to: "/stats",
                 label: "Stats",
@@ -222,6 +230,13 @@ const Sidebar: React.FC = () => {
               >
                 {link.icon}
                 {link.label}
+                {!!link.notifCount ? (
+                  <div
+                    className={`justify-self-end font-semibold text-xs text-white bg-red-500 rounded-md flex justify-center items-center w-5 h-5`}
+                  >
+                    {link.notifCount}
+                  </div>
+                ) : null}
               </Link>
             ))}
             <button

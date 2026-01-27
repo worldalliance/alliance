@@ -11,6 +11,7 @@ import { AuthProvider } from "./lib/AuthContext";
 import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
 import { client } from "@alliance/shared/client/client.gen";
 import { getApiUrl } from "@alliance/sharedweb/lib/config";
+import { GroupAssignmentProvider } from "./lib/GroupReassignmentContext";
 
 client.setConfig({
   baseUrl: getApiUrl(),
@@ -66,7 +67,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <AuthProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <GroupAssignmentProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </GroupAssignmentProvider>
         </AuthProvider>
         <ScrollRestoration />
         <Scripts />

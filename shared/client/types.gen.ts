@@ -104,7 +104,7 @@ export type EditableContent = {
 
 export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 'tag';
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'removed_from_community' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
 
 export type CommentParentObject = 'post' | 'action' | 'activity';
 
@@ -3322,27 +3322,40 @@ export type UserLeaveCommunityResponses = {
     200: unknown;
 };
 
-export type UserJoinGroupReassignmentData = {
+export type UserJoinGroupAssignmentData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/user/groupReassignment/join';
+    url: '/user/groupAssignment/join';
 };
 
-export type UserJoinGroupReassignmentResponses = {
+export type UserJoinGroupAssignmentResponses = {
     200: unknown;
 };
 
-export type UserLeaveGroupReassignmentData = {
+export type UserLeaveGroupAssignmentData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/user/groupReassignment/leave';
+    url: '/user/groupAssignment/leave';
 };
 
-export type UserLeaveGroupReassignmentResponses = {
+export type UserLeaveGroupAssignmentResponses = {
     200: unknown;
 };
+
+export type UserGetGroupAssignmentMembersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/members';
+};
+
+export type UserGetGroupAssignmentMembersResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserGetGroupAssignmentMembersResponse = UserGetGroupAssignmentMembersResponses[keyof UserGetGroupAssignmentMembersResponses];
 
 export type UserRegisterDeviceData = {
     body: RegisterDeviceDto;
