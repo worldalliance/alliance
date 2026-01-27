@@ -58,7 +58,6 @@ const TAB_DISPLAY_NAMES = {
   invites: "Invites",
   about: "About",
   resources: "Resources",
-  groups: "My groups",
 } satisfies Partial<Record<Tab, string>>;
 
 const CURRENT_ACTION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
@@ -233,8 +232,8 @@ const CommunityPage = () => {
   }, []);
 
   const tabs: (keyof typeof TAB_DISPLAY_NAMES)[] = amLeader
-    ? ["activity", "members", "invites", "groups", "resources"]
-    : ["activity", "members", "groups", "about"];
+    ? ["activity", "members", "invites", "resources"]
+    : ["activity", "members", "about"];
 
   const isLargeScreen = useMediaQuery("(min-width: 1250px)");
   const isChatOpen = messagingEnabled && chatOpen;
@@ -295,6 +294,22 @@ const CommunityPage = () => {
       main={
         <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-0 md:px-3">
           <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
+            <div className="flex justify-start">
+              <Button
+                color={ButtonColor.White}
+                onClick={() => setParams({ tab: "groups" })}
+                className="!text-sm"
+              >
+                <span className="flex items-center gap-x-2">
+                  <span>Manage groups</span>
+                  {pendingCommunityInvites.length > 0 && (
+                    <span className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
+                      {pendingCommunityInvites.length}
+                    </span>
+                  )}
+                </span>
+              </Button>
+            </div>
             <div className="flex flex-row gap-x-2 items-start justify-between">
               <div className="flex flex-col gap-y-4 mb-8">
                 <p className="font-serif font-semibold text-3xl md:text-4xl">
@@ -347,11 +362,6 @@ const CommunityPage = () => {
               >
                 <div className="flex flex-row gap-x-2">
                   <span>{TAB_DISPLAY_NAMES[m]}</span>
-                  {m === "groups" && pendingCommunityInvites.length > 0 && (
-                    <div className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
-                      {pendingCommunityInvites.length}
-                    </div>
-                  )}
                 </div>
               </Button>
             ))}
