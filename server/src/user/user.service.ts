@@ -1004,7 +1004,24 @@ export class UserService {
     if (!user.leaderOfIdSet.has(communityId)) {
       throw new UnauthorizedException();
     }
-    return await this.removeUserFromCommunityAdmin(communityId, removeeId);
+    const community = await this.removeUserFromCommunityAdmin(
+      communityId,
+      removeeId,
+    );
+
+    const removee = await this.userRepository.findOneOrFail({
+      where: { id: removeeId },
+    });
+    const notif = this.notifRepository.create({
+      user: removee,
+      category: NotificationCategory.RemovedFromCommunity,
+      message: `${user.name} removed you from their group (${community.name})`,
+      webAppLocation: groupMygroupsUrl(),
+      associatedUsers: [user],
+    });
+    await this.notifRepository.save(notif);
+
+    return community;
   }
 
   async removeUserFromCommunityAdmin(
