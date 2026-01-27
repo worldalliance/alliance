@@ -98,7 +98,9 @@ const GroupAssignmentPage: React.FC = () => {
   const membersCount = membersUndergoingGroupAssignment.length;
   const sortedCommunities = useMemo(() => {
     return [...communities].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+      a.name
+        .trim()
+        .localeCompare(b.name.trim(), undefined, { sensitivity: "base" })
     );
   }, [communities]);
   const groupOptions = useMemo(() => {

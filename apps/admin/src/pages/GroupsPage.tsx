@@ -47,7 +47,9 @@ const GroupsPage: React.FC = () => {
 
   const sortedCommunities = useMemo(() => {
     return [...communities].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+      a.name
+        .trim()
+        .localeCompare(b.name.trim(), undefined, { sensitivity: "base" })
     );
   }, [communities]);
 
