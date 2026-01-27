@@ -33,4 +33,4 @@ export const requestGroupAssignmentConfirmation =
 export const editGroupPublicGroupExplanation =
   "Public groups can be joined by anyone without your approval.";
 export const editGroupGroupAssignmentExplanation =
-  "Enabling group assignment means that members of other groups may occasionally be assigned to this group by staff. Staff will not assign members to this group past the capacity.";
+  "Enabling group assignment means that members of other groups may occasionally be assigned to this group by staff. Staff will not assign members to this group past the capacity. All public groups have this enabled by default.";
