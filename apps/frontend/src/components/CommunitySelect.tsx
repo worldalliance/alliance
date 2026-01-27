@@ -153,14 +153,6 @@ const CommunitySelect = ({
     await refreshUser();
   }, [refreshUser]);
 
-  if ((!communities || communities.length === 0) && isOnboardingGroupMember) {
-    return (
-      <div className="py-4">
-        <p className="text-sm text-zinc-500">No other groups to select.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-y-8 py-8">
       <div>
@@ -230,10 +222,7 @@ const CommunitySelect = ({
               : " (assigning...)"}
           </p>
           {user?.undergoingGroupAssignment ? (
-            <Button
-              color={ButtonColor.Black}
-              onClick={handleCancelAssignment}
-            >
+            <Button color={ButtonColor.Black} onClick={handleCancelAssignment}>
               {nonLeaderCommunities.length
                 ? "Cancel reassignment"
                 : "Cancel assignment"}
