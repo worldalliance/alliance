@@ -1463,7 +1463,7 @@ export class UserService {
       where: { id: inviteId },
       relations: {
         invitedUser: {
-          communities: true,
+          communities: { leaders: true },
         },
         invitingUser: true,
         community: true,
@@ -1498,27 +1498,40 @@ export class UserService {
       );
 
     // Remove user from all other communities that they are not a leader of
-    const updatedCommunities: number[] = [community.id];
+    const updatedCommunities: Community[] = [community];
     invite.invitedUser.communities = invite.invitedUser.communities.filter(
       (c) => {
         const keep =
           c.id === community.id || invite.invitedUser.leaderOfIdSet.has(c.id);
         if (!keep) {
-          updatedCommunities.push(c.id);
+          updatedCommunities.push(c);
         }
         return keep;
       },
+    );
+
+    const notifs = updatedCommunities.flatMap((community) =>
+      community.leaders!.map((leader) =>
+        this.notifRepository.create({
+          user: leader,
+          category: NotificationCategory.MemberLeftCommunity,
+          message: `${invite.invitedUser.name} left your group (${community.name})`,
+          webAppLocation: groupMygroupsUrl(),
+          associatedUsers: [invite.invitedUser],
+        }),
+      ),
     );
 
     const saveUser = this.userRepository.save(invite.invitedUser);
     const syncConversationMembers = run(async () => {
       await saveCommunity;
       await saveUser;
-      await Promise.all(
-        updatedCommunities.map((cid) =>
-          this.conversationService.syncCommunityConversationMembers(cid),
+      await Promise.all([
+        ...updatedCommunities.map((c) =>
+          this.conversationService.syncCommunityConversationMembers(c.id),
         ),
-      );
+        this.notifRepository.save(notifs),
+      ]);
     });
 
     const notif = this.notifRepository.create({
