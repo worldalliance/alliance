@@ -31,7 +31,7 @@ type CommunityMembersTableProps = {
   members: ProfileDto[];
   amLeader: boolean;
   communityId: number;
-  onRemoveMember: (memberId: number) => void;
+  onRemoveMember?: (memberId: number) => void;
   memberContactInfo?: Record<number, CommunityMemberContactInfoDto>;
   userActionRelations?: Record<number, UserActionRelationDetailDto[]>;
   actions: UserActionSummaryDto[];
@@ -256,7 +256,7 @@ const CommunityMembersTable = ({
                 onRemoveMember={onRemoveMember}
                 canExpand={amLeader}
                 amLeader={amLeader}
-                canRemove={amLeader}
+                canRemove={!!(amLeader && onRemoveMember)}
                 contactInfo={memberContactInfo?.[user.id]}
                 actionRelations={userActionRelations?.[user.id] ?? []}
                 actions={visibleActions}

@@ -706,6 +706,7 @@ const CommunityDetailPage: React.FC = () => {
           leaders={sortedLeaders}
           members={sortedMembers}
           amLeader={true}
+          communityId={community.id}
           userActionRelations={userActionRelations ?? undefined}
           actions={actionSummaries}
           maxActionsPerWeek={maxActionsPerWeek}
