@@ -104,7 +104,7 @@ export type EditableContent = {
 
 export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 'tag';
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'removed_from_community' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'removed_from_community' | 'member_left_community' | 'community_assigned' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
 
 export type CommentParentObject = 'post' | 'action' | 'activity';
 
@@ -549,6 +549,8 @@ export type Community = {
     name: string;
     description: string;
     photo?: string;
+    public: boolean;
+    maxCapacity: number | null;
     users: Array<User>;
     leaders?: Array<User>;
     invites?: Array<OnetimeInvite>;
@@ -716,6 +718,8 @@ export type CreateCommunityDto = {
     name: string;
     description: string;
     photo?: string;
+    public: boolean;
+    maxCapacity: number | null;
 };
 
 export type CommunityDto = {
@@ -723,6 +727,8 @@ export type CommunityDto = {
     name: string;
     description: string;
     photo?: string;
+    public: boolean;
+    maxCapacity: number | null;
     internalInvites: Array<CommunityInvite>;
     users: Array<ProfileDto>;
     leaders: Array<ProfileDto>;
@@ -732,6 +738,8 @@ export type UpdateCommunityDto = {
     name?: string;
     description?: string;
     photo?: string;
+    public?: boolean;
+    maxCapacity?: number | null;
 };
 
 export type CommunityMemberDto = {
@@ -2884,6 +2892,19 @@ export type UserCreateCommunityResponses = {
 };
 
 export type UserCreateCommunityResponse = UserCreateCommunityResponses[keyof UserCreateCommunityResponses];
+
+export type UserGetPublicCommunitiesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/communities/public';
+};
+
+export type UserGetPublicCommunitiesResponses = {
+    200: Array<CommunityDto>;
+};
+
+export type UserGetPublicCommunitiesResponse = UserGetPublicCommunitiesResponses[keyof UserGetPublicCommunitiesResponses];
 
 export type UserDeleteCommunityData = {
     body?: never;

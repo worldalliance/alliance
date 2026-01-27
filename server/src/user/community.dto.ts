@@ -35,6 +35,8 @@ export class CreateCommunityDto extends PickType(CommunityDto, [
   'name',
   'description',
   'photo',
+  'maxCapacity',
+  'public',
 ]) {}
 
 export class UpdateCommunityDto extends PartialType(CreateCommunityDto) {}

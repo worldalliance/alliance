@@ -29,3 +29,8 @@ export const leaveGroupConfirmation =
   "Are you sure you want to leave this group? You will not be able to rejoin unless you are invited again.";
 export const requestGroupAssignmentConfirmation =
   "Are you sure you want to be reassigned to a different group? During this process, you will be removed from your current group. Note that this process may take a few days.";
+
+export const editGroupPublicGroupExplanation =
+  "Public groups can be joined by anyone without your approval. All public also enable group assignment.";
+export const editGroupGroupAssignmentExplanation =
+  "Enabling group assignment means that members of other groups may occasionally be assigned to this group by staff. Staff will not assign members to this group past the capacity.";

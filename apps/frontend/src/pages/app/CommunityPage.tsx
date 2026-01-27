@@ -34,7 +34,6 @@ import CommunityInvitesTab from "../../components/CommunityInvitesTab";
 import CommunitySelect from "../../components/CommunitySelect";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import { useMediaQuery } from "../../lib/useMediaQuery";
-import { CardStyle } from "@alliance/shared/styles/card";
 import {
   calculateAllCompletionData,
   CompletionData,
@@ -400,28 +399,26 @@ const CommunityPage = () => {
             />
           )}
           {tab === "edit" && amLeader && (
-            <Card style={CardStyle.Grey}>
-              <CommunityEditForm
-                initialValue={community}
-                onCancel={() => setParams({ tab: null })}
-                onSuccess={() => {
-                  setParams({ communityId: null, tab: null });
-                  window.location.reload();
-                }}
-                canDelete={canDelete}
-                onDelete={() => {
-                  setCommunities((prev) => {
-                    const next =
-                      prev?.filter((c) => c.id !== community.id) ?? null;
-                    if (!next?.length) {
-                      refreshUser();
-                    }
-                    return next;
-                  });
-                  setParams({ communityId: null, tab: null });
-                }}
-              />
-            </Card>
+            <CommunityEditForm
+              initialValue={community}
+              onCancel={() => setParams({ tab: null })}
+              onSuccess={() => {
+                setParams({ communityId: null, tab: null });
+                window.location.reload();
+              }}
+              canDelete={canDelete}
+              onDelete={() => {
+                setCommunities((prev) => {
+                  const next =
+                    prev?.filter((c) => c.id !== community.id) ?? null;
+                  if (!next?.length) {
+                    refreshUser();
+                  }
+                  return next;
+                });
+                setParams({ communityId: null, tab: null });
+              }}
+            />
           )}
           {tab === "groups" && (
             <div className="flex flex-col gap-y-6">

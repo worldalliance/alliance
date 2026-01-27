@@ -925,6 +925,16 @@ export class UserService {
     });
   }
 
+  async findPublicCommunities(): Promise<Community[]> {
+    return this.communityRepository.find({
+      where: {
+        public: true,
+      },
+      relations: COMMUNITY_DEFAULT_RELATIONS,
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async updateCommunity(
     communityId: number,
     body: UpdateCommunityDto,
