@@ -19,6 +19,7 @@ import { DeepPartial, ILike, In, Not, Repository } from 'typeorm';
 import { Friend, FriendStatus } from './entities/friend.entity';
 import { PrefillUser } from './entities/prefill-user.entity';
 import {
+  AssignGroupsDto,
   FriendStatusDto,
   OnboardingDto,
   ProfileDto,
@@ -1588,6 +1589,67 @@ export class UserService {
         communities: { leaders: true },
       },
     });
+  }
+
+  async assignGroupsAdmin(body: AssignGroupsDto): Promise<void> {
+    const userByIdP = this.userRepository
+      .find({
+        where: {
+          id: In(body.assignments.map(({ userId }) => userId)),
+          undergoingGroupAssignment: true,
+        },
+        relations: {
+          communities: true,
+        },
+      })
+      .then((users) => new Map(users.map((user) => [user.id, user])));
+    const communityByIdP = this.communityRepository
+      .find({
+        where: {
+          id: In(body.assignments.map(({ communityId }) => communityId)),
+        },
+      })
+      .then(
+        (communities) =>
+          new Map(communities.map((community) => [community.id, community])),
+      );
+
+    const userById = await userByIdP;
+    const communityById = await communityByIdP;
+
+    const updatedCommunities = new Set<number>();
+    for (const { userId, communityId } of body.assignments) {
+      const user = userById.get(userId);
+      if (!user) {
+        throw new NotFoundException(`User ${userId} not found`);
+      }
+      const community = communityById.get(communityId);
+      if (!community) {
+        throw new NotFoundException(`Community ${communityId} not found`);
+      }
+
+      user.communities = user.communities.filter((community) => {
+        const keep = user.leaderOfIdSet.has(community.id);
+        if (!keep) {
+          updatedCommunities.add(community.id);
+        }
+        return keep;
+      });
+      user.communities.push(community);
+      updatedCommunities.add(community.id);
+      user.undergoingGroupAssignment = false;
+    }
+
+    await Promise.all(
+      Array.from(userById.values()).map((user) =>
+        this.userRepository.save(user),
+      ),
+    );
+    await Promise.all(
+      Array.from(updatedCommunities.values()).map((communityId) =>
+        this.conversationService.syncCommunityConversationMembers(communityId),
+      ),
+    );
   }
 
   async getAllUserIds(): Promise<number[]> {

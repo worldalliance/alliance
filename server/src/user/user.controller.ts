@@ -28,6 +28,7 @@ import { Public } from '../auth/public.decorator';
 import { FriendStatus } from './entities/friend.entity';
 import { PrefillUserDto } from './prefill-user.dto';
 import {
+  AssignGroupsDto,
   FriendStatusDto,
   OnboardingDto,
   ProfileDto,
@@ -800,6 +801,13 @@ export class UserController {
     return (await this.userService.findGroupAssignmentMembers()).map(
       (user) => new UserDto(user),
     );
+  }
+
+  @Post('groupAssignment/assign')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  async assignGroupsAdmin(@Body() body: AssignGroupsDto) {
+    await this.userService.assignGroupsAdmin(body);
   }
 
   @Post('registerDevice')

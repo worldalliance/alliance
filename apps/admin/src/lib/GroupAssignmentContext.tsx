@@ -5,6 +5,7 @@ import {
 import {
   createContext,
   memo,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -13,6 +14,7 @@ import {
 
 interface GroupAssignmentContext {
   membersUndergoingGroupAssignment: UserDto[];
+  assignMembers: (memberIds: number[]) => void;
 }
 
 const GroupAssignmentContext = createContext<
@@ -34,11 +36,19 @@ export const GroupAssignmentProvider = memo(
       });
     }, []);
 
+    const assignMembers = useCallback((memberIds: number[]) => {
+      const memberIdSet = new Set(memberIds);
+      setMembersUndergoingGroupAssignment((prev) =>
+        prev.filter((member) => !memberIdSet.has(member.id))
+      );
+    }, []);
+
     const value = useMemo<GroupAssignmentContext>(
       () => ({
         membersUndergoingGroupAssignment,
+        assignMembers,
       }),
-      [membersUndergoingGroupAssignment]
+      [membersUndergoingGroupAssignment, assignMembers]
     );
 
     return (
@@ -56,6 +66,7 @@ export const useGroupAssignment = () => {
   if (import.meta.env.STORYBOOK) {
     return {
       membersUndergoingGroupAssignment: [],
+      assignMembers: () => undefined,
     } satisfies GroupAssignmentContext;
   }
   if (!ctx)

@@ -1,18 +1,30 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { userGetCommunities } from "@alliance/shared/client";
-import type { CommunityDto } from "@alliance/shared/client/types.gen";
+import {
+  userAssignGroupsAdmin,
+  userGetCommunities,
+} from "@alliance/shared/client";
+import type {
+  AssignGroupsDto,
+  CommunityDto,
+} from "@alliance/shared/client/types.gen";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import List from "@alliance/sharedweb/ui/List";
 import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { useGroupAssignment } from "../lib/GroupAssignmentContext";
 
 const GroupAssignmentPage: React.FC = () => {
-  const { membersUndergoingGroupAssignment } = useGroupAssignment();
+  const { membersUndergoingGroupAssignment, assignMembers } =
+    useGroupAssignment();
   const navigate = useNavigate();
   const [communities, setCommunities] = useState<CommunityDto[]>([]);
   const [loadingCommunities, setLoadingCommunities] = useState(true);
   const [communitiesError, setCommunitiesError] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showValidationError, setShowValidationError] = useState(false);
   const [assignmentSelections, setAssignmentSelections] = useState<
     Record<number, string>
   >({});
@@ -141,6 +153,120 @@ const GroupAssignmentPage: React.FC = () => {
     );
   }, [assignmentSelections, communities]);
 
+  const assignmentPreview = useMemo(
+    () =>
+      membersUndergoingGroupAssignment
+        .map((member) => {
+          const community = selectedCommunityByMemberId.get(member.id);
+          return community ? { member, community } : null;
+        })
+        .filter(
+          (
+            entry
+          ): entry is {
+            member: (typeof membersUndergoingGroupAssignment)[number];
+            community: CommunityDto;
+          } => entry !== null
+        ),
+    [membersUndergoingGroupAssignment, selectedCommunityByMemberId]
+  );
+
+  const hasSelections = assignmentPreview.length > 0;
+
+  useEffect(() => {
+    if (showValidationError && hasSelections) {
+      setShowValidationError(false);
+    }
+  }, [showValidationError, hasSelections]);
+
+  const confirmMessage = useMemo(() => {
+    if (!assignmentPreview.length) {
+      return "No group assignments are selected.";
+    }
+    const lines = assignmentPreview.map(({ member, community }) => {
+      const currentGroups =
+        memberGroupsByMemberId
+          .get(member.id)
+          ?.map((group) => group.name)
+          .sort((a, b) =>
+            a.localeCompare(b, undefined, { sensitivity: "base" })
+          ) ?? [];
+      const groupTransitionSummary = currentGroups.length
+        ? `(Remove from: ${currentGroups.join(", ")}) -> ${community.name}`
+        : community.name;
+      return `${member.name}: ${groupTransitionSummary}`;
+    });
+    return `You're about to assign ${assignmentPreview.length} member${
+      assignmentPreview.length === 1 ? "" : "s"
+    }:\n\n${lines.join("\n")}`;
+  }, [assignmentPreview, memberGroupsByMemberId]);
+
+  const canConfirm = membersCount > 0 && !loadingCommunities && hasSelections;
+
+  const handleOpenConfirm = useCallback(() => {
+    if (!canConfirm) {
+      setShowValidationError(true);
+      return;
+    }
+    setShowValidationError(false);
+    setSubmissionError(null);
+    setIsConfirmOpen(true);
+  }, [canConfirm]);
+
+  const handleCloseConfirm = useCallback(() => {
+    if (isSubmitting) return;
+    setIsConfirmOpen(false);
+  }, [isSubmitting]);
+
+  const handleConfirmAssignments = useCallback(async () => {
+    if (!assignmentPreview.length) {
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmissionError(null);
+    try {
+      const body: AssignGroupsDto = {
+        assignments: assignmentPreview.map(({ member, community }) => ({
+          userId: member.id,
+          communityId: community.id,
+        })),
+      };
+      const response = await userAssignGroupsAdmin({ body });
+      if (response.data) {
+        assignMembers(body.assignments.map(({ userId }) => userId));
+        setAssignmentSelections((prev) => {
+          const next = { ...prev };
+          body.assignments.forEach((assignment) => {
+            delete next[assignment.userId];
+          });
+          return next;
+        });
+        if (typeof window !== "undefined") {
+          try {
+            const stored = window.localStorage.getItem(storageKey);
+            if (stored) {
+              const parsed = JSON.parse(stored) as Record<string, string>;
+              body.assignments.forEach((assignment) => {
+                delete parsed[String(assignment.userId)];
+              });
+              window.localStorage.setItem(storageKey, JSON.stringify(parsed));
+            }
+          } catch (error) {
+            console.warn("Failed to update saved assignments", error);
+          }
+        }
+      } else {
+        setSubmissionError("Failed to assign members");
+      }
+      setIsConfirmOpen(false);
+    } catch (error) {
+      console.error("Failed to assign groups", error);
+      setSubmissionError("Unable to confirm assignments. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [assignmentPreview, storageKey, assignMembers]);
+
   return (
     <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4 bg-zinc-50">
       <div className="w-full max-w-6xl flex flex-col gap-6">
@@ -149,7 +275,8 @@ const GroupAssignmentPage: React.FC = () => {
           <Button
             type="button"
             color={ButtonColor.Green}
-            onClick={() => undefined}
+            onClick={handleOpenConfirm}
+            disabled={!canConfirm || isSubmitting}
             className="self-start md:self-auto"
           >
             Confirm assignments
@@ -158,6 +285,14 @@ const GroupAssignmentPage: React.FC = () => {
 
         {communitiesError && (
           <p className="text-sm text-red-500">{communitiesError}</p>
+        )}
+        {submissionError && (
+          <p className="text-sm text-red-500">{submissionError}</p>
+        )}
+        {showValidationError && !hasSelections && (
+          <p className="text-sm text-amber-600">
+            Select at least one group assignment before confirming.
+          </p>
         )}
 
         {membersCount ? (
@@ -254,6 +389,17 @@ const GroupAssignmentPage: React.FC = () => {
           </p>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        title="Confirm group assignments"
+        message={confirmMessage}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        onConfirm={handleConfirmAssignments}
+        onCancel={handleCloseConfirm}
+        isLoading={isSubmitting}
+      />
     </div>
   );
 };

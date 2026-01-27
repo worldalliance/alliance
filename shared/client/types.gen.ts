@@ -801,6 +801,15 @@ export type CommunityMemberContactInfoDto = {
     awayRanges: Array<UserAwayRangeDto>;
 };
 
+export type SingleGroupAssignmentDto = {
+    userId: number;
+    communityId: number;
+};
+
+export type AssignGroupsDto = {
+    assignments: Array<SingleGroupAssignmentDto>;
+};
+
 export type RegisterDeviceDto = {
     deviceType: string;
     expoPushToken: string;
@@ -3356,6 +3365,17 @@ export type UserGetGroupAssignmentMembersResponses = {
 };
 
 export type UserGetGroupAssignmentMembersResponse = UserGetGroupAssignmentMembersResponses[keyof UserGetGroupAssignmentMembersResponses];
+
+export type UserAssignGroupsAdminData = {
+    body: AssignGroupsDto;
+    path?: never;
+    query?: never;
+    url: '/user/groupAssignment/assign';
+};
+
+export type UserAssignGroupsAdminResponses = {
+    200: unknown;
+};
 
 export type UserRegisterDeviceData = {
     body: RegisterDeviceDto;

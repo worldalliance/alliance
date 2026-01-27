@@ -5,7 +5,13 @@ import {
   PickType,
 } from '@nestjs/swagger';
 import { instanceToPlain, Type } from 'class-transformer';
-import { Allow, IsOptional } from 'class-validator';
+import {
+  Allow,
+  IsArray,
+  IsInt,
+  IsOptional,
+  ValidateNested,
+} from 'class-validator';
 import { getImageSource } from 'src/images/images.service';
 import { FriendStatus } from '../entities/friend.entity';
 import { User } from '../entities/user.entity';
@@ -194,4 +200,24 @@ export class OnboardingDto extends PickType(User, ['over18', 'anonymous']) {
 export class ReferralDto {
   @ApiProperty({ type: String })
   referralCode: string;
+}
+
+export class SingleGroupAssignmentDto {
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  userId: number;
+
+  @ApiProperty()
+  @Type(() => Number)
+  @IsInt()
+  communityId: number;
+}
+
+export class AssignGroupsDto {
+  @ApiProperty({ type: SingleGroupAssignmentDto, isArray: true })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SingleGroupAssignmentDto)
+  assignments: Array<SingleGroupAssignmentDto>;
 }
