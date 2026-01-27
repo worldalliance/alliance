@@ -75,7 +75,7 @@ const GroupAssignmentPage: React.FC = () => {
     } catch (error) {
       console.warn("Failed to save group assignment selections", error);
     }
-  }, [assignmentSelections, storageKey]);
+  }, [assignmentSelections]);
 
   useEffect(() => {
     const loadCommunities = async () => {
@@ -265,7 +265,7 @@ const GroupAssignmentPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [assignmentPreview, storageKey, assignMembers]);
+  }, [assignmentPreview, assignMembers]);
 
   return (
     <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4 bg-zinc-50">
