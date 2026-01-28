@@ -44,7 +44,7 @@ const CommunityEditForm = (props: CommunityFormProps) => {
         ? `Reminder and discussion group for ${firstName}'s friends`
         : "",
       public: false,
-      maxCapacity: 15,
+      maxCapacity: 20,
     };
   }, [props.mode, props.initialValue, props.name]);
 
