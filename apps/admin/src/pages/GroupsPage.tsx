@@ -26,6 +26,8 @@ const INITIAL_COMMUNITY: CreateCommunityDto = {
 const GroupsPage: React.FC = () => {
   const { membersUndergoingGroupAssignment, assignMembers } =
     useGroupAssignment();
+  const [pendingAssignmentsByCommunityId, setPendingAssignmentsByCommunityId] =
+    useState<Record<number, number>>({});
   const [communities, setCommunities] = useState<CommunityDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +53,12 @@ const GroupsPage: React.FC = () => {
   useEffect(() => {
     void loadCommunities();
   }, [loadCommunities]);
+
+  useEffect(() => {
+    if (membersUndergoingGroupAssignment.length === 0) {
+      setPendingAssignmentsByCommunityId({});
+    }
+  }, [membersUndergoingGroupAssignment.length]);
 
   const sortedCommunities = useMemo(() => {
     return [...communities].sort((a, b) =>
@@ -119,6 +127,7 @@ const GroupsPage: React.FC = () => {
         <GroupAssignmentPanel
           members={membersUndergoingGroupAssignment}
           assignMembers={assignMembers}
+          onSelectionCountsChange={setPendingAssignmentsByCommunityId}
         />
       )}
 
@@ -137,7 +146,13 @@ const GroupsPage: React.FC = () => {
         ) : sortedCommunities.length ? (
           <List>
             {sortedCommunities.map((community) => (
-              <CommunityCard key={community.id} community={community} />
+              <CommunityCard
+                key={community.id}
+                community={community}
+                pendingAssignments={
+                  pendingAssignmentsByCommunityId[community.id] ?? 0
+                }
+              />
             ))}
           </List>
         ) : (
@@ -276,10 +291,15 @@ const GroupsPage: React.FC = () => {
 
 type CommunityCardProps = {
   community: CommunityDto;
+  pendingAssignments: number;
 };
 
-const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
+const CommunityCard: React.FC<CommunityCardProps> = ({
+  community,
+  pendingAssignments,
+}) => {
   const memberCount = community.users.length;
+  const effectiveMemberCount = memberCount + pendingAssignments;
   const leaderCount = community.leaders.length;
   const capacity = community.maxCapacity;
 
@@ -311,12 +331,13 @@ const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
             )}
             <p
               className={`text-sm mr-4 font-medium ${
-                capacity !== null && memberCount >= capacity
+                capacity !== null && effectiveMemberCount >= capacity
                   ? "text-zinc-400"
                   : ""
               }`}
             >
               {memberCount}
+              {pendingAssignments > 0 ? ` (+${pendingAssignments})` : ""}
               {capacity ? ` / ${capacity}` : ""}
             </p>
           </div>

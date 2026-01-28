@@ -21,11 +21,13 @@ const storageKey = "admin.groupAssignmentSelections";
 type GroupAssignmentPanelProps = {
   members: UserDto[];
   assignMembers: (memberIds: number[]) => void;
+  onSelectionCountsChange?: (counts: Record<number, number>) => void;
 };
 
 const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
   members,
   assignMembers,
+  onSelectionCountsChange,
 }) => {
   const navigate = useNavigate();
   const [communities, setCommunities] = useState<CommunityDto[]>([]);
@@ -115,17 +117,6 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
         .localeCompare(b.name.trim(), undefined, { sensitivity: "base" })
     );
   }, [communities]);
-  const groupOptions = useMemo(() => {
-    const placeholder = {
-      value: "",
-      label: loadingCommunities ? "Loading groups..." : "Select group",
-    };
-    const options = sortedCommunities.map((community) => ({
-      value: community.id.toString(),
-      label: community.name,
-    }));
-    return [placeholder, ...options];
-  }, [loadingCommunities, sortedCommunities]);
 
   const memberGroupsByMemberId = useMemo(
     () =>
@@ -167,6 +158,20 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
     );
   }, [assignmentSelections, communities]);
 
+  const pendingAssignmentsByCommunityId = useMemo(() => {
+    const counts: Record<number, number> = {};
+    selectedCommunityByMemberId.forEach((community) => {
+      counts[community.id] = (counts[community.id] ?? 0) + 1;
+    });
+    return counts;
+  }, [selectedCommunityByMemberId]);
+
+  useEffect(() => {
+    if (onSelectionCountsChange) {
+      onSelectionCountsChange(pendingAssignmentsByCommunityId);
+    }
+  }, [onSelectionCountsChange, pendingAssignmentsByCommunityId]);
+
   const assignmentPreview = useMemo(
     () =>
       members
@@ -186,6 +191,33 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
   );
 
   const hasSelections = assignmentPreview.length > 0;
+  const invalidCommunityIds = useMemo(() => {
+    return new Set(
+      communities
+        .filter((community) => community.maxCapacity === null)
+        .map((community) => community.id)
+    );
+  }, [communities]);
+  const hasInvalidSelections = useMemo(
+    () =>
+      Array.from(selectedCommunityByMemberId.values()).some((community) =>
+        invalidCommunityIds.has(community.id)
+      ),
+    [invalidCommunityIds, selectedCommunityByMemberId]
+  );
+  const overCapacityByCommunityId = useMemo(() => {
+    const overages = new Map<number, number>();
+    communities.forEach((community) => {
+      if (community.maxCapacity === null) return;
+      const pending = pendingAssignmentsByCommunityId[community.id] ?? 0;
+      const total = community.users.length + pending;
+      if (total > community.maxCapacity) {
+        overages.set(community.id, total - community.maxCapacity);
+      }
+    });
+    return overages;
+  }, [communities, pendingAssignmentsByCommunityId]);
+  const hasOverCapacitySelections = overCapacityByCommunityId.size > 0;
 
   useEffect(() => {
     if (showValidationError && hasSelections) {
@@ -215,7 +247,37 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
     }:\n\n${lines.join("\n")}`;
   }, [assignmentPreview, memberGroupsByMemberId]);
 
-  const canConfirm = membersCount > 0 && !loadingCommunities && hasSelections;
+  const canConfirm =
+    membersCount > 0 &&
+    !loadingCommunities &&
+    hasSelections &&
+    !hasOverCapacitySelections &&
+    !hasInvalidSelections;
+
+  const buildGroupOptions = useCallback(
+    (selection: string) => {
+      const placeholder = {
+        value: "",
+        label: loadingCommunities ? "Loading groups..." : "Select group",
+      };
+      const options = sortedCommunities
+        .filter((community) => {
+          if (community.maxCapacity === null) return false;
+          const capacity = community.maxCapacity;
+          if (capacity === null) return true;
+          const pending = pendingAssignmentsByCommunityId[community.id] ?? 0;
+          const isSelected = selection === community.id.toString();
+          if (isSelected) return true;
+          return community.users.length + pending < capacity;
+        })
+        .map((community) => ({
+          value: community.id.toString(),
+          label: community.name,
+        }));
+      return [placeholder, ...options];
+    },
+    [loadingCommunities, pendingAssignmentsByCommunityId, sortedCommunities]
+  );
 
   const handleOpenConfirm = useCallback(() => {
     if (!canConfirm) {
@@ -344,9 +406,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
                               color={ButtonColor.Light}
                               className="text-xs"
                               onClick={() =>
-                                navigate(
-                                  `/groups/${community.id}?from=groups`
-                                )
+                                navigate(`/groups/${community.id}?from=groups`)
                               }
                             >
                               {community.name}
@@ -372,12 +432,25 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
                       onChange={handleSelectionChange(member.id)}
                       disabled={loadingCommunities}
                     >
-                      {groupOptions.map((option) => (
+                      {buildGroupOptions(selection).map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
                         </option>
                       ))}
                     </select>
+                    {selectedCommunity &&
+                      overCapacityByCommunityId.has(selectedCommunity.id) && (
+                        <p className="text-xs text-red-600">
+                          Over capacity by{" "}
+                          {overCapacityByCommunityId.get(selectedCommunity.id)}.
+                        </p>
+                      )}
+                    {selectedCommunity &&
+                      invalidCommunityIds.has(selectedCommunity.id) && (
+                        <p className="text-xs text-red-600">
+                          This group is not available for assignment.
+                        </p>
+                      )}
                     {selectedCommunity && (
                       <Button
                         type="button"

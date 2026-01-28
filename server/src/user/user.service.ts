@@ -1768,6 +1768,7 @@ export class UserService {
           id: In(body.assignments.map(({ communityId }) => communityId)),
         },
         relations: {
+          users: true,
           leaders: true,
         },
       })
@@ -1778,6 +1779,28 @@ export class UserService {
 
     const userById = await userByIdP;
     const communityById = await communityByIdP;
+    const communities = Array.from(communityById.values());
+
+    if (communities.some((community) => community.maxCapacity === null)) {
+      throw new BadRequestException(
+        'One or more communities has no max capacity',
+      );
+    }
+    const allowedMemberCounts = new Map<number, number>(
+      communities.map((community) => [
+        community.id,
+        community.maxCapacity! - community.users.length,
+      ]),
+    );
+    for (const { communityId } of body.assignments) {
+      const allowed = allowedMemberCounts.get(communityId);
+      if (allowed! <= 0) {
+        throw new BadRequestException(
+          `Too many members assigned to community ${communityId}`,
+        );
+      }
+      allowedMemberCounts.set(communityId, allowed! - 1);
+    }
 
     const notifs: Notification[] = [];
     const updatedCommunities = new Set<number>();
