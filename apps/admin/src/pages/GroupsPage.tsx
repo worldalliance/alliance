@@ -17,6 +17,8 @@ const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
   description: "",
   photo: "",
+  public: false,
+  maxCapacity: 20,
 };
 
 const GroupsPage: React.FC = () => {
@@ -26,6 +28,7 @@ const GroupsPage: React.FC = () => {
   const [newCommunity, setNewCommunity] =
     useState<CreateCommunityDto>(INITIAL_COMMUNITY);
   const [creating, setCreating] = useState(false);
+  const [allowStaffAssignments, setAllowStaffAssignments] = useState(true);
 
   const loadCommunities = useCallback(async () => {
     setLoading(true);
@@ -59,9 +62,19 @@ const GroupsPage: React.FC = () => {
       const name = newCommunity.name.trim();
       const description = newCommunity.description.trim();
       const photo = newCommunity.photo?.trim();
+      const requiresMaxCapacity = newCommunity.public || allowStaffAssignments;
+      const normalizedMaxCapacity = requiresMaxCapacity
+        ? newCommunity.maxCapacity
+        : null;
       if (!name || !description) {
         setError("Name and description are required.");
         return;
+      }
+      if (requiresMaxCapacity) {
+        if (!normalizedMaxCapacity || normalizedMaxCapacity <= 0) {
+          setError("Group assignment capacity is required.");
+          return;
+        }
       }
       setCreating(true);
       setError(null);
@@ -71,11 +84,14 @@ const GroupsPage: React.FC = () => {
             name,
             description,
             photo: photo ? photo : undefined,
+            public: newCommunity.public,
+            maxCapacity: normalizedMaxCapacity,
           },
         });
         if (response.data) {
           setCommunities((prev) => [...prev, response.data]);
           setNewCommunity(INITIAL_COMMUNITY);
+          setAllowStaffAssignments(false);
         }
       } catch (err) {
         console.error("Failed to create community", err);
@@ -84,7 +100,7 @@ const GroupsPage: React.FC = () => {
         setCreating(false);
       }
     },
-    [newCommunity]
+    [newCommunity, allowStaffAssignments]
   );
 
   return (
@@ -163,6 +179,75 @@ const GroupsPage: React.FC = () => {
               }}
               placeholder="What is this group for?"
             />
+          </div>
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+            <div className="flex flex-col gap-y-3">
+              <label
+                className="flex items-center gap-x-2 text-sm font-medium text-zinc-700"
+                htmlFor="group-public"
+              >
+                <input
+                  id="group-public"
+                  type="checkbox"
+                  checked={newCommunity.public}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setError(null);
+                    setNewCommunity((prev) => ({
+                      ...prev,
+                      public: checked,
+                    }));
+                    if (checked) {
+                      setAllowStaffAssignments(true);
+                    }
+                  }}
+                />
+                Public
+              </label>
+              <label
+                className="flex items-center gap-x-2 text-sm font-medium text-zinc-700"
+                htmlFor="group-assignments"
+              >
+                <input
+                  id="group-assignments"
+                  type="checkbox"
+                  checked={allowStaffAssignments}
+                  onChange={(event) => {
+                    setError(null);
+                    setAllowStaffAssignments(event.target.checked);
+                  }}
+                  disabled={newCommunity.public}
+                />
+                Group assignment
+              </label>
+            </div>
+            {(newCommunity.public || allowStaffAssignments) && (
+              <div className="mt-4">
+                <label
+                  className="text-sm font-medium text-zinc-700"
+                  htmlFor="group-capacity"
+                >
+                  Group assignment capacity
+                </label>
+                <input
+                  id="group-capacity"
+                  type="number"
+                  min={1}
+                  className="mt-2 border border-zinc-300 rounded px-3 py-2 text-sm w-full bg-white"
+                  value={newCommunity.maxCapacity ?? ""}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    const parsed = Number(value);
+                    setError(null);
+                    setNewCommunity((prev) => ({
+                      ...prev,
+                      maxCapacity:
+                        value === "" || Number.isNaN(parsed) ? null : parsed,
+                    }));
+                  }}
+                />
+              </div>
+            )}
           </div>
           <Button
             type="submit"
