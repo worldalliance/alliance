@@ -10,7 +10,6 @@ import {
   conversationGetCommunityConversations,
 } from "@alliance/shared/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
@@ -39,6 +38,7 @@ import {
 } from "@alliance/shared/lib/actionUtils";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
+import NoCommunityPage from "./NoCommunityPage";
 
 export type Tab =
   | "activity"
@@ -105,7 +105,6 @@ const CommunityPage = () => {
     });
   }, [community?.id]);
 
-  const [loading, setLoading] = useState(true);
   const { user, refreshUser } = useAuth();
 
   useEffect(() => {
@@ -127,7 +126,6 @@ const CommunityPage = () => {
             null
         );
       }
-      setLoading(false);
     });
   }, [communityId]);
 
@@ -264,16 +262,7 @@ const CommunityPage = () => {
   }, [allCompletionData]);
 
   if (!community) {
-    if (loading) {
-      return <Spinner />;
-    }
-    return (
-      <div className="flex justify-center items-center h-[calc(100vh-var(--nav-height))]">
-        <p className="text-zinc-500 pb-20">
-          You are not a member of a group yet.
-        </p>
-      </div>
-    );
+    return <NoCommunityPage />;
   }
 
   const leaders = community.leaders;

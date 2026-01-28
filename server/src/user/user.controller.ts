@@ -449,6 +449,18 @@ export class UserController {
     );
   }
 
+  @Post('communities/:communityId/join')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: CommunityDto })
+  async joinPublicCommunity(
+    @Request() req: JwtRequest,
+    @Param('communityId', ParseIntPipe) communityId: number,
+  ) {
+    return new CommunityDto(
+      await this.userService.joinPublicCommunity(req.user.sub, communityId),
+    );
+  }
+
   @Patch('communities/:communityId')
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse({ type: CommunityDto })

@@ -939,6 +939,93 @@ export class UserService {
     });
   }
 
+  async joinPublicCommunity(
+    userId: number,
+    communityId: number,
+  ): Promise<Community> {
+    const community = await this.communityRepository.findOneOrFail({
+      where: {
+        id: communityId,
+        public: true,
+      },
+      relations: {
+        users: true,
+        leaders: true,
+      },
+    });
+
+    const user = await this.userRepository.findOneOrFail({
+      where: { id: userId },
+      relations: {
+        communities: { leaders: true },
+      },
+    });
+
+    if (community.users.some((existing) => existing.id === userId)) {
+      throw new BadRequestException(
+        'User is already a member of this community',
+      );
+    }
+
+    if (community.users.length >= community.maxCapacity!) {
+      throw new BadRequestException('Community is full');
+    }
+
+    const updatedCommunities: Community[] = [];
+    user.communities = user.communities.filter((existing) => {
+      const keep =
+        existing.id === community.id || user.leaderOfIdSet.has(existing.id);
+      if (!keep) {
+        updatedCommunities.push(existing);
+      }
+      return keep;
+    });
+    user.communities.push(community);
+    user.undergoingGroupAssignment = false;
+
+    const notifs = community.leaders!.map((leader) =>
+      this.notifRepository.create({
+        user: leader,
+        category: NotificationCategory.MemberJoinedCommunity,
+        message: `${user.name} joined your public group (${community.name})`,
+        webAppLocation: groupUrl({
+          tab: 'members',
+          communityId: community.id,
+        }),
+        associatedUsers: [user],
+      }),
+    );
+
+    notifs.push(
+      ...updatedCommunities.flatMap((c) =>
+        (c.leaders ?? []).map((leader) =>
+          this.notifRepository.create({
+            user: leader,
+            category: NotificationCategory.MemberLeftCommunity,
+            message: `${user.name} left your group (${c.name})`,
+            webAppLocation: groupUrl({
+              tab: 'members',
+              communityId: c.id,
+            }),
+            associatedUsers: [user],
+          }),
+        ),
+      ),
+    );
+
+    await this.userRepository.save(user);
+
+    await Promise.all([
+      this.conversationService.syncCommunityConversationMembers(community.id),
+      ...updatedCommunities.map((c) =>
+        this.conversationService.syncCommunityConversationMembers(c.id),
+      ),
+      this.notifRepository.save(notifs),
+    ]);
+
+    return community;
+  }
+
   async updateCommunity(
     communityId: number,
     body: UpdateCommunityDto,
@@ -1600,7 +1687,6 @@ export class UserService {
     const community = await this.communityRepository.findOneOrFail({
       where: {
         id: communityId,
-        users: { id: userId },
       },
       relations: {
         users: true,
@@ -1611,12 +1697,13 @@ export class UserService {
     if (!user) {
       throw new BadRequestException();
     }
-    if (community.leaders?.some((leader) => leader.id === userId)) {
+    if (community.leaders!.some((leader) => leader.id === userId)) {
       throw new BadRequestException();
     }
-    community.users = community.users.filter((user) => user.id !== user.id);
 
-    await this.userRepository.save(user);
+    community.users = community.users.filter((u) => u.id !== user.id);
+
+    await this.communityRepository.save(community);
     const notifs = community.leaders!.map((leader) =>
       this.notifRepository.create({
         user: leader,

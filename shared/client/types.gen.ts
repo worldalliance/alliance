@@ -104,7 +104,7 @@ export type EditableContent = {
 
 export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 'tag';
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'removed_from_community' | 'member_left_community' | 'community_assigned' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'removed_from_community' | 'member_left_community' | 'member_joined_community' | 'community_assigned' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
 
 export type CommentParentObject = 'post' | 'action' | 'activity';
 
@@ -2905,6 +2905,21 @@ export type UserGetPublicCommunitiesResponses = {
 };
 
 export type UserGetPublicCommunitiesResponse = UserGetPublicCommunitiesResponses[keyof UserGetPublicCommunitiesResponses];
+
+export type UserJoinPublicCommunityData = {
+    body?: never;
+    path: {
+        communityId: number;
+    };
+    query?: never;
+    url: '/user/communities/{communityId}/join';
+};
+
+export type UserJoinPublicCommunityResponses = {
+    200: CommunityDto;
+};
+
+export type UserJoinPublicCommunityResponse = UserJoinPublicCommunityResponses[keyof UserJoinPublicCommunityResponses];
 
 export type UserDeleteCommunityData = {
     body?: never;

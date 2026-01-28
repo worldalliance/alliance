@@ -32,6 +32,7 @@ export enum NotificationCategory {
   CommunityInviteAccepted = 'community_invite_accepted',
   RemovedFromCommunity = 'removed_from_community',
   MemberLeftCommunity = 'member_left_community',
+  MemberJoinedCommunity = 'member_joined_community',
   CommunityAssigned = 'community_assigned',
 
   // Legacy
