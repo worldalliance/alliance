@@ -91,7 +91,7 @@ const GroupsPage: React.FC = () => {
         if (response.data) {
           setCommunities((prev) => [...prev, response.data]);
           setNewCommunity(INITIAL_COMMUNITY);
-          setAllowStaffAssignments(false);
+          setAllowStaffAssignments(true);
         }
       } catch (err) {
         console.error("Failed to create community", err);
