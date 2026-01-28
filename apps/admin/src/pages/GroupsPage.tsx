@@ -68,6 +68,18 @@ const GroupsPage: React.FC = () => {
     );
   }, [communities]);
 
+  const totalUnusedCapacity = useMemo(() => {
+    return communities.reduce((total, community) => {
+      if (community.maxCapacity === null) {
+        return total;
+      }
+      const pending = pendingAssignmentsByCommunityId[community.id] ?? 0;
+      const remaining =
+        community.maxCapacity - community.users.length - pending;
+      return total + Math.max(remaining, 0);
+    }, 0);
+  }, [communities, pendingAssignmentsByCommunityId]);
+
   const handleCreateCommunity = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
@@ -140,6 +152,17 @@ const GroupsPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        <Card style={CardStyle.White}>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-zinc-700">
+              Unused capacity
+            </p>
+            <p className="text-2xl font-semibold text-zinc-900">
+              {totalUnusedCapacity}
+            </p>
+          </div>
+        </Card>
 
         {loading ? (
           <p className="text-sm text-zinc-500">Loading groups…</p>
