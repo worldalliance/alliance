@@ -9,6 +9,8 @@ import {
   userDeleteOnetimeInvite,
   userGetCommunityInvites,
   userGetOnetimeInvitesByCommunity,
+  userApproveOnetimeInvite,
+  userRejectOnetimeInvite,
 } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useEffect, useMemo, useState } from "react";
@@ -23,13 +25,15 @@ import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import Card from "@alliance/sharedweb/ui/Card";
 import CommunityInviteListItem from "./CommunityInviteListItem";
 import { Link } from "react-router";
-import OneTimeInviteListItem from "./OneTimeInviteListItem";
+import OneTimeInviteRequestLeaderListItem from "./OneTimeInviteRequestLeaderListItem";
+import OneTimeInviteLeaderListItem from "./OneTimeInviteLeaderListItem";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CardStyle } from "@alliance/shared/styles/card";
 
 export interface CommunityInvitesTabProps {
   communityId: number;
   existingMembers: ProfileDto[];
+  setInviteNotifCount: (count: number) => void;
 }
 
 export enum InviteMode {
@@ -47,17 +51,22 @@ function createdAtComparator(
 const CommunityInvitesTab = ({
   communityId,
   existingMembers,
+  setInviteNotifCount,
 }: CommunityInvitesTabProps) => {
   const [name, setName] = useState("");
   const { user } = useAuth();
 
   const [creatingInvite, setCreatingInvite] = useState(false);
 
+  const [pendingRequests, setPendingRequests] = useState<OnetimeInviteDto[]>(
+    []
+  );
+
   const [newUserInvites, setNewUserInvites] = useState<OnetimeInviteDto[]>([]);
   const [existingMemberInvites, setExistingMemberInvites] = useState<
     CommunityInviteDto[]
   >([]);
-  const { confirm } = useToast();
+  const { error: errorToast, confirm } = useToast();
 
   const allUsers = useSelectableUserIds();
 
@@ -94,6 +103,11 @@ const CommunityInvitesTab = ({
               )
               .sort(createdAtComparator)
           );
+          setPendingRequests(
+            response.data
+              .filter((invite) => invite.status === "request_pending")
+              .sort(createdAtComparator)
+          );
         } else {
           setError("Failed to load new member invites");
         }
@@ -107,6 +121,10 @@ const CommunityInvitesTab = ({
       }
     });
   }, [communityId]);
+
+  useEffect(() => {
+    setInviteNotifCount(pendingRequests.length);
+  }, [pendingRequests, setInviteNotifCount]);
 
   const copyToClipboard = (text: string) => {
     const baseUrl = getBaseUrl();
@@ -160,6 +178,40 @@ const CommunityInvitesTab = ({
       .finally(() => {
         setCreatingInvite(false);
       });
+  };
+
+  const onApproveOnetimeInvite = (inviteId: number) => {
+    (async () => {
+      const response = await userApproveOnetimeInvite({
+        path: { inviteId },
+      });
+      if (!response.data) {
+        errorToast(`Failed to approve invite: ${response.response.statusText}`);
+        return;
+      }
+
+      setPendingRequests((prev) =>
+        prev.filter((request) => request.id !== inviteId)
+      );
+      setNewUserInvites((prev) => [...prev, response.data]);
+    })();
+  };
+
+  const onRejectOnetimeInvite = (inviteId: number) => {
+    (async () => {
+      const response = await userRejectOnetimeInvite({
+        path: { inviteId },
+      });
+
+      if (response.error) {
+        errorToast(`Failed to reject invite: ${response.response.statusText}`);
+        return;
+      }
+
+      setPendingRequests((prev) =>
+        prev.filter((request) => request.id !== inviteId)
+      );
+    })();
   };
 
   const handleDeleteInvite = (
@@ -307,6 +359,22 @@ const CommunityInvitesTab = ({
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </div>
 
+      {pendingRequests.length > 0 && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-semibold text-xl">Invite requests</p>
+          <List>
+            {pendingRequests.map((request) => (
+              <OneTimeInviteRequestLeaderListItem
+                key={request.id}
+                request={request}
+                onApprove={onApproveOnetimeInvite}
+                onReject={onRejectOnetimeInvite}
+              />
+            ))}
+          </List>
+        </div>
+      )}
+
       {combinedPastInvites.length > 0 && (
         <div className="flex flex-col gap-y-2">
           <p className="font-semibold text-xl">Past invites</p>
@@ -315,7 +383,7 @@ const CommunityInvitesTab = ({
               switch (entry.type) {
                 case "new_member":
                   return (
-                    <OneTimeInviteListItem
+                    <OneTimeInviteLeaderListItem
                       key={entry.data.id}
                       leaderId={user?.id}
                       invite={entry.data}

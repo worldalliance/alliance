@@ -72,3 +72,16 @@ export class OnetimeInviteDto extends PickType(OnetimeInvite, [
     this.invitingUser = new ProfileDto(onetimeInvite.invitingUser);
   }
 }
+
+export class RequestOnetimeInviteDto extends PickType(OnetimeInvite, [
+  'invitee',
+  'inviteeDescription',
+]) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  invitingUserId?: number;
+
+  @ApiProperty()
+  @Allow()
+  communityId: number;
+}

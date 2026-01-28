@@ -104,7 +104,7 @@ export type EditableContent = {
 
 export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 'tag';
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'removed_from_community' | 'member_left_community' | 'member_joined_community' | 'community_assigned' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
 
 export type CommentParentObject = 'post' | 'action' | 'activity';
 
@@ -128,7 +128,7 @@ export type Comment = {
     likesCount: number;
 };
 
-export type OnetimeInviteStatus = 'link_unused' | 'link_used';
+export type OnetimeInviteStatus = 'request_pending' | 'request_rejected' | 'link_unused' | 'link_used';
 
 export type OnetimeInvite = {
     id: number;
@@ -775,6 +775,13 @@ export type OnetimeInviteDto = {
     status: OnetimeInviteStatus;
     community?: Community;
     invitingUser: ProfileDto;
+};
+
+export type RequestOnetimeInviteDto = {
+    invitee: string;
+    inviteeDescription?: string;
+    invitingUserId?: number;
+    communityId: number;
 };
 
 export type CreateOnetimeInviteDto = {
@@ -3150,6 +3157,47 @@ export type UserOnetimeInviteResponses = {
 };
 
 export type UserOnetimeInviteResponse = UserOnetimeInviteResponses[keyof UserOnetimeInviteResponses];
+
+export type UserRequestOnetimeInviteData = {
+    body: RequestOnetimeInviteDto;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvite/request';
+};
+
+export type UserRequestOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserRequestOnetimeInviteResponse = UserRequestOnetimeInviteResponses[keyof UserRequestOnetimeInviteResponses];
+
+export type UserApproveOnetimeInviteData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvite/{inviteId}/approve';
+};
+
+export type UserApproveOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserApproveOnetimeInviteResponse = UserApproveOnetimeInviteResponses[keyof UserApproveOnetimeInviteResponses];
+
+export type UserRejectOnetimeInviteData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvite/{inviteId}/reject';
+};
+
+export type UserRejectOnetimeInviteResponses = {
+    200: unknown;
+};
 
 export type UserCreateOnetimeInviteData = {
     body: CreateOnetimeInviteDto;

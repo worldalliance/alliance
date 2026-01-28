@@ -84,6 +84,7 @@ const CommunityPage = () => {
     actionSummaries: actionSummaries,
     userActionRelations,
   });
+  const [inviteNotifCount, setInviteNotifCount] = useState(0);
   const [allCompletionData, setAllCompletionData] = useState<ReturnType<
     typeof calculateAllCompletionData
   > | null>(null);
@@ -148,6 +149,10 @@ const CommunityPage = () => {
       if (!invites.data) {
         return;
       }
+      setInviteNotifCount(
+        invites.data.filter((invite) => invite.status === "request_pending")
+          .length
+      );
     })();
   }, [amLeader, community]);
 
@@ -384,6 +389,7 @@ const CommunityPage = () => {
             <CommunityInvitesTab
               communityId={community.id}
               existingMembers={community.users}
+              setInviteNotifCount={setInviteNotifCount}
             />
           )}
           {tab === "edit" && amLeader && (
