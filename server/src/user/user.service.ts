@@ -1441,7 +1441,7 @@ export class UserService {
     await this.onetimeInviteRepository.delete(inviteId);
   }
 
-  async requestOnetimeInvite(body: RequestOnetimeInviteDto, userId: number) {
+  async requestOnetimeInvite(body: RequestOnetimeInviteDto, userId: number): Promise<OnetimeInvite> {
     const { communityId, ...rest } = body;
 
     const user = await this.findOneOrFail(userId, { communities: true });

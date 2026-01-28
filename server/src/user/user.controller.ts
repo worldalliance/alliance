@@ -646,7 +646,9 @@ export class UserController {
     @Body() body: RequestOnetimeInviteDto,
     @Request() req: JwtRequest,
   ) {
-    return this.userService.requestOnetimeInvite(body, req.user.sub);
+    return new OnetimeInviteDto(
+      await this.userService.requestOnetimeInvite(body, req.user.sub),
+    );
   }
 
   @Post('onetimeInvite/:inviteId/approve')
