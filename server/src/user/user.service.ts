@@ -923,20 +923,20 @@ export class UserService {
   }
 
   async findAllCommunities(): Promise<Community[]> {
-    return this.communityRepository.find({
+    const communities = await this.communityRepository.find({
       relations: COMMUNITY_DEFAULT_RELATIONS,
-      order: { createdAt: 'DESC' },
     });
+    return communities.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async findPublicCommunities(): Promise<Community[]> {
-    return this.communityRepository.find({
+    const communities = await this.communityRepository.find({
       where: {
         public: true,
       },
       relations: COMMUNITY_DEFAULT_RELATIONS,
-      order: { createdAt: 'DESC' },
     });
+    return communities.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async joinPublicCommunity(
