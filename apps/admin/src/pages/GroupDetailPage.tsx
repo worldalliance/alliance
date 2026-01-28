@@ -1,11 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  href,
-  Link,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from "react-router";
+import { href, Link, useNavigate, useParams } from "react-router";
 import {
   actionsGetCommunityMemberInfoAdmin,
   userAddLeaderToCommunity,
@@ -39,12 +33,6 @@ const CommunityDetailPage: React.FC = () => {
   const { id } = useParams();
   const communityId = Number(id);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const cameFromAssignment = searchParams.get("from") === "group-assignment";
-  const backLabel = cameFromAssignment
-    ? "← Back to group assignment"
-    : "← Back to groups";
-  const backTo = cameFromAssignment ? "/group-assignment" : href("/groups");
 
   const [community, setCommunity] = useState<CommunityDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -478,6 +466,15 @@ const CommunityDetailPage: React.FC = () => {
     );
   }
 
+  const backToGroupsLink = (
+    <Link
+      to={href("/groups")}
+      className="text-blue-600 text-sm hover:underline"
+    >
+      ← Back to groups
+    </Link>
+  );
+
   if (!community) {
     return (
       <div className="p-6 pt-20">
@@ -486,9 +483,7 @@ const CommunityDetailPage: React.FC = () => {
         ) : (
           <p className="text-sm text-zinc-500">Community not found.</p>
         )}
-        <Link to={backTo} className="text-blue-600 text-sm hover:underline">
-          {backLabel}
-        </Link>
+        {backToGroupsLink}
       </div>
     );
   }
@@ -498,9 +493,7 @@ const CommunityDetailPage: React.FC = () => {
       <div className="p-6 pt-20 flex flex-col gap-6 max-w-5xl">
         <div className="flex flex-row items-center justify-between gap-3">
           <div>
-            <Link to={backTo} className="text-sm text-blue-600 hover:underline">
-              {backLabel}
-            </Link>
+            {backToGroupsLink}
             <h1 className="text-2xl font-semibold mt-2">{community.name}</h1>
             <p className="text-sm text-zinc-500">
               Manage group details, membership, and leadership.

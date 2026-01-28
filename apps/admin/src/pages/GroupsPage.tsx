@@ -12,6 +12,8 @@ import Card from "@alliance/sharedweb/ui/Card";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import List from "@alliance/sharedweb/ui/List";
+import GroupAssignmentPanel from "../components/GroupAssignmentPanel";
+import { useGroupAssignment } from "../lib/GroupAssignmentContext";
 
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
@@ -22,6 +24,8 @@ const INITIAL_COMMUNITY: CreateCommunityDto = {
 };
 
 const GroupsPage: React.FC = () => {
+  const { membersUndergoingGroupAssignment, assignMembers } =
+    useGroupAssignment();
   const [communities, setCommunities] = useState<CommunityDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +113,13 @@ const GroupsPage: React.FC = () => {
         <div className="w-full max-w-5xl">
           <p className="text-sm text-red-500">{error}</p>
         </div>
+      )}
+
+      {membersUndergoingGroupAssignment.length > 0 && (
+        <GroupAssignmentPanel
+          members={membersUndergoingGroupAssignment}
+          assignMembers={assignMembers}
+        />
       )}
 
       <div className="w-full max-w-5xl flex flex-col gap-4">

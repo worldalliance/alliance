@@ -8,7 +8,6 @@ export default [
       route("/invites", "pages/InvitesPage.tsx"),
       route("/groups", "pages/GroupsPage.tsx"),
       route("/groups/:id", "pages/GroupDetailPage.tsx"),
-      route("/group-assignment", "pages/GroupAssignmentPage.tsx"),
       route("/actions/:actionId", "pages/ActionDashboard.tsx"),
       route("/scheduled", "pages/ScheduledPlansPage.tsx"),
       route("/suites/:suiteId", "pages/ActionSuitePage.tsx"),

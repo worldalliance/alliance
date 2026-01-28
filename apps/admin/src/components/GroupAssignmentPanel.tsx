@@ -7,17 +7,26 @@ import {
 import type {
   AssignGroupsDto,
   CommunityDto,
+  UserDto,
 } from "@alliance/shared/client/types.gen";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
 import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
-import ConfirmDialog from "../components/ConfirmDialog";
-import { useGroupAssignment } from "../lib/GroupAssignmentContext";
+import { CardStyle } from "@alliance/shared/styles/card";
+import ConfirmDialog from "./ConfirmDialog";
 
 const storageKey = "admin.groupAssignmentSelections";
-const GroupAssignmentPage: React.FC = () => {
-  const { membersUndergoingGroupAssignment, assignMembers } =
-    useGroupAssignment();
+
+type GroupAssignmentPanelProps = {
+  members: UserDto[];
+  assignMembers: (memberIds: number[]) => void;
+};
+
+const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
+  members,
+  assignMembers,
+}) => {
   const navigate = useNavigate();
   const [communities, setCommunities] = useState<CommunityDto[]>([]);
   const [loadingCommunities, setLoadingCommunities] = useState(true);
@@ -54,14 +63,14 @@ const GroupAssignmentPage: React.FC = () => {
   useEffect(() => {
     setAssignmentSelections((prev) => {
       const next = { ...prev };
-      membersUndergoingGroupAssignment.forEach((member) => {
+      members.forEach((member) => {
         if (!(member.id in next)) {
           next[member.id] = "";
         }
       });
       return next;
     });
-  }, [membersUndergoingGroupAssignment]);
+  }, [members]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -78,6 +87,9 @@ const GroupAssignmentPage: React.FC = () => {
   }, [assignmentSelections]);
 
   useEffect(() => {
+    if (!members.length) {
+      return;
+    }
     const loadCommunities = async () => {
       setLoadingCommunities(true);
       setCommunitiesError(null);
@@ -93,9 +105,9 @@ const GroupAssignmentPage: React.FC = () => {
     };
 
     void loadCommunities();
-  }, []);
+  }, [members.length]);
 
-  const membersCount = membersUndergoingGroupAssignment.length;
+  const membersCount = members.length;
   const sortedCommunities = useMemo(() => {
     return [...communities].sort((a, b) =>
       a.name
@@ -118,7 +130,7 @@ const GroupAssignmentPage: React.FC = () => {
   const memberGroupsByMemberId = useMemo(
     () =>
       new Map(
-        membersUndergoingGroupAssignment.map((member) => [
+        members.map((member) => [
           member.id,
           member.communities.filter(
             (community) =>
@@ -127,7 +139,7 @@ const GroupAssignmentPage: React.FC = () => {
         ])
       ),
 
-    [membersUndergoingGroupAssignment]
+    [members]
   );
 
   const handleSelectionChange = useCallback(
@@ -157,7 +169,7 @@ const GroupAssignmentPage: React.FC = () => {
 
   const assignmentPreview = useMemo(
     () =>
-      membersUndergoingGroupAssignment
+      members
         .map((member) => {
           const community = selectedCommunityByMemberId.get(member.id);
           return community ? { member, community } : null;
@@ -166,11 +178,11 @@ const GroupAssignmentPage: React.FC = () => {
           (
             entry
           ): entry is {
-            member: (typeof membersUndergoingGroupAssignment)[number];
+            member: (typeof members)[number];
             community: CommunityDto;
           } => entry !== null
         ),
-    [membersUndergoingGroupAssignment, selectedCommunityByMemberId]
+    [members, selectedCommunityByMemberId]
   );
 
   const hasSelections = assignmentPreview.length > 0;
@@ -270,8 +282,8 @@ const GroupAssignmentPage: React.FC = () => {
   }, [assignmentPreview, assignMembers]);
 
   return (
-    <div className="h-full p-5 pt-20 flex flex-col items-center gap-y-4 bg-zinc-50">
-      <div className="w-full max-w-6xl flex flex-col gap-6">
+    <Card className="w-full max-w-5xl" style={CardStyle.White}>
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <h2 className="text-2xl font-semibold">Group assignment</h2>
           <Button
@@ -299,7 +311,7 @@ const GroupAssignmentPage: React.FC = () => {
 
         {membersCount ? (
           <List className="bg-white">
-            {membersUndergoingGroupAssignment.map((member) => {
+            {members.map((member) => {
               const selection = assignmentSelections[member.id] ?? "";
               const memberGroups = memberGroupsByMemberId.get(member.id) ?? [];
               const selectedCommunity = selectedCommunityByMemberId.get(
@@ -333,7 +345,7 @@ const GroupAssignmentPage: React.FC = () => {
                               className="text-xs"
                               onClick={() =>
                                 navigate(
-                                  `/groups/${community.id}?from=group-assignment`
+                                  `/groups/${community.id}?from=groups`
                                 )
                               }
                             >
@@ -373,7 +385,7 @@ const GroupAssignmentPage: React.FC = () => {
                         className="text-xs self-end"
                         onClick={() =>
                           navigate(
-                            `/groups/${selectedCommunity.id}?from=group-assignment`
+                            `/groups/${selectedCommunity.id}?from=groups`
                           )
                         }
                       >
@@ -402,8 +414,8 @@ const GroupAssignmentPage: React.FC = () => {
         onCancel={handleCloseConfirm}
         isLoading={isSubmitting}
       />
-    </div>
+    </Card>
   );
 };
 
-export default GroupAssignmentPage;
+export default GroupAssignmentPanel;

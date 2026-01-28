@@ -210,11 +210,6 @@ const Sidebar: React.FC = () => {
                 to: "/groups",
                 label: "Groups",
                 icon: <UsersRound size={16} />,
-              },
-              {
-                to: "/group-assignment",
-                label: "Group Assignment",
-                icon: <UserRoundPen size={16} />,
                 notifCount: membersUndergoingGroupAssignment.length,
               },
               {
