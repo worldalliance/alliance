@@ -270,6 +270,7 @@ type CommunityCardProps = {
 const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
   const memberCount = community.users.length;
   const leaderCount = community.leaders.length;
+  const capacity = community.maxCapacity;
 
   return (
     <Link
@@ -285,12 +286,28 @@ const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
             </p>
           </div>
           <div className="flex flex-row items-center gap-3">
+            <div
+              className={`flex flex-col items-end gap-1 text-sm ${
+                community.public ? "text-green" : "text-zinc-400"
+              }`}
+            >
+              {community.public ? "Public" : "Private"}
+            </div>
             {leaderCount !== 1 && (
               <p className="text-sm text-zinc-600">
                 {leaderCount} leader{leaderCount === 1 ? "" : "s"}
               </p>
             )}
-            <p className="text-sm mr-4 font-medium">{memberCount}</p>
+            <p
+              className={`text-sm mr-4 font-medium ${
+                capacity !== null && memberCount >= capacity
+                  ? "text-zinc-400"
+                  : ""
+              }`}
+            >
+              {memberCount}
+              {capacity ? ` / ${capacity}` : ""}
+            </p>
           </div>
         </div>
       </div>
