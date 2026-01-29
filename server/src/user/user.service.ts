@@ -1498,11 +1498,11 @@ export class UserService {
     return savedInvite;
   }
 
-  async approveOnetimeInvite(
+  async approveOnetimeInviteRequest(
     inviteId: number,
     userId: number,
   ): Promise<OnetimeInvite> {
-    return this.approveOrRejectOnetimeInvite({
+    return this.approveOrRejectOnetimeInviteRequest({
       inviteId,
       userId,
       newStatus: 'approve',
@@ -1510,8 +1510,11 @@ export class UserService {
     });
   }
 
-  async rejectOnetimeInvite(inviteId: number, userId: number): Promise<void> {
-    await this.approveOrRejectOnetimeInvite({
+  async rejectOnetimeInviteRequest(
+    inviteId: number,
+    userId: number,
+  ): Promise<void> {
+    await this.approveOrRejectOnetimeInviteRequest({
       inviteId,
       userId,
       newStatus: 'reject',
@@ -1519,7 +1522,7 @@ export class UserService {
     });
   }
 
-  async approveOrRejectOnetimeInvite(params: {
+  async approveOrRejectOnetimeInviteRequest(params: {
     userId: number;
     inviteId: number;
     newStatus: 'approve' | 'reject';
@@ -1534,19 +1537,9 @@ export class UserService {
       relations: { invitingUser: true },
     });
 
-    if (request.status === OnetimeInviteStatus.REQUEST_REJECTED) {
-      throw new BadRequestException(`Request has already been rejected`);
-    }
-    if (
-      request.status === OnetimeInviteStatus.LINK_UNUSED ||
-      request.status === OnetimeInviteStatus.LINK_USED
-    ) {
-      throw new BadRequestException(`Request has already been approved`);
-    }
     if (request.status !== OnetimeInviteStatus.REQUEST_PENDING) {
-      request.status satisfies never;
-      throw new InternalServerErrorException(
-        `Unhandled status: ${request.status}`,
+      throw new BadRequestException(
+        `Invite is not a pending request. Status: ${request.status}`,
       );
     }
 
@@ -1716,8 +1709,24 @@ export class UserService {
   ): Promise<CommunityInvite> {
     const { communityId, invitedUserId } = body;
 
-    const invitingUserP = this.findOneOrFail(userId);
-    const invitedUserP = this.findOneOrFail(invitedUserId);
+    const invitingUserP = this.userRepository.findOneOrFail({
+      where: { id: userId, communities: { id: communityId } },
+    });
+    const invitedUserP = this.userRepository
+      .findOneOrFail({
+        where: { id: invitedUserId },
+        relations: {
+          communities: true,
+        },
+      })
+      .then((user) => {
+        if (user.communities.some((c) => c.id === communityId)) {
+          throw new BadRequestException(
+            'Invited user is already a member of the community',
+          );
+        }
+        return user;
+      });
     const communityP = this.findCommunityOrFail(communityId);
 
     const existingInvites = await this.communityInviteRepository.find({
@@ -1757,8 +1766,8 @@ export class UserService {
       if (!communityWithLeaders?.leaders?.length) {
         break sendNotificationToLeaders;
       }
-      for (const leader of communityWithLeaders.leaders) {
-        const notif = this.notifRepository.create({
+      const notifs = communityWithLeaders.leaders.map((leader) =>
+        this.notifRepository.create({
           user: leader,
           category: NotificationCategory.CommunityInviteRequestCreated,
           message: `${invitingUser.name} requested an invite for ${invitedUser.name} (${community.name})`,
@@ -1767,22 +1776,22 @@ export class UserService {
             communityId: community.id,
           }),
           associatedUsers: [invitingUser, invitedUser],
-        });
-        this.notifRepository.save(notif);
-      }
+        }),
+      );
+      await this.notifRepository.save(notifs);
     }
 
     return savedInvite;
   }
 
-  async approveCommunityInvite(
+  async approveCommunityInviteRequest(
     inviteId: number,
     userId: number,
   ): Promise<CommunityInvite> {
     const userP = this.findOneOrFail(userId);
     const invite = await this.communityInviteRepository.findOneOrFail({
       where: { id: inviteId },
-      relations: { invitedUser: true, community: true },
+      relations: { invitingUser: true, invitedUser: true, community: true },
     });
 
     if (invite.status !== CommunityInviteStatus.RequestPending) {
@@ -1803,18 +1812,32 @@ export class UserService {
     invite.status = CommunityInviteStatus.InviteePending;
     const savedInvite = await this.communityInviteRepository.save(invite);
 
-    if (invite.invitingUser) {
-      const notif = this.notifRepository.create({
-        user: invite.invitingUser,
+    const notifs = [
+      this.notifRepository.create({
+        user: invite.invitedUser,
         category: NotificationCategory.CommunityInviteCreated,
-        message: `${invite.invitingUser.name} has invited you to join ${invite.community.name}.`,
+        message: `${invite.invitingUser?.name ?? user.name} invited you to join their group (${invite.community.name})`,
         webAppLocation: groupUrl({
           tab: 'groups',
         }),
-        associatedUsers: [],
-      });
-      await this.notifRepository.save(notif);
-    }
+        associatedUsers: [invite.invitingUser ?? user],
+      }),
+      ...(invite.invitingUser
+        ? [
+            this.notifRepository.create({
+              user: invite.invitingUser,
+              category: NotificationCategory.CommunityInviteCreated,
+              message: `Your request to invite ${invite.invitedUser} was approved`,
+              webAppLocation: groupUrl({
+                tab: 'groups',
+                communityId: invite.community.id,
+              }),
+              associatedUsers: [],
+            }),
+          ]
+        : []),
+    ];
+    await this.notifRepository.save(notifs);
 
     return savedInvite;
   }
@@ -1851,7 +1874,7 @@ export class UserService {
       const notif = this.notifRepository.create({
         user: invite.invitingUser,
         category: NotificationCategory.CommunityInviteRequestRejected,
-        message: `Your request to invite ${invite.invitedUser} was rejected`,
+        message: `Your request to invite ${invite.invitedUser.name} was rejected`,
         webAppLocation: groupUrl({
           tab: 'groups',
         }),

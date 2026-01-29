@@ -660,7 +660,10 @@ export class UserController {
     @Request() req: JwtRequest,
   ) {
     return new OnetimeInviteDto(
-      await this.userService.approveOnetimeInvite(inviteId, req.user.sub),
+      await this.userService.approveOnetimeInviteRequest(
+        inviteId,
+        req.user.sub,
+      ),
     );
   }
 
@@ -671,7 +674,7 @@ export class UserController {
     @Param('inviteId', ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ) {
-    return this.userService.rejectOnetimeInvite(inviteId, req.user.sub);
+    return this.userService.rejectOnetimeInviteRequest(inviteId, req.user.sub);
   }
 
   @Post('onetimeInvite/create')
@@ -718,7 +721,10 @@ export class UserController {
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto> {
     return new CommunityInviteDto(
-      await this.userService.approveCommunityInvite(inviteId, req.user.sub),
+      await this.userService.approveCommunityInviteRequest(
+        inviteId,
+        req.user.sub,
+      ),
     );
   }
 
