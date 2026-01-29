@@ -13,6 +13,7 @@ import {
   MessagesSquare,
   Search,
   Settings,
+  UserPlus,
   Users,
 } from "lucide-react";
 import {
@@ -44,6 +45,7 @@ export enum NavbarPage {
   Search = "Search",
   Groups = "Groups",
   Messages = "Messages",
+  Invite = "Invite",
 }
 
 export const destinations: Record<NavbarPage, string> = {
@@ -59,6 +61,7 @@ export const destinations: Record<NavbarPage, string> = {
   [NavbarPage.Settings]: href("/settings"),
   [NavbarPage.Groups]: href("/groups"),
   [NavbarPage.Messages]: href("/messages"),
+  [NavbarPage.Invite]: href("/invites"),
 };
 
 const getIcon = (page: NavbarPage, size: number) => {
@@ -85,7 +88,12 @@ const getIcon = (page: NavbarPage, size: number) => {
       return <Users size={size} />;
     case NavbarPage.Activity:
       return <Globe size={size} />;
+    case NavbarPage.Invite:
+      return <UserPlus size={size} />;
+    case NavbarPage.Profile:
+      return null;
     default:
+      page satisfies never;
       return null;
   }
 };
@@ -168,6 +176,10 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
               },
             ]
           : []),
+        {
+          page: NavbarPage.Invite,
+          destination: destinations[NavbarPage.Invite],
+        },
       ],
     },
     {

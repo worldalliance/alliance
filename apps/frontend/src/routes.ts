@@ -50,6 +50,7 @@ export default [
 
       route("/tasks", "pages/app/HomePage.tsx"),
       route("/groups", "pages/app/CommunityRoute.tsx"),
+      route("/invites", "pages/app/InvitesPage.tsx"),
       route("/notifications", "pages/app/NotificationsPage.tsx"),
       route("/search", "pages/app/SearchPage.tsx"),
       route("/settings", "pages/app/SettingsPage.tsx"),

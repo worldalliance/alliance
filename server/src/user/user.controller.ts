@@ -742,6 +742,17 @@ export class UserController {
     );
   }
 
+  @Get('onetimeInvites/overview')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: OnetimeInviteDto, isArray: true })
+  async getOnetimeInvitesOverview(
+    @Request() req: JwtRequest,
+  ): Promise<OnetimeInviteDto[]> {
+    return (
+      await this.userService.findOnetimeInvitesOverviewForUser(req.user.sub)
+    ).map((invite) => new OnetimeInviteDto(invite));
+  }
+
   @Get('onetimeInvites/:communityId')
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse({ type: [OnetimeInviteDto] })

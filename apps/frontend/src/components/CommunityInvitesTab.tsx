@@ -23,12 +23,11 @@ import UserSelect, {
 } from "@alliance/sharedweb/ui/UserSelect";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import Card from "@alliance/sharedweb/ui/Card";
-import CommunityInviteListItem from "./CommunityInviteListItem";
 import { Link } from "react-router";
-import OneTimeInviteRequestLeaderListItem from "./OneTimeInviteRequestLeaderListItem";
-import OneTimeInviteLeaderListItem from "./OneTimeInviteLeaderListItem";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CardStyle } from "@alliance/shared/styles/card";
+import CommunityInviteListItem from "./CommunityInviteListItem";
+import OnetimeInviteListItem from "./OnetimeInviteListItem";
 
 export interface CommunityInvitesTabProps {
   communityId: number;
@@ -364,9 +363,11 @@ const CommunityInvitesTab = ({
           <p className="font-semibold text-xl">Invite requests</p>
           <List>
             {pendingRequests.map((request) => (
-              <OneTimeInviteRequestLeaderListItem
+              <OnetimeInviteListItem
                 key={request.id}
-                request={request}
+                invite={request}
+                showOnetimeInviteLabel={true}
+                selfInvited={!!(user && user.id === request.invitingUser?.id)}
                 onApprove={onApproveOnetimeInvite}
                 onReject={onRejectOnetimeInvite}
               />
@@ -380,13 +381,17 @@ const CommunityInvitesTab = ({
           <p className="font-semibold text-xl">Past invites</p>
           <List>
             {combinedPastInvites.map((entry) => {
+              const selfInvited = !!(
+                user && user.id === entry.data.invitingUser?.id
+              );
               switch (entry.type) {
                 case "new_member":
                   return (
-                    <OneTimeInviteLeaderListItem
+                    <OnetimeInviteListItem
                       key={entry.data.id}
-                      leaderId={user?.id}
+                      selfInvited={selfInvited}
                       invite={entry.data}
+                      showOnetimeInviteLabel={true}
                       onDelete={handleDeleteInvite}
                       onCopy={copyToClipboard}
                     />
@@ -396,6 +401,7 @@ const CommunityInvitesTab = ({
                     <CommunityInviteListItem
                       key={entry.data.id}
                       invite={entry.data}
+                      selfInvited={selfInvited}
                       onDelete={handleDeleteCommunityInvite}
                     />
                   );

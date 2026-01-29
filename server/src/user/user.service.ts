@@ -1441,7 +1441,10 @@ export class UserService {
     await this.onetimeInviteRepository.delete(inviteId);
   }
 
-  async requestOnetimeInvite(body: RequestOnetimeInviteDto, userId: number): Promise<OnetimeInvite> {
+  async requestOnetimeInvite(
+    body: RequestOnetimeInviteDto,
+    userId: number,
+  ): Promise<OnetimeInvite> {
     const { communityId, ...rest } = body;
 
     const user = await this.findOneOrFail(userId, { communities: true });
@@ -1630,6 +1633,28 @@ export class UserService {
     return this.onetimeInviteRepository.find({
       where: { invitingUser: { id: userId }, community: { id: communityId } },
     });
+  }
+
+  async findOnetimeInvitesOverviewForUser(
+    userId: number,
+  ): Promise<OnetimeInvite[]> {
+    const asdf = await this.onetimeInviteRepository.find({
+      where: [
+        { invitingUser: { id: userId } },
+        {
+          community: {
+            leaders: { id: userId },
+          },
+        },
+      ],
+      relations: {
+        invitingUser: true,
+        community: true,
+      },
+    });
+    console.log({ asdf });
+
+    return asdf;
   }
 
   async invalidateInvite(inviteId: number): Promise<void> {
