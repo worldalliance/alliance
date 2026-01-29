@@ -187,7 +187,6 @@ const CommunityInvitesMemberTab = ({
               <OnetimeInviteListItem
                 key={invite.id}
                 invite={invite}
-                showOnetimeInviteLabel={false}
                 selfInvited={true}
                 onDelete={handleDeleteInvite}
                 onCopy={copyToClipboard}
@@ -205,7 +204,6 @@ const CommunityInvitesMemberTab = ({
               <OnetimeInviteListItem
                 key={request.id}
                 invite={request}
-                showOnetimeInviteLabel={false}
                 selfInvited={true}
                 onDelete={handleCancelRequest}
               />
@@ -222,7 +220,6 @@ const CommunityInvitesMemberTab = ({
               <OnetimeInviteListItem
                 key={invite.id}
                 invite={invite}
-                showOnetimeInviteLabel={false}
                 selfInvited={true}
                 onCopy={copyToClipboard}
               />

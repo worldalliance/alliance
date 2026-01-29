@@ -13,10 +13,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../lib/AuthContext";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import TwoColumnLayout from "../../components/TwoColumnLayout";
 import OnetimeInviteListItem from "../../components/OnetimeInviteListItem";
 import { bucketOnetimeInvitesByActionability } from "@alliance/shared/lib/inviteUtils";
 import InviteForm from "../../components/InviteForm";
+import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 
 const InvitesPage = () => {
   const { user } = useAuth();
@@ -175,97 +175,106 @@ const InvitesPage = () => {
   );
 
   return (
-    <TwoColumnLayout
-      main={
-        <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-0 md:px-3">
-          <div className="flex flex-col gap-y-8 py-6 px-5 md:px-0">
-            <div className="flex flex-col gap-y-3">
-              <p className="font-semibold text-2xl md:text-3xl">Invites</p>
-              {inviteForm}
-              {error && <p className="text-red-500 text-sm">{error}</p>}
-            </div>
-
-            {actionable.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <p className="font-semibold text-xl">Invites to be approved</p>
-                <List>
-                  {actionable.map((request) => (
-                    <OnetimeInviteListItem
-                      key={request.id}
-                      invite={request}
-                      showOnetimeInviteLabel={false}
-                      showCommunityLabel={true}
-                      communityLabel={request.community?.name}
-                      selfInvited={user.id === request.invitingUser?.id}
-                      onApprove={handleApproveInvite}
-                      onReject={handleRejectInvite}
-                    />
-                  ))}
-                </List>
-              </div>
-            )}
-
-            {unverifiableActionable.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <p className="font-semibold text-xl">Invites to be sent</p>
-                <List>
-                  {unverifiableActionable.map((invite) => (
-                    <OnetimeInviteListItem
-                      key={invite.id}
-                      invite={invite}
-                      showOnetimeInviteLabel={false}
-                      showCommunityLabel={true}
-                      communityLabel={invite.community?.name}
-                      selfInvited={user.id === invite.invitingUser?.id}
-                      onDelete={handleDeleteInvite}
-                      onCopy={copyToClipboard}
-                    />
-                  ))}
-                </List>
-              </div>
-            )}
-
-            {waitingForResponse.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <p className="font-semibold text-xl">Waiting on response</p>
-                <List>
-                  {waitingForResponse.map((request) => (
-                    <OnetimeInviteListItem
-                      key={request.id}
-                      invite={request}
-                      showOnetimeInviteLabel={false}
-                      showCommunityLabel={true}
-                      communityLabel={request.community?.name}
-                      selfInvited={user.id === request.invitingUser?.id}
-                      onDelete={(inviteId) => handleDeleteRequest(inviteId)}
-                    />
-                  ))}
-                </List>
-              </div>
-            )}
-
-            {settled.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <p className="font-semibold text-xl">Past invites</p>
-                <List>
-                  {settled.map((invite) => (
-                    <OnetimeInviteListItem
-                      key={invite.id}
-                      invite={invite}
-                      showOnetimeInviteLabel={false}
-                      showCommunityLabel={true}
-                      communityLabel={invite.community?.name}
-                      selfInvited={user.id === invite.invitingUser?.id}
-                      onCopy={copyToClipboard}
-                    />
-                  ))}
-                </List>
-              </div>
-            )}
-          </div>
+    <CenterLayout>
+      <div className="flex flex-col gap-y-12 py-6 px-5 md:px-0">
+        <div className="flex flex-col gap-y-3">
+          <p className="font-serif font-semibold text-2xl md:text-3xl">
+            Invites
+          </p>
+          {inviteForm}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
         </div>
-      }
-    />
+
+        {actionable.length > 0 && (
+          <div className="flex flex-col gap-y-2">
+            <p className="font-semibold text-xl">Invites to be approved</p>
+            <List>
+              {actionable.map((request) => (
+                <OnetimeInviteListItem
+                  key={request.id}
+                  invite={request}
+                  showCommunityLabel={true}
+                  communityLabel={request.community?.name}
+                  selfInvited={user.id === request.invitingUser?.id}
+                  onApprove={handleApproveInvite}
+                  onReject={handleRejectInvite}
+                />
+              ))}
+            </List>
+          </div>
+        )}
+
+        {unverifiableActionable.length > 0 && (
+          <div className="flex flex-col gap-y-2">
+            <div className="flex flex-col gap-y-1">
+              <p className="font-semibold text-xl">Invites to be sent</p>
+              <p className="text-zinc-500">
+                These invites are ready to be sent.
+              </p>
+            </div>
+            <List>
+              {unverifiableActionable.map((invite) => (
+                <OnetimeInviteListItem
+                  key={invite.id}
+                  invite={invite}
+                  showCommunityLabel={true}
+                  communityLabel={invite.community?.name}
+                  selfInvited={user.id === invite.invitingUser?.id}
+                  onDelete={handleDeleteInvite}
+                  onCopy={copyToClipboard}
+                />
+              ))}
+            </List>
+          </div>
+        )}
+
+        {waitingForResponse.length > 0 && (
+          <div className="flex flex-col gap-y-2">
+            <div className="flex flex-col gap-y-1">
+              <p className="font-semibold text-xl">No action needed</p>
+              <p className="text-zinc-500">
+                Other members need to approve or send these invites.
+              </p>
+            </div>
+            <List>
+              {waitingForResponse.map((request) => (
+                <OnetimeInviteListItem
+                  key={request.id}
+                  invite={request}
+                  showCommunityLabel={true}
+                  communityLabel={request.community?.name}
+                  selfInvited={user.id === request.invitingUser?.id}
+                  onDelete={(inviteId) => handleDeleteRequest(inviteId)}
+                />
+              ))}
+            </List>
+          </div>
+        )}
+
+        {settled.length > 0 && (
+          <div className="flex flex-col gap-y-2">
+            <div className="flex flex-col gap-y-1">
+              <p className="font-semibold text-xl">Past invites</p>
+              <p className="text-zinc-500">
+                These invites have been accepted or rejected.
+              </p>
+            </div>
+            <List>
+              {settled.map((invite) => (
+                <OnetimeInviteListItem
+                  key={invite.id}
+                  invite={invite}
+                  showCommunityLabel={true}
+                  communityLabel={invite.community?.name}
+                  selfInvited={user.id === invite.invitingUser?.id}
+                  onCopy={copyToClipboard}
+                />
+              ))}
+            </List>
+          </div>
+        )}
+      </div>
+    </CenterLayout>
   );
 };
 

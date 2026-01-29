@@ -335,7 +335,6 @@ const CommunityInvitesLeaderTab = ({
               <OnetimeInviteListItem
                 key={request.id}
                 invite={request}
-                showOnetimeInviteLabel={true}
                 selfInvited={!!(user && user.id === request.invitingUser?.id)}
                 onApprove={onApproveOnetimeInvite}
                 onReject={onRejectOnetimeInvite}
@@ -360,7 +359,6 @@ const CommunityInvitesLeaderTab = ({
                       key={entry.data.id}
                       selfInvited={selfInvited}
                       invite={entry.data}
-                      showOnetimeInviteLabel={true}
                       onDelete={handleDeleteInvite}
                       onCopy={copyToClipboard}
                     />

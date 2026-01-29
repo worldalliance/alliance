@@ -2,12 +2,12 @@ import { OnetimeInviteDto } from "@alliance/shared/client";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
+import { Copy } from "lucide-react";
 import { useState } from "react";
 import { href, Link } from "react-router";
 
 type OnetimeInviteListItemProps = {
   invite: OnetimeInviteDto;
-  showOnetimeInviteLabel: boolean;
   showCommunityLabel?: boolean;
   communityLabel?: string | null;
   selfInvited: boolean;
@@ -35,7 +35,6 @@ const STATUS_STYLE = {
 
 const OnetimeInviteListItem = ({
   invite,
-  showOnetimeInviteLabel,
   showCommunityLabel,
   communityLabel,
   selfInvited,
@@ -57,35 +56,25 @@ const OnetimeInviteListItem = ({
 
   return (
     <div className="flex flex-row w-full justify-between p-4">
-      <div className="flex flex-col gap-2">
-        <div className="text-sm font-semibold">
-          {showOnetimeInviteLabel && (
-            <span className="text-green">New member</span>
-          )}
-          {showCommunityLabel && (
-            <span className="text-zinc-400">
-              {showOnetimeInviteLabel ? ` (${communityLabel})` : communityLabel}
-            </span>
-          )}
-        </div>
+      <div className="flex flex-col">
         <span className="font-semibold text-zinc-900">{invite.invitee}</span>
+
         {invite.invitingUser && (
           <div className="text-sm flex flex-row items-center gap-x-2">
-            {isRequest ? "Requested by " : "Invited by "}
+            {isRequest ? "Requested by" : "Invited by"}
             {selfInvited ? (
-              "you"
+              " you"
             ) : (
               <Link
                 to={href("/member/:id", {
                   id: invite.invitingUser.id.toString(),
                 })}
-                className="hover:underline"
+                className="hover:underline flex flex-row items-center gap-x-1"
               >
                 <ProfileImage
                   pfp={invite.invitingUser.profilePicture}
-                  size="small"
+                  size="mini"
                 />
-                &nbsp;
                 <span className="font-medium">
                   {invite.invitingUser.displayName}
                 </span>
@@ -96,16 +85,23 @@ const OnetimeInviteListItem = ({
         {invite.inviteeDescription && (
           <AppMarkdownWrapper
             markdownContent={invite.inviteeDescription}
-            className="break-words text-sm text-zinc-600"
+            className="break-words text-sm text-zinc-400"
           />
         )}
       </div>
 
       <div className="flex flex-col items-end justify-between gap-2">
-        <span className={`text-sm font-semibold ${statusStyle.textColor}`}>
-          {statusStyle.label}
-        </span>
-        <div className="flex flex-row items-center justify-end gap-2">
+        <div className="flex flex-row items-center gap-x-1.5">
+          <div className="text-sm font-medium">
+            {showCommunityLabel && (
+              <span className="text-zinc-400">{communityLabel}</span>
+            )}
+          </div>
+          <span className={`text-sm font-semibold ${statusStyle.textColor}`}>
+            {statusStyle.label}
+          </span>
+        </div>
+        <div className="mt-2 flex flex-row items-center justify-end gap-2">
           {isRequest && onApprove && onReject ? (
             <>
               <Button
@@ -129,7 +125,14 @@ const OnetimeInviteListItem = ({
                   disabled={copied}
                   onClick={handleCopy}
                 >
-                  {copied ? "Copied!" : "Share"}
+                  {copied ? (
+                    "Copied!"
+                  ) : (
+                    <div className="flex flex-row items-center gap-x-2">
+                      <Copy className="w-4 h-4" />
+                      Share invite link
+                    </div>
+                  )}
                 </Button>
               )}
               {onDelete && (
