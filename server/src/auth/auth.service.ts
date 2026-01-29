@@ -60,12 +60,19 @@ export class AuthService {
     if (signUp.referralCode) {
       referredBy = await this.usersService.findOneByReferralCode(
         signUp.referralCode,
+        {
+          communities: true,
+        },
       );
     }
     let inviteCommunityId: number | null = null;
     if (!referredBy && signUp.referralCode) {
       const invite = await this.usersService.findInviteByCode(
         signUp.referralCode,
+        {
+          invitingUser: { communities: true },
+          community: true,
+        },
       );
       if (invite) {
         if (invite.status !== OnetimeInviteStatus.LINK_UNUSED) {
@@ -92,6 +99,16 @@ export class AuthService {
 
     if (inviteCommunityId) {
       await this.usersService.addUserToCommunity(inviteCommunityId, user.id);
+    } else if (referredBy) {
+      const community =
+        await this.usersService.findUserCommunityWithCapacity(referredBy);
+      if (community) {
+        await this.usersService.addUserToCommunity(community.id, user.id);
+      } else {
+        await this.usersService.joinGroupAssignment(user.id);
+      }
+    } else {
+      await this.usersService.joinGroupAssignment(user.id);
     }
 
     if (referredBy) {

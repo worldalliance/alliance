@@ -678,7 +678,7 @@ export class UserController {
   }
 
   @Post('onetimeInvite/create')
-  @UseGuards(CommunityLeaderGuard)
+  @UseGuards(AuthGuard)
   @ApiOkResponse({ type: OnetimeInviteDto })
   async createOnetimeInvite(
     @Body() body: CreateOnetimeInviteDto,

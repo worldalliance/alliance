@@ -1,3 +1,10 @@
+import {
+  groupLeaderOnetimeInviteExplanation,
+  groupLeaderOnetimeInviteTitle,
+  groupMemberOnetimeInviteExplanation,
+  groupMemberOnetimeInviteExplanationBullets,
+  groupMemberOnetimeInviteTitle,
+} from "@alliance/shared/lib/copy";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -53,17 +60,12 @@ const OnetimeInviteForm = ({
     <Card style={CardStyle.Grey}>
       {isLeader ? (
         <div className="flex flex-col gap-y-2">
-          <p className="font-semibold">
-            Invite a new member to the Alliance and your group
-          </p>
-          <p className="text-zinc-500">
-            This will create a personalized invite page that explains the
-            Alliance and how to sign up.
-          </p>
-          <p className="text-zinc-500">
-            When the new member signs up, they will automatically be added to
-            your group.
-          </p>
+          <p className="font-semibold">{groupLeaderOnetimeInviteTitle}</p>
+          {groupLeaderOnetimeInviteExplanation.map((block, index) => (
+            <p className="text-zinc-500" key={index}>
+              {block}
+            </p>
+          ))}
           <Link
             to="/groups?tab=resources"
             className="text-green hover:underline"
@@ -90,25 +92,12 @@ const OnetimeInviteForm = ({
         </div>
       ) : (
         <div className="flex flex-col gap-y-3">
-          <p className="font-semibold">
-            Invite a new member to the Alliance and this group
-          </p>
-          <p className="text-zinc-500">
-            A group leader will review and approve your request.
-          </p>
+          <p className="font-semibold">{groupMemberOnetimeInviteTitle}</p>
+          <p className="text-zinc-500">{groupMemberOnetimeInviteExplanation}</p>
           <ol className="text-zinc-500 list-decimal list-inside mb-2">
-            <li>
-              A group lead will first need to approve the request for the
-              invitee.
-            </li>
-            <li>
-              Once approved, you will receive a personalized invite link that
-              you can share with the invitee.
-            </li>
-            <li>
-              When the invitee signs up, they will automatically be added to
-              your group.
-            </li>
+            {groupMemberOnetimeInviteExplanationBullets.map((block, index) => (
+              <li key={index}>{block}</li>
+            ))}
           </ol>
 
           <input

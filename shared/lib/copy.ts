@@ -34,3 +34,36 @@ export const editGroupPublicGroupExplanation =
   "Anyone can join a public group without the group lead's approval.";
 export const editGroupGroupAssignmentExplanation =
   "Members may occasionally be assigned to this group by Alliance staff.";
+
+export const onetimeInviteCreationTitle = "Invite a new member to the Alliance";
+export const onetimeInviteCreationExplanation = [
+  "Would you like to take responsibility for the new member completing their tasks?",
+];
+export const onetimeInviteCreationResponsibilityChoiceYes =
+  "I want to take responsibility for the new member";
+export const onetimeInviteCreationResponsibilityChoiceNo =
+  "I don't want to take responsibility for the new member";
+
+export const groupLeaderOnetimeInviteTitle =
+  "Invite a new member to the Alliance and your group";
+export const groupLeaderOnetimeInviteExplanation = [
+  "This will create a personalized invite page that explains the Alliance and how to sign up.",
+  "When the new member signs up, they will automatically be added to your group.",
+];
+
+export const groupMemberOnetimeInviteTitle =
+  "Invite a new member to the Alliance and this group";
+export const groupMemberOnetimeInviteExplanation =
+  "A group leader will review and approve your request.";
+export const groupMemberOnetimeInviteExplanationBullets = [
+  "A group lead will first need to approve the request for the invitee.",
+  "Once approved, you will receive a personalized invite link that you can share with the invitee.",
+  "When the invitee signs up, they will automatically be added to your group.",
+];
+
+export const unafilliatedOnetimeInviteTitle =
+  "Invite a new member to the Alliance";
+export const unafilliatedOnetimeInviteExplanation = [
+  "This will create a personalized invite link that you can share with the invitee.",
+  "When the invitee signs up, they will be assigned a group.",
+];

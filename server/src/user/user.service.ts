@@ -15,7 +15,7 @@ import {
   NotificationCategory,
 } from 'src/notifs/entities/notification.entity';
 import { PaymentUserDataToken } from 'src/payments/entities/payment-token.entity';
-import { DeepPartial, ILike, In, Not, Repository } from 'typeorm';
+import { DeepPartial, ILike, In, IsNull, Not, Repository } from 'typeorm';
 import { Friend, FriendStatus } from './entities/friend.entity';
 import { PrefillUser } from './entities/prefill-user.entity';
 import {
@@ -223,8 +223,11 @@ export class UserService {
     });
   }
 
-  async findOneByReferralCode(referralCode: string): Promise<User | null> {
-    return this.userRepository.findOneBy({ referralCode });
+  async findOneByReferralCode(
+    referralCode: string,
+    relations?: Relations<User>,
+  ): Promise<User | null> {
+    return this.userRepository.findOne({ where: { referralCode }, relations });
   }
 
   async remove(id: number): Promise<void> {
@@ -941,6 +944,27 @@ export class UserService {
     return communities.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  async findUserCommunityWithCapacity(user: User): Promise<Community | null> {
+    const communities = await this.communityRepository.find({
+      where: {
+        maxCapacity: Not(IsNull()),
+        id: In(user.communities.map((c) => c.id)),
+      },
+      relations: {
+        users: true,
+      },
+    });
+    if (!communities) {
+      return null;
+    }
+    for (const community of communities) {
+      if (community.users.length < community.maxCapacity!) {
+        return community;
+      }
+    }
+    return null;
+  }
+
   async joinPublicCommunity(
     userId: number,
     communityId: number,
@@ -1378,41 +1402,31 @@ export class UserService {
       ...rest
     } = body;
 
-    const user = await this.findOneOrFail(userId, { leaderOf: true });
+    const userP = this.findOneOrFail(userId, { leaderOf: true });
+    const communityP =
+      communityId !== undefined
+        ? this.communityRepository.findOneOrFail({
+            where: { id: communityId },
+          })
+        : undefined;
+
+    const user = await userP;
     const isAdmin = user.admin;
+    if (isAdmin && communityId && !user.leaderOfIdSet.has(communityId)) {
+      throw new BadRequestException(
+        `User is not a leader of community ${communityId}`,
+      );
+    }
 
     // Normal users cannot create invites from other users
     const invitingUserId =
       (isAdmin ? providedInvitingUserId : undefined) ?? userId;
-
-    let community: Community | undefined;
-
-    if (isAdmin) {
-      if (communityId) {
-        community = await this.communityRepository.findOneOrFail({
-          where: { id: communityId },
-        });
-      }
-    } else {
-      if (communityId === undefined) {
-        throw new UnauthorizedException('Community ID not provided');
-      }
-
-      community = user.leaderOf.find(
-        (community) => community.id === communityId,
-      );
-      if (!community) {
-        throw new UnauthorizedException(
-          `User is not a leader of community ${communityId}`,
-        );
-      }
-    }
-
     const invitingUser =
-      userId === invitingUserId
+      invitingUserId === userId
         ? user
         : await this.findOneOrFail(invitingUserId);
 
+    const community = await communityP;
     const invite = this.onetimeInviteRepository.create({
       ...rest,
       code,
@@ -1600,10 +1614,16 @@ export class UserService {
     await this.communityInviteRepository.delete(inviteId);
   }
 
-  async findInviteByCode(code: string): Promise<OnetimeInvite | null> {
+  async findInviteByCode(
+    code: string,
+    relations?: Relations<OnetimeInvite>,
+  ): Promise<OnetimeInvite | null> {
     return this.onetimeInviteRepository.findOne({
       where: { code },
-      relations: { invitingUser: true, community: true },
+      relations: relations ?? {
+        invitingUser: true,
+        community: true,
+      },
     });
   }
 

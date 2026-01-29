@@ -16,6 +16,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import OnetimeInviteListItem from "../../components/OnetimeInviteListItem";
 import { bucketOnetimeInvitesByActionability } from "@alliance/shared/lib/inviteUtils";
+import InviteForm from "../../components/InviteForm";
 
 const InvitesPage = () => {
   const { user } = useAuth();
@@ -25,12 +26,16 @@ const InvitesPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
 
-  useEffect(() => {
+  const refreshCommunities = () => {
     userGetMyCommunities().then((resp) => {
       if (resp.data) {
         setCommunities(resp.data);
       }
     });
+  };
+
+  useEffect(() => {
+    refreshCommunities();
   }, []);
 
   useEffect(() => {
@@ -146,11 +151,28 @@ const InvitesPage = () => {
     })();
   };
 
+  const handleInviteCreated = () => {
+    // Refresh invites list
+    void (async () => {
+      const response = await userGetOnetimeInvitesOverview();
+      if (response.data) {
+        setInvites(response.data);
+        setError(null);
+      }
+    })();
+  };
+
   if (!user || loadingInvites) {
     return <Spinner />;
   }
 
-  const inviteForm = null;
+  const inviteForm = (
+    <InviteForm
+      communities={communities}
+      onInviteCreated={handleInviteCreated}
+      onCommunitiesRefresh={refreshCommunities}
+    />
+  );
 
   return (
     <TwoColumnLayout
