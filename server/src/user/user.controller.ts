@@ -503,7 +503,11 @@ export class UserController {
     @Body() body: CommunityMemberDto,
   ) {
     return new CommunityDto(
-      await this.userService.addUserToCommunity(communityId, body.userId),
+      await this.userService.addUserToCommunity({
+        communityId,
+        userId: body.userId,
+        sendNotif: true,
+      }),
     );
   }
 

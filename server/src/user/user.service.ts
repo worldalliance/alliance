@@ -1100,12 +1100,17 @@ export class UserService {
     await this.communityRepository.delete(communityId);
   }
 
-  async addUserToCommunity(
-    communityId: number,
-    userId: number,
-  ): Promise<Community> {
+  async addUserToCommunity(params: {
+    communityId: number;
+    userId: number;
+    sendNotif: boolean;
+  }): Promise<Community> {
+    const { communityId, userId, sendNotif } = params;
+
     const [community, user] = await Promise.all([
-      this.findCommunityOrFail(communityId),
+      this.findCommunityOrFail(communityId, {
+        leaders: true,
+      }),
       this.findOneOrFail(userId),
     ]);
 
@@ -1114,9 +1119,30 @@ export class UserService {
       community.users.push(user);
     }
 
-    const updated = await this.communityRepository.save(community);
-    await this.conversationService.syncCommunityConversationMembers(updated.id);
-    return updated;
+    const notifs: Notification[] = sendNotif
+      ? community.leaders!.map((leader) =>
+          this.notifRepository.create({
+            user: leader,
+            category: NotificationCategory.MemberJoinedCommunity,
+            message: `${user.name} joined your group (${community.name})`,
+            webAppLocation: groupUrl({
+              tab: 'members',
+              communityId: community.id,
+            }),
+            associatedUsers: [user],
+          }),
+        )
+      : [];
+
+    const updatedP = this.communityRepository.save(community);
+    await Promise.all([
+      await this.notifRepository.save(notifs),
+      updatedP.then((updated) =>
+        this.conversationService.syncCommunityConversationMembers(updated.id),
+      ),
+    ]);
+
+    return await updatedP;
   }
 
   async removeUserFromCommunity(params: {

@@ -98,12 +98,20 @@ export class AuthService {
     });
 
     if (inviteCommunityId) {
-      await this.usersService.addUserToCommunity(inviteCommunityId, user.id);
+      await this.usersService.addUserToCommunity({
+        communityId: inviteCommunityId,
+        userId: user.id,
+        sendNotif: true,
+      });
     } else if (referredBy) {
       const community =
         await this.usersService.findUserCommunityWithCapacity(referredBy);
       if (community) {
-        await this.usersService.addUserToCommunity(community.id, user.id);
+        await this.usersService.addUserToCommunity({
+          communityId: community.id,
+          userId: user.id,
+          sendNotif: true,
+        });
       } else {
         await this.usersService.joinGroupAssignment(user.id);
       }
