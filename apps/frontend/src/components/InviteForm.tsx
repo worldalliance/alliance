@@ -18,8 +18,8 @@ import {
   onetimeInviteCreationResponsibilityChoiceNo,
   onetimeInviteCreationResponsibilityChoiceYes,
   onetimeInviteCreationTitle,
-  unafilliatedOnetimeInviteExplanation,
-  unafilliatedOnetimeInviteTitle,
+  unaffiliatedOnetimeInviteExplanation,
+  unaffiliatedOnetimeInviteTitle,
 } from "@alliance/shared/lib/copy";
 
 type ResponsibilityChoice = "responsible" | "not_responsible" | null;
@@ -174,8 +174,8 @@ const InviteForm = ({
     return (
       <Card style={CardStyle.Grey}>
         <div className="flex flex-col gap-y-4">
-          <p className="font-semibold">{unafilliatedOnetimeInviteTitle}</p>
-          {unafilliatedOnetimeInviteExplanation.map((block, index) => (
+          <p className="font-semibold">{unaffiliatedOnetimeInviteTitle}</p>
+          {unaffiliatedOnetimeInviteExplanation.map((block, index) => (
             <p className="text-zinc-500" key={index}>
               {block}
             </p>

@@ -61,9 +61,9 @@ export const groupMemberOnetimeInviteExplanationBullets = [
   "When the invitee signs up, they will automatically be added to your group.",
 ];
 
-export const unafilliatedOnetimeInviteTitle =
+export const unaffiliatedOnetimeInviteTitle =
   "Invite a new member to the Alliance";
-export const unafilliatedOnetimeInviteExplanation = [
+export const unaffiliatedOnetimeInviteExplanation = [
   "This will create a personalized invite link that you can share with the invitee.",
   "When the invitee signs up, they will be assigned a group.",
 ];
