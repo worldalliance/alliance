@@ -7,7 +7,7 @@ import { Settings } from "lucide-react";
 const MANAGE_GROUPS_KEY = "manage";
 
 export type CommunitySelectDropdownProps = {
-  titleOverride?: string;
+  titleOverride: string;
   communities: CommunityDto[] | null;
   currentCommunityId?: number | null;
   notifCount: number;
