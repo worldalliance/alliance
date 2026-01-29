@@ -96,7 +96,7 @@ const GroupsPage: React.FC = () => {
       }
       if (requiresMaxCapacity) {
         if (!normalizedMaxCapacity || normalizedMaxCapacity <= 0) {
-          setError("Group assignment capacity is required.");
+          setError("Member capacity is required.");
           return;
         }
       }
@@ -155,9 +155,7 @@ const GroupsPage: React.FC = () => {
 
         <Card style={CardStyle.White}>
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-zinc-700">
-              Unused capacity
-            </p>
+            <p className="text-sm font-medium text-zinc-700">Unused capacity</p>
             <p className="text-2xl font-semibold text-zinc-900">
               {totalUnusedCapacity}
             </p>
@@ -276,7 +274,7 @@ const GroupsPage: React.FC = () => {
                   className="text-sm font-medium text-zinc-700"
                   htmlFor="group-capacity"
                 >
-                  Group assignment capacity
+                  Member capacity
                 </label>
                 <input
                   id="group-capacity"

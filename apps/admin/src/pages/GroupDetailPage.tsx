@@ -222,7 +222,7 @@ const CommunityDetailPage: React.FC = () => {
     }
     if (requiresMaxCapacity) {
       if (!normalizedMaxCapacity || normalizedMaxCapacity <= 0) {
-        setError("Group assignment capacity is required.");
+        setError("Member capacity is required.");
         return;
       }
     }
@@ -580,7 +580,7 @@ const CommunityDetailPage: React.FC = () => {
               {(formValues.public || allowStaffAssignments) && (
                 <div className="mt-4">
                   <label className="text-sm font-medium text-zinc-700">
-                    Group assignment capacity
+                    Member capacity
                   </label>
                   <input
                     type="number"

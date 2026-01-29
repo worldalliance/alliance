@@ -153,7 +153,7 @@ const CommunityEditForm = (props: CommunityFormProps) => {
       <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
         <div className="flex flex-col gap-y-3">
           <label
-            className="flex items-center gap-x-2 text-black text-sm font-semibold"
+            className="flex items-start gap-x-2 text-black text-sm font-semibold"
             htmlFor="public"
           >
             <input
@@ -167,11 +167,17 @@ const CommunityEditForm = (props: CommunityFormProps) => {
                   setAllowStaffAssignments(true);
                 }
               }}
+              className="mt-1"
             />
-            Public*
+            <div>
+              <p className="text-base font-medium">Public group</p>
+              <p className="text-sm text-zinc-500 font-normal">
+                {editGroupPublicGroupExplanation}
+              </p>
+            </div>
           </label>
           <label
-            className="flex items-center gap-x-2 text-black text-sm font-semibold"
+            className="flex items-start gap-x-2 text-black text-sm font-semibold"
             htmlFor="allowAssignments"
           >
             <input
@@ -180,17 +186,20 @@ const CommunityEditForm = (props: CommunityFormProps) => {
               checked={allowStaffAssignments}
               onChange={(e) => setAllowStaffAssignments(e.target.checked)}
               disabled={formValues.public}
+              className="mt-1"
             />
-            Group assignment**
+            <div>
+              <p className="text-base font-medium">Accept member assignments</p>
+              <p className="text-sm text-zinc-500 font-normal">
+                {editGroupGroupAssignmentExplanation}
+              </p>
+            </div>
           </label>
         </div>
         {requiresMaxCapacity && (
           <div className="mt-4">
-            <label
-              className="text-black text-sm font-semibold"
-              htmlFor="maxCapacity"
-            >
-              Group assignment capacity (required)
+            <label className="text-black font-medium" htmlFor="maxCapacity">
+              Member capacity
             </label>
             <input
               id="maxCapacity"
@@ -224,28 +233,24 @@ const CommunityEditForm = (props: CommunityFormProps) => {
           )}
         </div>
 
-        <div className="flex gap-x-1">
+        <div className="flex gap-x-1 mt-1">
           <Button
             onClick={props.onCancel}
-            className="mt-1"
             color={ButtonColor.Grey}
+            className="!h-9"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            className="mt-1"
             color={ButtonColor.Black}
+            className="!h-9"
           >
             {props.mode === "edit" ? "Save" : "Create"}
           </Button>
         </div>
       </div>
       {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
-      <div className="flex flex-col gap-y-1 text-sm text-zinc-600 mt-3">
-        <p>* {editGroupPublicGroupExplanation}</p>
-        <p>** {editGroupGroupAssignmentExplanation}</p>
-      </div>
     </div>
   );
 };
