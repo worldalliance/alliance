@@ -16,6 +16,8 @@ type DropdownSelectProps<T extends EnumType> = {
   onChange: (args: KVPair<T>) => void;
   /** Option keys that render as visually distinguished button-style items */
   buttonOptionKeys?: (keyof T)[];
+  /** Icons for different keys */
+  keyIcons?: Record<keyof T, React.ReactNode>;
 };
 
 function DropdownSelect<T extends EnumType>({
@@ -25,6 +27,7 @@ function DropdownSelect<T extends EnumType>({
   value,
   onChange,
   buttonOptionKeys,
+  keyIcons,
 }: DropdownSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -68,7 +71,14 @@ function DropdownSelect<T extends EnumType>({
               }}
             >
               <div className="flex flex-row justify-between items-center">
-                <span>{value}</span>
+                <div className="flex flex-row gap-x-2 items-center">
+                  {keyIcons?.[key as keyof T] && (
+                    <div className="flex items-center justify-center w-4 h-4">
+                      {keyIcons[key as keyof T]}
+                    </div>
+                  )}
+                  <span>{value}</span>
+                </div>
                 {secondaryLabel?.([key, value]) && (
                   <span className="text-zinc-500 !font-mono">
                     {secondaryLabel([key, value])}

@@ -2,6 +2,7 @@ import type { CommunityDto } from "@alliance/shared/client";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import { useMemo } from "react";
 import { useAuth } from "../lib/AuthContext";
+import { Settings } from "lucide-react";
 
 const MANAGE_GROUPS_KEY = "manage";
 
@@ -71,6 +72,9 @@ const CommunitySelectDropdown = ({
       onChange={handleChange}
       buttonOptionKeys={buttonOptionKeys}
       titleOverride={titleOverride}
+      keyIcons={{
+        [MANAGE_GROUPS_KEY]: <Settings />,
+      }}
     />
   );
 };

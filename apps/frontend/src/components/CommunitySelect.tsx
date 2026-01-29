@@ -252,7 +252,7 @@ const CommunitySelect = ({
                       color={
                         isCurrent ? ButtonColor.LightHover : ButtonColor.White
                       }
-                      className="w-full !rounded-none"
+                      className="w-full !rounded-none border-none"
                       onClick={() => onSelectCommunity(community.id)}
                     >
                       <div
@@ -281,7 +281,7 @@ const CommunitySelect = ({
                     key="create"
                     onClick={onCreateCommunity}
                     color={ButtonColor.White}
-                    className="w-full !rounded-none"
+                    className="w-full !rounded-none border-none bg-zinc-50 hover:bg-zinc-100"
                   >
                     <div className="w-full flex flex-row gap-x-2 items-center justify-center m-3 text-zinc-500">
                       <Plus size="14" /> Create a new group
