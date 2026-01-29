@@ -1827,7 +1827,7 @@ export class UserService {
             this.notifRepository.create({
               user: invite.invitingUser,
               category: NotificationCategory.CommunityInviteCreated,
-              message: `Your request to invite ${invite.invitedUser} was approved`,
+              message: `Your request to invite ${invite.invitedUser.name} was approved`,
               webAppLocation: groupUrl({
                 tab: 'groups',
                 communityId: invite.community.id,
