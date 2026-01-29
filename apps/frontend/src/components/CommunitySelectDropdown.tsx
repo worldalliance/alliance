@@ -10,6 +10,7 @@ export type CommunitySelectDropdownProps = {
   titleOverride?: string;
   communities: CommunityDto[] | null;
   currentCommunityId?: number | null;
+  notifCount: number;
   onSelectCommunity: (communityId: number | null | undefined) => void;
   onManageGroups: () => void;
 };
@@ -18,10 +19,13 @@ const CommunitySelectDropdown = ({
   titleOverride,
   communities,
   currentCommunityId,
+  notifCount,
   onSelectCommunity,
   onManageGroups,
 }: CommunitySelectDropdownProps) => {
   const { user } = useAuth();
+
+  const notifSuffix = notifCount > 0 ? ` (${notifCount})` : "";
 
   const { options, value, buttonOptionKeys } = useMemo(() => {
     const list = communities ?? [];
@@ -37,7 +41,7 @@ const CommunitySelectDropdown = ({
     for (const c of ordered) {
       options[String(c.id)] = c.name;
     }
-    options[MANAGE_GROUPS_KEY] = "Manage my groups";
+    options[MANAGE_GROUPS_KEY] = "Manage my groups" + notifSuffix;
 
     const current = ordered.find((c) => c.id === currentCommunityId);
     const value = current?.name ?? ordered[0]?.name ?? "";
@@ -47,7 +51,7 @@ const CommunitySelectDropdown = ({
       value,
       buttonOptionKeys: [MANAGE_GROUPS_KEY],
     };
-  }, [communities, currentCommunityId, user?.id]);
+  }, [communities, currentCommunityId, user?.id, notifSuffix]);
 
   const handleChange = (args: [key: string, value: string]) => {
     const [key] = args;
@@ -71,7 +75,7 @@ const CommunitySelectDropdown = ({
       value={value}
       onChange={handleChange}
       buttonOptionKeys={buttonOptionKeys}
-      titleOverride={titleOverride}
+      titleOverride={titleOverride + notifSuffix}
       keyIcons={{
         [MANAGE_GROUPS_KEY]: <Settings />,
       }}

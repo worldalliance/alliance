@@ -289,12 +289,8 @@ const CommunityPage = () => {
               setParams({ communityId, tab: "activity" });
             }}
             onManageGroups={() => setParams({ tab: "groups" })}
-            titleOverride={
-              "My groups" +
-              (pendingCommunityInvites.length > 0
-                ? ` (${pendingCommunityInvites.length})`
-                : "")
-            }
+            titleOverride={"My groups"}
+            notifCount={pendingCommunityInvites.length}
           />
           {tab !== "groups" && (
             <>
