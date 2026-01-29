@@ -45,7 +45,7 @@ export enum NavbarPage {
   Search = "Search",
   Groups = "Groups",
   Messages = "Messages",
-  Invite = "Invite",
+  Invite = "Invites",
 }
 
 export const destinations: Record<NavbarPage, string> = {

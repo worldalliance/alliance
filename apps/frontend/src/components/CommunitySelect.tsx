@@ -241,7 +241,7 @@ const CommunitySelect = ({
       <div>
         {!!(leaderCommunities.length || !isOnboardingGroupMember) && (
           <>
-            <p className="font-semibold text-xl md:text-2xl">Leader groups</p>
+            <p className="font-semibold text-xl md:text-2xl">Groups you lead</p>
             <List>
               {[
                 ...(leaderCommunities.map((community) => {
@@ -297,7 +297,7 @@ const CommunitySelect = ({
       <div className="flex flex-col gap-y-2">
         <div className="flex flex-row w-full justify-between items-center">
           <p className="font-semibold text-xl md:text-2xl">
-            Member groups
+            Groups you&apos;re a member of
             {!user?.undergoingGroupAssignment
               ? ""
               : nonLeaderCommunities.length

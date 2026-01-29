@@ -40,6 +40,7 @@ import {
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import NoCommunityPage from "./NoCommunityPage";
+import CommunitySelectDropdown from "../../components/CommunitySelectDropdown";
 
 export type Tab =
   | "activity"
@@ -281,23 +282,21 @@ const CommunityPage = () => {
     <TwoColumnLayout
       main={
         <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-0 md:px-3">
+          <CommunitySelectDropdown
+            communities={communities}
+            currentCommunityId={community.id}
+            onSelectCommunity={(communityId) => setParams({ communityId })}
+            onManageGroups={() => setParams({ tab: "groups" })}
+            titleOverride={
+              "My groups" +
+              (pendingCommunityInvites.length > 0
+                ? ` (${pendingCommunityInvites.length})`
+                : "")
+            }
+          />
+
           <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
-            <div className="flex justify-start">
-              <Button
-                color={ButtonColor.White}
-                onClick={() => setParams({ tab: "groups" })}
-                className="!text-sm"
-              >
-                <span className="flex items-center gap-x-2">
-                  <span>Manage groups</span>
-                  {pendingCommunityInvites.length > 0 && (
-                    <span className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
-                      {pendingCommunityInvites.length}
-                    </span>
-                  )}
-                </span>
-              </Button>
-            </div>
+            <div className="flex justify-start"></div>
             <div className="flex flex-row gap-x-2 items-start justify-between">
               <div className="flex flex-col gap-y-4 mb-8">
                 <p className="font-serif font-semibold text-3xl md:text-4xl">
