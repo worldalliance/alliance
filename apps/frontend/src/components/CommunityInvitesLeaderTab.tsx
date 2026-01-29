@@ -23,13 +23,13 @@ import UserSelect, {
 } from "@alliance/sharedweb/ui/UserSelect";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import Card from "@alliance/sharedweb/ui/Card";
-import { Link } from "react-router";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CardStyle } from "@alliance/shared/styles/card";
 import CommunityInviteListItem from "./CommunityInviteListItem";
 import OnetimeInviteListItem from "./OnetimeInviteListItem";
+import OnetimeInviteForm from "./OnetimeInviteForm";
 
-export interface CommunityInvitesTabProps {
+export interface CommunityInvitesLeaderTabProps {
   communityId: number;
   existingMembers: ProfileDto[];
   setInviteNotifCount: (count: number) => void;
@@ -47,11 +47,11 @@ function createdAtComparator(
   return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
 }
 
-const CommunityInvitesTab = ({
+const CommunityInvitesLeaderTab = ({
   communityId,
   existingMembers,
   setInviteNotifCount,
-}: CommunityInvitesTabProps) => {
+}: CommunityInvitesLeaderTabProps) => {
   const [name, setName] = useState("");
   const { user } = useAuth();
 
@@ -280,44 +280,13 @@ const CommunityInvitesTab = ({
         />
 
         {inviteMode === InviteMode.NewMember ? (
-          <Card style={CardStyle.Grey}>
-            <div className="flex flex-col gap-y-2">
-              <p className="font-semibold">
-                Invite a new member to the Alliance and your group
-              </p>
-              <p className="text-zinc-500">
-                This will create a personalized invite page that explains the
-                Alliance and how to sign up.
-              </p>
-              <p className="text-zinc-500">
-                When the new member signs up, they will automatically be added
-                to your group.
-              </p>
-              <Link
-                to="/groups?tab=resources"
-                className="text-green hover:underline"
-              >
-                Invite guide
-              </Link>
-              <div className="flex flex-row gap-x-2 mt-2">
-                <input
-                  type="text"
-                  className="border border-zinc-300 rounded px-3 h-10 flex-1"
-                  placeholder="Enter the invitee's first name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-                <Button
-                  color={ButtonColor.Black}
-                  onClick={handleInvite}
-                  className="!h-10"
-                  disabled={creatingInvite || !name}
-                >
-                  {creatingInvite ? "Creating invite..." : "Create invite"}
-                </Button>
-              </div>
-            </div>
-          </Card>
+          <OnetimeInviteForm
+            inviteeName={name}
+            setInviteeName={setName}
+            creatingInvite={creatingInvite}
+            onCreateInvite={handleInvite}
+            isLeader={true}
+          />
         ) : (
           <Card style={CardStyle.Grey}>
             <div className="flex flex-col gap-y-2">
@@ -416,4 +385,4 @@ const CommunityInvitesTab = ({
   );
 };
 
-export default CommunityInvitesTab;
+export default CommunityInvitesLeaderTab;

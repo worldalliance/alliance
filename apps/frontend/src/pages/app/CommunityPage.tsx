@@ -28,7 +28,8 @@ import FloatingChatPanel from "../../components/FloatingChatpanel";
 import { MessageSquare } from "lucide-react";
 import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../../lib/config";
-import CommunityInvitesTab from "../../components/CommunityInvitesTab";
+import CommunityInvitesLeaderTab from "../../components/CommunityInvitesLeaderTab";
+import CommunityInvitesMemberTab from "../../components/CommunityInvitesMemberTab";
 import CommunitySelect from "../../components/CommunitySelect";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import { useMediaQuery } from "../../lib/useMediaQuery";
@@ -234,7 +235,7 @@ const CommunityPage = () => {
 
   const tabs: (keyof typeof TAB_DISPLAY_NAMES)[] = amLeader
     ? ["activity", "members", "invites", "resources"]
-    : ["activity", "members", "about"];
+    : ["activity", "members", "invites", "about"];
 
   const isLargeScreen = useMediaQuery("(min-width: 1250px)");
   const isChatOpen = messagingEnabled && chatOpen;
@@ -349,6 +350,11 @@ const CommunityPage = () => {
               >
                 <div className="flex flex-row gap-x-2">
                   <span>{TAB_DISPLAY_NAMES[m]}</span>
+                  {m === "invites" && inviteNotifCount > 0 && (
+                    <span className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
+                      {inviteNotifCount}
+                    </span>
+                  )}
                 </div>
               </Button>
             ))}
@@ -385,13 +391,16 @@ const CommunityPage = () => {
               <GroupOrganizerGuidelines />
             </div>
           )}
-          {tab === "invites" && amLeader && (
-            <CommunityInvitesTab
-              communityId={community.id}
-              existingMembers={community.users}
-              setInviteNotifCount={setInviteNotifCount}
-            />
-          )}
+          {tab === "invites" &&
+            (amLeader ? (
+              <CommunityInvitesLeaderTab
+                communityId={community.id}
+                existingMembers={community.users}
+                setInviteNotifCount={setInviteNotifCount}
+              />
+            ) : (
+              <CommunityInvitesMemberTab communityId={community.id} />
+            ))}
           {tab === "edit" && amLeader && (
             <CommunityEditForm
               mode="edit"

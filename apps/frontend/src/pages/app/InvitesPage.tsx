@@ -11,19 +11,18 @@ import {
   userRejectOnetimeInvite,
   userRequestOnetimeInvite,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { useAuth } from "../../lib/AuthContext";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { CardStyle } from "@alliance/shared/styles/card";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import OnetimeInviteListItem from "../../components/OnetimeInviteListItem";
+import OnetimeInviteForm from "../../components/OnetimeInviteForm";
 
 const createdAtComparator = (
   a: { createdAt: string },
@@ -303,80 +302,26 @@ const InvitesPage = () => {
 
     if (isLeaderForSelected) {
       return (
-        <Card style={CardStyle.Grey}>
-          <div className="flex flex-col gap-y-2">
-            <p className="font-semibold">
-              Invite a new member to the Alliance and your group
-            </p>
-            <p className="text-zinc-500">
-              This will create a personalized invite page that explains the
-              Alliance and how to sign up.
-            </p>
-            <p className="text-zinc-500">
-              When the new member signs up, they will automatically be added to
-              your group.
-            </p>
-            <Link
-              to="/groups?tab=resources"
-              className="text-green hover:underline"
-            >
-              Invite guide
-            </Link>
-            <div className="flex flex-row gap-x-2 mt-2">
-              <input
-                type="text"
-                className="border border-zinc-300 rounded px-3 h-10 flex-1"
-                placeholder="Enter the invitee's first name"
-                value={inviteeName}
-                onChange={(e) => setInviteeName(e.target.value)}
-              />
-              <Button
-                color={ButtonColor.Black}
-                onClick={handleInvite}
-                className="!h-10"
-                disabled={creatingInvite || !inviteeName}
-              >
-                {creatingInvite ? "Creating invite..." : "Create invite"}
-              </Button>
-            </div>
-          </div>
-        </Card>
+        <OnetimeInviteForm
+          inviteeName={inviteeName}
+          setInviteeName={setInviteeName}
+          creatingInvite={creatingInvite}
+          onCreateInvite={handleInvite}
+          isLeader={true}
+        />
       );
     }
 
     return (
-      <Card style={CardStyle.Grey}>
-        <div className="flex flex-col gap-y-3">
-          <p className="font-semibold">
-            Request an invite for someone you know
-          </p>
-          <p className="text-zinc-500">
-            A group leader will review and approve your request.
-          </p>
-          <div className="flex flex-col gap-y-2">
-            <input
-              type="text"
-              className="border border-zinc-300 rounded px-3 h-10 flex-1"
-              placeholder="Enter the invitee's first name"
-              value={inviteeName}
-              onChange={(e) => setInviteeName(e.target.value)}
-            />
-            <textarea
-              className="border border-zinc-300 rounded px-3 py-2 h-24 resize-none"
-              placeholder="Optional note for the leaders"
-              value={inviteeDescription}
-              onChange={(e) => setInviteeDescription(e.target.value)}
-            />
-            <Button
-              color={ButtonColor.Black}
-              onClick={handleRequestInvite}
-              disabled={creatingInvite || !inviteeName}
-            >
-              {creatingInvite ? "Requesting..." : "Request invite"}
-            </Button>
-          </div>
-        </div>
-      </Card>
+      <OnetimeInviteForm
+        inviteeName={inviteeName}
+        setInviteeName={setInviteeName}
+        inviteeDescription={inviteeDescription}
+        setInviteeDescription={setInviteeDescription}
+        creatingInvite={creatingInvite}
+        onRequestInvite={handleRequestInvite}
+        isLeader={false}
+      />
     );
   })();
 

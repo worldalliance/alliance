@@ -1638,7 +1638,7 @@ export class UserService {
   async findOnetimeInvitesOverviewForUser(
     userId: number,
   ): Promise<OnetimeInvite[]> {
-    const asdf = await this.onetimeInviteRepository.find({
+    return this.onetimeInviteRepository.find({
       where: [
         { invitingUser: { id: userId } },
         {
@@ -1652,9 +1652,6 @@ export class UserService {
         community: true,
       },
     });
-    console.log({ asdf });
-
-    return asdf;
   }
 
   async invalidateInvite(inviteId: number): Promise<void> {
