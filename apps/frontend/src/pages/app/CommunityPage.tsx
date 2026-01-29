@@ -281,7 +281,7 @@ const CommunityPage = () => {
   return (
     <TwoColumnLayout
       main={
-        <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-0 md:px-3">
+        <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-3">
           <CommunitySelectDropdown
             communities={communities}
             currentCommunityId={community.id}
@@ -432,7 +432,9 @@ const CommunityPage = () => {
             <div className="flex flex-col gap-y-6">
               <CommunitySelect
                 currentCommunityId={community.id}
-                onSelectCommunity={(communityId) => setParams({ communityId })}
+                onSelectCommunity={(communityId) =>
+                  setParams({ communityId, tab: "activity" })
+                }
                 communities={communities}
                 isOnboardingGroupMember={
                   user?.isIntroductoryGroupMember ?? true

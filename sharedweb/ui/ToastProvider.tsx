@@ -434,7 +434,7 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
     <div
       ref={containerRef}
       style={style}
-      className="pointer-events-auto mb-2 w-full max-w-sm rounded-xl border border-zinc-200 bg-zinc-50 text-black shadow-lg ring-1 ring-black/5"
+      className="pointer-events-auto mb-2 w-full max-w-sm rounded border border-zinc-200 bg-white text-black shadow"
     >
       <div className="flex items-start gap-3 px-4 py-3">
         <div className="flex-1">
@@ -449,14 +449,14 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
       <div className="flex justify-end gap-2 px-4 pb-4">
         <button
           type="button"
-          className="rounded-md px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+          className="rounded px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
           onClick={handleCancelClick}
         >
           {toast.cancelLabel}
         </button>
         <button
           type="button"
-          className={`rounded-md px-3 py-1 text-sm font-medium hover:bg-zinc-100 ${popoverConfirmTextClass} ${
+          className={`rounded px-3 py-1 text-sm font-medium hover:bg-zinc-100 ${popoverConfirmTextClass} ${
             confirmDisabled ? "cursor-not-allowed opacity-60" : ""
           }`}
           onClick={handleConfirmClick}

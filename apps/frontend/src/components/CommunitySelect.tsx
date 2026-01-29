@@ -12,7 +12,6 @@ import { useAuth } from "../lib/AuthContext";
 import { Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import React from "react";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import CommunityInviteList from "./CommunityInviteList";
 import {
@@ -173,7 +172,7 @@ const CommunitySelect = ({
         ? await confirm({
             title: "Group assignment",
             message: requestGroupAssignmentConfirmation,
-            confirmLabel: "Yes, reassign me!",
+            confirmLabel: "Yes, reassign me",
             cancelLabel: "No",
             anchorEl: anchor,
             placement: "topleft",
@@ -237,29 +236,32 @@ const CommunitySelect = ({
   );
 
   return (
-    <div className="flex flex-col gap-y-8 py-8">
+    <div className="flex flex-col gap-y-12 py-8">
+      {/* Leader groups */}
       <div>
         {!!(leaderCommunities.length || !isOnboardingGroupMember) && (
-          <>
-            <p className="font-semibold text-xl md:text-2xl">Groups you lead</p>
+          <div className="flex flex-col gap-y-4">
+            <div className="flex flex-col gap-y-1">
+              <p className="font-semibold text-xl md:text-2xl">
+                Groups you lead
+              </p>
+              <p className="text-zinc-500 text-base">
+                You can lead as many groups as you want.
+              </p>
+            </div>
             <List>
               {[
                 ...(leaderCommunities.map((community) => {
-                  const isCurrent = community.id === currentCommunityId;
                   return (
                     <Button
                       key={community.id}
-                      color={
-                        isCurrent ? ButtonColor.LightHover : ButtonColor.White
-                      }
-                      className="w-full !rounded-none border-none"
+                      color={ButtonColor.White}
+                      className="w-full !rounded-none border-none !p-4"
                       onClick={() => onSelectCommunity(community.id)}
                     >
-                      <div
-                        className={"w-full flex flex-row justify-between m-2"}
-                      >
-                        <div className="flex flex-col gap-y-1 text-left">
-                          <p className="text-xl font-semibold">
+                      <div className={"w-full flex flex-row justify-between"}>
+                        <div className="flex flex-col text-left">
+                          <p className="text-lg font-semibold">
                             {community.name}
                           </p>
                           <p className="text-zinc-500">
@@ -281,29 +283,35 @@ const CommunitySelect = ({
                     key="create"
                     onClick={onCreateCommunity}
                     color={ButtonColor.White}
-                    className="w-full !rounded-none border-none bg-zinc-50 hover:bg-zinc-100"
+                    className="w-full !rounded-none border-t border-t-zinc-200 border-x-0 border-b-0"
                   >
-                    <div className="w-full flex flex-row gap-x-2 items-center justify-center m-3 text-zinc-500">
-                      <Plus size="14" /> Create a new group
+                    <div className="w-full flex flex-row gap-x-2 items-center justify-center p-2 text-zinc-500">
+                      <Plus size="14" /> Create group
                     </div>
                   </Button>
                 ),
               ]}
             </List>
-          </>
+          </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-y-2">
-        <div className="flex flex-row w-full justify-between items-center">
-          <p className="font-semibold text-xl md:text-2xl">
-            Groups you&apos;re a member of
-            {!user?.undergoingGroupAssignment
-              ? ""
-              : nonLeaderCommunities.length
-              ? " (reassigning...)"
-              : " (assigning...)"}
-          </p>
+      {/* Non-leader groups */}
+      <div className="flex flex-col gap-y-4">
+        <div className="flex flex-col gap-y-2 md:flex-row w-full justify-between md:items-center">
+          <div className="flex flex-col gap-y-1">
+            <p className="font-semibold text-xl md:text-2xl">
+              Groups you&apos;re a member of
+              {!user?.undergoingGroupAssignment
+                ? ""
+                : nonLeaderCommunities.length
+                ? " (reassigning...)"
+                : " (assigning...)"}
+            </p>
+            <p className="text-zinc-500 text-base">
+              For now, you can only be a member of one group.
+            </p>
+          </div>
           {user?.undergoingGroupAssignment ? (
             <Button color={ButtonColor.Black} onClick={handleCancelAssignment}>
               {nonLeaderCommunities.length
@@ -325,130 +333,136 @@ const CommunitySelect = ({
           )}
         </div>
         {nonLeaderCommunities.length ? (
-          nonLeaderCommunities.map((community) => {
-            const isCurrent = community.id === currentCommunityId;
-            return (
-              <React.Fragment key={community.id}>
+          <List>
+            {nonLeaderCommunities.map((community) => {
+              return (
                 <Button
-                  color={isCurrent ? ButtonColor.LightHover : ButtonColor.White}
-                  className="w-full !rounded-none"
+                  key={community.id}
+                  color={ButtonColor.White}
+                  className="w-full !rounded-none border-none !p-4"
                   onClick={() => onSelectCommunity(community.id)}
                 >
-                  <div className={"w-full flex flex-row justify-between m-2"}>
-                    <div className="flex flex-col gap-y-1 text-left">
-                      <p className="text-xl font-semibold">{community.name}</p>
+                  <div className={"w-full flex flex-row justify-between"}>
+                    <div className="flex flex-col text-left">
+                      <p className="text-lg font-semibold">{community.name}</p>
                       <p className="text-zinc-500">{community.description}</p>
                       <span className="text-zinc-500">
                         {community.users.length}{" "}
                         {community.users.length === 1 ? "member" : "members"}
                       </span>
                     </div>
+                    <Button
+                      color={ButtonColor.Red}
+                      size="small"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void onLeaveGroup(community, event.currentTarget);
+                      }}
+                    >
+                      Leave
+                    </Button>
                   </div>
                 </Button>
-                <div className="w-full flex flex-row justify-end">
-                  <Button
-                    color={ButtonColor.Red}
-                    onClick={(event) =>
-                      void onLeaveGroup(community, event.currentTarget)
-                    }
-                  >
-                    Leave group
-                  </Button>
-                </div>
-              </React.Fragment>
-            );
-          })
+              );
+            })}
+          </List>
         ) : (
-          <span>You are not a member of any groups</span>
+          <span>You are not a member of any group</span>
         )}
-        <div className="mt-4 flex flex-col gap-y-3">
-          <p className="font-semibold text-xl">Public groups</p>
-
-          {publicCommunitiesLoading ? (
-            <div className="flex flex-row items-center gap-x-2 text-zinc-500">
-              <Spinner size="small" />
-              <span>Loading public groups...</span>
-            </div>
-          ) : publicCommunitiesError ? (
-            <span className="text-red-500">{publicCommunitiesError}</span>
-          ) : publicCommunities.length ? (
-            <List>
-              {publicCommunities.map((community) => {
-                const isMember = memberCommunityIds.has(community.id);
-                const isLeader = community.leaders.some(
-                  (leader) => leader.id === user?.id
-                );
-                const isFull =
-                  community.maxCapacity !== null &&
-                  community.users.length >= community.maxCapacity;
-                const isJoining = joiningCommunityId === community.id;
-                const joinDisabled =
-                  isMember || isLeader || isFull || isJoining;
-
-                const joinLabel = isLeader
-                  ? "Leader"
-                  : isMember
-                  ? "Member"
-                  : isFull
-                  ? "Full"
-                  : isJoining
-                  ? "Joining..."
-                  : "Join group";
-
-                return (
-                  <div
-                    key={community.id}
-                    className="flex flex-col gap-y-2 p-4 md:flex-row md:items-start md:justify-between"
-                  >
-                    <div className="flex flex-col gap-y-1">
-                      <p className="text-lg font-semibold">{community.name}</p>
-                      {community.description && (
-                        <p className="text-zinc-500">{community.description}</p>
-                      )}
-                      <span className="text-zinc-500">
-                        {community.users.length}
-                        {community.maxCapacity !== null
-                          ? ` / ${community.maxCapacity}`
-                          : ""}{" "}
-                        members
-                      </span>
-                    </div>
-                    <div className="flex justify-end md:justify-start">
-                      <Button
-                        color={ButtonColor.Black}
-                        disabled={joinDisabled}
-                        onClick={(event) =>
-                          void handleJoinPublicCommunity(
-                            community,
-                            event.currentTarget
-                          )
-                        }
-                      >
-                        {joinLabel}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </List>
-          ) : (
-            <span>No public groups are available right now.</span>
-          )}
-        </div>
       </div>
 
-      <div>
-        {!!pendingCommunityInvites.length && (
-          <div className="flex flex-col gap-y-2">
-            <p className="font-semibold text-xl md:text-2xl">
-              You have pending group invites
-            </p>
-            <CommunityInviteList
-              invites={pendingCommunityInvites}
-              onAccept={handleAcceptInvite}
-              onDecline={handleDeclineInvite}
-            />
+      {/* Pending group invites */}
+      {!!pendingCommunityInvites.length && (
+        <div className="flex flex-col gap-y-2">
+          <p className="font-semibold text-xl md:text-2xl">
+            You have pending group invites
+          </p>
+          <CommunityInviteList
+            invites={pendingCommunityInvites}
+            onAccept={handleAcceptInvite}
+            onDecline={handleDeclineInvite}
+          />
+        </div>
+      )}
+
+      {/* Public groups */}
+      <div className="flex flex-col gap-y-4">
+        <div className="flex flex-col gap-y-1">
+          <p className="font-semibold text-xl md:text-2xl">Public groups</p>
+          <p className="text-zinc-500 text-base">
+            Groups you can join at any time.
+          </p>
+        </div>
+
+        {publicCommunitiesLoading ? (
+          <div className="flex flex-row items-center gap-x-2 text-zinc-500">
+            <Spinner size="small" />
+            <span>Loading public groups...</span>
           </div>
+        ) : publicCommunitiesError ? (
+          <span className="text-red-500">{publicCommunitiesError}</span>
+        ) : publicCommunities.length ? (
+          <List>
+            {publicCommunities.map((community) => {
+              const isMember = memberCommunityIds.has(community.id);
+              const isLeader = community.leaders.some(
+                (leader) => leader.id === user?.id
+              );
+              const isFull =
+                community.maxCapacity !== null &&
+                community.users.length >= community.maxCapacity;
+              const isJoining = joiningCommunityId === community.id;
+              const joinDisabled = isMember || isLeader || isFull || isJoining;
+
+              const joinLabel = isLeader
+                ? "Leader"
+                : isMember
+                ? "Member"
+                : isFull
+                ? "Full"
+                : isJoining
+                ? "Joining..."
+                : "Join";
+
+              return (
+                <div
+                  key={community.id}
+                  className="flex flex-col gap-y-2 p-4 md:flex-row md:items-start md:justify-between"
+                >
+                  <div className="flex flex-col">
+                    <p className="text-lg font-semibold">{community.name}</p>
+                    {community.description && (
+                      <p className="text-zinc-500">{community.description}</p>
+                    )}
+                    <span className="text-zinc-500">
+                      {community.users.length}
+                      {community.maxCapacity !== null
+                        ? ` / ${community.maxCapacity}`
+                        : ""}{" "}
+                      members
+                    </span>
+                  </div>
+                  <div className="flex justify-end md:justify-start">
+                    <Button
+                      color={ButtonColor.Black}
+                      size="small"
+                      disabled={joinDisabled}
+                      onClick={(event) =>
+                        void handleJoinPublicCommunity(
+                          community,
+                          event.currentTarget
+                        )
+                      }
+                    >
+                      {joinLabel}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </List>
+        ) : (
+          <span>No public groups are available right now.</span>
         )}
       </div>
     </div>
