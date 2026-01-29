@@ -1136,7 +1136,7 @@ export class UserService {
 
     const updatedP = this.communityRepository.save(community);
     await Promise.all([
-      await this.notifRepository.save(notifs),
+      this.notifRepository.save(notifs),
       updatedP.then((updated) =>
         this.conversationService.syncCommunityConversationMembers(updated.id),
       ),
