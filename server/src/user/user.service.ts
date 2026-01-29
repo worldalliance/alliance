@@ -40,6 +40,7 @@ import {
   CommunityInviteDto,
   CreateCommunityInviteDto,
   CreateOnetimeInviteDto,
+  RequestCommunityInviteDto,
   RequestOnetimeInviteDto,
 } from './dto/invite.dto';
 import {
@@ -1690,6 +1691,7 @@ export class UserService {
       invitedUser,
       community,
       invitingUser,
+      status: CommunityInviteStatus.InviteePending,
     });
     const notif = this.notifRepository.create({
       user: invitedUser,
@@ -1706,6 +1708,157 @@ export class UserService {
       this.notifRepository.save(notif),
     ]);
     return savedInvite;
+  }
+
+  async requestCommunityInvite(
+    body: RequestCommunityInviteDto,
+    userId: number,
+  ): Promise<CommunityInvite> {
+    const { communityId, invitedUserId } = body;
+
+    const invitingUserP = this.findOneOrFail(userId);
+    const invitedUserP = this.findOneOrFail(invitedUserId);
+    const communityP = this.findCommunityOrFail(communityId);
+
+    const existingInvites = await this.communityInviteRepository.find({
+      where: {
+        invitedUser: { id: invitedUserId },
+        community: { id: communityId },
+      },
+    });
+    if (
+      existingInvites.some(
+        (invite) =>
+          invite.status === CommunityInviteStatus.RequestPending ||
+          invite.status === CommunityInviteStatus.InviteePending,
+      )
+    ) {
+      throw new BadRequestException(
+        'This user already has a pending invite to this community.',
+      );
+    }
+
+    const invitedUser = await invitedUserP;
+    const invitingUser = await invitingUserP;
+    const community = await communityP;
+    const invite = this.communityInviteRepository.create({
+      invitedUser,
+      community,
+      invitingUser,
+      status: CommunityInviteStatus.RequestPending,
+    });
+    const savedInvite = await this.communityInviteRepository.save(invite);
+
+    sendNotificationToLeaders: {
+      const communityWithLeaders = await this.communityRepository.findOne({
+        where: { id: communityId },
+        relations: { leaders: true },
+      });
+      if (!communityWithLeaders?.leaders?.length) {
+        break sendNotificationToLeaders;
+      }
+      for (const leader of communityWithLeaders.leaders) {
+        const notif = this.notifRepository.create({
+          user: leader,
+          category: NotificationCategory.CommunityInviteRequestCreated,
+          message: `${invitingUser.name} requested an invite for ${invitedUser.name} (${community.name})`,
+          webAppLocation: groupUrl({
+            tab: 'invites',
+            communityId: community.id,
+          }),
+          associatedUsers: [invitingUser, invitedUser],
+        });
+        this.notifRepository.save(notif);
+      }
+    }
+
+    return savedInvite;
+  }
+
+  async approveCommunityInvite(
+    inviteId: number,
+    userId: number,
+  ): Promise<CommunityInvite> {
+    const userP = this.findOneOrFail(userId);
+    const invite = await this.communityInviteRepository.findOneOrFail({
+      where: { id: inviteId },
+      relations: { invitedUser: true, community: true },
+    });
+
+    if (invite.status !== CommunityInviteStatus.RequestPending) {
+      throw new BadRequestException(
+        `Invite is not a pending request. Status: ${JSON.stringify(
+          invite.status,
+        )}`,
+      );
+    }
+
+    const user = await userP;
+    if (!user.leaderOfIds.some((cid) => cid === invite.community.id)) {
+      throw new UnauthorizedException(
+        `User is not a leader of community ${invite.community.id}`,
+      );
+    }
+
+    invite.status = CommunityInviteStatus.InviteePending;
+    const savedInvite = await this.communityInviteRepository.save(invite);
+
+    if (invite.invitingUser) {
+      const notif = this.notifRepository.create({
+        user: invite.invitingUser,
+        category: NotificationCategory.CommunityInviteCreated,
+        message: `${invite.invitingUser.name} has invited you to join ${invite.community.name}.`,
+        webAppLocation: groupUrl({
+          tab: 'groups',
+        }),
+        associatedUsers: [],
+      });
+      await this.notifRepository.save(notif);
+    }
+
+    return savedInvite;
+  }
+
+  async rejectCommunityInviteRequest(
+    inviteId: number,
+    userId: number,
+  ): Promise<void> {
+    const userP = this.findOneOrFail(userId);
+    const invite = await this.communityInviteRepository.findOneOrFail({
+      where: { id: inviteId },
+      relations: { invitedUser: true, invitingUser: true, community: true },
+    });
+
+    if (invite.status !== CommunityInviteStatus.RequestPending) {
+      throw new BadRequestException(
+        `Invite is not a pending request. Status: ${JSON.stringify(
+          invite.status,
+        )}`,
+      );
+    }
+
+    const user = await userP;
+    if (!user.leaderOfIds.some((cid) => cid === invite.community.id)) {
+      throw new UnauthorizedException(
+        `User is not a leader of community ${invite.community.id}`,
+      );
+    }
+
+    invite.status = CommunityInviteStatus.RequestRejected;
+    await this.communityInviteRepository.save(invite);
+
+    if (invite.invitingUser) {
+      const notif = this.notifRepository.create({
+        user: invite.invitingUser,
+        category: NotificationCategory.CommunityInviteRequestRejected,
+        message: `Your request to invite ${invite.invitedUser} was rejected`,
+        webAppLocation: groupUrl({
+          tab: 'groups',
+        }),
+        associatedUsers: [user],
+      });
+      await this.notifRepository.save(notif);
+    }
   }
 
   async findCommunityInvites(
@@ -1840,7 +1993,7 @@ export class UserService {
     const notif = this.notifRepository.create({
       user: invite.invitingUser,
       category: NotificationCategory.CommunityInviteRejected,
-      message: `${invite.invitedUser?.name} declined your community invitation`,
+      message: `${invite.invitedUser?.name} declined your invitation to join your group (${invite.community.name})`,
       webAppLocation: groupUrl({
         tab: 'invites',
         communityId: invite.community.id,

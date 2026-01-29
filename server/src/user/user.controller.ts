@@ -46,6 +46,7 @@ import {
   CreateCommunityInviteDto,
   CreateOnetimeInviteDto,
   OnetimeInviteDto,
+  RequestCommunityInviteDto,
   RequestOnetimeInviteDto,
 } from './dto/invite.dto';
 import {
@@ -695,6 +696,40 @@ export class UserController {
     return new CommunityInviteDto(
       await this.userService.createCommunityInvite(body, req.user.sub),
     );
+  }
+
+  @Post('communityInvites/request')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: CommunityInviteDto })
+  async requestCommunityInvite(
+    @Body() body: RequestCommunityInviteDto,
+    @Request() req: JwtRequest,
+  ): Promise<CommunityInviteDto> {
+    return new CommunityInviteDto(
+      await this.userService.requestCommunityInvite(body, req.user.sub),
+    );
+  }
+
+  @Post('communityInvites/:inviteId/approveRequest')
+  @UseGuards(CommunityLeaderGuard)
+  @ApiOkResponse({ type: CommunityInviteDto })
+  async approveCommunityInviteRequest(
+    @Param('inviteId', ParseIntPipe) inviteId: number,
+    @Request() req: JwtRequest,
+  ): Promise<CommunityInviteDto> {
+    return new CommunityInviteDto(
+      await this.userService.approveCommunityInvite(inviteId, req.user.sub),
+    );
+  }
+
+  @Post('communityInvites/:inviteId/rejectRequest')
+  @UseGuards(CommunityLeaderGuard)
+  @ApiOkResponse()
+  async rejectCommunityInviteRequest(
+    @Param('inviteId', ParseIntPipe) inviteId: number,
+    @Request() req: JwtRequest,
+  ): Promise<void> {
+    await this.userService.rejectCommunityInviteRequest(inviteId, req.user.sub);
   }
 
   @Get('communityInvites/:communityId')

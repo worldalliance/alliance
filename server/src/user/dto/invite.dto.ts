@@ -28,6 +28,16 @@ export class CreateCommunityInviteDto {
   communityId: number;
 }
 
+export class RequestCommunityInviteDto {
+  @ApiProperty()
+  @Allow()
+  communityId: number;
+
+  @ApiProperty()
+  @Allow()
+  invitedUserId: number;
+}
+
 export class CommunityInviteDto extends PickType(CommunityInvite, [
   'id',
   'status',

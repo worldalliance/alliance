@@ -104,7 +104,7 @@ export type EditableContent = {
 
 export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 'tag';
 
-export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'removed_from_community' | 'member_left_community' | 'member_joined_community' | 'community_assigned' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected';
+export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'removed_from_community' | 'member_left_community' | 'member_joined_community' | 'community_assigned' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_rejected';
 
 export type CommentParentObject = 'post' | 'action' | 'activity';
 
@@ -803,6 +803,11 @@ export type CommunityInviteDto = {
     community: Community;
     invitedUser?: ProfileDto;
     invitingUser?: ProfileDto;
+};
+
+export type RequestCommunityInviteDto = {
+    communityId: number;
+    invitedUserId: number;
 };
 
 export type CommunityMemberContactInfoDto = {
@@ -3224,6 +3229,47 @@ export type UserCreateCommunityInviteResponses = {
 };
 
 export type UserCreateCommunityInviteResponse = UserCreateCommunityInviteResponses[keyof UserCreateCommunityInviteResponses];
+
+export type UserRequestCommunityInviteData = {
+    body: RequestCommunityInviteDto;
+    path?: never;
+    query?: never;
+    url: '/user/communityInvites/request';
+};
+
+export type UserRequestCommunityInviteResponses = {
+    200: CommunityInviteDto;
+};
+
+export type UserRequestCommunityInviteResponse = UserRequestCommunityInviteResponses[keyof UserRequestCommunityInviteResponses];
+
+export type UserApproveCommunityInviteRequestData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/communityInvites/{inviteId}/approveRequest';
+};
+
+export type UserApproveCommunityInviteRequestResponses = {
+    200: CommunityInviteDto;
+};
+
+export type UserApproveCommunityInviteRequestResponse = UserApproveCommunityInviteRequestResponses[keyof UserApproveCommunityInviteRequestResponses];
+
+export type UserRejectCommunityInviteRequestData = {
+    body?: never;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/communityInvites/{inviteId}/rejectRequest';
+};
+
+export type UserRejectCommunityInviteRequestResponses = {
+    200: unknown;
+};
 
 export type UserGetCommunityInvitesData = {
     body?: never;
