@@ -337,19 +337,6 @@ const InvitesPage = () => {
                 value={communityOptions[communityFilter]}
                 onChange={([key]) => setCommunityFilter(key)}
               />
-            </div>
-
-            <div className="flex flex-col gap-y-3">
-              <p className="font-semibold text-xl md:text-2xl">
-                {isLeaderForSelected
-                  ? "Invite someone to your group"
-                  : "Request an invite"}
-              </p>
-              {communityFilter === "all" && (
-                <p className="text-sm text-zinc-500">
-                  Select a community to create or request an invite.
-                </p>
-              )}
               {inviteForm}
               {error && <p className="text-red-500 text-sm">{error}</p>}
             </div>
