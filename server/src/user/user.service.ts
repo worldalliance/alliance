@@ -1678,7 +1678,7 @@ export class UserService {
     });
     if (
       existingInvites.some(
-        (invite) => invite.status === CommunityInviteStatus.Pending,
+        (invite) => invite.status === CommunityInviteStatus.InviteePending,
       )
     ) {
       throw new BadRequestException(
@@ -1744,11 +1744,11 @@ export class UserService {
     if (invite.invitedUser.id !== userId) {
       throw new BadRequestException();
     }
-    if (invite.status !== CommunityInviteStatus.Pending) {
+    if (invite.status !== CommunityInviteStatus.InviteePending) {
       throw new BadRequestException();
     }
 
-    invite.status = CommunityInviteStatus.Accepted;
+    invite.status = CommunityInviteStatus.InviteeAccepted;
 
     const community = await this.findCommunityOrFail(invite.community.id, {
       users: true,
@@ -1831,10 +1831,10 @@ export class UserService {
     if (invite.invitedUser.id !== userId) {
       throw new BadRequestException();
     }
-    if (invite.status !== CommunityInviteStatus.Pending) {
+    if (invite.status !== CommunityInviteStatus.InviteePending) {
       throw new BadRequestException();
     }
-    invite.status = CommunityInviteStatus.Rejected;
+    invite.status = CommunityInviteStatus.InviteeRejected;
     await this.communityInviteRepository.save(invite);
 
     const notif = this.notifRepository.create({

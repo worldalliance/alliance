@@ -46,7 +46,7 @@ export const IncomingCommunityInvitesProvider = ({
   }, [invites]);
 
   const pendingCommunityInvites = useMemo(() => {
-    return invites.filter((invite) => invite.status === "pending");
+    return invites.filter((invite) => invite.status === "invitee_pending");
   }, [invites]);
 
   const acceptCommunityInvite = useCallback(
@@ -56,7 +56,7 @@ export const IncomingCommunityInvitesProvider = ({
         setInvites((prev) =>
           prev.map((invite) => ({
             ...invite,
-            ...(invite.id === inviteId && { status: "accepted" }),
+            ...(invite.id === inviteId && { status: "invitee_accepted" }),
           }))
         );
       }
@@ -71,7 +71,7 @@ export const IncomingCommunityInvitesProvider = ({
         setInvites((prev) =>
           prev.map((invite) => ({
             ...invite,
-            ...(invite.id === inviteId && { status: "rejected" }),
+            ...(invite.id === inviteId && { status: "invitee_rejected" }),
           }))
         );
       }

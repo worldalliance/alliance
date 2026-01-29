@@ -75,7 +75,7 @@ const CommunityInvitesLeaderTab = ({
         (user) =>
           !existingMembers.some((member) => member.id === user.id) &&
           !existingMemberInvites
-            .filter((invite) => invite.status === "pending")
+            .filter((invite) => invite.status === "invitee_pending")
             .some((invite) => invite.invitedUser?.id === user.id)
       ),
     [allUsers, existingMembers, existingMemberInvites]

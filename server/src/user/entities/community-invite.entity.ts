@@ -17,9 +17,11 @@ import { Community } from './community.entity';
 import { Ty } from 'src/tasks/entities/type';
 
 export enum CommunityInviteStatus {
-  Pending = 'pending',
-  Accepted = 'accepted',
-  Rejected = 'rejected',
+  RequestPending = 'request_pending',
+  RequestRejected = 'request_rejected',
+  InviteePending = 'invitee_pending',
+  InviteeAccepted = 'invitee_accepted',
+  InviteeRejected = 'invitee_rejected',
   Cancelled = 'cancelled',
 }
 
@@ -47,7 +49,6 @@ export class CommunityInvite {
   @Column({
     type: 'enum',
     enum: CommunityInviteStatus,
-    default: CommunityInviteStatus.Pending,
   })
   @ApiProperty({
     enum: CommunityInviteStatus,

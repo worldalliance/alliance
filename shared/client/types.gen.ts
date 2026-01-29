@@ -43,7 +43,7 @@ export type ContractEvent = {
     autoSuspendKey?: string;
 };
 
-export type CommunityInviteStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled';
+export type CommunityInviteStatus = 'request_pending' | 'request_rejected' | 'invitee_pending' | 'invitee_accepted' | 'invitee_rejected' | 'cancelled';
 
 export type CommunityInvite = {
     id: number;
