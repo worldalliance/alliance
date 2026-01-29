@@ -285,7 +285,9 @@ const CommunityPage = () => {
           <CommunitySelectDropdown
             communities={communities}
             currentCommunityId={community.id}
-            onSelectCommunity={(communityId) => setParams({ communityId })}
+            onSelectCommunity={(communityId) => {
+              setParams({ communityId, tab: "activity" });
+            }}
             onManageGroups={() => setParams({ tab: "groups" })}
             titleOverride={
               "My groups" +
@@ -294,70 +296,77 @@ const CommunityPage = () => {
                 : "")
             }
           />
+          {tab !== "groups" && (
+            <>
+              <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
+                <div className="flex justify-start"></div>
+                <div className="flex flex-row gap-x-2 items-start justify-between">
+                  <div className="flex flex-col gap-y-4 mb-8">
+                    <p className="font-serif font-semibold text-3xl md:text-4xl">
+                      {community.name}
+                    </p>
+                    <AppMarkdownWrapper
+                      markdownContent={community.description}
+                    />
+                  </div>
 
-          <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
-            <div className="flex justify-start"></div>
-            <div className="flex flex-row gap-x-2 items-start justify-between">
-              <div className="flex flex-col gap-y-4 mb-8">
-                <p className="font-serif font-semibold text-3xl md:text-4xl">
-                  {community.name}
-                </p>
-                <AppMarkdownWrapper markdownContent={community.description} />
-              </div>
-
-              {amLeader && (
-                <Button
-                  color={ButtonColor.White}
-                  onClick={() => setParams({ tab: "edit" })}
-                  className="!text-sm"
-                >
-                  Edit
-                </Button>
-              )}
-            </div>
-
-            <div
-              className={`max-w-[400px] ${
-                completionData.nTotal === 0 ? " invisible" : ""
-              }`}
-            >
-              <p className="text-sm">
-                {completionData.nCompleted} / {completionData.nTotal} have
-                completed {actionDisplay}
-              </p>
-              <CompletedBar
-                percentage={
-                  completionData.nTotal === 0
-                    ? 100
-                    : (completionData.nCompleted / completionData.nTotal) * 100
-                }
-                height="h-4"
-                dark
-              />
-            </div>
-          </div>
-          <div className="flex flex-row gap-x-2 justify-start mb-4 border-b border-zinc-200">
-            {tabs.map((m) => (
-              <Button
-                color={ButtonColor.Transparent}
-                key={m}
-                onClick={() => setParams({ tab: m })}
-                aria-pressed={m === tab}
-                className={`!border-b-[1.5px] rounded-none ${
-                  m === tab ? "!border-b-green" : "!border-b-transparent"
-                }`}
-              >
-                <div className="flex flex-row gap-x-2">
-                  <span>{TAB_DISPLAY_NAMES[m]}</span>
-                  {m === "invites" && inviteNotifCount > 0 && (
-                    <span className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
-                      {inviteNotifCount}
-                    </span>
+                  {amLeader && (
+                    <Button
+                      color={ButtonColor.White}
+                      onClick={() => setParams({ tab: "edit" })}
+                      className="!text-sm"
+                    >
+                      Edit
+                    </Button>
                   )}
                 </div>
-              </Button>
-            ))}
-          </div>
+
+                <div
+                  className={`max-w-[400px] ${
+                    completionData.nTotal === 0 ? " invisible" : ""
+                  }`}
+                >
+                  <p className="text-sm">
+                    {completionData.nCompleted} / {completionData.nTotal} have
+                    completed {actionDisplay}
+                  </p>
+                  <CompletedBar
+                    percentage={
+                      completionData.nTotal === 0
+                        ? 100
+                        : (completionData.nCompleted / completionData.nTotal) *
+                          100
+                    }
+                    height="h-4"
+                    dark
+                  />
+                </div>
+              </div>
+              <div className="flex flex-row gap-x-2 justify-start mb-4 border-b border-zinc-200">
+                {tabs.map((m) => (
+                  <Button
+                    color={ButtonColor.Transparent}
+                    key={m}
+                    onClick={() => setParams({ tab: m })}
+                    aria-pressed={m === tab}
+                    className={`!border-b-[1.5px] rounded-none ${
+                      m === tab ? "!border-b-green" : "!border-b-transparent"
+                    }`}
+                  >
+                    <div className="flex flex-row gap-x-2">
+                      <span>{TAB_DISPLAY_NAMES[m]}</span>
+                      {m === "invites" && inviteNotifCount > 0 && (
+                        <span className="font-semibold text-xs text-white bg-zinc-500 rounded-md flex justify-center items-center w-5 h-5">
+                          {inviteNotifCount}
+                        </span>
+                      )}
+                    </div>
+                  </Button>
+                ))}
+              </div>
+            </>
+          )}
+
           {tab === "activity" && (
             <CommunityActivityTab
               communityId={community.id}
