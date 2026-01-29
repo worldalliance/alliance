@@ -106,7 +106,6 @@ const InviteForm = ({
           }),
       };
 
-      console.log({body}, 'asdf')
       const response = await userCreateOnetimeInvite({ body });
       if (response.data) {
         successToast("Invite created successfully!");
