@@ -1108,9 +1108,7 @@ export class UserService {
     const { communityId, userId, sendNotif } = params;
 
     const [community, user] = await Promise.all([
-      this.findCommunityOrFail(communityId, {
-        leaders: true,
-      }),
+      this.findCommunityOrFail(communityId),
       this.findOneOrFail(userId),
     ]);
 
