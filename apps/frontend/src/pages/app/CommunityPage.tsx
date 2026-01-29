@@ -281,23 +281,13 @@ const CommunityPage = () => {
   return (
     <TwoColumnLayout
       main={
-        <div className="p-5 xl:p-10 xl:pr-5 max-w-[900px] mx-auto px-3">
-          <CommunitySelectDropdown
-            communities={communities}
-            currentCommunityId={community.id}
-            onSelectCommunity={(communityId) => {
-              setParams({ communityId, tab: "activity" });
-            }}
-            onManageGroups={() => setParams({ tab: "groups" })}
-            titleOverride={"My groups"}
-            notifCount={pendingCommunityInvites.length}
-          />
+        <div className="xl:p-10 xl:pr-5 max-w-[900px] mx-auto p-3 md:p-5">
           {tab !== "groups" && (
             <>
-              <div className="flex flex-col gap-y-2 my-8 px-5 md:px-0">
+              <div className="flex flex-col gap-y-2 my-8">
                 <div className="flex justify-start"></div>
-                <div className="flex flex-row gap-x-2 items-start justify-between">
-                  <div className="flex flex-col gap-y-4 mb-8">
+                <div className="flex flex-col md:flex-row gap-x-2 items-start justify-between mb-8">
+                  <div className="flex flex-col gap-y-4 mb-4 md:mb-0">
                     <p className="font-serif font-semibold text-3xl md:text-4xl">
                       {community.name}
                     </p>
@@ -306,15 +296,27 @@ const CommunityPage = () => {
                     />
                   </div>
 
-                  {amLeader && (
-                    <Button
-                      color={ButtonColor.White}
-                      onClick={() => setParams({ tab: "edit" })}
-                      className="!text-sm"
-                    >
-                      Edit
-                    </Button>
-                  )}
+                  <div className="flex flex-row gap-x-1">
+                    <CommunitySelectDropdown
+                      communities={communities}
+                      currentCommunityId={community.id}
+                      onSelectCommunity={(communityId) => {
+                        setParams({ communityId, tab: "activity" });
+                      }}
+                      onManageGroups={() => setParams({ tab: "groups" })}
+                      titleOverride={"My groups"}
+                      notifCount={pendingCommunityInvites.length}
+                    />
+                    {amLeader && (
+                      <Button
+                        color={ButtonColor.White}
+                        onClick={() => setParams({ tab: "edit" })}
+                        className="!text-sm"
+                      >
+                        Edit
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div

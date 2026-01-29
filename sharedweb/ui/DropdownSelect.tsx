@@ -38,7 +38,7 @@ function DropdownSelect<T extends EnumType>({
   return (
     <div className="relative">
       <button
-        className="font-ibm text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 flex flex-row gap-x-2 items-center"
+        className="text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 flex flex-row gap-x-2 items-center"
         style={{
           fontWeight: 450,
         }}
@@ -61,7 +61,7 @@ function DropdownSelect<T extends EnumType>({
                 onChange([key, value]);
                 setIsOpen(false);
               }}
-              className={`px-3 pr-3 py-2 text-left font-ibm text-sm ${
+              className={`px-3 pr-3 py-2 text-left text-sm ${
                 asButton
                   ? "text-green bg-zinc-50 hover:bg-zinc-100 font-medium"
                   : "hover:bg-zinc-50"

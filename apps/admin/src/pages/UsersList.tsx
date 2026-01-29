@@ -346,7 +346,7 @@ const UsersList: React.FC = () => {
           placeholder="Search by name or email..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="font-ibm text-sm border border-gray-2 text-black bg-white px-3 rounded-sm py-2 w-64 focus:outline-none focus:border-black"
+          className="text-sm border border-gray-2 text-black bg-white px-3 rounded-sm py-2 w-64 focus:outline-none focus:border-black"
         />
         <div className="flex flex-row gap-3 items-center">
           <DropdownSelect
@@ -360,7 +360,7 @@ const UsersList: React.FC = () => {
           <div className="relative" ref={tagDropdownRef}>
             <button
               type="button"
-              className="font-ibm text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 flex flex-row gap-x-2 items-center"
+              className="text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 flex flex-row gap-x-2 items-center"
               style={{ fontWeight: 450 }}
               onClick={() => setIsTagFilterOpen((open) => !open)}
             >
