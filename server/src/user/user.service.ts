@@ -1412,7 +1412,7 @@ export class UserService {
 
     const user = await userP;
     const isAdmin = user.admin;
-    if (isAdmin && communityId && !user.leaderOfIdSet.has(communityId)) {
+    if (!isAdmin && communityId && !user.leaderOfIdSet.has(communityId)) {
       throw new BadRequestException(
         `User is not a leader of community ${communityId}`,
       );
