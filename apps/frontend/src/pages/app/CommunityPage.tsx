@@ -434,9 +434,12 @@ const CommunityPage = () => {
             <div className="flex flex-col gap-y-6">
               <CommunitySelect
                 currentCommunityId={community.id}
-                onSelectCommunity={(communityId) =>
-                  setParams({ communityId, tab: "activity" })
-                }
+                onSelectCommunity={(communityId) => {
+                  setParams({ communityId, tab: "activity" });
+                  if (communityId === null) {
+                    refreshUser();
+                  }
+                }}
                 communities={communities}
                 isOnboardingGroupMember={
                   user?.isIntroductoryGroupMember ?? true
