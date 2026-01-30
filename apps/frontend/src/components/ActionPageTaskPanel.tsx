@@ -82,7 +82,7 @@ const ActionPageTaskPanel = () => {
           </Card>
         </div>
       );
-    case ActionPageTaskPanelState.ActiveButCantParticipate:
+    case ActionPageTaskPanelState.NotAssigned:
       return (
         <div>
           <Card style={CardStyle.Grey} className="rounded-b-none font-medium">

@@ -312,7 +312,7 @@ const ConversationInfoPanel = ({
       <Button
         color={ButtonColor.Transparent}
         onClick={onClose}
-        className="!px-2 !py-2 mx-auto absolute top-5 left-5"
+        className="!px-2 !py-2 mx-auto absolute! top-5 left-5"
       >
         <ChevronLeft size="20" />
       </Button>

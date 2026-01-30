@@ -1,5 +1,5 @@
 import { ProfileDto } from "@alliance/shared/client";
-import { href, Link } from "react-router";
+import { useState } from "react";
 import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 
@@ -12,21 +12,26 @@ const PublicMemberDirectoryCard: React.FC<PublicMemberDirectoryCardProps> = ({
   member,
   showDescription = false,
 }: PublicMemberDirectoryCardProps) => {
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
+
+  const handleDescriptionOpen = () => {
+    setDescriptionOpen(!descriptionOpen);
+  };
+
   return (
-    <Link
+    <div
       key={member.id}
-      to={href("/member/:id", { id: member.id.toString() })}
-      className="p-3 border border-zinc-200 rounded-lg hover:bg-zinc-50"
+      onClick={handleDescriptionOpen}
+      className="p-3 border border-zinc-200 rounded-lg hover:bg-zinc-50 cursor-pointer"
     >
       <div
-        className={`flex flex-col md:flex-row ${
-          showDescription ? "items-start" : "items-center"
-        } gap-2`}
+        className={`flex flex-col md:flex-row ${(showDescription || descriptionOpen) ? "items-start" : "md:items-center"
+          } gap-2`}
       >
         <ProfileImage pfp={member.profilePicture ?? null} size="medium" />
         <div className="flex-1 min-w-0">
           <p className="text-zinc-900 text-base">{member.displayName}</p>
-          {showDescription && (
+          {(showDescription || descriptionOpen) && (
             <div className="text-zinc-500 text-sm">
               <AppMarkdownWrapper
                 markdownContent={member.profileDescription ?? ""}
@@ -35,7 +40,7 @@ const PublicMemberDirectoryCard: React.FC<PublicMemberDirectoryCardProps> = ({
           )}
         </div>
       </div>
-    </Link>
+    </div>
   );
 };
 

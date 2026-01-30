@@ -34,6 +34,54 @@ import React, {
 } from "react";
 
 type ParsedDailyStats = DailyStatsRecord & { parsedDate: Date };
+type ActionStatsWithWithdrawals = ActionStatsRecord & {
+  usersWithdrawn?: number;
+};
+type HoveredActionBar = {
+  action: ActionStatsWithWithdrawals;
+  index: number;
+};
+
+const buildRoundedLeftPath = (
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) => {
+  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+  if (width <= 0 || height <= 0) return "";
+  return [
+    `M ${x + r} ${y}`,
+    `H ${x + width}`,
+    `V ${y + height}`,
+    `H ${x + r}`,
+    `A ${r} ${r} 0 0 1 ${x} ${y + height - r}`,
+    `V ${y + r}`,
+    `A ${r} ${r} 0 0 1 ${x + r} ${y}`,
+    "Z",
+  ].join(" ");
+};
+
+const buildRoundedRightPath = (
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) => {
+  const r = Math.max(0, Math.min(radius, width / 2, height / 2));
+  if (width <= 0 || height <= 0) return "";
+  return [
+    `M ${x} ${y}`,
+    `H ${x + width - r}`,
+    `A ${r} ${r} 0 0 1 ${x + width} ${y + r}`,
+    `V ${y + height - r}`,
+    `A ${r} ${r} 0 0 1 ${x + width - r} ${y + height}`,
+    `H ${x}`,
+    "Z",
+  ].join(" ");
+};
 type MetricKey =
   | "actionsCompleted"
   | "anonFormSubmissions"
@@ -102,7 +150,9 @@ const StatsPage: React.FC = () => {
   const [endInput, setEndInput] = useState<string>(defaultRange.end);
   const [queryRange, setQueryRange] = useState(defaultRange);
   const [stats, setStats] = useState<DailyStatsRecord[]>([]);
-  const [actionStats, setActionStats] = useState<ActionStatsRecord[]>([]);
+  const [actionStats, setActionStats] = useState<ActionStatsWithWithdrawals[]>(
+    []
+  );
   const [aggregateStats, setAggregateStats] =
     useState<AggregateStatsDto | null>(null);
   const [aggregateStatsLoading, setAggregateStatsLoading] =
@@ -115,7 +165,7 @@ const StatsPage: React.FC = () => {
   const [retentionLoading, setRetentionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredActionBar, setHoveredActionBar] =
-    useState<ActionStatsRecord | null>(null);
+    useState<HoveredActionBar | null>(null);
   const [timeToChurnSamples, setTimeToChurnSamples] = useState<
     TimeToChurnSampleDto[]
   >([]);
@@ -126,6 +176,8 @@ const StatsPage: React.FC = () => {
   const [hoveredContractPoint, setHoveredContractPoint] = useState<
     (ContractStatusPointDto & { parsedDate: Date }) | null
   >(null);
+  const [completionRateAbsolute, setCompletionRateAbsolute] =
+    useState<boolean>(false);
   const [completionRateRange, setCompletionRateRange] = useState(() => {
     const end = new Date();
     const start = new Date();
@@ -369,8 +421,12 @@ const StatsPage: React.FC = () => {
       margin.top + margin.bottom + chartActionStats.length * (barHeight + gap);
 
     const maxCompleted = d3.max(chartActionStats, (d) => d.usersCompleted) ?? 0;
-    const maxJoined = d3.max(chartActionStats, (d) => d.usersJoined) ?? 0;
-    const maxValue = Math.max(maxCompleted, maxJoined, 10);
+    const maxTotalExpected =
+      d3.max(
+        chartActionStats,
+        (d) => d.usersJoined + (d.usersWithdrawn ?? 0)
+      ) ?? 0;
+    const maxValue = Math.max(maxCompleted, maxTotalExpected, 10);
 
     const xScale = d3
       .scaleLinear()
@@ -391,6 +447,18 @@ const StatsPage: React.FC = () => {
       maxValue,
     };
   }, [chartActionStats]);
+
+  const hoveredActionTooltipTop = useMemo(() => {
+    if (!hoveredActionBar || !actionBarsGeometry) {
+      return null;
+    }
+    const y =
+      actionBarsGeometry.margin.top +
+      hoveredActionBar.index *
+      (actionBarsGeometry.barHeight + actionBarsGeometry.gap);
+    const centerY = y + actionBarsGeometry.barHeight / 2;
+    return (centerY / actionBarsGeometry.height) * 100;
+  }, [hoveredActionBar, actionBarsGeometry]);
 
   // Cumulative average completion rate data
   const cumulativeCompletionData = useMemo(() => {
@@ -442,6 +510,31 @@ const StatsPage: React.FC = () => {
       actionCount: d.actionCount,
     }));
   }, [cumulativeCompletionData]);
+
+  const completionRateYDomain = useMemo(() => {
+    if (completionRateAbsolute) {
+      return [0, 1] as [number, number];
+    }
+    const values = completionRateChartData
+      .map((d) => d.avgRate)
+      .filter((value): value is number => typeof value === "number")
+      .filter((value) => Number.isFinite(value));
+    if (values.length === 0) {
+      return undefined;
+    }
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const range = Math.max(0, maxValue - minValue);
+    const padding = Math.max(0.01, range * 0.1);
+    let paddedMin = Math.max(0, minValue - padding);
+    let paddedMax = Math.min(1, maxValue + padding);
+    if (paddedMax === paddedMin) {
+      const bump = Math.min(0.05, Math.max(0.01, paddedMax * 0.1));
+      paddedMin = Math.max(0, paddedMin - bump);
+      paddedMax = Math.min(1, paddedMax + bump);
+    }
+    return [paddedMin, paddedMax] as [number, number];
+  }, [completionRateAbsolute, completionRateChartData]);
 
   const completionRateSeries: ChartSeries[] = useMemo(
     () => [
@@ -542,27 +635,37 @@ const StatsPage: React.FC = () => {
       .nice()
       .range([margin.left, width - margin.right]);
 
-    const binCount = Math.min(
-      16,
-      Math.max(6, Math.round(Math.sqrt(churnDurationsWeeks.length)))
-    );
+    const maxWeekLabel = Math.max(1, Math.ceil(xMax));
+    const weeklyThresholds = d3.range(0, maxWeekLabel + 1, 1);
 
     const bins = d3
       .bin<number, number>()
       .domain(xScale.domain() as [number, number])
-      .thresholds(xScale.ticks(binCount))(churnDurationsWeeks);
+      .thresholds(weeklyThresholds)(churnDurationsWeeks);
 
-    const maxCount = d3.max(bins, (bin) => bin.length) ?? 0;
+    const trimmedBins = [...bins];
+    while (
+      trimmedBins.length > 1 &&
+      trimmedBins[trimmedBins.length - 1].length === 0
+    ) {
+      trimmedBins.pop();
+    }
+
+    const maxCount = d3.max(trimmedBins, (bin) => bin.length) ?? 0;
     const yScale = d3
       .scaleLinear()
       .domain([0, Math.max(1, maxCount)])
       .nice()
       .range([height - margin.bottom, margin.top]);
 
-    const tickStep = Math.max(1, Math.round(xMax / 6));
-    const xTicks = d3
-      .range(0, Math.ceil(xMax) + tickStep, tickStep)
-      .filter((tick) => tick <= xMax + 0.0001);
+    const xTicks = trimmedBins.map((bin) => {
+      const x0 = bin.x0 ?? 0;
+      const x1 = bin.x1 ?? x0 + 1;
+      return {
+        value: (x0 + x1) / 2,
+        label: Math.round(x0),
+      };
+    });
     const yTicks = yScale.ticks(5);
 
     return {
@@ -573,7 +676,7 @@ const StatsPage: React.FC = () => {
       yScale,
       xTicks,
       yTicks,
-      bins,
+      bins: trimmedBins,
     };
   }, [churnDurationsWeeks]);
 
@@ -723,10 +826,10 @@ const StatsPage: React.FC = () => {
                 <div className="text-3xl font-bold text-gray-900">
                   {cumulativeCompletionData.length > 0
                     ? (
-                        cumulativeCompletionData[
-                          cumulativeCompletionData.length - 1
-                        ].avgRate * 100
-                      ).toFixed(2)
+                      cumulativeCompletionData[
+                        cumulativeCompletionData.length - 1
+                      ].avgRate * 100
+                    ).toFixed(2)
                     : "[No data]"}
                   %
                 </div>
@@ -736,17 +839,17 @@ const StatsPage: React.FC = () => {
                 <div className="text-3xl font-bold text-gray-900">
                   {parsedContractStatusHistory.length > 0
                     ? (() => {
-                        const latest =
-                          parsedContractStatusHistory[
-                            parsedContractStatusHistory.length - 1
-                          ];
-                        return latest.totalEverSigned > 0
-                          ? (
-                              (latest.churnedCount / latest.totalEverSigned) *
-                              100
-                            ).toFixed(1)
-                          : "0";
-                      })()
+                      const latest =
+                        parsedContractStatusHistory[
+                        parsedContractStatusHistory.length - 1
+                        ];
+                      return latest.totalEverSigned > 0
+                        ? (
+                          (latest.churnedCount / latest.totalEverSigned) *
+                          100
+                        ).toFixed(1)
+                        : "0";
+                    })()
                     : "[No data]"}
                   %
                 </div>
@@ -884,7 +987,7 @@ const StatsPage: React.FC = () => {
       />
 
       {/* Action Stats Bar Chart */}
-      <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="relative overflow-visible rounded-xl border border-gray-200 bg-white">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">
             Action Completion Stats
@@ -946,19 +1049,30 @@ const StatsPage: React.FC = () => {
                 const y =
                   actionBarsGeometry.margin.top +
                   idx * (actionBarsGeometry.barHeight + actionBarsGeometry.gap);
-                const joinedWidth =
-                  actionBarsGeometry.xScale(action.usersJoined) -
+                const usersWithdrawn = action.usersWithdrawn ?? 0;
+                const totalExpected = action.usersJoined + usersWithdrawn;
+                const expectedWidth =
+                  actionBarsGeometry.xScale(totalExpected) -
                   actionBarsGeometry.margin.left;
                 const completedWidth =
                   actionBarsGeometry.xScale(action.usersCompleted) -
                   actionBarsGeometry.margin.left;
+                const withdrawnWidth =
+                  actionBarsGeometry.xScale(usersWithdrawn) -
+                  actionBarsGeometry.margin.left;
                 const isHovered =
-                  hoveredActionBar?.actionId === action.actionId;
+                  hoveredActionBar?.action.actionId === action.actionId;
+                const displayRate =
+                  totalExpected > 0
+                    ? Math.round((action.usersCompleted / totalExpected) * 100)
+                    : 0;
 
                 return (
                   <g
                     key={action.actionId}
-                    onMouseEnter={() => setHoveredActionBar(action)}
+                    onMouseEnter={() =>
+                      setHoveredActionBar({ action, index: idx })
+                    }
                     onMouseLeave={() => setHoveredActionBar(null)}
                     className="cursor-pointer"
                   >
@@ -979,11 +1093,10 @@ const StatsPage: React.FC = () => {
                       y={y + actionBarsGeometry.barHeight / 2}
                       textAnchor="end"
                       dominantBaseline="middle"
-                      className={`text-xs ${
-                        isHovered
+                      className={`text-xs ${isHovered
                           ? "fill-gray-900 font-semibold"
                           : "fill-gray-700"
-                      }`}
+                        }`}
                     >
                       {action.actionName.length > 25
                         ? action.actionName.substring(0, 22) + "..."
@@ -994,36 +1107,65 @@ const StatsPage: React.FC = () => {
                     <rect
                       x={actionBarsGeometry.margin.left}
                       y={y}
-                      width={Math.max(joinedWidth, 0)}
+                      width={Math.max(expectedWidth, 0)}
                       height={actionBarsGeometry.barHeight}
                       rx={4}
                       fill={isHovered ? "#d1d5db" : "#e5e7eb"}
                     />
 
                     {/* Completed bar (foreground) */}
-                    <rect
-                      x={actionBarsGeometry.margin.left}
-                      y={y}
-                      width={Math.max(completedWidth, 0)}
-                      height={actionBarsGeometry.barHeight}
-                      rx={4}
-                      fill={isHovered ? "#15803d" : "#16a34a"}
-                    />
+                    {usersWithdrawn > 0 ? (
+                      Math.max(completedWidth, 0) > 0 ? (
+                        <path
+                          d={buildRoundedLeftPath(
+                            actionBarsGeometry.margin.left,
+                            y,
+                            Math.max(completedWidth, 0),
+                            actionBarsGeometry.barHeight,
+                            4
+                          )}
+                          fill={isHovered ? "#15803d" : "#16a34a"}
+                        />
+                      ) : null
+                    ) : (
+                      <rect
+                        x={actionBarsGeometry.margin.left}
+                        y={y}
+                        width={Math.max(completedWidth, 0)}
+                        height={actionBarsGeometry.barHeight}
+                        rx={4}
+                        fill={isHovered ? "#15803d" : "#16a34a"}
+                      />
+                    )}
+
+                    {/* Withdrawn segment */}
+                    {usersWithdrawn > 0 && withdrawnWidth > 0 && (
+                      <path
+                        d={buildRoundedRightPath(
+                          actionBarsGeometry.margin.left + completedWidth,
+                          y,
+                          Math.max(withdrawnWidth, 0),
+                          actionBarsGeometry.barHeight,
+                          4
+                        )}
+                        fill={isHovered ? "#ea580c" : "#f97316"}
+                      />
+                    )}
 
                     {/* Completion rate label */}
                     <text
                       x={
                         actionBarsGeometry.margin.left +
-                        Math.max(joinedWidth, completedWidth) +
+                        Math.max(expectedWidth, completedWidth + withdrawnWidth) +
                         8
                       }
                       y={y + actionBarsGeometry.barHeight / 2}
                       dominantBaseline="middle"
                       className="fill-gray-600 text-xs"
                     >
-                      {action.usersCompleted}/{action.usersJoined}{" "}
-                      {action.usersJoined > 0
-                        ? `(${Math.round(action.completionRate * 100)}%)`
+                      {action.usersCompleted}/{totalExpected}{" "}
+                      {totalExpected > 0
+                        ? `(${displayRate}%)`
                         : ""}
                     </text>
                   </g>
@@ -1033,29 +1175,48 @@ const StatsPage: React.FC = () => {
           )}
 
           {/* Hover tooltip */}
-          {hoveredActionBar && (
-            <div className="absolute top-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[200px] pointer-events-none">
+          {hoveredActionBar && hoveredActionTooltipTop !== null && (
+            <div
+              className="absolute right-4 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[200px] pointer-events-none"
+              style={{
+                top: `calc(${hoveredActionTooltipTop}% - 8px)`,
+                transform: "translateY(-100%)",
+              }}
+            >
               <p className="font-semibold text-gray-900 mb-2 max-w-[350px]">
-                {hoveredActionBar.actionName}
+                {hoveredActionBar.action.actionName}
               </p>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Completed:</span>
                   <span className="font-medium text-green-600">
-                    {hoveredActionBar.usersCompleted}
+                    {hoveredActionBar.action.usersCompleted}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Withdrawn:</span>
+                  <span className="font-medium text-orange-600">
+                    {hoveredActionBar.action.usersWithdrawn ?? 0}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Joined:</span>
                   <span className="font-medium text-gray-700">
-                    {hoveredActionBar.usersJoined}
+                    {hoveredActionBar.action.usersJoined}
                   </span>
                 </div>
                 <div className="flex justify-between border-t pt-1 mt-1">
                   <span className="text-gray-600">Rate:</span>
                   <span className="font-semibold text-gray-900">
-                    {hoveredActionBar.usersJoined > 0
-                      ? `${Math.round(hoveredActionBar.completionRate * 100)}%`
+                    {hoveredActionBar.action.usersJoined +
+                      (hoveredActionBar.action.usersWithdrawn ?? 0) >
+                      0
+                      ? `${Math.round(
+                        (hoveredActionBar.action.usersCompleted /
+                          (hoveredActionBar.action.usersJoined +
+                            (hoveredActionBar.action.usersWithdrawn ?? 0))) *
+                        100
+                      )}%`
                       : "N/A"}
                   </span>
                 </div>
@@ -1071,8 +1232,12 @@ const StatsPage: React.FC = () => {
             <span className="text-sm text-gray-600">Completed</span>
           </div>
           <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded bg-orange-500" />
+            <span className="text-sm text-gray-600">Withdrawn</span>
+          </div>
+          <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded bg-gray-300" />
-            <span className="text-sm text-gray-600">Joined (Expected)</span>
+            <span className="text-sm text-gray-600">Expected total</span>
           </div>
         </div>
       </div>
@@ -1087,16 +1252,31 @@ const StatsPage: React.FC = () => {
         showArea
         areaSeriesKey="avgRate"
         areaColor="rgba(22, 163, 74, 0.12)"
-        yDomain={[0, 1]}
+        yDomain={completionRateYDomain}
         yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+        showHoverOnlyOnHover
+        yTickLabelDedup
         dateRange={completionRateRange}
         onDateRangeChange={setCompletionRateRange}
+        headerContent={
+          <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 md:ml-auto">
+            <input
+              type="checkbox"
+              checked={completionRateAbsolute}
+              onChange={(event) =>
+                setCompletionRateAbsolute(event.target.checked)
+              }
+              className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-400"
+            />
+            Absolute
+          </label>
+        }
         getHoverContent={(point) => ({
           title: fullDateFormatter.format(point.date),
           items: [
             {
               label: "Avg Rate",
-              value: `${Math.round((point.avgRate as number) * 100)}%`,
+              value: `${((point.avgRate as number) * 100).toFixed(2)}%`,
               color: "#16a34a",
             },
             {
@@ -1320,10 +1500,10 @@ const StatsPage: React.FC = () => {
                     >
                       {hoveredContractPoint.totalEverSigned > 0
                         ? `${Math.round(
-                            (hoveredContractPoint.churnedCount /
-                              hoveredContractPoint.totalEverSigned) *
-                              100
-                          )}% churn`
+                          (hoveredContractPoint.churnedCount /
+                            hoveredContractPoint.totalEverSigned) *
+                          100
+                        )}% churn`
                         : "0% churn"}
                     </text>
                   </>
@@ -1404,10 +1584,10 @@ const StatsPage: React.FC = () => {
                   </g>
                 ))}
                 {churnHistogramGeometry.xTicks.map((tick) => (
-                  <g key={`churn-x-${tick}`}>
+                  <g key={`churn-x-${tick.label}`}>
                     <line
-                      x1={churnHistogramGeometry.xScale(tick)}
-                      x2={churnHistogramGeometry.xScale(tick)}
+                      x1={churnHistogramGeometry.xScale(tick.value)}
+                      x2={churnHistogramGeometry.xScale(tick.value)}
                       y1={churnHistogramGeometry.margin.top}
                       y2={
                         churnHistogramGeometry.height -
@@ -1416,7 +1596,7 @@ const StatsPage: React.FC = () => {
                       stroke="#f3f4f6"
                     />
                     <text
-                      x={churnHistogramGeometry.xScale(tick)}
+                      x={churnHistogramGeometry.xScale(tick.value)}
                       y={
                         churnHistogramGeometry.height -
                         churnHistogramGeometry.margin.bottom +
@@ -1425,7 +1605,7 @@ const StatsPage: React.FC = () => {
                       textAnchor="middle"
                       className="fill-gray-600 text-xs"
                     >
-                      {Math.round(tick)}w
+                      {tick.label}
                     </text>
                   </g>
                 ))}
@@ -1438,8 +1618,8 @@ const StatsPage: React.FC = () => {
                 const barWidth = Math.max(
                   0,
                   churnHistogramGeometry.xScale(x1) -
-                    churnHistogramGeometry.xScale(x0) -
-                    2
+                  churnHistogramGeometry.xScale(x0) -
+                  2
                 );
                 const barHeight =
                   churnHistogramGeometry.yScale(0) -
@@ -1470,7 +1650,7 @@ const StatsPage: React.FC = () => {
                   (churnHistogramGeometry.width -
                     churnHistogramGeometry.margin.left -
                     churnHistogramGeometry.margin.right) /
-                    2 +
+                  2 +
                   churnHistogramGeometry.margin.left
                 }
                 y={churnHistogramGeometry.height - 12}
@@ -1493,9 +1673,8 @@ const StatsPage: React.FC = () => {
             Daily Stats ({parsedStats.length} days)
           </span>
           <svg
-            className={`w-5 h-5 text-gray-500 transition-transform ${
-              dailyStatsTableOpen ? "rotate-180" : ""
-            }`}
+            className={`w-5 h-5 text-gray-500 transition-transform ${dailyStatsTableOpen ? "rotate-180" : ""
+              }`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -1567,9 +1746,8 @@ const StatsPage: React.FC = () => {
               Action Stats ({actionStats.length} actions)
             </span>
             <svg
-              className={`w-5 h-5 text-gray-500 transition-transform ${
-                actionStatsTableOpen ? "rotate-180" : ""
-              }`}
+              className={`w-5 h-5 text-gray-500 transition-transform ${actionStatsTableOpen ? "rotate-180" : ""
+                }`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1624,8 +1802,8 @@ const StatsPage: React.FC = () => {
                               action.completionRate >= 0.9
                                 ? "text-green-600 font-medium"
                                 : action.completionRate >= 0.7
-                                ? "text-yellow-600"
-                                : "text-red-600"
+                                  ? "text-yellow-600"
+                                  : "text-red-600"
                             }
                           >
                             {Math.round(action.completionRate * 100)}%
@@ -1637,8 +1815,8 @@ const StatsPage: React.FC = () => {
                       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
                         {action.memberActionStartDate
                           ? new Date(
-                              action.memberActionStartDate
-                            ).toLocaleDateString()
+                            action.memberActionStartDate
+                          ).toLocaleDateString()
                           : "N/A"}
                       </td>
                     </tr>

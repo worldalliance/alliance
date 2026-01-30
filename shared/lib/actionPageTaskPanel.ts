@@ -4,7 +4,7 @@ import { getLatestEvent } from "./actionUtils";
 export enum ActionPageTaskPanelState {
   PublicOnly = "public_only",
   NotAuthenticated = "not_authenticated",
-  ActiveButCantParticipate = "active_but_cant_participate",
+  NotAssigned = "not_assigned",
   Completed = "completed",
   Declined = "declined",
   MemberActionClosed = "member_action_closed",
@@ -23,11 +23,10 @@ export function getActionPageTaskPanelState(
     return ActionPageTaskPanelState.NotAuthenticated;
 
   if (
-    action.status === "member_action" &&
     !action.canParticipate &&
     !action.preventCompletion
   )
-    return ActionPageTaskPanelState.ActiveButCantParticipate;
+    return ActionPageTaskPanelState.NotAssigned;
 
   if (
     !userRelation ||

@@ -1,7 +1,8 @@
 import { CreateEditableContentDto } from "@alliance/shared/client";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 
 interface ReplyFormProps {
   parentId: number | null;
@@ -42,11 +43,29 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
     [editableContent, onSubmit]
   );
 
+  const { confirm } = useToast();
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  const handleCancel = useCallback(async () => {
+    const ok = editableContent.body.length < 20 ? true : await confirm({
+      title: "Discard draft?",
+      confirmLabel: "Discard",
+      cancelLabel: "Keep writing",
+      anchorEl: cancelRef.current,
+      placement: "top",
+    });
+    if (!ok) return;
+    setEditableContent({ body: "", attachments: [] });
+    setExpanded(false);
+    setReplyingTo(null);
+    onCancel?.();
+  }, [onCancel, confirm, setEditableContent, setReplyingTo, editableContent.body]);
+
+
   return (
     <div
-      className={`rounded relative border border-zinc-200 ${className ?? ""} ${
-        parentId ? "mt-0" : "mt-3"
-      } ${compact ? "p-1 md:p-2 bg-zinc-100" : "p-2 md:p-4 bg-white"}`}
+      className={`rounded relative border border-zinc-200 ${className ?? ""} ${parentId ? "mt-0" : "mt-3"
+        } ${compact ? "p-1 md:p-2 bg-zinc-100" : "p-2 md:p-4 bg-white"}`}
     >
       <form onSubmit={handleSubmit}>
         <EditableContentForm
@@ -73,32 +92,14 @@ const ReplyForm: React.FC<ReplyFormProps> = ({
             <p className="text-sm text-zinc-500 pr-2 hidden sm:block">
               Drag an image to attach
             </p>
-            {parentId && (
-              <Button
-                type="button"
-                color={ButtonColor.Grey}
-                onClick={() => {
-                  setReplyingTo(null);
-                  setEditableContent({ body: "", attachments: [] });
-                  onCancel?.();
-                }}
-              >
-                Cancel
-              </Button>
-            )}
-            {!parentId && (
-              <Button
-                type="button"
-                color={ButtonColor.Grey}
-                onClick={() => {
-                  setEditableContent({ body: "", attachments: [] });
-                  setExpanded(false);
-                  onCancel?.();
-                }}
-              >
-                Cancel
-              </Button>
-            )}
+            <Button
+              ref={cancelRef}
+              type="button"
+              color={ButtonColor.Grey}
+              onClick={handleCancel}
+            >
+              Cancel
+            </Button>
 
             <Button
               type="submit"

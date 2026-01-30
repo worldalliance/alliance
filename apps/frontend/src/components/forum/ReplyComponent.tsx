@@ -395,15 +395,13 @@ const ReplyComponent = ({
         {hasChildren && !compact && (
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`absolute  top-6 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer ${
-              compact ? "left-0" : "-left-6"
-            }`}
+            className={`absolute  top-6 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer ${compact ? "left-0" : "-left-6"
+              }`}
             aria-label={isCollapsed ? "Expand replies" : "Collapse replies"}
           >
             <svg
-              className={`w-4 h-4 transition-transform duration-200 ${
-                isCollapsed ? "-rotate-90" : "rotate-0"
-              }`}
+              className={`w-4 h-4 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : "rotate-0"
+                }`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -421,9 +419,8 @@ const ReplyComponent = ({
         <div className={`border-transparent duration-1000 rounded`}>
           <Card
             key={reply.id}
-            className={`!display-block transition-colors duration-1000 ${newReplyClass} ${
-              compact ? "!p-1 !border-none" : "!p-2 sm:!p-4"
-            } ${user && isReplyingToThis && !isCollapsed && "rounded-b-none"}`}
+            className={`!display-block transition-colors duration-1000 ${newReplyClass} ${compact ? "!p-1 !border-none" : "!p-2 sm:!p-4"
+              } ${user && isReplyingToThis && !isCollapsed && "rounded-b-none"}`}
             flex={false}
             style={homeStyle ? CardStyle.Transparent : CardStyle.White}
           >
@@ -470,11 +467,10 @@ const ReplyComponent = ({
                   .map((childReply) => (
                     <div key={childReply.id}>
                       <div
-                        className={`${
-                          compact
+                        className={`${compact
                             ? "my-3"
                             : "border-t border-zinc-200 my-3 sm:my-4"
-                        } -mx-2 sm:-mx-4`}
+                          } -mx-2 sm:-mx-4`}
                       ></div>
                       <div>
                         <ReplyComponent
@@ -567,8 +563,7 @@ const ReplyComponent = ({
             <div key={childReply.id}>
               <div
                 className={`
-                  ${
-                    compact ? "my-3" : "border-t border-gray-200 my-3 sm:my-4"
+                  ${compact ? "my-3" : "border-t border-gray-200 my-3 sm:my-4"
                   } -mx-2 sm:-mx-4
                `}
               ></div>

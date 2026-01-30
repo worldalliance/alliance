@@ -58,9 +58,8 @@ const Message = ({
   return (
     <>
       <div
-        className={`${className} bg-white hover:bg-zinc-100 items-start rounded-md flex flex-col px-2 py-1 group relative ${
-          isFirstInGroup ? "pt-2" : "pt-1"
-        } ${isFocused ? "!bg-green/20" : ""}`}
+        className={`${className} bg-white hover:bg-zinc-100 items-start rounded-md flex flex-col px-2 py-1 group relative ${isFirstInGroup ? "pt-2" : "pt-1 pr-7"
+          } ${isFocused ? "!bg-green/20" : ""}`}
         ref={ref}
       >
         {message.replyTo && isFirstInReplyGroup && (

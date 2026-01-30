@@ -131,4 +131,16 @@ export class Post {
   @ApiProperty({ type: () => Number, isArray: true })
   @Allow()
   expertIds: number[];
+
+  @ManyToMany(() => User, { onDelete: 'CASCADE', eager: true })
+  @ApiProperty({ type: () => User, isArray: true })
+  @JoinTable()
+  @Allow()
+  @Type(() => User)
+  authors: User[];
+
+  @RelationId((post: Post) => post.authors)
+  @ApiProperty({ type: () => Number, isArray: true })
+  @Allow()
+  authorIds: number[];
 }

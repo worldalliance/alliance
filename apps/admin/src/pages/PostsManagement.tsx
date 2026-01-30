@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { href, useParams, useNavigate } from "react-router";
 import {
   forumGetPostsForAdmin,
+  forumUpdatePostAuthors,
   forumUpdatePostExperts,
   userList,
 } from "@alliance/shared/client";
@@ -23,6 +24,7 @@ const PostsManagementPage: React.FC = () => {
   const [users, setUsers] = useState<UserSelectUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [expertSelection, setExpertSelection] = useState<number[]>([]);
+  const [authorSelection, setAuthorSelection] = useState<number[]>([]);
   const [qaMode, setQaMode] = useState(false);
   const [expertLabel, setExpertLabel] = useState("");
   const { success, error: pushError } = useToast();
@@ -49,6 +51,7 @@ const PostsManagementPage: React.FC = () => {
       if (match && selectedPost?.id !== match.id) {
         setSelectedPost(match);
         setExpertSelection(match.expertIds ?? []);
+        setAuthorSelection(match.authorIds ?? []);
         setQaMode(match.qaMode ?? false);
         setExpertLabel(match.expertLabel ?? "");
       }
@@ -77,6 +80,7 @@ const PostsManagementPage: React.FC = () => {
   const handleSelectPost = (post: PostDto) => {
     setSelectedPost(post);
     setExpertSelection(post.expertIds ?? []);
+    setAuthorSelection(post.authorIds ?? []);
     setQaMode(post.qaMode ?? false);
     setExpertLabel(post.expertLabel ?? "");
     navigate(href(`/posts/:postId?`, { postId: post.id.toString() }));
@@ -86,24 +90,33 @@ const PostsManagementPage: React.FC = () => {
     if (!selectedPost) return;
     setSaving(true);
     try {
-      const response = await forumUpdatePostExperts({
-        path: { id: selectedPost.id },
-        body: {
-          expertIds: expertSelection,
-          qaMode,
-          expertLabel: expertLabel || undefined,
-        },
-      });
-      if (response.data) {
-        setSelectedPost(response.data);
+      const [expertsResponse, authorsResponse] = await Promise.all([
+        forumUpdatePostExperts({
+          path: { id: selectedPost.id },
+          body: {
+            expertIds: expertSelection,
+            qaMode,
+            expertLabel: expertLabel || undefined,
+          },
+        }),
+        forumUpdatePostAuthors({
+          path: { id: selectedPost.id },
+          body: {
+            authorIds: authorSelection,
+          },
+        }),
+      ]);
+      const updatedPost = authorsResponse.data ?? expertsResponse.data;
+      if (updatedPost) {
+        setSelectedPost(updatedPost);
         setPosts((prev) =>
-          prev.map((p) => (p.id === response.data!.id ? response.data! : p))
+          prev.map((p) => (p.id === updatedPost!.id ? updatedPost! : p))
         );
-        success("Post updated", "Expert settings saved successfully");
+        success("Post updated", "Settings saved successfully");
       }
     } catch (err) {
       console.error("Failed to save", err);
-      pushError("Failed to save expert settings");
+      pushError("Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -123,7 +136,7 @@ const PostsManagementPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-semibold">Posts Management</h1>
           <p className="text-sm text-zinc-500">
-            Configure Q&A mode and assign experts to forum posts
+            Configure authors, Q&A mode, and assign experts to forum posts
           </p>
         </div>
 
@@ -138,11 +151,10 @@ const PostsManagementPage: React.FC = () => {
                       key={post.id}
                       type="button"
                       onClick={() => handleSelectPost(post)}
-                      className={`text-left border rounded px-3 py-2 ${
-                        selectedPost?.id === post.id
-                          ? "border-blue bg-blue/10"
-                          : "border-zinc-200 hover:bg-zinc-50"
-                      }`}
+                      className={`text-left border rounded px-3 py-2 ${selectedPost?.id === post.id
+                        ? "border-blue bg-blue/10"
+                        : "border-zinc-200 hover:bg-zinc-50"
+                        }`}
                     >
                       <div className="flex flex-col gap-0.5">
                         <span className="font-medium text-sm">
@@ -154,6 +166,11 @@ const PostsManagementPage: React.FC = () => {
                         {post.qaMode && (
                           <span className="text-xs text-orange-600 font-medium">
                             Q&A Mode Active
+                          </span>
+                        )}
+                        {(post.authorIds?.length ?? 0) > 1 && (
+                          <span className="text-xs text-green">
+                            {post.authorIds?.length} authors
                           </span>
                         )}
                         {(post.expertIds?.length ?? 0) > 0 && (
@@ -173,7 +190,7 @@ const PostsManagementPage: React.FC = () => {
 
           <Card style={CardStyle.White}>
             <div className="flex flex-col gap-4">
-              <h2 className="font-semibold text-lg">Expert Settings</h2>
+              <h2 className="font-semibold text-lg">Post Settings</h2>
               {selectedPost ? (
                 <>
                   <div className="border-b pb-4">
@@ -182,6 +199,18 @@ const PostsManagementPage: React.FC = () => {
                       by {selectedPost.author.displayName}
                     </p>
                   </div>
+
+                  <UserSelect
+                    users={users}
+                    selectedUserIds={authorSelection}
+                    onChange={setAuthorSelection}
+                    loading={usersLoading}
+                    label="Authors"
+                  />
+                  <p className="text-xs text-zinc-500 -mt-2">
+                    All listed authors will be notified of new comments on this
+                    post.
+                  </p>
 
                   <div className="flex items-center gap-3">
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -240,7 +269,7 @@ const PostsManagementPage: React.FC = () => {
                 </>
               ) : (
                 <p className="text-sm text-zinc-500">
-                  Select a post from the list to configure expert settings.
+                  Select a post from the list to configure settings.
                 </p>
               )}
             </div>

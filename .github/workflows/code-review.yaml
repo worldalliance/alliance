@@ -1,4 +1,5 @@
 name: commit review
+
 on:
   push:
     branches-ignore:
@@ -8,17 +9,65 @@ permissions:
   contents: read
 
 jobs:
-  codex:
-    if: ${{ !contains(github.event.head_commit.message, 'Merge branch')}}
+  review:
+    if: ${{ !contains(github.event.head_commit.message, 'Merge branch') }}
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      final_message: ${{ steps.run_codex.outputs.final-message }}
+
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      # --- Claude Code (Anthropic) ---
+
+      - name: Setup Node (for installing Claude Code CLI)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Claude Code CLI
+        run: npm i -g @anthropic-ai/claude-code
+
+      - name: Run Claude Code (headless, Opus)
+        id: run_claude
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set -euo pipefail
+
+          prompt_file="$(mktemp)"
+          cat > "$prompt_file" <<'PROMPT'
+          This is commit for ${{ github.repository }}.
+          Commit SHA: ${{ github.sha }}
+
+          1) Run `git diff ${{ github.sha }}^!` and review only this patch in the context of the repo.
+
+          Review only the changes introduced by the commit.
+          Suggest any improvements, potential bugs, or issues. Attend to high level direction also, such as if there might be a better way to accomplish the same objective.
+
+          Output a final message with your concise thoughts. Be sure to separate this from your other output as a new message so only the review is sent. Do not summarize the commit, just write one short bullet point for each specific issue you found, if any. Do not list things that do not need fixing. End the message with the phrase "[NEEDS_ATTENTION]" if there is a significant issue or possible improvement that the author should address. If everything is fine, do not include this phrase.
+          Only output [NEEDS_ATTENTION] if you are highly confident there is a substantial issue. Look around at related files to make sure you arent missing anything before doing so. If the changes remove a feature or affordance but this removal was clearly intentional by the author, this does not need attention. For example, if a useful thing was removed as the only change in a commit, the author likely intended to remove it. Include full file paths from repository root as well as line numbers for applicable issues in your review.
+          ${{ (github.ref_name == 'main' || github.ref_name == 'staging' || github.ref_name == 'production') && '' || 'This is a WIP feature branch, do not comment on unimplemented features or clearly in-progress areas.' }}
+          PROMPT
+
+          raw_json="$(
+            claude -p "$(cat "$prompt_file")" \
+              --output-format json \
+              --model claude-opus-4-5 \
+              --allowedTools "Read,Bash(git diff:*),Bash(git show:*),Bash(git status:*),Bash(git log:*)" \
+              --max-turns 12
+          )"
+
+          final_message="$(printf "%s" "$raw_json" | jq -r '.result // ""')"
+
+          delim="EOF_$(date +%s%N)"
+          {
+            echo "final_message<<$delim"
+            printf "%s\n" "$final_message"
+            echo "$delim"
+          } >> "$GITHUB_OUTPUT"
+
+      # --- OpenAI codex-action (original review) ---
 
       - name: Run Codex
         id: run_codex
@@ -36,31 +85,165 @@ jobs:
 
             Output a final message with your concise thoughts. Do not summarize the commit, just write one short bullet point for each specific issue you found, if any. End the message with the phrase "[NEEDS_ATTENTION]" if there is a significant issue or possible improvement that the author should address. If everything is fine, do not include this phrase.
             Only output [NEEDS_ATTENTION] if you are highly confident there is a substantial issue. Look around at related files to make sure you arent missing anything before doing so. If the changes remove a feature or affordance but this removal was clearly intentional by the author, this does not need attention. For example, if a useful thing was removed as the only change in a commit, the author likely intended to remove it.
+            Include full file paths from repository root as well as line numbers for applicable issues in your review.
             ${{ (github.ref_name == 'main' || github.ref_name == 'staging' || github.ref_name == 'production') && '' || 'This is a WIP feature branch, do not comment on unimplemented features or clearly in-progress areas.' }}
 
-  post_feedback:
-    runs-on: ubuntu-latest
-    needs: codex
-    if: needs.codex.outputs.final_message != ''
-    steps:
-      - name: Extract Codex summary + NEEDS_ATTENTION flag
+
+      - name: Combine reviews with OpenAI
+        id: combine_reviews
         env:
-          CODEX_FINAL_MESSAGE: ${{ needs.codex.outputs.final_message }}
-        id: extract_codex
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CLAUDE_FINAL_MESSAGE: ${{ steps.run_claude.outputs.final_message }}
+          CODEX_FINAL_MESSAGE: ${{ steps.run_codex.outputs.final-message }}
         run: |
+          set -euo pipefail
+
+          # If both are empty, nothing to do
+          if [ -z "${CLAUDE_FINAL_MESSAGE:-}" ] && [ -z "${CODEX_FINAL_MESSAGE:-}" ]; then
+            {
+              echo "combined_final_message="
+              echo "needs_review=false"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          instructions="You are merging two automated code review outputs into a single concise list of issues. Keep only real, actionable issues, but prune any preamble or commentary. Merge duplicates. Output a markdown bullet list where each bullet is one issue. If there is at least one substantive issue, end the response with the exact text [NEEDS_ATTENTION]. Otherwise do not include that text. Be sure to preserve full file paths and line numbers listed."
+
+          payload="$(jq -nc \
+            --arg instructions "$instructions" \
+            --arg claude "$CLAUDE_FINAL_MESSAGE" \
+            --arg codex "$CODEX_FINAL_MESSAGE" \
+            '{
+              model: "gpt-5.2",
+              messages: [
+                { "role": "developer", "content": $instructions },
+                {
+                  "role": "user",
+                  "content": ("Claude review:\n" + $claude + "\n\nOpenAI review:\n" + $codex)
+                }
+              ]
+            }')"
+
+          response="$(
+            curl -sS https://api.openai.com/v1/chat/completions \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $OPENAI_API_KEY" \
+              -d "$payload"
+          )"
+
+          echo "Response:"
+          echo "----------"
+          printf '%s\n' "$response"
+
+          combined="$(printf "%s" "$response" | jq -r '.choices[0].message.content // ""')"
+
+          echo "Combined review:"
+          echo "----------------"
+          printf '%s\n' "$combined"
+
+          # Compute needs_review flag based on presence of [NEEDS_ATTENTION]
+          if printf '%s\n' "$combined" | grep -q 'NEEDS_ATTENTION'; then
+            needs_review="true"
+          else
+            needs_review="false"
+          fi
+
+          # Expose as step outputs
           delim="EOF_$(date +%s%N)"
           {
-            echo "codex_final_message<<$delim"
-            printf "%s\n" "$CODEX_FINAL_MESSAGE"
+            echo "combined_final_message<<$delim"
+            printf "%s\n" "$combined"
             echo "$delim"
-          } | sed 's|['\''"]||g' >> "$GITHUB_OUTPUT"
+            echo "needs_review=$needs_review"
+          } >> "$GITHUB_OUTPUT"
 
-          echo "$CODEX_FINAL_MESSAGE"
 
-          needs_review=$([[ "$CODEX_FINAL_MESSAGE" =~ NEEDS_ATTENTION ]] && echo "true" || echo "false")
+      - name: Linkify file references for Cursor
+        id: linkify_cursors
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          REVIEW_TEXT: ${{ steps.combine_reviews.outputs.combined_final_message }}
+          # Adjust to your local clone path:
+          CURSOR_FILE_PREFIX: "cursor://file//Users/caseymanning/Documents/alliance/webapp"
+        run: |
+          set -euo pipefail
 
-          echo "$needs_review"
-          echo "needs_review=$needs_review" >> "$GITHUB_OUTPUT"
+          # If there's no review text, just pass through
+          if [ -z "${REVIEW_TEXT:-}" ]; then
+            echo "No combined review text to linkify; passing through."
+            delim="EOF_$(date +%s%N)"
+            {
+              echo "linkified_review<<$delim"
+              printf "%s\n" "${REVIEW_TEXT:-}"
+              echo "$delim"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          instructions="You will be given a short markdown review message that may mention files like \`apps/frontend/src/pages/app/HomePage.tsx:32\` or \`server/src/foo/bar.ts\`.
+          
+          Your job is:
+          - Turn each file reference into a Slack mrkdwn link that opens Cursor on macOS.
+          - Use the URL pattern: <\${CURSOR_FILE_PREFIX}/<repo-relative-path>:<line>|<file-label>>
+          - Example:
+            Input text: \`apps/frontend/src/pages/app/HomePage.tsx:32\`
+            Output: <\${CURSOR_FILE_PREFIX}/apps/frontend/src/pages/app/HomePage.tsx:32|HomePage.tsx:32>
+          - The file-label should usually be \"HomePage.tsx:32\" or similar.
+          - If there is no line number, link the file without a :line suffix in the URL and label.
+          - Do NOT change the wording of bullets except wrapping the file references in links.
+          - Preserve the overall structure and any trailing token like [NEEDS_ATTENTION] exactly if present."
+
+          payload="$(jq -nc \
+            --arg instructions "$instructions" \
+            --arg prefix "$CURSOR_FILE_PREFIX" \
+            --arg text "$REVIEW_TEXT" \
+            '{
+              model: "gpt-4o-mini",
+              messages: [
+                { "role": "developer", "content": ($instructions | gsub("\\${CURSOR_FILE_PREFIX}"; $prefix)) },
+                { "role": "user", "content": $text }
+              ]
+            }')"
+
+          echo "Calling OpenAI to linkify file references..."
+          response="$(
+            curl -sS https://api.openai.com/v1/chat/completions \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer $OPENAI_API_KEY" \
+              -d "$payload" || echo ""
+          )"
+
+          linkified="$REVIEW_TEXT"
+
+          if [ -n "$response" ]; then
+            if echo "$response" | jq -e '.error' >/dev/null 2>&1; then
+              echo "OpenAI API error while linkifying review:" >&2
+              echo "$response" | jq '.' >&2
+              # fall back to original REVIEW_TEXT
+            else
+              tmp="$(printf "%s" "$response" | jq -r '.choices[0].message.content // ""')"
+              if [ -n "$tmp" ]; then
+                linkified="$tmp"
+              else
+                echo "Linkify result empty; falling back to original review text." >&2
+              fi
+            fi
+          else
+            echo "Empty response from OpenAI while linkifying; using original review text." >&2
+          fi
+
+          echo "Linkified review:"
+          echo "-----------------"
+          printf '%s\n' "$linkified"
+
+          delim="EOF_$(date +%s%N)"
+          {
+            echo "linkified_review<<$delim"
+            printf "%s\n" "$linkified"
+            echo "$delim"
+          } >> "$GITHUB_OUTPUT"
+
+      # --- Map GitHub actor -> Slack mention ---
 
       - name: Map GitHub actor to Slack mention
         id: actor_to_slack
@@ -83,14 +266,18 @@ jobs:
           esac
           echo "mention=$mention" >> "$GITHUB_OUTPUT"
 
+      # --- Build Slack payload from combined summary ---
+
       - name: Build Slack payload (needs review)
         id: slack_body_review
-        if: ${{ steps.extract_codex.outputs.needs_review == 'true' }}
+        if: ${{ steps.combine_reviews.outputs.needs_review == 'true' }}
         env:
-          SUMMARY: ${{ steps.extract_codex.outputs.codex_final_message }}
+          SUMMARY: ${{ steps.linkify_cursors.outputs.linkified_review }}
           RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
           SLACK_MENTION: ${{ steps.actor_to_slack.outputs.mention }}
         run: |
+          set -euo pipefail
+
           CLEAN_SUMMARY=$(printf "%s" "$SUMMARY" | sed -E 's/\[NEEDS[ _]ATTENTION\]//g' | sed -E 's/[[:space:]]+$//')
 
           jq -nc \
@@ -127,8 +314,9 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Post to Slack (NEEDS_REVIEW)
-        if: ${{ steps.extract_codex.outputs.needs_review == 'true' && (success() || failure()) }}
+        if: ${{ steps.combine_reviews.outputs.needs_review == 'true' && (success() || failure()) }}
         run: |
           curl -s -X POST -H 'Content-type: application/json' \
             --data '${{ steps.slack_body_review.outputs.payload }}' \
             "${{ secrets.SLACK_WEBHOOK_URL_CLA }}"
+

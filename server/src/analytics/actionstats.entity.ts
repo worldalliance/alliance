@@ -28,6 +28,13 @@ export class ActionStatsRecord {
   })
   usersJoined: number;
 
+  @Column({ default: 0 })
+  @ApiProperty({
+    description:
+      'Number of users who withdrew from this action (declined or wont_complete)',
+  })
+  usersWithdrawn: number;
+
   @Column({ type: 'float' })
   @ApiProperty({
     description: 'Completion rate as a fraction (usersCompleted / usersJoined)',

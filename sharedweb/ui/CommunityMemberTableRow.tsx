@@ -116,9 +116,8 @@ const CommunityMemberTableRow = ({
   return (
     <>
       <tr
-        className={`*:py-4 *:px-2 *:md:px-4 bg-white ${
-          canExpand ? "hover:bg-zinc-50 cursor-pointer" : ""
-        }`}
+        className={`*:py-4 *:px-2 *:md:px-4 bg-white ${canExpand ? "hover:bg-zinc-50 cursor-pointer" : ""
+          }`}
         onClick={canExpand ? () => setExpanded(!expanded) : undefined}
       >
         <td>
@@ -141,9 +140,8 @@ const CommunityMemberTableRow = ({
               <UserDisplayName
                 staff={profile.staff}
                 underline={false}
-                className={`${
-                  currentAwayRange ? "text-zinc-400" : undefined
-                } group-hover:underline`}
+                className={`${currentAwayRange ? "text-zinc-400" : undefined
+                  } group-hover:underline`}
               >
                 {profile.displayName}
                 {currentAwayRange && " (away)"}
@@ -211,7 +209,7 @@ const CommunityMemberTableRow = ({
                     contactInfo.preferredReminderTimeLeaderTz ? (
                       <p>
                         <span className="font-semibold">
-                          Preferred contact time:
+                          Contact time:
                         </span>{" "}
                         {contactInfo.preferredReminderTimeUserTz ?? "Anytime"}{" "}
                         in your time zone
@@ -220,7 +218,7 @@ const CommunityMemberTableRow = ({
                       <div>
                         <p>
                           <span className="font-semibold">
-                            Preferred contact time:
+                            Contact time:
                           </span>
                         </p>
                         <p>

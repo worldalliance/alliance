@@ -115,6 +115,19 @@ const AddRowModal: React.FC<AddRowModalProps> = ({
               <input {...commonInputProps} type="text" inputMode="decimal" />
             );
             break;
+          case "relation":
+            field = (
+              <input
+                {...commonInputProps}
+                type="text"
+                placeholder={
+                  column.relationTarget
+                    ? `Enter ${column.relationTarget} ID`
+                    : "Enter related record ID"
+                }
+              />
+            );
+            break;
           case "date":
             field = <input {...commonInputProps} type="date" />;
             break;

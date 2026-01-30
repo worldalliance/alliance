@@ -48,9 +48,9 @@ import {
   Page,
 } from './schema';
 import { ActionDto } from 'src/actions/dto/action.dto';
-import { City } from 'src/geo/city.entity';
 import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
 import { SlackService } from 'src/slack/slack.service';
+import { UpdateProfileDto } from 'src/user/dto/user.dto';
 
 @Injectable()
 export class TasksService {
@@ -71,7 +71,7 @@ export class TasksService {
     @InjectRepository(ActionShareUrl)
     private actionShareUrlRepository: Repository<ActionShareUrl>,
     private slackService: SlackService,
-  ) {}
+  ) { }
 
   async createForm(createFormDto: CreateFormDto): Promise<Form> {
     return this.formRepository.save(createFormDto);
@@ -245,59 +245,58 @@ export class TasksService {
       'city',
     );
 
-    let userNeedsUpdate = false;
+    const userUpdates: Partial<UpdateProfileDto> = {};
 
     if (phoneNumber) {
       this.logger.log(`Extracted phone number: ${phoneNumber}`);
-      const parsedNumber = parsePhoneNumberWithError(phoneNumber, 'US');
+      try {
+        const parsedNumber = parsePhoneNumberWithError(phoneNumber, 'US');
 
-      if (parsedNumber.isValid()) {
-        this.logger.log(`Valid phone number: ${parsedNumber.number}`);
-        user.phoneNumberValidated = true;
-        user.phoneNumber = parsedNumber.number;
-        userNeedsUpdate = true;
+        if (parsedNumber.isValid()) {
+          this.logger.log(`Valid phone number: ${parsedNumber.number}`);
+          userUpdates.phoneNumber = parsedNumber.number;
+          userUpdates.phoneNumberValidated = true;
 
-        if (!user.optInMms) {
-          const mms = await this.mmsService.sendMms(
-            parsedNumber.number,
-            welcomeMessage,
-            [],
-          );
-          if (mms) {
-            user.optInMms = mms;
-            userNeedsUpdate = true;
-          } else {
-            if (process.env.NODE_ENV === 'production') {
-              await this.slackService.sendMessage(
-                `Failed to send opt-in MMS to ${parsedNumber.number}`,
-              );
+          if (!user.optInMms) {
+            const mms = await this.mmsService.sendMms(
+              parsedNumber.number,
+              welcomeMessage,
+              [],
+            );
+            if (mms) {
+              await this.userService.setOptInMms(user.id, mms.id);
+            } else {
+              if (process.env.NODE_ENV === 'production') {
+                await this.slackService.sendMessage(
+                  `Failed to send opt-in MMS to ${parsedNumber.number}`,
+                );
+              }
             }
           }
+        } else {
+          this.logger.warn(`Parsed an invalid phone number: ${phoneNumber}`);
+          userUpdates.phoneNumber = phoneNumber;
         }
-      } else {
-        this.logger.warn(`Parsed an invalid phone number: ${phoneNumber}`);
-        user.phoneNumber = phoneNumber;
-        userNeedsUpdate = true;
+      } catch {
+        this.logger.warn(`Failed to parse phone number: ${phoneNumber}`);
+        userUpdates.phoneNumber = phoneNumber;
       }
     }
 
     if (city) {
       const parsedCityId = Number.parseInt(city, 10);
       if (Number.isFinite(parsedCityId)) {
-        user.city = { id: parsedCityId } as City;
-        userNeedsUpdate = true;
+        userUpdates.cityId = parsedCityId;
       } else {
         this.logger.warn(`setting custom city from form submission: ${city}`);
-        user.customCityString = city;
-        userNeedsUpdate = true;
+        userUpdates.customCityString = city;
       }
     }
 
     if (preferredReminderTime) {
       try {
         const parsedTime = Temporal.PlainTime.from(preferredReminderTime);
-        user.preferredReminderTime = parsedTime;
-        userNeedsUpdate = true;
+        userUpdates.preferredReminderTime = parsedTime;
       } catch {
         this.logger.warn(
           `Failed to parse preferred reminder time: ${preferredReminderTime}`,
@@ -319,8 +318,7 @@ export class TasksService {
 
     if (timeZone) {
       if (isTimeZoneValid(timeZone)) {
-        user.timeZone = timeZone;
-        userNeedsUpdate = true;
+        userUpdates.timeZone = timeZone;
       } else {
         this.logger.warn(`Invalid time zone: ${timeZone}`);
       }
@@ -332,12 +330,11 @@ export class TasksService {
       'shareInfoPublicly',
     );
     if (shareInfoPublicly !== null) {
-      user.shareInfoPublicly = shareInfoPublicly;
-      userNeedsUpdate = true;
+      userUpdates.shareInfoPublicly = shareInfoPublicly;
     }
 
-    if (userNeedsUpdate) {
-      await this.userService.update(user.id, user);
+    if (Object.keys(userUpdates).length > 0) {
+      await this.userService.update(user.id, userUpdates);
     }
 
     const formResponse = this.formResponseRepository.create({

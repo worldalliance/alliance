@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Comment } from 'src/forum/entities/comment.entity';
 import { EditableContent } from 'src/forum/entities/editablecontent.entity';
+import { Post } from 'src/forum/entities/post.entity';
 import { MailModule } from 'src/mail/mail.module';
 import { MmsModule } from 'src/mms/mms.module';
 import { ActionEventNotifWorker } from 'src/notifs/action-event-notif.worker';
@@ -11,6 +12,7 @@ import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity'
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { Form } from 'src/tasks/entities/form.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
+import { ContractEvent } from '../user/entities/contract-event.entity';
 import { Tag } from '../user/entities/tag.entity';
 import { User } from '../user/entities/user.entity';
 import { UserModule } from '../user/user.module';
@@ -39,6 +41,7 @@ import { SlackModule } from 'src/slack/slack.module';
       ActionActivity,
       Comment,
       EditableContent,
+      Post,
       Tag,
       ActionUpdate,
       ReminderGroup,
@@ -47,6 +50,7 @@ import { SlackModule } from 'src/slack/slack.module';
       Form,
       FormResponse,
       ActionShareUrl,
+      ContractEvent,
     ]),
     UserModule,
     NotifsModule,

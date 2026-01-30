@@ -107,6 +107,8 @@ export type ActionUpdateNotifyType = 'none' | 'action_cohort' | 'all_members' | 
 
 export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'removed_from_community' | 'left_community_reminder' | 'member_left_community' | 'member_joined_community' | 'community_assigned' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_rejected';
 
+export type NotifPriority = 'low' | 'high';
+
 export type CommentParentObject = 'post' | 'action' | 'activity';
 
 export type Comment = {
@@ -149,6 +151,7 @@ export type Notification = {
     id: number;
     category: NotificationCategory;
     message: string;
+    priority: NotifPriority;
     targetContent?: string;
     webAppLocation: string | null;
     mobileAppLocation: string | null;
@@ -472,6 +475,10 @@ export type Action = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
+    /**
+     * Whether the action is an onboarding action (hide for existing members)
+     */
+    onboarding: boolean;
     archived: boolean;
     /**
      * Priority of the action
@@ -1160,6 +1167,10 @@ export type ActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
+    /**
+     * Whether the action is an onboarding action (hide for existing members)
+     */
+    onboarding: boolean;
     archived: boolean;
     /**
      * Priority of the action
@@ -1194,6 +1205,46 @@ export type ActionDto = {
 export type LatLonDto = {
     latitude: number;
     longitude: number;
+};
+
+export type GlobalFeedItemType = 'activity_group' | 'action_update' | 'new_members' | 'forum_comments';
+
+export type GlobalFeedActivityGroupDto = {
+    users: Array<ProfileDto>;
+    actionId: number;
+    actionName: string;
+    activityType: string;
+    count: number;
+};
+
+export type GlobalFeedActionUpdateDto = {
+    id: number;
+    title: string;
+    content: EditableContentDto;
+    date: string;
+    actionId: number;
+    actionName: string;
+};
+
+export type GlobalFeedNewMembersDto = {
+    users: Array<ProfileDto>;
+    count: number;
+};
+
+export type GlobalFeedForumCommentsDto = {
+    users: Array<ProfileDto>;
+    postId: number;
+    postTitle: string;
+    count: number;
+};
+
+export type GlobalFeedItemDto = {
+    type: GlobalFeedItemType;
+    date: string;
+    activityGroup?: GlobalFeedActivityGroupDto;
+    actionUpdate?: GlobalFeedActionUpdateDto;
+    newMembers?: GlobalFeedNewMembersDto;
+    forumComments?: GlobalFeedForumCommentsDto;
 };
 
 export type NotificationScheduleMetadataDto = {
@@ -1281,6 +1332,10 @@ export type CreateActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
+    /**
+     * Whether the action is an onboarding action (hide for existing members)
+     */
+    onboarding: boolean;
     /**
      * Priority of the action
      */
@@ -1373,6 +1428,10 @@ export type UpdateActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete?: boolean;
+    /**
+     * Whether the action is an onboarding action (hide for existing members)
+     */
+    onboarding?: boolean;
     /**
      * Priority of the action
      */
@@ -1643,6 +1702,10 @@ export type ExportActionDto = {
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
      */
     everyoneShouldComplete: boolean;
+    /**
+     * Whether the action is an onboarding action (hide for existing members)
+     */
+    onboarding: boolean;
     archived: boolean;
     /**
      * Priority of the action
@@ -1787,6 +1850,7 @@ export type PostDto = {
     qaMode: boolean;
     expertLabel?: string;
     expertIds: Array<number>;
+    authorIds: Array<number>;
     action?: ActionDto;
     author: ProfileDto;
     commentCount?: number;
@@ -1795,6 +1859,7 @@ export type PostDto = {
     lastComment?: CommentDto;
     likeCount?: number;
     experts?: Array<ProfileDto>;
+    authors?: Array<ProfileDto>;
 };
 
 export type UserCommentDto = {
@@ -1831,6 +1896,10 @@ export type UpdatePostExpertsDto = {
     expertIds: Array<number>;
     qaMode: boolean;
     expertLabel?: string;
+};
+
+export type UpdatePostAuthorsDto = {
+    authorIds: Array<number>;
 };
 
 export type CitySearchDto = {
@@ -3985,6 +4054,21 @@ export type ActionsGetActivityFeedResponses = {
 
 export type ActionsGetActivityFeedResponse = ActionsGetActivityFeedResponses[keyof ActionsGetActivityFeedResponses];
 
+export type ActionsGetGlobalFeedData = {
+    body?: never;
+    path?: never;
+    query: {
+        limit: number;
+    };
+    url: '/actions/globalFeed';
+};
+
+export type ActionsGetGlobalFeedResponses = {
+    200: Array<GlobalFeedItemDto>;
+};
+
+export type ActionsGetGlobalFeedResponse = ActionsGetGlobalFeedResponses[keyof ActionsGetGlobalFeedResponses];
+
 export type ActionsGetActivityData = {
     body?: never;
     path: {
@@ -5228,6 +5312,21 @@ export type ForumUpdatePostExpertsResponses = {
 };
 
 export type ForumUpdatePostExpertsResponse = ForumUpdatePostExpertsResponses[keyof ForumUpdatePostExpertsResponses];
+
+export type ForumUpdatePostAuthorsData = {
+    body: UpdatePostAuthorsDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/forum/admin/posts/{id}/authors';
+};
+
+export type ForumUpdatePostAuthorsResponses = {
+    200: PostDto;
+};
+
+export type ForumUpdatePostAuthorsResponse = ForumUpdatePostAuthorsResponses[keyof ForumUpdatePostAuthorsResponses];
 
 export type GeoSearchCityData = {
     body?: never;

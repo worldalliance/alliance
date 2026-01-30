@@ -65,6 +65,8 @@ type BaseChartProps = {
   yDomain?: [number, number];
   height?: number;
   headerContent?: React.ReactNode;
+  showHoverOnlyOnHover?: boolean;
+  yTickLabelDedup?: boolean;
 };
 
 type DateAxisProps = BaseChartProps & {
@@ -171,7 +173,20 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
     }
 
     const xTicks = xScale.ticks(Math.min(8, data.length));
-    const yTicks = yScale.ticks(6);
+    const rawYTicks = yScale.ticks(6);
+    const dedupeLabels = new Set<string>();
+    const yTicks = props.yTickLabelDedup
+      ? rawYTicks.filter((tick) => {
+          const label = yAxisFormat ? yAxisFormat(tick) : String(tick);
+          const key = label ?? String(tick);
+          if (!key) return true;
+          if (!dedupeLabels.has(key)) {
+            dedupeLabels.add(key);
+            return true;
+          }
+          return false;
+        })
+      : rawYTicks;
 
     const bisectDate = d3.bisector<DataPoint, Date>((d) => d.date!).center;
 
@@ -232,7 +247,20 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
     }));
 
     const xTicks = xScale.ticks(Math.min(8, xExtent[1] - xExtent[0] + 1));
-    const yTicks = yScale.ticks(6);
+    const rawYTicks = yScale.ticks(6);
+    const dedupeLabels = new Set<string>();
+    const yTicks = props.yTickLabelDedup
+      ? rawYTicks.filter((tick) => {
+          const label = yAxisFormat ? yAxisFormat(tick) : String(tick);
+          const key = label ?? String(tick);
+          if (!key) return true;
+          if (!dedupeLabels.has(key)) {
+            dedupeLabels.add(key);
+            return true;
+          }
+          return false;
+        })
+      : rawYTicks;
 
     return {
       width,
@@ -274,8 +302,10 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
 
   // For date charts
   const activePoint = !isNumericAxis(props)
-    ? hoveredPoint ??
-      (props.data.length > 0 ? props.data[props.data.length - 1] : null)
+    ? props.showHoverOnlyOnHover
+      ? hoveredPoint
+      : hoveredPoint ??
+        (props.data.length > 0 ? props.data[props.data.length - 1] : null)
     : null;
   const hoverContent =
     activePoint && !isNumericAxis(props) && props.getHoverContent

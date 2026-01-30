@@ -152,9 +152,8 @@ const MessageInput = ({
 
   return (
     <div
-      className={`flex flex-col gap-y-3 bg-white relative ${
-        compact ? "px-4 pb-2" : "px-8 pb-4"
-      }`}
+      className={`flex flex-col gap-y-3 bg-white relative ${compact ? "px-4 pb-2" : "px-8 pb-4"
+        }`}
     >
       {replyingTo && (
         <Card className="p-3 flex flex-row items-center justify-between">
@@ -211,7 +210,7 @@ const MessageInput = ({
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder="Message"
-          className="w-full border-none bg-transparent p-3 text-black resize-none focus:outline-none pr-9 text-[16px]"
+          className="w-full border-none bg-transparent p-3 text-black resize-none focus:outline-none pr-18 text-[16px]"
           rows={1}
         />
         <div className="absolute right-2 top-0 bottom-0 flex items-center">
@@ -233,7 +232,7 @@ const MessageInput = ({
               <Spinner size="small" />
             </div>
           ) : (
-            <div className="flex flex-row gap-x-1 items-center">
+            <div className="flex flex-row items-center">
               <Button
                 onClick={triggerFilePicker}
                 color={ButtonColor.Transparent}

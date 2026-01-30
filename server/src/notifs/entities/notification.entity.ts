@@ -42,6 +42,11 @@ export enum NotificationCategory {
   CommunityInviteRequestRejected = 'community_invite_request_rejected',
 }
 
+export enum NotifPriority {
+    Low = 'low',
+    High = 'high',
+}
+
 @Entity()
 export class Notification {
   @PrimaryGeneratedColumn()
@@ -64,6 +69,10 @@ export class Notification {
   @Column()
   @ApiProperty()
   message: string;
+
+  @Column({ type: 'enum', enum: NotifPriority, default: NotifPriority.Low })
+  @ApiProperty({ enum: NotifPriority, enumName: 'NotifPriority' })
+  priority: NotifPriority;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()

@@ -11,6 +11,7 @@ import { instanceToPlain } from 'class-transformer';
 import { randomBytes } from 'crypto';
 import { from, Observable } from 'rxjs';
 import { CommentDto, CreateCommentDto } from 'src/forum/dto/comment.dto';
+import { EditableContentDto } from 'src/forum/dto/editablecontent.dto';
 import {
   Comment,
   CommentParentObject,
@@ -39,7 +40,10 @@ import {
   UserActionRelationPillStatus,
   UserActionSummaryDto,
 } from 'src/user/dto/user-action-relations.dto';
-import { ContractEventType } from 'src/user/entities/contract-event.entity';
+import {
+  ContractEvent,
+  ContractEventType,
+} from 'src/user/entities/contract-event.entity';
 import { Tag } from 'src/user/entities/tag.entity';
 import { User } from 'src/user/entities/user.entity';
 import { ProfileDto } from 'src/user/dto/user.dto';
@@ -59,6 +63,12 @@ import {
   CreateReminderGroupDto,
   ExportActionDto,
   FormResponseOutputDto,
+  GlobalFeedActionUpdateDto,
+  GlobalFeedActivityGroupDto,
+  GlobalFeedForumCommentsDto,
+  GlobalFeedItemDto,
+  GlobalFeedItemType,
+  GlobalFeedNewMembersDto,
   LatLonDto,
   ReminderGroupPlanDto,
   SuspensionPlanDto,
@@ -67,6 +77,7 @@ import {
   UpdateActionEventDto,
   UserActionRelation,
 } from './dto/action.dto';
+import { Post } from 'src/forum/entities/post.entity';
 import {
   ActionActivity,
   ActionActivityType,
@@ -92,6 +103,7 @@ import { ShareUrlDto, ShareUrlStatsDto } from './dto/share-url.dto';
 import { Relations } from 'src/utils/Repository';
 import { run } from 'src/utils/promise';
 import { CachedFilter } from 'src/utils/cached-filter';
+import { findLeast } from 'src/utils/filter';
 import {
   computeIsAwayDuringAnyOfLastMemberAction,
   computeIsTaggedOrInManualCohort,
@@ -129,6 +141,10 @@ export class ActionsService {
     private readonly actionShareUrlRepository: Repository<ActionShareUrl>,
     @InjectRepository(FormResponse)
     private readonly formResponseRepository: Repository<FormResponse>,
+    @InjectRepository(ContractEvent)
+    private readonly contractEventRepository: Repository<ContractEvent>,
+    @InjectRepository(Post)
+    private readonly postRepository: Repository<Post>,
     private userService: UserService,
     public eventEmitter: EventEmitter2,
     private readonly notifsService: NotifsService,
@@ -136,7 +152,7 @@ export class ActionsService {
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly forumService: ForumService,
-  ) {}
+  ) { }
 
   async create(createActionDto: CreateActionDto): Promise<Action> {
     const { participatingTags, suiteId, authorIds, ...rest } = createActionDto;
@@ -378,16 +394,16 @@ export class ActionsService {
     const actions = sorted
       ? await this.findAllSorted(relations)
       : await this.actionRepository.find({
-          relations,
-        });
+        relations,
+      });
 
     const user = userId
       ? await this.userService.findOne(userId, {
-          tags: true,
-          awayRanges: true,
-          contractEvents: true,
-          activities: true,
-        })
+        tags: true,
+        awayRanges: true,
+        contractEvents: true,
+        activities: true,
+      })
       : null;
 
     const filtered: Action[] = [];
@@ -430,10 +446,10 @@ export class ActionsService {
           shouldParticipate: shouldParticipate,
           userRelation: user
             ? await this.getActionRelationFromActivities(
-                user.activities.filter(
-                  (activity) => activity.actionId === action.id,
-                ),
-              )
+              user.activities.filter(
+                (activity) => activity.actionId === action.id,
+              ),
+            )
             : undefined,
           reqAuthenticated: !!user,
         });
@@ -479,7 +495,7 @@ export class ActionsService {
     serverSide = false,
   ): Promise<Action> {
     const user = userId
-      ? await this.userService.findOne(userId, { tags: true })
+      ? await this.userService.findOne(userId, { tags: true, contractEvents: true })
       : null;
     const action = await this.actionRepository.findOne({
       where: { id },
@@ -513,7 +529,7 @@ export class ActionsService {
   ): Promise<ActionDto> {
     const action = await this.findOne(id, userId, serverSide);
     const user = userId
-      ? await this.userService.findOne(userId, { tags: true })
+      ? await this.userService.findOne(userId, { tags: true, contractEvents: true })
       : null;
     return new ActionDto(action, {
       canParticipate: user
@@ -859,9 +875,9 @@ export class ActionsService {
 
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(
-          activities.map((a) => a.id),
-          requestingUserId,
-        )
+        activities.map((a) => a.id),
+        requestingUserId,
+      )
       : new Set<number>();
 
     if (comments) {
@@ -964,9 +980,9 @@ export class ActionsService {
 
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(
-          activities.map((a) => a.id),
-          requestingUserId,
-        )
+        activities.map((a) => a.id),
+        requestingUserId,
+      )
       : new Set<number>();
 
     if (comments) {
@@ -1105,9 +1121,9 @@ export class ActionsService {
 
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(
-          activities.map((a) => a.id),
-          requestingUserId,
-        )
+        activities.map((a) => a.id),
+        requestingUserId,
+      )
       : new Set<number>();
 
     if (comments) {
@@ -1154,7 +1170,7 @@ export class ActionsService {
     userId: number,
   ): Promise<boolean> {
     const action = await this.findOne(actionId, userId);
-    const user = await this.userService.findOne(userId, { tags: true });
+    const user = await this.userService.findOne(userId, { tags: true, contractEvents: true });
     if (!user) {
       return false;
     }
@@ -1171,36 +1187,34 @@ export class ActionsService {
     const tags = action.participatingTags;
     const userTagIds = new Set((user.tags || []).map((tag) => tag.id));
     const isMember = tags.some((tag) => userTagIds.has(tag.id));
+
+    if (action.onboarding) {
+      const earliestContractEvent = findLeast(
+        user.contractEvents ?? [],
+        (a, b) => a.date.getTime() - b.date.getTime(),
+      );
+      const earliestActionEvent = findLeast(
+        action.events ?? [],
+        (a, b) => a.date.getTime() - b.date.getTime(),
+      );
+      if (!earliestContractEvent) {
+        return isMember;
+      }
+      if (
+        !earliestActionEvent ||
+        earliestContractEvent.date < earliestActionEvent.date
+      ) {
+        return false;
+      }
+    }
+
     return isMember;
   }
 
   async ensureUserEligibleForAction(action: Action, userId: number) {
-    const user = await this.userService.findOne(userId, { tags: true });
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    if (action.preventCompletion) {
-      throw new ForbiddenException('This action is no longer available');
-    }
-
-    if (action.useManualCohort) {
-      if (action.manualCohortUserIds?.some((m) => m === userId)) {
-        return;
-      } else {
-        throw new ForbiddenException('This action is not available to you');
-      }
-    }
-
-    const userTagIds = new Set((user.tags || []).map((tag) => tag.id));
-    const isMember = action.participatingTags.some((tag) =>
-      userTagIds.has(tag.id),
-    );
-
-    if (!isMember) {
-      throw new ForbiddenException(
-        'This action is not available to your tags.',
-      );
+    const user = await this.userService.findOneOrFail(userId, { tags: true, contractEvents: true });
+    if (!(await this.isEligibleForAction(action, user))) {
+      throw new ForbiddenException('This action is not available to you');
     }
   }
 
@@ -1405,9 +1419,9 @@ export class ActionsService {
 
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(
-          memberActivities.map((a) => a.id),
-          requestingUserId,
-        )
+        memberActivities.map((a) => a.id),
+        requestingUserId,
+      )
       : new Set<number>();
 
     if (comments) {
@@ -1889,7 +1903,7 @@ export class ActionsService {
         fakeGroup.send_range_start &&
         fakeGroup.send_range_end &&
         new Date(fakeGroup.send_range_start).getTime() >
-          new Date(fakeGroup.send_range_end).getTime()
+        new Date(fakeGroup.send_range_end).getTime()
       ) {
         throw new BadRequestException(
           'Send range start must be before the end',
@@ -1955,13 +1969,13 @@ export class ActionsService {
       ...action,
       taskForm: taskForm
         ? await this.formRepository.findOneOrFail({
-            where: { id: action.taskFormId },
-          })
+          where: { id: action.taskFormId },
+        })
         : undefined,
       reminderGroups: reminders
         ? await this.actionEventReminderService.getReminderGroupsForEvent(
-            action.id,
-          )
+          action.id,
+        )
         : undefined,
     };
 
@@ -2231,7 +2245,7 @@ export class ActionsService {
         detail.status = action.optional
           ? UserActionRelationPillStatus.OptionalTask
           : action.latestMemberActionEvent?.deadline &&
-              action.latestMemberActionEvent.deadline < now
+            action.latestMemberActionEvent.deadline < now
             ? UserActionRelationPillStatus.MissedDeadline
             : UserActionRelationPillStatus.Todo;
       }
@@ -2447,6 +2461,7 @@ export class ActionsService {
     for (let i = 0; i < actions.length; i++) {
       const action = actions[i];
       if (!action.suite) continue;
+      if (action.onboarding) continue;
 
       const suiteId = action.suite.id;
       if (!suiteMap.has(suiteId)) {
@@ -2731,5 +2746,271 @@ export class ActionsService {
       .filter((stat) => stat.inviteCount > 0);
 
     return results.sort((a, b) => b.inviteCount - a.inviteCount);
+  }
+
+  /**
+   * Get a unified global feed that includes:
+   * - Activity groups (e.g., "10 people completed [action]") - combined across all time
+   * - Action updates
+   * - New member joins
+   * - Forum comments grouped by post
+   */
+  async getGlobalFeed(limit: number = 15): Promise<GlobalFeedItemDto[]> {
+    const feedItems: GlobalFeedItemDto[] = [];
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const filteredOutActionIds = [9, 10, 11] //TODO: real onboarding flag
+
+    // 1. Fetch recent activities (last week) and group by action + type (no day bucketing)
+    const recentActivities = await this.actionActivityRepository
+      .createQueryBuilder('activity')
+      .leftJoinAndSelect('activity.user', 'user')
+      .leftJoinAndSelect('activity.action', 'action')
+      .select([
+        'activity.id',
+        'activity.type',
+        'activity.actionId',
+        'activity.createdAt',
+        'user.id',
+        'user.name',
+        'user.profilePicture',
+        'user.anonymous',
+        'user.admin',
+        'user.staff',
+        'user.profileDescription',
+        'action.id',
+        'action.name',
+      ])
+      .loadRelationIdAndMap('user.leaderOfIds', 'user.leaderOf')
+      .where('activity.type IN (:...types)', {
+        types: [
+          ActionActivityType.USER_JOINED,
+          ActionActivityType.USER_COMPLETED,
+        ],
+      })
+      .andWhere('activity.createdAt > :oneWeekAgo', { oneWeekAgo })
+      .andWhere('activity.actionId NOT IN (:...filteredOutActionIds)', {
+        filteredOutActionIds,
+      })
+      .orderBy('activity.createdAt', 'DESC')
+      .getMany();
+
+    // Group activities by action + type only (combine across all days)
+    const activityGroups = new Map<
+      string,
+      {
+        activities: ActionActivity[];
+        actionId: number;
+        actionName: string;
+        type: ActionActivityType;
+        latestDate: Date;
+      }
+    >();
+
+    for (const activity of recentActivities) {
+      // Key by action + type only (no date bucketing)
+      const key = `${activity.actionId}-${activity.type}`;
+
+      if (!activityGroups.has(key)) {
+        activityGroups.set(key, {
+          activities: [],
+          actionId: activity.actionId,
+          actionName: activity.action?.name || 'Unknown Action',
+          type: activity.type,
+          latestDate: activity.createdAt,
+        });
+      }
+      const group = activityGroups.get(key)!;
+      group.activities.push(activity);
+      if (activity.createdAt > group.latestDate) {
+        group.latestDate = activity.createdAt;
+      }
+    }
+
+    // Convert activity groups to feed items
+    for (const group of activityGroups.values()) {
+      const uniqueUsers = new Map<number, ProfileDto>();
+      for (const activity of group.activities) {
+        if (activity.user && !uniqueUsers.has(activity.user.id)) {
+          uniqueUsers.set(activity.user.id, new ProfileDto(activity.user));
+        }
+      }
+      const users = Array.from(uniqueUsers.values()).slice(0, 8);
+
+      const activityGroup: GlobalFeedActivityGroupDto = {
+        users,
+        actionId: group.actionId,
+        actionName: group.actionName,
+        activityType:
+          group.type === ActionActivityType.USER_COMPLETED
+            ? 'completed'
+            : 'joined',
+        count: uniqueUsers.size,
+      };
+
+      feedItems.push({
+        type: GlobalFeedItemType.ActivityGroup,
+        date: group.latestDate,
+        activityGroup,
+      });
+    }
+
+    const actionUpdates = await this.actionUpdateRepository.find({
+      where: {
+        visibleAt: MoreThan(oneWeekAgo),
+      },
+      relations: { action: true, content: true },
+      order: { date: 'DESC' },
+      take: 10,
+    });
+
+    for (const update of actionUpdates) {
+      // Only show if visibleAt has passed
+      if (update.visibleAt <= now) {
+        const actionUpdateDto: GlobalFeedActionUpdateDto = {
+          id: update.id,
+          title: update.title,
+          content: update.content
+            ? new EditableContentDto(update.content)
+            : { body: '', attachments: [] },
+          date: update.date,
+          actionId: update.actionId,
+          actionName: update.action?.name || 'Unknown Action',
+        };
+
+        feedItems.push({
+          type: GlobalFeedItemType.ActionUpdate,
+          date: update.date,
+          actionUpdate: actionUpdateDto,
+        });
+      }
+    }
+
+    const signedEvents = await this.contractEventRepository.find({
+      where: {
+        type: ContractEventType.SIGNED,
+        date: MoreThan(oneWeekAgo),
+      },
+      relations: { user: { contractEvents: true } },
+      order: { date: 'DESC' },
+    });
+
+    // Combine all new members into one feed item
+    if (signedEvents.length > 0) {
+      const uniqueNewMembers = new Map<number, ProfileDto>();
+      let latestMemberDate = signedEvents[0]?.date || now;
+
+      for (const event of signedEvents) {
+        if (!event.user) continue;
+        if (!uniqueNewMembers.has(event.user.id)) {
+          uniqueNewMembers.set(event.user.id, new ProfileDto(event.user));
+        }
+        if (event.date > latestMemberDate) {
+          latestMemberDate = event.date;
+        }
+      }
+
+      if (uniqueNewMembers.size > 0) {
+        const newMembers: GlobalFeedNewMembersDto = {
+          users: Array.from(uniqueNewMembers.values()).slice(0, 8),
+          count: uniqueNewMembers.size,
+        };
+
+        feedItems.push({
+          type: GlobalFeedItemType.NewMembers,
+          date: latestMemberDate,
+          newMembers,
+        });
+      }
+    }
+
+    // 4. Fetch recent forum comments grouped by post
+    const recentComments = await this.commentRepository
+      .createQueryBuilder('comment')
+      .leftJoinAndSelect('comment.author', 'author')
+      .select([
+        'comment.id',
+        'comment.parentObjectId',
+        'comment.parentObjectType',
+        'comment.createdAt',
+        'author.id',
+        'author.name',
+        'author.profilePicture',
+        'author.anonymous',
+        'author.admin',
+        'author.staff',
+        'author.profileDescription',
+      ])
+      .loadRelationIdAndMap('author.leaderOfIds', 'author.leaderOf')
+      .where('comment.parentObjectType = :postType', {
+        postType: CommentParentObject.Post,
+      })
+      .andWhere('comment.createdAt > :oneWeekAgo', { oneWeekAgo })
+      .andWhere('comment.deleted = false')
+      .orderBy('comment.createdAt', 'DESC')
+      .getMany();
+
+    // Group comments by post
+    const commentGroups = new Map<
+      number,
+      { users: Map<number, ProfileDto>; latestDate: Date; postId: number }
+    >();
+
+    for (const comment of recentComments) {
+      const postId = comment.parentObjectId;
+
+      if (!commentGroups.has(postId)) {
+        commentGroups.set(postId, {
+          users: new Map(),
+          latestDate: comment.createdAt,
+          postId,
+        });
+      }
+      const group = commentGroups.get(postId)!;
+      if (comment.author && !group.users.has(comment.author.id)) {
+        group.users.set(comment.author.id, new ProfileDto(comment.author));
+      }
+      if (comment.createdAt > group.latestDate) {
+        group.latestDate = comment.createdAt;
+      }
+    }
+
+    // Fetch post titles for the comment groups
+    const postIds = Array.from(commentGroups.keys());
+    if (postIds.length > 0) {
+      const posts = await this.postRepository.find({
+        where: { id: In(postIds), deleted: false },
+        select: ['id', 'title'],
+      });
+
+      const postTitleMap = new Map<number, string>();
+      for (const post of posts) {
+        postTitleMap.set(post.id, post.title);
+      }
+
+      // Convert comment groups to feed items
+      for (const group of commentGroups.values()) {
+        const postTitle = postTitleMap.get(group.postId);
+        if (!postTitle) continue; // Skip if post was deleted
+
+        const forumComments: GlobalFeedForumCommentsDto = {
+          users: Array.from(group.users.values()).slice(0, 8),
+          postId: group.postId,
+          postTitle,
+          count: group.users.size,
+        };
+
+        feedItems.push({
+          type: GlobalFeedItemType.ForumComments,
+          date: group.latestDate,
+          forumComments,
+        });
+      }
+    }
+
+    feedItems.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+    return feedItems.slice(0, limit);
   }
 }

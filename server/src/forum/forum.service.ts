@@ -46,7 +46,7 @@ export class ForumService {
     private editableContentRepository: Repository<EditableContent>,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly slackService: SlackService,
-  ) {}
+  ) { }
 
   async createPost(
     createPostDto: CreatePostDto,
@@ -80,10 +80,14 @@ export class ForumService {
   }
 
   postIsVisible(post: Post, userId?: number): boolean {
+    const isAuthor =
+      userId !== undefined &&
+      (post.authorId === userId ||
+        (post.authorIds ?? []).includes(userId));
     return (
       (!post.visibleAt ||
         post.visibleAt < new Date() ||
-        (userId !== undefined && post.authorId === userId)) &&
+        isAuthor) &&
       !post.deleted
     );
   }
@@ -98,8 +102,8 @@ export class ForumService {
         Comment,
         'comment',
         'comment.parentObjectId = post.id ' +
-          'AND comment.parentObjectType = :parentType ' +
-          'AND comment.deleted = false',
+        'AND comment.parentObjectType = :parentType ' +
+        'AND comment.deleted = false',
         { parentType: CommentParentObject.Post },
       )
       .where('post.deleted = :deleted', { deleted: false })
@@ -127,7 +131,19 @@ export class ForumService {
     const raw = visible.map((v) => v.raw);
     const postIds = posts.map((p) => p.id);
 
-    // 2) Fetch last comment per post in one query using DISTINCT ON (Postgres)
+    // 2) Fetch authors per post (ManyToMany can't be joined in the grouped query)
+    const postsWithAuthors = await this.postRepository.find({
+      where: { id: In(postIds) },
+      relations: { authors: true },
+    });
+    const authorsByPostId = new Map(
+      postsWithAuthors.map((p) => [p.id, p.authors]),
+    );
+    for (const post of posts) {
+      post.authors = authorsByPostId.get(post.id) ?? [];
+    }
+
+    // 3) Fetch last comment per post in one query using DISTINCT ON (Postgres)
     const lastComments = await this.commentRepository
       .createQueryBuilder('comment')
       .leftJoinAndSelect('comment.author', 'author')
@@ -161,7 +177,7 @@ export class ForumService {
     const posts = (
       await this.postRepository.find({
         where: { actionId, deleted: false },
-        relations: { author: true, action: true, editableContent: true },
+        relations: { author: true, action: true, editableContent: true, authors: true },
         order: { updatedAt: 'DESC' },
       })
     ).filter((post) => this.postIsVisible(post));
@@ -187,7 +203,7 @@ export class ForumService {
   async findOnePost(id: number, userId?: number): Promise<Post> {
     const post = await this.postRepository.findOne({
       where: { id },
-      relations: { author: true, action: true, editableContent: true },
+      relations: { author: true, action: true, editableContent: true, authors: true },
     });
 
     if (!post || !this.postIsVisible(post, userId)) {
@@ -427,7 +443,7 @@ export class ForumService {
       relations: { author: true, editableContent: true },
     });
 
-    this.sendNotifsForNewComment(replyWithAuthor);
+    await this.sendNotifsForNewComment(replyWithAuthor);
 
     return new CommentDto(replyWithAuthor);
   }
@@ -449,9 +465,12 @@ export class ForumService {
     if (comment.parentObjectType === CommentParentObject.Post) {
       const post = await this.postRepository.findOneOrFail({
         where: { id: comment.parentObjectId, deleted: false },
-        relations: { author: true },
+        relations: { author: true, authors: true },
       });
       usersToNotify.push(post.author);
+      if (post.authors?.length) {
+        usersToNotify.push(...post.authors);
+      }
     }
     if (comment.parentObjectType === CommentParentObject.Activity) {
       const activity = await this.actionActivityRepository.findOneOrFail({
@@ -462,7 +481,14 @@ export class ForumService {
       actionIds.set(activity.id, activity.action.id);
     }
 
-    for (const userToNotify of usersToNotify) {
+    const seenIds = new Set<number>();
+    const uniqueUsersToNotify = usersToNotify.filter((user) => {
+      if (seenIds.has(user.id)) return false;
+      seenIds.add(user.id);
+      return true;
+    });
+
+    for (const userToNotify of uniqueUsersToNotify) {
       if (userToNotify.id === comment.authorId) {
         continue;
       }
@@ -545,13 +571,13 @@ export class ForumService {
     const object =
       type === 'comment'
         ? await this.commentRepository.findOne({
-            where: { id },
-            relations: { likes: true, author: true },
-          })
+          where: { id },
+          relations: { likes: true, author: true },
+        })
         : await this.postRepository.findOne({
-            where: { id },
-            relations: { likes: true, author: true },
-          });
+          where: { id },
+          relations: { likes: true, author: true, authors: true },
+        });
 
     if (!object) {
       throw new NotFoundException(`${type} with ID "${id}" not found`);
@@ -590,30 +616,46 @@ export class ForumService {
   }
 
   private async sendPostLikeNotification(post: Post, liker: User) {
-    if (!post.author || post.authorId === liker.id) {
-      return;
+    const allAuthors: User[] = [];
+    if (post.author) {
+      allAuthors.push(post.author);
     }
-    const groupingKey = `forum_like:post:${post.id}`;
-    const existingNotif =
-      await this.likeNotificationService.getActiveLikeNotification({
-        ownerId: post.authorId,
+    if (post.authors?.length) {
+      allAuthors.push(...post.authors);
+    }
+    const seenIds = new Set<number>();
+    const uniqueAuthors = allAuthors.filter((u) => {
+      if (seenIds.has(u.id)) return false;
+      seenIds.add(u.id);
+      return true;
+    });
+
+    for (const owner of uniqueAuthors) {
+      if (owner.id === liker.id) {
+        continue;
+      }
+      const groupingKey = `forum_like:post:${post.id}:user:${owner.id}`;
+      const existingNotif =
+        await this.likeNotificationService.getActiveLikeNotification({
+          ownerId: owner.id,
+          targetType: 'post',
+          targetId: post.id,
+          groupingKey,
+        });
+      if (this.notificationIncludesUser(existingNotif, liker.id)) {
+        continue;
+      }
+      await this.likeNotificationService.createOrUpdate({
+        owner,
+        liker,
         targetType: 'post',
         targetId: post.id,
+        targetContent: post.title,
+        webAppLocation: postUrl(post.id),
         groupingKey,
+        existingNotification: existingNotif ?? undefined,
       });
-    if (this.notificationIncludesUser(existingNotif, liker.id)) {
-      return;
     }
-    await this.likeNotificationService.createOrUpdate({
-      owner: post.author,
-      liker,
-      targetType: 'post',
-      targetId: post.id,
-      targetContent: post.title,
-      webAppLocation: postUrl(post.id),
-      groupingKey,
-      existingNotification: existingNotif ?? undefined,
-    });
   }
 
   private async sendCommentLikeNotification(comment: Comment, liker: User) {
@@ -691,12 +733,18 @@ export class ForumService {
   }
 
   async findPostsByUser(userId: number): Promise<Post[]> {
-    return (
-      await this.postRepository.find({
-        where: { authorId: userId, deleted: false },
-        relations: { author: true, action: true },
-      })
-    ).filter((post) => this.postIsVisible(post, userId));
+    const posts = await this.postRepository
+      .createQueryBuilder('post')
+      .leftJoinAndSelect('post.author', 'author')
+      .leftJoinAndSelect('post.action', 'action')
+      .leftJoin('post.authors', 'coAuthor')
+      .where('post.deleted = :deleted', { deleted: false })
+      .andWhere(
+        '(post.authorId = :userId OR coAuthor.id = :userId)',
+        { userId },
+      )
+      .getMany();
+    return posts.filter((post) => this.postIsVisible(post, userId));
   }
 
   async findCommentsByUser(userId: number): Promise<UserCommentDto[]> {
@@ -736,7 +784,7 @@ export class ForumService {
             ? posts.find((post) => post.id === comment.parentObjectId)?.title
             : comment.parentObjectType === CommentParentObject.Action
               ? actions.find((action) => action.id === comment.parentObjectId)
-                  ?.name
+                ?.name
               : undefined,
         ),
     );
@@ -778,8 +826,8 @@ export class ForumService {
     const experts =
       expertIds.length > 0
         ? await this.userRepository.find({
-            where: { id: In(expertIds) },
-          })
+          where: { id: In(expertIds) },
+        })
         : [];
 
     post.experts = experts;
@@ -792,8 +840,33 @@ export class ForumService {
   async getPostsForAdmin(): Promise<Post[]> {
     return this.postRepository.find({
       where: { deleted: false },
-      relations: { author: true, experts: true },
+      relations: { author: true, experts: true, authors: true },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async updatePostAuthors(
+    postId: number,
+    authorIds: number[],
+  ): Promise<Post> {
+    const post = await this.postRepository.findOne({
+      where: { id: postId },
+      relations: { author: true, action: true, editableContent: true },
+    });
+
+    if (!post) {
+      throw new NotFoundException(`Post with ID "${postId}" not found`);
+    }
+
+    const authors =
+      authorIds.length > 0
+        ? await this.userRepository.find({
+          where: { id: In(authorIds) },
+        })
+        : [];
+
+    post.authors = authors;
+
+    return this.postRepository.save(post);
   }
 }

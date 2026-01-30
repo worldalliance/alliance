@@ -23,7 +23,7 @@ const PrelaunchLandingPage: React.FC = () => {
               </p>
               <div className="flex flex-col gap-y-6 text-zinc-900 text-lg md:text-xl">
                 <p>
-                  The Alliance is a global group of individuals cooperating to
+                  The Alliance is a global group of people cooperating to
                   improve the world. Our priorities are extreme poverty,
                   environmental destruction, the breakdown of democratic
                   institutions, and dangerous technological development.

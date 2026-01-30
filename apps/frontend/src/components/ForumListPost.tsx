@@ -26,13 +26,6 @@ const ForumListPost = ({
 }: ForumListPostProps) => {
   const navigate = useNavigate();
 
-  const authorClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (!post.author?.id) return;
-    navigate(href("/member/:id", { id: post.author.id.toString() }));
-  };
-
   const lastCommentAuthorClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -95,16 +88,37 @@ const ForumListPost = ({
         </div>
         <div className="flex flex-col md:flex-row md:justify-between md:items-end text-sm text-zinc-500 gap-y-1 md:gap-y-0">
           <div className="flex flex-row gap-x-1.5 items-center">
-            <ProfileImage pfp={post.author.profilePicture} size="small" />
             <p>
-              <span onClick={authorClick}>
-                <UserDisplayName
-                  staff={post.author.staff}
-                  grouplead={post.author.isCommunityLeader}
-                >
-                  {post.author.displayName}
-                </UserDisplayName>
-              </span>
+              {(post.authors?.length ? post.authors : [post.author]).map(
+                (a, i, arr) => (
+                  <span key={a.id}>
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        navigate(
+                          href("/member/:id", { id: a.id.toString() })
+                        );
+                      }}
+                    >
+                      <ProfileImage
+                        pfp={a.profilePicture}
+                        size="small"
+                        className="mr-1 -mt-1"
+                      />
+                      <UserDisplayName
+                        staff={a.staff}
+                        grouplead={a.isCommunityLeader}
+                      >
+                        {a.displayName}
+                      </UserDisplayName>
+                    </span>
+                    {i < arr.length - 1 && (
+                      <span className="text-zinc-500"> and </span>
+                    )}
+                  </span>
+                ),
+              )}
               <span>
                 {` posted ${formatTime(new Date(post.createdAt), {
                   addSuffix: true,
@@ -149,8 +163,8 @@ const ForumListPost = ({
           navigate(
             post.lastComment && showReply
               ? `${href("/forum/post/:id", {
-                  id: post.id.toString(),
-                })}?replyId=${post.lastComment.id}`
+                id: post.id.toString(),
+              })}?replyId=${post.lastComment.id}`
               : href("/forum/post/:id", { id: post.id.toString() })
           );
         }}

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityMetadata } from 'typeorm';
 import { ColumnMetadataDto } from './dto/column-metadata.dto';
@@ -257,7 +257,7 @@ export class AdminViewerService {
         throw error;
       }
 
-      throw new Error(`Failed to create record: ${error.message}`);
+      throw new BadRequestException(`Failed to create record: ${error.message}`);
     } finally {
       await queryRunner.release();
     }

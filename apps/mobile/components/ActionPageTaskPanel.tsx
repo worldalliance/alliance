@@ -62,7 +62,7 @@ const ActionPageTaskPanel = ({
           <Text>Error authenticating user - please try again.</Text>
         </Card>
       );
-    case ActionPageTaskPanelState.ActiveButCantParticipate:
+    case ActionPageTaskPanelState.NotAssigned:
       return <Card cardStyle={CardStyle.Grey}>{taskNotAssigned}</Card>;
     case ActionPageTaskPanelState.MissingDataOrNotActive:
       return null;

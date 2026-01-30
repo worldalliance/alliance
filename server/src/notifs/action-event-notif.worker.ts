@@ -40,7 +40,7 @@ export class ActionEventNotifWorker {
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
     private readonly pushService: PushService,
-  ) {}
+  ) { }
 
   @Cron('*/3 * * * *')
   async dispatchDueNotifs() {

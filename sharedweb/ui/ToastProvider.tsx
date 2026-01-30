@@ -17,24 +17,24 @@ type ToastBase = {
   id: number;
   variant: ToastVariant;
   title?: string;
-  message: string;
+  message?: string;
 };
 
 type ConfirmOptions = {
   title?: string;
-  message: string;
+  message?: string;
   confirmLabel?: string;
   cancelLabel?: string;
   anchorEl?: HTMLElement | null;
   placement?:
-    | "top"
-    | "bottom"
-    | "left"
-    | "right"
-    | "topleft"
-    | "topright"
-    | "bottomleft"
-    | "bottomright";
+  | "top"
+  | "bottom"
+  | "left"
+  | "right"
+  | "topleft"
+  | "topright"
+  | "bottomleft"
+  | "bottomright";
   mode?: "popover" | "fullscreen";
   requiredText?: string;
   requiredTextLabel?: string;
@@ -49,14 +49,14 @@ type ToastOptions = Omit<ToastBase, "id" | "variant"> & {
 type ToastConfirm = ToastBase & {
   anchorEl?: HTMLElement | null;
   placement?:
-    | "top"
-    | "bottom"
-    | "left"
-    | "right"
-    | "topleft"
-    | "topright"
-    | "bottomleft"
-    | "bottomright";
+  | "top"
+  | "bottom"
+  | "left"
+  | "right"
+  | "topleft"
+  | "topright"
+  | "bottomleft"
+  | "bottomright";
   variant: "confirm";
   confirmLabel: string;
   cancelLabel: string;
@@ -205,10 +205,10 @@ const DefaultToastItem: FC<DefaultToastItemProps> = ({ toast, onDismiss }) => {
     toast.variant === "success"
       ? "bg-emerald-600 text-white"
       : toast.variant === "error"
-      ? "bg-white text-red-500 border border-red-500"
-      : toast.variant === "warning"
-      ? "bg-amber-500 text-white"
-      : "bg-slate-700 text-white";
+        ? "bg-white text-red-500 border border-red-500"
+        : toast.variant === "warning"
+          ? "bg-amber-500 text-white"
+          : "bg-slate-700 text-white";
 
   return (
     <div
@@ -253,14 +253,14 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
     confirmLabelTone === "delete"
       ? "bg-red-600 text-white hover:bg-red-700"
       : confirmLabelTone === "create"
-      ? "bg-green text-white hover:bg-green-700"
-      : "bg-zinc-900 text-white hover:bg-zinc-800";
+        ? "bg-green text-white hover:bg-green-700"
+        : "bg-zinc-900 text-white hover:bg-zinc-800";
   const popoverConfirmTextClass =
     confirmLabelTone === "delete"
       ? "text-red-500"
       : confirmLabelTone === "create"
-      ? "text-emerald-600"
-      : "text-black";
+        ? "text-emerald-600"
+        : "text-black";
 
   const handleConfirmClick = () => {
     if (confirmDisabled) {
@@ -333,11 +333,10 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
         </button>
         <button
           type="button"
-          className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
-            confirmDisabled
-              ? "cursor-not-allowed bg-zinc-200 text-zinc-400"
-              : confirmAccentClass
-          }`}
+          className={`rounded-md px-4 py-2 text-sm font-semibold transition ${confirmDisabled
+            ? "cursor-not-allowed bg-zinc-200 text-zinc-400"
+            : confirmAccentClass
+            }`}
           onClick={handleConfirmClick}
           disabled={confirmDisabled}
         >
@@ -439,26 +438,27 @@ const ConfirmToastItem: FC<ConfirmToastItemProps> = ({ toast, onConfirm }) => {
       <div className="flex items-start gap-3 px-4 py-3">
         <div className="flex-1">
           {toast.title && (
-            <h3 className="text-sm font-semibold text-zinc-900">
+            <h3 className="font-semibold text-zinc-900">
               {toast.title}
             </h3>
           )}
-          <p className="mt-1 text-sm text-zinc-700">{toast.message}</p>
+          {toast.message && (
+            <p className="mt-1 text-sm text-zinc-700">{toast.message}</p>
+          )}
         </div>
       </div>
       <div className="flex justify-end gap-2 px-4 pb-4">
         <button
           type="button"
-          className="rounded px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+          className="rounded-md px-3 py-1 font-medium text-zinc-500 hover:bg-zinc-100"
           onClick={handleCancelClick}
         >
           {toast.cancelLabel}
         </button>
         <button
           type="button"
-          className={`rounded px-3 py-1 text-sm font-medium hover:bg-zinc-100 ${popoverConfirmTextClass} ${
-            confirmDisabled ? "cursor-not-allowed opacity-60" : ""
-          }`}
+          className={`rounded-md px-3 py-1 font-medium hover:bg-zinc-100 ${popoverConfirmTextClass} ${confirmDisabled ? "cursor-not-allowed opacity-60" : ""
+            }`}
           onClick={handleConfirmClick}
           disabled={confirmDisabled}
         >

@@ -1,4 +1,4 @@
-import {} from 'src/actions/actions.service';
+import { } from 'src/actions/actions.service';
 import { ActionActivityType } from 'src/actions/entities/action-activity.entity';
 import { CommentParentObject } from 'src/forum/entities/comment.entity';
 import { UserService } from 'src/user/user.service';
@@ -189,6 +189,7 @@ describe('Actions (e2e)', () => {
         priority: 0,
         preventCompletion: false,
         publicOnly: false,
+        onboarding: false,
         latestMemberActionEvent: {
           event: null,
           deadline: null,
@@ -1763,6 +1764,174 @@ describe('Actions (e2e)', () => {
       expect(orderedTestActions.indexOf(newerMemberAction.id)).toBeLessThan(
         orderedTestActions.indexOf(olderMemberAction.id),
       );
+    });
+  });
+
+  describe('Onboarding action canParticipate', () => {
+    let onboardingAction: Action;
+    let existingUser: User;
+    let newUser: User;
+    let existingUserToken: string;
+    let newUserToken: string;
+
+    beforeAll(async () => {
+      const actionEventDate = new Date(Date.now() - 3600000); // 1 hour ago
+
+      onboardingAction = await actionRepo.save(
+        actionRepo.create({
+          name: `Onboarding Eligibility Test ${Date.now()}`,
+          category: 'Test',
+          body: 'Onboarding action body',
+          shortDescription: 'Onboarding short desc',
+          taskContents: 'Onboarding task',
+          commitmentless: false,
+          participatingTags: [ctx.defaultTag],
+          visibilityMode: VisibilityMode.Public,
+          priority: 0,
+          preventCompletion: false,
+          type: ActionTaskType.Activity,
+          onboarding: true,
+          everyoneShouldComplete: true,
+        }),
+      );
+
+      await eventRepo.save(
+        eventRepo.create({
+          title: 'Onboarding launch',
+          description: 'Onboarding action live',
+          newStatus: ActionStatus.MemberAction,
+          date: actionEventDate,
+          action: onboardingAction,
+        }),
+      );
+
+      // Existing user: signed contract BEFORE the action event
+      existingUser = await userService.create({
+        email: `existing-onboard-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Existing User',
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(actionEventDate.getTime() - 86400000), // 1 day before action
+            automatic: false,
+          },
+        ],
+        tags: [ctx.defaultTag],
+      });
+
+      // New user: signed contract AFTER the action event
+      newUser = await userService.create({
+        email: `new-onboard-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'New User',
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(actionEventDate.getTime() + 1000), // after action event
+            automatic: false,
+          },
+        ],
+        tags: [ctx.defaultTag],
+      });
+
+      existingUserToken = ctx.jwtService.sign(
+        {
+          sub: existingUser.id,
+          email: existingUser.email,
+          name: existingUser.name,
+        },
+        { secret: process.env.JWT_SECRET },
+      );
+
+      newUserToken = ctx.jwtService.sign(
+        {
+          sub: newUser.id,
+          email: newUser.email,
+          name: newUser.name,
+        },
+        { secret: process.env.JWT_SECRET },
+      );
+    });
+
+    afterAll(async () => {
+      await actionRepo.delete(onboardingAction.id);
+      await userRepo.delete(existingUser.id);
+      await userRepo.delete(newUser.id);
+    });
+
+    it('loggedIn endpoint returns canParticipate=false for existing users on onboarding actions', async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get('/actions/loggedIn')
+        .set('Authorization', `Bearer ${existingUserToken}`)
+        .expect(200);
+
+      const action = res.body.find(
+        (a: ActionDto) => a.id === onboardingAction.id,
+      );
+      expect(action).toBeDefined();
+      expect(action.canParticipate).toBe(false);
+    });
+
+    it('loggedIn endpoint returns canParticipate=true for new users on onboarding actions', async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get('/actions/loggedIn')
+        .set('Authorization', `Bearer ${newUserToken}`)
+        .expect(200);
+
+      const action = res.body.find(
+        (a: ActionDto) => a.id === onboardingAction.id,
+      );
+      expect(action).toBeDefined();
+      expect(action.canParticipate).toBe(true);
+    });
+
+    it('individual action endpoint returns canParticipate=false for existing users on onboarding actions', async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/slug/${onboardingAction.id}`)
+        .set('Authorization', `Bearer ${existingUserToken}`)
+        .expect(200);
+
+      expect(res.body.canParticipate).toBe(false);
+    });
+
+    it('individual action endpoint returns canParticipate=true for new users on onboarding actions', async () => {
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/slug/${onboardingAction.id}`)
+        .set('Authorization', `Bearer ${newUserToken}`)
+        .expect(200);
+
+      expect(res.body.canParticipate).toBe(true);
+    });
+
+    it('non-onboarding action still returns canParticipate=true for existing users', async () => {
+      const { action: normalAction } = await createPublishedAction(
+        'Normal Action For Onboarding Check',
+        {
+          status: ActionStatus.MemberAction,
+          actionOverrides: { onboarding: false },
+        },
+      );
+
+      const [loggedInRes, slugRes] = await Promise.all([
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${existingUserToken}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${normalAction.id}`)
+          .set('Authorization', `Bearer ${existingUserToken}`)
+          .expect(200),
+      ]);
+
+      const fromList = loggedInRes.body.find(
+        (a: ActionDto) => a.id === normalAction.id,
+      );
+      expect(fromList).toBeDefined();
+      expect(fromList.canParticipate).toBe(true);
+      expect(slugRes.body.canParticipate).toBe(true);
+
+      await actionRepo.delete(normalAction.id);
     });
   });
 

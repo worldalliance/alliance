@@ -37,6 +37,7 @@ export function ElementSelect({
     "html",
     "image",
     "quote",
+    "biglink",
   ];
 
   return (

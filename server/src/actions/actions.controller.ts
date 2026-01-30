@@ -56,6 +56,7 @@ import {
   CreateReminderGroupDto,
   DeclineActionDto,
   ExportActionDto,
+  GlobalFeedItemDto,
   LatLonDto,
   OptOutActionDto,
   PasteJsonDto,
@@ -221,6 +222,18 @@ export class ActionsController {
       comments,
       req.user?.sub,
     );
+  }
+
+  @Get('globalFeed')
+  @UseGuards(AuthOptionalGuard)
+  @ApiOkResponse({ type: [GlobalFeedItemDto] })
+  @ApiOperation({
+    summary: 'Get unified global feed with activities, updates, and new members',
+  })
+  async getGlobalFeed(
+    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
+  ): Promise<GlobalFeedItemDto[]> {
+    return this.actionsService.getGlobalFeed(limit ?? 15);
   }
 
   @Get('activities/:id')

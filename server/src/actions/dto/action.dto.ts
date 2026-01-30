@@ -477,3 +477,104 @@ export class ReminderGroupPlanDto {
   @IsDefined()
   willNotify: PreviewNotificationPlan[];
 }
+
+export enum GlobalFeedItemType {
+  ActivityGroup = 'activity_group',
+  ActionUpdate = 'action_update',
+  NewMembers = 'new_members',
+  ForumComments = 'forum_comments',
+}
+
+export class GlobalFeedActivityGroupDto {
+  @ApiProperty({ type: () => ProfileDto, isArray: true })
+  @Type(() => ProfileDto)
+  users: ProfileDto[];
+
+  @ApiProperty()
+  actionId: number;
+
+  @ApiProperty()
+  actionName: string;
+
+  @ApiProperty()
+  activityType: 'completed' | 'joined';
+
+  @ApiProperty()
+  count: number;
+}
+
+export class GlobalFeedActionUpdateDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  title: string;
+
+  @ApiProperty({ type: () => EditableContentDto })
+  @Type(() => EditableContentDto)
+  content: EditableContentDto;
+
+  @ApiProperty()
+  date: Date;
+
+  @ApiProperty()
+  actionId: number;
+
+  @ApiProperty()
+  actionName: string;
+}
+
+export class GlobalFeedNewMembersDto {
+  @ApiProperty({ type: () => ProfileDto, isArray: true })
+  @Type(() => ProfileDto)
+  users: ProfileDto[];
+
+  @ApiProperty()
+  count: number;
+}
+
+export class GlobalFeedForumCommentsDto {
+  @ApiProperty({ type: () => ProfileDto, isArray: true })
+  @Type(() => ProfileDto)
+  users: ProfileDto[];
+
+  @ApiProperty()
+  postId: number;
+
+  @ApiProperty()
+  postTitle: string;
+
+  @ApiProperty()
+  count: number;
+}
+
+export class GlobalFeedItemDto {
+  @ApiProperty({ enum: GlobalFeedItemType, enumName: 'GlobalFeedItemType' })
+  @Allow()
+  type: GlobalFeedItemType;
+
+  @ApiProperty()
+  @Type(() => Date)
+  @Allow()
+  date: Date;
+
+  @ApiPropertyOptional({ type: () => GlobalFeedActivityGroupDto })
+  @Type(() => GlobalFeedActivityGroupDto)
+  @IsOptional()
+  activityGroup?: GlobalFeedActivityGroupDto;
+
+  @ApiPropertyOptional({ type: () => GlobalFeedActionUpdateDto })
+  @Type(() => GlobalFeedActionUpdateDto)
+  @IsOptional()
+  actionUpdate?: GlobalFeedActionUpdateDto;
+
+  @ApiPropertyOptional({ type: () => GlobalFeedNewMembersDto })
+  @Type(() => GlobalFeedNewMembersDto)
+  @IsOptional()
+  newMembers?: GlobalFeedNewMembersDto;
+
+  @ApiPropertyOptional({ type: () => GlobalFeedForumCommentsDto })
+  @Type(() => GlobalFeedForumCommentsDto)
+  @IsOptional()
+  forumComments?: GlobalFeedForumCommentsDto;
+}

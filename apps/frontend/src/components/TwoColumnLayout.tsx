@@ -39,7 +39,7 @@ export default function TwoColumnLayout({
       </div>
       {!!sidebar && (
         <div
-          className={`ml-auto sticky top-0 h-screen bg-page px-2 flex-col gap-y-5 items-stretch overflow-y-auto transition-all duration-200 ease-in-out overflow-x-hidden`}
+          className={`ml-auto sticky top-0 h-full bg-page px-2 flex-col gap-y-5 items-stretch overflow-y-auto transition-all duration-200 ease-in-out overflow-x-hidden`}
           style={{
             width: `${sidebarWidth}px`,
             overflowY:

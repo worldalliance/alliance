@@ -176,7 +176,7 @@ const CommunityMembersTable = ({
                         scope="col"
                         className="font-medium md:whitespace-nowrap"
                       >
-                        Preferred contact time
+                        Contact time
                       </th>
                       <th
                         scope="col"
@@ -238,7 +238,7 @@ const CommunityMembersTable = ({
               {amLeader && (
                 <>
                   <th scope="col" className="font-medium md:whitespace-nowrap">
-                    Preferred contact time
+                    Contact time
                   </th>
                   <th scope="col" className="font-medium md:whitespace-nowrap">
                     Next task due

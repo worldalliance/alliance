@@ -104,7 +104,7 @@ const ActionDashboard: React.FC = () => {
   const [tagsLoading, setTagsLoading] = useState<boolean>(true);
   const [availableSuites, setAvailableSuites] = useState<ActionSuite[]>([]);
   const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [availableUsers, setAvailableUsers] = useState<UserSelectUser[]>([]);
   const [usersLoading, setUsersLoading] = useState<boolean>(true);
   const [manualCohortUserIds, setManualCohortUserIds] = useState<number[]>([]);
@@ -514,7 +514,7 @@ const ActionDashboard: React.FC = () => {
     }
   }, [actionId, action?.archived, confirm]);
 
-  const handleTagsChange = useCallback((ids: number[]) => {
+  const handleTagsChange = useCallback((ids: string[]) => {
     setSelectedTagIds(ids);
     setForm((prev) => ({
       ...prev,

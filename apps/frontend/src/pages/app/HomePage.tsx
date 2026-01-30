@@ -1,18 +1,16 @@
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, href, useNavigate, useOutletContext } from "react-router";
 import { AppLayoutOutletContext } from "../../applayout";
-import ActionActivityFeedItem from "../../components/ActionActivityFeedItem";
 import BasicErrorMessage from "../../components/BasicErrorMessage";
+import GlobalFeed from "../../components/GlobalFeed";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
 import { useAuth } from "../../lib/AuthContext";
 import { useCIDFromParams } from "../../lib/utils";
 import LargeActionCard, { LargeActionCardProps } from "./LargeActionCard";
-import useActivities, {
-  ActivityList,
-} from "@alliance/shared/lib/useActivities";
+import useGlobalFeed from "@alliance/shared/lib/useGlobalFeed";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import { useHomePageActions } from "@alliance/shared/lib/homePage";
 import {
@@ -28,29 +26,21 @@ import {
   deadlineHasPassed,
   TaskAwayStatus,
 } from "@alliance/shared/lib/actionUtils";
-import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
-import { formatTime } from "@alliance/shared/lib/utils";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 const HomePage = () => {
   const navigate = useNavigate();
-  const { posts, actions, loading, handleDismissAction } =
+  const { actions, loading, handleDismissAction } =
     useOutletContext<AppLayoutOutletContext>();
 
   const { user } = useAuth();
 
   const [showingTasksList, setShowingTasksList] = useState(false);
 
-  const { activities: friendActivities, handleLikeActivity } = useActivities({
-    list: ActivityList.Friends,
-    limit: 8,
+  const { items: globalFeedItems, loading: globalFeedLoading } = useGlobalFeed({
+    limit: 10,
   });
-
-  const [visibleFriendActivityCount, setVisibleFriendActivityCount] =
-    useState<number>(3);
-  const friendActivityListRef = useRef<HTMLDivElement | null>(null);
-  const firstFriendActivityRef = useRef<HTMLDivElement | null>(null);
 
   useCIDFromParams();
 
@@ -63,40 +53,6 @@ const HomePage = () => {
     remainingTasksEstimatedTimeCurrentWeek,
     completedActions,
   } = useHomePageActions(actions);
-
-  const updateFriendActivityCount = useCallback(() => {
-    if (typeof window === "undefined" || !friendActivityListRef.current) {
-      return;
-    }
-
-    if (friendActivities.length === 0) {
-      setVisibleFriendActivityCount(0);
-      return;
-    }
-
-    const availableHeight =
-      window.innerHeight -
-      friendActivityListRef.current.getBoundingClientRect().top -
-      12;
-    const firstActivityHeight =
-      firstFriendActivityRef.current?.getBoundingClientRect().height;
-
-    if (!firstActivityHeight || availableHeight <= 0) {
-      setVisibleFriendActivityCount(1);
-      return;
-    }
-
-    const maxItems = Math.min(
-      5,
-      Math.max(1, Math.floor(availableHeight / firstActivityHeight))
-    );
-
-    setVisibleFriendActivityCount(Math.min(maxItems, friendActivities.length));
-  }, [friendActivities.length]);
-
-  useLayoutEffect(() => {
-    updateFriendActivityCount();
-  }, [updateFriendActivityCount]);
 
   const numTodo = todoActions.filter(showActionInSidebarList).length;
 
@@ -206,7 +162,7 @@ const HomePage = () => {
     return (
       <div
         className={
-          "flex flex-col py-4 sm:py-8 md:py-18 px-4 max-w-3xl mx-auto min-h-full"
+          "flex flex-col py-4 sm:py-8 md:py-18 px-4 max-w-3xl mx-auto min-h-full relative"
         }
       >
         {!isLargeScreen && (
@@ -229,7 +185,7 @@ const HomePage = () => {
             onUpdateActionState={() => navigate(href("/tasks"))}
           />
         ) : (
-          <div className="mt-4 px-2 py-2 mx-auto flex flex-col items-center gap-y-4 h-full justify-center">
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-y-4">
             {user && !user.hasActiveContract ? (
               <p className="text-center text-zinc-500">
                 {noTasksContractSuspended}
@@ -250,107 +206,34 @@ const HomePage = () => {
 
   const sidebarContent = useMemo(() => {
     return (
-      <div className="px-4 pt-12 flex flex-col *:py-6 *:px-2 divide-y divide-zinc-200">
+      <div className="px-4 pt-12 flex flex-col *:py-6 *:px-2 divide-y divide-zinc-200 h-full">
         {tasksListContent}
-
-        <div>
-          <div className="flex flex-row justify-between items-center mb-3">
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="flex flex-row justify-between items-center shrink-0">
             <p className="font-semibold text-base font-serif text-black">
-              Forum activity
+              Activity
             </p>
+            <Link
+              to={href("/feed")}
+              className="text-zinc-500 text-base hover:underline"
+            >
+              See all
+            </Link>
           </div>
-          {posts &&
-            posts.slice(0, 1).map((post) => {
-              return (
-                <Link
-                  to={href("/forum/post/:id", { id: post.id.toString() })}
-                  key={post.id}
-                  className="flex flex-row gap-x-2 items-center flex-1 hover:bg-zinc-50 hover:p-2 hover:-m-2 rounded"
-                >
-                  <ProfileImage
-                    pfp={post.author.profilePicture}
-                    size="medium"
-                    className="self-start mt-1.5"
-                  />
-                  <div className="flex-1 text-zinc-700">
-                    <p className="font-medium">{post.author.displayName}</p>
-
-                    <p className="">
-                      <span className="text-zinc-500 text-nowrap">posted </span>
-                      <span className="text-green">{post.title}</span>
-                      <span className="text-zinc-500 text-nowrap">
-                        {" "}
-                        {formatTime(new Date(post.createdAt), {
-                          addSuffix: true,
-                        })}
-                      </span>
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
-        </div>
-
-        <div className="">
-          <div className="flex flex-row justify-between items-center mb-3">
-            <p className="font-semibold text-base font-serif text-black">
-              Friend activity
-            </p>
-            {friendActivities.length > 0 && (
-              <Link
-                to={href("/feed")}
-                className="text-zinc-800 font-medium hover:underline mt-0"
-              >
-                See all
-              </Link>
-            )}
-          </div>
-          <div className="flex flex-col gap-y-5" ref={friendActivityListRef}>
-            {friendActivities.length === 0 && (
-              <div className="space-x-1">
-                <span className="text-zinc-400 mb-3">No activity yet.</span>
-                <a href="/members" className="text-link">
-                  Find friends
-                </a>
-              </div>
-            )}
-            {friendActivities
-              .slice(
-                0,
-                friendActivities.length === 0
-                  ? 0
-                  : Math.max(visibleFriendActivityCount, 1)
-              )
-              .map((activity, index) => (
-                <div
-                  key={activity.id}
-                  ref={index === 0 ? firstFriendActivityRef : undefined}
-                >
-                  <ActionActivityFeedItem
-                    activity={activity}
-                    showTime={false}
-                    card={false}
-                    showAction={true}
-                    handleLike={() => handleLikeActivity(activity.id)}
-                  />
-                </div>
-              ))}
-          </div>
+          <GlobalFeed items={globalFeedItems} loading={globalFeedLoading} fitToHeight />
         </div>
       </div>
     );
   }, [
     tasksListContent,
-    friendActivities,
-    handleLikeActivity,
-    posts,
-    visibleFriendActivityCount,
+    globalFeedItems,
+    globalFeedLoading,
   ]);
 
   useWhiteBackground();
 
   return isLargeScreen ? (
-    <TwoColumnLayout main={mainContent} sidebar={sidebarContent} />
+    <TwoColumnLayout main={mainContent} sidebar={sidebarContent} noSidebarOverflow />
   ) : (
     <div className="h-full">{mainContent}</div>
   );

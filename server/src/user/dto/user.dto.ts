@@ -165,6 +165,7 @@ export class UpdateProfileDto extends PartialType(
   PickType(User, [
     'name',
     'phoneNumber',
+    'phoneNumberValidated',
     'profileDescription',
     'profilePicture',
     'anonymous',

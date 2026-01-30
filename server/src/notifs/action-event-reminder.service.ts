@@ -81,7 +81,7 @@ export class ActionEventReminderService {
     private readonly recipientService: ActionEventRecipientService,
     private readonly userService: UserService,
     private readonly mailService: MailService,
-  ) {}
+  ) { }
 
   async findPlansForGroup(
     group: ReminderGroup,

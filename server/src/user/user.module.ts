@@ -22,6 +22,7 @@ import { CommunityInvite } from './entities/community-invite.entity';
 import { ContractEvent } from './entities/contract-event.entity';
 import { PushModule } from 'src/push/push.module';
 import { UserDevice } from './entities/user-device.entity';
+import { SlackModule } from 'src/slack/slack.module';
 
 @Module({
   imports: [
@@ -46,11 +47,12 @@ import { UserDevice } from './entities/user-device.entity';
     MailModule,
     forwardRef(() => MessagingModule),
     PushModule,
+    SlackModule,
   ],
   controllers: [UserController],
   providers: [UserService, IsUserAlreadyExist],
   exports: [UserService],
 })
 export class UserModule {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 }

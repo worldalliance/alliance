@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import Twilio from 'twilio';
 import { Repository } from 'typeorm';
 import { Mms } from './mms.entity';
+import { SlackService } from 'src/slack/slack.service';
 
 @Injectable()
 export class MmsService {
@@ -18,6 +19,7 @@ export class MmsService {
   constructor(
     @InjectRepository(Mms)
     private readonly mmsRepository: Repository<Mms>,
+    private readonly slackService: SlackService,
   ) {
     if (process.env.NODE_ENV === 'test') {
       return;
@@ -80,12 +82,16 @@ export class MmsService {
     }
 
     try {
-      const message = await this.twilioClient.messages.create({
+      const message = await withTimeout(this.twilioClient.messages.create({
         to: to,
         from: this.twilioPhoneNumber,
         body: body,
         mediaUrl: mediaUrls,
-      });
+      }), 10000, 'sendMms');
+
+      if (!message) {
+        throw new Error('Failed to send MMS');
+      }
 
       this.logger.log(`MMS sent successfully! Message SID: ${message.sid}`);
 
@@ -108,6 +114,11 @@ export class MmsService {
         `Failed to send MMS to ${to}: ${errorMessage}`,
         error instanceof Error ? error.stack : undefined,
       );
+      if (process.env.NODE_ENV === 'production') {
+        this.slackService.sendMessage(
+          `Failed to send MMS to ${to}: ${errorMessage}`,
+        );
+      }
       return null;
     }
   }
@@ -130,4 +141,25 @@ export class MmsService {
     await this.mmsRepository.save(mms);
     return true;
   }
+}
+
+function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label?: string,
+): Promise<T> {
+  let timeoutId: NodeJS.Timeout;
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const err = new Error(
+        `Timeout after ${ms}ms${label ? ` (${label})` : ''}`,
+      );
+      reject(err);
+    }, ms);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    clearTimeout(timeoutId);
+  });
 }

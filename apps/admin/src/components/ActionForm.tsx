@@ -31,8 +31,8 @@ interface ActionFormProps {
   tagsLoading: boolean;
   availableSuites?: ActionSuite[];
   suitesLoading: boolean;
-  selectedTagIds: number[];
-  onTagsChange: (ids: number[]) => void;
+  selectedTagIds: string[];
+  onTagsChange: (ids: string[]) => void;
   availableUsers?: UserSelectUser[];
   usersLoading?: boolean;
   manualCohortUserIds: number[];
@@ -85,7 +85,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleToggleTag = (tagId: number) => {
+  const handleToggleTag = (tagId: string) => {
     const nextSelection = selectedTagIds.includes(tagId)
       ? selectedTagIds.filter((id) => id !== tagId)
       : [...selectedTagIds, tagId];
@@ -278,6 +278,15 @@ const ActionForm: React.FC<ActionFormProps> = ({
           "Require users to commit via a gathering commitment phase before member action",
         inverted: true, // UI shows "Use Commitment Mode" but field is "commitmentless"
       },
+
+      {
+        name: "onboarding",
+        label: "Onboarding",
+        helpText: "Prevent completion by members who signed their contracts before action",
+        type: "checkbox",
+        section: "settings",
+        gridCol: true,
+      },
       {
         name: "everyoneShouldComplete",
         label: "Everyone Should Complete",
@@ -468,11 +477,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
       return (
         <label
           key={String(f.name)}
-          className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors ${
-            isChecked
-              ? "border-blue-400 bg-blue-50"
-              : "border-gray-200 hover:border-gray-300 bg-white"
-          }`}
+          className={`flex items-start gap-3 p-3 rounded-md border cursor-pointer transition-colors ${isChecked
+            ? "border-blue-400 bg-blue-50"
+            : "border-gray-200 hover:border-gray-300 bg-white"
+            }`}
         >
           <input
             type="checkbox"
@@ -599,11 +607,10 @@ const ActionForm: React.FC<ActionFormProps> = ({
                   return (
                     <label
                       key={tag.id}
-                      className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors ${
-                        checked
-                          ? "border-blue-400 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
+                      className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors ${checked
+                        ? "border-blue-400 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300"
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -699,8 +706,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
               ? "Creating..."
               : "Saving..."
             : isNew
-            ? "Create Action"
-            : "Save Changes"}
+              ? "Create Action"
+              : "Save Changes"}
         </button>
       </div>
     </form>

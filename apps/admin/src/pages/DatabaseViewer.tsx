@@ -140,10 +140,6 @@ const DatabaseViewer: React.FC = () => {
         return false;
       }
 
-      if (column.dataType === "relation") {
-        return false;
-      }
-
       if (seen.has(column.name)) {
         return false;
       }
@@ -561,6 +557,24 @@ const DatabaseViewer: React.FC = () => {
           return { value: trimmed };
         }
 
+        case "relation": {
+          // Relation columns are foreign keys - accept UUIDs or numeric IDs
+          const uuidRegex =
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+          if (uuidRegex.test(trimmed)) {
+            return { value: trimmed };
+          }
+          // Also accept numeric IDs
+          const numericId = Number(trimmed);
+          if (!Number.isNaN(numericId) && Number.isInteger(numericId)) {
+            return { value: numericId };
+          }
+          return {
+            value: undefined,
+            error: `${columnLabel} must be a valid ID (UUID or number).`,
+          };
+        }
+
         default:
           return { value: rawValue };
       }
@@ -668,7 +682,7 @@ const DatabaseViewer: React.FC = () => {
         setNewRecordFieldErrors({});
         await refreshTableData();
       } else {
-        setNewRecordError(response.data?.message || "Failed to create record");
+        setNewRecordError((response.error as Error)?.message || "Failed to create record");
       }
     } catch (error) {
       console.error("Failed to create record:", error);

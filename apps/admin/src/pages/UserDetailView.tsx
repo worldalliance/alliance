@@ -339,11 +339,8 @@ const UserDetailView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Left Column */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Actions Table */}
           <section className="max-h-128 overflow-y-auto">
             {actionSummaries.length ? (
               <div className="border border-zinc-200 rounded overflow-hidden">

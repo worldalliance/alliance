@@ -287,6 +287,32 @@ ORDER BY pp.total_session_duration_seconds DESC
       relations: { events: true },
     });
 
+    const actionIds = actions.map((action) => action.id);
+    const withdrawalByActionId = new Map<number, number>();
+    if (actionIds.length > 0) {
+      const withdrawalCounts = await this.actionActivityRepository
+        .createQueryBuilder('activity')
+        .select('activity.actionId', 'actionId')
+        .addSelect('COUNT(DISTINCT activity.userId)', 'withdrawnCount')
+        .where('activity.actionId IN (:...actionIds)', { actionIds })
+        .andWhere('activity.type IN (:...types)', {
+          types: [
+            ActionActivityType.USER_WONT_COMPLETE,
+            ActionActivityType.USER_DECLINED,
+          ],
+        })
+        .groupBy('activity.actionId')
+        .getRawMany<{ actionId: string; withdrawnCount: string }>();
+
+      for (const row of withdrawalCounts) {
+        const actionId = Number(row.actionId);
+        const withdrawnCount = Number(row.withdrawnCount);
+        if (!Number.isNaN(actionId) && !Number.isNaN(withdrawnCount)) {
+          withdrawalByActionId.set(actionId, withdrawnCount);
+        }
+      }
+    }
+
     for (const action of actions) {
       // Skip draft actions
       if (action.status === ActionStatus.Draft) {
@@ -302,6 +328,7 @@ ORDER BY pp.total_session_duration_seconds DESC
 
       const usersJoined = action.usersJoined;
       const usersCompleted = action.usersCompleted;
+      const usersWithdrawn = withdrawalByActionId.get(action.id) ?? 0;
       const completionRate = usersJoined > 0 ? usersCompleted / usersJoined : 0;
 
       // Find member_action event dates
@@ -340,6 +367,7 @@ ORDER BY pp.total_session_duration_seconds DESC
         existingRecord.actionName = action.name;
         existingRecord.usersCompleted = usersCompleted;
         existingRecord.usersJoined = usersJoined;
+        existingRecord.usersWithdrawn = usersWithdrawn;
         existingRecord.completionRate = completionRate;
         existingRecord.lastCalculatedAt = now;
         existingRecord.actionCompletedAt = completedDate ?? undefined;
@@ -354,6 +382,7 @@ ORDER BY pp.total_session_duration_seconds DESC
           actionName: action.name,
           usersCompleted,
           usersJoined,
+          usersWithdrawn,
           completionRate,
           lastCalculatedAt: now,
           actionCompletedAt: completedDate ?? undefined,

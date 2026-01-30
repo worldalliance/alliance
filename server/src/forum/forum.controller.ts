@@ -24,6 +24,7 @@ import {
   CreatePostDto,
   PostDto,
   UpdatePostDto,
+  UpdatePostAuthorsDto,
   UpdatePostExpertsDto,
 } from './dto/post.dto';
 import { Post as PostEntity } from './entities/post.entity';
@@ -279,6 +280,21 @@ export class ForumController {
       updatePostExpertsDto.expertIds,
       updatePostExpertsDto.qaMode,
       updatePostExpertsDto.expertLabel,
+    );
+    return new PostDto(post);
+  }
+
+  @Patch('admin/posts/:id/authors')
+  @UseGuards(AdminGuard)
+  @ApiOperation({ summary: 'Update post authors' })
+  @ApiOkResponse({ type: PostDto })
+  async updatePostAuthors(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updatePostAuthorsDto: UpdatePostAuthorsDto,
+  ): Promise<PostDto> {
+    const post = await this.forumService.updatePostAuthors(
+      id,
+      updatePostAuthorsDto.authorIds,
     );
     return new PostDto(post);
   }

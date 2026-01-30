@@ -29,7 +29,7 @@ import {
   ChevronRight,
   MessageSquare,
   MoreHorizontal,
-  UserRoundPen,
+  TowerControl,
 } from "lucide-react";
 import { useGroupAssignment } from "./lib/GroupAssignmentContext";
 
@@ -132,7 +132,7 @@ const Sidebar: React.FC = () => {
         (action) =>
           (action.status === "member_action" ||
             action.status === "gathering_commitments") &&
-          !action.everyoneShouldComplete
+          !action.onboarding
       ),
     },
     {
@@ -142,7 +142,7 @@ const Sidebar: React.FC = () => {
           action.status !== "draft" &&
           action.status !== "member_action" &&
           action.status !== "gathering_commitments" &&
-          !action.everyoneShouldComplete &&
+          !action.onboarding &&
           action.status !== "completed"
       ),
     },
@@ -152,12 +152,7 @@ const Sidebar: React.FC = () => {
     },
     {
       name: "Onboarding",
-      actions: filteredActions.filter(
-        (action) =>
-          action.everyoneShouldComplete &&
-          action.status !== "completed" &&
-          action.status !== "draft"
-      ),
+      actions: filteredActions.filter((action) => action.onboarding),
     },
     {
       name: "Completed",
@@ -264,6 +259,11 @@ const Sidebar: React.FC = () => {
                     to: "/image",
                     label: "Image Upload",
                     icon: <ImageUp size={16} />,
+                  },
+                  {
+                    to: "/messaging",
+                    label: "Messaging",
+                    icon: <TowerControl size={16} />,
                   },
                 ].map((link) => (
                   <Link

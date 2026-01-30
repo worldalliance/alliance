@@ -76,7 +76,7 @@ class VerifyEmailBody {
 
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(private readonly userService: UserService) { }
 
   @Get('me')
   @UseGuards(AuthGuard)
@@ -350,7 +350,7 @@ export class UserController {
   }
 
   @Get('members-public')
-  @UseGuards(AuthGuard)
+  @Public()
   @ApiOkResponse({ type: [ProfileDto] })
   async membersPublic(): Promise<ProfileDto[]> {
     return (await this.userService.findAllMembersPublic()).map(

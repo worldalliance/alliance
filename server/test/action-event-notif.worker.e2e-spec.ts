@@ -453,6 +453,121 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs.map((notif) => notif.user.id)).toHaveLength(0);
   });
 
+  it('excludes users who suspend mid-action from AllUncompleted reminders', async () => {
+    const now = Date.now();
+    // User signed contract well before the action started
+    // Action started 2 hours ago
+    // User suspended 30 minutes ago (after action started)
+    // Deadline is 1 hour in the future
+    // Notification scheduled 5 minutes ago
+    // The user was active at action launch but is now suspended
+    await setUserContractSuspended(
+      ctx.testUserId,
+      new Date(now - 7 * 24 * 60 * 60 * 1000), // signed 7 days ago
+      new Date(now - 30 * 60 * 1000), // suspended 30 minutes ago
+    );
+
+    const { action, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('mid-action-suspend'),
+      eventDate: new Date(now - 2 * 60 * 60 * 1000), // action started 2 hours ago
+    });
+
+    // Create a deadline event so the full range check is triggered
+    const deadlineEvent = await eventRepo.save(
+      eventRepo.create({
+        title: 'Deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 60 * 60 * 1000), // deadline 1 hour from now
+        action,
+      }),
+    );
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        deadlineEvent,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(0);
+  });
+
+  it('excludes users who suspend mid-action from Custom cohort reminders', async () => {
+    const now = Date.now();
+    const primaryUser = await getPrimaryUser();
+
+    // Create a custom user who was active at action launch but suspended mid-action
+    const suspendedCustomUser = await userRepo.save(
+      userRepo.create({
+        email: `${uniqueName('custom-suspended')}@example.com`,
+        password: 'pass',
+        name: 'Suspended Custom User',
+        tags: primaryUser.tags,
+        contractEvents: [
+          {
+            type: ContractEventType.SIGNED,
+            date: new Date(now - 7 * 24 * 60 * 60 * 1000), // signed 7 days ago
+            automatic: false,
+          } as ContractEvent,
+          {
+            type: ContractEventType.SUSPENDED,
+            date: new Date(now - 30 * 60 * 1000), // suspended 30 minutes ago
+            automatic: false,
+          } as ContractEvent,
+        ],
+        textNotifsEnabled: true,
+        phoneNumber: '+15555550201',
+        phoneNumberValidated: true,
+        emailNotifsEnabled: false,
+      }),
+    );
+    const suspendedUserWithTags = await userRepo.findOneOrFail({
+      where: { id: suspendedCustomUser.id },
+      relations: { tags: true },
+    });
+
+    const { action, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('custom-cohort-mid-suspend'),
+      eventDate: new Date(now - 2 * 60 * 60 * 1000), // action started 2 hours ago
+    });
+
+    // Create a deadline event so the full range check is triggered
+    const deadlineEvent = await eventRepo.save(
+      eventRepo.create({
+        title: 'Deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 60 * 60 * 1000), // deadline 1 hour from now
+        action,
+      }),
+    );
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.Custom,
+      {
+        users: [suspendedUserWithTags],
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        deadlineEvent,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(0);
+
+    await userRepo.delete({ id: suspendedCustomUser.id });
+  });
+
   it('sends reminders only to members of a custom cohort', async () => {
     const now = Date.now();
     const primaryUser = await getPrimaryUser();

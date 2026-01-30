@@ -850,7 +850,7 @@ describe('Forum (e2e)', () => {
         .expect(201);
 
       const postId = postResponse.body.id;
-      const groupingKey = `forum_like:post:${postId}`;
+      const groupingKey = `forum_like:post:${postId}:user:${ctx.testUserId}`;
 
       await request(ctx.app.getHttpServer())
         .post(`/forum/posts/${postId}/like`)
@@ -975,6 +975,267 @@ describe('Forum (e2e)', () => {
     //   expect(latestNotif.message).toBe(`${thirdUser.name} liked your comment`);
     //   expect(latestNotif.read).toBe(false);
     // });
+
+    it('admin can assign multiple authors to a post', async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Multi Author Post',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const updateResponse = await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
+        .expect(200);
+
+      expect(updateResponse.body.authorIds).toEqual(
+        expect.arrayContaining([ctx.testUserId, coAuthor.id]),
+      );
+      expect(updateResponse.body.authorIds).toHaveLength(2);
+    });
+
+    it('notifies all authors when a comment is posted', async () => {
+      const { user: coAuthor } =
+        await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Post With Co-Authors For Comment',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
+        .expect(200);
+
+      // Admin comments on the post
+      const commentResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/comments')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          editableContent: { body: 'A comment for authors', attachments: [] },
+          parentObjectId: postId,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const replyId = commentResponse.body.id;
+
+      // Original author should get notified
+      const originalAuthorNotifs = await notifRepo.find({
+        where: {
+          user: { id: ctx.testUserId },
+          category: NotificationCategory.ForumReply,
+        },
+      });
+      expect(
+        originalAuthorNotifs.some((n) =>
+          n.webAppLocation?.includes(`replyId=${replyId}`),
+        ),
+      ).toBe(true);
+
+      // Co-author should also get notified
+      const coAuthorNotifs = await notifRepo.find({
+        where: {
+          user: { id: coAuthor.id },
+          category: NotificationCategory.ForumReply,
+        },
+      });
+      expect(
+        coAuthorNotifs.some((n) =>
+          n.webAppLocation?.includes(`replyId=${replyId}`),
+        ),
+      ).toBe(true);
+    });
+
+    it('sends like notifications to all authors', async () => {
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Post With Co-Authors For Likes',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
+        .expect(200);
+
+      // Admin likes the post
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/posts/${postId}/like`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      const originalAuthorLikeNotifs = await notifRepo.find({
+        where: {
+          user: { id: ctx.testUserId },
+          category: NotificationCategory.Likes,
+          groupingKey: `forum_like:post:${postId}:user:${ctx.testUserId}`,
+        },
+      });
+      expect(originalAuthorLikeNotifs).toHaveLength(1);
+
+      const coAuthorLikeNotifs = await notifRepo.find({
+        where: {
+          user: { id: coAuthor.id },
+          category: NotificationCategory.Likes,
+          groupingKey: `forum_like:post:${postId}:user:${coAuthor.id}`,
+        },
+      });
+      expect(coAuthorLikeNotifs).toHaveLength(1);
+    });
+
+    it('includes co-authored posts in findPostsByUser', async () => {
+      const { user: coAuthor } =
+        await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Co-Authored Post For User List',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
+        .expect(200);
+
+      const coAuthorPosts = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/user/${coAuthor.id}`)
+        .expect(200);
+
+      expect(coAuthorPosts.body.some((p) => p.id === postId)).toBe(true);
+    });
+
+    it('returns authors in admin posts listing', async () => {
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Admin Listing Authors Post',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
+        .expect(200);
+
+      const adminPosts = await request(ctx.app.getHttpServer())
+        .get('/forum/admin/posts')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+
+      const targetPost = adminPosts.body.find((p) => p.id === postId);
+      expect(targetPost).toBeDefined();
+      expect(targetPost.authorIds).toEqual(
+        expect.arrayContaining([ctx.testUserId, coAuthor.id]),
+      );
+      expect(targetPost.authors).toHaveLength(2);
+    });
+
+    it('returns authors from public post endpoints', async () => {
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Post With Authors For Public Endpoints',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
+        .expect(200);
+
+      // GET /forum/posts/:id should include authors
+      const singlePost = await request(ctx.app.getHttpServer())
+        .get(`/forum/posts/${postId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(singlePost.body.authorIds).toEqual(
+        expect.arrayContaining([ctx.testUserId, coAuthor.id]),
+      );
+      expect(singlePost.body.authors).toHaveLength(2);
+
+      // GET /forum/posts should include authors on each post
+      const allPosts = await request(ctx.app.getHttpServer())
+        .get('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const matchedPost = allPosts.body.find((p) => p.id === postId);
+      expect(matchedPost).toBeDefined();
+      expect(matchedPost.authorIds).toEqual(
+        expect.arrayContaining([ctx.testUserId, coAuthor.id]),
+      );
+      expect(matchedPost.authors).toHaveLength(2);
+    });
+
+    it('rejects non-admin from updating post authors', async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Post For Auth Check',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postResponse.body.id}/authors`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({ authorIds: [ctx.testUserId] })
+        .expect(401);
+    });
 
     it('creates notifications when activity comments receive likes', async () => {
       await activityRepo.delete({

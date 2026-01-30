@@ -30,7 +30,6 @@ export type HeaderBlock = BaseBlock & {
 export type TextBlock = BaseBlock & {
   kind: 'text';
   text: string;
-  markdown?: boolean; // default false
 };
 
 export type QuoteBlock = BaseBlock & {

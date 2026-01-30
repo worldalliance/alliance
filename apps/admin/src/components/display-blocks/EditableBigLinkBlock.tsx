@@ -1,11 +1,10 @@
-import { useState } from "react";
-import type { TextBlock } from "@alliance/shared/forms/display-blocks";
+import type { BigLinkBlock } from "@alliance/shared/forms/display-blocks";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
-import FormTextarea from "../FormTextarea";
+import { useState } from "react";
 
-export function EditableTextBlock({
+export function EditableBigLinkBlock({
   block,
   onUpdate,
   onRemove,
@@ -13,7 +12,7 @@ export function EditableTextBlock({
   onDragEnd,
   isDragging,
   previousFields,
-}: BaseDisplayBlockProps<TextBlock>) {
+}: BaseDisplayBlockProps<BigLinkBlock>) {
   const [showPreview, setShowPreview] = useState(false);
 
   return (
@@ -28,12 +27,19 @@ export function EditableTextBlock({
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-2">
-          <FormTextarea
+          <input
+            type="text"
             value={activeBlock.text}
             onChange={(e) => handleUpdate({ text: e.target.value })}
-            className="w-full text-gray-900 border-none outline-none bg-transparent resize-none whitespace-pre-wrap"
-            placeholder="Enter text content"
-            style={{ resize: "vertical" }}
+            className="w-full text-gray-900 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="Link label"
+          />
+          <input
+            type="text"
+            value={activeBlock.url}
+            onChange={(e) => handleUpdate({ url: e.target.value })}
+            className="w-full text-zinc-600 text-sm border border-zinc-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="/path or https://..."
           />
 
           <div className="flex items-center justify-end gap-2">
@@ -51,7 +57,7 @@ export function EditableTextBlock({
               <RenderDisplayBlock
                 block={{
                   ...activeBlock,
-                  kind: "text",
+                  kind: "biglink",
                 }}
               />
             </div>

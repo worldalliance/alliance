@@ -1,5 +1,5 @@
 import { CreateEditableContentDto } from "@alliance/shared/client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 interface EditableContentFormProps {
   value: CreateEditableContentDto;
@@ -49,6 +49,10 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
   const saveTimer = useRef<number | null>(null);
   const storageKeyRef = useRef<string>(getStorageKey(draftKey));
   const lastSavedHashRef = useRef<string>("");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const pendingScrollRestoreRef = useRef<{ x: number; y: number } | null>(
+    null
+  );
 
   const shouldRestoreDraft = restoreDraft ?? draftKey !== undefined;
 
@@ -115,6 +119,21 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
       // ignore
     }
   }, [clearDraftSignal]);
+
+  useLayoutEffect(() => {
+    if (typeof window === "undefined") return;
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+    if (pendingScrollRestoreRef.current) {
+      const { x, y } = pendingScrollRestoreRef.current;
+      if (window.scrollX !== x || window.scrollY !== y) {
+        window.scrollTo(x, y);
+      }
+      pendingScrollRestoreRef.current = null;
+    }
+  }, [value.body, expanded]);
 
   const readImagesFromFiles = async (files: File[]): Promise<string[]> => {
     const readers: Promise<string>[] = [];
@@ -217,27 +236,25 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
       onDrop={onDrop}
     >
       <textarea
-        ref={(el) => {
-          if (el) {
-            // Auto-resize when value changes
-            el.style.height = "auto";
-            el.style.height = `${el.scrollHeight}px`;
-          }
-        }}
+        ref={textareaRef}
         className={`w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-transparent border-none ${
           expanded ? "" : "resize-none"
         }`}
         rows={expanded ? 2 : 1}
         value={value.body}
         onChange={(e) => {
-          const el = e.target;
-          el.style.height = "auto";
-          el.style.height = el.scrollHeight + "px";
+          if (typeof window !== "undefined") {
+            pendingScrollRestoreRef.current = {
+              x: window.scrollX,
+              y: window.scrollY,
+            };
+          }
           onChange({ ...value, body: e.target.value });
         }}
         onPaste={onPaste}
         placeholder={placeholder}
         autoFocus={expanded}
+        style={{ overflowAnchor: "none" }}
       />
       {isDragging && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30 rounded pointer-events-none">

@@ -23,6 +23,7 @@ import {
   ContractEventType,
 } from 'src/user/entities/contract-event.entity';
 import { computeIsAwayInRange } from 'src/utils/user';
+import { findLeast } from 'src/utils/filter';
 
 @Injectable()
 export class ActionEventRecipientService {
@@ -32,7 +33,7 @@ export class ActionEventRecipientService {
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
     private readonly userService: UserService,
-  ) {}
+  ) { }
 
   private isContractActiveAtDate(
     contractEvents: ContractEvent[] | null,
@@ -53,25 +54,29 @@ export class ActionEventRecipientService {
     return lastEventBefore?.type === ContractEventType.SIGNED;
   }
 
-  public computeShouldParticipate(params: {
+  computeShouldParticipate(params: {
     eventDate: Date;
+    deadlineDate: Date | null;
     everyoneShouldComplete: boolean;
     manualCohortUserIds?: Set<number>;
     targetTagIds: Set<string>;
     useManualCohort: boolean;
     user: User;
     userDismissed: boolean;
+    onboarding: boolean;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
   }): boolean {
     const {
       eventDate,
+      deadlineDate,
       everyoneShouldComplete,
       manualCohortUserIds,
       targetTagIds,
       useManualCohort,
       user,
       userDismissed,
+      onboarding,
       includeSuspended = false,
       includeDismissed = false,
     } = params;
@@ -86,6 +91,27 @@ export class ActionEventRecipientService {
     if (!user.tags.some((tag) => targetTagIds.has(tag.id))) {
       return false;
     }
+
+    if (deadlineDate && !user.hasActiveContractInFullRange({
+      startDate: eventDate,
+      endDate: deadlineDate,
+    })) {
+      return false;
+    }
+
+    if (onboarding) {
+      const earliestContractEvent = findLeast(
+        user.contractEvents ?? [],
+        (a, b) => a.date.getTime() - b.date.getTime(),
+      );
+      if (
+        earliestContractEvent &&
+        earliestContractEvent.date < eventDate
+      ) {
+        return false;
+      }
+    }
+
     if (includeSuspended) {
       return true;
     }
@@ -130,11 +156,14 @@ export class ActionEventRecipientService {
           relations: { events: true },
         })
       ).events;
+
     const event = events.find((event) => event.id === eventId);
 
     if (!event) {
       throw new Error(`Event not found: ${eventId}`);
     }
+
+    const deadlineEvent = this.getNextEvent({ events, currentEventId: eventId });
 
     const usersDismissed = new Set(
       (
@@ -152,12 +181,14 @@ export class ActionEventRecipientService {
     const filterToEligible = (user: User) =>
       this.computeShouldParticipate({
         eventDate: event.date,
+        deadlineDate: deadlineEvent?.date ?? null,
         everyoneShouldComplete: action.everyoneShouldComplete,
         manualCohortUserIds: manualCohortUserIdsSet,
         targetTagIds,
         useManualCohort: action.useManualCohort,
         user,
         userDismissed: usersDismissed.has(user.id),
+        onboarding: action.onboarding,
         includeSuspended,
         includeDismissed,
       }) &&
@@ -204,6 +235,7 @@ export class ActionEventRecipientService {
   async filterForShouldRemind(
     users: User[],
     event: Pick<ActionEvent, 'newStatus' | 'action' | 'date'>,
+    deadlineEvent: Pick<ActionEvent, 'newStatus' | 'action' | 'date'> | null,
     actionSuite?: ActionSuite,
   ): Promise<User[]> {
     const targetTagIds = new Set(
@@ -231,12 +263,14 @@ export class ActionEventRecipientService {
     const filterToEligible = (user: User) =>
       this.computeShouldParticipate({
         eventDate: event.date,
+        deadlineDate: deadlineEvent?.date ?? null,
         everyoneShouldComplete: event.action.everyoneShouldComplete,
         manualCohortUserIds: manualCohortUserIdsSet,
         targetTagIds,
         useManualCohort: event.action.useManualCohort,
         user: idToUser.get(user.id)!,
         userDismissed: usersDismissed.has(user.id),
+        onboarding: event.action.onboarding,
       });
 
     const actions = actionSuite ? actionSuite.actions : [event.action];
@@ -273,6 +307,7 @@ export class ActionEventRecipientService {
 
   async findFilteredUsersForEvent(
     event: Pick<ActionEvent, 'newStatus' | 'action' | 'date' | 'id'>,
+    deadlineEvent: Pick<ActionEvent, 'newStatus' | 'action' | 'date'> | null,
     type: ActionEventNotifType,
     suite?: ActionSuite,
   ): Promise<User[]> {
@@ -283,7 +318,7 @@ export class ActionEventRecipientService {
     });
     return type === ActionEventNotifType.Announcement
       ? users
-      : await this.filterForShouldRemind(users, event, suite);
+      : await this.filterForShouldRemind(users, event, deadlineEvent, suite);
   }
 
   async findReminderGroupCohort(group: ReminderGroup): Promise<User[]> {
@@ -298,6 +333,7 @@ export class ActionEventRecipientService {
       case ReminderCohortType.AllUncompleted:
         users = await this.findFilteredUsersForEvent(
           group.memberActionEvent,
+          group.deadlineEvent ?? null,
           ActionEventNotifType.PersonalReminder,
           group.actionSuite,
         );
@@ -317,6 +353,7 @@ export class ActionEventRecipientService {
     return this.filterForShouldRemind(
       users,
       group.memberActionEvent,
+      group.deadlineEvent ?? null,
       group.actionSuite,
     );
   }

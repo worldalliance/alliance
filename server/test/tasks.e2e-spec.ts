@@ -115,6 +115,10 @@ describe('Tasks (e2e)', () => {
       phoneNumberValidated: false,
       profilePicture: null as unknown as string,
       profileDescription: null as unknown as string,
+      timeZone: null as unknown as string,
+      customCityString: null as unknown as string,
+      shareInfoPublicly: false,
+      preferredReminderTime: null as unknown as string,
     });
   });
 
@@ -140,6 +144,7 @@ describe('Tasks (e2e)', () => {
         optional: false,
         useManualCohort: false,
         publicOnly: false,
+        onboarding: false,
         latestMemberActionEvent: {
           event: null,
           deadline: null,
@@ -315,6 +320,7 @@ describe('Tasks (e2e)', () => {
             event: null,
             deadline: null,
           },
+          onboarding: false,
         } satisfies CreateActionDto),
       );
 
@@ -636,6 +642,301 @@ describe('Tasks (e2e)', () => {
       expect(
         submitTwo.body.visibilityValidatorResults[visibilityValidatorId],
       ).toBe(true);
+    });
+  });
+
+  describe('User field extraction from form submission', () => {
+    const createAction = async (name: string): Promise<Action> => {
+      const action = await actionRepo.save(
+        actionRepo.create({
+          name,
+          category: 'Community',
+          body: 'Body copy',
+          shortDescription: 'Short copy',
+          type: ActionTaskType.Activity,
+          commitmentless: true,
+          everyoneShouldComplete: false,
+          shouldCompleteAfterDeadline: false,
+          participatingTags: [ctx.defaultTag],
+          priority: 0,
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          optional: false,
+          useManualCohort: false,
+          publicOnly: false,
+          latestMemberActionEvent: {
+            event: null,
+            deadline: null,
+          },
+          onboarding: false,
+        } satisfies CreateActionDto),
+      );
+
+      await eventRepo.save(
+        eventRepo.create({
+          title: `${name} Event`,
+          description: `${name} Event`,
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action,
+        }),
+      );
+
+      return action;
+    };
+
+    it('extracts and saves user fields', async () => {
+      // Set up initial user state with a profileDescription
+      const initialDescription = 'This is my profile description that should not be deleted';
+      await userRepo.update(ctx.testUserId, {
+        profileDescription: initialDescription,
+        phoneNumber: null as unknown as string,
+        phoneNumberValidated: false,
+        timeZone: null as unknown as string,
+        customCityString: null as unknown as string,
+        shareInfoPublicly: false,
+      });
+
+      const extractionSchema: FormSchema = {
+        title: 'User Data Extraction Form',
+        pages: [
+          {
+            id: 'page-1',
+            fields: [
+              {
+                id: 'phone-field',
+                kind: 'phone',
+                label: 'Phone Number',
+                autoExtractUserData: true,
+              },
+              {
+                id: 'timezone-field',
+                kind: 'timezone',
+                label: 'Time Zone',
+                autoExtractUserData: true,
+              },
+              {
+                id: 'city-field',
+                kind: 'city',
+                label: 'City',
+                autoExtractUserData: true,
+              },
+              {
+                id: 'share-publicly-field',
+                kind: 'checkbox',
+                label: 'Share my info publicly',
+                autoExtractUserData: { target: 'shareInfoPublicly' },
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+      };
+
+      const action = await createAction('Extraction Test Action');
+      const formResponse = await request(ctx.app.getHttpServer())
+        .post('/tasks/createForm')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: extractionSchema.title, schema: extractionSchema })
+        .expect(201);
+
+      const testFormId = formResponse.body.id;
+
+      // Submit form with auto-extract data
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${testFormId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            'phone-field': '+14155551234',
+            'timezone-field': 'America/New_York',
+            'city-field': 'Custom City Name',
+            'share-publicly-field': true,
+          },
+          schemaSnapshot: extractionSchema,
+          actionId: action.id,
+        })
+        .expect(201);
+
+      // Verify user was updated correctly
+      const updatedUser = await userRepo.findOne({
+        where: { id: ctx.testUserId },
+      });
+
+      // Verify extracted fields were saved
+      expect(updatedUser?.phoneNumber).toBe('+14155551234');
+      expect(updatedUser?.phoneNumberValidated).toBe(true);
+      expect(updatedUser?.timeZone).toBe('America/New_York');
+      expect(updatedUser?.customCityString).toBe('Custom City Name');
+      expect(updatedUser?.shareInfoPublicly).toBe(true);
+      expect(updatedUser?.profileDescription).toBe(initialDescription);
+    });
+
+    it('extracts preferredReminderTime from time field', async () => {
+      const initialDescription = 'Another description that should persist';
+      await userRepo.update(ctx.testUserId, {
+        profileDescription: initialDescription,
+        preferredReminderTime: null as unknown as string,
+      });
+
+      const timeSchema: FormSchema = {
+        title: 'Time Extraction Form',
+        pages: [
+          {
+            id: 'page-1',
+            fields: [
+              {
+                id: 'time-field',
+                kind: 'time',
+                label: 'Preferred Reminder Time',
+                autoExtractUserData: true,
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+      };
+
+      const action = await createAction('Time Extraction Action');
+      const formResponse = await request(ctx.app.getHttpServer())
+        .post('/tasks/createForm')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: timeSchema.title, schema: timeSchema })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formResponse.body.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            'time-field': '09:30',
+          },
+          schemaSnapshot: timeSchema,
+          actionId: action.id,
+        })
+        .expect(201);
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: ctx.testUserId },
+      });
+
+      expect(updatedUser?.preferredReminderTime).toBeDefined();
+      expect(updatedUser?.profileDescription).toBe(initialDescription);
+    });
+
+    it('does not update user fields when form has no auto-extract fields', async () => {
+      const initialDescription = 'Description that must not change';
+      const initialPhone = '+14155559999';
+      await userRepo.update(ctx.testUserId, {
+        profileDescription: initialDescription,
+        phoneNumber: initialPhone,
+        phoneNumberValidated: true,
+        shareInfoPublicly: true,
+      });
+
+      const noExtractSchema: FormSchema = {
+        title: 'No Extraction Form',
+        pages: [
+          {
+            id: 'page-1',
+            fields: [
+              {
+                id: 'regular-text',
+                kind: 'text',
+                label: 'Regular Text Field',
+              },
+              {
+                id: 'regular-checkbox',
+                kind: 'checkbox',
+                label: 'Regular Checkbox',
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+      };
+
+      const action = await createAction('No Extraction Action');
+      const formResponse = await request(ctx.app.getHttpServer())
+        .post('/tasks/createForm')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: noExtractSchema.title, schema: noExtractSchema })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formResponse.body.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            'regular-text': 'Some text',
+            'regular-checkbox': false,
+          },
+          schemaSnapshot: noExtractSchema,
+          actionId: action.id,
+        })
+        .expect(201);
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: ctx.testUserId },
+      });
+
+      // All user fields should remain unchanged
+      expect(updatedUser?.profileDescription).toBe(initialDescription);
+      expect(updatedUser?.phoneNumber).toBe(initialPhone);
+      expect(updatedUser?.phoneNumberValidated).toBe(true);
+      expect(updatedUser?.shareInfoPublicly).toBe(true);
+    });
+
+    it('handles invalid phone numbers without setting phoneNumberValidated', async () => {
+      await userRepo.update(ctx.testUserId, {
+        phoneNumber: null as unknown as string,
+        phoneNumberValidated: false,
+      });
+
+      const phoneSchema: FormSchema = {
+        title: 'Invalid Phone Form',
+        pages: [
+          {
+            id: 'page-1',
+            fields: [
+              {
+                id: 'phone-field',
+                kind: 'phone',
+                label: 'Phone',
+                autoExtractUserData: true,
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+      };
+
+      const action = await createAction('Invalid Phone Action');
+      const formResponse = await request(ctx.app.getHttpServer())
+        .post('/tasks/createForm')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: phoneSchema.title, schema: phoneSchema })
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formResponse.body.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            'phone-field': 'not-a-valid-phone',
+          },
+          schemaSnapshot: phoneSchema,
+          actionId: action.id,
+        })
+        .expect(201);
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: ctx.testUserId },
+      });
+
+      // Phone should be saved but not validated
+      expect(updatedUser?.phoneNumber).toBe('not-a-valid-phone');
+      expect(updatedUser?.phoneNumberValidated).toBe(false);
     });
   });
 });

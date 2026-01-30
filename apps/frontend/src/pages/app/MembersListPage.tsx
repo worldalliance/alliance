@@ -17,6 +17,7 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 export enum MemberFilterMode {
   All = "All",
   FriendsOfFriends = "Friends of friends",
+  Staff = "Staff",
 }
 
 const MembersListPage = () => {
@@ -86,10 +87,12 @@ const MembersListPage = () => {
 
   const friendsOfFriends = allFriendsOfFriends.filter(filterBySearch);
   const otherMembers = allOtherMembers.filter(filterBySearch);
+  const staffMembers = members.filter((member) => member.staff);
 
   const secondaryLabels = {
     [MemberFilterMode.All]: members.length.toString(),
     [MemberFilterMode.FriendsOfFriends]: friendsOfFriends.length.toString(),
+    [MemberFilterMode.Staff]: staffMembers.length.toString(),
   };
 
   const renderMembers = (list: ProfileDtoWithFriends[]) => (
@@ -142,12 +145,18 @@ const MembersListPage = () => {
             </div>
           </div>
 
-          {(filterMode === MemberFilterMode.All ||
-            filterMode === MemberFilterMode.FriendsOfFriends) && (
+          {filterMode === MemberFilterMode.All && (
             <>
-              <p className="font-medium text-zinc-500 mt-2">
-                Friends of friends ({friendsOfFriends.length})
-              </p>
+              {members.length > 0 ? (
+                renderMembers([...friendsOfFriends, ...otherMembers])
+              ) : (
+                <p className="text-center text-zinc-500 py-4">None found</p>
+              )}
+            </>
+          )}
+
+          {filterMode === MemberFilterMode.FriendsOfFriends && (
+            <>
               {friendsOfFriends.length > 0 ? (
                 renderMembers(friendsOfFriends)
               ) : (
@@ -156,13 +165,10 @@ const MembersListPage = () => {
             </>
           )}
 
-          {filterMode === MemberFilterMode.All && (
+          {filterMode === MemberFilterMode.Staff && (
             <>
-              <p className="font-medium text-zinc-500 mt-2">
-                Others ({otherMembers.length})
-              </p>
-              {otherMembers.length > 0 ? (
-                renderMembers(otherMembers)
+              {staffMembers.length > 0 ? (
+                renderMembers(staffMembers)
               ) : (
                 <p className="text-center text-zinc-500 py-4">None found</p>
               )}
