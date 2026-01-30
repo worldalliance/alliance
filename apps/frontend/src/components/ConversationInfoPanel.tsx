@@ -15,7 +15,7 @@ import { useAuth } from "../lib/AuthContext";
 import { useEffect, useMemo, useState } from "react";
 import CreateIcon from "@alliance/sharedweb/ui/icons/CreateIcon";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
-import ProfileImageEditor from "./ProfileImageEditor";
+import ImageEditor from "./ImageEditor";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -133,7 +133,7 @@ const ConversationInfoPanel = ({
         {error && <p className="text-red-500">{error}</p>}
         <div className="flex flex-col items-center px-8 w-full gap-y-2 mt-20">
           {isEditingGroup ? (
-            <ProfileImageEditor
+            <ImageEditor
               key={0}
               className="mt-[-55px]"
               initialImageUrl={editingGroupPhoto}

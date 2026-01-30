@@ -35,7 +35,7 @@ import useActivities, {
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import List from "@alliance/sharedweb/ui/List";
 import ForumActivityCommentCard from "../../components/ForumActivityCommentCard";
-import ProfileImageEditor from "../../components/ProfileImageEditor";
+import ImageEditor from "../../components/ImageEditor";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { MessageSquare } from "lucide-react";
 import { Features } from "@alliance/shared/lib/features";
@@ -326,7 +326,7 @@ const UserProfilePage: React.FC = () => {
             </div>
           )} */}
           {isEditing ? (
-            <ProfileImageEditor
+            <ImageEditor
               key={avatarEditorKey}
               className="mt-[-55px]"
               initialImageUrl={editAvatarUrl}

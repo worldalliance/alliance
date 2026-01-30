@@ -19,8 +19,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
+import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
+import ImageEditor from "../../components/ImageEditor";
 import { useAuth } from "../../lib/AuthContext";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
+import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import CompletedBar from "../../components/CompletedBar";
 import {
   GroupMemberGuidelines,
@@ -107,8 +110,12 @@ const CommunityPage = () => {
   const [editPublic, setEditPublic] = useState<boolean>(false);
   const [allowStaffAssignments, setAllowStaffAssignments] = useState(false);
   const [editMaxCapacity, setEditMaxCapacity] = useState<number | null>(null);
+  const [editPhotoUrl, setEditPhotoUrl] = useState<string | null>(null);
+  const [photoEditorKey, setPhotoEditorKey] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const currentPhoto = community?.photo ?? null;
+  const isPhotoUploadPending = isSaving && editPhotoUrl !== currentPhoto;
 
   useEffect(() => {
     if (!community?.id) {
@@ -157,6 +164,7 @@ const CommunityPage = () => {
         community.public || community.maxCapacity !== null
       );
       setEditMaxCapacity(community.maxCapacity);
+      setEditPhotoUrl(community.photo ?? null);
       setIsEditing(false);
       setError(null);
     }
@@ -295,6 +303,7 @@ const CommunityPage = () => {
         body: {
           name: editName,
           description: editDescription,
+          photo: editPhotoUrl ?? undefined,
           public: editPublic,
           maxCapacity: normalizedMaxCapacity,
         },
@@ -331,6 +340,7 @@ const CommunityPage = () => {
     editPublic,
     allowStaffAssignments,
     editMaxCapacity,
+    editPhotoUrl,
     requiresMaxCapacity,
     isSaving,
   ]);
@@ -344,7 +354,9 @@ const CommunityPage = () => {
         community.public || community.maxCapacity !== null
       );
       setEditMaxCapacity(community.maxCapacity);
+      setEditPhotoUrl(community.photo ?? null);
     }
+    setPhotoEditorKey((prev) => prev + 1);
     setError(null);
     setIsEditing(false);
   }, [community]);
@@ -429,59 +441,72 @@ const CommunityPage = () => {
           {tab !== "groups" && (
             <>
               <div className="flex flex-col gap-y-2 my-8">
-                <div className="flex flex-row gap-x-1 mb-4 justify-end">
-                  <CommunitySelectDropdown
-                    communities={communities}
-                    currentCommunityId={community.id}
-                    onSelectCommunity={(communityId) => {
-                      setParams({ communityId, tab: "activity" });
-                    }}
-                    onManageGroups={() => setParams({ tab: "groups" })}
-                    titleOverride={"My groups"}
-                    notifCount={pendingCommunityInvites.length}
-                  />
-                  {amLeader && (
-                    <>
-                      {isEditing ? (
-                        <div className="flex flex-row gap-x-1 items-start">
-                          {canDelete && (
+                <div className="flex flex-row mb-4 justify-between">
+                  {isEditing ? (
+                    <ImageEditor
+                      key={photoEditorKey}
+                      initialImageUrl={editPhotoUrl}
+                      onChange={setEditPhotoUrl}
+                      allowedMimeTypes={sharp_allowed_mime_types}
+                      isUploading={isPhotoUploadPending}
+                    />
+                  ) : (
+                    <ProfileImage pfp={community.photo ?? null} size="huge" />
+                  )}
+                  <div className="flex flex-row gap-x-1">
+                    <CommunitySelectDropdown
+                      communities={communities}
+                      currentCommunityId={community.id}
+                      onSelectCommunity={(communityId) => {
+                        setParams({ communityId, tab: "activity" });
+                      }}
+                      onManageGroups={() => setParams({ tab: "groups" })}
+                      titleOverride={"My groups"}
+                      notifCount={pendingCommunityInvites.length}
+                    />
+                    {amLeader && (
+                      <>
+                        {isEditing ? (
+                          <div className="flex flex-row gap-x-1 items-start">
+                            {canDelete && (
+                              <Button
+                                color={ButtonColor.Red}
+                                onClick={handleDelete}
+                                disabled={isSaving}
+                                className="!text-sm"
+                              >
+                                Delete
+                              </Button>
+                            )}
                             <Button
-                              color={ButtonColor.Red}
-                              onClick={handleDelete}
+                              color={ButtonColor.Light}
+                              onClick={handleCancel}
                               disabled={isSaving}
                               className="!text-sm"
                             >
-                              Delete
+                              Cancel
                             </Button>
-                          )}
+                            <Button
+                              color={ButtonColor.Blue}
+                              onClick={handleSave}
+                              disabled={isSaving}
+                              className="!text-sm"
+                            >
+                              {isSaving ? "Saving..." : "Save"}
+                            </Button>
+                          </div>
+                        ) : (
                           <Button
-                            color={ButtonColor.Light}
-                            onClick={handleCancel}
-                            disabled={isSaving}
+                            color={ButtonColor.White}
+                            onClick={() => setIsEditing(true)}
                             className="!text-sm"
                           >
-                            Cancel
+                            Edit
                           </Button>
-                          <Button
-                            color={ButtonColor.Blue}
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="!text-sm"
-                          >
-                            {isSaving ? "Saving..." : "Save"}
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          color={ButtonColor.White}
-                          onClick={() => setIsEditing(true)}
-                          className="!text-sm"
-                        >
-                          Edit
-                        </Button>
-                      )}
-                    </>
-                  )}
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-y-4 mb-8">
                   {isEditing ? (

@@ -9,6 +9,8 @@ import {
   editGroupPublicGroupExplanation,
 } from "@alliance/shared/lib/copy";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import ImageEditor from "./ImageEditor";
+import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import { useCallback, useMemo, useState } from "react";
 
 export type CommunityCreateFormProps = {
@@ -33,6 +35,8 @@ const CommunityCreateForm = (props: CommunityCreateFormProps) => {
   const [formValues, setFormValues] =
     useState<CreateCommunityDto>(initialFormValues);
   const [allowStaffAssignments, setAllowStaffAssignments] = useState(true);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -57,21 +61,41 @@ const CommunityCreateForm = (props: CommunityCreateFormProps) => {
       }
     }
 
-    const response = await userCreateCommunity({
-      body: {
-        ...formValues,
-        maxCapacity: normalizedMaxCapacity,
-      },
-    });
-    if (response.data) {
-      props.onSuccess(response.data);
-    } else {
-      setError(`Failed to create community`);
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const response = await userCreateCommunity({
+        body: {
+          ...formValues,
+          photo: photoUrl ?? undefined,
+          maxCapacity: normalizedMaxCapacity,
+        },
+      });
+      if (response.data) {
+        props.onSuccess(response.data);
+      } else {
+        setError(`Failed to create community`);
+      }
+    } catch (err) {
+      console.error("Failed to create community:", err);
+      setError("Failed to create community");
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [allowStaffAssignments, formValues, props, requiresMaxCapacity]);
+  }, [allowStaffAssignments, formValues, photoUrl, props, requiresMaxCapacity]);
+
+  const isPhotoUploadPending = isSubmitting && photoUrl !== null;
 
   return (
     <div className="flex flex-col gap-y-2">
+      <div className="mb-4">
+        <ImageEditor
+          initialImageUrl={photoUrl}
+          onChange={setPhotoUrl}
+          allowedMimeTypes={sharp_allowed_mime_types}
+          isUploading={isPhotoUploadPending}
+        />
+      </div>
       <label className="text-black text-sm font-semibold" htmlFor="name">
         Name
       </label>
@@ -183,8 +207,9 @@ const CommunityCreateForm = (props: CommunityCreateFormProps) => {
             onClick={handleSubmit}
             color={ButtonColor.Black}
             className="!h-9"
+            disabled={isSubmitting}
           >
-            Create
+            {isSubmitting ? "Creating..." : "Create"}
           </Button>
         </div>
       </div>

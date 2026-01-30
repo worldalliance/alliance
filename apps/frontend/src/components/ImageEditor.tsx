@@ -12,7 +12,7 @@ import { RiArrowGoBackLine, RiArrowGoForwardLine } from "@remixicon/react";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 
-type ProfileImageEditorProps = {
+type ImageEditorProps = {
   initialImageUrl: string | null;
   onChange: (imageDataUrl: string | null) => void;
   allowedMimeTypes: string[];
@@ -262,7 +262,7 @@ const resizeCropRect = (
   }
 };
 
-const ProfileImageEditor: FC<ProfileImageEditorProps> = ({
+const ImageEditor: FC<ImageEditorProps> = ({
   initialImageUrl,
   onChange,
   allowedMimeTypes,
@@ -777,7 +777,7 @@ const ProfileImageEditor: FC<ProfileImageEditorProps> = ({
           >
             <div className="mb-4 flex items-center justify-between">
               <p className="text-lg font-semibold text-zinc-900">
-                Adjust your profile photo
+                Adjust your photo
               </p>
               <Button
                 onClick={() => setIsCropModalOpen(false)}
@@ -888,4 +888,4 @@ const ProfileImageEditor: FC<ProfileImageEditorProps> = ({
   );
 };
 
-export default ProfileImageEditor;
+export default ImageEditor;

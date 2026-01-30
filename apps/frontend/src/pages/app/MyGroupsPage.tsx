@@ -8,8 +8,9 @@ import {
 } from "@alliance/shared/client";
 import List from "@alliance/sharedweb/ui/List";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import ProfileImage from "@alliance/sharedweb/ui/ProfileImage";
 import { ChevronLeft, Minus, Plus } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import {
@@ -277,26 +278,32 @@ const MyGroupsPage = ({
                       onClick={() => onSelectCommunity(community.id)}
                     >
                       <div className={"w-full flex flex-row justify-between"}>
-                        <div className="flex flex-col text-left">
-                          <p className="text-lg font-semibold">
-                            {community.name}
-                          </p>
-                          <p className="text-zinc-500">
-                            {community.description}
-                          </p>
-                          <span className="text-zinc-500">
-                            {community.users.length}{" "}
-                            {community.users.length === 1
-                              ? "member"
-                              : "members"}
-                          </span>
+                        <div className="flex flex-row gap-x-3">
+                          <ProfileImage
+                            pfp={community.photo ?? null}
+                            size="huge"
+                          />
+                          <div className="flex flex-col text-left">
+                            <p className="text-lg font-semibold">
+                              {community.name}
+                            </p>
+                            <p className="text-zinc-500">
+                              {community.description}
+                            </p>
+                            <span className="text-zinc-500">
+                              {community.users.length}{" "}
+                              {community.users.length === 1
+                                ? "member"
+                                : "members"}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </Button>
                   );
                 }) ?? []),
                 !isOnboardingGroupMember && (
-                  <>
+                  <Fragment key="create-group">
                     <Button
                       onClick={() => setShowCreateForm(!showCreateForm)}
                       color={
@@ -322,7 +329,7 @@ const MyGroupsPage = ({
                         />
                       </div>
                     )}
-                  </>
+                  </Fragment>
                 ),
               ]}
             </List>
@@ -377,13 +384,18 @@ const MyGroupsPage = ({
                   onClick={() => onSelectCommunity(community.id)}
                 >
                   <div className={"w-full flex flex-row justify-between"}>
-                    <div className="flex flex-col text-left">
-                      <p className="text-lg font-semibold">{community.name}</p>
-                      <p className="text-zinc-500">{community.description}</p>
-                      <span className="text-zinc-500">
-                        {community.users.length}{" "}
-                        {community.users.length === 1 ? "member" : "members"}
-                      </span>
+                    <div className="flex flex-row gap-x-3">
+                      <ProfileImage pfp={community.photo ?? null} size="huge" />
+                      <div className="flex flex-col text-left">
+                        <p className="text-lg font-semibold">
+                          {community.name}
+                        </p>
+                        <p className="text-zinc-500">{community.description}</p>
+                        <span className="text-zinc-500">
+                          {community.users.length}{" "}
+                          {community.users.length === 1 ? "member" : "members"}
+                        </span>
+                      </div>
                     </div>
                     <Button
                       color={ButtonColor.Red}
@@ -463,18 +475,21 @@ const MyGroupsPage = ({
                   key={community.id}
                   className="flex flex-col gap-y-2 p-4 md:flex-row md:items-start md:justify-between"
                 >
-                  <div className="flex flex-col">
-                    <p className="text-lg font-semibold">{community.name}</p>
-                    {community.description && (
-                      <p className="text-zinc-500">{community.description}</p>
-                    )}
-                    <span className="text-zinc-500">
-                      {community.users.length}
-                      {community.maxCapacity !== null
-                        ? ` / ${community.maxCapacity}`
-                        : ""}{" "}
-                      members
-                    </span>
+                  <div className="flex flex-row gap-x-3">
+                    <ProfileImage pfp={community.photo ?? null} size="huge" />
+                    <div className="flex flex-col">
+                      <p className="text-lg font-semibold">{community.name}</p>
+                      {community.description && (
+                        <p className="text-zinc-500">{community.description}</p>
+                      )}
+                      <span className="text-zinc-500">
+                        {community.users.length}
+                        {community.maxCapacity !== null
+                          ? ` / ${community.maxCapacity}`
+                          : ""}{" "}
+                        members
+                      </span>
+                    </div>
                   </div>
                   <div className="flex justify-end md:justify-start">
                     <Button
