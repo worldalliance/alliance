@@ -251,9 +251,8 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
         : community.name;
       return `${member.name}: ${groupTransitionSummary}`;
     });
-    return `You're about to assign ${assignmentPreview.length} member${
-      assignmentPreview.length === 1 ? "" : "s"
-    }:\n\n${lines.join("\n")}`;
+    return `You're about to assign ${assignmentPreview.length} member${assignmentPreview.length === 1 ? "" : "s"
+      }:\n\n${lines.join("\n")}`;
   }, [assignmentPreview, memberGroupsByMemberId]);
 
   const canConfirm =
@@ -272,12 +271,10 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
       const options = sortedCommunities
         .filter((community) => {
           if (community.maxCapacity === null) return false;
-          const capacity = community.maxCapacity;
-          if (capacity === null) return true;
           const pending = pendingAssignmentsByCommunityId[community.id] ?? 0;
           const isSelected = selection === community.id.toString();
           if (isSelected) return true;
-          return community.users.length + pending < capacity;
+          return community.users.length + pending < community.maxCapacity;
         })
         .map((community) => ({
           value: community.id.toString(),
