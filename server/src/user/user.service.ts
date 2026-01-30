@@ -2102,7 +2102,7 @@ export class UserService {
       community.leaders![0].id === userId
     ) {
       throw new BadRequestException(
-        'You cannot leave the last leader of the community',
+        'You cannot leave as the last leader of the community',
       );
     }
 
