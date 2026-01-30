@@ -47,11 +47,12 @@ export type CommunityInviteStatus = 'request_pending' | 'request_rejected' | 'in
 
 export type CommunityInvite = {
     id: number;
-    invitingUser?: User;
-    invitedUser: User;
     status: CommunityInviteStatus;
     createdAt: string;
     updatedAt: string;
+    deletedAt: string | null;
+    invitingUser?: User;
+    invitedUser: User;
     community: Community;
 };
 
@@ -135,9 +136,10 @@ export type OnetimeInvite = {
     invitee: string;
     inviteeDescription?: string;
     code: string;
-    invitingUser: User;
     createdAt: string;
     status: OnetimeInviteStatus;
+    deletedAt: string | null;
+    invitingUser: User;
     community?: Community;
     communityId?: number;
     notifs: Array<Notification>;

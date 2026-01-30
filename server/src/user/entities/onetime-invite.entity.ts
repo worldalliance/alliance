@@ -25,6 +25,8 @@ export enum OnetimeInviteStatus {
 
 @Entity()
 export class OnetimeInvite {
+  // Fields
+
   @PrimaryGeneratedColumn()
   @ApiProperty()
   @Allow()
@@ -45,13 +47,6 @@ export class OnetimeInvite {
   @Allow()
   code: string;
 
-  @ManyToOne(() => User)
-  @ApiProperty({ type: () => User })
-  @Type(() => User)
-  @JoinColumn({ name: 'invitingUserId' })
-  @Allow()
-  invitingUser: Ty<User>;
-
   @CreateDateColumnTz()
   @ApiProperty()
   @Allow()
@@ -68,6 +63,21 @@ export class OnetimeInvite {
   })
   @Allow()
   status: OnetimeInviteStatus;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
+  @Type(() => Date)
+  @IsOptional()
+  deletedAt: Date | null;
+
+  // Relations
+
+  @ManyToOne(() => User)
+  @ApiProperty({ type: () => User })
+  @Type(() => User)
+  @JoinColumn({ name: 'invitingUserId' })
+  @Allow()
+  invitingUser: Ty<User>;
 
   @ManyToOne(() => Community, (community) => community.invites, {
     nullable: true,

@@ -1477,7 +1477,9 @@ export class UserService {
       throw new UnauthorizedException();
     }
 
-    await this.onetimeInviteRepository.delete(inviteId);
+    this.onetimeInviteRepository.update(inviteId, {
+      deletedAt: new Date(),
+    });
   }
 
   async requestOnetimeInvite(
@@ -1571,7 +1573,7 @@ export class UserService {
     const user = await this.findOneOrFail(userId);
 
     const request = await this.onetimeInviteRepository.findOneOrFail({
-      where: { id: inviteId },
+      where: { id: inviteId, deletedAt: IsNull() },
       relations: { invitingUser: true },
     });
 
@@ -1622,7 +1624,7 @@ export class UserService {
 
   async deleteCommunityInvite(inviteId: number, userId: number): Promise<void> {
     const invite = await this.communityInviteRepository.findOneOrFail({
-      where: { id: inviteId },
+      where: { id: inviteId, deletedAt: IsNull() },
       relations: { invitingUser: true, community: true },
     });
     const user = await this.findOneOrFail(userId, { leaderOf: true });
@@ -1635,7 +1637,9 @@ export class UserService {
     ) {
       throw new UnauthorizedException();
     }
-    await this.communityInviteRepository.delete(inviteId);
+    await this.communityInviteRepository.update(inviteId, {
+      deletedAt: new Date(),
+    });
   }
 
   async findInviteByCode(
@@ -1643,7 +1647,7 @@ export class UserService {
     relations?: Relations<OnetimeInvite>,
   ): Promise<OnetimeInvite | null> {
     return this.onetimeInviteRepository.findOne({
-      where: { code },
+      where: { code, deletedAt: IsNull() },
       relations: relations ?? {
         invitingUser: true,
         community: true,
@@ -1653,13 +1657,14 @@ export class UserService {
 
   async findAllOnetimeInvites(): Promise<OnetimeInvite[]> {
     return this.onetimeInviteRepository.find({
+      where: { deletedAt: IsNull() },
       relations: { invitingUser: true, community: true },
     });
   }
 
   async findOnetimeInvites(communityId: number): Promise<OnetimeInvite[]> {
     return this.onetimeInviteRepository.find({
-      where: { community: { id: communityId } },
+      where: { community: { id: communityId }, deletedAt: IsNull() },
       relations: { invitingUser: true },
     });
   }
@@ -1669,7 +1674,11 @@ export class UserService {
     communityId: number,
   ): Promise<OnetimeInvite[]> {
     return this.onetimeInviteRepository.find({
-      where: { invitingUser: { id: userId }, community: { id: communityId } },
+      where: {
+        invitingUser: { id: userId },
+        community: { id: communityId },
+        deletedAt: IsNull(),
+      },
     });
   }
 
@@ -1678,7 +1687,7 @@ export class UserService {
   ): Promise<OnetimeInvite[]> {
     return this.onetimeInviteRepository.find({
       where: [
-        { invitingUser: { id: userId } },
+        { invitingUser: { id: userId }, deletedAt: IsNull() },
         {
           community: {
             leaders: { id: userId },
@@ -1712,6 +1721,7 @@ export class UserService {
       where: {
         invitedUser: { id: invitedUserId },
         community: { id: communityId },
+        deletedAt: IsNull(),
       },
     });
     if (
@@ -1777,6 +1787,7 @@ export class UserService {
       where: {
         invitedUser: { id: invitedUserId },
         community: { id: communityId },
+        deletedAt: IsNull(),
       },
     });
     if (
@@ -1834,7 +1845,7 @@ export class UserService {
   ): Promise<CommunityInvite> {
     const userP = this.findOneOrFail(userId);
     const invite = await this.communityInviteRepository.findOneOrFail({
-      where: { id: inviteId },
+      where: { id: inviteId, deletedAt: IsNull() },
       relations: { invitingUser: true, invitedUser: true, community: true },
     });
 
@@ -1892,7 +1903,7 @@ export class UserService {
   ): Promise<void> {
     const userP = this.findOneOrFail(userId);
     const invite = await this.communityInviteRepository.findOneOrFail({
-      where: { id: inviteId },
+      where: { id: inviteId, deletedAt: IsNull() },
       relations: { invitedUser: true, invitingUser: true, community: true },
     });
 
@@ -1932,7 +1943,7 @@ export class UserService {
     communityId: number,
   ): Promise<CommunityInviteDto[]> {
     const invites = await this.communityInviteRepository.find({
-      where: { community: { id: communityId } },
+      where: { community: { id: communityId }, deletedAt: IsNull() },
       relations: { invitedUser: true, invitingUser: true },
     });
     return invites.map((invite) => new CommunityInviteDto(invite));
@@ -1944,6 +1955,7 @@ export class UserService {
     const invites = await this.communityInviteRepository.find({
       where: {
         invitedUser: { id: userId },
+        deletedAt: IsNull(),
       },
       relations: { invitingUser: true, community: true },
     });
@@ -1952,7 +1964,7 @@ export class UserService {
 
   async acceptCommunityInvite(inviteId: number, userId: number): Promise<void> {
     const invite = await this.communityInviteRepository.findOneOrFail({
-      where: { id: inviteId },
+      where: { id: inviteId, deletedAt: IsNull() },
       relations: {
         invitedUser: {
           communities: { leaders: true },
@@ -2045,7 +2057,7 @@ export class UserService {
 
   async rejectCommunityInvite(inviteId: number, userId: number): Promise<void> {
     const invite = await this.communityInviteRepository.findOneOrFail({
-      where: { id: inviteId },
+      where: { id: inviteId, deletedAt: IsNull() },
       relations: { invitedUser: true, invitingUser: true, community: true },
     });
     if (invite.invitedUser.id !== userId) {

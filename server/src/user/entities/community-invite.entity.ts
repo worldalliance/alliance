@@ -27,24 +27,12 @@ export enum CommunityInviteStatus {
 
 @Entity()
 export class CommunityInvite {
+  // Fields
+
   @PrimaryGeneratedColumn()
   @ApiProperty()
   @Allow()
   id: number;
-
-  @ManyToOne(() => User, { nullable: true })
-  @ApiPropertyOptional({ type: () => User })
-  @Type(() => User)
-  @JoinColumn({ name: 'invitingUserId' })
-  @IsOptional()
-  invitingUser?: Ty<User>;
-
-  @ManyToOne(() => User, (user) => user.invitedCommunities)
-  @ApiProperty({ type: () => User })
-  @Type(() => User)
-  @JoinColumn({ name: 'invitedUserId' })
-  @Allow()
-  invitedUser: Ty<User>;
 
   @Column({
     type: 'enum',
@@ -68,6 +56,28 @@ export class CommunityInvite {
   @Allow()
   @Type(() => Date)
   updatedAt: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
+  @Type(() => Date)
+  @IsOptional()
+  deletedAt: Date | null;
+
+  // Relations
+
+  @ManyToOne(() => User, { nullable: true })
+  @ApiPropertyOptional({ type: () => User })
+  @Type(() => User)
+  @JoinColumn({ name: 'invitingUserId' })
+  @IsOptional()
+  invitingUser?: Ty<User>;
+
+  @ManyToOne(() => User, (user) => user.invitedCommunities)
+  @ApiProperty({ type: () => User })
+  @Type(() => User)
+  @JoinColumn({ name: 'invitedUserId' })
+  @Allow()
+  invitedUser: Ty<User>;
 
   @ManyToOne(() => Community, (community) => community.internalInvites, {
     onDelete: 'CASCADE',
