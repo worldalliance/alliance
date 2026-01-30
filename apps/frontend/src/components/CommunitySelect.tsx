@@ -22,7 +22,6 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 
 export type CommunitySelectProps = {
   communities: CommunityDto[] | null;
-  currentCommunityId?: number | null;
   onSelectCommunity: (communityId: number | null | undefined) => void;
   isOnboardingGroupMember: boolean;
   onCreateCommunity: () => void;
@@ -30,7 +29,6 @@ export type CommunitySelectProps = {
 
 const CommunitySelect = ({
   communities,
-  currentCommunityId,
   onSelectCommunity,
   isOnboardingGroupMember,
   onCreateCommunity,

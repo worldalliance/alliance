@@ -433,7 +433,6 @@ const CommunityPage = () => {
           {tab === "groups" && (
             <div className="flex flex-col gap-y-6">
               <CommunitySelect
-                currentCommunityId={community.id}
                 onSelectCommunity={(communityId) => {
                   setParams({ communityId, tab: "activity" });
                   if (communityId === null) {
