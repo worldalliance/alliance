@@ -664,6 +664,7 @@ export type UpdateAwayRangeDto = {
 export type UpdateProfileDto = {
     name?: string;
     phoneNumber?: string;
+    phoneNumberValidated?: boolean;
     preferredReminderTime?: string;
     timeZone?: string;
     preferredActionReminderChannel?: NotificationChannel;
@@ -2245,6 +2246,10 @@ export type ActionStatsRecord = {
      * Number of users who joined/were expected to complete
      */
     usersJoined: number;
+    /**
+     * Number of users who withdrew from this action (declined or wont_complete)
+     */
+    usersWithdrawn: number;
     /**
      * Completion rate as a fraction (usersCompleted / usersJoined)
      */
