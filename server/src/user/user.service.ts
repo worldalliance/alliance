@@ -1463,7 +1463,7 @@ export class UserService {
 
   async deleteOnetimeInvite(inviteId: number, userId: number): Promise<void> {
     const invite = await this.onetimeInviteRepository.findOneOrFail({
-      where: { id: inviteId },
+      where: { id: inviteId, deletedAt: IsNull() },
       relations: { invitingUser: true },
     });
     const user = await this.findOneOrFail(userId);
@@ -1477,7 +1477,7 @@ export class UserService {
       throw new UnauthorizedException();
     }
 
-    this.onetimeInviteRepository.update(inviteId, {
+    await this.onetimeInviteRepository.update(inviteId, {
       deletedAt: new Date(),
     });
   }
@@ -1692,6 +1692,7 @@ export class UserService {
           community: {
             leaders: { id: userId },
           },
+          deletedAt: IsNull(),
         },
       ],
       relations: {
