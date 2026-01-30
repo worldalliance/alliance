@@ -9,7 +9,7 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import CommunityEditForm from "./CommunityEditForm";
+import CommunityCreateForm from "./CommunityCreateForm";
 import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import {
   groupLeaderOnetimeInviteExplanation,
@@ -238,8 +238,7 @@ const InviteForm = ({
               First, you need to create a group. This will allow you to easily
               view your new member&apos;s progress.
             </p>
-            <CommunityEditForm
-              mode="create"
+            <CommunityCreateForm
               name={user?.name}
               onCancel={() => {
                 setResponsibilityChoice(null);
@@ -257,8 +256,7 @@ const InviteForm = ({
         <Card style={CardStyle.Grey}>
           <div className="flex flex-col gap-y-4">
             <p className="text-xl font-semibold">Create a new group</p>
-            <CommunityEditForm
-              mode="create"
+            <CommunityCreateForm
               name={user?.name}
               onCancel={() => {
                 setSelectedCommunityId(null);

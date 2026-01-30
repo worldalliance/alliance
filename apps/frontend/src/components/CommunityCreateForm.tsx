@@ -2,8 +2,6 @@ import {
   CommunityDto,
   CreateCommunityDto,
   userCreateCommunity,
-  userDeleteCommunity,
-  userUpdateCommunity,
 } from "@alliance/shared/client";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import {
@@ -13,31 +11,14 @@ import {
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useCallback, useMemo, useState } from "react";
 
-export type CommunityFormProps =
-  | {
-      mode: "edit";
-      name?: undefined;
-      initialValue: CommunityDto;
-      onCancel: () => void;
-      onSuccess: () => void;
-      canDelete: boolean;
-      onDelete: () => void;
-    }
-  | {
-      mode: "create";
-      name?: string;
-      initialValue?: undefined;
-      onCancel: () => void;
-      onSuccess: (community: CommunityDto) => void;
-      canDelete?: undefined;
-      onDelete?: undefined;
-    };
+export type CommunityCreateFormProps = {
+  name?: string;
+  onCancel: () => void;
+  onSuccess: (community: CommunityDto) => void;
+};
 
-const CommunityEditForm = (props: CommunityFormProps) => {
+const CommunityCreateForm = (props: CommunityCreateFormProps) => {
   const initialFormValues = useMemo<CreateCommunityDto>(() => {
-    if (props.mode === "edit") {
-      return props.initialValue;
-    }
     const firstName = props.name?.split(" ")[0];
     return {
       name: firstName ? `${firstName}'s Group` : "",
@@ -47,15 +28,11 @@ const CommunityEditForm = (props: CommunityFormProps) => {
       public: false,
       maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
     };
-  }, [props.mode, props.initialValue, props.name]);
+  }, [props.name]);
 
   const [formValues, setFormValues] =
     useState<CreateCommunityDto>(initialFormValues);
-  const [allowStaffAssignments, setAllowStaffAssignments] = useState(
-    props.mode === "edit"
-      ? props.initialValue.public || props.initialValue.maxCapacity !== null
-      : true
-  );
+  const [allowStaffAssignments, setAllowStaffAssignments] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -80,23 +57,6 @@ const CommunityEditForm = (props: CommunityFormProps) => {
       }
     }
 
-    if (props.mode === "edit") {
-      const response = await userUpdateCommunity({
-        path: { communityId: props.initialValue.id },
-        body: {
-          ...formValues,
-          maxCapacity: normalizedMaxCapacity,
-        },
-      });
-      if (response.data) {
-        setFormValues(response.data);
-        props.onSuccess();
-      } else {
-        setError("Failed to update community");
-      }
-      return;
-    }
-
     const response = await userCreateCommunity({
       body: {
         ...formValues,
@@ -109,20 +69,6 @@ const CommunityEditForm = (props: CommunityFormProps) => {
       setError(`Failed to create community`);
     }
   }, [allowStaffAssignments, formValues, props, requiresMaxCapacity]);
-
-  const handleDelete = useCallback(async () => {
-    if (props.mode !== "edit") {
-      return;
-    }
-    const response = await userDeleteCommunity({
-      path: { communityId: props.initialValue.id },
-    });
-    if (response.data) {
-      props.onDelete();
-    } else {
-      setError("Failed to delete community");
-    }
-  }, [props]);
 
   return (
     <div className="flex flex-col gap-y-2">
@@ -224,19 +170,7 @@ const CommunityEditForm = (props: CommunityFormProps) => {
           </div>
         )}
       </div>
-      <div className="flex flex-row justify-between">
-        <div>
-          {props.canDelete && (
-            <Button
-              onClick={handleDelete}
-              className="mt-1"
-              color={ButtonColor.Red}
-            >
-              Delete
-            </Button>
-          )}
-        </div>
-
+      <div className="flex flex-row justify-end">
         <div className="flex gap-x-1 mt-1">
           <Button
             onClick={props.onCancel}
@@ -250,7 +184,7 @@ const CommunityEditForm = (props: CommunityFormProps) => {
             color={ButtonColor.Black}
             className="!h-9"
           >
-            {props.mode === "edit" ? "Save" : "Create"}
+            Create
           </Button>
         </div>
       </div>
@@ -259,4 +193,4 @@ const CommunityEditForm = (props: CommunityFormProps) => {
   );
 };
 
-export default CommunityEditForm;
+export default CommunityCreateForm;

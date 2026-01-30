@@ -26,7 +26,7 @@ import {
   GroupMemberGuidelines,
   GroupOrganizerGuidelines,
 } from "../../components/GroupGuidelines";
-import CommunityEditForm from "../../components/CommunityEditForm";
+import CommunityCreateForm from "../../components/CommunityCreateForm";
 import { useSearchParams } from "react-router";
 import CommunityActivityTab from "../../components/CommunityActivityTab";
 import TwoColumnLayout from "../../components/TwoColumnLayout";
@@ -53,7 +53,6 @@ export type Tab =
   | "members"
   | "invites"
   | "about"
-  | "edit"
   | "resources"
   | "groups"
   | "create";
@@ -690,29 +689,6 @@ const CommunityPage = () => {
             ) : (
               <CommunityInvitesMemberTab communityId={community.id} />
             ))}
-          {tab === "edit" && amLeader && (
-            <CommunityEditForm
-              mode="edit"
-              initialValue={community}
-              onCancel={() => setParams({ tab: null })}
-              onSuccess={() => {
-                setParams({ communityId: null, tab: null });
-                window.location.reload();
-              }}
-              canDelete={canDelete}
-              onDelete={() => {
-                setCommunities((prev) => {
-                  const next =
-                    prev?.filter((c) => c.id !== community.id) ?? null;
-                  if (!next?.length) {
-                    refreshUser();
-                  }
-                  return next;
-                });
-                setParams({ communityId: null, tab: null });
-              }}
-            />
-          )}
           {tab === "groups" && (
             <div className="flex flex-col gap-y-6">
               <CommunitySelect
@@ -732,8 +708,7 @@ const CommunityPage = () => {
             </div>
           )}
           {tab === "create" && (
-            <CommunityEditForm
-              mode="create"
+            <CommunityCreateForm
               name={user?.name}
               onCancel={() => setParams({ tab: "groups" })}
               onSuccess={(community) => {
