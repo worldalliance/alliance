@@ -2095,27 +2095,43 @@ export class UserService {
     });
     const user = community.users.find((user) => user.id === userId);
     if (!user) {
-      throw new BadRequestException();
+      throw new BadRequestException('User not found in community');
     }
-    if (community.leaders!.some((leader) => leader.id === userId)) {
-      throw new BadRequestException();
+    if (
+      community.leaders!.length === 1 &&
+      community.leaders![0].id === userId
+    ) {
+      throw new BadRequestException(
+        'You cannot leave the last leader of the community',
+      );
     }
 
     community.users = community.users.filter((u) => u.id !== user.id);
 
     await this.communityRepository.save(community);
-    const notifs = community.leaders!.map((leader) =>
+    const notifs = [
+      ...community.leaders!.map((leader) =>
+        this.notifRepository.create({
+          user: leader,
+          category: NotificationCategory.MemberLeftCommunity,
+          message: `${user.name} left your group (${community.name})`,
+          webAppLocation: groupUrl({
+            tab: 'members',
+            communityId: community.id,
+          }),
+          associatedUsers: [user],
+        }),
+      ),
       this.notifRepository.create({
-        user: leader,
-        category: NotificationCategory.MemberLeftCommunity,
-        message: `${user.name} left your group (${community.name})`,
+        user: user,
+        category: NotificationCategory.LeftCommunityReminder,
+        message: `You left the group (${community.name}). It is encouraged that you request a new group assignment.`,
         webAppLocation: groupUrl({
-          tab: 'members',
-          communityId: community.id,
+          tab: 'groups',
         }),
         associatedUsers: [user],
       }),
-    );
+    ];
     await Promise.all([
       this.conversationService.syncCommunityConversationMembers(communityId),
       this.notifRepository.save(notifs),
