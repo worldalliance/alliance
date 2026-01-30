@@ -56,7 +56,7 @@ function DropdownSelect<T extends EnumType>({
           const asButton = isButtonOption(key as keyof T);
           return (
             <button
-              key={value}
+              key={`${String(key)}-${value}`}
               onClick={() => {
                 onChange([key, value]);
                 setIsOpen(false);
