@@ -23,6 +23,16 @@ const STATUS_STYLE = {
   cancelled: { label: "Cancelled", textStyle: "text-zinc-500" },
 } satisfies Record<CommunityInviteStatus, { label: string; textStyle: string }>;
 
+const SHOW_DELETE_BUTTON = {
+  request_pending: true,
+  request_rejected: true,
+  invitee_pending: true,
+
+  invitee_accepted: false,
+  invitee_rejected: false,
+  cancelled: false,
+} satisfies Record<CommunityInviteStatus, boolean>;
+
 const CommunityInviteListItem = ({
   invite,
   showCommunityLabel,
@@ -35,7 +45,6 @@ const CommunityInviteListItem = ({
     <div className="flex flex-row w-full justify-between p-4">
       <div className="flex flex-col gap-2">
         <div className="text-sm font-semibold">
-          <span className="text-zinc-600">Group invite</span>
           <span className="text-zinc-400">
             {showCommunityLabel && ` (${communityLabel ?? "No group"})`}
           </span>
@@ -88,7 +97,7 @@ const CommunityInviteListItem = ({
           {statusStyle.label}
         </span>
         <div className="flex flex-row items-center justify-end gap-2">
-          {onDelete && (
+          {onDelete && SHOW_DELETE_BUTTON[invite.status] && (
             <Button
               color={ButtonColor.Black}
               onClick={(event) => onDelete(invite.id, event)}
