@@ -1,9 +1,9 @@
 import { useSearchParams } from "react-router";
-import CommunitySelect from "../../components/CommunitySelect";
 import { useAuth } from "../../lib/AuthContext";
 import { useCallback } from "react";
 import { Tab } from "./CommunityPage";
 import CommunityCreateForm from "../../components/CommunityCreateForm";
+import MyGroupsPage from "./MyGroupsPage";
 
 const NoCommunityPage = () => {
   const { user, refreshUser } = useAuth();
@@ -45,7 +45,7 @@ const NoCommunityPage = () => {
             }}
           />
         ) : (
-          <CommunitySelect
+          <MyGroupsPage
             onSelectCommunity={(communityId) => setParams({ communityId })}
             communities={[]}
             isOnboardingGroupMember={user?.isIntroductoryGroupMember ?? true}

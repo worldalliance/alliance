@@ -36,7 +36,6 @@ import { Features } from "@alliance/shared/lib/features";
 import { isFeatureEnabled } from "../../lib/config";
 import CommunityInvitesLeaderTab from "../../components/CommunityInvitesLeaderTab";
 import CommunityInvitesMemberTab from "../../components/CommunityInvitesMemberTab";
-import CommunitySelect from "../../components/CommunitySelect";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import { useMediaQuery } from "../../lib/useMediaQuery";
 import {
@@ -47,6 +46,7 @@ import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
 import NoCommunityPage from "./NoCommunityPage";
 import CommunitySelectDropdown from "../../components/CommunitySelectDropdown";
+import MyGroupsPage from "./MyGroupsPage";
 
 export type Tab =
   | "activity"
@@ -691,7 +691,7 @@ const CommunityPage = () => {
             ))}
           {tab === "groups" && (
             <div className="flex flex-col gap-y-6">
-              <CommunitySelect
+              <MyGroupsPage
                 onSelectCommunity={(communityId) => {
                   setParams({ communityId, tab: "activity" });
                   if (communityId === null) {

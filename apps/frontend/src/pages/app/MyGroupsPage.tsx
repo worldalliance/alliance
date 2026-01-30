@@ -8,19 +8,19 @@ import {
 } from "@alliance/shared/client";
 import List from "@alliance/sharedweb/ui/List";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useAuth } from "../lib/AuthContext";
 import { ChevronLeft, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
-import CommunityInviteList from "./CommunityInviteList";
 import {
   leaveGroupConfirmation,
   requestGroupAssignmentConfirmation,
 } from "@alliance/shared/lib/copy";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { useAuth } from "../../lib/AuthContext";
+import CommunityInviteList from "../../components/CommunityInviteList";
 
-export type CommunitySelectProps = {
+export type MyGroupsPageProps = {
   communities: CommunityDto[] | null;
   onSelectCommunity: (communityId: number | null | undefined) => void;
   onBack?: () => void;
@@ -28,13 +28,13 @@ export type CommunitySelectProps = {
   onCreateCommunity: () => void;
 };
 
-const CommunitySelect = ({
+const MyGroupsPage = ({
   communities,
   onSelectCommunity,
   onBack,
   isOnboardingGroupMember,
   onCreateCommunity,
-}: CommunitySelectProps) => {
+}: MyGroupsPageProps) => {
   const { user, refreshUser } = useAuth();
   const { confirm, error: showError, success } = useToast();
   const {
@@ -474,4 +474,4 @@ const CommunitySelect = ({
   );
 };
 
-export default CommunitySelect;
+export default MyGroupsPage;
