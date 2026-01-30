@@ -9,7 +9,7 @@ import {
 import List from "@alliance/sharedweb/ui/List";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useAuth } from "../lib/AuthContext";
-import { Plus } from "lucide-react";
+import { ChevronLeft, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
@@ -23,6 +23,7 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 export type CommunitySelectProps = {
   communities: CommunityDto[] | null;
   onSelectCommunity: (communityId: number | null | undefined) => void;
+  onBack?: () => void;
   isOnboardingGroupMember: boolean;
   onCreateCommunity: () => void;
 };
@@ -30,6 +31,7 @@ export type CommunitySelectProps = {
 const CommunitySelect = ({
   communities,
   onSelectCommunity,
+  onBack,
   isOnboardingGroupMember,
   onCreateCommunity,
 }: CommunitySelectProps) => {
@@ -235,6 +237,11 @@ const CommunitySelect = ({
 
   return (
     <div className="flex flex-col gap-y-12 py-8">
+      {onBack && (
+        <Button color={ButtonColor.White} onClick={onBack}>
+          <ChevronLeft size="16" /> Back to group
+        </Button>
+      )}
       {/* Leader groups */}
       <div>
         {!!(leaderCommunities.length || !isOnboardingGroupMember) && (

@@ -439,6 +439,7 @@ const CommunityPage = () => {
                     refreshUser();
                   }
                 }}
+                onBack={() => setParams({ tab: null })}
                 communities={communities}
                 isOnboardingGroupMember={
                   user?.isIntroductoryGroupMember ?? true
