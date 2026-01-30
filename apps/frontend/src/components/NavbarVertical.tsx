@@ -176,10 +176,14 @@ const NavbarVertical: React.FC<{ todoActions: number }> = ({
               },
             ]
           : []),
-        {
-          page: NavbarPage.Invite,
-          destination: destinations[NavbarPage.Invite],
-        },
+        ...(isFeatureEnabled(Features.InvitesPage)
+          ? [
+              {
+                page: NavbarPage.Invite,
+                destination: destinations[NavbarPage.Invite],
+              },
+            ]
+          : []),
       ],
     },
     {
