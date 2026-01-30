@@ -144,26 +144,34 @@ const InviteForm = ({
     return (
       <Card style={CardStyle.Grey}>
         <div className="flex flex-col gap-y-4">
-          <p className="font-semibold text-lg">{onetimeInviteCreationTitle}</p>
-          {onetimeInviteCreationExplanation.map((block, index) => (
-            <p className="text-zinc-500" key={index}>
-              {block}
+          <div className="flex flex-col gap-y-2">
+            <p className="font-semibold text-xl">
+              {onetimeInviteCreationTitle}
             </p>
-          ))}
-          <Button
-            color={ButtonColor.Black}
-            onClick={() => setResponsibilityChoice("responsible")}
-            className="w-full"
-          >
-            {onetimeInviteCreationResponsibilityChoiceYes}
-          </Button>
-          <Button
-            color={ButtonColor.Grey}
-            onClick={() => setResponsibilityChoice("not_responsible")}
-            className="w-full"
-          >
-            {onetimeInviteCreationResponsibilityChoiceNo}
-          </Button>
+            <div className="flex flex-col gap-y-2">
+              {onetimeInviteCreationExplanation.map((block, index) => (
+                <p className="text-zinc-500" key={index}>
+                  {block}
+                </p>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-y-2">
+            <Button
+              color={ButtonColor.Green}
+              onClick={() => setResponsibilityChoice("responsible")}
+              className="w-full"
+            >
+              {onetimeInviteCreationResponsibilityChoiceYes}
+            </Button>
+            <Button
+              color={ButtonColor.Grey}
+              onClick={() => setResponsibilityChoice("not_responsible")}
+              className="w-full"
+            >
+              {onetimeInviteCreationResponsibilityChoiceNo}
+            </Button>
+          </div>
         </div>
       </Card>
     );
@@ -174,37 +182,43 @@ const InviteForm = ({
     return (
       <Card style={CardStyle.Grey}>
         <div className="flex flex-col gap-y-4">
-          <p className="font-semibold">{unaffiliatedOnetimeInviteTitle}</p>
-          {unaffiliatedOnetimeInviteExplanation.map((block, index) => (
-            <p className="text-zinc-500" key={index}>
-              {block}
+          <div className="flex flex-col gap-y-2">
+            <p className="font-semibold text-xl">
+              {unaffiliatedOnetimeInviteTitle}
             </p>
-          ))}
-          <div className="flex flex-row gap-x-2">
-            <input
-              type="text"
-              className="border border-zinc-300 rounded px-3 py-2 flex-1"
-              placeholder="Enter the invitee's first name"
-              value={inviteeName}
-              onChange={(e) => setInviteeName(e.target.value)}
-            />
+            {unaffiliatedOnetimeInviteExplanation.map((block, index) => (
+              <p className="text-zinc-500" key={index}>
+                {block}
+              </p>
+            ))}
+          </div>
+          <div className="flex flex-col gap-y-2">
+            <div className="flex flex-row gap-x-2">
+              <input
+                type="text"
+                className="border border-zinc-300 rounded px-3 py-2 flex-1"
+                placeholder="Enter the invitee's first name"
+                value={inviteeName}
+                onChange={(e) => setInviteeName(e.target.value)}
+              />
+              <Button
+                color={ButtonColor.Black}
+                onClick={handleCreateInvite}
+                disabled={creatingInvite || !inviteeName.trim()}
+              >
+                {creatingInvite ? "Creating..." : "Create invite"}
+              </Button>
+            </div>
             <Button
-              color={ButtonColor.Black}
-              onClick={handleCreateInvite}
-              disabled={creatingInvite || !inviteeName.trim()}
+              color={ButtonColor.Grey}
+              onClick={() => {
+                setResponsibilityChoice(null);
+                setInviteeName("");
+              }}
             >
-              {creatingInvite ? "Creating..." : "Create invite"}
+              Back
             </Button>
           </div>
-          <Button
-            color={ButtonColor.Grey}
-            onClick={() => {
-              setResponsibilityChoice(null);
-              setInviteeName("");
-            }}
-          >
-            Back
-          </Button>
         </div>
       </Card>
     );
@@ -218,8 +232,8 @@ const InviteForm = ({
         <Card style={CardStyle.Grey}>
           <div className="flex flex-col gap-y-4">
             <p className="font-semibold">
-              You need to create a group first to take responsibility for the
-              new member.
+              First, you need to create a group. This will allow you to easily
+              view your new member&apos;s progress.
             </p>
             <CommunityEditForm
               mode="create"
@@ -239,7 +253,7 @@ const InviteForm = ({
       return (
         <Card style={CardStyle.Grey}>
           <div className="flex flex-col gap-y-4">
-            <p className="font-semibold">Create a new group</p>
+            <p className="text-xl font-semibold">Create a new group</p>
             <CommunityEditForm
               mode="create"
               name={user?.name}
@@ -265,13 +279,17 @@ const InviteForm = ({
     return (
       <Card style={CardStyle.Grey}>
         <div className="flex flex-col gap-y-4">
-          <p className="font-semibold">{groupLeaderOnetimeInviteTitle}</p>
-          {groupLeaderOnetimeInviteExplanation.map((block, index) => (
-            <p className="text-zinc-500" key={index}>
-              {block}
+          <div className="flex flex-col gap-y-2">
+            <p className="text-xl font-semibold">
+              {groupLeaderOnetimeInviteTitle}
             </p>
-          ))}
-          <div className="flex flex-col gap-y-3">
+            {groupLeaderOnetimeInviteExplanation.map((block, index) => (
+              <p className="text-zinc-500" key={index}>
+                {block}
+              </p>
+            ))}
+          </div>
+          <div className="flex flex-col gap-y-2">
             {isLeader && leaderCommunities.length > 0 && (
               <div>
                 <DropdownSelect

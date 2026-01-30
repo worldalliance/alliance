@@ -187,7 +187,7 @@ const InvitesPage = () => {
 
         {actionable.length > 0 && (
           <div className="flex flex-col gap-y-2">
-            <p className="font-semibold text-xl">Invites to be approved</p>
+            <p className="font-semibold text-2xl">Invites that need approval</p>
             <List>
               {actionable.map((request) => (
                 <OnetimeInviteListItem
@@ -207,7 +207,7 @@ const InvitesPage = () => {
         {unverifiableActionable.length > 0 && (
           <div className="flex flex-col gap-y-2">
             <div className="flex flex-col gap-y-1">
-              <p className="font-semibold text-xl">Invites to be sent</p>
+              <p className="font-semibold text-2xl">Invites to be sent</p>
               <p className="text-zinc-500">
                 These invites are ready to be sent.
               </p>
@@ -231,7 +231,7 @@ const InvitesPage = () => {
         {waitingForResponse.length > 0 && (
           <div className="flex flex-col gap-y-2">
             <div className="flex flex-col gap-y-1">
-              <p className="font-semibold text-xl">No action needed</p>
+              <p className="font-semibold text-2xl">No action needed</p>
               <p className="text-zinc-500">
                 Other members need to approve or send these invites.
               </p>
@@ -254,7 +254,7 @@ const InvitesPage = () => {
         {settled.length > 0 && (
           <div className="flex flex-col gap-y-2">
             <div className="flex flex-col gap-y-1">
-              <p className="font-semibold text-xl">Past invites</p>
+              <p className="font-semibold text-2xl">Past invites</p>
               <p className="text-zinc-500">
                 These invites have been accepted or rejected.
               </p>

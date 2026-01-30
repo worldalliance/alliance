@@ -150,7 +150,7 @@ const CommunityEditForm = (props: CommunityFormProps) => {
         }
         className="border border-zinc-300 rounded px-3 py-2 w-full bg-white"
       />
-      <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+      <div className="mt-3 rounded border border-zinc-200 bg-zinc-50 p-3">
         <div className="flex flex-col gap-y-3">
           <label
             className="flex items-start gap-x-2 text-black text-sm font-semibold"

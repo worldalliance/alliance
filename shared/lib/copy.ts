@@ -37,12 +37,12 @@ export const editGroupGroupAssignmentExplanation =
 
 export const onetimeInviteCreationTitle = "Invite a new member to the Alliance";
 export const onetimeInviteCreationExplanation = [
-  "Would you like to take responsibility for the new member completing their tasks?",
+  "We strongly encourage you to invite new members to join a group that you lead. This will ensure they are initially supported by someone they already know.",
+  "You do not need to support them indefinitely. They can transfer to another group later.",
+  "Who do you want to be responsible for the new member?",
 ];
-export const onetimeInviteCreationResponsibilityChoiceYes =
-  "I want to take responsibility for the new member";
-export const onetimeInviteCreationResponsibilityChoiceNo =
-  "I don't want to take responsibility for the new member";
+export const onetimeInviteCreationResponsibilityChoiceYes = "Myself";
+export const onetimeInviteCreationResponsibilityChoiceNo = "Someone else";
 
 export const groupLeaderOnetimeInviteTitle =
   "Invite a new member to the Alliance and your group";

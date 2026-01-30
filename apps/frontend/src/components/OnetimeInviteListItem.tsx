@@ -57,7 +57,9 @@ const OnetimeInviteListItem = ({
   return (
     <div className="flex flex-row w-full justify-between p-4">
       <div className="flex flex-col">
-        <span className="font-semibold text-zinc-900">{invite.invitee}</span>
+        <span className="text-lg font-semibold text-zinc-900">
+          {invite.invitee}
+        </span>
 
         {invite.invitingUser && (
           <div className="text-sm flex flex-row items-center gap-x-2">
