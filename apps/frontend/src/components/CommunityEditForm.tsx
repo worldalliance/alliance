@@ -199,7 +199,10 @@ const CommunityEditForm = (props: CommunityFormProps) => {
         {requiresMaxCapacity && (
           <div className="mt-4">
             <label className="text-black font-medium" htmlFor="maxCapacity">
-              Member capacity
+              <p className="text-base font-medium">Member capacity</p>
+              <p className="text-sm text-zinc-500 font-normal">
+                The maximum number of members that can join this group.
+              </p>
             </label>
             <input
               id="maxCapacity"

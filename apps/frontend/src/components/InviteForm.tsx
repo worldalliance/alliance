@@ -21,6 +21,7 @@ import {
   unaffiliatedOnetimeInviteExplanation,
   unaffiliatedOnetimeInviteTitle,
 } from "@alliance/shared/lib/copy";
+import { ArrowLeft } from "lucide-react";
 
 type ResponsibilityChoice = "responsible" | "not_responsible" | null;
 
@@ -156,7 +157,7 @@ const InviteForm = ({
               ))}
             </div>
           </div>
-          <div className="flex flex-col gap-y-2">
+          <div className="flex flex-row gap-2">
             <Button
               color={ButtonColor.Green}
               onClick={() => setResponsibilityChoice("responsible")}
@@ -182,6 +183,17 @@ const InviteForm = ({
     return (
       <Card style={CardStyle.Grey}>
         <div className="flex flex-col gap-y-4">
+          <Button
+            color={ButtonColor.Grey}
+            className="flex flex-row gap-x-1"
+            onClick={() => {
+              setResponsibilityChoice(null);
+              setInviteeName("");
+            }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
           <div className="flex flex-col gap-y-2">
             <p className="font-semibold text-xl">
               {unaffiliatedOnetimeInviteTitle}
@@ -209,15 +221,6 @@ const InviteForm = ({
                 {creatingInvite ? "Creating..." : "Create invite"}
               </Button>
             </div>
-            <Button
-              color={ButtonColor.Grey}
-              onClick={() => {
-                setResponsibilityChoice(null);
-                setInviteeName("");
-              }}
-            >
-              Back
-            </Button>
           </div>
         </div>
       </Card>
@@ -279,6 +282,18 @@ const InviteForm = ({
     return (
       <Card style={CardStyle.Grey}>
         <div className="flex flex-col gap-y-4">
+          <Button
+            color={ButtonColor.Grey}
+            className="flex flex-row gap-x-1"
+            onClick={() => {
+              setResponsibilityChoice(null);
+              setInviteeName("");
+              setSelectedCommunityId(null);
+            }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
           <div className="flex flex-col gap-y-2">
             <p className="text-xl font-semibold">
               {groupLeaderOnetimeInviteTitle}
@@ -341,16 +356,6 @@ const InviteForm = ({
                 {creatingInvite ? "Creating invite..." : "Create invite"}
               </Button>
             </div>
-            <Button
-              color={ButtonColor.Grey}
-              onClick={() => {
-                setResponsibilityChoice(null);
-                setInviteeName("");
-                setSelectedCommunityId(null);
-              }}
-            >
-              Back
-            </Button>
           </div>
         </div>
       </Card>
