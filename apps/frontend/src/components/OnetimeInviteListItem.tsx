@@ -55,7 +55,7 @@ const OnetimeInviteListItem = ({
   };
 
   return (
-    <div className="flex flex-row w-full justify-between p-4">
+    <div className="flex flex-col sm:flex-row w-full justify-between p-4">
       <div className="flex flex-col">
         <span className="text-lg font-semibold text-zinc-900">
           {invite.invitee}
@@ -92,7 +92,7 @@ const OnetimeInviteListItem = ({
         )}
       </div>
 
-      <div className="flex flex-col items-end justify-between gap-2">
+      <div className="mt-4 sm:mt-0 flex flex-col sm:items-end justify-between sm:gap-2">
         <div className="flex flex-row items-center gap-x-1.5">
           <div className="text-sm font-medium">
             {showCommunityLabel && (
@@ -103,7 +103,7 @@ const OnetimeInviteListItem = ({
             {statusStyle.label}
           </span>
         </div>
-        <div className="mt-2 flex flex-row items-center justify-end gap-2">
+        <div className="mt-2 flex flex-row items-center sm:justify-end gap-2">
           {isRequest && onApprove && onReject ? (
             <>
               <Button

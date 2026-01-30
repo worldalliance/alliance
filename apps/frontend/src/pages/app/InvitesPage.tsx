@@ -176,7 +176,7 @@ const InvitesPage = () => {
 
   return (
     <CenterLayout>
-      <div className="flex flex-col gap-y-12 py-6 px-5 md:px-0">
+      <div className="flex flex-col gap-y-12">
         <div className="flex flex-col gap-y-3">
           <p className="font-serif font-semibold text-2xl md:text-3xl">
             Invites

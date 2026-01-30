@@ -14,7 +14,7 @@ const CenterLayout: React.FC<CenterLayoutProps> = ({
     <div
       className={`flex flex-col ${
         width === "4xl" ? "max-w-4xl" : "max-w-3xl"
-      } mx-auto px-3 py-3 md:py-12 ${className}`}
+      } mx-auto px-3 py-6 md:py-12 ${className}`}
     >
       {children}
       <BottomSpacer />
