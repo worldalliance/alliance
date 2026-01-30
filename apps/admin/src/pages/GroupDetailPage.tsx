@@ -28,6 +28,7 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
 import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
+import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 
 const CommunityDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -44,7 +45,7 @@ const CommunityDetailPage: React.FC = () => {
     description: "",
     photo: "",
     public: false,
-    maxCapacity: 20,
+    maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
   });
   const [allowStaffAssignments, setAllowStaffAssignments] = useState(false);
   const [users, setUsers] = useState<UserSelectUser[]>([]);

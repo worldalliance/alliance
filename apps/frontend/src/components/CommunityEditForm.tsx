@@ -5,6 +5,7 @@ import {
   userDeleteCommunity,
   userUpdateCommunity,
 } from "@alliance/shared/client";
+import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import {
   editGroupGroupAssignmentExplanation,
   editGroupPublicGroupExplanation,
@@ -44,7 +45,7 @@ const CommunityEditForm = (props: CommunityFormProps) => {
         ? `Reminder and discussion group for ${firstName}'s friends`
         : "",
       public: false,
-      maxCapacity: 20,
+      maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
     };
   }, [props.mode, props.initialValue, props.name]);
 

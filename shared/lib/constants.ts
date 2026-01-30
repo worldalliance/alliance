@@ -1,0 +1,1 @@
+export const GROUP_MAX_CAPACITY_DEFAULT = 10;

@@ -14,13 +14,14 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import List from "@alliance/sharedweb/ui/List";
 import GroupAssignmentPanel from "../components/GroupAssignmentPanel";
 import { useGroupAssignment } from "../lib/GroupAssignmentContext";
+import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
   description: "",
   photo: "",
   public: false,
-  maxCapacity: 20,
+  maxCapacity: GROUP_MAX_CAPACITY_DEFAULT,
 };
 
 const GroupsPage: React.FC = () => {
