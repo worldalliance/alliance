@@ -703,7 +703,6 @@ const CommunityPage = () => {
                 isOnboardingGroupMember={
                   user?.isIntroductoryGroupMember ?? true
                 }
-                onCreateCommunity={() => setParams({ tab: "create" })}
               />
             </div>
           )}

@@ -8,7 +8,7 @@ import {
 } from "@alliance/shared/client";
 import List from "@alliance/sharedweb/ui/List";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { ChevronLeft, Plus } from "lucide-react";
+import { ChevronLeft, Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
@@ -19,13 +19,13 @@ import {
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useAuth } from "../../lib/AuthContext";
 import CommunityInviteList from "../../components/CommunityInviteList";
+import CommunityCreateForm from "../../components/CommunityCreateForm";
 
 export type MyGroupsPageProps = {
   communities: CommunityDto[] | null;
   onSelectCommunity: (communityId: number | null | undefined) => void;
   onBack?: () => void;
   isOnboardingGroupMember: boolean;
-  onCreateCommunity: () => void;
 };
 
 const MyGroupsPage = ({
@@ -33,9 +33,9 @@ const MyGroupsPage = ({
   onSelectCommunity,
   onBack,
   isOnboardingGroupMember,
-  onCreateCommunity,
 }: MyGroupsPageProps) => {
   const { user, refreshUser } = useAuth();
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const { confirm, error: showError, success } = useToast();
   const {
     pendingCommunityInvites,
@@ -235,6 +235,18 @@ const MyGroupsPage = ({
     ]
   );
 
+  const handleCreateSuccess = useCallback(
+    (community: CommunityDto) => {
+      setShowCreateForm(false);
+      onSelectCommunity(community.id);
+    },
+    [onSelectCommunity]
+  );
+
+  const handleCreateCancel = useCallback(() => {
+    setShowCreateForm(false);
+  }, []);
+
   return (
     <div className="flex flex-col gap-y-12 py-8">
       {onBack && (
@@ -284,16 +296,33 @@ const MyGroupsPage = ({
                   );
                 }) ?? []),
                 !isOnboardingGroupMember && (
-                  <Button
-                    key="create"
-                    onClick={onCreateCommunity}
-                    color={ButtonColor.White}
-                    className="w-full !rounded-none border-t border-t-zinc-200 border-x-0 border-b-0"
-                  >
-                    <div className="w-full flex flex-row gap-x-2 items-center justify-center p-2 text-zinc-500">
-                      <Plus size="14" /> Create group
-                    </div>
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => setShowCreateForm(!showCreateForm)}
+                      color={
+                        showCreateForm ? ButtonColor.Light : ButtonColor.White
+                      }
+                      className="w-full !rounded-none border-t border-t-zinc-200 border-x-0 border-b-0"
+                    >
+                      <div className="w-full flex flex-row gap-x-2 items-center justify-center p-2 text-zinc-500">
+                        {showCreateForm ? (
+                          <Minus size="14" />
+                        ) : (
+                          <Plus size="14" />
+                        )}{" "}
+                        Create group
+                      </div>
+                    </Button>
+                    {!!showCreateForm && (
+                      <div className="p-4 flex flex-col gap-y-4">
+                        <CommunityCreateForm
+                          name={user?.name}
+                          onCancel={handleCreateCancel}
+                          onSuccess={handleCreateSuccess}
+                        />
+                      </div>
+                    )}
+                  </>
                 ),
               ]}
             </List>

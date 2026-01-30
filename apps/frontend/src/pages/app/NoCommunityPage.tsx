@@ -49,7 +49,6 @@ const NoCommunityPage = () => {
             onSelectCommunity={(communityId) => setParams({ communityId })}
             communities={[]}
             isOnboardingGroupMember={user?.isIntroductoryGroupMember ?? true}
-            onCreateCommunity={() => setParams({ tab: "create" })}
           />
         )}
       </div>
