@@ -220,10 +220,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
       const currentCount = community.users.length;
       const pending = pendingAssignmentsByCommunityId[community.id] ?? 0;
       const total = currentCount + pending;
-      if (
-        currentCount <= community.maxCapacity &&
-        total > community.maxCapacity
-      ) {
+      if (pending > 0 && total > community.maxCapacity) {
         overages.set(community.id, total - community.maxCapacity);
       }
     });
