@@ -64,7 +64,15 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
 
   useEffect(() => {
     setAssignmentSelections((prev) => {
-      const next = { ...prev };
+      const memberIds = new Set(members.map((member) => member.id));
+      const next: Record<number, string> = {};
+      // Only keep selections for members who are still in the menu
+      Object.entries(prev).forEach(([memberId, communityId]) => {
+        if (memberIds.has(Number(memberId))) {
+          next[Number(memberId)] = communityId;
+        }
+      });
+      // Ensure all current members have entries
       members.forEach((member) => {
         if (!(member.id in next)) {
           next[member.id] = "";
@@ -209,9 +217,13 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
     const overages = new Map<number, number>();
     communities.forEach((community) => {
       if (community.maxCapacity === null) return;
+      const currentCount = community.users.length;
       const pending = pendingAssignmentsByCommunityId[community.id] ?? 0;
-      const total = community.users.length + pending;
-      if (total > community.maxCapacity) {
+      const total = currentCount + pending;
+      if (
+        currentCount <= community.maxCapacity &&
+        total > community.maxCapacity
+      ) {
         overages.set(community.id, total - community.maxCapacity);
       }
     });
