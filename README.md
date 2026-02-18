@@ -28,7 +28,7 @@ dev: `cd apps/frontend && yarn dev` (or `yarn frontend:dev` from root dir)
 
 dev: `cd apps/admin && yarn dev` (or `yarn admin:dev` from root dir)
 
-### s erver
+### server
 
 Install bun 1.3.6 on your computer.
 
