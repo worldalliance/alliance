@@ -31,14 +31,17 @@ export function actionPriorityComparator(
       event.newStatus === "member_action" ||
       event.newStatus === "gathering_commitments"
   );
-  if (!memberActionA) {
-    return 1;
-  }
   const memberActionB = actionB.events.find(
     (event) =>
       event.newStatus === "member_action" ||
       event.newStatus === "gathering_commitments"
   );
+  if (!memberActionA && !memberActionB) {
+    return 0;
+  }
+  if (!memberActionA) {
+    return 1;
+  }
   if (!memberActionB) {
     return -1;
   }
