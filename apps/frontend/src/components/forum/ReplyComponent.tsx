@@ -103,13 +103,17 @@ const ReplyContent = ({
                 <ChevronDown size={18} />
               </button>
             )}
-            {hasChildren && isCollapsed && reply.children !== undefined && (
-              <span className="text-xs bg-zinc-200 px-2 py-1 -my-1 rounded">
-                {countAllReplies(reply.children)}{" "}
-                {countAllReplies(reply.children) === 1 ? "reply" : "replies"}{" "}
-                hidden
-              </span>
-            )}
+            {hasChildren && isCollapsed && reply.children !== undefined &&
+              (() => {
+                const replyCount = countAllReplies(reply.children);
+                return (
+                  <span className="text-xs bg-zinc-200 px-2 py-1 -my-1 rounded">
+                    {replyCount}{" "}
+                    {replyCount === 1 ? "reply" : "replies"}{" "}
+                    hidden
+                  </span>
+                );
+              })()}
           </div>
           {reply.pinned && <PinnedIcon size="small" />}
         </div>
