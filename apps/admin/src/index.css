@@ -4,104 +4,123 @@
 
 @font-face {
   font-family: "Adobe Clean Serif";
+  font-display: swap;
   src: url("/assets/fonts/AdobeCleanSerif-Regular.otf") format("opentype");
 }
 
 @font-face {
   font-family: "Adobe Clean Serif";
+  font-display: swap;
   src: url("/assets/fonts/AdobeCleanSerif-Bold.otf") format("opentype");
   font-weight: bold;
 }
 
 @font-face {
   font-family: "Berlingske";
+  font-display: swap;
   src: url("/assets/fonts/BerlingskeSerif-Blk.woff2") format("woff2");
 }
 
 @font-face {
   font-family: "Toledo";
+  font-display: swap;
   src: url("/assets/fonts/Toledo-Serial\ Regular.ttf") format("truetype");
 }
 
 @font-face {
   font-family: "Public";
+  font-display: swap;
   src: url("/assets/fonts/PublicSans-VariableFont_wght.ttf") format("woff2");
 }
 
 @font-face {
   font-family: "EB-Garamond";
+  font-display: swap;
   src: url("/assets/fonts/EBGaramond-VariableFont_wght.ttf") format("truetype");
 }
 
 @font-face {
   font-family: "Garamond";
+  font-display: swap;
   src: url("/assets/fonts/Adobe\ Garamond\ Pro\ Regular.ttf") format("truetype");
 }
 
 @font-face {
   font-family: "Bueno";
+  font-display: swap;
   src: url("/assets/fonts/bueno-regular.ttf") format("truetype");
 }
 
 @font-face {
   font-family: "Sabon";
+  font-display: swap;
   src: url("/assets/fonts/sabon-regular.ttf") format("truetype");
 }
 
 @font-face {
   font-family: "Sabon";
+  font-display: swap;
   src: url("/assets/fonts/sabon-bold.ttf") format("truetype");
   font-weight: bold;
 }
 
 @font-face {
   font-family: "Avenir";
+  font-display: swap;
   src: url("/assets/fonts/Avenir_Next_W00_400.woff2") format("woff2");
   font-weight: 400;
 }
 
 @font-face {
   font-family: "Avenir";
+  font-display: swap;
   src: url("/assets/fonts/Avenir_Next_W00_600.woff2") format("woff2");
   font-weight: 600;
 }
 
 @font-face {
   font-family: "Roboto";
+  font-display: swap;
   src: url("/assets/fonts/Roboto-VariableFont_wdth\,wght.ttf")
     format("truetype");
 }
 
 @font-face {
   font-family: "Playfair";
+  font-display: swap;
   src: url("/assets/fonts/PlayfairDisplay-VariableFont_wght.ttf")
     format("truetype");
 }
 
 @font-face {
   font-family: "IBM Plex Sans";
+  font-display: swap;
   src: url("/assets/fonts/IBMPlexSans-VariableFont_wdth,wght.ttf")
     format("truetype");
 }
 
 @font-face {
   font-family: "Hanken Grotesk";
+  font-display: swap;
   src: url("/assets/fonts/HankenGrotesk-VariableFont_wght.ttf")
     format("truetype");
 }
 
 @font-face {
   font-family: "Inter";
+  font-display: swap;
   src: url("/assets/fonts/Inter-VariableFont_opsz,wght.ttf") format("truetype");
 }
 
 @font-face {
   font-family: "Freight Sans";
+  font-display: swap;
   src: url("/assets/fonts/freight_sans_medium.woff2") format("woff2");
 }
 
 @font-face {
   font-family: "Freight Sans";
+  font-display: swap;
   src: url("/assets/fonts/freight_sans_bold.woff2") format("woff2");
   font-weight: bold;
 }
