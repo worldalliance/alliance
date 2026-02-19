@@ -153,6 +153,7 @@
 
 @font-face {
   font-family: "Libre Baskerville";
+  font-display: swap;
   src: url("/assets/fonts/LibreBaskerville-VariableFont_wght.ttf")
     format("truetype");
 }
