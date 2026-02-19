@@ -3,6 +3,7 @@ import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import { Link, href } from "react-router";
 import groupPillsExample from "../../assets/group-pills-example.png";
+import { ArrowLeft } from "lucide-react";
 
 const tocSections = [
   { id: "about", label: "About groups", level: 1 },
@@ -51,7 +52,9 @@ const GroupsGuidePage: React.FC = () => {
             to={href("/groups")}
             className="text-link hover:underline mb-8 text-base md:text-lg"
           >
-            ← Back to Groups
+            <span className="flex flex-row items-center gap-x-2">
+              <ArrowLeft size={14} /> Back to Groups
+            </span>
           </Link>
           <div className="flex flex-col gap-y-12 text-base md:text-lg text-zinc-900 pb-24 md:pb-72">
             <section className="gap-y-4 flex flex-col">

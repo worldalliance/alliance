@@ -5,7 +5,7 @@ import { actionsAllGeneralUpdates } from "@alliance/shared/client";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCard";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
-import { MoveLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 const GeneralUpdatesPage: React.FC = () => {
   useWhiteBackground();
@@ -21,7 +21,7 @@ const GeneralUpdatesPage: React.FC = () => {
       <div className="gap-y-4 flex flex-col text-base md:text-lg">
         <Link to={href("/information")} className="text-link self-start">
           <div className="flex flex-row items-center gap-x-2">
-            <MoveLeft size={14} /> Information
+            <ArrowLeft size={14} /> Information
           </div>
         </Link>
         <p className="font-serif text-3xl md:text-4xl font-semibold mb-4">
