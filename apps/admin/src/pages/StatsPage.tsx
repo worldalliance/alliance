@@ -191,8 +191,8 @@ const StatsPage: React.FC = () => {
     useState<boolean>(false);
   const [inviteFunnelRange, setInviteFunnelRange] = useState(() => {
     const end = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    const start = new Date();
-    start.setDate(end.getDate() - 14);
+    const start = new Date(end);
+    start.setDate(start.getDate() - 14);
     return { start: formatDateAsLocal(start), end: formatDateAsLocal(end) };
   });
   const [assumedHourlyRate, setAssumedHourlyRate] = useState<number>(15);
