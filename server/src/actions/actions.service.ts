@@ -189,20 +189,18 @@ export class ActionsService {
 
   async shiftPrioritiesAfterInsertion(): Promise<void> {
     await this.actionRepository.manager.transaction(async (manager) => {
-      const actionsPromise = manager
+      await manager
         .createQueryBuilder()
         .update(Action)
         .set({ priority: () => 'priority + 1' })
         .where('priority >= :min', { min: 0 })
         .execute();
-      const generalUpdatesPromise = manager
+      await manager
         .createQueryBuilder()
         .update(GeneralUpdate)
         .set({ priority: () => 'priority + 1' })
         .where('priority >= :min', { min: 0 })
         .execute();
-
-      await Promise.all([actionsPromise, generalUpdatesPromise]);
     });
   }
 
