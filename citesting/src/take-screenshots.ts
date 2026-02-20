@@ -203,7 +203,7 @@ const setupDatabase = async () => {
     }
   );
 
-  // Load the full dump (schema + data). Using session_replication_role =
+  // Load seed data (data only; schema is created via migrations). Using session_replication_role =
   // replica disables FK triggers during the bulk insert so row ordering
   // doesn't matter (handles circular FKs such as comment → comment).
   console.log(`${logPrefix} Loading seed dump...`);
