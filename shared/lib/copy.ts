@@ -60,7 +60,7 @@ export const onetimeInviteCreation = {
     "Who would you like the new member's initial group lead to be?",
   ],
   inviteeContextExplanation:
-    "(Optional) Share any context that you are willing about the invitation, such as your relationship with the invitee, why you think the invitee is a good fit, how you plan to send the invite, etc.",
+    "(Optional) Share any context you are willing to share about the invitation, such as your relationship with the invitee, why you think the invitee is a good fit, how you plan to send the invite, etc.",
   responsible: {
     buttonText: "Myself",
     leader: {
