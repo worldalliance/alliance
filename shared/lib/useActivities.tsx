@@ -65,15 +65,16 @@ const callActivityApi = async (
   before?: string
 ) => {
   const { list, objectId, limit = 50, comments = false } = props;
-  const beforeStr = before ?? new Date().toISOString();
 
   let apiCall;
   switch (list) {
-    case ActivityList.Friends:
+    case ActivityList.Friends: {
+      const beforeStr = before ?? new Date().toISOString();
       apiCall = actionsFriendActivity({
         query: { comments, limit: limit.toString(), before: beforeStr },
       });
       break;
+    }
     case ActivityList.User:
       apiCall = actionsFindCompletedForUser({
         path: { id: objectId! },
@@ -95,7 +96,8 @@ const callActivityApi = async (
         query: { comments, limit: limit.toString() },
       });
       break;
-    case ActivityList.Community:
+    case ActivityList.Community: {
+      const beforeStr = before ?? new Date().toISOString();
       apiCall = actionsCommunityActivity({
         query: {
           limit: limit.toString(),
@@ -105,7 +107,9 @@ const callActivityApi = async (
         },
       });
       break;
-    case ActivityList.Global:
+    }
+    case ActivityList.Global: {
+      const beforeStr = before ?? new Date().toISOString();
       apiCall = actionsGetActivityFeed({
         query: {
           limit: limit.toString(),
@@ -114,6 +118,7 @@ const callActivityApi = async (
         },
       });
       break;
+    }
   }
 
   return apiCall;
