@@ -183,7 +183,6 @@ const PriorityPage: React.FC = () => {
     const midpoint = rect.top + rect.height / 2;
     setDragOverIndex(index);
     setDropPosition(e.clientY < midpoint ? "before" : "after");
-    console.log({ index, draggedIndex, dropPosition }, "asdf");
   };
 
   const performDrop = useCallback(
