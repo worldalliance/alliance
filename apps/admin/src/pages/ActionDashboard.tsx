@@ -870,7 +870,7 @@ const ActionDashboard: React.FC = () => {
       formWords += countWords(schema.title);
       formWords += countWords(schema.description);
 
-      for (const page of schema.pages) {
+      for (const page of schema.pages ?? []) {
         formWords += countWords(page.title);
         formWords += countWords(page.description);
 
