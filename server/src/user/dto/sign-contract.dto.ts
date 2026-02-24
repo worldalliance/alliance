@@ -1,8 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Allow } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class SignContractDto {
   @ApiProperty()
-  @Allow()
+  @IsString()
+  @IsNotEmpty()
   signedName: string;
 }
