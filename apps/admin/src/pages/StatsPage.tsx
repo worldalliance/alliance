@@ -1,12 +1,15 @@
 import {
   analyticsGetDailyStats,
   analyticsGetActionStats,
+  analyticsGetActionCompletionCurves,
   analyticsRecalculateActionStats,
   analyticsGetMemberCompletionRetention,
   analyticsGetAggregateStats,
   analyticsGetContractStatusHistory,
   analyticsGetTimeToChurnSamples,
   analyticsGetInviteFunnel,
+  actionsFindAllWithDrafts,
+  tasksListForms,
 } from "@alliance/shared/client";
 import {
   TimeSeriesChart,
@@ -18,7 +21,9 @@ import {
 } from "../components/TimeSeriesChart";
 import {
   DailyStatsRecord,
+  Action,
   ActionStatsWithOnboardingDto,
+  FormDto,
   MemberCompletionRetentionCohortDto,
   AggregateStatsDto,
   ContractStatusPointDto,
@@ -81,6 +86,67 @@ type HoveredRetentionCell = {
     actionName: string;
     memberCount: number;
   }>;
+};
+type TaskFormWordsCompletionPoint = {
+  actionId: number;
+  actionName: string;
+  taskFormWords: number;
+  firstDayCompletionRate: number;
+  usersJoined: number;
+};
+
+const countWords = (text: string | null | undefined): number => {
+  if (!text) return 0;
+  return text.trim().split(/\s+/).filter(Boolean).length;
+};
+
+const getRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== "object") return null;
+  return value as Record<string, unknown>;
+};
+
+const getString = (value: unknown): string | undefined => {
+  return typeof value === "string" ? value : undefined;
+};
+
+const countTaskFormSchemaWords = (schema: unknown): number => {
+  const schemaRecord = getRecord(schema);
+  if (!schemaRecord) return 0;
+
+  let formWords = 0;
+  formWords += countWords(getString(schemaRecord.title));
+  formWords += countWords(getString(schemaRecord.description));
+
+  const pages = Array.isArray(schemaRecord.pages) ? schemaRecord.pages : [];
+  for (const pageValue of pages) {
+    const page = getRecord(pageValue);
+    if (!page) continue;
+
+    formWords += countWords(getString(page.title));
+    formWords += countWords(getString(page.description));
+
+    const fields = Array.isArray(page.fields) ? page.fields : [];
+    for (const fieldValue of fields) {
+      const field = getRecord(fieldValue);
+      if (!field) continue;
+
+      formWords += countWords(getString(field.label));
+      formWords += countWords(getString(field.description));
+      formWords += countWords(getString(field.text));
+      formWords += countWords(getString(field.caption));
+      formWords += countWords(getString(field.startLabel));
+      formWords += countWords(getString(field.endLabel));
+
+      const options = Array.isArray(field.options) ? field.options : [];
+      for (const optionValue of options) {
+        const option = getRecord(optionValue);
+        if (!option) continue;
+        formWords += countWords(getString(option.label));
+      }
+    }
+  }
+
+  return formWords;
 };
 
 const buildRoundedLeftPath = (
@@ -159,6 +225,10 @@ const StatsPage: React.FC = () => {
   const [actionStatsLoading, setActionStatsLoading] = useState<boolean>(false);
   const [completionCurveRefreshKey, setCompletionCurveRefreshKey] =
     useState<number>(0);
+  const [taskFormWordsCompletionPoints, setTaskFormWordsCompletionPoints] =
+    useState<TaskFormWordsCompletionPoint[]>([]);
+  const [taskFormWordsCompletionLoading, setTaskFormWordsCompletionLoading] =
+    useState<boolean>(false);
   const [retentionLoading, setRetentionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hoveredActionBar, setHoveredActionBar] =
@@ -275,6 +345,72 @@ const StatsPage: React.FC = () => {
     }
   }, []);
 
+  const loadTaskFormWordsCompletionPoints = useCallback(async () => {
+    setTaskFormWordsCompletionLoading(true);
+    try {
+      const [actionsResponse, formsResponse, curvesResponse] = await Promise.all([
+        actionsFindAllWithDrafts(),
+        tasksListForms(),
+        analyticsGetActionCompletionCurves(),
+      ]);
+
+      const actions = actionsResponse.data ?? [];
+      const forms = formsResponse.data ?? [];
+      const curves = curvesResponse.data ?? [];
+
+      const actionsById = new Map<number, Action>(
+        actions.map((action) => [action.id, action])
+      );
+      const formsById = new Map<number, FormDto>(
+        forms.map((form) => [form.id, form])
+      );
+
+      const computedPoints: TaskFormWordsCompletionPoint[] = curves
+        .filter(
+          (curve) =>
+            (curve.dayOffsets?.length ?? 0) > 0 &&
+            (curve.completionFractions?.length ?? 0) ===
+              (curve.dayOffsets?.length ?? 0) &&
+            curve.usersJoined > 0
+        )
+        .map((curve) => {
+          const action = actionsById.get(curve.actionId);
+          const form = action?.taskFormId
+            ? formsById.get(action.taskFormId)
+            : undefined;
+          const dayZeroIndex = curve.dayOffsets.findIndex((offset) => offset === 0);
+          const firstDayCompletionRate =
+            dayZeroIndex >= 0
+              ? (curve.completionFractions[dayZeroIndex] ?? 0)
+              : 0;
+
+          return {
+            actionId: curve.actionId,
+            actionName: action?.name ?? curve.actionName,
+            taskFormWords: countTaskFormSchemaWords(form?.schema),
+            firstDayCompletionRate: Number.isFinite(firstDayCompletionRate)
+              ? firstDayCompletionRate
+              : 0,
+            usersJoined: curve.usersJoined,
+          };
+        })
+        .filter((point) => Number.isFinite(point.firstDayCompletionRate))
+        .sort((a, b) => {
+          if (a.taskFormWords !== b.taskFormWords) {
+            return a.taskFormWords - b.taskFormWords;
+          }
+          return a.actionName.localeCompare(b.actionName);
+        });
+
+      setTaskFormWordsCompletionPoints(computedPoints);
+    } catch (err) {
+      console.error("Failed to load task form words completion data", err);
+      setTaskFormWordsCompletionPoints([]);
+    } finally {
+      setTaskFormWordsCompletionLoading(false);
+    }
+  }, []);
+
   const loadRetentionCohorts = useCallback(async () => {
     setRetentionLoading(true);
     try {
@@ -327,6 +463,10 @@ const StatsPage: React.FC = () => {
   useEffect(() => {
     void loadActionStats();
   }, [loadActionStats]);
+
+  useEffect(() => {
+    void loadTaskFormWordsCompletionPoints();
+  }, [loadTaskFormWordsCompletionPoints, completionCurveRefreshKey]);
 
   useEffect(() => {
     void loadRetentionCohorts();
@@ -532,6 +672,88 @@ const StatsPage: React.FC = () => {
     ],
     []
   );
+
+  const taskFormWordsCompletionTrendline = useMemo(() => {
+    if (taskFormWordsCompletionPoints.length < 2) {
+      return null;
+    }
+
+    const points = taskFormWordsCompletionPoints.map((point) => ({
+      x: point.taskFormWords,
+      y: point.firstDayCompletionRate,
+    }));
+    const n = points.length;
+    const sumX = points.reduce((total, point) => total + point.x, 0);
+    const sumY = points.reduce((total, point) => total + point.y, 0);
+    const sumXY = points.reduce((total, point) => total + point.x * point.y, 0);
+    const sumXX = points.reduce((total, point) => total + point.x * point.x, 0);
+    const denominator = n * sumXX - sumX * sumX;
+
+    if (!Number.isFinite(denominator) || denominator === 0) {
+      return null;
+    }
+
+    const slope = (n * sumXY - sumX * sumY) / denominator;
+    const intercept = (sumY - slope * sumX) / n;
+    const xMin = min(points, (point) => point.x) ?? 0;
+    const xMax = max(points, (point) => point.x) ?? xMin;
+
+    if (!Number.isFinite(slope) || !Number.isFinite(intercept)) {
+      return null;
+    }
+
+    return { slope, intercept, xMin, xMax };
+  }, [taskFormWordsCompletionPoints]);
+
+  const taskFormWordsCompletionSeries = useMemo<MultiLineSeries[]>(() => {
+    const actionPointSeries: MultiLineSeries[] = taskFormWordsCompletionPoints.map(
+      (point) => ({
+        key: `task-form-words-action-${point.actionId}`,
+        label: point.actionName,
+        color: "#2563eb",
+        data: [
+          {
+            x: point.taskFormWords,
+            firstDayCompletionRate: point.firstDayCompletionRate,
+            actionId: point.actionId,
+            actionName: point.actionName,
+            usersJoined: point.usersJoined,
+          },
+        ],
+      })
+    );
+
+    if (!taskFormWordsCompletionTrendline) {
+      return actionPointSeries;
+    }
+
+    const trendlinePoints: DataPoint[] = [
+      {
+        x: taskFormWordsCompletionTrendline.xMin,
+        firstDayCompletionRate:
+          taskFormWordsCompletionTrendline.slope *
+            taskFormWordsCompletionTrendline.xMin +
+          taskFormWordsCompletionTrendline.intercept,
+      },
+      {
+        x: taskFormWordsCompletionTrendline.xMax,
+        firstDayCompletionRate:
+          taskFormWordsCompletionTrendline.slope *
+            taskFormWordsCompletionTrendline.xMax +
+          taskFormWordsCompletionTrendline.intercept,
+      },
+    ];
+
+    return [
+      ...actionPointSeries,
+      {
+        key: "task-form-words-trendline",
+        label: "Trendline",
+        color: "#111827",
+        data: trendlinePoints,
+      },
+    ];
+  }, [taskFormWordsCompletionPoints, taskFormWordsCompletionTrendline]);
 
   const sortedRetentionCohorts = useMemo(() => {
     return retentionCohorts
@@ -1736,6 +1958,56 @@ const StatsPage: React.FC = () => {
 
       {/* Action Completion Curves */}
       <ActionCompletionCurveChart refreshKey={completionCurveRefreshKey} />
+
+      <TimeSeriesChart
+        title="Task Form Words vs First-Day Completion"
+        xType="number"
+        loading={taskFormWordsCompletionLoading}
+        emptyMessage="No completion curve data available for actions."
+        multiLineData={taskFormWordsCompletionSeries}
+        getXValue={(d) => (d.x as number) ?? 0}
+        getYValue={(d) => (d.firstDayCompletionRate as number) ?? 0}
+        xAxisFormat={(v) => `${Math.round(v)}`}
+        yDomain={[0, 1]}
+        yAxisFormat={(v) => `${Math.round(v * 100)}%`}
+        height={360}
+        headerContent={
+          <span className="text-xs text-gray-500 md:ml-auto">
+            X: words in task form | Y: members completing on day 1
+          </span>
+        }
+        getHoverContent={(point, series) => {
+          const words = Math.round(((point.x as number) ?? 0) * 10) / 10;
+          const completionRate = (point.firstDayCompletionRate as number) ?? 0;
+
+          if (series.key === "task-form-words-trendline") {
+            return {
+              title: "Trendline",
+              items: [
+                { label: "Task-form words", value: words },
+                {
+                  label: "Predicted day-1 completion",
+                  value: `${(completionRate * 100).toFixed(1)}%`,
+                  color: series.color,
+                },
+              ],
+            };
+          }
+
+          return {
+            title: (point.actionName as string) ?? series.label,
+            items: [
+              { label: "Task-form words", value: words },
+              {
+                label: "Day-1 completion",
+                value: `${(completionRate * 100).toFixed(1)}%`,
+                color: series.color,
+              },
+              { label: "Members joined", value: (point.usersJoined as number) ?? 0 },
+            ],
+          };
+        }}
+      />
 
       {/* Cumulative Average Completion Rate Chart */}
       <TimeSeriesChart

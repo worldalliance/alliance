@@ -9,6 +9,7 @@ interface EditableContentRendererProps {
   deleted?: boolean;
   className?: string;
   truncated?: boolean;
+  smallImages?: boolean;
 }
 
 const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
@@ -17,6 +18,7 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
   deleted = false,
   className,
   truncated = false,
+  smallImages = false,
 }) => {
   const attachments = (content.attachments ?? []).filter((src): src is string =>
     Boolean(src)
@@ -39,7 +41,10 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
             collapsed ? "line-clamp-1" : truncated ? "line-clamp-3" : ""
           }`}
         >
-          <AppMarkdownWrapper markdownContent={content.body} />
+          <AppMarkdownWrapper
+            markdownContent={content.body}
+            smallImages={smallImages}
+          />
         </div>
       )}
       {attachments.length > 0 && !collapsed && (

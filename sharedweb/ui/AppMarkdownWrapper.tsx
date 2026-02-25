@@ -8,11 +8,13 @@ import { getApiUrl } from "../lib/config";
 interface AppMarkdownWrapperProps {
   markdownContent: string;
   className?: string;
+  smallImages?: boolean;
 }
 
 const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   markdownContent,
   className,
+  smallImages = false,
 }) => {
   return (
     <div className={className}>
@@ -38,7 +40,12 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
             />
           ),
           p: ({ ...props }) => <p className="first:mt-0 mt-4" {...props} />,
-          img: ({ ...props }) => <img className="rounded" {...props} />,
+          img: ({ ...props }) => (
+            <img
+              className={`rounded ${smallImages ? "max-h-80" : ""}`}
+              {...props}
+            />
+          ),
           strong: ({ ...props }) => (
             <strong className="!font-semibold" {...props} />
           ),

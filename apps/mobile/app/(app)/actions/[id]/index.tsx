@@ -1,12 +1,7 @@
 import { Check } from "lucide-react-native";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useCallback, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Image,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Image, TouchableOpacity, View } from "react-native";
 import AppMarkdownWrapper from "../../../../components/AppMarkdownWrapper";
 import {
   ActionActivityDto,
@@ -29,7 +24,10 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import LikeButton from "../../../../components/LikeButton";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { colors } from "../../../../lib/style/colors";
-import { KeyboardAwareScrollView, KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
+import {
+  KeyboardAwareScrollView,
+  KeyboardAwareScrollViewRef,
+} from "react-native-keyboard-controller";
 
 type TabId = "task" | "activity" | "description" | "comments";
 
@@ -58,7 +56,9 @@ function ActivityItem({ activity, onLike }: ActivityItemProps) {
       <View className="flex-1">
         <Text className="font-medium text-zinc-900">
           {activity.user.displayName}
-          {activity.type === "user_completed" && <Text className="text-zinc-500"> completed.</Text>}
+          {activity.type === "user_completed" && (
+            <Text className="text-zinc-500"> completed.</Text>
+          )}
         </Text>
         <Text className="text-zinc-400 text-xs mt-1">
           {formatTime(new Date(activity.createdAt), { addSuffix: true })}
@@ -85,7 +85,7 @@ function ActivityTabContent({ actionId }: ActivityTabContentProps) {
     queryFn: () =>
       actionsGetActionActivities({
         path: { id: actionId },
-        query: { limit: 50, comments: false },
+        query: { limit: 50, comments: false, before: new Date().toISOString() },
       }),
   });
 
@@ -114,11 +114,11 @@ function ActivityTabContent({ actionId }: ActivityTabContentProps) {
               data: oldData.data.map((a) =>
                 a.id === activityId
                   ? {
-                    ...a,
-                    likes: response.data!.likes,
-                    likesCount: response.data!.likesCount,
-                    likedByMe: response.data!.likedByMe,
-                  }
+                      ...a,
+                      likes: response.data!.likes,
+                      likesCount: response.data!.likesCount,
+                      likedByMe: response.data!.likedByMe,
+                    }
                   : a
               ),
             };
@@ -285,7 +285,12 @@ export default function ActionDetailScreen() {
           headerShown: false,
         }}
       />
-      <KeyboardAwareScrollView className="bg-white" ref={scrollViewRef} bottomOffset={72} keyboardShouldPersistTaps="handled">
+      <KeyboardAwareScrollView
+        className="bg-white"
+        ref={scrollViewRef}
+        bottomOffset={72}
+        keyboardShouldPersistTaps="handled"
+      >
         {action.image && (
           <Image
             source={{ uri: action.image }}
@@ -329,13 +334,15 @@ export default function ActionDetailScreen() {
               <TouchableOpacity
                 key={tab.id}
                 onPress={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 items-center grow ${activeTab === tab.id ? "border-b-2 border-green" : ""
-                  }`}
+                className={`px-4 py-3 items-center grow ${
+                  activeTab === tab.id ? "border-b-2 border-green" : ""
+                }`}
                 activeOpacity={0.7}
               >
                 <Text
-                  className={`text-sm font-medium ${activeTab === tab.id ? "text-green" : "text-zinc-500"
-                    }`}
+                  className={`text-sm font-medium ${
+                    activeTab === tab.id ? "text-green" : "text-zinc-500"
+                  }`}
                 >
                   {tab.label}
                 </Text>
