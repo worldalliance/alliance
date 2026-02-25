@@ -32,7 +32,6 @@ const ActionListCard = ({ action }: ActionListCardProps) => {
   );
 
   const lastEventDate = getLastPastEventDate(action);
-  console.log(action.optional);
   return (
     <div key={action.id} className="p-4 group">
       <div
