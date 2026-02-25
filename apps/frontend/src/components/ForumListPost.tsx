@@ -94,7 +94,6 @@ const ForumListPost = ({
                   e.preventDefault();
                   navigate(href("/member/:id", { id: a.id.toString() }));
                 }}
-                style={{ fontWeight: 410 }}
               >
                 <ProfileImage
                   pfp={a.profilePicture}
