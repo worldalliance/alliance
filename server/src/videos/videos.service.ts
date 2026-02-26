@@ -21,6 +21,15 @@ export class VideosService {
 
   private readonly bucket = process.env.ASSETS_BUCKET!;
 
+  private getContentType(filename: string): string {
+    if (filename.endsWith('.m3u8')) {
+      return 'application/vnd.apple.mpegurl';
+    } else if (filename.endsWith('.vtt')) {
+      return 'text/vtt';
+    }
+    return 'video/MP2T';
+  }
+
   async uploadVideo(files: Express.Multer.File[]): Promise<Video> {
     const key = `videos/${Date.now()}`;
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
@@ -41,19 +50,13 @@ export class VideosService {
     await Promise.all(
       files.map(async (file) => {
         const filename = file.originalname;
-        let contentType = 'video/MP2T';
-        if (filename.endsWith('.m3u8')) {
-          contentType = 'application/vnd.apple.mpegurl';
-        } else if (filename.endsWith('.vtt')) {
-          contentType = 'text/vtt';
-        }
 
         await this.s3.send(
           new PutObjectCommand({
             Bucket: this.bucket,
             Key: `${video.key}/${filename}`,
             Body: file.buffer,
-            ContentType: contentType,
+            ContentType: this.getContentType(filename),
           }),
         );
       }),
@@ -127,19 +130,12 @@ export class VideosService {
     // Upload new files preserving their original filenames
     await Promise.all(
       files.map(async (file) => {
-        let contentType = 'video/MP2T';
-        if (file.originalname.endsWith('.m3u8')) {
-          contentType = 'application/vnd.apple.mpegurl';
-        } else if (file.originalname.endsWith('.vtt')) {
-          contentType = 'text/vtt';
-        }
-
         await this.s3.send(
           new PutObjectCommand({
             Bucket: this.bucket,
             Key: `${video.key}/${file.originalname}`,
             Body: file.buffer,
-            ContentType: contentType,
+            ContentType: this.getContentType(file.originalname),
           }),
         );
       }),
