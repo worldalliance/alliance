@@ -68,9 +68,6 @@ export default function TextareaWithHighlight({
           '<span class="bg-amber-400/20 text-transparent">$&</span>'
         )
       : safe;
-    if (highlightHashPipeSyntax) {
-      console.log({ safe, afterHashPipe }, "asdf");
-    }
 
     if (!highlightRegex) return afterHashPipe;
     return afterHashPipe.replace(
