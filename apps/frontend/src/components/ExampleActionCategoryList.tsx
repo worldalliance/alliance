@@ -12,7 +12,7 @@ const ExampleActionCategoryList: React.FC<ExampleActionCategoryListProps> = ({
 
   return (
     <table
-      className={`w-full text-${textSizeClasses[textSize]} border-collapse`}
+      className={`w-full ${textSizeClasses[textSize]} border-collapse`}
     >
       <thead>
         <tr className="text-left text-zinc-900 border border-zinc-200">

@@ -8,9 +8,7 @@ const GovernancePage: React.FC = () => {
 
   return (
     <InfoSubpage>
-      <div className="min-w-0 flex-1 max-w-3xl flex flex-col">
-        <div className="flex flex-col gap-y-12 text-base md:text-lg text-zinc-900">
-          <section className="gap-y-4 flex flex-col">
+      <section className="gap-y-4 flex flex-col">
             <p
               id="about"
               className="font-serif text-3xl md:text-4xl font-semibold mb-4 text-black"
@@ -89,9 +87,7 @@ const GovernancePage: React.FC = () => {
               on internal procedures, solicits open-ended feedback on tasks, and
               so on.
             </p>
-          </section>
-        </div>
-      </div>
+      </section>
     </InfoSubpage>
   );
 };
