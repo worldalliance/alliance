@@ -60,7 +60,7 @@ Make a video block in a form and upload all the generated files into it (`.m3u8`
 
 ### Todo items
 
-- Set subtitle track name with ffpmeg
+- Set subtitle track name with ffmpeg
 
 - whisper v2 is from 2022, there must be something better by now?
 
