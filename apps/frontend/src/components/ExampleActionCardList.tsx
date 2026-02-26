@@ -6,7 +6,7 @@ const ExampleActionCardList: React.FC = () => {
     {
       name: "Discuss the repeal of the endangerment finding with current and former U.S. EPA employees",
       description:
-        "Members discussed the repeal of the EPA's endanderment finding, as well as the current state of the EPA, with current and former EPA employees.",
+        "Members discussed the repeal of the EPA's endangerment finding, as well as the current state of the EPA, with current and former EPA employees.",
       purpose:
         "Members and government employees had the opportunity to learn from each other directly, rather than through media reports or other indirect channels.",
     },
