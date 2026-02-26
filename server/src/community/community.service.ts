@@ -1062,23 +1062,20 @@ export class CommunityService {
             saveAsPendingCommunity: false,
           }),
         ),
-      Promise.all(
-        invite.notifs!.map((notif) =>
-          this.notifsService.setRead(notif.id, userId),
-        ),
-      ).then(() =>
-        this.notifsService.sendNotif({
-          user: invite.invitingUser!,
-          category: NotificationCategory.CommunityInviteAccepted,
-          message: `${invite.invitedUser.name} accepted your invitation to join your group (${community.name})`,
-          webAppLocation: groupUrl({
-            tab: 'members',
-            communityId: community.id,
-          }),
-          associatedUsers: [invite.invitedUser],
-          communityInvite: invite,
-        }),
+      ...invite.notifs!.map((notif) =>
+        this.notifsService.setRead(notif.id, userId),
       ),
+      this.notifsService.sendNotif({
+        user: invite.invitingUser!,
+        category: NotificationCategory.CommunityInviteAccepted,
+        message: `${invite.invitedUser.name} accepted your invitation to join your group (${community.name})`,
+        webAppLocation: groupUrl({
+          tab: 'members',
+          communityId: community.id,
+        }),
+        associatedUsers: [invite.invitedUser],
+        communityInvite: invite,
+      }),
     ]);
   }
 
