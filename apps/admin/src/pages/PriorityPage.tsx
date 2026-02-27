@@ -58,12 +58,12 @@ function buildInitialList(
     raw: Action | GeneralUpdateAdminDto;
   }[] = [
     ...actions
-      .filter((a) =>
-        filterForIncomplete
-          ? a.status !== "completed" &&
-            a.status !== "office_action" &&
-            !a.archived
-          : true
+      .filter(
+        (a) =>
+          !a.archived &&
+          (filterForIncomplete
+            ? a.status !== "completed" && a.status !== "office_action"
+            : true)
       )
       .map((a) => ({
         item: {
