@@ -105,7 +105,7 @@ const PrioritiesPage: React.FC = () => {
             child mortality
           </Link>{" "}
           are widespread. Progress on extreme poverty has{" "}
-          <Link to="https://www.worldbank.org/en/publication/poverty-prosperity-and-planet">
+          <Link to="https://www.worldbank.org/en/publication/poverty-prosperity-and-planet" className="text-link">
             slowed
           </Link>{" "}
           for the first time since the 1990s because of the COVID-19 pandemic,
@@ -189,7 +189,7 @@ const PrioritiesPage: React.FC = () => {
           >
             lowering the barriers
           </Link>{" "}
-          to engineering deadly pathogens. Artificial intelligence systems
+          to engineering deadly pathogens. Artificial intelligence systems{" "}
           <Link
             to="https://www.weforum.org/publications/global-risks-report-2026/in-full/global-risks-report-2026-chapter-2/#2-7-ai-at-large"
             className="text-link"
