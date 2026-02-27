@@ -6,6 +6,8 @@ import { Link } from "react-router";
 import Card from "../ui/Card";
 import { MessagesSquare, File, FileText, FileCheck, Signature } from "lucide-react";
 import type { BigLinkIcon } from "@alliance/shared/forms/display-blocks";
+import { CardStyle } from "@alliance/shared/styles/card";
+import VideoPlayer from "./VideoPlayer";
 
 const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
   "messages-square": MessagesSquare,
@@ -14,8 +16,6 @@ const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
   "file-check": FileCheck,
   "signature": Signature,
 };
-import { CardStyle } from "@alliance/shared/styles/card";
-import VideoPlayer from "./VideoPlayer";
 
 type Props = {
   block: DisplayBlock;
