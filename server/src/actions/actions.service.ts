@@ -3482,7 +3482,7 @@ export class ActionsService {
       })
     ).filter((event) => {
       const eventIndex = event.user
-        .contractEvents!.sort((a, b) => a.date.getTime() - b.date.getTime())
+        .contractEvents!.toSorted((a, b) => a.date.getTime() - b.date.getTime())
         .findIndex((e) => e.id === event.id);
       if (eventIndex === -1) {
         // should never occur
