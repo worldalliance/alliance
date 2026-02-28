@@ -278,26 +278,24 @@ const UsersList: React.FC = () => {
 
   const displayedUsers = useMemo(() => {
     const list = modeToUsers[filterMode] ?? [];
-    if (
-      shuffledIds != null &&
-      shuffledIds.length === list.length &&
-      list.every((u) => shuffledIds!.includes(u.id))
-    ) {
-      const byId = Object.fromEntries(list.map((u) => [u.id, u]));
-      return shuffledIds.map((id) => byId[id]).filter(Boolean);
+    if (shuffledIds != null && shuffledIds.length === list.length) {
+      const idSet = new Set(shuffledIds);
+      if (list.every((u) => idSet.has(u.id))) {
+        const byId = Object.fromEntries(list.map((u) => [u.id, u]));
+        return shuffledIds.map((id) => byId[id]).filter(Boolean);
+      }
     }
     return list;
   }, [filterMode, modeToUsers, shuffledIds]);
 
   const displayedProfiles = useMemo((): ProfileDto[] => {
     const list = usersAsProfiles;
-    if (
-      shuffledIds != null &&
-      shuffledIds.length === list.length &&
-      list.every((p) => shuffledIds!.includes(p.id))
-    ) {
-      const byId = Object.fromEntries(list.map((p) => [p.id, p]));
-      return shuffledIds.map((id) => byId[id]).filter(Boolean);
+    if (shuffledIds != null && shuffledIds.length === list.length) {
+      const idSet = new Set(shuffledIds);
+      if (list.every((p) => idSet.has(p.id))) {
+        const byId = Object.fromEntries(list.map((p) => [p.id, p]));
+        return shuffledIds.map((id) => byId[id]).filter(Boolean);
+      }
     }
     return list;
   }, [usersAsProfiles, shuffledIds]);
