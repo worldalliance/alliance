@@ -15,7 +15,7 @@ const NotificationText = ({
 }: NotificationTextProps) => {
   return (
     <div
-      className={`${className}`}
+      className={className}
       onClick={handleNotifClick(notification.id, notification.webAppLocation)}
     >
       <h3 className="line-clamp-2">
