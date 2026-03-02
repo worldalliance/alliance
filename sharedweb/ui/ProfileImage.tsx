@@ -5,7 +5,7 @@ const ProfileImage = ({
 }: {
   pfp: string | null;
   className?: string;
-  size?: "mini" | "small" | "medium" | "large" | "huge";
+  size?: "mini" | "smaller" | "small" | "medium" | "large" | "huge";
 }) => {
   const sizeClass = {
     mini: "w-4 h-4 rounded-xs",
