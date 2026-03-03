@@ -18,7 +18,7 @@ const RoadmapPage: React.FC = () => {
       <p className="text-zinc-500">Last updated: February 25, 2026</p>
       <section className="gap-y-4 flex flex-col">
         <h1
-          id="experimental-phase"
+          id="roadmap"
           className="font-serif text-3xl md:text-4xl font-semibold mb-4 text-black"
         >
           Roadmap
