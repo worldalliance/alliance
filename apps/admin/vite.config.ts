@@ -18,7 +18,7 @@ export default defineConfig({
   plugins: [!isStorybook && reactRouter(), tailwindcss()],
   define: {
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(
-      process.env.APP_VERSION ?? "dev"
+      process.env.VITE_APP_VERSION || process.env.APP_VERSION || "dev"
     ),
   },
   optimizeDeps: {
