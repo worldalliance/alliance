@@ -97,26 +97,30 @@ const MembersListPage = () => {
       };
     }, [members, user?.id, friendIds]);
 
-  const { friendsOfFriends, otherMembers } = useMemo(() => {
+  const { friendsOfFriends, otherMembers, filteredStaffMembers, filteredLeadsMembers } = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query)
       return {
         friendsOfFriends: allFriendsOfFriends,
         otherMembers: allOtherMembers,
+        filteredStaffMembers: staffMembers,
+        filteredLeadsMembers: leadsMembers,
       };
     const filterBySearch = (m: ProfileDtoWithFriends) =>
       m.displayName.toLowerCase().includes(query);
     return {
       friendsOfFriends: allFriendsOfFriends.filter(filterBySearch),
       otherMembers: allOtherMembers.filter(filterBySearch),
+      filteredStaffMembers: staffMembers.filter(filterBySearch),
+      filteredLeadsMembers: leadsMembers.filter(filterBySearch),
     };
-  }, [searchQuery, allFriendsOfFriends, allOtherMembers]);
+  }, [searchQuery, allFriendsOfFriends, allOtherMembers, staffMembers, leadsMembers]);
 
   const secondaryLabels = {
     [MemberFilterMode.All]: members.length.toString(),
     [MemberFilterMode.FriendsOfFriends]: friendsOfFriends.length.toString(),
-    [MemberFilterMode.Staff]: staffMembers.length.toString(),
-    [MemberFilterMode.Leads]: leadsMembers.length.toString(),
+    [MemberFilterMode.Staff]: filteredStaffMembers.length.toString(),
+    [MemberFilterMode.Leads]: filteredLeadsMembers.length.toString(),
   };
 
   const renderMembers = (list: ProfileDtoWithFriends[]) => (
@@ -191,8 +195,8 @@ const MembersListPage = () => {
 
           {filterMode === MemberFilterMode.Leads && (
             <>
-              {leadsMembers.length > 0 ? (
-                renderMembers(leadsMembers)
+              {filteredLeadsMembers.length > 0 ? (
+                renderMembers(filteredLeadsMembers)
               ) : (
                 <p className="text-center text-zinc-500 py-4">None found</p>
               )}
@@ -201,8 +205,8 @@ const MembersListPage = () => {
 
           {filterMode === MemberFilterMode.Staff && (
             <>
-              {staffMembers.length > 0 ? (
-                renderMembers(staffMembers)
+              {filteredStaffMembers.length > 0 ? (
+                renderMembers(filteredStaffMembers)
               ) : (
                 <p className="text-center text-zinc-500 py-4">None found</p>
               )}
