@@ -29,7 +29,7 @@ const InfoResourceCard = ({
           <p className="text-zinc-500">{description}</p>
         </div>
       </div>
-      <ArrowRight className="text-green opacity-0 group-hover:opacity-100 w-4 h-4 md:w-6 md:h-6" />
+      <ArrowRight className="text-green opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 md:w-6 md:h-6" />
     </Link>
   );
 };
