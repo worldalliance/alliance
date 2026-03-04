@@ -24,6 +24,7 @@ import {
 import { EditableQuoteBlock } from "./display-blocks/EditableQuoteBlock";
 import { EditableOutputFieldBlock } from "./output-builder/EditableOutputFieldBlock";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { X } from "lucide-react";
 
 const DISPLAY_BLOCK_KINDS = [
   "header",
