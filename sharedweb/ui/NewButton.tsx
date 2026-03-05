@@ -110,7 +110,7 @@ const Button: React.FC<ButtonProps> = ({
 
   const IconLeft = isNullReactNode(iconLeft)
     ? null
-    : (iconRight as React.FC<{ size?: number }>);
+    : (iconLeft as React.FC<{ size?: number }>);
   const IconRight = isNullReactNode(iconRight)
     ? null
     : (iconRight as React.FC<{ size?: number }>);
