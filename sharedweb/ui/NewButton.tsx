@@ -89,7 +89,7 @@ const Button: React.FC<ButtonProps> = ({
 
   const baseClassName = cn(
     sizeClass,
-    "font-medium rounded w-fit flex flex-row items-center justify-between border-box relative group",
+    "font-medium rounded w-fit flex flex-row items-center justify-between box-border relative group",
     disabled && "opacity-50 !cursor-not-allowed",
     color,
     color === ButtonColor.Light && "!text-zinc-800",
