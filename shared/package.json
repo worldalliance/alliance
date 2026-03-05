@@ -12,9 +12,11 @@
   },
   "dependencies": {
     "@hey-api/client-fetch": "^0.10.0",
+    "clsx": "^2.1.1",
     "lucide-react": "^0.555.0",
     "react-router": "7.6.2",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
     "@hey-api/openapi-ts": "^0.67.3",
