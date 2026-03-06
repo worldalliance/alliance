@@ -1012,8 +1012,7 @@ export function FormBuilder({
           fields: page.fields.map((field) => {
             const nextVisibleIf = mapVisibleIf(field.visibleIf);
             const nextVisibleIfFormula = mapVisibleIfFormula(
-              (field as { visibleIfFormula?: VisibleIfFormula })
-                .visibleIfFormula
+              field.visibleIfFormula
             );
             if (isSchemaFormField(field)) {
               const nextValidatorId = isDraftValidatorId(
