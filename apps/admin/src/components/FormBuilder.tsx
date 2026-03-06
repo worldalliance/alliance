@@ -511,20 +511,14 @@ export function FormBuilder({
           }
         }
         collectFromConditions(field.visibleIf);
-        collectFromVisibleIfFormula(
-          (field as { visibleIfFormula?: { conditions: Record<string, Condition> } })
-            .visibleIfFormula
-        );
+        collectFromVisibleIfFormula(field.visibleIfFormula);
       });
     });
 
     schema.outputViews.forEach((view) => {
       view.blocks.forEach((block) => {
         collectFromConditions(block.visibleIf);
-        collectFromVisibleIfFormula(
-          (block as { visibleIfFormula?: { conditions: Record<string, Condition> } })
-            .visibleIfFormula
-        );
+        collectFromVisibleIfFormula(block.visibleIfFormula);
       });
     });
 
