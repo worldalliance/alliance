@@ -897,6 +897,7 @@ export function RenderField({
                               disableOptionRandomization
                             }
                             user={user}
+                            isOutputView={isOutputView}
                           />
                           {!disabled &&
                             isHiddenInOutput &&
