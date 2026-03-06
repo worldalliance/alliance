@@ -473,7 +473,7 @@ export function RenderField({
         []) as ChoiceOption[];
 
       const maxReached =
-        !field.maxSelections || selectedCount >= field.maxSelections;
+        typeof field.maxSelections === "number" && field.maxSelections > 0 && selectedCount >= field.maxSelections;
 
       return (
         <View>
