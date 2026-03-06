@@ -915,7 +915,7 @@ export function FormBuilder({
       };
 
       const collectFromVisibleIfFormula = (
-        visibleIfFormula?: { conditions: Record<string, Condition> }
+        visibleIfFormula?: VisibleIfFormula
       ) => {
         if (!visibleIfFormula?.conditions) return;
         Object.values(visibleIfFormula.conditions).forEach((condition) => {
@@ -937,20 +937,14 @@ export function FormBuilder({
             draftIds.add(field.customValidatorId);
           }
           collectFromConditions(field.visibleIf);
-          collectFromVisibleIfFormula(
-            (field as { visibleIfFormula?: { conditions: Record<string, Condition> } })
-              .visibleIfFormula
-          );
+          collectFromVisibleIfFormula(field.visibleIfFormula);
         });
       });
 
       schemaToSave.outputViews.forEach((view) => {
         view.blocks.forEach((block) => {
           collectFromConditions(block.visibleIf);
-          collectFromVisibleIfFormula(
-            (block as { visibleIfFormula?: { conditions: Record<string, Condition> } })
-              .visibleIfFormula
-          );
+          collectFromVisibleIfFormula(block.visibleIfFormula);
         });
       });
 
@@ -1022,7 +1016,7 @@ export function FormBuilder({
           fields: page.fields.map((field) => {
             const nextVisibleIf = mapVisibleIf(field.visibleIf);
             const nextVisibleIfFormula = mapVisibleIfFormula(
-              (field as { visibleIfFormula?: VisibleIfFormula }).visibleIfFormula
+              field.visibleIfFormula
             );
             if (isSchemaFormField(field)) {
               const nextValidatorId = isDraftValidatorId(
@@ -1050,9 +1044,7 @@ export function FormBuilder({
           blocks: view.blocks.map((block) => ({
             ...block,
             visibleIf: mapVisibleIf(block.visibleIf),
-            visibleIfFormula: mapVisibleIfFormula(
-              (block as { visibleIfFormula?: VisibleIfFormula }).visibleIfFormula
-            ),
+            visibleIfFormula: mapVisibleIfFormula(block.visibleIfFormula),
           })),
         })),
       };
