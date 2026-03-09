@@ -49,7 +49,7 @@ export default function ContractScreen() {
       contractGetById({
         path: { id: signedContractId! },
       }).then((res) => res.data ?? null),
-    enabled: signedContractId !== null,
+    enabled: signedContractId !== null && signedContractId !== latestContract?.id,
   });
 
   useEffect(() => {
@@ -190,7 +190,7 @@ export default function ContractScreen() {
         )}
 
         {/* Signed contract (when user signed an older version) */}
-        {signedContract && (
+        {signedContract && signedContractId !== latestContract?.id && (
           <View className="gap-y-2">
             <Card
               cardStyle={CardStyle.Outline}
