@@ -24,7 +24,7 @@ const PinnedIcon = ({
       )}
     >
       <Svg
-        viewBox="0 0 88 88"
+        viewBox="0 0 100 100"
         className={sizeClass[size]}
         fill={filled ? colors.green : undefined}
       >

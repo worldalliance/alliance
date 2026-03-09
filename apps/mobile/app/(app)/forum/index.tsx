@@ -7,7 +7,6 @@ import {
   View,
 } from "react-native";
 import { router } from "expo-router";
-import { Pin } from "lucide-react-native";
 import { PostDto, forumFindAllPosts } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import ProfileImage from "../../../components/ProfileImage";
