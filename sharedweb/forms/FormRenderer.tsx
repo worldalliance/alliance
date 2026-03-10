@@ -1346,6 +1346,7 @@ const FormRenderer = ({
                 ) : readOnly ? null : onSubmit ? (
                   <div className="flex flex-1 space-x-2 items-center">
                     <BaseButton
+                      type="submit"
                       variant={BaseButtonVariant.Black}
                       className="w-full"
                       disabled={submitting}
