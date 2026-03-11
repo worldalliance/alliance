@@ -152,8 +152,6 @@ export const AuthProvider: React.FC<
     async (email: string, password: string) => {
       setIsLoading(true);
       try {
-        console.log("sending LOGIN request:");
-        console.log({ email, password, mode: "header" });
         const response = await authLogin({
           body: { email, password, mode: "header" },
         });
@@ -205,13 +203,13 @@ export const AuthProvider: React.FC<
     const credentials = visualTestCredentials
       ? visualTestCredentials
       : devAutoLoginEnabled &&
-          process.env.EXPO_PUBLIC_DEV_EMAIL &&
-          process.env.EXPO_PUBLIC_DEV_PASSWORD
-        ? {
-            email: process.env.EXPO_PUBLIC_DEV_EMAIL,
-            password: process.env.EXPO_PUBLIC_DEV_PASSWORD,
-          }
-        : null;
+        process.env.EXPO_PUBLIC_DEV_EMAIL &&
+        process.env.EXPO_PUBLIC_DEV_PASSWORD
+      ? {
+          email: process.env.EXPO_PUBLIC_DEV_EMAIL,
+          password: process.env.EXPO_PUBLIC_DEV_PASSWORD,
+        }
+      : null;
 
     if (!credentials || isLoading || user) {
       return;

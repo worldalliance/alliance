@@ -40,6 +40,8 @@ import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
 import { CommunityModule } from 'src/community/community.module';
 import { GeneralUpdate } from './entities/general-update.entity';
 import { GeneralUpdateActivity } from './entities/general-update-activity.entity';
+import { forwardRef } from '@nestjs/common';
+import { ApnsModule } from 'src/apns/apns.module';
 
 @Module({
   imports: [
@@ -75,6 +77,7 @@ import { GeneralUpdateActivity } from './entities/general-update-activity.entity
     PushModule,
     ForumModule,
     EventLogModule,
+    forwardRef(() => ApnsModule),
   ],
   controllers: [ActionsController],
   providers: [

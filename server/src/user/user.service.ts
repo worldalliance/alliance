@@ -40,8 +40,14 @@ import {
 import { CreateAwayRangeDto, UpdateAwayRangeDto } from './dto/away-range.dto';
 import { Temporal } from '@js-temporal/polyfill';
 import type { Relations } from 'src/utils/Repository';
-import { RegisterDeviceDto, UserDeviceDto } from './dto/device.dto';
+import {
+  RegisterDeviceDto,
+  RegisterLiveActivityPushToStartTokenDto,
+  RegisterLiveActivityUpdateTokenDto,
+  UserDeviceDto,
+} from './dto/device.dto';
 import { UserDevice } from './entities/user-device.entity';
+import { LiveActivityRegistration } from 'src/apns/entities/live-activity-registration.entity';
 import { PushService } from 'src/push/push.service';
 import { Push } from 'src/push/push.entity';
 import { EventLogService } from 'src/eventlog/eventlog.service';
@@ -78,6 +84,8 @@ export class UserService {
     private readonly userAwayRangeRepository: Repository<UserAwayRange>,
     @InjectRepository(UserDevice)
     private readonly userDeviceRepository: Repository<UserDevice>,
+    @InjectRepository(LiveActivityRegistration)
+    private readonly liveActivityRegistrationRepository: Repository<LiveActivityRegistration>,
     private readonly jwtService: JwtService,
     private readonly imagesService: ImagesService,
     private readonly mailService: MailService,
@@ -1316,5 +1324,59 @@ export class UserService {
         relations: { contractEvents: true },
       })
     ).filter((user) => user.hasActiveContract).length;
+  }
+
+  async registerLiveActivityPushToStartToken(
+    userId: number,
+    body: RegisterLiveActivityPushToStartTokenDto,
+  ): Promise<UserDeviceDto> {
+    const user = await this.findOneOrFail(userId, { devices: true });
+
+    // Find the device to update - match by deviceId if provided, otherwise first device
+    let device: UserDevice | null = null;
+    if (body.deviceId) {
+      device = await this.userDeviceRepository.findOne({
+        where: { id: body.deviceId, user: { id: userId } },
+      });
+    }
+    if (!device && user.devices?.length) {
+      device = user.devices[0];
+    }
+
+    if (!device) {
+      throw new NotFoundException('No device found for user');
+    }
+
+    await this.userDeviceRepository.update(device.id, {
+      liveActivityPushToStartToken: body.pushToStartToken,
+    });
+
+    return { id: device.id };
+  }
+
+  async registerLiveActivityUpdateToken(
+    userId: number,
+    body: RegisterLiveActivityUpdateTokenDto,
+  ): Promise<void> {
+    const existing = await this.liveActivityRegistrationRepository.findOne({
+      where: { userId, actionId: body.actionId },
+    });
+
+    if (existing) {
+      await this.liveActivityRegistrationRepository.update(existing.id, {
+        updateToken: body.updateToken,
+        activityId: body.activityId,
+      });
+    } else {
+      await this.liveActivityRegistrationRepository.save(
+        this.liveActivityRegistrationRepository.create({
+          userId,
+          actionId: body.actionId,
+          updateToken: body.updateToken,
+          activityId: body.activityId,
+          pushToStartSent: true,
+        }),
+      );
+    }
   }
 }

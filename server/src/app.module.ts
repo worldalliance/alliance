@@ -30,6 +30,7 @@ import { EventLogModule } from './eventlog/eventlog.module';
 import { CommunityModule } from './community/community.module';
 import { ContractModule } from './contract/contract.module';
 import { VideosModule } from './videos/videos.module';
+import { ApnsModule } from './apns/apns.module';
 
 @Module({
   imports: [
@@ -80,6 +81,7 @@ import { VideosModule } from './videos/videos.module';
     MessagingModule,
     PushModule,
     EventLogModule,
+    ApnsModule,
   ],
   controllers: [AppController],
 })

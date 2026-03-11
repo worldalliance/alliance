@@ -38,3 +38,32 @@ export class TestPushNotificationDto {
   @IsNotEmpty()
   message: string;
 }
+
+export class RegisterLiveActivityPushToStartTokenDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  pushToStartToken: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  deviceId?: string;
+}
+
+export class RegisterLiveActivityUpdateTokenDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  activityId: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  updateToken: string;
+
+  @ApiProperty()
+  @IsNumber()
+  @IsNotEmpty()
+  actionId: number;
+}

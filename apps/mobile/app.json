@@ -75,7 +75,15 @@
           "icon": "./assets/images/bridge.png",
           "color": "#ffffff"
         }
-      ]
+      ],
+      [
+        "expo-widgets",
+        {
+          "enablePushNotifications": true
+        }
+      ],
+      "./plugins/withLiveActivity",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true

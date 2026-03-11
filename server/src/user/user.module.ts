@@ -25,6 +25,7 @@ import { UserDevice } from './entities/user-device.entity';
 import { EventLogModule } from 'src/eventlog/eventlog.module';
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { CommunityModule } from 'src/community/community.module';
+import { LiveActivityRegistration } from 'src/apns/entities/live-activity-registration.entity';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { CommunityModule } from 'src/community/community.module';
       Tag,
       UserDevice,
       UserAwayRange,
+      LiveActivityRegistration,
     ]),
     JwtModule,
     ImagesModule,

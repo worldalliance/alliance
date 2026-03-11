@@ -17,8 +17,16 @@ import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { isVisualTestMode } from "../lib/visualTest";
-import { userRegisterDevice } from "@alliance/shared/client";
+import {
+  userRegisterDevice,
+  userRegisterLiveActivityPushToStartToken,
+  userRegisterLiveActivityUpdateToken,
+} from "@alliance/shared/client";
 import PushNotificationResponseHandler from "../components/PushNotificationResponseHandler";
+import {
+  addPushToStartTokenListener,
+  getActivityInstances,
+} from "../modules/live-activity-tokens/src";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 const queryClient = new QueryClient({
@@ -146,6 +154,46 @@ export default function RootLayout() {
       .then((token) => registerToken(token))
       .catch((error: any) => console.error(`${error}`));
   }, [registerToken]);
+
+  // Register Live Activity push-to-start token (iOS only)
+  useEffect(() => {
+    if (Platform.OS !== "ios" || isVisualTestMode) return;
+
+    const sub = addPushToStartTokenListener(async (event) => {
+      const deviceId = await SecureStore.getItem("deviceId");
+      userRegisterLiveActivityPushToStartToken({
+        body: {
+          pushToStartToken: event.token,
+          deviceId: deviceId ?? undefined,
+        },
+      }).catch((err: unknown) =>
+        console.error("Failed to register LA push-to-start token:", err)
+      );
+    });
+
+    // On app open: check active Live Activities and send update tokens
+    getActivityInstances()
+      .then(async (instances) => {
+        for (const inst of instances) {
+          if (inst.pushToken && inst.actionName) {
+            userRegisterLiveActivityUpdateToken({
+              body: {
+                activityId: inst.id,
+                updateToken: inst.pushToken,
+                actionId: 0, // Will be resolved server-side by activityId
+              },
+            }).catch((err: unknown) =>
+              console.error("Failed to register LA update token:", err)
+            );
+          }
+        }
+      })
+      .catch((err: unknown) =>
+        console.error("Failed to get LA instances:", err)
+      );
+
+    return () => sub.remove();
+  }, []);
 
   if (Platform.OS === "web") {
     return (

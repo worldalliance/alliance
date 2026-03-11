@@ -29,6 +29,9 @@ export class UserDevice {
   @Column({ nullable: true })
   expoPushToken?: string;
 
+  @Column({ nullable: true })
+  liveActivityPushToStartToken?: string;
+
   @UpdateDateColumnTz()
   updatedAt: Date;
 

@@ -51,6 +51,8 @@ import {
 import { CommunityLeaderGuard } from 'src/auth/guards/communityleader.guard';
 import {
   RegisterDeviceDto,
+  RegisterLiveActivityPushToStartTokenDto,
+  RegisterLiveActivityUpdateTokenDto,
   TestPushNotificationDto,
   UserDeviceDto,
 } from './dto/device.dto';
@@ -621,5 +623,31 @@ export class UserController {
   @ApiOkResponse({ type: Push })
   async sendPushNotification(@Body() body: TestPushNotificationDto) {
     return this.userService.testPushNotification(body.userId, body.message);
+  }
+
+  @Post('registerLiveActivityPushToStartToken')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: UserDeviceDto })
+  async registerLiveActivityPushToStartToken(
+    @Request() req: JwtRequest,
+    @Body() body: RegisterLiveActivityPushToStartTokenDto,
+  ): Promise<UserDeviceDto> {
+    return this.userService.registerLiveActivityPushToStartToken(
+      req.user.sub,
+      body,
+    );
+  }
+
+  @Post('registerLiveActivityUpdateToken')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse()
+  async registerLiveActivityUpdateToken(
+    @Request() req: JwtRequest,
+    @Body() body: RegisterLiveActivityUpdateTokenDto,
+  ): Promise<void> {
+    await this.userService.registerLiveActivityUpdateToken(
+      req.user.sub,
+      body,
+    );
   }
 }

@@ -124,6 +124,7 @@ import {
 } from 'src/utils/action-user';
 import { computeIsAwayInRange } from 'src/utils/user';
 import { CommunityService } from 'src/community/community.service';
+import { LiveActivityService } from 'src/apns/live-activity.service';
 import { GeneralUpdate } from './entities/general-update.entity';
 import { GeneralUpdateActivity } from './entities/general-update-activity.entity';
 import { GeneralUpdateActivityType } from './entities/general-update-activity.entity';
@@ -191,6 +192,7 @@ export class ActionsService {
     private readonly actionEventReminderService: ActionEventReminderService,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly forumService: ForumService,
+    private readonly liveActivityService: LiveActivityService,
   ) {}
 
   async shiftPrioritiesAfterInsertion(): Promise<void> {
@@ -1007,6 +1009,7 @@ export class ActionsService {
     await this.reloadUsersJoinedForAction(actionId);
     if (type === ActionActivityType.USER_COMPLETED) {
       await this.reloadUsersCompletedForAction(actionId);
+      await this.liveActivityService.updateCompletionCount(actionId);
     }
 
     await this.checkAndProcessAutomaticTransitions(actionId);
