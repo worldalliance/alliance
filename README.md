@@ -34,9 +34,7 @@ Start the admin panel: `cd apps/admin && yarn dev` (or `yarn admin:dev` from roo
 
 Run the migrations: `(cd server && bun migration:run)`
 
-Start the server: `bun server:dev`
-
-(First time only) delete the `ADMIN_USER` and `ADMIN_PASSWORD` variables from the `.env` file.
+Start the server: `cd server && bun dev` (or `bun server:dev` from root dir)
 
 When opening the app locally for the first time, you can log in with the account specified by `ADMIN_USER` and `ADMIN_PASSWORD` in your .env file (this account will be automatically added to the db on startup)
 
