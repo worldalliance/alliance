@@ -25,7 +25,7 @@ const emptyFormSchema = {
   title: "Follow-up form",
   description: "",
   pages: [{ id: "page-1", title: "Page 1", fields: [] }],
-  submit: { label: "Complete" },
+  submit: { label: "Submit" },
   outputViews: [],
 };
 
@@ -74,7 +74,7 @@ export default function ActionFollowUpFormsTab({
       const formRes = await tasksCreateForm({
         body: {
           title: `${action.name} - follow-up`,
-          schema: emptyFormSchema as unknown as Record<string, unknown>,
+          schema: emptyFormSchema as Record<string, unknown>,
         },
       });
       if (!formRes.data?.id) {

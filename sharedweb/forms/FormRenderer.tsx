@@ -1478,7 +1478,8 @@ const FormRenderer = ({
                       disabled={submitting}
                       type="submit"
                     >
-                      {schema.submit?.label || followUp ? "Submit" : "Complete"}
+                      {schema.submit?.label ||
+                        (followUp ? "Submit" : "Complete")}
                     </BaseButton>
                   </div>
                 ) : (
@@ -1488,7 +1489,8 @@ const FormRenderer = ({
                       className="!cursor-not-allowed w-full"
                       onClick={validateForPreview}
                     >
-                      {schema.submit?.label || followUp ? "Submit" : "Complete"}
+                      {schema.submit?.label ||
+                        (followUp ? "Submit" : "Complete")}
                       {" (Preview Mode)"}
                     </BaseButton>
                   </div>
