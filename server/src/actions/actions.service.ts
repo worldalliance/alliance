@@ -475,6 +475,10 @@ export class ActionsService {
   }
 
   async findCompletedUsersForAction(actionId: number): Promise<User[]> {
+    await this.actionRepository.findOneOrFail({
+      where: { id: actionId },
+    });
+
     const completedActivities = await this.actionActivityRepository.find({
       where: {
         actionId,

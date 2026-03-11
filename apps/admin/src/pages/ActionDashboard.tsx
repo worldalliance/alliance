@@ -635,7 +635,7 @@ const ActionDashboard: React.FC = () => {
     }
   };
 
-  const { confirm } = useToast();
+  const { confirm, error: showError } = useToast();
 
   const handleArchive = useCallback(async () => {
     const confirmed =
@@ -683,20 +683,24 @@ const ActionDashboard: React.FC = () => {
 
   const handlePopulateFromAction = useCallback(
     async (sourceActionId: number) => {
-      const response = await actionsGetCompletedUsers({
-        path: { id: sourceActionId },
-      });
-      if (response.data) {
-        const userIds = response.data.map((u) => u.id);
-        setManualCohortUserIds(userIds);
-        setForm((prev) => ({
-          ...prev,
-          useManualCohort: true,
-          manualCohortUserIds: userIds,
-        }));
+      try {
+        const response = await actionsGetCompletedUsers({
+          path: { id: sourceActionId },
+        });
+        if (response.data) {
+          const userIds = response.data.map((u) => u.id);
+          setManualCohortUserIds(userIds);
+          setForm((prev) => ({
+            ...prev,
+            useManualCohort: true,
+            manualCohortUserIds: userIds,
+          }));
+        }
+      } catch {
+        showError("Failed to populate cohort from action");
       }
     },
-    []
+    [showError]
   );
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
