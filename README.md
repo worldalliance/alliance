@@ -22,17 +22,21 @@ Set up postgres database running locally with username/password/db name matching
 
 ### frontend
 
-dev: `cd apps/frontend && yarn dev` (or `yarn frontend:dev` from root dir)
+Start the frontend: `cd apps/frontend && yarn dev` (or `yarn frontend:dev` from root dir)
 
 ### admin
 
-dev: `cd apps/admin && yarn dev` (or `yarn admin:dev` from root dir)
+Start the admin panel: `cd apps/admin && yarn dev` (or `yarn admin:dev` from root dir)
 
 ### server
 
-Install bun 1.3.6 on your computer.
+(First time only) install bun 1.3.6: `curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"`
 
-dev: `cd server && bun dev`
+Run the migrations: `(cd server && bun migration:run)`
+
+Start the server: `bun server:dev`
+
+(First time only) delete the `ADMIN_USER` and `ADMIN_PASSWORD` variables from the `.env` file.
 
 When opening the app locally for the first time, you can log in with the account specified by `ADMIN_USER` and `ADMIN_PASSWORD` in your .env file (this account will be automatically added to the db on startup)
 

@@ -1,6 +1,6 @@
 import { MailerModule } from '@nestjs-modules/mailer';
 import { PugAdapter } from '@nestjs-modules/mailer/dist/adapters/pug.adapter';
-import { Module } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { MulterModule } from '@nestjs/platform-express';
@@ -85,10 +85,8 @@ import { ApnsModule } from './apns/apns.module';
   ],
   controllers: [AppController],
 })
-export class AppModule {
-  constructor(private userService: UserService) {
-    void this.onModuleInit();
-  }
+export class AppModule implements OnModuleInit {
+  constructor(private userService: UserService) {}
 
   async onModuleInit() {
     if (process.env.ADMIN_USER && process.env.NODE_ENV !== 'production') {
