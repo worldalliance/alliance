@@ -28,4 +28,5 @@ export const screenshotTargets: ScreenshotTarget[] = [
   { name: "settings", path: "/settings", requiresAuth: true },
   { name: "notifications", path: "/notifications", requiresAuth: true },
   { name: "members", path: "/members", requiresAuth: true },
+  { name: "profile", path: "/member/15", requiresAuth: true },
 ];
