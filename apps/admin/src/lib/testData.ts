@@ -84,6 +84,7 @@ This is our chance to take direct action against environmental destruction. Ever
     shouldCompleteAfterDeadline: false,
     isContractSigningAction: false,
     isForumParticipationAction: false,
+    followUpForms: [],
   },
   {
     name: "Use public transportation instead of driving",
@@ -145,5 +146,6 @@ Your commitment to public transit is an investment in a sustainable future.`,
     shouldCompleteAfterDeadline: false,
     isContractSigningAction: false,
     isForumParticipationAction: false,
+    followUpForms: [],
   },
 ];
