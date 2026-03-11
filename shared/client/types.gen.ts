@@ -878,6 +878,17 @@ export type TestPushNotificationDto = {
     message: string;
 };
 
+export type RegisterLiveActivityPushToStartTokenDto = {
+    pushToStartToken: string;
+    deviceId?: string;
+};
+
+export type RegisterLiveActivityUpdateTokenDto = {
+    activityId: string;
+    updateToken: string;
+    actionId: number;
+};
+
 export type StreamableFile = {
     [key: string]: unknown;
 };
@@ -3757,6 +3768,30 @@ export type UserSendPushNotificationResponses = {
 };
 
 export type UserSendPushNotificationResponse = UserSendPushNotificationResponses[keyof UserSendPushNotificationResponses];
+
+export type UserRegisterLiveActivityPushToStartTokenData = {
+    body: RegisterLiveActivityPushToStartTokenDto;
+    path?: never;
+    query?: never;
+    url: '/user/registerLiveActivityPushToStartToken';
+};
+
+export type UserRegisterLiveActivityPushToStartTokenResponses = {
+    200: UserDeviceDto;
+};
+
+export type UserRegisterLiveActivityPushToStartTokenResponse = UserRegisterLiveActivityPushToStartTokenResponses[keyof UserRegisterLiveActivityPushToStartTokenResponses];
+
+export type UserRegisterLiveActivityUpdateTokenData = {
+    body: RegisterLiveActivityUpdateTokenDto;
+    path?: never;
+    query?: never;
+    url: '/user/registerLiveActivityUpdateToken';
+};
+
+export type UserRegisterLiveActivityUpdateTokenResponses = {
+    200: unknown;
+};
 
 export type ImagesGetImageData = {
     body?: never;

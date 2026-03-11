@@ -119,6 +119,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
     [allActions, actionId, populateSearchQuery]
   );
 
+  const expandRequestId = useRef(0);
+
   const handleExpandAction = async (id: number) => {
     if (expandedActionId === id) {
       setExpandedActionId(null);
@@ -128,12 +130,16 @@ const ActionForm: React.FC<ActionFormProps> = ({
     setExpandedActionId(id);
     setExpandedActionUsers(null);
     if (!onFetchActionUsers) return;
+    const requestId = ++expandRequestId.current;
     setExpandLoading(true);
     try {
       const users = await onFetchActionUsers(id);
+      if (requestId !== expandRequestId.current) return;
       setExpandedActionUsers(users);
     } finally {
-      setExpandLoading(false);
+      if (requestId === expandRequestId.current) {
+        setExpandLoading(false);
+      }
     }
   };
 

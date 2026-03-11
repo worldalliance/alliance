@@ -645,9 +645,6 @@ export class UserController {
     @Request() req: JwtRequest,
     @Body() body: RegisterLiveActivityUpdateTokenDto,
   ): Promise<void> {
-    await this.userService.registerLiveActivityUpdateToken(
-      req.user.sub,
-      body,
-    );
+    await this.userService.registerLiveActivityUpdateToken(req.user.sub, body);
   }
 }

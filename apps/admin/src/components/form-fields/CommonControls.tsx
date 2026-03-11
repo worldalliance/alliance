@@ -12,7 +12,9 @@ import {
   tasksCustomValidators,
   tasksFindOneCustomValidator,
   tasksTestCustomExpression,
+  userGetTags,
   userList,
+  type TagDto,
   type UserDto,
   CustomExpressionUserDto,
 } from "@alliance/shared/client";
@@ -547,12 +549,15 @@ export function ConditionalVisibility({
       })
     )
       .then((entries) => {
+        const resolved = entries.filter(
+          (entry): entry is [number, { type: CustomValidatorType; idArgument?: string; expression?: string }] =>
+            entry[1] !== undefined
+        );
+        if (resolved.length === 0) return;
         setValidatorConfigs((prev) => {
           const next = { ...prev };
-          for (const [id, config] of entries) {
-            if (config) {
-              next[id] = config;
-            }
+          for (const [id, config] of resolved) {
+            next[id] = config;
           }
           return next;
         });
@@ -1298,6 +1303,79 @@ function useUsers(enabled: boolean): {
   };
 }
 
+let cachedTags: TagDto[] | null = null;
+let cachedTagsError: string | null = null;
+let pendingTagsRequest: Promise<TagDto[]> | null = null;
+
+async function fetchTags(): Promise<TagDto[]> {
+  const response = await userGetTags();
+  if (response.data) {
+    return response.data;
+  }
+  if (response.error) {
+    throw response.error;
+  }
+  throw new Error("Unknown error loading tags");
+}
+
+function useTags(enabled: boolean): {
+  tags: TagDto[];
+  loading: boolean;
+  error: string | null;
+} {
+  const [tags, setTags] = useState<TagDto[]>(() => cachedTags ?? []);
+  const [loading, setLoading] = useState<boolean>(
+    () => enabled && !cachedTags && !cachedTagsError
+  );
+  const [error, setError] = useState<string | null>(() => cachedTagsError);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    if (cachedTags) {
+      setTags(cachedTags);
+      setLoading(false);
+      return;
+    }
+
+    let isCancelled = false;
+    if (!pendingTagsRequest) {
+      pendingTagsRequest = fetchTags();
+    }
+
+    setLoading(true);
+
+    pendingTagsRequest
+      .then((data) => {
+        if (isCancelled) return;
+        cachedTags = data;
+        cachedTagsError = null;
+        setTags(data);
+        setError(null);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (isCancelled) return;
+        const message =
+          err instanceof Error ? err.message : "Failed to load tags";
+        cachedTagsError = message;
+        setError(message);
+        setLoading(false);
+      })
+      .finally(() => {
+        pendingTagsRequest = null;
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [enabled]);
+
+  return { tags, loading, error };
+}
+
 type CustomValidatorSelectProps = {
   type?: CustomValidatorType;
   idArgument?: string;
@@ -1322,7 +1400,13 @@ export function CustomValidatorSelect({
   filter,
 }: CustomValidatorSelectProps) {
   const { validators, loading, error } = useCustomValidators();
+  const isMemberTag = type === "MemberTag";
   const isCustomExpression = type === "CustomExpression";
+  const {
+    tags,
+    loading: tagsLoading,
+    error: tagsError,
+  } = useTags(isMemberTag);
   const {
     users,
     loading: usersLoading,
@@ -1367,13 +1451,17 @@ export function CustomValidatorSelect({
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const nextValue = event.target.value;
     if (!nextValue) {
-      onChange(undefined, idArgument);
+      onChange(undefined, idArgument, expression);
       return;
     }
-    onChange(nextValue as CustomValidatorType, idArgument);
+    onChange(nextValue as CustomValidatorType, idArgument, expression);
   };
 
   const hasValidators = availableValidators.length > 0;
+  const sortedTags = useMemo(
+    () => [...tags].sort((a, b) => a.name.localeCompare(b.name)),
+    [tags]
+  );
   const hasExpression = Boolean(expression?.trim());
   const sortedUsers = useMemo(
     () => [...activeUsers].sort((a, b) => a.name.localeCompare(b.name)),
@@ -1511,7 +1599,7 @@ export function CustomValidatorSelect({
       <div className="flex items-center gap-2">
         <select
           className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
-          value={type}
+          value={type ?? ""}
           onChange={handleChange}
           disabled={loading || (!hasValidators && !type)}
         >
@@ -1523,20 +1611,43 @@ export function CustomValidatorSelect({
           ))}
         </select>
         {!!validators.find((validator) => validator.id === type)
-          ?.withIdField && (
-          <input
-            type="text"
-            value={idArgument ?? ""}
-            onChange={(e) =>
-              onChange(
-                type,
-                e.target.value === "" ? undefined : e.target.value,
-                expression
-              )
-            }
-            className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-24"
-          />
-        )}
+          ?.withIdField &&
+          (isMemberTag ? (
+            <select
+              value={idArgument ?? ""}
+              onChange={(e) =>
+                onChange(
+                  type,
+                  e.target.value === "" ? undefined : e.target.value,
+                  expression
+                )
+              }
+              className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-32"
+              disabled={tagsLoading}
+            >
+              <option value="">
+                {tagsLoading ? "Loading..." : "Select a tag"}
+              </option>
+              {sortedTags.map((tag) => (
+                <option key={tag.id} value={tag.id}>
+                  {tag.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={idArgument ?? ""}
+              onChange={(e) =>
+                onChange(
+                  type,
+                  e.target.value === "" ? undefined : e.target.value,
+                  expression
+                )
+              }
+              className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-24"
+            />
+          ))}
       </div>
       {type === "CustomExpression" && (
         <div className="space-y-2">

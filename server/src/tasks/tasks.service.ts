@@ -20,7 +20,7 @@ import { getVideoSource } from 'src/videos/videos.service';
 import { MmsService } from 'src/mms/mms.service';
 import { welcomeMessage } from 'src/notifs/textnotifcontents';
 import { UserService } from 'src/user/user.service';
-import type { Repository } from 'typeorm';
+import { IsNull, type Repository } from 'typeorm';
 import {
   CustomValidatorDto,
   CustomValidatorResponseDto,
@@ -806,7 +806,11 @@ export class TasksService {
     expression?: string,
   ): Promise<CustomValidator> {
     let validator = await this.customValidatorRepository.findOne({
-      where: { type, idArgument: idArg, expression: expression },
+      where: {
+        type,
+        idArgument: idArg ?? IsNull(),
+        expression: expression ?? IsNull(),
+      },
     });
     if (!validator) {
       validator = this.customValidatorRepository.create({

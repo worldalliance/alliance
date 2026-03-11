@@ -1,4 +1,8 @@
-import { EventEmitter, Subscription } from "expo-modules-core";
+import {
+  requireOptionalNativeModule,
+  type EventEmitter,
+  type EventSubscription,
+} from "expo-modules-core";
 import { Platform } from "react-native";
 
 export interface PushToStartTokenEvent {
@@ -12,27 +16,29 @@ export interface ActivityInstance {
   pushToken?: string;
 }
 
-let nativeModule: any = null;
-let emitter: EventEmitter | null = null;
+type LiveActivityTokensEvents = {
+  onPushToStartToken: (event: PushToStartTokenEvent) => void;
+};
 
-if (Platform.OS === "ios") {
-  try {
-    const { requireNativeModule } = require("expo-modules-core");
-    nativeModule = requireNativeModule("LiveActivityTokens");
-    emitter = new EventEmitter(nativeModule);
-  } catch {
-    console.warn("LiveActivityTokens native module not available");
-  }
-}
+type LiveActivityTokensModule = EventEmitter<LiveActivityTokensEvents> & {
+  getActivityInstances(): Promise<ActivityInstance[]>;
+};
+
+const nativeModule =
+  Platform.OS === "ios"
+    ? requireOptionalNativeModule<LiveActivityTokensModule>(
+        "LiveActivityTokens"
+      )
+    : null;
 
 export function addPushToStartTokenListener(
   listener: (event: PushToStartTokenEvent) => void
-): Subscription {
-  if (!emitter) {
-    // Return a no-op subscription
-    return { remove: () => {} } as Subscription;
+): EventSubscription {
+  if (!nativeModule) {
+    return { remove: () => {} };
   }
-  return emitter.addListener("onPushToStartToken", listener);
+  console.log("nativeModule: ", nativeModule);
+  return nativeModule.emitter.addListener(listener);
 }
 
 export async function getActivityInstances(): Promise<ActivityInstance[]> {

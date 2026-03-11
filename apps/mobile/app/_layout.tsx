@@ -65,6 +65,7 @@ async function registerForPushNotificationsAsync() {
   }
 
   if (Device.isDevice && Platform.OS !== "web") {
+    console.log("registering for push notifications");
     const { status: existingStatus } =
       await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -90,6 +91,7 @@ async function registerForPushNotificationsAsync() {
           projectId,
         })
       ).data;
+      console.log("push token: ", pushTokenString);
       return pushTokenString;
     } catch (e: unknown) {
       handleRegistrationError(`${e}`);
@@ -126,10 +128,10 @@ export default function RootLayout() {
       return;
     }
     const deviceId = await SecureStore.getItem("deviceId");
-    const registeredToken = await SecureStore.getItem("registeredToken");
-    if (registeredToken === token) {
-      return;
-    }
+    // const registeredToken = await SecureStore.getItem("registeredToken");
+    // if (registeredToken === token) {
+    //   return;
+    // }
     console.log("registering token: ", token);
     const resp = await userRegisterDevice({
       body: {
@@ -159,7 +161,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS !== "ios" || isVisualTestMode) return;
 
+    console.log("registering for live activity push-to-start token");
+
     const sub = addPushToStartTokenListener(async (event) => {
+      console.log("live activity push-to-start token: ", event.token);
       const deviceId = await SecureStore.getItem("deviceId");
       userRegisterLiveActivityPushToStartToken({
         body: {
