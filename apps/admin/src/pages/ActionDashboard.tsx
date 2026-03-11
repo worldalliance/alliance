@@ -690,20 +690,16 @@ const ActionDashboard: React.FC = () => {
     }));
   }, []);
 
-  const handlePopulateFromAction = useCallback(
+  const handleFetchActionUsers = useCallback(
     async (sourceActionId: number) => {
-      const response = await actionsGetCompletedUsers({
-        path: { id: sourceActionId },
-      });
-      if (response.data) {
-        const userIds = response.data.map((u) => u.id);
-        setManualCohortUserIds(userIds);
-        setForm((prev) => ({
-          ...prev,
-          useManualCohort: true,
-          manualCohortUserIds: userIds,
-        }));
-      }
+      const [completedRes, incompleteRes] = await Promise.all([
+        actionsGetCompletedUsers({ path: { id: sourceActionId } }),
+        actionsGetIncompleteUsers({ path: { id: sourceActionId } }),
+      ]);
+      return {
+        completed: completedRes.data?.map((u) => u.id) ?? [],
+        incomplete: incompleteRes.data?.map((u) => u.id) ?? [],
+      };
     },
     []
   );
@@ -1059,7 +1055,7 @@ const ActionDashboard: React.FC = () => {
             onAuthorsChange={handleAuthorsChange}
             allActions={allActions}
             allActionsLoading={allActionsLoading}
-            onPopulateFromAction={handlePopulateFromAction}
+            onFetchActionUsers={handleFetchActionUsers}
           />
         </div>
       ) : (
@@ -1615,7 +1611,7 @@ const ActionDashboard: React.FC = () => {
                   onAuthorsChange={handleAuthorsChange}
                   allActions={allActions}
                   allActionsLoading={allActionsLoading}
-                  onPopulateFromAction={handlePopulateFromAction}
+                  onFetchActionUsers={handleFetchActionUsers}
                 />
               </div>
             )}

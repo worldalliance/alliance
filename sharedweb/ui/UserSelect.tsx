@@ -24,6 +24,8 @@ const UserSelect: React.FC<UserSelectProps> = ({
   single = false,
 }) => {
   const [query, setQuery] = useState<string>("");
+  const [filterQuery, setFilterQuery] = useState<string>("");
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const canSelectMore = !single || selectedUserIds.length === 0;
 
@@ -31,6 +33,14 @@ const UserSelect: React.FC<UserSelectProps> = ({
     const userMap = new Map(users.map((user) => [user.id, user]));
     return selectedUserIds.map((userId) => userMap.get(userId)!);
   }, [users, selectedUserIds]);
+
+  const displayedSelectedUsers = useMemo(() => {
+    const term = filterQuery.trim().toLowerCase();
+    if (!term) return selectedUsers;
+    return selectedUsers.filter((user) =>
+      `${user.name ?? ""}`.toLowerCase().includes(term)
+    );
+  }, [selectedUsers, filterQuery]);
 
   const filteredUsers = useMemo(() => {
     if (!canSelectMore) {
@@ -114,8 +124,42 @@ const UserSelect: React.FC<UserSelectProps> = ({
           No users match that search.
         </p>
       )}
+      {selectedUsers.length > 0 && (
+        <div className="my-1 flex items-center gap-2">
+          {filterOpen ? (
+            <>
+              <input
+                type="text"
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                placeholder="Filter selected users..."
+                className="flex-1 border border-zinc-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setFilterOpen(false);
+                  setFilterQuery("");
+                }}
+                className="text-xs text-zinc-500 hover:text-zinc-700"
+              >
+                Clear
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setFilterOpen(true)}
+              className="text-xs text-zinc-500 hover:text-zinc-700"
+            >
+              Filter ({selectedUsers.length})
+            </button>
+          )}
+        </div>
+      )}
       <div className="my-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        {selectedUsers.map((user) => (
+        {displayedSelectedUsers.map((user) => (
           <div
             key={user.id}
             className="flex items-center justify-between border border-zinc-200 rounded px-3 py-2 text-sm bg-zinc-50"

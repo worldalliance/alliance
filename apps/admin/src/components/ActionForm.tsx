@@ -45,7 +45,9 @@ interface ActionFormProps {
   actionId?: number;
   allActions?: { id: number; name: string; usersCompleted: number }[];
   allActionsLoading?: boolean;
-  onPopulateFromAction?: (actionId: number) => Promise<void>;
+  onFetchActionUsers?: (
+    actionId: number
+  ) => Promise<{ completed: number[]; incomplete: number[] }>;
 }
 
 // Section wrapper component for visual grouping
@@ -91,12 +93,17 @@ const ActionForm: React.FC<ActionFormProps> = ({
   actionId,
   allActions = [],
   allActionsLoading = false,
-  onPopulateFromAction,
+  onFetchActionUsers,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [populateDropdownOpen, setPopulateDropdownOpen] = useState(false);
   const [populateSearchQuery, setPopulateSearchQuery] = useState("");
-  const [populateLoading, setPopulateLoading] = useState(false);
+  const [expandedActionId, setExpandedActionId] = useState<number | null>(null);
+  const [expandedActionUsers, setExpandedActionUsers] = useState<{
+    completed: number[];
+    incomplete: number[];
+  } | null>(null);
+  const [expandLoading, setExpandLoading] = useState(false);
 
   const populateDropdownRef = useOutsideClick(
     useCallback(() => setPopulateDropdownOpen(false), [])
@@ -112,16 +119,30 @@ const ActionForm: React.FC<ActionFormProps> = ({
     [allActions, actionId, populateSearchQuery]
   );
 
-  const handlePopulateSelect = async (sourceActionId: number) => {
-    if (!onPopulateFromAction) return;
-    setPopulateLoading(true);
-    try {
-      await onPopulateFromAction(sourceActionId);
-    } finally {
-      setPopulateLoading(false);
-      setPopulateDropdownOpen(false);
-      setPopulateSearchQuery("");
+  const handleExpandAction = async (id: number) => {
+    if (expandedActionId === id) {
+      setExpandedActionId(null);
+      setExpandedActionUsers(null);
+      return;
     }
+    setExpandedActionId(id);
+    setExpandedActionUsers(null);
+    if (!onFetchActionUsers) return;
+    setExpandLoading(true);
+    try {
+      const users = await onFetchActionUsers(id);
+      setExpandedActionUsers(users);
+    } finally {
+      setExpandLoading(false);
+    }
+  };
+
+  const handlePopulateSelect = (userIds: number[]) => {
+    onManualCohortChange(userIds);
+    setPopulateDropdownOpen(false);
+    setPopulateSearchQuery("");
+    setExpandedActionId(null);
+    setExpandedActionUsers(null);
   };
 
   const handleToggleTag = (tagId: string) => {
@@ -746,19 +767,18 @@ const ActionForm: React.FC<ActionFormProps> = ({
             </div>
             {form.useManualCohort ? (
               <>
-                {onPopulateFromAction && (
+                {onFetchActionUsers && (
                   <div className="relative mb-3" ref={populateDropdownRef}>
                     <button
                       type="button"
-                      onClick={() =>
-                        setPopulateDropdownOpen(!populateDropdownOpen)
-                      }
-                      disabled={populateLoading || allActionsLoading}
+                      onClick={() => {
+                        setPopulateDropdownOpen(!populateDropdownOpen);
+                        setExpandedActionId(null);
+                      }}
+                      disabled={allActionsLoading}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
                     >
-                      {populateLoading
-                        ? "Populating..."
-                        : "Populate from past action"}
+                      Populate from past action
                       <ChevronDown className="h-4 w-4" />
                     </button>
                     {populateDropdownOpen && (
@@ -786,17 +806,64 @@ const ActionForm: React.FC<ActionFormProps> = ({
                             </p>
                           ) : (
                             filteredActions.map((a) => (
-                              <button
-                                key={a.id}
-                                type="button"
-                                onClick={() => handlePopulateSelect(a.id)}
-                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex justify-between items-center"
-                              >
-                                <span className="truncate mr-2">{a.name}</span>
-                                <span className="text-xs text-gray-500 whitespace-nowrap">
-                                  {a.usersCompleted} completed
-                                </span>
-                              </button>
+                              <div key={a.id}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleExpandAction(a.id)}
+                                  className={cn(
+                                    "w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex justify-between items-center",
+                                    expandedActionId === a.id && "bg-gray-50"
+                                  )}
+                                >
+                                  <span className="truncate mr-2">
+                                    {a.name}
+                                  </span>
+                                  <span className="text-xs text-gray-500 whitespace-nowrap">
+                                    {a.usersCompleted} completed
+                                  </span>
+                                </button>
+                                {expandedActionId === a.id && (
+                                  <div className="flex gap-2 px-3 py-2 bg-gray-50 border-t border-gray-100">
+                                    {expandLoading ? (
+                                      <p className="text-xs text-gray-500 w-full text-center py-1">
+                                        Loading users...
+                                      </p>
+                                    ) : expandedActionUsers ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handlePopulateSelect(
+                                              expandedActionUsers.completed
+                                            )
+                                          }
+                                          className="flex-1 px-2 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100"
+                                        >
+                                          Completed (
+                                          {expandedActionUsers.completed.length}
+                                          )
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            handlePopulateSelect(
+                                              expandedActionUsers.incomplete
+                                            )
+                                          }
+                                          className="flex-1 px-2 py-1.5 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100"
+                                        >
+                                          Didn&apos;t complete (
+                                          {
+                                            expandedActionUsers.incomplete
+                                              .length
+                                          }
+                                          )
+                                        </button>
+                                      </>
+                                    ) : null}
+                                  </div>
+                                )}
+                              </div>
                             ))
                           )}
                         </div>

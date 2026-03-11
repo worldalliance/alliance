@@ -56,7 +56,7 @@ export default function RenderPreviousAnswer({
 
   const value = answers[block.sourceFieldId] as FormValue | undefined;
 
-  if (!value) {
+  if (!value === undefined || value === null || value === "") {
     return <EmptyPlaceholder block={block} />;
   }
 
