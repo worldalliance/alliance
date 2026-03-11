@@ -14,6 +14,7 @@ import { DetectableEntity } from 'src/ai-detection/entities/ai-detection-result.
 import { ActionsService } from 'src/actions/actions.service';
 import { ActionActivityType } from 'src/actions/entities/action-activity.entity';
 import { Action } from 'src/actions/entities/action.entity';
+import { FollowUpForm } from 'src/actions/entities/follow-up-form.entity';
 import { ForumService } from 'src/forum/forum.service';
 import { getImageSource } from 'src/images/images.service';
 import { getVideoSource } from 'src/videos/videos.service';
@@ -40,6 +41,7 @@ import {
   CreateFormDto,
   FormDto,
   FormResponseDto,
+  SubmitFollowUpFormDto,
   SubmitFormDto,
 } from './form.dto';
 import {
@@ -55,6 +57,7 @@ import {
   type ListField,
   Page,
 } from './schema';
+import type { DeviceVisibilityTarget } from './schema';
 import { ActionDto } from 'src/actions/dto/action.dto';
 import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
 import { EventLogService } from 'src/eventlog/eventlog.service';
@@ -74,6 +77,8 @@ export class TasksService {
     private formResponseRepository: Repository<FormResponse>,
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
+    @InjectRepository(FollowUpForm)
+    private followUpFormRepository: Repository<FollowUpForm>,
     private userService: UserService,
     private forumService: ForumService,
     private actionsService: ActionsService,
@@ -541,22 +546,13 @@ export class TasksService {
       });
     }
 
-    const formResponse = this.formResponseRepository.create({
-      ...submitFormDto,
+    const savedForm = await this.createAndSaveFormResponse(
       form,
       formId,
-      schemaSnapshot: submitFormDto.schemaSnapshot,
-      visibilityValidatorResults:
-        submitFormDto.visibilityValidatorResults ?? validatorResults,
-      deviceType: submitFormDto.deviceType,
-      publicAnswers: submitFormDto.publicAnswers ?? {},
+      submitFormDto,
+      validatorResults,
       user,
-    });
-    const savedForm = await this.formResponseRepository.save(formResponse);
-    await this.aiDetectionQueueService.addDetectJob({
-      entityType: DetectableEntity.FormResponse,
-      entityId: savedForm.id,
-    });
+    );
 
     await this.actionsService.completeAction(submitFormDto.actionId, userId, {
       taskFormResponse: savedForm,
@@ -565,28 +561,56 @@ export class TasksService {
     return savedForm;
   }
 
+  /** Submit a follow-up form response. Multiple submissions per user are allowed (no unique check). */
+  async submitFollowUpForm(
+    followUpFormId: number,
+    userId: number,
+    submitFollowUpFormDto: SubmitFollowUpFormDto,
+  ): Promise<FormResponse> {
+    const followUpForm = await this.followUpFormRepository.findOne({
+      where: { id: followUpFormId },
+      relations: { form: true },
+    });
+    if (!followUpForm?.form) {
+      throw new NotFoundException('Follow-up form not found');
+    }
+    if (
+      !followUpForm.startDate ||
+      (followUpForm.endDate && followUpForm.endDate < new Date())
+    ) {
+      throw new BadRequestException('Follow-up form is not active');
+    }
+    const form = followUpForm.form;
+    const user = await this.userService.findOneOrFail(userId);
+
+    const validatorResults = await this.validateFormSubmission(
+      form,
+      submitFollowUpFormDto as SubmitFormDto,
+      userId,
+    );
+
+    return this.createAndSaveFormResponse(
+      form,
+      form.id,
+      submitFollowUpFormDto,
+      validatorResults,
+      user,
+    );
+  }
+
   async submitFormPublic(
     formId: number,
     submitFormDto: SubmitFormDto,
   ): Promise<FormResponse> {
     const form = await this.getForm(formId);
 
-    const formResponse = this.formResponseRepository.create({
-      ...submitFormDto,
+    return this.createAndSaveFormResponse(
       form,
       formId,
-      schemaSnapshot: submitFormDto.schemaSnapshot,
-      visibilityValidatorResults: submitFormDto.visibilityValidatorResults,
-      deviceType: submitFormDto.deviceType,
-      publicAnswers: submitFormDto.publicAnswers ?? {},
-    });
-    const savedForm = await this.formResponseRepository.save(formResponse);
-    await this.aiDetectionQueueService.addDetectJob({
-      entityType: DetectableEntity.FormResponse,
-      entityId: savedForm.id,
-    });
-
-    return savedForm;
+      submitFormDto,
+      submitFormDto.visibilityValidatorResults ?? {},
+      undefined,
+    );
   }
 
   async optoutForm(
@@ -600,22 +624,13 @@ export class TasksService {
     const form = await this.getForm(formId);
     const user = await this.userService.findOneOrFail(userId);
 
-    const formResponse = this.formResponseRepository.create({
-      ...partialFormData,
+    const savedForm = await this.createAndSaveFormResponse(
       form,
       formId,
-      schemaSnapshot: partialFormData.schemaSnapshot,
-      visibilityValidatorResults:
-        partialFormData?.visibilityValidatorResults ?? {},
-      deviceType: partialFormData.deviceType,
-      publicAnswers: partialFormData.publicAnswers ?? {},
+      partialFormData,
+      partialFormData?.visibilityValidatorResults ?? {},
       user,
-    });
-    const savedForm = await this.formResponseRepository.save(formResponse);
-    await this.aiDetectionQueueService.addDetectJob({
-      entityType: DetectableEntity.FormResponse,
-      entityId: savedForm.id,
-    });
+    );
 
     return this.actionsService.createActionActivity({
       actionId,
@@ -625,6 +640,44 @@ export class TasksService {
       declineReason: reason,
       isOutOfTime: outOfTime,
     });
+  }
+
+  private async createAndSaveFormResponse(
+    form: Form,
+    formId: number,
+    dto: {
+      answers: Record<string, unknown>;
+      schemaSnapshot: Record<string, unknown>;
+      visibilityValidatorResults?: Record<string, boolean>;
+      deviceType?: DeviceVisibilityTarget;
+      publicAnswers?: Record<string, boolean>;
+      phDistinctId?: string;
+      sessionReplayUrl?: string;
+      sid?: string;
+    },
+    validatorResults: Record<string, boolean>,
+    user?: User,
+  ): Promise<FormResponse> {
+    const formResponse = this.formResponseRepository.create({
+      answers: dto.answers,
+      schemaSnapshot: dto.schemaSnapshot,
+      visibilityValidatorResults:
+        dto.visibilityValidatorResults ?? validatorResults,
+      deviceType: dto.deviceType,
+      publicAnswers: dto.publicAnswers ?? {},
+      phDistinctId: dto.phDistinctId,
+      sessionReplayUrl: dto.sessionReplayUrl,
+      sid: dto.sid,
+      form,
+      formId,
+      user,
+    });
+    const savedForm = await this.formResponseRepository.save(formResponse);
+    await this.aiDetectionQueueService.addDetectJob({
+      entityType: DetectableEntity.FormResponse,
+      entityId: savedForm.id,
+    });
+    return savedForm;
   }
 
   private getFirstAutoExtractAnswer(

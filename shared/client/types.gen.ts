@@ -2606,6 +2606,25 @@ export type FormResponseDto = {
     aiDetectionResults?: Array<AiDetectionResultDto>;
 };
 
+export type SubmitFollowUpFormDto = {
+    answers: {
+        [key: string]: unknown;
+    };
+    sessionReplayUrl?: string;
+    phDistinctId?: string;
+    schemaSnapshot: {
+        [key: string]: unknown;
+    };
+    visibilityValidatorResults?: {
+        [key: string]: unknown;
+    };
+    deviceType?: 'mobile' | 'tablet' | 'desktop';
+    publicAnswers?: {
+        [key: string]: unknown;
+    };
+    sid?: string;
+};
+
 export type CreateFormDto = {
     title: string;
     schema: {
@@ -6635,6 +6654,21 @@ export type TasksSubmitPublicFormResponses = {
 };
 
 export type TasksSubmitPublicFormResponse = TasksSubmitPublicFormResponses[keyof TasksSubmitPublicFormResponses];
+
+export type TasksSubmitFollowUpFormData = {
+    body: SubmitFollowUpFormDto;
+    path: {
+        followUpFormId: number;
+    };
+    query?: never;
+    url: '/tasks/submitFollowUpForm/{followUpFormId}';
+};
+
+export type TasksSubmitFollowUpFormResponses = {
+    200: FormResponseDto;
+};
+
+export type TasksSubmitFollowUpFormResponse = TasksSubmitFollowUpFormResponses[keyof TasksSubmitFollowUpFormResponses];
 
 export type TasksCreateFormData = {
     body: CreateFormDto;

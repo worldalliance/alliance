@@ -69,6 +69,7 @@ type FormRendererProps = {
     reason: string,
     partialFormData: SubmitFormDto
   ) => void;
+  followUp?: boolean;
   renderFormAsCompleted?: boolean;
   completedFormResponse?: FormResponseDto;
   fieldLabelRightContent?: Record<string, React.ReactNode>;
@@ -152,6 +153,7 @@ const FormRenderer = ({
   phDistinctId,
   onAbandonAction,
   renderFormAsCompleted,
+  followUp,
   completedFormResponse,
   fieldLabelRightContent,
   adminPreviewUserId,
@@ -1476,7 +1478,7 @@ const FormRenderer = ({
                       disabled={submitting}
                       type="submit"
                     >
-                      {schema.submit?.label || "Complete"}
+                      {schema.submit?.label || followUp ? "Submit" : "Complete"}
                     </BaseButton>
                   </div>
                 ) : (
@@ -1486,7 +1488,8 @@ const FormRenderer = ({
                       className="!cursor-not-allowed w-full"
                       onClick={validateForPreview}
                     >
-                      {schema.submit?.label || "Complete"} (Preview Mode)
+                      {schema.submit?.label || followUp ? "Submit" : "Complete"}
+                      {" (Preview Mode)"}
                     </BaseButton>
                   </div>
                 )}
@@ -1494,7 +1497,7 @@ const FormRenderer = ({
             )}
           </div>
 
-          {onAbandonAction && !readOnly && !publicAction && (
+          {onAbandonAction && !readOnly && !publicAction && !followUp && (
             <div className="relative">
               <BaseButton onClick={() => setDropdownOpen(!dropdownOpen)}>
                 <Ellipsis size={15} />

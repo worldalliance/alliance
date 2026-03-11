@@ -31,13 +31,14 @@ import {
   CreateFormDto,
   FormDto,
   FormResponseDto,
+  SubmitFollowUpFormDto,
   SubmitFormDto,
 } from './form.dto';
 import { TasksService } from './tasks.service';
 
 @Controller('tasks')
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) { }
+  constructor(private readonly tasksService: TasksService) {}
 
   @Post('submitForm/:id')
   @UseGuards(AuthGuard)
@@ -58,6 +59,21 @@ export class TasksController {
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
     return this.tasksService.submitFormPublic(+id, body);
+  }
+
+  @Post('submitFollowUpForm/:followUpFormId')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FormResponseDto })
+  async submitFollowUpForm(
+    @Request() req: JwtRequest,
+    @Param('followUpFormId', ParseIntPipe) followUpFormId: number,
+    @Body() body: SubmitFollowUpFormDto,
+  ): Promise<FormResponseDto> {
+    return this.tasksService.submitFollowUpForm(
+      followUpFormId,
+      req.user.sub,
+      body,
+    );
   }
 
   @Post('createForm')
@@ -161,10 +177,7 @@ export class TasksController {
   async testCustomExpression(
     @Body() body: TestCustomExpressionDto,
   ): Promise<TestCustomExpressionResponseDto> {
-    return this.tasksService.testCustomExpression(
-      body.expression,
-      body.userId,
-    );
+    return this.tasksService.testCustomExpression(body.expression, body.userId);
   }
 
   @Post('optout/:id')

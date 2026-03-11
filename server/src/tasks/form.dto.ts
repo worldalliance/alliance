@@ -1,5 +1,10 @@
 // src/forms/dto/create-form.dto.ts
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
+import {
+  ApiProperty,
+  ApiPropertyOptional,
+  OmitType,
+  PickType,
+} from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsDefined, IsEnum, IsOptional, IsString } from 'class-validator';
 import { AiDetectionResultDto } from 'src/ai-detection/dto/ai-detection-result.dto';
@@ -43,6 +48,10 @@ export class SubmitFormDto extends PickType(FormResponse, [
   @IsString()
   sid?: string;
 }
+
+export class SubmitFollowUpFormDto extends OmitType(SubmitFormDto, [
+  'actionId',
+]) {}
 
 export class FormDto extends PickType(Form, ['id', 'title', 'schema']) {
   @ApiPropertyOptional({ type: () => ActionDto })

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiDetectionModule } from 'src/ai-detection/ai-detection.module';
 import { Action } from 'src/actions/entities/action.entity';
+import { FollowUpForm } from 'src/actions/entities/follow-up-form.entity';
 import { UserModule } from 'src/user/user.module';
 import { Form } from './entities/form.entity';
 import { FormResponse } from './entities/formresponse.entity';
@@ -25,6 +26,7 @@ import { ContractModule } from 'src/contract/contract.module';
       CustomValidator,
       ActionShareUrl,
       User,
+      FollowUpForm,
     ]),
     UserModule,
     ForumModule,

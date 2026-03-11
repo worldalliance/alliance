@@ -7,16 +7,16 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from 'typeorm';
 import type { DeviceVisibilityTarget } from '../schema';
 import { Form } from './form.entity';
 import type { Ty } from './type';
 
 @Entity()
-@Unique(['user', 'formId'])
+@Index(['user', 'formId'])
 export class FormResponse {
   @PrimaryGeneratedColumn()
   @ApiProperty()

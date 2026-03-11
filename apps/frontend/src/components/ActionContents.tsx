@@ -1,4 +1,5 @@
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
+import type { FollowUpForm } from "@alliance/shared/client/types.gen";
 import { ProfileDto } from "@alliance/shared/client/types.gen";
 import {
   Link,
@@ -12,6 +13,7 @@ import { useAuth } from "../lib/AuthContext";
 import { getLastAndNextEvent } from "@alliance/shared/lib/largeActionCard";
 import TaskTimeInfo from "../pages/app/TaskTimeInfo";
 import ActionEventsPanel from "./ActionEventsPanel";
+import FollowUpFormPanel from "./FollowUpFormPanel";
 import { TaskPanelContext } from "./ActionPageTaskPanel";
 import Comments from "./Comments";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -20,6 +22,13 @@ import { useEffect, useMemo } from "react";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { externalOnly } from "@alliance/shared/lib/copy";
+
+function isFollowUpFormActive(f: FollowUpForm): boolean {
+  const now = new Date();
+  if (f.startDate != null && new Date(f.startDate) > now) return false;
+  if (f.endDate != null && new Date(f.endDate) < now) return false;
+  return true;
+}
 
 const ActionContents = () => {
   const context = useOutletContext<TaskPanelContext>();
@@ -45,6 +54,11 @@ const ActionContents = () => {
     }
     return shuffleWithSeed(action.authors, action.id.toString());
   }, [action.authors, action.id]);
+
+  const activeFollowUpForms = useMemo(() => {
+    const list = action.followUpForms ?? [];
+    return list.filter(isFollowUpFormActive);
+  }, [action.followUpForms]);
 
   if (!action) {
     return null;
@@ -129,6 +143,18 @@ const ActionContents = () => {
         )}
         {action.status !== "planned" && (
           <div className="flex flex-col">
+            {loggedInMode && activeFollowUpForms.length > 0 && (
+              <div className="flex flex-col gap-y-4 mb-6">
+                <p className="font-semibold text-xl">Follow-up</p>
+                {activeFollowUpForms.map((fuf) => (
+                  <FollowUpFormPanel
+                    key={fuf.id}
+                    followUpForm={fuf}
+                    actionId={action.id}
+                  />
+                ))}
+              </div>
+            )}
             {loggedInMode && (
               <div className="flex flex-col lg:flex-row justify-between lg:items-center mb-4 gap-x-4">
                 <p className="font-semibold text-xl flex-1">Task</p>

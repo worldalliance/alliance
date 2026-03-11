@@ -13,6 +13,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import { FormBuilder } from "./FormBuilder";
 
 export interface ActionFollowUpFormsTabProps {
@@ -48,6 +49,8 @@ export default function ActionFollowUpFormsTab({
   );
 
   const selectedForm = followUpForms.find((f) => f.id === selectedId) ?? null;
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (followUpForms.length === 0) {
@@ -143,21 +146,37 @@ export default function ActionFollowUpFormsTab({
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3 min-w-0">
-          <h2 className="text-lg font-semibold shrink-0">Follow-up forms</h2>
-          {followUpForms.length > 0 && (
-            <select
-              className="border border-zinc-300 rounded-md px-3 py-1.5 text-sm bg-white min-w-0 max-w-[280px]"
-              value={selectedId ?? ""}
-              onChange={(e) =>
-                setSelectedId(e.target.value ? Number(e.target.value) : null)
-              }
-            >
-              {followUpForms.map((fuf) => (
-                <option key={fuf.id} value={fuf.id}>
-                  {followUpFormLabel(fuf)}
-                </option>
-              ))}
-            </select>
+          {followUpForms.length > 0 ? (
+            <>
+              <h2 className="text-lg font-semibold shrink-0">
+                Follow-up form:
+              </h2>
+              <select
+                className="border border-zinc-300 rounded-md px-3 py-1.5 bg-white min-w-0 max-w-[280px]"
+                value={selectedId ?? ""}
+                onChange={(e) =>
+                  setSelectedId(e.target.value ? Number(e.target.value) : null)
+                }
+              >
+                {followUpForms.map((fuf) => (
+                  <option key={fuf.id} value={fuf.id}>
+                    {followUpFormLabel(fuf)}
+                  </option>
+                ))}
+              </select>
+              {selectedForm && (
+                <BaseButton
+                  variant={BaseButtonVariant.BlueOutline}
+                  onClick={() =>
+                    navigate(`/forms/${selectedForm.formId}/responses`)
+                  }
+                >
+                  View responses
+                </BaseButton>
+              )}
+            </>
+          ) : (
+            <h2 className="text-lg font-semibold shrink-0">Follow-up forms</h2>
           )}
         </div>
         <BaseButton
@@ -180,6 +199,7 @@ export default function ActionFollowUpFormsTab({
 
       {selectedForm && (
         <FollowUpFormCard
+          key={selectedForm.id}
           followUpForm={selectedForm}
           actionName={action.name}
           onSaveFields={handleSaveFields}
