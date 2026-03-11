@@ -39,6 +39,7 @@ const BLOCK_TYPES: DisplayKind[] = [
   "video",
   "quote",
   "biglink",
+  "previousAnswer",
 ];
 
 export function ElementSelect({
@@ -80,7 +81,9 @@ export function ElementSelect({
                   onClick={() => onAddDisplayBlock(type)}
                   className="w-full text-left px-3 py-2 text-sm bg-green/10 hover:bg-green/20 rounded-md border border-green/30 transition-colors"
                 >
-                  {type.charAt(0).toUpperCase() + type.slice(1)} Block
+                  {type === "previousAnswer"
+                    ? "Previous Answer Block"
+                    : type.charAt(0).toUpperCase() + type.slice(1) + " Block"}
                 </button>
               ))}
             </div>

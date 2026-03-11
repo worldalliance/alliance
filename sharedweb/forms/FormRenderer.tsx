@@ -11,13 +11,19 @@ import {
   SubmitFormDto,
   imagesUploadImage,
   tasksRunValidator,
+  tasksGetForm,
+  tasksGetMyFormResponse,
+  tasksGetFormResponses,
 } from "@alliance/shared/client";
 import { useOutsideClick } from "../../sharedweb/lib/useOutsideClick";
 import Dropdown from "../ui/Dropdown";
 import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
-import type { DisplayBlock } from "@alliance/shared/forms/display-blocks";
+import type {
+  DisplayBlock,
+  PreviousAnswerBlock,
+} from "@alliance/shared/forms/display-blocks";
 import type {
   AnyField,
   DeviceVisibilityTarget,
@@ -66,6 +72,8 @@ type FormRendererProps = {
   renderFormAsCompleted?: boolean;
   completedFormResponse?: FormResponseDto;
   fieldLabelRightContent?: Record<string, React.ReactNode>;
+  /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
+  adminPreviewUserId?: string | number;
   onSubmit: ((data: SubmitFormDto) => Promise<void>) | null; // null for admin preview
 } & (
   | {
@@ -109,6 +117,7 @@ const KNOWN_FIELD_KINDS_RECORD = {
   video: true,
   quote: true,
   biglink: true,
+  previousAnswer: true,
 } as const satisfies Record<FieldKind, unknown>;
 const KNOWN_FIELD_KINDS = new Set(
   Object.keys(KNOWN_FIELD_KINDS_RECORD)
@@ -145,6 +154,7 @@ const FormRenderer = ({
   renderFormAsCompleted,
   completedFormResponse,
   fieldLabelRightContent,
+  adminPreviewUserId,
   actionId,
   initialPageIndex,
   sessionReplayUrl,
@@ -505,6 +515,114 @@ const FormRenderer = ({
       cancelled = true;
     };
   }, [visibilityValidatorIds, visibilityValidatorResults, readOnly]);
+
+  // --- Previous Answer block data fetching ---
+  const previousAnswerSourceFormIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const page of schema.pages) {
+      for (const element of page.fields) {
+        if (
+          !("label" in element) &&
+          (element as PreviousAnswerBlock).kind === "previousAnswer"
+        ) {
+          const block = element as PreviousAnswerBlock;
+          if (block.sourceFormId) {
+            ids.add(block.sourceFormId);
+          }
+        }
+      }
+    }
+    return Array.from(ids);
+  }, [schema]);
+
+  const [previousAnswerSchemas, setPreviousAnswerSchemas] = useState<
+    Record<number, FormSchema>
+  >({});
+  const [previousAnswerData, setPreviousAnswerData] = useState<
+    Record<number, Record<string, unknown>>
+  >({});
+
+  useEffect(() => {
+    if (previousAnswerSourceFormIds.length === 0) return;
+    let cancelled = false;
+
+    (async () => {
+      const schemaEntries = await Promise.all(
+        previousAnswerSourceFormIds.map(async (formId) => {
+          try {
+            const response = await tasksGetForm({ path: { id: formId } });
+            if (response.data) {
+              const form = response.data as Record<string, unknown>;
+              return [formId, form.schema as FormSchema] as const;
+            }
+          } catch {
+            // form not found or inaccessible
+          }
+          return null;
+        })
+      );
+      if (cancelled) return;
+      const schemas: Record<number, FormSchema> = {};
+      for (const entry of schemaEntries) {
+        if (entry) schemas[entry[0]] = entry[1];
+      }
+      setPreviousAnswerSchemas(schemas);
+
+      const previewId =
+        adminPreviewUserId !== undefined && adminPreviewUserId !== null
+          ? String(adminPreviewUserId)
+          : null;
+
+      const dataEntries = await Promise.all(
+        previousAnswerSourceFormIds.map(async (formId) => {
+          try {
+            if (previewId) {
+              // Admin preview: fetch all responses and find the one for the target user
+              const response = await tasksGetFormResponses({
+                path: { id: formId },
+              });
+              const allResponses = (response.data ?? []) as Array<
+                FormResponseDto & { user?: { id: number | string } }
+              >;
+              const match = allResponses.find(
+                (r) => String(r.user?.id) === previewId
+              );
+              if (match) {
+                return [
+                  formId,
+                  (match.answers as Record<string, unknown>) ?? {},
+                ] as const;
+              }
+            } else {
+              const response = await tasksGetMyFormResponse({
+                path: { id: formId },
+              });
+              if (response.data) {
+                const resp = response.data as Record<string, unknown>;
+                return [
+                  formId,
+                  (resp.answers as Record<string, unknown>) ?? {},
+                ] as const;
+              }
+            }
+          } catch {
+            // user hasn't submitted this form — graceful 404
+          }
+          return null;
+        })
+      );
+      if (cancelled) return;
+      const data: Record<number, Record<string, unknown>> = {};
+      for (const entry of dataEntries) {
+        if (entry) data[entry[0]] = entry[1];
+      }
+      setPreviousAnswerData(data);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [previousAnswerSourceFormIds, adminPreviewUserId]);
 
   const applyFieldErrorUpdates = useCallback(
     (
@@ -1270,7 +1388,14 @@ const FormRenderer = ({
     if (!isElementCurrentlyVisible(resolvedBlock)) {
       return null;
     }
-    return <RenderDisplayBlock key={index} block={resolvedBlock} />;
+    return (
+      <RenderDisplayBlock
+        key={index}
+        block={resolvedBlock}
+        previousAnswerData={previousAnswerData}
+        previousAnswerSchemas={previousAnswerSchemas}
+      />
+    );
   };
 
   if (unknownKind) {

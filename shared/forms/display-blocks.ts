@@ -11,7 +11,8 @@ export type DisplayKind =
   | "image" // decorative image
   | "video" // video player (HLS)
   | "quote" // quote block
-  | "biglink"; // prominent link card
+  | "biglink" // prominent link card
+  | "previousAnswer"; // show a user's answer from another form
 
 interface BaseBlock {
   kind: DisplayKind;
@@ -87,6 +88,17 @@ export type BigLinkBlock = BaseBlock & {
   icon?: BigLinkIcon;
 };
 
+export type PreviousAnswerBlock = BaseBlock & {
+  kind: "previousAnswer";
+  sourceFormId: number;
+  sourceFieldId: string;
+  title?: string;
+  /** Sub-field IDs to SHOW (whitelist). Empty = show all. */
+  visibleSubFieldIds?: string[];
+  /** Custom placeholder text when no previous answer exists. */
+  emptyText?: string;
+};
+
 export type DisplayBlock =
   | HeaderBlock
   | TextBlock
@@ -97,7 +109,8 @@ export type DisplayBlock =
   | HtmlBlock
   | ImageBlock
   | VideoBlock
-  | BigLinkBlock;
+  | BigLinkBlock
+  | PreviousAnswerBlock;
 
 export type ManualDisplayBlockContent = Omit<
   DisplayBlock,

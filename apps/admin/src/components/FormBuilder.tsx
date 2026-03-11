@@ -34,6 +34,7 @@ import {
   EditableLabelBlock,
   EditableSpacerBlock,
   EditableTextBlock,
+  EditablePreviousAnswerBlock,
 } from "./display-blocks";
 import { ElementSelect } from "./ElementSelect";
 import {
@@ -101,6 +102,7 @@ const BLOCK_NAMES = {
   video: "Video Block",
   quote: "Quote Block",
   biglink: "Big Link Block",
+  previousAnswer: "Previous Answer Block",
 } as const satisfies Record<
   Exclude<DisplayKind, "text"> | "text-block",
   string
@@ -931,6 +933,15 @@ export function FormBuilder({
           id: blockId,
           text: "Link title",
           url: "/",
+        };
+        break;
+      case "previousAnswer":
+        newBlock = {
+          kind: "previousAnswer",
+          id: blockId,
+          sourceFormId: 0,
+          sourceFieldId: "",
+          title: "",
         };
         break;
       default:
@@ -1860,6 +1871,13 @@ export function FormBuilder({
                         {...commonProps}
                       />
                     );
+                  case "previousAnswer":
+                    return (
+                      <EditablePreviousAnswerBlock
+                        block={block as any}
+                        {...commonProps}
+                      />
+                    );
                   default:
                     console.error(
                       `Unknown block kind: ${block satisfies never}`
@@ -2160,6 +2178,7 @@ export function FormBuilder({
                   renderFormAsCompleted={false}
                   userId={resolvedPreviewUserId}
                   user={resolvedPreviewUser}
+                  adminPreviewUserId={resolvedPreviewUserId}
                   initialPageIndex={selectedPageIndex}
                 />
               </div>

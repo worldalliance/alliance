@@ -15,6 +15,8 @@ import {
 import type { BigLinkIcon } from "@alliance/shared/forms/display-blocks";
 import { CardStyle } from "@alliance/shared/styles/card";
 import VideoPlayer from "./VideoPlayer";
+import type { FormSchema } from "@alliance/shared/forms/formschema";
+import RenderPreviousAnswer from "./RenderPreviousAnswer";
 
 const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
   "messages-square": MessagesSquare,
@@ -26,9 +28,15 @@ const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
 
 type Props = {
   block: DisplayBlock;
+  previousAnswerData?: Record<number, Record<string, unknown>>;
+  previousAnswerSchemas?: Record<number, FormSchema>;
 };
 
-export default function RenderDisplayBlock({ block }: Props) {
+export default function RenderDisplayBlock({
+  block,
+  previousAnswerData,
+  previousAnswerSchemas,
+}: Props) {
   switch (block.kind) {
     case "header":
       const headerLevel = block.level || 2;
@@ -150,6 +158,31 @@ export default function RenderDisplayBlock({ block }: Props) {
             </div>
           </Card>
         </Link>
+      );
+    }
+
+    case "previousAnswer": {
+      const answers = previousAnswerData?.[block.sourceFormId];
+      const schema = previousAnswerSchemas?.[block.sourceFormId];
+      if (!answers || !schema) {
+        const placeholder = block.emptyText || "No previous answer available";
+        return (
+          <div>
+            {block.title && (
+              <h3 className="text-base font-medium text-zinc-900 mb-2">
+                {block.title}
+              </h3>
+            )}
+            <p className="text-sm text-gray-400 italic">{placeholder}</p>
+          </div>
+        );
+      }
+      return (
+        <RenderPreviousAnswer
+          block={block}
+          schema={schema}
+          answers={answers}
+        />
       );
     }
 
