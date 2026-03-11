@@ -150,13 +150,17 @@ const UserActivityCard = ({
         onClick={handleActivityClick}
       >
         <div className="*:inline">
-          <div className="flex-shrink-0 inline">
+          <div className="flex-shrink-0 inline align-middle">
             <Link
               to={href("/member/:id", { id: activity.user.id.toString() })}
               className="mr-2"
               onClick={(e) => e.stopPropagation()}
             >
-              <AvatarProfile pfp={activity.user.profilePicture} size="small" />
+              <AvatarProfile
+                pfp={activity.user.profilePicture}
+                size="small"
+                className="align-middle"
+              />
             </Link>
           </div>
           <Link
