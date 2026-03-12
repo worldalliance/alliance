@@ -4,10 +4,8 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import ActivityLikeButton from "./ActivityLikeButton";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { cn } from "@alliance/shared/styles/util";
-import {
-  actionActivityTransitiveVerb,
-  ViewableActionActivity,
-} from "@alliance/shared/lib/actionActivityConstants";
+import { actionActivityTransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
+import type { ViewableActionActivity } from "@alliance/shared/lib/actionActivityConstants";
 
 export interface ActionActivityFeedItemProps {
   activity: ActionActivityDto;
