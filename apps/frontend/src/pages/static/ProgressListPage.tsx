@@ -33,7 +33,7 @@ const ProgressListPage: React.FC = () => {
       <PrelaunchNavbar transparent={false} absolute={false} />
       <div className="flex-1 container mx-auto pt-16 md:pt-28 pb-56 flex flex-col px-5">
         <div className="mx-auto w-full max-w-3xl flex flex-col gap-4 md:gap-12">
-          <h1 className="text-title">Progress</h1>
+          <h1 className="text-title-large">Progress</h1>
           <List className="w-full">
             {posts.map((post) => (
               <Link

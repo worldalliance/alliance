@@ -116,7 +116,7 @@ const PeoplePage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-white">
       <PrelaunchNavbar transparent={false} absolute={false} />
       <div className="flex-1 max-w-4xl mx-auto pt-12 md:pt-28 pb-56 flex flex-col gap-y-16 md:gap-y-24 px-5 text-base md:text-lg">
-        <h1 className="text-title text-center">People</h1>
+        <h1 className="text-title-large text-center">People</h1>
         <div>
           <h2 className="text-title-small mb-4 text-center">Office</h2>
           <p className="mb-6 md:mb-12 text-zinc-900 text-center">

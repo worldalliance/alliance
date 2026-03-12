@@ -31,7 +31,7 @@ const GuidePage: React.FC = () => {
         <TableOfContents tocSections={tocSections} />
 
         <div className="flex flex-col gap-y-4 max-w-[46rem]">
-          <h1 className="text-title">Guide to the Alliance</h1>
+          <h1 className="text-title-large">Guide to the Alliance</h1>
           <div className="flex flex-col gap-y-4">
             <MarkdownWrapper
               id="introduction"
