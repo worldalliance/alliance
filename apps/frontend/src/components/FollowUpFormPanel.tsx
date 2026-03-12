@@ -128,8 +128,11 @@ export default function FollowUpFormPanel({
     );
   }
 
+  const formTitle = followUpForm.name ?? form.title;
+
   return (
     <Card style={CardStyle.White} className="p-4 sm:p-6">
+      {formTitle && <p className="text-title text-2xl! mb-4">{formTitle}</p>}
       <div className="w-full">
         <FormRenderer
           key={formInstanceKey}
