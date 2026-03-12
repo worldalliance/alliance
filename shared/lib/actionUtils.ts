@@ -97,6 +97,16 @@ export function homePagePriorityComparator(
   return 0;
 }
 
+export function isFollowUpFormActive(f: {
+  startDate?: string;
+  endDate?: string;
+}): boolean {
+  const now = new Date();
+  if (f.startDate != null && new Date(f.startDate) > now) return false;
+  if (f.endDate != null && new Date(f.endDate) < now) return false;
+  return true;
+}
+
 export enum FilterMode {
   All = "All",
   GatheringCommitments = "Gathering commitments",

@@ -513,6 +513,7 @@ export class ActionsService {
   async findPublic(userId?: number, sorted?: boolean): Promise<ActionDto[]> {
     const relations: Omit<Relations<Action>, 'usersCompleted' | 'status'> = {
       events: true,
+      followUpForms: true,
     };
     const actions = sorted
       ? await this.findAllSorted(relations)

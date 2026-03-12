@@ -1,6 +1,5 @@
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import type { FollowUpForm } from "@alliance/shared/client/types.gen";
-import { ProfileDto } from "@alliance/shared/client/types.gen";
+import type { ProfileDto } from "@alliance/shared/client/types.gen";
 import {
   Link,
   Outlet,
@@ -11,6 +10,7 @@ import {
 import chevronLeft from "../assets/icons8-expand-arrow-96.png";
 import { useAuth } from "../lib/AuthContext";
 import { getLastAndNextEvent } from "@alliance/shared/lib/largeActionCard";
+import { isFollowUpFormActive } from "@alliance/shared/lib/actionUtils";
 import TaskTimeInfo from "../pages/app/TaskTimeInfo";
 import ActionEventsPanel from "./ActionEventsPanel";
 import FollowUpFormPanel from "./FollowUpFormPanel";
@@ -22,13 +22,6 @@ import { useEffect, useMemo } from "react";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { externalOnly } from "@alliance/shared/lib/copy";
-
-function isFollowUpFormActive(f: FollowUpForm): boolean {
-  const now = new Date();
-  if (f.startDate != null && new Date(f.startDate) > now) return false;
-  if (f.endDate != null && new Date(f.endDate) < now) return false;
-  return true;
-}
 
 const ActionContents = () => {
   const context = useOutletContext<TaskPanelContext>();

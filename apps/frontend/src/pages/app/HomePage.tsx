@@ -1,7 +1,7 @@
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ActionDto } from "@alliance/shared/client";
+import { ActionDto, FollowUpForm } from "@alliance/shared/client";
 import { Link, href } from "react-router";
 import BasicErrorMessage from "../../components/BasicErrorMessage";
 import GlobalFeed from "../../components/GlobalFeed";
@@ -31,10 +31,12 @@ import {
   showActionInSidebarList,
   deadlineHasPassed,
   TaskAwayStatus,
+  isFollowUpFormActive,
 } from "@alliance/shared/lib/actionUtils";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import HomeNotifsCard from "../../components/HomeNotifsCard";
+import FollowUpFormPanel from "../../components/FollowUpFormPanel";
 import { useTaskActionsData } from "../../lib/useTaskActionsData";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 
@@ -164,6 +166,27 @@ const HomePage = () => {
     )[0];
   }, [todoActions, generalUpdates]);
 
+  const activeCompletableFollowUpForms = useMemo(() => {
+    if (!actions) {
+      return [];
+    }
+    const list: {
+      followUpForm: FollowUpForm;
+      actionId: number;
+    }[] = [];
+    for (const action of actions) {
+      if (action.userRelation !== "completed") {
+        continue;
+      }
+      const forms = action.followUpForms;
+      for (const f of forms) {
+        if (isFollowUpFormActive(f))
+          list.push({ followUpForm: f, actionId: action.id });
+      }
+    }
+    return list;
+  }, [actions]);
+
   const mainContent = useMemo(() => {
     if (actions === null) {
       return loading ? (
@@ -281,6 +304,24 @@ const HomePage = () => {
                         {noTasksToDoRightNow}
                       </p>
                     </div>
+                    {activeCompletableFollowUpForms.length > 0 && (
+                      <div className="flex flex-col gap-y-4 w-full max-w-2xl">
+                        {activeCompletableFollowUpForms.map(
+                          ({ followUpForm, actionId }) => (
+                            <FollowUpFormPanel
+                              key={followUpForm.id}
+                              followUpForm={followUpForm}
+                              actionId={actionId}
+                              onSubmitted={() => {
+                                queryClient.invalidateQueries({
+                                  queryKey: ["actions"],
+                                });
+                              }}
+                            />
+                          )
+                        )}
+                      </div>
+                    )}
                     <HomeNotifsCard />
                   </div>
                   <div className="flex-2" />
@@ -304,6 +345,7 @@ const HomePage = () => {
     tasksListContent,
     isLargeScreen,
     queryClient,
+    activeCompletableFollowUpForms,
   ]);
 
   const sidebarContent = useMemo(() => {
