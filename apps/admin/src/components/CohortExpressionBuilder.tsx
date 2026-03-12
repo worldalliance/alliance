@@ -478,7 +478,6 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
   props
 ) => {
   const { value, onChange, availableUsers } = props;
-  const [showViz, setShowViz] = useState(false);
   const [selectedSubExpr, setSelectedSubExpr] =
     useState<CohortExpression | null>(null);
 
@@ -561,30 +560,13 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
           </div>
         </>
       )}
-
-      {/* Visualization toggle */}
-      <button
-        type="button"
-        onClick={() => setShowViz((v) => !v)}
-        className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700"
-      >
-        {showViz ? (
-          <ChevronDown className="h-3 w-3" />
-        ) : (
-          <ChevronRight className="h-3 w-3" />
-        )}
-        Preview members
-      </button>
-
-      {showViz && (
-        <div className="border border-gray-200 rounded-md p-3 bg-gray-50/50">
-          <CohortVisualization
-            expression={value}
-            selectedSubExpression={selectedSubExpr}
-            users={availableUsers}
-          />
-        </div>
-      )}
+      <div className="border border-gray-200 rounded-md p-3 bg-gray-50/50">
+        <CohortVisualization
+          expression={value}
+          selectedSubExpression={selectedSubExpr}
+          users={availableUsers}
+        />
+      </div>
     </div>
   );
 };
