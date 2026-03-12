@@ -212,7 +212,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
         style={{ gap: `${DOT_GAP}px` }}
       >
         {sortedUsers.map((user) => {
-          const isMatched = !expression || matchedIds.has(user.id);
+          const isMatched = expression ? matchedIds.has(user.id) : false;
           const isSubMatched =
             selectedSubExpression && subMatchedIds.has(user.id);
           const isCompareMatched =
