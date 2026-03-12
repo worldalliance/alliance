@@ -120,12 +120,12 @@ const buildNumberStats = (
     const rows =
       totalResponses > 0
         ? [
-          {
-            key: "no-response",
-            label: "No response",
-            count: totalResponses,
-          },
-        ]
+            {
+              key: "no-response",
+              label: "No response",
+              count: totalResponses,
+            },
+          ]
         : [];
     return { rows, answeredCount: 0 };
   }
@@ -162,7 +162,9 @@ const buildNumberStats = (
     return { rows, answeredCount, summary: { min, max, avg, median, total } };
   }
 
-  const shouldUseIntegerBuckets = sorted.every((value) => Number.isInteger(value));
+  const shouldUseIntegerBuckets = sorted.every((value) =>
+    Number.isInteger(value)
+  );
 
   if (shouldUseIntegerBuckets) {
     const counts = new Map<number, number>();
@@ -348,8 +350,8 @@ const buildFieldStats = (
         const selections = Array.isArray(rawValue)
           ? rawValue.map(String)
           : rawValue
-            ? [String(rawValue)]
-            : [];
+          ? [String(rawValue)]
+          : [];
         if (selections.length === 0) {
           noResponseCount += 1;
           return;
@@ -584,11 +586,7 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
   if (statsFields.length === 0) {
     return (
       <div className="p-6">
-        <Card>
-          <p className="text-gray-600">
-            No statistics available for this form yet.
-          </p>
-        </Card>
+        <p className="text-gray-600">No statistics available for this form.</p>
       </div>
     );
   }

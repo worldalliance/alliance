@@ -324,7 +324,7 @@ export class UserController {
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [ProfileDto] })
   async members(): Promise<ProfileDto[]> {
-    return (await this.userService.findAll()).map(
+    return (await this.userService.findAll({ contractEvents: true })).map(
       (user) => new ProfileDto(user),
     );
   }

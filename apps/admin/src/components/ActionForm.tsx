@@ -37,6 +37,8 @@ interface ActionFormProps {
   suitesLoading: boolean;
   availableUsers?: UserSelectUser[];
   usersLoading?: boolean;
+  activeContractUserIds?: Set<number>;
+  everyoneShouldComplete?: boolean;
   cohortExpression: CohortExpression | null | undefined;
   onCohortExpressionChange: (expr: CohortExpression | null) => void;
   authorIds: number[];
@@ -79,6 +81,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
   suitesLoading = false,
   availableUsers = [],
   usersLoading = false,
+  activeContractUserIds,
+  everyoneShouldComplete = false,
   cohortExpression,
   onCohortExpressionChange,
   authorIds,
@@ -625,6 +629,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
           availableForms={availableForms}
           availableUsers={availableUsers}
           usersLoading={usersLoading}
+          activeContractUserIds={activeContractUserIds}
+          everyoneShouldComplete={everyoneShouldComplete}
         />
       </FormSection>
 

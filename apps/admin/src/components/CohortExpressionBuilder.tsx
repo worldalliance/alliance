@@ -1,12 +1,12 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { TagDto, FormDto } from "@alliance/shared/client";
 import { tasksGetForm } from "@alliance/shared/client";
 import type { AnyField, FormSchema } from "@alliance/shared/forms/formschema";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { cn } from "@alliance/shared/styles/util";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import CohortVisualization from "./CohortVisualization";
 import type {
   CohortExpression,
@@ -31,6 +31,8 @@ interface CohortExpressionBuilderProps {
   availableForms: FormDto[];
   availableUsers: UserSelectUser[];
   usersLoading?: boolean;
+  activeContractUserIds?: Set<number>;
+  everyoneShouldComplete?: boolean;
   /** @internal used to thread selected expression to nested editors */
   _selectedExpr?: CohortExpression | null;
 }
@@ -477,7 +479,18 @@ const BooleanOperatorEditor: React.FC<{
 const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
   props
 ) => {
-  const { value, onChange, availableUsers } = props;
+  const {
+    value,
+    onChange,
+    availableUsers,
+    activeContractUserIds,
+    everyoneShouldComplete,
+  } = props;
+
+  const visualizationUsers = useMemo(() => {
+    if (everyoneShouldComplete || !activeContractUserIds) return availableUsers;
+    return availableUsers.filter((u) => activeContractUserIds.has(u.id));
+  }, [availableUsers, activeContractUserIds, everyoneShouldComplete]);
   const [selectedSubExpr, setSelectedSubExpr] =
     useState<CohortExpression | null>(null);
 
@@ -560,11 +573,11 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
           </div>
         </>
       )}
-      <div className="border border-gray-200 rounded-md p-3 bg-gray-50/50">
+      <div className="border border-gray-300 rounded-md p-3 bg-gray-50">
         <CohortVisualization
           expression={value}
           selectedSubExpression={selectedSubExpr}
-          users={availableUsers}
+          users={visualizationUsers}
         />
       </div>
     </div>
