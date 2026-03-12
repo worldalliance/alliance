@@ -32,7 +32,7 @@ const UtensilWastePage: React.FC = () => {
               Most takeout orders include single-use plastic utensils by
               default, even when they aren't requested or needed. The Alliance
               works with local businesses to implement{" "}
-              <strong>opt-in utensil policies</strong>, so, plastics are only
+              <strong>opt-in utensil policies</strong> so plastics are only
               provided upon request.
             </p>
 
