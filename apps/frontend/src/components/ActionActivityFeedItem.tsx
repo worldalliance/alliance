@@ -6,7 +6,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { cn } from "@alliance/shared/styles/util";
 import {
   actionActivityTransitiveVerb,
-  ViewableActionActivity,
+  type ViewableActionActivity,
 } from "@alliance/shared/lib/actionActivityConstants";
 
 export interface ActionActivityFeedItemProps {
