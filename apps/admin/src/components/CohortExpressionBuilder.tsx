@@ -96,7 +96,7 @@ const TagEditor: React.FC<{
   <select
     value={value.tagId}
     onChange={(e) => onChange({ ...value, tagId: e.target.value })}
-    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
   >
     <option value="">Select tag...</option>
     {availableTags.map((tag) => (
@@ -130,7 +130,7 @@ const ActionSelectEditor: React.FC<{
   <select
     value={value.actionId || ""}
     onChange={(e) => onChange({ ...value, actionId: parseInt(e.target.value) })}
-    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+    className="w-full px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
   >
     <option value="">Select action...</option>
     {availableActions.map((a) => (
@@ -274,6 +274,11 @@ const ExpressionNodeEditor: React.FC<{
     }
   };
 
+  const bigEditors: LeafCondition["type"][] = [
+    "Manual",
+    "FormFieldValue",
+  ] as const;
+
   return (
     <div
       className={cn(
@@ -319,6 +324,13 @@ const ExpressionNodeEditor: React.FC<{
             ))}
           </optgroup>
         </select>
+        {isLeaf(expr) && !bigEditors.includes(expr.type) && (
+          <LeafConditionEditor
+            expr={expr}
+            onChange={onChange as (v: LeafCondition) => void}
+            props={props}
+          />
+        )}
         {onRemove && (
           <button
             type="button"
@@ -326,21 +338,24 @@ const ExpressionNodeEditor: React.FC<{
               e.stopPropagation();
               onRemove();
             }}
-            className="ml-auto p-1 text-gray-400 hover:text-red-500"
+            className="ml-auto p-1 text-gray-600 hover:text-red-500"
           >
             <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      <div className="p-3">
-        {isLeaf(expr) ? (
+      {isLeaf(expr) && bigEditors.includes(expr.type) && (
+        <div className="p-3">
           <LeafConditionEditor
             expr={expr}
             onChange={onChange as (v: LeafCondition) => void}
             props={props}
           />
-        ) : (
+        </div>
+      )}
+      {!isLeaf(expr) && (
+        <div className="p-3">
           <BooleanOperatorEditor
             expr={expr}
             onChange={onChange as (v: BooleanOperator) => void}
@@ -349,8 +364,8 @@ const ExpressionNodeEditor: React.FC<{
             depth={depth}
             props={props}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -621,7 +636,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
         <button
           type="button"
           onClick={() => setMenuOpen((prev) => !prev)}
-          className="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"
+          className="p-1 text-gray-600 hover:text-gray-600 rounded hover:bg-gray-100"
         >
           <EllipsisVertical size={20} />
         </button>
