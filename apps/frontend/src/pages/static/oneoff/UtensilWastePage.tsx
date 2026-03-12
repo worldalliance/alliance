@@ -16,6 +16,7 @@ const UtensilWastePage: React.FC = () => {
 
   const filteredRestaurants = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
+    if (!query) return restaurants;
     return restaurants.filter((r) => r.name.toLowerCase().includes(query));
   }, [restaurants, searchQuery]);
 
@@ -36,26 +37,31 @@ const UtensilWastePage: React.FC = () => {
               provided upon request.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left border-y border-zinc-100 py-10">
-              <div>
-                <h3 className="font-medium text-zinc-900 mb-2 uppercase tracking-wide text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left py-10">
+              <div className="border border-green rounded-xl p-6 md:p-8 bg-white shadow-sm">
+                <h3 className="font-bold text-greentext mb-3 uppercase tracking-wider text-sm">
                   Environmental Impact
                 </h3>
-                <p className="text-zinc-600 leading-relaxed">
+                <p className="text-zinc-600 leading-relaxed text-base">
                   A standard utensil kit weighs roughly 10 grams. If 100
                   restaurants adopt an opt-in policy, we can prevent roughly{" "}
-                  <strong>16,000 lbs (7,300 kg)</strong> of plastic waste from
-                  entering landfills every year.
+                  <strong className="text-zinc-900">
+                    16,000 lbs (7,300 kg)
+                  </strong>{" "}
+                  of plastic waste from entering landfills every year.
                 </p>
               </div>
-              <div>
-                <h3 className="font-medium text-zinc-900 mb-2 uppercase tracking-wide text-sm">
+              <div className="border border-green rounded-xl p-6 md:p-8 bg-white shadow-sm">
+                <h3 className="font-bold text-greentext mb-3 uppercase tracking-wider text-sm">
                   Economic Efficiency
                 </h3>
-                <p className="text-zinc-600 leading-relaxed">
+                <p className="text-zinc-600 leading-relaxed text-base">
                   Utensil kits cost between 5 and 10 cents each. By reducing
                   unnecessary distribution, an average restaurant can save{" "}
-                  <strong>$350 to $750 annually</strong> in overhead costs.
+                  <strong className="text-zinc-900">
+                    $350 to $750 annually
+                  </strong>{" "}
+                  in overhead costs.
                 </p>
               </div>
             </div>
@@ -121,11 +127,11 @@ const UtensilWastePage: React.FC = () => {
                 </div>
               ))}
             </div>
-          ) : (
+          ) : searchQuery.trim() !== "" ? (
             <p className="text-zinc-500 text-center py-12 border border-dashed border-zinc-200 rounded">
               No restaurants found matching "{searchQuery}"
             </p>
-          )}
+          ) : null}
         </div>
       </div>
       <Footer />
