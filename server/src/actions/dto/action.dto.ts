@@ -707,8 +707,7 @@ export class EvaluateCohortExpressionDto {
 
 export class EvaluateCohortExpressionResponseDto {
   @ApiProperty({
-    type: [Number],
-    description: 'User IDs matching the expression',
+    type: Number,
     isArray: true,
   })
   @IsArray()

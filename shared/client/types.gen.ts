@@ -1617,10 +1617,7 @@ export type EvaluateCohortExpressionDto = {
 };
 
 export type EvaluateCohortExpressionResponseDto = {
-    /**
-     * User IDs matching the expression
-     */
-    userIds: Array<Array<unknown>>;
+    userIds: Array<number>;
 };
 
 export type CreateActionDto = {

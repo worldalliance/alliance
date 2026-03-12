@@ -66,7 +66,6 @@ const InvitePage: React.FC = () => {
     category: "Climate Change",
     id: 1,
     taskFormId: 23,
-    useManualCohort: false,
     image: "",
     status: "member_action",
     isContractSigningAction: false,

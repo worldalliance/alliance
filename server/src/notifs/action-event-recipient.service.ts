@@ -26,6 +26,8 @@ import {
   evaluateCohortExpressionForUser,
   type SingleUserCohortContext,
 } from 'src/actions/cohort-expression.evaluator';
+import { FormResponse } from 'src/tasks/entities/formresponse.entity';
+import { Community } from 'src/community/entities/community.entity';
 
 @Injectable()
 export class ActionEventRecipientService {
@@ -34,11 +36,15 @@ export class ActionEventRecipientService {
     private readonly actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
+    @InjectRepository(FormResponse)
+    private readonly formResponseRepository: Repository<FormResponse>,
+    @InjectRepository(Community)
+    private readonly communityRepository: Repository<Community>,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
   ) {}
 
-  computeShouldParticipate(params: {
+  async computeShouldParticipate(params: {
     eventDate: Date;
     deadlineDate: Date | null;
     everyoneShouldComplete: boolean;
@@ -48,7 +54,7 @@ export class ActionEventRecipientService {
     onboarding: boolean;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
-  }): boolean {
+  }): Promise<boolean> {
     const {
       eventDate,
       deadlineDate,
@@ -65,9 +71,8 @@ export class ActionEventRecipientService {
       return false;
     }
 
-    // Evaluate cohort expression synchronously for simple leaf types
     if (cohortExpression) {
-      const inCohort = this.evaluateCohortExpressionSync(
+      const inCohort = await this.evaluateCohortForUser(
         cohortExpression,
         user,
       );
@@ -101,46 +106,80 @@ export class ActionEventRecipientService {
     return user.hasActiveContractAt(eventDate) || everyoneShouldComplete;
   }
 
-  /**
-   * Synchronous evaluation of a cohort expression for a single user.
-   * Only handles Tag and Manual leaf types synchronously.
-   * Other leaf types default to true (permissive) for notification purposes.
-   */
-  private evaluateCohortExpressionSync(
+  private async evaluateCohortForUser(
     expr: CohortExpression,
     user: User,
-  ): boolean {
-    if ('type' in expr) {
-      switch (expr.type) {
-        case 'Tag':
-          return (user.tags || []).some((tag) => tag.id === expr.tagId);
-        case 'Manual':
-          return expr.userIds.includes(user.id);
-        case 'CompletedAction':
-        case 'InProgressAction':
-        case 'FormFieldValue':
-        case 'GroupLead':
-          // Async leaf types: permissive by default in sync context
-          return true;
-      }
-    }
-
-    if ('op' in expr) {
-      switch (expr.op) {
-        case 'AND':
-          return expr.children.every((child) =>
-            this.evaluateCohortExpressionSync(child, user),
+  ): Promise<boolean> {
+    const ctx: SingleUserCohortContext = {
+      userId: user.id,
+      userHasTag(tagId: string) {
+        return (user.tags || []).some((tag) => tag.id === tagId);
+      },
+      userCompletedAction: async (actionId: number) => {
+        const activity = await this.actionActivityRepository.findOne({
+          where: {
+            userId: user.id,
+            actionId,
+            type: ActionActivityType.USER_COMPLETED,
+          },
+        });
+        return !!activity;
+      },
+      userInProgressAction: async (actionId: number) => {
+        const joined = await this.actionActivityRepository.findOne({
+          where: {
+            userId: user.id,
+            actionId,
+            type: ActionActivityType.USER_JOINED,
+          },
+        });
+        if (!joined) return false;
+        const terminal = await this.actionActivityRepository.findOne({
+          where: [
+            {
+              userId: user.id,
+              actionId,
+              type: ActionActivityType.USER_COMPLETED,
+            },
+            {
+              userId: user.id,
+              actionId,
+              type: ActionActivityType.USER_WONT_COMPLETE,
+            },
+          ],
+        });
+        return !terminal;
+      },
+      userMatchesFormField: async (fieldParams) => {
+        const responses = await this.formResponseRepository.find({
+          where: { formId: fieldParams.formId, user: { id: user.id } },
+        });
+        if (responses.length === 0) return false;
+        if (fieldParams.responseAny) return true;
+        if (fieldParams.responseEqualTo !== undefined) {
+          return responses.some(
+            (r) =>
+              String(
+                (r.answers as Record<string, unknown>)?.[fieldParams.fieldId],
+              ) === fieldParams.responseEqualTo,
           );
-        case 'OR':
-          return expr.children.some((child) =>
-            this.evaluateCohortExpressionSync(child, user),
-          );
-        case 'NOT':
-          return !this.evaluateCohortExpressionSync(expr.child, user);
-      }
-    }
-
-    return true;
+        }
+        return responses.some(
+          (r) =>
+            (r.answers as Record<string, unknown>)?.[fieldParams.fieldId] !==
+            undefined,
+        );
+      },
+      userIsGroupLead: async () => {
+        const count = await this.communityRepository
+          .createQueryBuilder('community')
+          .innerJoin('community.leaders', 'leader')
+          .where('leader.id = :userId', { userId: user.id })
+          .getCount();
+        return count > 0;
+      },
+    };
+    return evaluateCohortExpressionForUser(expr, ctx);
   }
 
   getNextEvent(params: {
@@ -199,8 +238,9 @@ export class ActionEventRecipientService {
         })
       ).map((a) => a.userId),
     );
-    const filterToEligible = (user: User) =>
-      this.computeShouldParticipate({
+
+    const filterToEligible = async (user: User) =>
+      (await this.computeShouldParticipate({
         eventDate: event.date,
         deadlineDate: deadlineEvent?.date ?? null,
         everyoneShouldComplete: action.everyoneShouldComplete,
@@ -210,7 +250,7 @@ export class ActionEventRecipientService {
         onboarding: action.onboarding,
         includeSuspended,
         includeDismissed,
-      }) &&
+      })) &&
       !computeIsAwayInRange({
         user,
         startDate: event.date,
@@ -234,18 +274,22 @@ export class ActionEventRecipientService {
           },
         },
       });
-      return activities
-        .map((activity) => activity.user)
-        .filter(filterToEligible);
+      const users = activities.map((activity) => activity.user);
+      const results = await Promise.all(
+        users.map(async (user) => ({ user, eligible: await filterToEligible(user) })),
+      );
+      return results.filter((r) => r.eligible).map((r) => r.user);
     }
 
     if (
       eventStatus === ActionStatus.GatheringCommitments ||
       eventStatus === ActionStatus.MemberAction
     ) {
-      return (await this.userService.findActiveUsersWithTags()).filter(
-        filterToEligible,
+      const users = await this.userService.findActiveUsersWithTags();
+      const results = await Promise.all(
+        users.map(async (user) => ({ user, eligible: await filterToEligible(user) })),
       );
+      return results.filter((r) => r.eligible).map((r) => r.user);
     }
 
     return [];
@@ -273,16 +317,6 @@ export class ActionEventRecipientService {
         })
       ).map((a) => a.userId),
     );
-    const filterToEligible = (user: User) =>
-      this.computeShouldParticipate({
-        eventDate: event.date,
-        deadlineDate: deadlineEvent?.date ?? null,
-        everyoneShouldComplete: event.action.everyoneShouldComplete,
-        cohortExpression: event.action.cohortExpression,
-        user: idToUser.get(user.id)!,
-        userDismissed: usersDismissed.has(user.id),
-        onboarding: event.action.onboarding,
-      });
 
     const actions = actionSuite ? actionSuite.actions : [event.action];
 
@@ -311,8 +345,24 @@ export class ActionEventRecipientService {
       );
     }
 
-    return users
-      .filter(filterToEligible)
+    const eligibilityResults = await Promise.all(
+      users.map(async (user) => ({
+        user,
+        eligible: await this.computeShouldParticipate({
+          eventDate: event.date,
+          deadlineDate: deadlineEvent?.date ?? null,
+          everyoneShouldComplete: event.action.everyoneShouldComplete,
+          cohortExpression: event.action.cohortExpression,
+          user: idToUser.get(user.id)!,
+          userDismissed: usersDismissed.has(user.id),
+          onboarding: event.action.onboarding,
+        }),
+      })),
+    );
+
+    return eligibilityResults
+      .filter((r) => r.eligible)
+      .map((r) => r.user)
       .filter((user) => !userToHasCompletedAllActions.get(user.id));
   }
 

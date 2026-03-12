@@ -26,6 +26,8 @@ import {
   ContractEvent,
   ContractEventType,
 } from 'src/user/entities/contract-event.entity';
+import { Form } from 'src/tasks/entities/form.entity';
+import { FormResponse } from 'src/tasks/entities/formresponse.entity';
 
 describe('ActionEventNotifWorker (e2e)', () => {
   let ctx: TestContext;
@@ -40,6 +42,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
   let actionSuiteRepo: Repository<ActionSuite>;
   let contractEventRepo: Repository<ContractEvent>;
   let communityRepo: Repository<Community>;
+  let formRepo: Repository<Form>;
+  let formResponseRepo: Repository<FormResponse>;
 
   const baseMessages = {
     emailMessage: 'Reminder for #{firstname} on #{action}',
@@ -63,6 +67,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
     actionSuiteRepo = ctx.dataSource.getRepository(ActionSuite);
     contractEventRepo = ctx.dataSource.getRepository(ContractEvent);
     communityRepo = ctx.dataSource.getRepository(Community);
+    formRepo = ctx.dataSource.getRepository(Form);
+    formResponseRepo = ctx.dataSource.getRepository(FormResponse);
   });
 
   afterAll(async () => {
@@ -220,6 +226,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await eventRepo.query('DELETE FROM action_event');
     await actionRepo.query('DELETE FROM action');
     await actionSuiteRepo.query('DELETE FROM action_suite');
+    await formResponseRepo.query('DELETE FROM form_response');
+    await formRepo.query('DELETE FROM form');
     await resetPrimaryUser();
   });
 
@@ -1470,5 +1478,235 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(text).toContain('Hi Reminder');
     expect(text).toContain(action.name);
     expect(text).not.toContain('#{');
+  });
+
+  // --- Cohort Expression Evaluation in Notification Pipeline ---
+
+  const createActionWithCohortExpression = async ({
+    name,
+    eventDate,
+    cohortExpression,
+  }: {
+    name: string;
+    eventDate: Date;
+    cohortExpression: Record<string, unknown>;
+  }) => {
+    const action = await actionRepo.save(
+      actionRepo.create({
+        name,
+        category: 'Testing',
+        body: 'Body copy',
+        shortDescription: 'Short description',
+        type: ActionTaskType.Activity,
+        commitmentless: true,
+        everyoneShouldComplete: true,
+        cohortExpression,
+      }),
+    );
+
+    const memberEvent = await eventRepo.save(
+      eventRepo.create({
+        title: `${name} member event`,
+        description: 'desc',
+        newStatus: ActionStatus.MemberAction,
+        date: eventDate,
+        action,
+      }),
+    );
+
+    return { action, memberEvent };
+  };
+
+  it('excludes users not matching CompletedAction cohort from notifications', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 48 * 60 * 60 * 1000));
+
+    // Create a prerequisite action and mark user as completed
+    const prereqAction = await actionRepo.save(
+      actionRepo.create({
+        name: uniqueName('prereq'),
+        category: 'Testing',
+        body: 'Body',
+        shortDescription: 'Short',
+        type: ActionTaskType.Activity,
+        commitmentless: true,
+        everyoneShouldComplete: true,
+      }),
+    );
+    await recordCompletion(user, prereqAction);
+
+    // Create a second user who did NOT complete the prereq
+    const nonCompleter = await userRepo.save(
+      userRepo.create({
+        email: `${uniqueName('non-completer')}@example.com`,
+        password: 'pass',
+        name: 'Non Completer',
+        tags: [ctx.defaultTag],
+        textNotifsEnabled: true,
+        phoneNumber: '+15555550200',
+        phoneNumberValidated: true,
+      }),
+    );
+    await setUserContractSigned(
+      nonCompleter.id,
+      new Date(now - 48 * 60 * 60 * 1000),
+    );
+
+    // Action with CompletedAction cohort: only users who completed prereq
+    const { memberEvent } = await createActionWithCohortExpression({
+      name: uniqueName('completed-action-cohort'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+      cohortExpression: {
+        type: 'CompletedAction',
+        actionId: prereqAction.id,
+      },
+    });
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      { sendAtAbsolute: new Date(now - 5 * 60 * 1000) },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    const notifiedUserIds = notifs.map((n) => n.user.id);
+
+    expect(notifiedUserIds).toContain(user.id);
+    expect(notifiedUserIds).not.toContain(nonCompleter.id);
+  });
+
+  it('excludes users not matching GroupLead cohort from notifications', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 48 * 60 * 60 * 1000));
+
+    // Create a community and make user a leader
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: uniqueName('leader-community'),
+        leaders: [user],
+        users: [user],
+      }),
+    );
+
+    // Create a non-leader
+    const nonLeader = await userRepo.save(
+      userRepo.create({
+        email: `${uniqueName('non-leader')}@example.com`,
+        password: 'pass',
+        name: 'Non Leader',
+        tags: [ctx.defaultTag],
+        textNotifsEnabled: true,
+        phoneNumber: '+15555550201',
+        phoneNumberValidated: true,
+      }),
+    );
+    await setUserContractSigned(
+      nonLeader.id,
+      new Date(now - 48 * 60 * 60 * 1000),
+    );
+    community.users = [...(community.users ?? []), nonLeader];
+    await communityRepo.save(community);
+
+    const { memberEvent } = await createActionWithCohortExpression({
+      name: uniqueName('group-lead-cohort'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+      cohortExpression: { type: 'GroupLead' },
+    });
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      { sendAtAbsolute: new Date(now - 5 * 60 * 1000) },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    const notifiedUserIds = notifs.map((n) => n.user.id);
+
+    expect(notifiedUserIds).toContain(user.id);
+    expect(notifiedUserIds).not.toContain(nonLeader.id);
+  });
+
+  it('excludes users not matching FormFieldValue cohort from notifications', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 48 * 60 * 60 * 1000));
+
+    const form = await formRepo.save(
+      formRepo.create({
+        title: 'Cohort Form',
+        schema: {
+          title: 'Cohort Form',
+          pages: [
+            {
+              id: 'page-1',
+              fields: [{ id: 'field-1', kind: 'text', label: 'Answer' }],
+            },
+          ],
+          outputViews: [],
+        } as unknown as Record<string, unknown>,
+      }),
+    );
+
+    // User submitted a form response
+    await formResponseRepo.save(
+      formResponseRepo.create({
+        formId: form.id,
+        form,
+        answers: { 'field-1': 'yes' },
+        schemaSnapshot: form.schema as Record<string, unknown>,
+        user,
+      }),
+    );
+
+    // Non-responder user
+    const nonResponder = await userRepo.save(
+      userRepo.create({
+        email: `${uniqueName('non-responder')}@example.com`,
+        password: 'pass',
+        name: 'Non Responder',
+        tags: [ctx.defaultTag],
+        textNotifsEnabled: true,
+        phoneNumber: '+15555550202',
+        phoneNumberValidated: true,
+      }),
+    );
+    await setUserContractSigned(
+      nonResponder.id,
+      new Date(now - 48 * 60 * 60 * 1000),
+    );
+
+    const { memberEvent } = await createActionWithCohortExpression({
+      name: uniqueName('form-field-cohort'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+      cohortExpression: {
+        type: 'FormFieldValue',
+        formId: form.id,
+        fieldId: 'field-1',
+        responseAny: true,
+      },
+    });
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      { sendAtAbsolute: new Date(now - 5 * 60 * 1000) },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    const notifiedUserIds = notifs.map((n) => n.user.id);
+
+    expect(notifiedUserIds).toContain(user.id);
+    expect(notifiedUserIds).not.toContain(nonResponder.id);
   });
 });

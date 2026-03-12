@@ -16,7 +16,6 @@ export const testActions: ActionDto[] = [
     status: "gathering_commitments",
     timeEstimate: 5,
     usersJoined: 234,
-    useManualCohort: false,
     activities: [],
     shortDescription:
       "Gold mining companies are expressing interest in a highly biodiverse, unprotected area. We can outpace these companies by purchasing the land from the current owner, Susie.",
