@@ -701,7 +701,6 @@ export class TimelineFeedItemDto {
 export class EvaluateCohortExpressionDto {
   @ApiProperty({ description: 'Cohort expression to evaluate' })
   @IsDefined()
-  @Type(() => String)
   expression: CohortExpression;
 }
 
