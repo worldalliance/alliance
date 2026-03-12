@@ -17,6 +17,7 @@ import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRende
 import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
 import { Edit } from "lucide-react";
 import { cn } from "@alliance/shared/styles/util";
+import { actionActivityTransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
 
 interface UserActivityCardProps {
   activity: ActionActivityDto;
@@ -42,7 +43,7 @@ const UserActivityCard = ({
 
   const [showCommentForm, setShowCommentForm] = useState(false);
 
-  const completed = activity.type === "user_completed";
+  const verb = actionActivityTransitiveVerb[activity.type];
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -155,10 +156,7 @@ const UserActivityCard = ({
             className="mr-2 inline"
             onClick={(e) => e.stopPropagation()}
           >
-            <AvatarProfile
-              pfp={activity.user.profilePicture}
-              size="small"
-            />
+            <AvatarProfile pfp={activity.user.profilePicture} size="small" />
           </Link>
           <Link
             to={href("/member/:id", { id: activity.user.id.toString() })}
@@ -167,9 +165,7 @@ const UserActivityCard = ({
           >
             {activity.user.displayName}
           </Link>
-          <p className="text-zinc-900">
-            {completed ? " completed " : " committed to "}
-          </p>
+          <p className="text-zinc-900">{` ${verb} `}</p>
           {activity.actionName ? (
             <p
               className="text-green cursor-pointer hover:underline font-medium"
@@ -253,7 +249,7 @@ const UserActivityCard = ({
                     <span className="text-sm text-zinc-800">Edit</span>
                   </Button>
                 )}
-                {completed && (
+                {(
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -272,7 +268,7 @@ const UserActivityCard = ({
           </div>
         )}
       </div>
-      {completed && (
+      {(
         <Comments
           objectId={activity.id}
           type="activity"

@@ -1490,6 +1490,7 @@ export class ActionsService {
         types: [
           ActionActivityType.USER_JOINED,
           ActionActivityType.USER_COMPLETED,
+          ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
         ],
       });
     }
@@ -2724,6 +2725,7 @@ export class ActionsService {
           return UserActionRelationPillStatus.WontComplete;
         case ActionActivityType.USER_DISMISSED:
         case ActionActivityType.USER_JOINED:
+        case ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM:
           return null;
         default:
           throw new Error(
@@ -3455,6 +3457,7 @@ export class ActionsService {
         types: [
           ActionActivityType.USER_JOINED,
           ActionActivityType.USER_COMPLETED,
+          ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
         ],
       })
       .andWhere('action.onboarding = false')

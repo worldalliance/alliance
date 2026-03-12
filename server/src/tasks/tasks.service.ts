@@ -589,13 +589,22 @@ export class TasksService {
       userId,
     );
 
-    return this.createAndSaveFormResponse(
+    const savedForm = await this.createAndSaveFormResponse(
       form,
       form.id,
       submitFollowUpFormDto,
       validatorResults,
       user,
     );
+
+    await this.actionsService.createActionActivity({
+      actionId: followUpForm.actionId,
+      userId,
+      type: ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
+      taskFormResponse: savedForm,
+    });
+
+    return savedForm;
   }
 
   async submitFormPublic(

@@ -247,7 +247,7 @@ export type Tag = {
 /**
  * Type of action activity
  */
-export type ActionActivityType = 'user_joined' | 'user_completed' | 'user_declined' | 'user_wont_complete' | 'user_dismissed';
+export type ActionActivityType = 'user_joined' | 'user_completed' | 'user_declined' | 'user_wont_complete' | 'user_dismissed' | 'user_submitted_follow_up_form';
 
 export type EditableContent = {
     /**

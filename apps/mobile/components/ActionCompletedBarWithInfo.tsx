@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View } from "react-native";
 import Text from "./system/Text";
 import ProgressBar from "./system/ProgressBar";
@@ -14,6 +14,14 @@ export const ActionCompletedBarWithInfo = ({
 }: ActionCompletedBarWithInfoPropsShared) => {
   const { labelString, percentage } = getCompletedPercentage(action);
 
+  const completedFriends = useMemo(() => {
+    return (
+      friendActivities?.filter(
+        (activity) => activity.type === "user_completed"
+      ) ?? []
+    ).map((activity) => activity.user);
+  }, [friendActivities]);
+
   if (percentage === null) {
     return null;
   }
@@ -27,12 +35,12 @@ export const ActionCompletedBarWithInfo = ({
             ? "members committed"
             : "members completed"}
         </Text>
-        {friendActivities !== null && friendActivities.length > 0 && (
+        {completedFriends.length > 0 && (
           <UserProfilePicRow
-            users={friendActivities.map((activity) => ({
-              id: activity.user.id,
-              profilePicture: activity.user.profilePicture ?? undefined,
-              name: activity.user.displayName,
+            users={completedFriends.map((friend) => ({
+              id: friend.id,
+              profilePicture: friend.profilePicture ?? undefined,
+              name: friend.displayName,
             }))}
           />
         )}

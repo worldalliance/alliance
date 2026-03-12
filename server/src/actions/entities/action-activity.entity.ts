@@ -13,7 +13,6 @@ import {
   ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
-  Unique,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 import { Action } from './action.entity';
@@ -26,6 +25,8 @@ export enum ActionActivityType {
   USER_DECLINED = 'user_declined', // declining to commit
   USER_WONT_COMPLETE = 'user_wont_complete', //declining after commitment
   USER_DISMISSED = 'user_dismissed',
+
+  USER_SUBMITTED_FOLLOW_UP_FORM = 'user_submitted_follow_up_form',
 }
 
 export enum ActivitySource {
@@ -34,7 +35,6 @@ export enum ActivitySource {
 }
 
 @Entity()
-@Unique('UQ_activity_user_action_type', ['userId', 'actionId', 'type'])
 @Index('IDX_action_activity_type_createdAt', ['type', 'createdAt'])
 export class ActionActivity {
   @PrimaryGeneratedColumn()

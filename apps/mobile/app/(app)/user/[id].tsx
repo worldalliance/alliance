@@ -91,11 +91,7 @@ export default function UserProfileScreen() {
   const removeFriend = useRemoveFriendMutation();
   const updateProfileMutation = useUpdateProfileMutation(userId);
 
-  const {
-    activities: completedActions,
-    handleLikeActivity,
-    updateActivity,
-  } = useActivities({
+  const { activities, handleLikeActivity, updateActivity } = useActivities({
     list: ActivityList.User,
     objectId: userId ?? 0,
     comments: true,
@@ -108,6 +104,12 @@ export default function UserProfileScreen() {
   const [editBio, setEditBio] = useState("");
   const [editAvatarUrl, setEditAvatarUrl] = useState<string | null>(null);
   const [isPickingAvatar, setIsPickingAvatar] = useState(false);
+
+  const completedActions = useMemo(() => {
+    return (
+      activities?.filter((activity) => activity.type === "user_completed") ?? []
+    );
+  }, [activities]);
 
   const forumActivityItems = useMemo(
     () => buildForumActivityItems(forumPosts, forumComments),

@@ -29,6 +29,7 @@ import LikeButton from "../../../../../components/LikeButton";
 import Comments from "../../../../../components/Comments";
 import EditableContentForm from "../../../../../components/EditableContentForm";
 import EditableContentRenderer from "../../../../../components/EditableContentRenderer";
+import { actionActivityTransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
 
 export default function ActivityDetailScreen() {
   const { id, activityId } = useLocalSearchParams<{
@@ -187,8 +188,7 @@ export default function ActivityDetailScreen() {
     setIsEditing(false);
   }, [activity]);
 
-  const verb =
-    activity?.type === "user_joined" ? "committed to" : "completed";
+  const verb = activity ? actionActivityTransitiveVerb[activity.type] : null;
   const isOwner = activity?.user.id === user?.id;
 
   if (loading) {
@@ -202,7 +202,9 @@ export default function ActivityDetailScreen() {
   if (error || !activity) {
     return (
       <View className="flex-1 bg-white items-center justify-center p-4">
-        <Text className="text-red-500 text-center">{error || "Activity not found"}</Text>
+        <Text className="text-red-500 text-center">
+          {error || "Activity not found"}
+        </Text>
         <TouchableOpacity onPress={handleBack} className="mt-4">
           <Text className="text-green">Go back</Text>
         </TouchableOpacity>
@@ -212,7 +214,10 @@ export default function ActivityDetailScreen() {
 
   return (
     <View className="flex-1 bg-white">
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
         {/* Header */}
         <View className="p-4 pt-12">
           {/* Back button */}
@@ -241,10 +246,7 @@ export default function ActivityDetailScreen() {
               </TouchableOpacity>
               <View className="flex-1">
                 <Text className="text-zinc-900">
-                  <Text
-                    className="font-medium"
-                    onPress={handleUserPress}
-                  >
+                  <Text className="font-medium" onPress={handleUserPress}>
                     {activity.user.displayName}
                   </Text>
                   <Text> {verb} this action</Text>
@@ -261,7 +263,9 @@ export default function ActivityDetailScreen() {
             {isOwner && !isEditing && (
               <TouchableOpacity onPress={handleEdit} activeOpacity={0.7}>
                 <Text className="text-green text-sm">
-                  {activity.editableContent?.body ? "Edit details" : "Add details"}
+                  {activity.editableContent?.body
+                    ? "Edit details"
+                    : "Add details"}
                 </Text>
               </TouchableOpacity>
             )}

@@ -4,15 +4,22 @@ import {
 } from "@alliance/shared/client";
 import { useCallback, useState } from "react";
 
-const ACTIVITY_TYPE_OPTIONS: Array<{
-  value: ActionActivityType;
-  label: string;
-}> = [
-  { value: "user_joined", label: "Joined" },
-  { value: "user_completed", label: "Completed" },
-  { value: "user_declined", label: "Declined" },
-  { value: "user_wont_complete", label: "Won't complete" },
-];
+const ACTIVITY_TYPE_OPTIONS = Object.entries({
+  user_joined: "Joined",
+  user_completed: "Completed",
+  user_declined: "Declined",
+  user_wont_complete: "Won't complete",
+  user_dismissed: null,
+  user_submitted_follow_up_form: null,
+} satisfies Record<ActionActivityType, string | null>)
+  .filter(([, label]) => label !== null)
+  .map(
+    ([value, label]) =>
+      ({
+        value,
+        label,
+      } as { value: ActionActivityType; label: string })
+  );
 
 export interface CreateActivityControlsProps {
   actionId: number;

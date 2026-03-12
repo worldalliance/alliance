@@ -18,6 +18,7 @@ import TaskTimeInfo from "../../../../components/TaskTimeInfo";
 import { getLastAndNextEvent } from "@alliance/shared/lib/largeActionCard";
 import ActionPageTaskPanel from "../../../../components/ActionPageTaskPanel";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
+import { actionActivityIntransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
 import Button, { ButtonColor } from "../../../../components/system/Button";
 import Comments from "../../../../components/Comments";
 import ProfileImage from "../../../../components/ProfileImage";
@@ -45,9 +46,8 @@ interface ActivityItemProps {
 }
 
 function ActivityItem({ activity, onLike }: ActivityItemProps) {
-  if (
-    !(activity.type === "user_joined" || activity.type === "user_completed")
-  ) {
+  const verb = actionActivityIntransitiveVerb[activity.type];
+  if (verb === null) {
     return null;
   }
 
@@ -57,9 +57,7 @@ function ActivityItem({ activity, onLike }: ActivityItemProps) {
       <View className="flex-1">
         <Text className="font-medium text-zinc-900">
           {activity.user.displayName}
-          {activity.type === "user_completed" && (
-            <Text className="text-zinc-500"> completed.</Text>
-          )}
+          {verb && <Text className="text-zinc-500"> {verb}.</Text>}
         </Text>
         <Text className="text-zinc-400 text-xs mt-1">
           {formatTime(new Date(activity.createdAt), { addSuffix: true })}

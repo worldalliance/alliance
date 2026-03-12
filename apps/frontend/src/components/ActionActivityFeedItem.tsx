@@ -1,9 +1,10 @@
-import { ActionActivityDto } from "@alliance/shared/client";
+import { ActionActivityDto, ActionActivityType } from "@alliance/shared/client";
 import { Link, href, useNavigate } from "react-router";
 import { formatTime } from "@alliance/shared/lib/utils";
 import ActivityLikeButton from "./ActivityLikeButton";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { cn } from "@alliance/shared/styles/util";
+import { actionActivityTransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
 
 export interface ActionActivityFeedItemProps {
   activity: ActionActivityDto;
@@ -13,6 +14,21 @@ export interface ActionActivityFeedItemProps {
   handleLike: (activity: ActionActivityDto) => void;
 }
 
+const ACTIVITY_TYPE_CLICKABLE = {
+  user_joined: false,
+  user_completed: true,
+  user_submitted_follow_up_form: true,
+
+  // no rendered activity
+  user_declined: null,
+  user_wont_complete: null,
+  user_dismissed: null,
+} as const satisfies {
+  [K in ActionActivityType]: (typeof actionActivityTransitiveVerb)[K] extends null
+    ? null
+    : boolean;
+};
+
 const ActionActivityFeedItem = ({
   activity,
   showTime = true,
@@ -21,11 +37,9 @@ const ActionActivityFeedItem = ({
   handleLike,
 }: ActionActivityFeedItemProps) => {
   const navigate = useNavigate();
-  const verb = activity.type === "user_joined" ? "committed to" : "completed";
+  const verb = ACTIVITY_TYPE_CLICKABLE[activity.type];
 
-  if (
-    !(activity.type === "user_joined" || activity.type === "user_completed")
-  ) {
+  if (verb === null) {
     return null;
   }
 
@@ -50,16 +64,16 @@ const ActionActivityFeedItem = ({
       </Link>
     );
   } else {
+    const clickable = ACTIVITY_TYPE_CLICKABLE[activity.type];
     return (
       <div
         key={activity.id}
         className={cn(
           "rounded-md border-zinc-200",
-          activity.type === "user_joined" ? "cursor-default" : "cursor-pointer"
+          clickable ? "cursor-pointer" : "cursor-default"
         )}
         onClick={() => {
-          // no detail pages for commitments right now
-          if (activity.type === "user_joined") {
+          if (!clickable) {
             return;
           }
 

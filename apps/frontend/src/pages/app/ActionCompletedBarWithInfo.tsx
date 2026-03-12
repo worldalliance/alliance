@@ -7,6 +7,7 @@ import {
 import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
 import { href, Link } from "react-router";
 import { cn } from "@alliance/shared/styles/util";
+import { useMemo } from "react";
 
 interface ActionCompletedBarWithInfoProps
   extends ActionCompletedBarWithInfoPropsShared {
@@ -27,6 +28,14 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   seeAllLink = false,
 }: ActionCompletedBarWithInfoProps) => {
   const { labelString, percentage } = getCompletedPercentage(action);
+
+  const completedFriends = useMemo(() => {
+    return (
+      friendActivities?.filter(
+        (activity) => activity.type === "user_completed"
+      ) ?? []
+    ).map((activity) => activity.user);
+  }, [friendActivities]);
 
   if (percentage === null) {
     return null;
@@ -62,10 +71,8 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
             </Link>
           )}
         </div>
-        {friendActivities !== null && (
-          <UserProfilePicRow
-            users={friendActivities.map((activity) => activity.user)}
-          />
+        {completedFriends.length > 0 && (
+          <UserProfilePicRow users={completedFriends} />
         )}
       </div>
       <CompletedBar percentage={percentage} />

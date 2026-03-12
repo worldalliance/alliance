@@ -112,15 +112,17 @@ const UserProfilePage: React.FC = () => {
 
   const forumActivityCount = forumActivityItems.length;
 
-  const {
-    activities: completedActions,
-    handleLikeActivity,
-    updateActivity,
-  } = useActivities({
+  const { activities, handleLikeActivity, updateActivity } = useActivities({
     list: ActivityList.User,
     objectId: userId ?? 0,
     comments: true,
   });
+
+  const completedActions = useMemo(() => {
+    return (
+      activities?.filter((activity) => activity.type === "user_completed") ?? []
+    );
+  }, [activities]);
 
   useEffect(() => {
     if (!profile || !isMe || isEditing) return;

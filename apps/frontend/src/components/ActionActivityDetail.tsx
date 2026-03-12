@@ -20,6 +20,7 @@ import EditableContentForm from "@alliance/sharedweb/ui/EditableContentForm";
 import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
 import { OutputRenderer } from "@alliance/sharedweb/forms/OutputRenderer";
 import BasicErrorMessage from "./BasicErrorMessage";
+import { actionActivityTransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
 
 export function ErrorBoundary(error: unknown) {
   console.error(error);
@@ -72,7 +73,7 @@ const ActionActivityDetail = () => {
     };
   }, [fetchedActivity, origactivity]);
 
-  const verb = activity?.type === "user_joined" ? "committed to" : "completed";
+  const verb = activity ? actionActivityTransitiveVerb[activity.type] : null;
 
   const handleLike = async () => {
     if (!user || !activity) {

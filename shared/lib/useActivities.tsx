@@ -16,6 +16,7 @@ import {
   InfiniteData,
 } from "@tanstack/react-query";
 import posthog from "posthog-js";
+import { actionActivityViewable } from "./actionActivityConstants";
 
 export enum ActivityList {
   Friends = "friends",
@@ -61,10 +62,7 @@ const generateQueryKey = (props: UseActivitiesProps) => {
   ];
 };
 
-const callActivityApi = async (
-  props: UseActivitiesProps,
-  before?: string
-) => {
+const callActivityApi = async (props: UseActivitiesProps, before?: string) => {
   const { list, objectId, limit = 50, comments = false } = props;
   const beforeStr = before ?? new Date().toISOString();
 
@@ -123,10 +121,9 @@ const callActivityApi = async (
 const processActivities = (
   data: ActionActivityDto[] | undefined
 ): ActionActivityDto[] => {
-  const filtered = data?.filter((a) => a.type === "user_completed") ?? [];
+  const filtered = data?.filter((a) => actionActivityViewable[a.type]) ?? [];
   return filtered.sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 };
 
@@ -238,9 +235,8 @@ const useActivities = (props: UseActivitiesProps) => {
               }
             : a;
 
-        queryClient.setQueryData<InfiniteActivityData>(
-          queryKey,
-          (old) => mapInfiniteActivities(old, mapper)
+        queryClient.setQueryData<InfiniteActivityData>(queryKey, (old) =>
+          mapInfiniteActivities(old, mapper)
         );
       };
 
@@ -276,9 +272,8 @@ const useActivities = (props: UseActivitiesProps) => {
       const mapper = (a: ActionActivityDto) =>
         a.id === updatedActivity.id ? { ...a, ...updatedActivity } : a;
 
-      queryClient.setQueryData<InfiniteActivityData>(
-        queryKey,
-        (old) => mapInfiniteActivities(old, mapper)
+      queryClient.setQueryData<InfiniteActivityData>(queryKey, (old) =>
+        mapInfiniteActivities(old, mapper)
       );
     },
     [queryClient, queryKey]
@@ -293,7 +288,7 @@ const useActivities = (props: UseActivitiesProps) => {
     setActivities,
     updateActivity,
     fetchNextPage: infinite ? fetchNextPage : noop,
-    hasNextPage: infinite ? (hasNextPage ?? false) : false,
+    hasNextPage: infinite ? hasNextPage ?? false : false,
     isFetchingNextPage: infinite ? isFetchingNextPage : false,
   };
 };

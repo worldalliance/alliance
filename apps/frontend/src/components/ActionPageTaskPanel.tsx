@@ -1,4 +1,4 @@
-import { ActionActivityDto, UserActionRelation } from "@alliance/shared/client";
+import { UserActionRelation } from "@alliance/shared/client";
 import Card from "@alliance/sharedweb/ui/Card";
 import { Link, isRouteErrorResponse, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
@@ -40,9 +40,6 @@ export interface TaskPanelContext
   extends Omit<ActionTaskPanelPropsShared, "userRelation"> {
   publicMode: boolean;
   userRelation: UserActionRelation | null;
-  activities: ActionActivityDto[];
-  handleLikeActivity: (activityId: number) => Promise<unknown>;
-  setActivities: (activities: ActionActivityDto[]) => void;
 }
 
 const ActionPageTaskPanel = () => {

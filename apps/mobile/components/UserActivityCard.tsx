@@ -16,6 +16,10 @@ import Comments from "./Comments";
 import EditableContentForm from "./EditableContentForm";
 import EditableContentRenderer from "./EditableContentRenderer";
 import Text from "./system/Text";
+import {
+  actionActivityCommentable,
+  actionActivityTransitiveVerb,
+} from "@alliance/shared/lib/actionActivityConstants";
 
 interface UserActivityCardProps {
   activity: ActionActivityDto;
@@ -38,7 +42,8 @@ export default function UserActivityCard({
   const [isSaving, setIsSaving] = useState(false);
   const [showCommentForm, setShowCommentForm] = useState(false);
 
-  const completed = activity.type === "user_completed";
+  const verb = actionActivityTransitiveVerb[activity.type];
+  const commentable = actionActivityCommentable[activity.type];
 
   const handleActionPress = useCallback(() => {
     router.push(`/actions/${activity.actionId}` as RelativePathString);
@@ -138,7 +143,7 @@ export default function UserActivityCard({
               <Text className="font-medium" onPress={handleUserPress}>
                 {activity.user.displayName}
               </Text>
-              <Text>{completed ? " completed " : " committed to "}</Text>
+              <Text>{` ${verb} `}</Text>
               <Text
                 className="text-green font-medium"
                 onPress={handleActionPress}
@@ -194,7 +199,7 @@ export default function UserActivityCard({
                   <Text className="text-sm text-zinc-600">Edit</Text>
                 </TouchableOpacity>
               )}
-              {completed && (
+              {commentable && (
                 <TouchableOpacity
                   onPress={() => setShowCommentForm(true)}
                   activeOpacity={0.7}
@@ -209,7 +214,7 @@ export default function UserActivityCard({
       </TouchableOpacity>
 
       {/* Comments section */}
-      {completed && (
+      {commentable && (
         <Comments
           objectId={activity.id}
           type="activity"

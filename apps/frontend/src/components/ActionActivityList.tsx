@@ -9,7 +9,6 @@ interface ActionActivityListProps {
   activities: ActionActivityDto[];
   loading: boolean;
   onLikeActivity: (activityId: number) => Promise<unknown>;
-  setActivities: React.Dispatch<React.SetStateAction<ActionActivityDto[]>>;
   maxN: number;
 }
 
@@ -50,9 +49,9 @@ const ActionActivityList = ({
   if (!allActivities.length) {
     return null;
   }
-  const displayedActivities = showAll
-    ? allActivities
-    : allActivities.slice(0, maxN);
+  const displayedCompletionActivities = (
+    showAll ? allActivities : allActivities.slice(0, maxN)
+  ).filter((activity) => activity.type === "user_completed");
 
   const hasMore = allActivities.length > maxN;
 
@@ -72,7 +71,7 @@ const ActionActivityList = ({
         </div>
       </div>
       <div className="flex flex-col *:py-2">
-        {displayedActivities.map((activity) => (
+        {displayedCompletionActivities.map((activity) => (
           <ActionActivityFeedItem
             key={activity.id}
             activity={activity}

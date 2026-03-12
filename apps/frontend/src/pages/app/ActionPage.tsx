@@ -50,7 +50,7 @@ export default function ActionPage() {
 
   useCIDFromParams(actionId);
 
-  const { activities, handleLikeActivity, setActivities } = useActivities({
+  const { activities, handleLikeActivity } = useActivities({
     list: ActivityList.Action,
     objectId: actionId,
     limit: 10,
@@ -74,7 +74,10 @@ export default function ActionPage() {
   // TODO: hack because some action pages are public and some are private. we should handle this in a more general way elsehwere (ie applayout.tsx logic)
   if (!action && !loading && !user && !userLoading) {
     return (
-      <Navigate to={href("/login") + `?redirect=${location.pathname}`} replace />
+      <Navigate
+        to={href("/login") + `?redirect=${location.pathname}`}
+        replace
+      />
     );
   }
 
@@ -92,7 +95,8 @@ export default function ActionPage() {
     );
   }
 
-  const showSidebar = !publicMode && !action.publicOnly && action.status === "member_action";
+  const showSidebar =
+    !publicMode && !action.publicOnly && action.status === "member_action";
 
   return (
     <>
@@ -109,9 +113,6 @@ export default function ActionPage() {
                 publicMode,
                 onDeclineAction,
                 onOptOutAction,
-                activities,
-                handleLikeActivity,
-                setActivities,
               } satisfies TaskPanelContext
             }
           />
@@ -128,9 +129,7 @@ export default function ActionPage() {
               />
               {!!action.customStatType && action.customStatValue !== null && (
                 <div className="mt-3">
-                  <p className="text-zinc-800">
-                    {action.customStatLabel}:
-                  </p>
+                  <p className="text-zinc-800">{action.customStatLabel}:</p>
                   <p className="text-xl font-bold">
                     {action.customStatValue ?? 0}
                   </p>
@@ -142,7 +141,6 @@ export default function ActionPage() {
               activities={activities}
               loading={false}
               onLikeActivity={(activityId) => handleLikeActivity(activityId)}
-              setActivities={setActivities}
               maxN={10}
             />
           </div>
