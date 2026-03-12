@@ -17,7 +17,10 @@ import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRende
 import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
 import { Edit } from "lucide-react";
 import { cn } from "@alliance/shared/styles/util";
-import { actionActivityTransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
+import {
+  actionActivityCommentable,
+  actionActivityTransitiveVerb,
+} from "@alliance/shared/lib/actionActivityConstants";
 
 interface UserActivityCardProps {
   activity: ActionActivityDto;
@@ -44,6 +47,7 @@ const UserActivityCard = ({
   const [showCommentForm, setShowCommentForm] = useState(false);
 
   const verb = actionActivityTransitiveVerb[activity.type];
+  const commentable = actionActivityCommentable[activity.type];
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -249,7 +253,7 @@ const UserActivityCard = ({
                     <span className="text-sm text-zinc-800">Edit</span>
                   </Button>
                 )}
-                {(
+                {commentable && (
                   <Button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -268,7 +272,7 @@ const UserActivityCard = ({
           </div>
         )}
       </div>
-      {(
+      {commentable && (
         <Comments
           objectId={activity.id}
           type="activity"
