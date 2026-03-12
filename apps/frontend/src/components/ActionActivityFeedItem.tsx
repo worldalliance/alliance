@@ -4,7 +4,10 @@ import { formatTime } from "@alliance/shared/lib/utils";
 import ActivityLikeButton from "./ActivityLikeButton";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { cn } from "@alliance/shared/styles/util";
-import { actionActivityTransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
+import {
+  actionActivityTransitiveVerb,
+  ViewableActionActivity,
+} from "@alliance/shared/lib/actionActivityConstants";
 
 export interface ActionActivityFeedItemProps {
   activity: ActionActivityDto;
@@ -24,9 +27,7 @@ const ACTIVITY_TYPE_CLICKABLE = {
   user_wont_complete: null,
   user_dismissed: null,
 } as const satisfies {
-  [K in ActionActivityType]: (typeof actionActivityTransitiveVerb)[K] extends null
-    ? null
-    : boolean;
+  [K in ActionActivityType]: K extends ViewableActionActivity ? boolean : null;
 };
 
 const ActionActivityFeedItem = ({
@@ -37,7 +38,7 @@ const ActionActivityFeedItem = ({
   handleLike,
 }: ActionActivityFeedItemProps) => {
   const navigate = useNavigate();
-  const verb = ACTIVITY_TYPE_CLICKABLE[activity.type];
+  const verb = actionActivityTransitiveVerb[activity.type];
 
   if (verb === null) {
     return null;
