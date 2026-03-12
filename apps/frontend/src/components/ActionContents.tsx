@@ -56,9 +56,12 @@ const ActionContents = () => {
   }, [action.authors, action.id]);
 
   const activeFollowUpForms = useMemo(() => {
-    const list = action.followUpForms ?? [];
+    if (context.userRelation !== "completed") {
+      return [];
+    }
+    const list = action.followUpForms;
     return list.filter(isFollowUpFormActive);
-  }, [action.followUpForms]);
+  }, [action.followUpForms, context.userRelation]);
 
   if (!action) {
     return null;

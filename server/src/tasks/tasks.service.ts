@@ -568,8 +568,18 @@ export class TasksService {
     submitFollowUpFormDto: SubmitFollowUpFormDto,
   ): Promise<FormResponse> {
     const followUpForm = await this.followUpFormRepository.findOne({
-      where: { id: followUpFormId },
-      relations: { form: true },
+      where: {
+        id: followUpFormId,
+        action: {
+          activities: {
+            type: ActionActivityType.USER_COMPLETED,
+            user: { id: userId },
+          },
+        },
+      },
+      relations: {
+        form: true,
+      },
     });
     if (!followUpForm?.form) {
       throw new NotFoundException('Follow-up form not found');
