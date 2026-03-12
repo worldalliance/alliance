@@ -6,7 +6,7 @@ For DTOs, use mapped types based on database entities rather than redefining val
 
 For new endpoints, use either @AuthGuard or @AdminGuard depending on the appropriate level of security.
 
-Test server code with `npm run test:agents` which runs the end to end tests with a custom postgres instance.
+Test server code with targeted `bun test ./path/to/test.e2e-spec.ts`
 
 ### Frontend
 

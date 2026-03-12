@@ -3063,29 +3063,28 @@ export class ActionsService {
           ? activeUsers
           : (joinedUsersByAction.get(action.id) ?? []);
 
-        const baseUserResults = await Promise.all(
-          baseCandidates.map(async (user) => ({
-            user,
-            eligible:
-              (await this.actionEventRecipientService.computeShouldParticipate({
-                eventDate: event.date,
-                deadlineDate: deadlineEvent?.date ?? null,
-                everyoneShouldComplete: action.everyoneShouldComplete,
-                cohortExpression: action.cohortExpression,
-                user,
-                userDismissed: dismissedSet.has(user.id),
-                onboarding: action.onboarding,
-              })) &&
-              !computeIsAwayInRange({
-                user,
-                startDate: event.date,
-                endDate: deadlineEvent?.date,
-              }),
-          })),
+        const cohortMemberIds =
+          await this.actionEventRecipientService.resolveCohortMemberIds(
+            action.cohortExpression,
+          );
+
+        const baseUsers = baseCandidates.filter(
+          (user) =>
+            this.actionEventRecipientService.computeShouldParticipate({
+              eventDate: event.date,
+              deadlineDate: deadlineEvent?.date ?? null,
+              everyoneShouldComplete: action.everyoneShouldComplete,
+              cohortMemberIds,
+              user,
+              userDismissed: dismissedSet.has(user.id),
+              onboarding: action.onboarding,
+            }) &&
+            !computeIsAwayInRange({
+              user,
+              startDate: event.date,
+              endDate: deadlineEvent?.date,
+            }),
         );
-        const baseUsers = baseUserResults
-          .filter((r) => r.eligible)
-          .map((r) => r.user);
 
         baseUsersByAction.set(action.id, baseUsers);
       }

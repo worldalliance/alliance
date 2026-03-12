@@ -23,11 +23,12 @@ import { findLeast } from 'src/utils/filter';
 import { CommunityService } from 'src/community/community.service';
 import type { CohortExpression } from 'src/actions/cohort-expression.types';
 import {
-  evaluateCohortExpressionForUser,
-  type SingleUserCohortContext,
+  evaluateCohortExpression,
+  type CohortEvaluationContext,
 } from 'src/actions/cohort-expression.evaluator';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
 import { Community } from 'src/community/entities/community.entity';
+import { Tag } from 'src/user/entities/tag.entity';
 
 @Injectable()
 export class ActionEventRecipientService {
@@ -40,26 +41,114 @@ export class ActionEventRecipientService {
     private readonly formResponseRepository: Repository<FormResponse>,
     @InjectRepository(Community)
     private readonly communityRepository: Repository<Community>,
+    @InjectRepository(Tag)
+    private readonly tagRepository: Repository<Tag>,
     private readonly communityService: CommunityService,
     private readonly userService: UserService,
   ) {}
 
-  async computeShouldParticipate(params: {
+  /**
+   * Resolve a cohort expression to a set of matching user IDs using batch
+   * set-based queries (one query per leaf type, not per user).
+   */
+  async resolveCohortMemberIds(
+    expression: CohortExpression | null | undefined,
+  ): Promise<Set<number> | null> {
+    if (!expression) return null;
+    const ctx: CohortEvaluationContext = {
+      getUserIdsForTag: async (tagId: string) => {
+        if (!tagId) return new Set();
+        const tag = await this.tagRepository.findOne({
+          where: { id: tagId },
+          relations: { users: true },
+        });
+        return new Set((tag?.users ?? []).map((u) => u.id));
+      },
+      getUserIdsCompletedAction: async (actionId: number) => {
+        if (!actionId) return new Set();
+        const activities = await this.actionActivityRepository.find({
+          where: { actionId, type: ActionActivityType.USER_COMPLETED },
+        });
+        return new Set(activities.map((a) => a.userId));
+      },
+      getUserIdsInProgressAction: async (actionId: number) => {
+        if (!actionId) return new Set();
+        const joined = await this.actionActivityRepository.find({
+          where: { actionId, type: ActionActivityType.USER_JOINED },
+        });
+        const terminal = await this.actionActivityRepository.find({
+          where: [
+            { actionId, type: ActionActivityType.USER_COMPLETED },
+            { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
+          ],
+        });
+        const terminalIds = new Set(terminal.map((a) => a.userId));
+        return new Set(
+          joined.map((a) => a.userId).filter((id) => !terminalIds.has(id)),
+        );
+      },
+      getUserIdsForFormField: async (params) => {
+        if (!params.formId) return new Set();
+        const responses = await this.formResponseRepository.find({
+          where: { formId: params.formId },
+          relations: { user: true },
+        });
+        const matching = responses.filter((r) => {
+          if (params.responseAny) return true;
+          if (params.responseEqualTo !== undefined) {
+            return (
+              String(
+                (r.answers as Record<string, unknown>)?.[params.fieldId],
+              ) === params.responseEqualTo
+            );
+          }
+          return (
+            (r.answers as Record<string, unknown>)?.[params.fieldId] !==
+            undefined
+          );
+        });
+        return new Set(
+          matching
+            .map((r) => r.user?.id)
+            .filter((id): id is number => typeof id === 'number'),
+        );
+      },
+      getGroupLeadUserIds: async () => {
+        const communities = await this.communityRepository.find({
+          relations: { leaders: true },
+        });
+        const ids = new Set<number>();
+        for (const c of communities) {
+          for (const leader of c.leaders ?? []) {
+            ids.add(leader.id);
+          }
+        }
+        return ids;
+      },
+      getAllCandidateUserIds: async () => {
+        const users = await this.userService.findActiveUsersWithTags();
+        return new Set(users.map((u) => u.id));
+      },
+    };
+    return evaluateCohortExpression(expression, ctx);
+  }
+
+  computeShouldParticipate(params: {
     eventDate: Date;
     deadlineDate: Date | null;
     everyoneShouldComplete: boolean;
-    cohortExpression?: CohortExpression | null;
+    cohortMemberIds: Set<number> | null;
     user: User;
     userDismissed: boolean;
     onboarding: boolean;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
-  }): Promise<boolean> {
+  }): boolean {
     const {
       eventDate,
       deadlineDate,
       everyoneShouldComplete,
-      cohortExpression,
+      cohortMemberIds,
       user,
       userDismissed,
       onboarding,
@@ -71,12 +160,8 @@ export class ActionEventRecipientService {
       return false;
     }
 
-    if (cohortExpression) {
-      const inCohort = await this.evaluateCohortForUser(
-        cohortExpression,
-        user,
-      );
-      if (!inCohort) return false;
+    if (cohortMemberIds && !cohortMemberIds.has(user.id)) {
+      return false;
     }
 
     if (
@@ -104,82 +189,6 @@ export class ActionEventRecipientService {
       return true;
     }
     return user.hasActiveContractAt(eventDate) || everyoneShouldComplete;
-  }
-
-  private async evaluateCohortForUser(
-    expr: CohortExpression,
-    user: User,
-  ): Promise<boolean> {
-    const ctx: SingleUserCohortContext = {
-      userId: user.id,
-      userHasTag(tagId: string) {
-        return (user.tags || []).some((tag) => tag.id === tagId);
-      },
-      userCompletedAction: async (actionId: number) => {
-        const activity = await this.actionActivityRepository.findOne({
-          where: {
-            userId: user.id,
-            actionId,
-            type: ActionActivityType.USER_COMPLETED,
-          },
-        });
-        return !!activity;
-      },
-      userInProgressAction: async (actionId: number) => {
-        const joined = await this.actionActivityRepository.findOne({
-          where: {
-            userId: user.id,
-            actionId,
-            type: ActionActivityType.USER_JOINED,
-          },
-        });
-        if (!joined) return false;
-        const terminal = await this.actionActivityRepository.findOne({
-          where: [
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_COMPLETED,
-            },
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_WONT_COMPLETE,
-            },
-          ],
-        });
-        return !terminal;
-      },
-      userMatchesFormField: async (fieldParams) => {
-        const responses = await this.formResponseRepository.find({
-          where: { formId: fieldParams.formId, user: { id: user.id } },
-        });
-        if (responses.length === 0) return false;
-        if (fieldParams.responseAny) return true;
-        if (fieldParams.responseEqualTo !== undefined) {
-          return responses.some(
-            (r) =>
-              String(
-                (r.answers as Record<string, unknown>)?.[fieldParams.fieldId],
-              ) === fieldParams.responseEqualTo,
-          );
-        }
-        return responses.some(
-          (r) =>
-            (r.answers as Record<string, unknown>)?.[fieldParams.fieldId] !==
-            undefined,
-        );
-      },
-      userIsGroupLead: async () => {
-        const count = await this.communityRepository
-          .createQueryBuilder('community')
-          .innerJoin('community.leaders', 'leader')
-          .where('leader.id = :userId', { userId: user.id })
-          .getCount();
-        return count > 0;
-      },
-    };
-    return evaluateCohortExpressionForUser(expr, ctx);
   }
 
   getNextEvent(params: {
@@ -228,29 +237,30 @@ export class ActionEventRecipientService {
       currentEventId: eventId,
     });
 
-    const usersDismissed = new Set(
-      (
-        await this.actionActivityRepository.find({
+    const [usersDismissed, cohortMemberIds] = await Promise.all([
+      this.actionActivityRepository
+        .find({
           where: {
             action: { id: action.id },
             type: ActionActivityType.USER_DISMISSED,
           },
         })
-      ).map((a) => a.userId),
-    );
+        .then((acts) => new Set(acts.map((a) => a.userId))),
+      this.resolveCohortMemberIds(action.cohortExpression),
+    ]);
 
-    const filterToEligible = async (user: User) =>
-      (await this.computeShouldParticipate({
+    const filterToEligible = (user: User) =>
+      this.computeShouldParticipate({
         eventDate: event.date,
         deadlineDate: deadlineEvent?.date ?? null,
         everyoneShouldComplete: action.everyoneShouldComplete,
-        cohortExpression: action.cohortExpression,
+        cohortMemberIds,
         user,
         userDismissed: usersDismissed.has(user.id),
         onboarding: action.onboarding,
         includeSuspended,
         includeDismissed,
-      })) &&
+      }) &&
       !computeIsAwayInRange({
         user,
         startDate: event.date,
@@ -274,11 +284,7 @@ export class ActionEventRecipientService {
           },
         },
       });
-      const users = activities.map((activity) => activity.user);
-      const results = await Promise.all(
-        users.map(async (user) => ({ user, eligible: await filterToEligible(user) })),
-      );
-      return results.filter((r) => r.eligible).map((r) => r.user);
+      return activities.map((a) => a.user).filter(filterToEligible);
     }
 
     if (
@@ -286,10 +292,7 @@ export class ActionEventRecipientService {
       eventStatus === ActionStatus.MemberAction
     ) {
       const users = await this.userService.findActiveUsersWithTags();
-      const results = await Promise.all(
-        users.map(async (user) => ({ user, eligible: await filterToEligible(user) })),
-      );
-      return results.filter((r) => r.eligible).map((r) => r.user);
+      return users.filter(filterToEligible);
     }
 
     return [];
@@ -301,36 +304,37 @@ export class ActionEventRecipientService {
     deadlineEvent: Pick<ActionEvent, 'newStatus' | 'action' | 'date'> | null,
     actionSuite?: ActionSuite,
   ): Promise<User[]> {
-    const usersWithTags = await this.userService.findByIds(
-      users.map((user) => user.id),
-      { tags: true, awayRanges: true, contractEvents: true },
-    );
-    const idToUser = new Map(usersWithTags.map((user) => [user.id, user]));
-
-    const usersDismissed = new Set(
-      (
-        await this.actionActivityRepository.find({
-          where: {
-            action: { id: event.action.id },
-            type: ActionActivityType.USER_DISMISSED,
-          },
-        })
-      ).map((a) => a.userId),
-    );
-
     const actions = actionSuite ? actionSuite.actions : [event.action];
 
-    const completionActivities = await this.actionActivityRepository.find({
-      where: {
-        userId: In(users.map((user) => user.id)),
-        actionId: In(actions.map((action) => action.id)),
-        type: In([
-          ActionActivityType.USER_COMPLETED,
-          ActionActivityType.USER_DECLINED,
-          ActionActivityType.USER_WONT_COMPLETE,
-        ]),
-      },
-    });
+    const [usersWithTags, usersDismissed, cohortMemberIds, completionActivities] =
+      await Promise.all([
+        this.userService.findByIds(
+          users.map((user) => user.id),
+          { tags: true, awayRanges: true, contractEvents: true },
+        ),
+        this.actionActivityRepository
+          .find({
+            where: {
+              action: { id: event.action.id },
+              type: ActionActivityType.USER_DISMISSED,
+            },
+          })
+          .then((acts) => new Set(acts.map((a) => a.userId))),
+        this.resolveCohortMemberIds(event.action.cohortExpression),
+        this.actionActivityRepository.find({
+          where: {
+            userId: In(users.map((user) => user.id)),
+            actionId: In(actions.map((action) => action.id)),
+            type: In([
+              ActionActivityType.USER_COMPLETED,
+              ActionActivityType.USER_DECLINED,
+              ActionActivityType.USER_WONT_COMPLETE,
+            ]),
+          },
+        }),
+      ]);
+
+    const idToUser = new Map(usersWithTags.map((user) => [user.id, user]));
 
     const userToHasCompletedAllActions = new Map<number, boolean>();
     for (const user of users) {
@@ -345,24 +349,19 @@ export class ActionEventRecipientService {
       );
     }
 
-    const eligibilityResults = await Promise.all(
-      users.map(async (user) => ({
-        user,
-        eligible: await this.computeShouldParticipate({
-          eventDate: event.date,
-          deadlineDate: deadlineEvent?.date ?? null,
-          everyoneShouldComplete: event.action.everyoneShouldComplete,
-          cohortExpression: event.action.cohortExpression,
-          user: idToUser.get(user.id)!,
-          userDismissed: usersDismissed.has(user.id),
-          onboarding: event.action.onboarding,
-        }),
-      })),
-    );
-
-    return eligibilityResults
-      .filter((r) => r.eligible)
-      .map((r) => r.user)
+    return users
+      .filter(
+        (user) =>
+          this.computeShouldParticipate({
+            eventDate: event.date,
+            deadlineDate: deadlineEvent?.date ?? null,
+            everyoneShouldComplete: event.action.everyoneShouldComplete,
+            cohortMemberIds,
+            user: idToUser.get(user.id)!,
+            userDismissed: usersDismissed.has(user.id),
+            onboarding: event.action.onboarding,
+          }),
+      )
       .filter((user) => !userToHasCompletedAllActions.get(user.id));
   }
 
