@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
 import type {
   AnyField,
   FieldKind,
+  FormSchema,
   ListField,
 } from "@alliance/shared/forms/formschema";
+import { tasksListForms, tasksGetForm } from "@alliance/shared/client";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
@@ -19,6 +22,8 @@ import { EditableTextField } from "./EditableTextField";
 import { EditableTextareaField } from "./EditableTextareaField";
 import { EditableTimeField } from "./EditableTimeField";
 import { EditableTimezoneField } from "./EditableTimezoneField";
+
+type FormListItem = { id: number; title: string };
 
 const SUB_FIELD_KINDS_OPTIONS = {
   textarea: true,
@@ -169,6 +174,78 @@ export function EditableListField({
   isDragging,
   previousFields,
 }: BaseFieldProps<ListField>) {
+  // --- Prefill from previous answer state ---
+  const [prefillForms, setPrefillForms] = useState<FormListItem[]>([]);
+  const [prefillSourceFields, setPrefillSourceFields] = useState<AnyField[]>(
+    []
+  );
+
+  // Load list of forms on mount
+  useEffect(() => {
+    let cancelled = false;
+    tasksListForms()
+      .then((response) => {
+        if (cancelled) return;
+        const items = (response.data ?? []) as Array<{
+          id: number;
+          title?: string;
+        }>;
+        const mapped = items.map((f) => ({
+          id: f.id,
+          title: f.title ?? `Form ${f.id}`,
+        }));
+        mapped.sort((a, b) => b.id - a.id);
+        setPrefillForms(mapped);
+      })
+      .catch(() => {
+        // ignore
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Fetch source form schema when sourceFormId changes
+  const prefillSourceFormId = field.prefillFromPreviousAnswer?.sourceFormId;
+  useEffect(() => {
+    if (!prefillSourceFormId) {
+      setPrefillSourceFields([]);
+      return;
+    }
+    let cancelled = false;
+    tasksGetForm({ path: { id: prefillSourceFormId } })
+      .then((response) => {
+        if (cancelled) return;
+        if (response.data) {
+          const form = response.data as Record<string, unknown>;
+          const schema = form.schema as FormSchema;
+          const fields: AnyField[] = [];
+          for (const page of schema.pages ?? []) {
+            for (const element of page.fields ?? []) {
+              if ("label" in element) {
+                fields.push(element as AnyField);
+              }
+            }
+          }
+          setPrefillSourceFields(fields);
+        }
+      })
+      .catch(() => {
+        setPrefillSourceFields([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [prefillSourceFormId]);
+
+  const prefillSourceListFields = prefillSourceFields.filter(
+    (f) => f.kind === "list"
+  ) as ListField[];
+  const selectedSourceListField = prefillSourceListFields.find(
+    (f) => f.id === field.prefillFromPreviousAnswer?.sourceFieldId
+  );
+  const sourceSubFields = selectedSourceListField?.fields ?? [];
+
   const addSubField = (kind: (typeof SUB_FIELD_KINDS)[number]) => {
     const sub = createDefaultSubField(field.id, kind);
     onUpdate({ fields: [...(field.fields ?? []), sub] });
@@ -346,6 +423,142 @@ export function EditableListField({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Prefill from previous answer */}
+      {subFields.length > 0 && (
+        <div className="border-t border-gray-200 pt-3 space-y-2">
+          <label className="block text-xs font-medium text-gray-700">
+            Prefill from previous answer
+          </label>
+          <p className="text-xs text-gray-500">
+            Pre-populate this list with items from a previously submitted list
+            field.
+          </p>
+
+          {/* Source Form */}
+          <div>
+            <label className="block text-xs text-gray-700 mb-1">
+              Source Form
+            </label>
+            <select
+              value={field.prefillFromPreviousAnswer?.sourceFormId ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (!val) {
+                  onUpdate({ prefillFromPreviousAnswer: undefined });
+                } else {
+                  onUpdate({
+                    prefillFromPreviousAnswer: {
+                      sourceFormId: Number(val),
+                      sourceFieldId: "",
+                      sourceSubFieldId: "",
+                      targetSubFieldId: "",
+                    },
+                  });
+                }
+              }}
+              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">None</option>
+              {prefillForms.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.title} (#{f.id})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Source List Field */}
+          {field.prefillFromPreviousAnswer?.sourceFormId && (
+            <div>
+              <label className="block text-xs text-gray-700 mb-1">
+                Source List Field
+              </label>
+              <select
+                value={field.prefillFromPreviousAnswer?.sourceFieldId ?? ""}
+                onChange={(e) => {
+                  onUpdate({
+                    prefillFromPreviousAnswer: {
+                      ...field.prefillFromPreviousAnswer!,
+                      sourceFieldId: e.target.value,
+                      sourceSubFieldId: "",
+                      targetSubFieldId: "",
+                    },
+                  });
+                }}
+                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">Select a list field...</option>
+                {prefillSourceListFields.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label} ({f.kind})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Source Sub-field */}
+          {field.prefillFromPreviousAnswer?.sourceFieldId &&
+            sourceSubFields.length > 0 && (
+              <div>
+                <label className="block text-xs text-gray-700 mb-1">
+                  Source Sub-field (to read from)
+                </label>
+                <select
+                  value={
+                    field.prefillFromPreviousAnswer?.sourceSubFieldId ?? ""
+                  }
+                  onChange={(e) => {
+                    onUpdate({
+                      prefillFromPreviousAnswer: {
+                        ...field.prefillFromPreviousAnswer!,
+                        sourceSubFieldId: e.target.value,
+                        targetSubFieldId: "",
+                      },
+                    });
+                  }}
+                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Select a sub-field...</option>
+                  {sourceSubFields.map((sf) => (
+                    <option key={sf.id} value={sf.id}>
+                      {sf.label} ({sf.kind})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+          {/* Target Sub-field */}
+          {field.prefillFromPreviousAnswer?.sourceSubFieldId && (
+            <div>
+              <label className="block text-xs text-gray-700 mb-1">
+                Target Sub-field (to write into)
+              </label>
+              <select
+                value={field.prefillFromPreviousAnswer?.targetSubFieldId ?? ""}
+                onChange={(e) => {
+                  onUpdate({
+                    prefillFromPreviousAnswer: {
+                      ...field.prefillFromPreviousAnswer!,
+                      targetSubFieldId: e.target.value,
+                    },
+                  });
+                }}
+                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">Select a sub-field...</option>
+                {subFields.map((sf) => (
+                  <option key={sf.id} value={sf.id}>
+                    {sf.label} ({sf.kind})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       )}
     </FieldWrapper>

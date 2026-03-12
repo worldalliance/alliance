@@ -27,13 +27,17 @@ import { ActionEvent, ActionStatus } from '../entities/action-event.entity';
 import { Action } from '../entities/action.entity';
 import { getImageSource } from 'src/images/images.service';
 import { ActionUpdate } from '../entities/action-update.entity';
-import { ReminderGroup, ReminderCohortType } from '../entities/reminder-group.entity';
+import {
+  ReminderGroup,
+  ReminderCohortType,
+} from '../entities/reminder-group.entity';
 import { ActionSuite } from '../entities/action-suite.entity';
 import { Form } from 'src/tasks/entities/form.entity';
 import { SubmitFormDto } from 'src/tasks/form.dto';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
 import { PreviewNotificationPlan } from 'src/notifs/action-event-reminder.service';
 import { GeneralUpdate } from '../entities/general-update.entity';
+import type { CohortExpression } from '../cohort-expression.types';
 
 export class CreateReminderGroupDto extends PickType(ReminderGroup, [
   'name',
@@ -154,8 +158,6 @@ export enum UserActionRelation {
 export class ActionDto extends OmitType(Action, [
   'authors',
   'events',
-  'manualCohortUserIdSet',
-  'participatingTagIdSet',
   'updates',
 ]) {
   @ApiProperty()
@@ -489,8 +491,6 @@ export class ActionSuiteDto extends OmitType(ActionSuite, ['actions']) {
 export class ExportActionDto extends OmitType(Action, [
   'deadlineWeekNumber',
   'latestMemberActionEvent',
-  'manualCohortUserIdSet',
-  'participatingTagIdSet',
   'status',
   'usersJoined',
   'usersCompleted',
@@ -696,4 +696,21 @@ export class TimelineFeedItemDto {
   @Type(() => ActionEventDto)
   @IsOptional()
   actionEvent?: ActionEventDto;
+}
+
+export class EvaluateCohortExpressionDto {
+  @ApiProperty({ description: 'Cohort expression to evaluate' })
+  @IsDefined()
+  @Type(() => String)
+  expression: CohortExpression;
+}
+
+export class EvaluateCohortExpressionResponseDto {
+  @ApiProperty({
+    type: [Number],
+    description: 'User IDs matching the expression',
+    isArray: true,
+  })
+  @IsArray()
+  userIds: number[];
 }

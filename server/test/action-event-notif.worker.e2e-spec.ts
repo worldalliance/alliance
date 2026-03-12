@@ -133,14 +133,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
   const createActionWithMemberEvent = async ({
     name,
     eventDate,
-    participatingTags,
     suite,
     suiteManaged,
     timeEstimate,
   }: {
     name: string;
     eventDate: Date;
-    participatingTags?: Tag[];
     suite?: ActionSuite;
     suiteManaged?: boolean;
     timeEstimate?: number;
@@ -154,9 +152,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
         type: ActionTaskType.Activity,
         commitmentless: true,
         everyoneShouldComplete: false,
-        participatingTags: participatingTags ?? [ctx.defaultTag],
         suite,
         timeEstimate,
+        cohortExpression: {
+          type: 'Tag',
+          tagId: ctx.defaultTag.id,
+        },
       }),
     );
 
@@ -645,7 +646,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
         email: `${uniqueName('cohort')}@example.com`,
         password: 'pass',
         name: 'Cohort User',
-        tags: [tag],
+        tags: [tag, ctx.defaultTag],
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
@@ -668,7 +669,6 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const { memberEvent } = await createActionWithMemberEvent({
       name: uniqueName('group-cohort-action'),
       eventDate: new Date(now - 35 * 60 * 1000),
-      participatingTags: [tag],
     });
 
     const reminderGroup = await createReminderGroup(
@@ -951,7 +951,6 @@ describe('ActionEventNotifWorker (e2e)', () => {
         eventDate,
         suite,
         suiteManaged: true,
-        participatingTags: [savedTag],
       });
 
     const { action: secondAction } = await createActionWithMemberEvent({

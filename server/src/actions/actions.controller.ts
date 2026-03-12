@@ -74,6 +74,8 @@ import {
   UpdateActionActivityDto,
   UpdateActionDto,
   UpdateActionEventDto,
+  EvaluateCohortExpressionDto,
+  EvaluateCohortExpressionResponseDto,
 } from './dto/action.dto';
 import {
   NotificationScheduleEntryDto,
@@ -417,7 +419,6 @@ export class ActionsController {
       .findAllSorted({
         events: true,
         activities: true,
-        participatingTags: true,
         suite: true,
       })
       .then((actions) => instanceToPlain(actions));
@@ -650,6 +651,18 @@ export class ActionsController {
   ): Promise<ProfileDto[]> {
     const users = await this.actionsService.findCompletedUsersForAction(id);
     return users.map((user) => new ProfileDto(user));
+  }
+
+  @Post('evaluate-cohort')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: EvaluateCohortExpressionResponseDto })
+  async evaluateCohort(
+    @Body() dto: EvaluateCohortExpressionDto,
+  ): Promise<EvaluateCohortExpressionResponseDto> {
+    const userIds = await this.actionsService.evaluateCohortExpressionBatch(
+      dto.expression,
+    );
+    return { userIds };
   }
 
   @Post('create')

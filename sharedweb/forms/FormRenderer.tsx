@@ -29,6 +29,7 @@ import type {
   DeviceVisibilityTarget,
   FormSchema,
   FormValue,
+  ListField,
   VisibleIfFormula,
 } from "@alliance/shared/forms/formschema";
 import {
@@ -532,6 +533,13 @@ const FormRenderer = ({
             ids.add(block.sourceFormId);
           }
         }
+        // Also collect from list fields with prefillFromPreviousAnswer
+        if ("label" in element && (element as AnyField).kind === "list") {
+          const listField = element as ListField;
+          if (listField.prefillFromPreviousAnswer?.sourceFormId) {
+            ids.add(listField.prefillFromPreviousAnswer.sourceFormId);
+          }
+        }
       }
     }
     return Array.from(ids);
@@ -625,6 +633,67 @@ const FormRenderer = ({
       cancelled = true;
     };
   }, [previousAnswerSourceFormIds, adminPreviewUserId]);
+
+  // --- Prefill list fields from previous answer data ---
+  useEffect(() => {
+    if (readOnly) return;
+    if (Object.keys(previousAnswerData).length === 0) return;
+
+    setFormData((prev) => {
+      const next = { ...prev };
+      let didUpdate = false;
+
+      for (const page of schema.pages) {
+        for (const element of page.fields) {
+          if (!("label" in element)) continue;
+          const field = element as AnyField;
+          if (field.kind !== "list") continue;
+          const listField = field as ListField;
+          const prefill = listField.prefillFromPreviousAnswer;
+          if (!prefill) continue;
+
+          // Only prefill if untouched (undefined, null, or array of all-empty objects from defaultNumber)
+          const cur = next[field.id];
+          const isUntouched =
+            cur === undefined ||
+            cur === null ||
+            (Array.isArray(cur) &&
+              cur.every(
+                (c: unknown) =>
+                  typeof c === "object" &&
+                  c !== null &&
+                  Object.keys(c as Record<string, unknown>).length === 0
+              ));
+          if (!isUntouched) continue;
+
+          const sourceAnswers = previousAnswerData[prefill.sourceFormId];
+          if (!sourceAnswers) continue;
+          const sourceList = sourceAnswers[prefill.sourceFieldId];
+          if (!Array.isArray(sourceList) || sourceList.length === 0) continue;
+
+          // Respect max constraint
+          const maxCards =
+            typeof listField.max === "number" ? listField.max : Infinity;
+          const items = sourceList.slice(0, maxCards);
+
+          const prefilledCards = items.map(
+            (srcCard: Record<string, unknown>) => {
+              const card: Record<string, FormValue> = {};
+              const val = srcCard[prefill.sourceSubFieldId];
+              if (val !== undefined && val !== null) {
+                card[prefill.targetSubFieldId] = val as FormValue;
+              }
+              return card;
+            }
+          );
+
+          next[field.id] = prefilledCards;
+          didUpdate = true;
+        }
+      }
+      return didUpdate ? next : prev;
+    });
+  }, [previousAnswerData, schema, readOnly]);
 
   const applyFieldErrorUpdates = useCallback(
     (

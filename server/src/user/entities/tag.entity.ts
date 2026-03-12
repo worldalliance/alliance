@@ -9,7 +9,6 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { Type } from 'class-transformer';
-import { Action } from 'src/actions/entities/action.entity';
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -63,12 +62,6 @@ export class Tag {
   @JoinTable()
   @Type(() => User)
   users: Ty<User>[];
-
-  @ManyToMany(() => Action, (action) => action.participatingTags)
-  @ApiProperty({ type: () => Action, isArray: true })
-  @Allow()
-  @Type(() => Action)
-  participatingIn: Action[];
 
   @ManyToMany(() => GeneralUpdate, (generalUpdate) => generalUpdate.tags)
   @ApiProperty({ type: () => GeneralUpdate, isArray: true })

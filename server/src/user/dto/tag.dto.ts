@@ -4,7 +4,7 @@ import { ProfileDto } from './user.dto';
 import { Type } from 'class-transformer';
 import { Allow, IsNumber } from 'class-validator';
 
-export class TagDto extends OmitType(Tag, ['users', 'participatingIn']) {
+export class TagDto extends OmitType(Tag, ['users']) {
   @Allow()
   @ApiProperty({ type: ProfileDto, isArray: true })
   @Type(() => ProfileDto)

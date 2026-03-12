@@ -89,7 +89,6 @@ const InvitePage: React.FC = () => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     publicOnly: false,
-    participatingTags: [],
     updates: [],
     userRelation: "joined" as const,
     canParticipate: true,

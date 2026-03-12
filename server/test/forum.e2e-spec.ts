@@ -65,7 +65,10 @@ describe('Forum (e2e)', () => {
       category: 'Test',
       body: 'Test action for forum tests',
       status: ActionStatus.GatheringCommitments,
-      participatingTags: [ctx.defaultTag],
+      cohortExpression: {
+        type: 'Tag',
+        tagId: ctx.defaultTag.id,
+      },
     });
     await actionRepo.save(testAction);
 
@@ -1009,8 +1012,7 @@ describe('Forum (e2e)', () => {
     });
 
     it('notifies all authors when a comment is posted', async () => {
-      const { user: coAuthor } =
-        await createExtraUserAndToken();
+      const { user: coAuthor } = await createExtraUserAndToken();
 
       const postResponse = await request(ctx.app.getHttpServer())
         .post('/forum/posts')
@@ -1111,8 +1113,7 @@ describe('Forum (e2e)', () => {
     });
 
     it('includes co-authored posts in findPostsByUser', async () => {
-      const { user: coAuthor } =
-        await createExtraUserAndToken();
+      const { user: coAuthor } = await createExtraUserAndToken();
 
       const postResponse = await request(ctx.app.getHttpServer())
         .post('/forum/posts')

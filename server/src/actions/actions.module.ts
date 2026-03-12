@@ -38,6 +38,7 @@ import { EventLogModule } from 'src/eventlog/eventlog.module';
 import { ActionStatsService } from './action-stats.service';
 import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
 import { CommunityModule } from 'src/community/community.module';
+import { Community } from 'src/community/entities/community.entity';
 import { GeneralUpdate } from './entities/general-update.entity';
 import { GeneralUpdateActivity } from './entities/general-update-activity.entity';
 import { forwardRef } from '@nestjs/common';
@@ -67,6 +68,7 @@ import { ApnsModule } from 'src/apns/apns.module';
       Post,
       ReminderGroup,
       Tag,
+      Community,
     ]),
     ContractModule,
     UserModule,

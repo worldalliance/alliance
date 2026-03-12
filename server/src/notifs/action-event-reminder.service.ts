@@ -267,7 +267,6 @@ export class ActionEventReminderService {
       .createQueryBuilder('rg')
       .leftJoinAndSelect('rg.memberActionEvent', 'event')
       .leftJoinAndSelect('event.action', 'eventAction')
-      .leftJoinAndSelect('eventAction.participatingTags', 'eventActionTags')
       .leftJoinAndSelect('rg.deadlineEvent', 'deadline')
       .leftJoinAndSelect('rg.users', 'users')
       .leftJoinAndSelect('users.tags', 'userTags')
@@ -305,9 +304,7 @@ export class ActionEventReminderService {
       where: { id: groupId },
       relations: {
         memberActionEvent: {
-          action: {
-            participatingTags: true,
-          },
+          action: true,
         },
         deadlineEvent: true,
         users: { contractEvents: true },

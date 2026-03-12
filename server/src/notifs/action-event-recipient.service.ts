@@ -21,6 +21,11 @@ import { ActionSuite } from 'src/actions/entities/action-suite.entity';
 import { computeIsAwayInRange } from 'src/utils/user';
 import { findLeast } from 'src/utils/filter';
 import { CommunityService } from 'src/community/community.service';
+import type { CohortExpression } from 'src/actions/cohort-expression.types';
+import {
+  evaluateCohortExpressionForUser,
+  type SingleUserCohortContext,
+} from 'src/actions/cohort-expression.evaluator';
 
 @Injectable()
 export class ActionEventRecipientService {
@@ -37,9 +42,7 @@ export class ActionEventRecipientService {
     eventDate: Date;
     deadlineDate: Date | null;
     everyoneShouldComplete: boolean;
-    manualCohortUserIds?: Set<number>;
-    targetTagIds: Set<string>;
-    useManualCohort: boolean;
+    cohortExpression?: CohortExpression | null;
     user: User;
     userDismissed: boolean;
     onboarding: boolean;
@@ -50,9 +53,7 @@ export class ActionEventRecipientService {
       eventDate,
       deadlineDate,
       everyoneShouldComplete,
-      manualCohortUserIds,
-      targetTagIds,
-      useManualCohort,
+      cohortExpression,
       user,
       userDismissed,
       onboarding,
@@ -63,15 +64,18 @@ export class ActionEventRecipientService {
     if (!includeDismissed && userDismissed) {
       return false;
     }
-    if (useManualCohort) {
-      return manualCohortUserIds?.has(user.id) ?? false;
-    }
 
-    if (!user.tags.some((tag) => targetTagIds.has(tag.id))) {
-      return false;
+    // Evaluate cohort expression synchronously for simple leaf types
+    if (cohortExpression) {
+      const inCohort = this.evaluateCohortExpressionSync(
+        cohortExpression,
+        user,
+      );
+      if (!inCohort) return false;
     }
 
     if (
+      !everyoneShouldComplete &&
       deadlineDate &&
       !user.hasActiveContractInFullRange({
         startDate: eventDate,
@@ -95,6 +99,48 @@ export class ActionEventRecipientService {
       return true;
     }
     return user.hasActiveContractAt(eventDate) || everyoneShouldComplete;
+  }
+
+  /**
+   * Synchronous evaluation of a cohort expression for a single user.
+   * Only handles Tag and Manual leaf types synchronously.
+   * Other leaf types default to true (permissive) for notification purposes.
+   */
+  private evaluateCohortExpressionSync(
+    expr: CohortExpression,
+    user: User,
+  ): boolean {
+    if ('type' in expr) {
+      switch (expr.type) {
+        case 'Tag':
+          return (user.tags || []).some((tag) => tag.id === expr.tagId);
+        case 'Manual':
+          return expr.userIds.includes(user.id);
+        case 'CompletedAction':
+        case 'InProgressAction':
+        case 'FormFieldValue':
+        case 'GroupLead':
+          // Async leaf types: permissive by default in sync context
+          return true;
+      }
+    }
+
+    if ('op' in expr) {
+      switch (expr.op) {
+        case 'AND':
+          return expr.children.every((child) =>
+            this.evaluateCohortExpressionSync(child, user),
+          );
+        case 'OR':
+          return expr.children.some((child) =>
+            this.evaluateCohortExpressionSync(child, user),
+          );
+        case 'NOT':
+          return !this.evaluateCohortExpressionSync(expr.child, user);
+      }
+    }
+
+    return true;
   }
 
   getNextEvent(params: {
@@ -123,7 +169,6 @@ export class ActionEventRecipientService {
   }): Promise<User[]> {
     const { eventStatus, action, eventId, includeSuspended, includeDismissed } =
       params;
-    const targetTagIds = new Set(action.participatingTags.map((tag) => tag.id));
     const events =
       action.events ??
       (
@@ -154,17 +199,12 @@ export class ActionEventRecipientService {
         })
       ).map((a) => a.userId),
     );
-    const manualCohortUserIdsSet = action.manualCohortUserIds
-      ? new Set(action.manualCohortUserIds)
-      : undefined;
     const filterToEligible = (user: User) =>
       this.computeShouldParticipate({
         eventDate: event.date,
         deadlineDate: deadlineEvent?.date ?? null,
         everyoneShouldComplete: action.everyoneShouldComplete,
-        manualCohortUserIds: manualCohortUserIdsSet,
-        targetTagIds,
-        useManualCohort: action.useManualCohort,
+        cohortExpression: action.cohortExpression,
         user,
         userDismissed: usersDismissed.has(user.id),
         onboarding: action.onboarding,
@@ -217,9 +257,6 @@ export class ActionEventRecipientService {
     deadlineEvent: Pick<ActionEvent, 'newStatus' | 'action' | 'date'> | null,
     actionSuite?: ActionSuite,
   ): Promise<User[]> {
-    const targetTagIds = new Set(
-      event.action.participatingTags.map((tag) => tag.id),
-    );
     const usersWithTags = await this.userService.findByIds(
       users.map((user) => user.id),
       { tags: true, awayRanges: true, contractEvents: true },
@@ -236,17 +273,12 @@ export class ActionEventRecipientService {
         })
       ).map((a) => a.userId),
     );
-    const manualCohortUserIdsSet = event.action.manualCohortUserIds
-      ? new Set(event.action.manualCohortUserIds)
-      : undefined;
     const filterToEligible = (user: User) =>
       this.computeShouldParticipate({
         eventDate: event.date,
         deadlineDate: deadlineEvent?.date ?? null,
         everyoneShouldComplete: event.action.everyoneShouldComplete,
-        manualCohortUserIds: manualCohortUserIdsSet,
-        targetTagIds,
-        useManualCohort: event.action.useManualCohort,
+        cohortExpression: event.action.cohortExpression,
         user: idToUser.get(user.id)!,
         userDismissed: usersDismissed.has(user.id),
         onboarding: event.action.onboarding,

@@ -163,9 +163,8 @@ describe('ForumActionCompleterWorker (e2e)', () => {
   const createActionWithEvents = async (params: {
     formId: number;
     now: Date;
-    manualCohortUserIds: number[];
   }) => {
-    const { formId, now, manualCohortUserIds } = params;
+    const { formId, now } = params;
     const action = await actionRepo.save(
       actionRepo.create({
         name: 'Forum Action',
@@ -174,14 +173,12 @@ describe('ForumActionCompleterWorker (e2e)', () => {
         shortDescription: 'Short description',
         type: ActionTaskType.Activity,
         commitmentless: true,
-        everyoneShouldComplete: false,
+        everyoneShouldComplete: true,
         shouldCompleteAfterDeadline: false,
-        participatingTags: [ctx.defaultTag],
-        useManualCohort: true,
-        manualCohortUserIds,
         visibilityMode: VisibilityMode.Public,
         isForumParticipationAction: true,
         taskFormId: formId,
+        cohortExpression: { type: 'Tag', tagId: ctx.defaultTag.id },
       }),
     );
 
@@ -218,9 +215,13 @@ describe('ForumActionCompleterWorker (e2e)', () => {
       'Activity Completer',
     );
     const noReplyUser = await createUser('noreply@example.com', 'No Reply');
-    const nonCohortResponder = await createUser(
-      'noncohort@example.com',
-      'Non Cohort',
+    const nonCohortResponder = await userRepo.save(
+      userRepo.create({
+        email: 'noncohort@example.com',
+        password: 'pass',
+        name: 'Non Cohort',
+        tags: [],
+      }),
     );
 
     const postAuthor = await userRepo.findOneOrFail({
@@ -237,12 +238,6 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     const action = await createActionWithEvents({
       formId: form.id,
       now,
-      manualCohortUserIds: [
-        responder.id,
-        completedViaForm.id,
-        completedViaActivity.id,
-        noReplyUser.id,
-      ],
     });
 
     await createComment({ author: responder, post, body: 'Top level reply' });
@@ -337,9 +332,6 @@ describe('ForumActionCompleterWorker (e2e)', () => {
         commitmentless: true,
         everyoneShouldComplete: false,
         shouldCompleteAfterDeadline: false,
-        participatingTags: [ctx.defaultTag],
-        useManualCohort: true,
-        manualCohortUserIds: [responder.id],
         visibilityMode: VisibilityMode.Public,
         isForumParticipationAction: true,
         taskFormId: form.id,
@@ -400,11 +392,18 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     const action = await createActionWithEvents({
       formId: form.id,
       now,
-      manualCohortUserIds: [responder.id],
     });
 
+    const nonCohortCommenter = await userRepo.save(
+      userRepo.create({
+        email: 'noncohort-child@example.com',
+        password: 'pass',
+        name: 'Non Cohort Commenter',
+        tags: [],
+      }),
+    );
     const topLevelComment = await createComment({
-      author: postAuthor,
+      author: nonCohortCommenter,
       post,
       body: 'Top level',
     });

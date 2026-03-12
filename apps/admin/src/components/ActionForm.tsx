@@ -6,12 +6,13 @@ import {
   TagDto,
   VisibilityMode,
 } from "@alliance/shared/client";
-import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import React, { useMemo, useRef } from "react";
 import FormTextarea from "./FormTextarea";
 import { cn } from "@alliance/shared/styles/util";
+import CohortExpressionBuilder from "./CohortExpressionBuilder";
+import type { CohortExpression } from "@alliance/shared/cohort-expression.types";
+import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 
 interface ActionFormProps {
   form: CreateActionDto;
@@ -34,20 +35,15 @@ interface ActionFormProps {
   tagsLoading: boolean;
   availableSuites?: ActionSuite[];
   suitesLoading: boolean;
-  selectedTagIds: string[];
-  onTagsChange: (ids: string[]) => void;
   availableUsers?: UserSelectUser[];
   usersLoading?: boolean;
-  manualCohortUserIds: number[];
-  onManualCohortChange: (ids: number[]) => void;
+  cohortExpression: CohortExpression | null | undefined;
+  onCohortExpressionChange: (expr: CohortExpression | null) => void;
   authorIds: number[];
   onAuthorsChange: (ids: number[]) => void;
   actionId?: number;
   allActions?: { id: number; name: string; usersCompleted: number }[];
   allActionsLoading?: boolean;
-  onFetchActionUsers?: (
-    actionId: number
-  ) => Promise<{ completed: number[]; incomplete: number[] }>;
 }
 
 // Section wrapper component for visual grouping
@@ -79,90 +75,18 @@ const ActionForm: React.FC<ActionFormProps> = ({
   //   onDelete,
   baseUrl,
   availableTags = [],
-  tagsLoading,
   availableSuites = [],
   suitesLoading = false,
-  selectedTagIds,
-  onTagsChange,
   availableUsers = [],
   usersLoading = false,
-  manualCohortUserIds = [],
-  onManualCohortChange,
+  cohortExpression,
+  onCohortExpressionChange,
   authorIds,
   onAuthorsChange,
-  actionId,
   allActions = [],
-  allActionsLoading = false,
-  onFetchActionUsers,
+  availableForms = [],
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [populateDropdownOpen, setPopulateDropdownOpen] = useState(false);
-  const [populateSearchQuery, setPopulateSearchQuery] = useState("");
-  const [expandedActionId, setExpandedActionId] = useState<number | null>(null);
-  const [expandedActionUsers, setExpandedActionUsers] = useState<{
-    completed: number[];
-    incomplete: number[];
-  } | null>(null);
-  const [expandLoading, setExpandLoading] = useState(false);
-
-  const populateDropdownRef = useOutsideClick(
-    useCallback(() => setPopulateDropdownOpen(false), [])
-  );
-
-  const filteredActions = useMemo(
-    () =>
-      allActions
-        .filter((a) => a.id !== actionId)
-        .filter((a) =>
-          a.name.toLowerCase().includes(populateSearchQuery.toLowerCase())
-        ),
-    [allActions, actionId, populateSearchQuery]
-  );
-
-  const expandRequestId = useRef(0);
-
-  const handleExpandAction = async (id: number) => {
-    if (expandedActionId === id) {
-      setExpandedActionId(null);
-      setExpandedActionUsers(null);
-      return;
-    }
-    setExpandedActionId(id);
-    setExpandedActionUsers(null);
-    if (!onFetchActionUsers) return;
-    const requestId = ++expandRequestId.current;
-    setExpandLoading(true);
-    try {
-      const users = await onFetchActionUsers(id);
-      if (requestId !== expandRequestId.current) return;
-      setExpandedActionUsers(users);
-    } finally {
-      if (requestId === expandRequestId.current) {
-        setExpandLoading(false);
-      }
-    }
-  };
-
-  const handlePopulateSelect = (userIds: number[]) => {
-    onManualCohortChange(userIds);
-    setPopulateDropdownOpen(false);
-    setPopulateSearchQuery("");
-    setExpandedActionId(null);
-    setExpandedActionUsers(null);
-  };
-
-  const handleToggleTag = (tagId: string) => {
-    const nextSelection = selectedTagIds.includes(tagId)
-      ? selectedTagIds.filter((id) => id !== tagId)
-      : [...selectedTagIds, tagId];
-    onTagsChange(nextSelection);
-  };
-
-  //   const handleClearTags = () => {
-  //     if (selectedTagIds.length) {
-  //       onTagsChange([]);
-  //     }
-  //   };
 
   type FieldType =
     | "text"
@@ -689,209 +613,19 @@ const ActionForm: React.FC<ActionFormProps> = ({
       </FormSection>
 
       {/* TARGETING SECTION */}
-      <FormSection title="Participating users">
-        <div className="space-y-6">
-          {/* Tags */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">
-                Participating Tags
-              </label>
-              {/* <button
-                type="button"
-                onClick={handleClearTags}
-                disabled={!selectedTagIds.length}
-                className="text-xs text-blue-600 hover:text-blue-800 disabled:text-gray-300"
-              >
-                Clear
-              </button> */}
-            </div>
-            <p className="text-xs text-gray-500 mb-3">
-              Actions without tags will not be shown to any users, unless Manual
-              User Cohort is enabled.
-            </p>
-            {tagsLoading ? (
-              <p className="text-sm text-gray-500">Loading tags...</p>
-            ) : availableTags.length ? (
-              <div className="grid gap-2 sm:grid-cols-4">
-                {availableTags.map((tag) => {
-                  const checked = selectedTagIds.includes(tag.id);
-                  return (
-                    <label
-                      key={tag.id}
-                      className={cn(
-                        "flex items-start gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors",
-                        checked
-                          ? "border-blue-400 bg-blue-50"
-                          : "border-gray-200 hover:border-gray-300"
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        checked={checked}
-                        onChange={() => handleToggleTag(tag.id)}
-                      />
-                      <span className="flex flex-col min-w-0">
-                        <span className="font-medium text-gray-800">
-                          {tag.name}
-                        </span>
-                        {tag.publicDisplayName && (
-                          <span className="text-xs text-gray-500">
-                            {tag.publicDisplayName}
-                          </span>
-                        )}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">
-                No tags available. Create one in the tags dashboard.
-              </p>
-            )}
-          </div>
-
-          {/* Manual Cohort */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">
-                Manual User Cohort{" "}
-                {form.useManualCohort ? `(${manualCohortUserIds.length})` : ""}
-              </label>
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="useManualCohort"
-                  checked={Boolean(form.useManualCohort)}
-                  onChange={onInputChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <span className="text-gray-700">Enable</span>
-              </label>
-            </div>
-            {form.useManualCohort ? (
-              <>
-                {onFetchActionUsers && (
-                  <div className="relative mb-3" ref={populateDropdownRef}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPopulateDropdownOpen(!populateDropdownOpen);
-                        setExpandedActionId(null);
-                      }}
-                      disabled={allActionsLoading}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-                    >
-                      Populate from past action
-                      <ChevronDown className="h-4 w-4" />
-                    </button>
-                    {populateDropdownOpen && (
-                      <div className="absolute z-10 mt-1 w-80 bg-white border border-gray-200 rounded-md shadow-lg">
-                        <div className="p-2 border-b border-gray-200">
-                          <input
-                            type="text"
-                            placeholder="Search actions..."
-                            value={populateSearchQuery}
-                            onChange={(e) =>
-                              setPopulateSearchQuery(e.target.value)
-                            }
-                            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                            autoFocus
-                          />
-                        </div>
-                        <div className="max-h-60 overflow-y-auto">
-                          {allActionsLoading ? (
-                            <p className="p-3 text-sm text-gray-500">
-                              Loading actions...
-                            </p>
-                          ) : filteredActions.length === 0 ? (
-                            <p className="p-3 text-sm text-gray-500">
-                              No actions found.
-                            </p>
-                          ) : (
-                            filteredActions.map((a) => (
-                              <div key={a.id}>
-                                <button
-                                  type="button"
-                                  onClick={() => handleExpandAction(a.id)}
-                                  className={cn(
-                                    "w-full text-left px-3 py-2 text-sm hover:bg-gray-100 flex justify-between items-center",
-                                    expandedActionId === a.id && "bg-gray-50"
-                                  )}
-                                >
-                                  <span className="truncate mr-2">
-                                    {a.name}
-                                  </span>
-                                  <span className="text-xs text-gray-500 whitespace-nowrap">
-                                    {a.usersCompleted} completed
-                                  </span>
-                                </button>
-                                {expandedActionId === a.id && (
-                                  <div className="flex gap-2 px-3 py-2 bg-gray-50 border-t border-gray-100">
-                                    {expandLoading ? (
-                                      <p className="text-xs text-gray-500 w-full text-center py-1">
-                                        Loading users...
-                                      </p>
-                                    ) : expandedActionUsers ? (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            handlePopulateSelect(
-                                              expandedActionUsers.completed
-                                            )
-                                          }
-                                          className="flex-1 px-2 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded hover:bg-green-100"
-                                        >
-                                          Completed (
-                                          {expandedActionUsers.completed.length}
-                                          )
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            handlePopulateSelect(
-                                              expandedActionUsers.incomplete
-                                            )
-                                          }
-                                          className="flex-1 px-2 py-1.5 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded hover:bg-orange-100"
-                                        >
-                                          Didn&apos;t complete (
-                                          {
-                                            expandedActionUsers.incomplete
-                                              .length
-                                          }
-                                          )
-                                        </button>
-                                      </>
-                                    ) : null}
-                                  </div>
-                                )}
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                <UserSelect
-                  users={availableUsers}
-                  selectedUserIds={manualCohortUserIds}
-                  onChange={onManualCohortChange}
-                  loading={usersLoading}
-                  label="Select users"
-                />
-              </>
-            ) : (
-              <p className="text-xs text-gray-500">
-                Enable to manually select specific users for this action.
-              </p>
-            )}
-          </div>
-        </div>
+      <FormSection
+        title="Participating users"
+        description="Define which users should participate in this action using conditions and operators."
+      >
+        <CohortExpressionBuilder
+          value={cohortExpression}
+          onChange={onCohortExpressionChange}
+          availableTags={availableTags}
+          availableActions={allActions}
+          availableForms={availableForms}
+          availableUsers={availableUsers}
+          usersLoading={usersLoading}
+        />
       </FormSection>
 
       {/* ACTION BUTTONS */}

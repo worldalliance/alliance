@@ -627,7 +627,7 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const cohortWeekTotals = new Map<number, Map<number, CohortWeekBucket>>();
     const actions = await this.actionRepository.find({
-      relations: { events: true, participatingTags: true },
+      relations: { events: true },
     });
     const now = new Date();
 

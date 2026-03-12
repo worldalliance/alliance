@@ -109,6 +109,113 @@ export type ActionEvent = {
     suiteManaged: boolean;
 };
 
+/**
+ * Type of action activity
+ */
+export type ActionActivityType = 'user_joined' | 'user_completed' | 'user_declined' | 'user_wont_complete' | 'user_dismissed' | 'user_submitted_follow_up_form';
+
+export type EditableContent = {
+    /**
+     * Markdown or plain text body
+     */
+    body: string;
+    /**
+     * Image keys attached to the content
+     */
+    attachments: Array<string>;
+};
+
+export type FormResponse = {
+    id: number;
+    formId: number;
+    answers: {
+        [key: string]: unknown;
+    };
+    visibilityValidatorResults: {
+        [key: string]: unknown;
+    };
+    publicAnswers: {
+        [key: string]: unknown;
+    };
+    deviceType?: string;
+    user?: User;
+    sessionReplayUrl?: string;
+    createdAt: string;
+    phDistinctId?: string;
+    schemaSnapshot: {
+        [key: string]: unknown;
+    };
+    sid?: string;
+};
+
+/**
+ * Source of the activity
+ */
+export type ActivitySource = 'user' | 'admin_override';
+
+export type ActionActivity = {
+    id: number;
+    /**
+     * Type of action activity
+     */
+    type: ActionActivityType;
+    actionId: number;
+    userId: number;
+    createdAt: string;
+    dollar_amount?: number;
+    editableContent?: EditableContent;
+    likes: Array<User>;
+    likesCount: number;
+    taskFormResponse?: FormResponse;
+    declineReason?: string;
+    isMoral?: boolean;
+    outOfTime?: boolean;
+    /**
+     * Source of the activity
+     */
+    source: ActivitySource;
+};
+
+export type FollowUpForm = {
+    id: number;
+    name?: string;
+    startDate?: string;
+    endDate?: string;
+    actionId: number;
+    formId: number;
+};
+
+export type Tag = {
+    id: string;
+    name: string;
+    description: string;
+    publicDisplayName?: string;
+    createdAt: string;
+    updatedAt: string;
+    users: Array<User>;
+    generalUpdates: Array<GeneralUpdate>;
+};
+
+export type GeneralUpdate = {
+    id: number;
+    name: string;
+    schema: {
+        [key: string]: unknown;
+    };
+    createdAt: string;
+    updatedAt: string;
+    startDate?: string;
+    endDate?: string;
+    useManualCohort: boolean;
+    /**
+     * User IDs in the manual cohort
+     */
+    manualCohortUserIds?: Array<number> | null;
+    priority: number;
+    tags: Array<Tag>;
+    suites?: Array<ActionSuite>;
+};
+
 export type ReminderGroupTimingMode = 'absolute' | 'from_deadline' | 'within_range' | 'within_relative_range' | 'event_launch';
 
 export type ReminderCohortType = 'all_uncompleted' | 'group_leads_with_uncompleted' | 'tag' | 'custom';
@@ -212,114 +319,6 @@ export type ActionSuite = {
     events: Array<ActionEvent>;
 };
 
-export type GeneralUpdate = {
-    id: number;
-    name: string;
-    schema: {
-        [key: string]: unknown;
-    };
-    createdAt: string;
-    updatedAt: string;
-    startDate?: string;
-    endDate?: string;
-    useManualCohort: boolean;
-    /**
-     * User IDs in the manual cohort
-     */
-    manualCohortUserIds?: Array<number> | null;
-    priority: number;
-    tags: Array<Tag>;
-    suites?: Array<ActionSuite>;
-};
-
-export type Tag = {
-    id: string;
-    name: string;
-    description: string;
-    publicDisplayName?: string;
-    createdAt: string;
-    updatedAt: string;
-    users: Array<User>;
-    participatingIn: Array<Action>;
-    generalUpdates: Array<GeneralUpdate>;
-};
-
-/**
- * Type of action activity
- */
-export type ActionActivityType = 'user_joined' | 'user_completed' | 'user_declined' | 'user_wont_complete' | 'user_dismissed' | 'user_submitted_follow_up_form';
-
-export type EditableContent = {
-    /**
-     * Markdown or plain text body
-     */
-    body: string;
-    /**
-     * Image keys attached to the content
-     */
-    attachments: Array<string>;
-};
-
-export type FormResponse = {
-    id: number;
-    formId: number;
-    answers: {
-        [key: string]: unknown;
-    };
-    visibilityValidatorResults: {
-        [key: string]: unknown;
-    };
-    publicAnswers: {
-        [key: string]: unknown;
-    };
-    deviceType?: string;
-    user?: User;
-    sessionReplayUrl?: string;
-    createdAt: string;
-    phDistinctId?: string;
-    schemaSnapshot: {
-        [key: string]: unknown;
-    };
-    sid?: string;
-};
-
-/**
- * Source of the activity
- */
-export type ActivitySource = 'user' | 'admin_override';
-
-export type ActionActivity = {
-    id: number;
-    /**
-     * Type of action activity
-     */
-    type: ActionActivityType;
-    actionId: number;
-    userId: number;
-    createdAt: string;
-    dollar_amount?: number;
-    editableContent?: EditableContent;
-    likes: Array<User>;
-    likesCount: number;
-    taskFormResponse?: FormResponse;
-    declineReason?: string;
-    isMoral?: boolean;
-    outOfTime?: boolean;
-    /**
-     * Source of the activity
-     */
-    source: ActivitySource;
-};
-
-export type FollowUpForm = {
-    id: number;
-    name?: string;
-    startDate?: string;
-    endDate?: string;
-    actionId: number;
-    formId: number;
-};
-
 export type Action = {
     /**
      * Unique identifier for the action
@@ -390,17 +389,15 @@ export type Action = {
      */
     updatedAt: string;
     /**
-     * Whether to use a manual cohort for the action
+     * Cohort expression tree defining who participates
      */
-    useManualCohort: boolean;
+    cohortExpression?: {
+        [key: string]: unknown;
+    };
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction: boolean;
-    /**
-     * User IDs in the manual cohort
-     */
-    manualCohortUserIds?: Array<number>;
     visibilityMode: VisibilityMode;
     usersJoined: number;
     /**
@@ -449,7 +446,6 @@ export type Action = {
      * Events associated with the action
      */
     events: Array<ActionEvent>;
-    participatingTags: Array<Tag>;
     activities: Array<Array<ActionActivity>>;
     updates: Array<ActionUpdate>;
     followUpForms: Array<FollowUpForm>;
@@ -1364,17 +1360,15 @@ export type ActionDto = {
      */
     updatedAt: string;
     /**
-     * Whether to use a manual cohort for the action
+     * Cohort expression tree defining who participates
      */
-    useManualCohort: boolean;
+    cohortExpression?: {
+        [key: string]: unknown;
+    };
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction: boolean;
-    /**
-     * User IDs in the manual cohort
-     */
-    manualCohortUserIds?: Array<number>;
     visibilityMode: VisibilityMode;
     usersJoined: number;
     /**
@@ -1419,7 +1413,6 @@ export type ActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
-    participatingTags: Array<Tag>;
     activities: Array<Array<ActionActivity>>;
     followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
@@ -1614,6 +1607,22 @@ export type UpdateFollowUpFormDto = {
     formId?: number;
 };
 
+export type EvaluateCohortExpressionDto = {
+    /**
+     * Cohort expression to evaluate
+     */
+    expression: {
+        [key: string]: unknown;
+    };
+};
+
+export type EvaluateCohortExpressionResponseDto = {
+    /**
+     * User IDs matching the expression
+     */
+    userIds: Array<Array<unknown>>;
+};
+
 export type CreateActionDto = {
     /**
      * Name of the action
@@ -1668,17 +1677,15 @@ export type CreateActionDto = {
      */
     taskFormId?: number;
     /**
-     * Whether to use a manual cohort for the action
+     * Cohort expression tree defining who participates
      */
-    useManualCohort: boolean;
+    cohortExpression?: {
+        [key: string]: unknown;
+    };
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction: boolean;
-    /**
-     * User IDs in the manual cohort
-     */
-    manualCohortUserIds?: Array<number>;
     visibilityMode: VisibilityMode;
     /**
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
@@ -1713,7 +1720,6 @@ export type CreateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
-    participatingTags: Array<Tag>;
     followUpForms: Array<FollowUpForm>;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
@@ -1777,17 +1783,15 @@ export type UpdateActionDto = {
      */
     taskFormId?: number;
     /**
-     * Whether to use a manual cohort for the action
+     * Cohort expression tree defining who participates
      */
-    useManualCohort?: boolean;
+    cohortExpression?: {
+        [key: string]: unknown;
+    };
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction?: boolean;
-    /**
-     * User IDs in the manual cohort
-     */
-    manualCohortUserIds?: Array<number>;
     visibilityMode?: VisibilityMode;
     /**
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
@@ -1822,7 +1826,6 @@ export type UpdateActionDto = {
     customStatLabel?: string;
     customStatValue?: number;
     customStatGoal?: number;
-    participatingTags?: Array<Tag>;
     followUpForms?: Array<FollowUpForm>;
     canParticipate?: boolean;
     shouldParticipate?: boolean;
@@ -2047,17 +2050,15 @@ export type ExportActionDto = {
      */
     updatedAt: string;
     /**
-     * Whether to use a manual cohort for the action
+     * Cohort expression tree defining who participates
      */
-    useManualCohort: boolean;
+    cohortExpression?: {
+        [key: string]: unknown;
+    };
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
     isContractSigningAction: boolean;
-    /**
-     * User IDs in the manual cohort
-     */
-    manualCohortUserIds?: Array<number>;
     visibilityMode: VisibilityMode;
     /**
      * Override default contract signing requirements for showing in tasks (e.g. for onboarding actions)
@@ -2101,7 +2102,6 @@ export type ExportActionDto = {
      * Events associated with the action
      */
     events: Array<ActionEvent>;
-    participatingTags: Array<Tag>;
     activities: Array<Array<ActionActivity>>;
     updates: Array<ActionUpdate>;
     followUpForms: Array<FollowUpForm>;
@@ -5264,6 +5264,19 @@ export type ActionsGetCompletedUsersResponses = {
 };
 
 export type ActionsGetCompletedUsersResponse = ActionsGetCompletedUsersResponses[keyof ActionsGetCompletedUsersResponses];
+
+export type ActionsEvaluateCohortData = {
+    body: EvaluateCohortExpressionDto;
+    path?: never;
+    query?: never;
+    url: '/actions/evaluate-cohort';
+};
+
+export type ActionsEvaluateCohortResponses = {
+    200: EvaluateCohortExpressionResponseDto;
+};
+
+export type ActionsEvaluateCohortResponse = ActionsEvaluateCohortResponses[keyof ActionsEvaluateCohortResponses];
 
 export type ActionsCreateData = {
     body: CreateActionDto;

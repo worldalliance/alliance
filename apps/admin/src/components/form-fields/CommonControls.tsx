@@ -541,7 +541,7 @@ export function ConditionalVisibility({
               idArgument: response.data.idArgument,
               expression: response.data.expression,
             },
-          ] as const;
+          ];
         } catch (error) {
           console.error("Failed to load visibility validator", error);
           return [id, undefined] as const;
@@ -549,15 +549,16 @@ export function ConditionalVisibility({
       })
     )
       .then((entries) => {
-        const resolved = entries.filter(
-          (entry): entry is [number, { type: CustomValidatorType; idArgument?: string; expression?: string }] =>
-            entry[1] !== undefined
-        );
+        const resolved = entries.filter((entry) => entry[1] !== undefined);
         if (resolved.length === 0) return;
         setValidatorConfigs((prev) => {
           const next = { ...prev };
           for (const [id, config] of resolved) {
-            next[id] = config;
+            next[id as unknown as number] = config as {
+              type: CustomValidatorType;
+              idArgument?: string;
+              expression?: string;
+            };
           }
           return next;
         });
@@ -1402,11 +1403,7 @@ export function CustomValidatorSelect({
   const { validators, loading, error } = useCustomValidators();
   const isMemberTag = type === "MemberTag";
   const isCustomExpression = type === "CustomExpression";
-  const {
-    tags,
-    loading: tagsLoading,
-    error: tagsError,
-  } = useTags(isMemberTag);
+  const { tags, loading: tagsLoading } = useTags(isMemberTag);
   const {
     users,
     loading: usersLoading,
@@ -1610,8 +1607,7 @@ export function CustomValidatorSelect({
             </option>
           ))}
         </select>
-        {!!validators.find((validator) => validator.id === type)
-          ?.withIdField &&
+        {!!validators.find((validator) => validator.id === type)?.withIdField &&
           (isMemberTag ? (
             <select
               value={idArgument ?? ""}

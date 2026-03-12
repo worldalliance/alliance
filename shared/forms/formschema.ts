@@ -186,6 +186,13 @@ export type ListField = BaseField<"list"> & {
   addButtonLabel?: string;
   /** Sub-field ids to hide when rendering this list in an output view. */
   outputViewHiddenFieldIds?: string[];
+  /** Prefill this list's cards from a previous form's list field answer. */
+  prefillFromPreviousAnswer?: {
+    sourceFormId: number;
+    sourceFieldId: string;
+    sourceSubFieldId: string;
+    targetSubFieldId: string;
+  };
 };
 // Persist file answers as string URL/key
 export type FileField = BaseField<"file">;

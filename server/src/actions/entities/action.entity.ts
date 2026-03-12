@@ -9,7 +9,6 @@ import {
 } from 'class-validator';
 import { UpdateDateColumnTz } from 'src/datasources/basecolumns';
 import type { Ty } from 'src/tasks/entities/type';
-import { Tag } from 'src/user/entities/tag.entity';
 import { User } from 'src/user/entities/user.entity';
 import {
   Column,
@@ -27,6 +26,7 @@ import { ActionSuite } from './action-suite.entity';
 import { ActionUpdate } from './action-update.entity';
 import { FollowUpForm } from './follow-up-form.entity';
 import { findLeast } from 'src/utils/filter';
+import type { CohortExpression } from '../cohort-expression.types';
 
 export enum CustomActionStat {
   NONE = 'none',
@@ -158,12 +158,13 @@ export class Action {
   @Type(() => Date)
   updatedAt: Date;
 
-  @Column({ default: false })
-  @ApiProperty({
-    description: 'Whether to use a manual cohort for the action',
+  @Column({ type: 'jsonb', nullable: true })
+  @ApiPropertyOptional({
+    description: 'Cohort expression tree defining who participates',
   })
-  @IsDefined()
-  useManualCohort: boolean;
+  @IsOptional()
+  @Type(() => Object)
+  cohortExpression?: CohortExpression | null;
 
   @Column({ default: false })
   @ApiProperty({
@@ -172,16 +173,6 @@ export class Action {
   })
   @IsDefined()
   isContractSigningAction: boolean;
-
-  @Column('int', { array: true, nullable: true })
-  @Allow()
-  @ApiPropertyOptional({
-    description: 'User IDs in the manual cohort',
-    type: Number,
-    isArray: true,
-  })
-  @IsOptional()
-  manualCohortUserIds?: number[];
 
   @Column({
     type: 'enum',
@@ -311,15 +302,6 @@ export class Action {
   @Type(() => ActionEvent)
   events: Ty<ActionEvent>[];
 
-  @ManyToMany(() => Tag, (tag) => tag.participatingIn, {
-    onDelete: 'CASCADE',
-  })
-  @ApiProperty({ type: () => Tag, isArray: true })
-  @Allow()
-  @JoinTable()
-  @Type(() => Tag)
-  participatingTags: Tag[];
-
   @OneToMany(() => ActionActivity, (activity) => activity.action)
   @ApiProperty({
     description: 'Activities associated with the action',
@@ -353,7 +335,7 @@ export class Action {
   @ApiPropertyOptional({ type: () => ActionSuite })
   @Type(() => ActionSuite)
   @IsOptional()
-  suite?: ActionSuite | null;
+  suite?: Ty<ActionSuite> | null;
 
   @ManyToMany(() => User, (user) => user.authoredActions, { cascade: true })
   @JoinTable()
@@ -446,29 +428,5 @@ export class Action {
         this.latestMemberActionEvent.deadline.getTime() / MS_IN_WEEK,
       );
     }
-  }
-
-  @IsOptional()
-  private _manualCohortUserIdSet: Set<number> | null | undefined = undefined;
-  get manualCohortUserIdSet(): Set<number> | null {
-    populateCache: if (this._manualCohortUserIdSet === undefined) {
-      if (!this.manualCohortUserIds) {
-        this._manualCohortUserIdSet = null;
-      } else {
-        this._manualCohortUserIdSet = new Set(this.manualCohortUserIds);
-      }
-    }
-    return this._manualCohortUserIdSet;
-  }
-
-  @IsOptional()
-  private _participatingTagIdSet: Set<string> | null = null;
-  get participatingTagIdSet(): Set<string> {
-    if (!this._participatingTagIdSet) {
-      this._participatingTagIdSet = new Set(
-        this.participatingTags.map((tag) => tag.id),
-      );
-    }
-    return this._participatingTagIdSet;
   }
 }

@@ -1,4 +1,4 @@
-import type { Action, ActionSuite, Tag, TagDto } from "@alliance/shared/client";
+import type { Action, ActionSuite, TagDto } from "@alliance/shared/client";
 import {
   ActionDto,
   actionsArchive,
@@ -6,7 +6,6 @@ import {
   actionsExportAction,
   actionsFindAllWithDrafts,
   actionsFindOneAdmin,
-  actionsGetCompletedUsers,
   actionsGetIncompleteUsers,
   actionsRemove,
   actionsSuites,
@@ -25,6 +24,7 @@ import {
   userGetTags,
   userMembers,
 } from "@alliance/shared/client";
+import type { CohortExpression } from "@alliance/shared/cohort-expression.types";
 import type {
   ActionStatsWithOnboardingDto,
   ActionStatus,
@@ -132,10 +132,10 @@ const ActionDashboard: React.FC = () => {
   const [tagsLoading, setTagsLoading] = useState<boolean>(true);
   const [availableSuites, setAvailableSuites] = useState<ActionSuite[]>([]);
   const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [cohortExpression, setCohortExpression] =
+    useState<CohortExpression | null>(null);
   const [availableUsers, setAvailableUsers] = useState<UserSelectUser[]>([]);
   const [usersLoading, setUsersLoading] = useState<boolean>(true);
-  const [manualCohortUserIds, setManualCohortUserIds] = useState<number[]>([]);
 
   const [allActions, setAllActions] = useState<
     { id: number; name: string; usersCompleted: number }[]
@@ -306,15 +306,12 @@ const ActionDashboard: React.FC = () => {
     type: "Activity",
     preventCompletion: false,
     taskFormId: undefined,
-    participatingTags: [],
     isForumParticipationAction: false,
     everyoneShouldComplete: false,
     shouldCompleteAfterDeadline: false,
     publicOnly: false,
     suiteId: undefined,
     optional: false,
-    manualCohortUserIds: [],
-    useManualCohort: false,
     authorIds: [],
     onboarding: false,
     followUpForms: [],
@@ -335,7 +332,6 @@ const ActionDashboard: React.FC = () => {
         type: "Activity",
         preventCompletion: false,
         taskFormId: undefined,
-        participatingTags: [],
         shouldCompleteAfterDeadline: false,
         publicOnly: false,
         isForumParticipationAction: false,
@@ -345,8 +341,6 @@ const ActionDashboard: React.FC = () => {
           ? parseInt(searchParams.get("suiteId")!)
           : undefined,
         optional: false,
-        manualCohortUserIds: [],
-        useManualCohort: false,
         authorIds: [],
         onboarding: false,
         followUpForms: [],
@@ -354,8 +348,7 @@ const ActionDashboard: React.FC = () => {
       setImageKey(null);
       setImagePreview(null);
       setError(null);
-      setSelectedTagIds([]);
-      setManualCohortUserIds([]);
+      setCohortExpression(null);
     }
   }, [isNew, searchParams]);
 
@@ -404,24 +397,19 @@ const ActionDashboard: React.FC = () => {
           ...formData
         } = actionData;
 
-        const manualCohortUserIds = actionData.manualCohortUserIds ?? [];
         const authors = actionData.authors ?? [];
         const authorIds = authors.map((user) => user.id);
 
         setForm({
           ...formData,
           taskFormId: actionData.taskFormId,
-          participatingTags: actionData.participatingTags ?? [],
           suiteId: suite?.id,
-          manualCohortUserIds,
-          useManualCohort: actionData.useManualCohort ?? false,
           authorIds,
         });
 
-        setSelectedTagIds(
-          (actionData.participatingTags || []).map((tag) => tag.id)
+        setCohortExpression(
+          actionData.cohortExpression as unknown as CohortExpression | null
         );
-        setManualCohortUserIds(manualCohortUserIds);
 
         setImageKey(actionData.image ?? null);
         setImagePreview(actionData.image ?? null);
@@ -600,10 +588,6 @@ const ActionDashboard: React.FC = () => {
     if (type === "checkbox") {
       setForm((prev) => ({
         ...prev,
-        manualCohortUserIds:
-          name === "useManualCohort" && !target.checked
-            ? []
-            : prev.manualCohortUserIds,
         [name]: target.checked,
       }));
       return;
@@ -667,21 +651,12 @@ const ActionDashboard: React.FC = () => {
     }
   }, [actionId, action?.archived, confirm]);
 
-  const handleTagsChange = useCallback((ids: string[]) => {
-    setSelectedTagIds(ids);
-    setForm((prev) => ({
-      ...prev,
-      participatingTags: ids.map((id) => ({ id } as unknown as Tag)),
-    }));
-  }, []);
-
-  const handleManualCohortChange = useCallback((ids: number[]) => {
-    setManualCohortUserIds(ids);
-    setForm((prev) => ({
-      ...prev,
-      manualCohortUserIds: ids,
-    }));
-  }, []);
+  const handleCohortExpressionChange = useCallback(
+    (expr: CohortExpression | null) => {
+      setCohortExpression(expr);
+    },
+    []
+  );
 
   const handleAuthorsChange = useCallback((ids: number[]) => {
     setForm((prev) => ({
@@ -689,20 +664,6 @@ const ActionDashboard: React.FC = () => {
       authorIds: ids,
     }));
   }, []);
-
-  const handleFetchActionUsers = useCallback(
-    async (sourceActionId: number) => {
-      const [completedRes, incompleteRes] = await Promise.all([
-        actionsGetCompletedUsers({ path: { id: sourceActionId } }),
-        actionsGetIncompleteUsers({ path: { id: sourceActionId } }),
-      ]);
-      return {
-        completed: completedRes.data?.map((u) => u.id) ?? [],
-        incomplete: incompleteRes.data?.map((u) => u.id) ?? [],
-      };
-    },
-    []
-  );
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -733,11 +694,8 @@ const ActionDashboard: React.FC = () => {
     try {
       const formData = {
         ...form,
-        participatingTags: selectedTagIds.map(
-          (id) => ({ id } as unknown as Tag)
-        ),
         image: imageKey ?? undefined,
-        manualCohortUserIds: form.useManualCohort ? manualCohortUserIds : [],
+        cohortExpression: (cohortExpression ?? undefined) as Record<string, unknown> | undefined,
       };
 
       if (isNew) {
@@ -899,9 +857,9 @@ const ActionDashboard: React.FC = () => {
         isReady: partOfSuite,
       },
       {
-        id: "tags",
-        label: "Participating tags set",
-        isReady: (action.participatingTags?.length ?? 0) > 0,
+        id: "cohort",
+        label: "Cohort expression set",
+        isReady: !!action.cohortExpression,
       },
       {
         id: "authors",
@@ -1045,17 +1003,14 @@ const ActionDashboard: React.FC = () => {
             tagsLoading={tagsLoading}
             availableSuites={availableSuites}
             suitesLoading={suitesLoading}
-            selectedTagIds={selectedTagIds}
-            onTagsChange={handleTagsChange}
             availableUsers={availableUsers}
             usersLoading={usersLoading}
-            manualCohortUserIds={manualCohortUserIds}
-            onManualCohortChange={handleManualCohortChange}
+            cohortExpression={cohortExpression}
+            onCohortExpressionChange={handleCohortExpressionChange}
             authorIds={form.authorIds ?? []}
             onAuthorsChange={handleAuthorsChange}
             allActions={allActions}
             allActionsLoading={allActionsLoading}
-            onFetchActionUsers={handleFetchActionUsers}
           />
         </div>
       ) : (
@@ -1601,17 +1556,14 @@ const ActionDashboard: React.FC = () => {
                   tagsLoading={tagsLoading}
                   availableSuites={availableSuites}
                   suitesLoading={suitesLoading}
-                  selectedTagIds={selectedTagIds}
-                  onTagsChange={handleTagsChange}
                   availableUsers={availableUsers}
                   usersLoading={usersLoading}
-                  manualCohortUserIds={manualCohortUserIds}
-                  onManualCohortChange={handleManualCohortChange}
+                  cohortExpression={cohortExpression}
+                  onCohortExpressionChange={handleCohortExpressionChange}
                   authorIds={form.authorIds ?? []}
                   onAuthorsChange={handleAuthorsChange}
                   allActions={allActions}
                   allActionsLoading={allActionsLoading}
-                  onFetchActionUsers={handleFetchActionUsers}
                 />
               </div>
             )}

@@ -69,7 +69,7 @@ export class ForumActionCompleterWorker {
                         isForumParticipationAction: true,
                         computedAutocompleteAt: IsNull(),
                     },
-                    relations: { events: true, participatingTags: true },
+                    relations: { events: true },
                 });
 
                 for (const action of actions) {
@@ -303,7 +303,7 @@ export class ForumActionCompleterWorker {
                 isForumParticipationAction: true,
                 computedAutocompleteAt: IsNull(),
             },
-            relations: { events: true, participatingTags: true },
+            relations: { events: true },
         });
 
         const plans: ForumAutocompletePlanDto[] = [];

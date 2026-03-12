@@ -1,4 +1,5 @@
 import { ActionActivityType } from 'src/actions/entities/action-activity.entity';
+import type { ActionActivity } from 'src/actions/entities/action-activity.entity';
 import { CommentParentObject } from 'src/forum/entities/comment.entity';
 import { UserService } from 'src/user/user.service';
 import { ContractService } from 'src/contract/contract.service';
@@ -22,13 +23,15 @@ import {
   VisibilityMode,
 } from '../src/actions/entities/action.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
-import { Tag } from '../src/user/entities/tag.entity';
 import { User } from '../src/user/entities/user.entity';
 import {
   Notification,
   NotificationCategory,
 } from 'src/notifs/entities/notification.entity';
 import { ContractEventType } from 'src/user/entities/contract-event.entity';
+import type { Community } from '../src/community/entities/community.entity';
+import type { Form } from 'src/tasks/entities/form.entity';
+import type { FormResponse } from 'src/tasks/entities/formresponse.entity';
 
 describe('Actions (e2e)', () => {
   let ctx: TestContext;
@@ -38,10 +41,12 @@ describe('Actions (e2e)', () => {
   let eventRepo: Repository<ActionEvent>;
   let userService: UserService;
   let contractService: ContractService;
-  let tagRepo: Repository<Tag>;
   let userRepo: Repository<User>;
   let notifRepo: Repository<Notification>;
-  let restrictedTag: Tag;
+  let activityRepo: Repository<ActionActivity>;
+  let communityRepo: Repository<Community>;
+  let formRepo: Repository<Form>;
+  let formResponseRepo: Repository<FormResponse>;
   let groupRestrictedAction: Action;
   let outsiderToken: string;
 
@@ -60,7 +65,10 @@ describe('Actions (e2e)', () => {
         taskContents: 'Task copy',
         shortDescription: `${name} short description`,
         visibilityMode: VisibilityMode.Public,
-        participatingTags: [ctx.defaultTag],
+        cohortExpression: {
+          type: 'Tag',
+          tagId: ctx.defaultTag.id,
+        },
         ...options.actionOverrides,
       }),
     );
@@ -84,9 +92,18 @@ describe('Actions (e2e)', () => {
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     userService = ctx.app.get(UserService);
     contractService = ctx.app.get(ContractService);
-    tagRepo = ctx.dataSource.getRepository(Tag);
     userRepo = ctx.dataSource.getRepository(User);
     notifRepo = ctx.dataSource.getRepository(Notification);
+    activityRepo = ctx.dataSource.getRepository(
+      'ActionActivity',
+    ) as Repository<ActionActivity>;
+    communityRepo = ctx.dataSource.getRepository(
+      'Community',
+    ) as Repository<Community>;
+    formRepo = ctx.dataSource.getRepository('Form') as Repository<Form>;
+    formResponseRepo = ctx.dataSource.getRepository(
+      'FormResponse',
+    ) as Repository<FormResponse>;
 
     // Create test action with MemberAction status
     testAction = actionRepo.create({
@@ -95,7 +112,10 @@ describe('Actions (e2e)', () => {
       body: 'Test action for forum tests',
       taskContents: 'Test action for forum tests',
       visibilityMode: VisibilityMode.Public,
-      participatingTags: [ctx.defaultTag],
+      cohortExpression: {
+        type: 'Tag',
+        tagId: ctx.defaultTag.id,
+      },
     });
 
     testDraftAction = actionRepo.create({
@@ -103,7 +123,10 @@ describe('Actions (e2e)', () => {
       category: 'Test',
       body: 'Test action for forum tests',
       visibilityMode: VisibilityMode.Public,
-      participatingTags: [ctx.defaultTag],
+      cohortExpression: {
+        type: 'Tag',
+        tagId: ctx.defaultTag.id,
+      },
     });
 
     await actionRepo.save(testAction);
@@ -130,14 +153,6 @@ describe('Actions (e2e)', () => {
       contractId: ctx.defaultContractId,
     });
 
-    restrictedTag = await tagRepo.save(
-      tagRepo.create({
-        name: 'Restricted Cohort',
-        description: 'Members only',
-        users: [defaultUser],
-      }),
-    );
-
     const outsider = await userRepo.save(
       userRepo.create({
         email: 'outsider@example.com',
@@ -156,8 +171,11 @@ describe('Actions (e2e)', () => {
       {
         status: ActionStatus.GatheringCommitments,
         actionOverrides: {
-          participatingTags: [restrictedTag],
           visibilityMode: VisibilityMode.Public,
+          cohortExpression: {
+            type: 'Tag',
+            tagId: ctx.defaultTag.id,
+          },
         },
       },
     );
@@ -165,14 +183,16 @@ describe('Actions (e2e)', () => {
     await createPublishedAction('Group Restricted Hidden Action', {
       status: ActionStatus.GatheringCommitments,
       actionOverrides: {
-        participatingTags: [restrictedTag],
         visibilityMode: VisibilityMode.ParticipatingGroups,
+        cohortExpression: {
+          type: 'Tag',
+          tagId: ctx.defaultTag.id,
+        },
       },
     });
 
     groupRestrictedAction = await actionRepo.findOneOrFail({
       where: { id: restricted.id },
-      relations: { participatingTags: true },
     });
   }, 50000);
 
@@ -192,8 +212,6 @@ describe('Actions (e2e)', () => {
         everyoneShouldComplete: false,
         shouldCompleteAfterDeadline: false,
         isForumParticipationAction: false,
-        participatingTags: [],
-        useManualCohort: false,
         optional: false,
         preventCompletion: false,
         publicOnly: false,
@@ -406,12 +424,14 @@ describe('Actions (e2e)', () => {
           shortDescription: 'Manual cohort short description',
           taskContents: 'Manual cohort task',
           commitmentless: false,
-          participatingTags: [ctx.defaultTag],
-          manualCohortUserIds: [cohortMember.id],
-          useManualCohort: true,
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
+          everyoneShouldComplete: true,
           type: ActionTaskType.Activity,
+          cohortExpression: {
+            type: 'Manual',
+            userIds: [cohortMember.id],
+          },
         }),
       );
 
@@ -471,6 +491,678 @@ describe('Actions (e2e)', () => {
       await actionRepo.delete(manualAction.id);
       await userRepo.delete(cohortMember.id);
       await userRepo.delete(nonCohortUser.id);
+    });
+
+    it('evaluates CompletedAction cohort expression against real activity data', async () => {
+      // Create a prerequisite action that users will "complete"
+      const prerequisiteAction = await actionRepo.save(
+        actionRepo.create({
+          name: `Prerequisite Action ${Date.now()}`,
+          category: 'Test',
+          body: 'Prerequisite body',
+          taskContents: 'Prerequisite task',
+          visibilityMode: VisibilityMode.Public,
+        }),
+      );
+
+      const completedUser = await userService.create({
+        email: `completed-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Completed User',
+      });
+
+      const incompleteUser = await userService.create({
+        email: `incomplete-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Incomplete User',
+      });
+
+      // Create activity records: completedUser completed the prerequisite
+      await activityRepo.save(
+        activityRepo.create({
+          userId: completedUser.id,
+          actionId: prerequisiteAction.id,
+          type: ActionActivityType.USER_JOINED,
+        }),
+      );
+      await activityRepo.save(
+        activityRepo.create({
+          userId: completedUser.id,
+          actionId: prerequisiteAction.id,
+          type: ActionActivityType.USER_COMPLETED,
+        }),
+      );
+      // incompleteUser only joined
+      await activityRepo.save(
+        activityRepo.create({
+          userId: incompleteUser.id,
+          actionId: prerequisiteAction.id,
+          type: ActionActivityType.USER_JOINED,
+        }),
+      );
+
+      // Create action with CompletedAction cohort expression
+      const targetAction = await actionRepo.save(
+        actionRepo.create({
+          name: `CompletedAction Cohort ${Date.now()}`,
+          category: 'Test',
+          body: 'Body',
+          taskContents: 'Task',
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          everyoneShouldComplete: true,
+          type: ActionTaskType.Activity,
+          cohortExpression: {
+            type: 'CompletedAction',
+            actionId: prerequisiteAction.id,
+          },
+        }),
+      );
+
+      const targetEvent = await eventRepo.save(
+        eventRepo.create({
+          title: 'Launch',
+          description: 'Go',
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action: targetAction,
+        }),
+      );
+
+      const completedToken = ctx.jwtService.sign(
+        {
+          sub: completedUser.id,
+          email: completedUser.email,
+          name: completedUser.name,
+        },
+        { secret: process.env.JWT_SECRET },
+      );
+      const incompleteToken = ctx.jwtService.sign(
+        {
+          sub: incompleteUser.id,
+          email: incompleteUser.email,
+          name: incompleteUser.name,
+        },
+        { secret: process.env.JWT_SECRET },
+      );
+
+      const [completedRes, incompleteRes] = await Promise.all([
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${completedToken}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${incompleteToken}`)
+          .expect(200),
+      ]);
+
+      const findTarget = (res: request.Response) =>
+        res.body.find((a: ActionDto) => a.id === targetAction.id);
+
+      expect(findTarget(completedRes)?.canParticipate).toBe(true);
+      expect(findTarget(completedRes)?.shouldParticipate).toBe(true);
+      expect(findTarget(incompleteRes)?.canParticipate).toBe(false);
+      expect(findTarget(incompleteRes)?.shouldParticipate).toBe(false);
+
+      // Cleanup
+      await activityRepo.delete({ actionId: prerequisiteAction.id });
+      await eventRepo.delete(targetEvent.id);
+      await actionRepo.delete(targetAction.id);
+      await actionRepo.delete(prerequisiteAction.id);
+      await userRepo.delete(completedUser.id);
+      await userRepo.delete(incompleteUser.id);
+    });
+
+    it('evaluates InProgressAction cohort expression against real activity data', async () => {
+      const prerequisiteAction = await actionRepo.save(
+        actionRepo.create({
+          name: `InProgress Prereq ${Date.now()}`,
+          category: 'Test',
+          body: 'Body',
+          taskContents: 'Task',
+          visibilityMode: VisibilityMode.Public,
+        }),
+      );
+
+      const inProgressUser = await userService.create({
+        email: `inprogress-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'In Progress User',
+      });
+
+      const doneUser = await userService.create({
+        email: `done-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Done User',
+      });
+
+      const neverJoinedUser = await userService.create({
+        email: `neverjoined-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Never Joined User',
+      });
+
+      // inProgressUser joined but not completed
+      await activityRepo.save(
+        activityRepo.create({
+          userId: inProgressUser.id,
+          actionId: prerequisiteAction.id,
+          type: ActionActivityType.USER_JOINED,
+        }),
+      );
+
+      // doneUser joined and completed
+      await activityRepo.save(
+        activityRepo.create({
+          userId: doneUser.id,
+          actionId: prerequisiteAction.id,
+          type: ActionActivityType.USER_JOINED,
+        }),
+      );
+      await activityRepo.save(
+        activityRepo.create({
+          userId: doneUser.id,
+          actionId: prerequisiteAction.id,
+          type: ActionActivityType.USER_COMPLETED,
+        }),
+      );
+
+      const targetAction = await actionRepo.save(
+        actionRepo.create({
+          name: `InProgressAction Cohort ${Date.now()}`,
+          category: 'Test',
+          body: 'Body',
+          taskContents: 'Task',
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          everyoneShouldComplete: true,
+          type: ActionTaskType.Activity,
+          cohortExpression: {
+            type: 'InProgressAction',
+            actionId: prerequisiteAction.id,
+          },
+        }),
+      );
+
+      const targetEvent = await eventRepo.save(
+        eventRepo.create({
+          title: 'Launch',
+          description: 'Go',
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action: targetAction,
+        }),
+      );
+
+      const makeToken = (u: User) =>
+        ctx.jwtService.sign(
+          { sub: u.id, email: u.email, name: u.name },
+          { secret: process.env.JWT_SECRET },
+        );
+
+      const [inProgressRes, doneRes, neverJoinedRes] = await Promise.all([
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(inProgressUser)}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(doneUser)}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(neverJoinedUser)}`)
+          .expect(200),
+      ]);
+
+      const findTarget = (res: request.Response) =>
+        res.body.find((a: ActionDto) => a.id === targetAction.id);
+
+      // In-progress user should be in cohort
+      expect(findTarget(inProgressRes)?.canParticipate).toBe(true);
+      expect(findTarget(inProgressRes)?.shouldParticipate).toBe(true);
+      // Completed user should NOT be in cohort (no longer in progress)
+      expect(findTarget(doneRes)?.canParticipate).toBe(false);
+      // Never joined user should NOT be in cohort
+      expect(findTarget(neverJoinedRes)?.canParticipate).toBe(false);
+
+      // Cleanup
+      await activityRepo.delete({ actionId: prerequisiteAction.id });
+      await eventRepo.delete(targetEvent.id);
+      await actionRepo.delete(targetAction.id);
+      await actionRepo.delete(prerequisiteAction.id);
+      await userRepo.delete(inProgressUser.id);
+      await userRepo.delete(doneUser.id);
+      await userRepo.delete(neverJoinedUser.id);
+    });
+
+    it('evaluates GroupLead cohort expression against real community data', async () => {
+      const leaderUser = await userService.create({
+        email: `leader-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Leader User',
+      });
+
+      const nonLeaderUser = await userService.create({
+        email: `nonleader-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Non Leader User',
+      });
+
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: `Cohort Test Community ${Date.now()}`,
+          leaders: [leaderUser],
+          users: [leaderUser, nonLeaderUser],
+        }),
+      );
+
+      const targetAction = await actionRepo.save(
+        actionRepo.create({
+          name: `GroupLead Cohort ${Date.now()}`,
+          category: 'Test',
+          body: 'Body',
+          taskContents: 'Task',
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          everyoneShouldComplete: true,
+          type: ActionTaskType.Activity,
+          cohortExpression: {
+            type: 'GroupLead',
+          },
+        }),
+      );
+
+      const targetEvent = await eventRepo.save(
+        eventRepo.create({
+          title: 'Launch',
+          description: 'Go',
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action: targetAction,
+        }),
+      );
+
+      const makeToken = (u: User) =>
+        ctx.jwtService.sign(
+          { sub: u.id, email: u.email, name: u.name },
+          { secret: process.env.JWT_SECRET },
+        );
+
+      const [leaderRes, nonLeaderRes] = await Promise.all([
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(leaderUser)}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(nonLeaderUser)}`)
+          .expect(200),
+      ]);
+
+      const findTarget = (res: request.Response) =>
+        res.body.find((a: ActionDto) => a.id === targetAction.id);
+
+      expect(findTarget(leaderRes)?.canParticipate).toBe(true);
+      expect(findTarget(leaderRes)?.shouldParticipate).toBe(true);
+      expect(findTarget(nonLeaderRes)?.canParticipate).toBe(false);
+      expect(findTarget(nonLeaderRes)?.shouldParticipate).toBe(false);
+
+      // Cleanup
+      await communityRepo.delete(community.id);
+      await eventRepo.delete(targetEvent.id);
+      await actionRepo.delete(targetAction.id);
+      await userRepo.delete(leaderUser.id);
+      await userRepo.delete(nonLeaderUser.id);
+    });
+
+    it('evaluates FormFieldValue cohort expression against real form response data', async () => {
+      const respondedUser = await userService.create({
+        email: `responded-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Responded User',
+      });
+
+      const wrongAnswerUser = await userService.create({
+        email: `wronganswer-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Wrong Answer User',
+      });
+
+      const noResponseUser = await userService.create({
+        email: `noresponse-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'No Response User',
+      });
+
+      // Create a form
+      const form = await formRepo.save(
+        formRepo.create({
+          title: 'Cohort Test Form',
+          schema: {
+            title: 'Cohort Test Form',
+            pages: [
+              {
+                id: 'page-1',
+                fields: [
+                  {
+                    id: 'favorite-color',
+                    kind: 'text',
+                    label: 'Favorite Color',
+                    required: true,
+                  },
+                ],
+              },
+            ],
+            outputViews: [],
+          },
+        }),
+      );
+
+      // respondedUser answered "blue"
+      await formResponseRepo.save(
+        formResponseRepo.create({
+          formId: form.id,
+          user: respondedUser,
+          answers: { 'favorite-color': 'blue' },
+          schemaSnapshot: form.schema,
+        }),
+      );
+
+      // wrongAnswerUser answered "red"
+      await formResponseRepo.save(
+        formResponseRepo.create({
+          formId: form.id,
+          user: wrongAnswerUser,
+          answers: { 'favorite-color': 'red' },
+          schemaSnapshot: form.schema,
+        }),
+      );
+
+      // Test responseEqualTo filter
+      const targetAction = await actionRepo.save(
+        actionRepo.create({
+          name: `FormField Cohort ${Date.now()}`,
+          category: 'Test',
+          body: 'Body',
+          taskContents: 'Task',
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          everyoneShouldComplete: true,
+          type: ActionTaskType.Activity,
+          cohortExpression: {
+            type: 'FormFieldValue',
+            formId: form.id,
+            fieldId: 'favorite-color',
+            responseEqualTo: 'blue',
+          },
+        }),
+      );
+
+      const targetEvent = await eventRepo.save(
+        eventRepo.create({
+          title: 'Launch',
+          description: 'Go',
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action: targetAction,
+        }),
+      );
+
+      const makeToken = (u: User) =>
+        ctx.jwtService.sign(
+          { sub: u.id, email: u.email, name: u.name },
+          { secret: process.env.JWT_SECRET },
+        );
+
+      const [respondedRes, wrongRes, noResponseRes] = await Promise.all([
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(respondedUser)}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(wrongAnswerUser)}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(noResponseUser)}`)
+          .expect(200),
+      ]);
+
+      const findTarget = (res: request.Response) =>
+        res.body.find((a: ActionDto) => a.id === targetAction.id);
+
+      // User who answered "blue" should be in cohort
+      expect(findTarget(respondedRes)?.canParticipate).toBe(true);
+      expect(findTarget(respondedRes)?.shouldParticipate).toBe(true);
+      // User who answered "red" should NOT be in cohort
+      expect(findTarget(wrongRes)?.canParticipate).toBe(false);
+      // User who never responded should NOT be in cohort
+      expect(findTarget(noResponseRes)?.canParticipate).toBe(false);
+
+      // Cleanup
+      await formResponseRepo.delete({ formId: form.id });
+      await eventRepo.delete(targetEvent.id);
+      await actionRepo.delete(targetAction.id);
+      await formRepo.delete(form.id);
+      await userRepo.delete(respondedUser.id);
+      await userRepo.delete(wrongAnswerUser.id);
+      await userRepo.delete(noResponseUser.id);
+    });
+
+    it('evaluates FormFieldValue with responseAny=true matches any response', async () => {
+      const respondedUser = await userService.create({
+        email: `anyresp-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Any Response User',
+      });
+
+      const noResponseUser = await userService.create({
+        email: `noresp2-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'No Response User 2',
+      });
+
+      const form = await formRepo.save(
+        formRepo.create({
+          title: 'Any Response Test',
+          schema: {
+            title: 'Any Response Test',
+            pages: [
+              {
+                id: 'page-1',
+                fields: [
+                  {
+                    id: 'field-1',
+                    kind: 'text',
+                    label: 'Field 1',
+                    required: true,
+                  },
+                ],
+              },
+            ],
+            outputViews: [],
+          },
+        }),
+      );
+
+      await formResponseRepo.save(
+        formResponseRepo.create({
+          formId: form.id,
+          user: respondedUser,
+          answers: { 'field-1': 'anything' },
+          schemaSnapshot: form.schema,
+        }),
+      );
+
+      const targetAction = await actionRepo.save(
+        actionRepo.create({
+          name: `FormField Any Cohort ${Date.now()}`,
+          category: 'Test',
+          body: 'Body',
+          taskContents: 'Task',
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          everyoneShouldComplete: true,
+          type: ActionTaskType.Activity,
+          cohortExpression: {
+            type: 'FormFieldValue',
+            formId: form.id,
+            fieldId: 'field-1',
+            responseAny: true,
+          },
+        }),
+      );
+
+      const targetEvent = await eventRepo.save(
+        eventRepo.create({
+          title: 'Launch',
+          description: 'Go',
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action: targetAction,
+        }),
+      );
+
+      const makeToken = (u: User) =>
+        ctx.jwtService.sign(
+          { sub: u.id, email: u.email, name: u.name },
+          { secret: process.env.JWT_SECRET },
+        );
+
+      const [respondedRes, noResponseRes] = await Promise.all([
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(respondedUser)}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(noResponseUser)}`)
+          .expect(200),
+      ]);
+
+      const findTarget = (res: request.Response) =>
+        res.body.find((a: ActionDto) => a.id === targetAction.id);
+
+      expect(findTarget(respondedRes)?.canParticipate).toBe(true);
+      expect(findTarget(noResponseRes)?.canParticipate).toBe(false);
+
+      // Cleanup
+      await formResponseRepo.delete({ formId: form.id });
+      await eventRepo.delete(targetEvent.id);
+      await actionRepo.delete(targetAction.id);
+      await formRepo.delete(form.id);
+      await userRepo.delete(respondedUser.id);
+      await userRepo.delete(noResponseUser.id);
+    });
+
+    it('evaluates AND cohort expression combining multiple conditions', async () => {
+      // Create a user who is both a leader AND completed an action
+      const bothUser = await userService.create({
+        email: `both-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Both Conditions User',
+      });
+
+      const leaderOnlyUser = await userService.create({
+        email: `leaderonly-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Leader Only User',
+      });
+
+      const prerequisiteAction = await actionRepo.save(
+        actionRepo.create({
+          name: `AND Prereq ${Date.now()}`,
+          category: 'Test',
+          body: 'Body',
+          taskContents: 'Task',
+          visibilityMode: VisibilityMode.Public,
+        }),
+      );
+
+      // bothUser completed the prerequisite
+      await activityRepo.save(
+        activityRepo.create({
+          userId: bothUser.id,
+          actionId: prerequisiteAction.id,
+          type: ActionActivityType.USER_COMPLETED,
+        }),
+      );
+
+      // Both users are leaders
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: `AND Test Community ${Date.now()}`,
+          leaders: [bothUser, leaderOnlyUser],
+          users: [bothUser, leaderOnlyUser],
+        }),
+      );
+
+      const targetAction = await actionRepo.save(
+        actionRepo.create({
+          name: `AND Cohort ${Date.now()}`,
+          category: 'Test',
+          body: 'Body',
+          taskContents: 'Task',
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          everyoneShouldComplete: true,
+          type: ActionTaskType.Activity,
+          cohortExpression: {
+            op: 'AND',
+            children: [
+              { type: 'GroupLead' },
+              { type: 'CompletedAction', actionId: prerequisiteAction.id },
+            ],
+          },
+        }),
+      );
+
+      const targetEvent = await eventRepo.save(
+        eventRepo.create({
+          title: 'Launch',
+          description: 'Go',
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action: targetAction,
+        }),
+      );
+
+      const makeToken = (u: User) =>
+        ctx.jwtService.sign(
+          { sub: u.id, email: u.email, name: u.name },
+          { secret: process.env.JWT_SECRET },
+        );
+
+      const [bothRes, leaderOnlyRes] = await Promise.all([
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(bothUser)}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get('/actions/loggedIn')
+          .set('Authorization', `Bearer ${makeToken(leaderOnlyUser)}`)
+          .expect(200),
+      ]);
+
+      const findTarget = (res: request.Response) =>
+        res.body.find((a: ActionDto) => a.id === targetAction.id);
+
+      // User who is leader AND completed action should be in cohort
+      expect(findTarget(bothRes)?.canParticipate).toBe(true);
+      // User who is only a leader should NOT be in cohort
+      expect(findTarget(leaderOnlyRes)?.canParticipate).toBe(false);
+
+      // Cleanup
+      await activityRepo.delete({ actionId: prerequisiteAction.id });
+      await communityRepo.delete(community.id);
+      await eventRepo.delete(targetEvent.id);
+      await actionRepo.delete(targetAction.id);
+      await actionRepo.delete(prerequisiteAction.id);
+      await userRepo.delete(bothUser.id);
+      await userRepo.delete(leaderOnlyUser.id);
     });
 
     it('excludes shouldComplete flag for users without eligible contracts when everyoneShouldComplete is false', async () => {
@@ -664,7 +1356,6 @@ describe('Actions (e2e)', () => {
           name: 'Status Test Action',
           category: 'Test',
           body: 'Test action for status computation',
-          participatingTags: [ctx.defaultTag],
         });
         await actionRepo.save(newAction);
 
@@ -687,7 +1378,6 @@ describe('Actions (e2e)', () => {
           category: 'Test',
           body: 'Test action for status transitions',
           taskContents: 'Test action for status transitions',
-          participatingTags: [ctx.defaultTag],
         });
         await actionRepo.save(newAction);
 
@@ -729,7 +1419,6 @@ describe('Actions (e2e)', () => {
           category: 'Test',
           body: 'Test action for multiple events',
           taskContents: 'Test action for multiple events',
-          participatingTags: [ctx.defaultTag],
         });
         await actionRepo.save(newAction);
 
@@ -777,7 +1466,6 @@ describe('Actions (e2e)', () => {
           category: 'Test',
           body: 'Test action for future events',
           taskContents: 'Test action for future events',
-          participatingTags: [ctx.defaultTag],
         });
         await actionRepo.save(newAction);
 
@@ -953,7 +1641,10 @@ describe('Actions (e2e)', () => {
         category: 'Test',
         body: 'Test action for automatic commitment transitions',
         commitmentThreshold: 2, // Need 2 users to reach threshold
-        participatingTags: [ctx.defaultTag],
+        cohortExpression: {
+          type: 'Tag',
+          tagId: ctx.defaultTag.id,
+        },
       });
       await actionRepo.save(newAction);
 
@@ -1022,7 +1713,10 @@ describe('Actions (e2e)', () => {
         name: 'Auto Transition Test - Completion',
         category: 'Test',
         body: 'Test action for automatic completion transitions',
-        participatingTags: [ctx.defaultTag],
+        cohortExpression: {
+          type: 'Tag',
+          tagId: ctx.defaultTag.id,
+        },
       });
       await actionRepo.save(newAction);
 
@@ -1120,7 +1814,6 @@ describe('Actions (e2e)', () => {
         name: 'Auto Transition Test - No Users',
         category: 'Test',
         body: 'Test action with no users joined',
-        participatingTags: [ctx.defaultTag],
       });
       await actionRepo.save(newAction);
 
@@ -1495,7 +2188,6 @@ describe('Actions (e2e)', () => {
           taskContents: 'Ordering test task',
           shortDescription: `${name} short description`,
           visibilityMode: VisibilityMode.Public,
-          participatingTags: [ctx.defaultTag],
           priority: options.priority ?? 0,
         }),
       );
@@ -1867,13 +2559,16 @@ describe('Actions (e2e)', () => {
           shortDescription: 'Onboarding short desc',
           taskContents: 'Onboarding task',
           commitmentless: false,
-          participatingTags: [ctx.defaultTag],
           visibilityMode: VisibilityMode.Public,
           priority: 0,
           preventCompletion: false,
           type: ActionTaskType.Activity,
           onboarding: true,
           everyoneShouldComplete: true,
+          cohortExpression: {
+            type: 'Tag',
+            tagId: ctx.defaultTag.id,
+          },
         }),
       );
 

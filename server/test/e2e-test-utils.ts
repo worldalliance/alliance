@@ -36,7 +36,6 @@ export interface TestContext {
 export async function createTestApp(
   modules: Type<unknown>[],
 ): Promise<TestContext> {
-
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({

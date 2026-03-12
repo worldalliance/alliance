@@ -141,14 +141,16 @@ describe('Tasks (e2e)', () => {
         isForumParticipationAction: false,
         everyoneShouldComplete: false,
         shouldCompleteAfterDeadline: false,
-        participatingTags: [ctx.defaultTag],
         visibilityMode: VisibilityMode.Public,
         preventCompletion: false,
         optional: false,
-        useManualCohort: false,
         publicOnly: false,
         onboarding: false,
         isContractSigningAction: false,
+        cohortExpression: {
+          type: 'Tag',
+          tagId: ctx.defaultTag.id,
+        },
         latestMemberActionEvent: {
           event: null,
           deadline: null,
@@ -237,6 +239,10 @@ describe('Tasks (e2e)', () => {
         shortDescription: 'Short copy',
         taskContents: 'Tasks',
         taskFormId: formId,
+        cohortExpression: {
+          type: 'Tag',
+          tagId: ctx.defaultTag.id,
+        },
       }),
     );
 
@@ -324,14 +330,16 @@ describe('Tasks (e2e)', () => {
         isForumParticipationAction: false,
         everyoneShouldComplete: false,
         shouldCompleteAfterDeadline: false,
-        participatingTags: [ctx.defaultTag],
         visibilityMode: VisibilityMode.Public,
         preventCompletion: false,
         optional: false,
-        useManualCohort: false,
         publicOnly: false,
         onboarding: false,
         isContractSigningAction: false,
+        cohortExpression: {
+          type: 'Tag',
+          tagId: ctx.defaultTag.id,
+        },
         latestMemberActionEvent: {
           event: null,
           deadline: null,
@@ -458,11 +466,9 @@ describe('Tasks (e2e)', () => {
           commitmentless: true,
           everyoneShouldComplete: false,
           shouldCompleteAfterDeadline: false,
-          participatingTags: [ctx.defaultTag],
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           optional: false,
-          useManualCohort: false,
           publicOnly: false,
           isContractSigningAction: false,
           isForumParticipationAction: false,
@@ -472,6 +478,10 @@ describe('Tasks (e2e)', () => {
           },
           onboarding: false,
           followUpForms: [],
+          cohortExpression: {
+            type: 'Tag',
+            tagId: ctx.defaultTag.id,
+          },
         } satisfies CreateActionDto),
       );
 
@@ -906,11 +916,9 @@ describe('Tasks (e2e)', () => {
           isForumParticipationAction: false,
           everyoneShouldComplete: false,
           shouldCompleteAfterDeadline: false,
-          participatingTags: [ctx.defaultTag],
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           optional: false,
-          useManualCohort: false,
           publicOnly: false,
           isContractSigningAction: false,
           latestMemberActionEvent: {
@@ -919,6 +927,10 @@ describe('Tasks (e2e)', () => {
           },
           onboarding: false,
           followUpForms: [],
+          cohortExpression: {
+            type: 'Tag',
+            tagId: ctx.defaultTag.id,
+          },
         } satisfies CreateActionDto),
       );
 
