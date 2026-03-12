@@ -20,7 +20,7 @@ export default [
   route("/progress", "pages/static/ProgressListPage.tsx"),
   route("/progress/:slug", "pages/static/ProgressPostPage.tsx"),
 
-  route("/utensilwaste", "pages/static/oneoff/UtensilWastePage.tsx"),
+  route("/utensilinitiative", "pages/static/oneoff/UtensilWastePage.tsx"),
 
   route("/memberquotes", "pages/static/oneoff/MemberQuotesPage.tsx"),
 
