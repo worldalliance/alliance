@@ -633,6 +633,15 @@ export class ActionsController {
     return updated as FollowUpFormDto;
   }
 
+  @Delete('follow-up-forms/:followUpFormId')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  async deleteFollowUpForm(
+    @Param('followUpFormId', ParseIntPipe) followUpFormId: number,
+  ): Promise<void> {
+    return this.actionsService.deleteFollowUpForm(followUpFormId);
+  }
+
   @Get(':id/incomplete-users')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [ProfileDto] })

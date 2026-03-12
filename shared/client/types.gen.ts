@@ -5217,6 +5217,19 @@ export type ActionsCreateFollowUpFormResponses = {
 
 export type ActionsCreateFollowUpFormResponse = ActionsCreateFollowUpFormResponses[keyof ActionsCreateFollowUpFormResponses];
 
+export type ActionsDeleteFollowUpFormData = {
+    body?: never;
+    path: {
+        followUpFormId: number;
+    };
+    query?: never;
+    url: '/actions/follow-up-forms/{followUpFormId}';
+};
+
+export type ActionsDeleteFollowUpFormResponses = {
+    200: unknown;
+};
+
 export type ActionsUpdateFollowUpFormData = {
     body: UpdateFollowUpFormDto;
     path: {

@@ -1244,6 +1244,15 @@ export class ActionsService {
     return this.followUpFormRepository.save(followUpForm);
   }
 
+  async deleteFollowUpForm(followUpFormId: number): Promise<void> {
+    const followUpForm = await this.followUpFormRepository.findOne({
+      where: { id: followUpFormId },
+    });
+    if (followUpForm) {
+      await this.followUpFormRepository.remove(followUpForm);
+    }
+  }
+
   countCommitted(actionId: number): Observable<number> {
     return from(
       this.actionActivityRepository.count({

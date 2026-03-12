@@ -1,6 +1,7 @@
 import {
   Action,
   actionsCreateFollowUpForm,
+  actionsDeleteFollowUpForm,
   actionsFindOneAdmin,
   actionsUpdateFollowUpForm,
   tasksCreateForm,
@@ -43,6 +44,7 @@ export default function ActionFollowUpFormsTab({
     [action.followUpForms]
   );
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [savingFields, setSavingFields] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(
     followUpForms.length > 0 ? followUpForms[0].id : null
@@ -142,6 +144,31 @@ export default function ActionFollowUpFormsTab({
     [refetchAction]
   );
 
+  const handleDeleteFollowUpForm = useCallback(
+    async (followUpFormId: number) => {
+      if (
+        !window.confirm(
+          "Delete this follow-up form? Existing responses will remain, but the form will no longer be available."
+        )
+      ) {
+        return;
+      }
+      setDeletingId(followUpFormId);
+      try {
+        const res = await actionsDeleteFollowUpForm({
+          path: { followUpFormId },
+        });
+        if (res.response.ok) {
+          await refetchAction();
+          setSelectedId(null);
+        }
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [refetchAction]
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -204,7 +231,9 @@ export default function ActionFollowUpFormsTab({
           actionName={action.name}
           onSaveFields={handleSaveFields}
           onSetFormId={handleSetFormId}
+          onDelete={handleDeleteFollowUpForm}
           savingFields={savingFields === selectedForm.id}
+          deleting={deletingId === selectedForm.id}
         />
       )}
     </div>
@@ -223,7 +252,9 @@ interface FollowUpFormCardProps {
     }
   ) => Promise<void>;
   onSetFormId: (followUpFormId: number, formId: number) => Promise<void>;
+  onDelete: (followUpFormId: number) => Promise<void>;
   savingFields: boolean;
+  deleting: boolean;
 }
 
 function FollowUpFormCard({
@@ -231,7 +262,9 @@ function FollowUpFormCard({
   actionName,
   onSaveFields,
   onSetFormId,
+  onDelete,
   savingFields,
+  deleting,
 }: FollowUpFormCardProps) {
   const [startDate, setStartDate] = useState<string>(
     followUpForm.startDate ?? ""
@@ -286,13 +319,22 @@ function FollowUpFormCard({
           </div>
         </div>
 
-        <BaseButton
-          variant={BaseButtonVariant.Black}
-          onClick={handleSaveFields}
-          disabled={savingFields}
-        >
-          {savingFields ? "Saving…" : "Save fields"}
-        </BaseButton>
+        <div className="flex items-center gap-3">
+          <BaseButton
+            variant={BaseButtonVariant.Black}
+            onClick={handleSaveFields}
+            disabled={savingFields}
+          >
+            {savingFields ? "Saving…" : "Save fields"}
+          </BaseButton>
+          <BaseButton
+            variant={BaseButtonVariant.RedOutline}
+            onClick={() => onDelete(followUpForm.id)}
+            disabled={deleting}
+          >
+            {deleting ? "Deleting…" : "Delete follow-up form"}
+          </BaseButton>
+        </div>
       </Card>
 
       <Card style={CardStyle.White} className="p-4">
