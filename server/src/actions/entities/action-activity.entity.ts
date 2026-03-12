@@ -29,6 +29,15 @@ export enum ActionActivityType {
   USER_SUBMITTED_FOLLOW_UP_FORM = 'user_submitted_follow_up_form',
 }
 
+export const ALLOW_DUPLICATE = {
+  [ActionActivityType.USER_JOINED]: false,
+  [ActionActivityType.USER_COMPLETED]: false,
+  [ActionActivityType.USER_DECLINED]: false,
+  [ActionActivityType.USER_WONT_COMPLETE]: false,
+  [ActionActivityType.USER_DISMISSED]: false,
+  [ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM]: true,
+} as const satisfies Record<ActionActivityType, boolean>;
+
 export enum ActivitySource {
   USER = 'user',
   ADMIN_OVERRIDE = 'admin_override',

@@ -102,6 +102,7 @@ import {
   ActionActivity,
   ActionActivityType,
   ActivitySource,
+  ALLOW_DUPLICATE,
 } from './entities/action-activity.entity';
 import { ActionEvent, ActionStatus } from './entities/action-event.entity';
 import { ActionShareUrl } from './entities/action-share-url.entity';
@@ -1000,6 +1001,15 @@ export class ActionsService {
     }
 
     const user = await this.userService.findOneOrFail(userId);
+
+    if (!ALLOW_DUPLICATE[type]) {
+      const existingActivity = await this.actionActivityRepository.findOne({
+        where: { actionId, userId, type },
+      });
+      if (existingActivity) {
+        throw new BadRequestException('Activity already exists');
+      }
+    }
 
     const activity = this.actionActivityRepository.create({
       type: type,
