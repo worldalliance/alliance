@@ -1,12 +1,25 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { TagDto, FormDto } from "@alliance/shared/client";
-import { tasksGetForm } from "@alliance/shared/client";
+import { tasksGetForm, actionsFindOneAdmin } from "@alliance/shared/client";
 import type { AnyField, FormSchema } from "@alliance/shared/forms/formschema";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { cn } from "@alliance/shared/styles/util";
-import { Plus, Trash2 } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  EllipsisVertical,
+  Copy,
+  ClipboardPaste,
+  CopyMinus,
+} from "lucide-react";
 import CohortVisualization from "./CohortVisualization";
 import type {
   CohortExpression,
@@ -493,6 +506,74 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
   }, [availableUsers, activeContractUserIds, everyoneShouldComplete]);
   const [selectedSubExpr, setSelectedSubExpr] =
     useState<CohortExpression | null>(null);
+  const [compareEnabled, setCompareEnabled] = useState(false);
+  const [compareActionId, setCompareActionId] = useState<number | null>(null);
+  const [compareExpression, setCompareExpression] =
+    useState<CohortExpression | null>(null);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  const handleCopyExpression = useCallback(() => {
+    if (value) {
+      navigator.clipboard.writeText(JSON.stringify(value, null, 2));
+    }
+    setMenuOpen(false);
+  }, [value]);
+
+  const handleCopyComplement = useCallback(() => {
+    if (value) {
+      const complement = { op: "NOT", child: value };
+      navigator.clipboard.writeText(JSON.stringify(complement, null, 2));
+    }
+    setMenuOpen(false);
+  }, [value]);
+
+  const handlePasteExpression = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const parsed = JSON.parse(text);
+      onChange(parsed as CohortExpression);
+    } catch {
+      // invalid JSON or clipboard access denied — silently ignore
+    }
+    setMenuOpen(false);
+  }, [onChange]);
+
+  // Fetch compare action's cohort expression when selected
+  useEffect(() => {
+    if (!compareEnabled || !compareActionId) {
+      setCompareExpression(null);
+      return;
+    }
+    let cancelled = false;
+    actionsFindOneAdmin({ path: { id: compareActionId } })
+      .then((res) => {
+        if (!cancelled && res.data) {
+          setCompareExpression(
+            (res.data.cohortExpression as unknown as CohortExpression) ?? null
+          );
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCompareExpression(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [compareEnabled, compareActionId]);
 
   const handleSetExpression = useCallback(
     (expr: CohortExpression) => {
@@ -535,7 +616,46 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
   const propsWithSelection = { ...props, _selectedExpr: selectedSubExpr };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 relative">
+      <div ref={menuRef} className="absolute top-2 right-2 z-10">
+        <button
+          type="button"
+          onClick={() => setMenuOpen((prev) => !prev)}
+          className="p-1 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"
+        >
+          <EllipsisVertical size={20} />
+        </button>
+        {menuOpen && (
+          <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg py-1">
+            <button
+              type="button"
+              onClick={handleCopyExpression}
+              disabled={!value}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-gray-700 hover:bg-gray-50 disabled:text-gray-300 disabled:hover:bg-white"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              Copy expression
+            </button>
+            <button
+              type="button"
+              onClick={handlePasteExpression}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-gray-700 hover:bg-gray-50"
+            >
+              <ClipboardPaste className="h-3.5 w-3.5" />
+              Paste expression
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyComplement}
+              disabled={!value}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left text-gray-700 hover:bg-gray-50 disabled:text-gray-300 disabled:hover:bg-white"
+            >
+              <CopyMinus className="h-3.5 w-3.5" />
+              Copy complement cohort
+            </button>
+          </div>
+        )}
+      </div>
       {!value ? (
         <div className="space-y-2">
           <p className="text-sm text-gray-500">
@@ -578,7 +698,44 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
           expression={value}
           selectedSubExpression={selectedSubExpr}
           users={visualizationUsers}
+          compareExpression={compareEnabled ? compareExpression : null}
         />
+      </div>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm text-gray-500">
+          <input
+            type="checkbox"
+            checked={compareEnabled}
+            onChange={(e) => {
+              setCompareEnabled(e.target.checked);
+              if (!e.target.checked) {
+                setCompareActionId(null);
+                setCompareExpression(null);
+              }
+            }}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          Compare to another action
+        </label>
+        {compareEnabled && (
+          <select
+            value={compareActionId ?? ""}
+            onChange={(e) => {
+              setCompareActionId(
+                e.target.value ? parseInt(e.target.value) : null
+              );
+              setSelectedSubExpr(null);
+            }}
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">Select action to compare...</option>
+            {props.availableActions.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
     </div>
   );
