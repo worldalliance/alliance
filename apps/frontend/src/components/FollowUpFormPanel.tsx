@@ -128,7 +128,7 @@ export default function FollowUpFormPanel({
     );
   }
 
-  const formTitle = followUpForm.name ?? form.title;
+  const formTitle = followUpForm.name?.trim() || form.title;
 
   return (
     <Card style={CardStyle.White} className="p-4 sm:p-6">
