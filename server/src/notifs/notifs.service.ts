@@ -33,6 +33,8 @@ import {
   CommentParentObject,
 } from 'src/forum/entities/comment.entity';
 import { ProfileDto } from 'src/user/dto/user.dto';
+import { remark } from 'remark';
+import { toString as mdastToString } from 'mdast-util-to-string';
 
 export type CreateNotifParams = Required<
   Pick<
@@ -77,11 +79,12 @@ export function shouldPushUser(user: User) {
 }
 
 function getPreviewText(body: string) {
-  const normalized = body.replace(/\s+/g, ' ').trim();
+  const tree = remark().parse(body);
+  const plainText = mdastToString(tree).replace(/\s+/g, ' ').trim();
 
-  return normalized.length > 140
-    ? `${normalized.slice(0, 137).trimEnd()}...`
-    : normalized;
+  return plainText.length > 140
+    ? `${plainText.slice(0, 137).trimEnd()}...`
+    : plainText;
 }
 
 @Injectable()

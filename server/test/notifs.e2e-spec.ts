@@ -13,6 +13,11 @@ import {
   UnreadContentType,
 } from '../src/notifs/entities/unread-content.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
+import { Action } from 'src/actions/entities/action.entity';
+import {
+  ActionUpdate,
+  ActionUpdateNotifyType,
+} from 'src/actions/entities/action-update.entity';
 
 describe('Notifications (e2e)', () => {
   let ctx: TestContext;
@@ -173,5 +178,126 @@ describe('Notifications (e2e)', () => {
       id: unreadNotifId,
     });
     expect(updated.readAt).toBeTruthy();
+  });
+
+  it('markdown comment preview text is stripped of markdown syntax', async () => {
+    const userRepo = ctx.dataSource.getRepository(User);
+    const testUser = await userRepo.findOneOrFail({
+      where: { id: ctx.testUserId },
+    });
+
+    const editableContent = await editableContentRepo.save(
+      editableContentRepo.create({
+        body: '**bold text** and a [link](https://example.com) with `inline code`',
+        attachments: [],
+      }),
+    );
+
+    const comment = await commentRepo.save(
+      commentRepo.create({
+        author: testUser,
+        authorId: testUser.id,
+        editableContent,
+        parentObjectType: CommentParentObject.Post,
+        parentObjectId: 1,
+        deleted: false,
+        pinned: false,
+        likes: [],
+        likesCount: 0,
+        children: [],
+      }),
+    );
+
+    const unreadContent = await unreadContentRepo.save(
+      unreadContentRepo.create({
+        user: testUser,
+        contentType: UnreadContentType.ForumReply,
+        contentId: comment.id,
+        sendTime: new Date(),
+        shouldPush: false,
+      }),
+    );
+
+    const res = await ctx.agent.get('/notifs').expect(200);
+    const notif = res.body.find(
+      (n: { id: number; sourceType: string }) =>
+        n.id === unreadContent.id &&
+        n.sourceType === NotificationSourceType.UnreadContent,
+    );
+
+    expect(notif).toBeDefined();
+    expect(notif.message).not.toContain('**');
+    expect(notif.message).not.toContain('[link]');
+    expect(notif.message).not.toContain('(https://');
+    expect(notif.message).not.toContain('`');
+    expect(notif.message).toContain('bold text');
+    expect(notif.message).toContain('link');
+    expect(notif.message).toContain('inline code');
+  });
+
+  it('markdown action update preview text is stripped of markdown syntax', async () => {
+    const userRepo = ctx.dataSource.getRepository(User);
+    const actionRepo = ctx.dataSource.getRepository(Action);
+    const actionUpdateRepo = ctx.dataSource.getRepository(ActionUpdate);
+
+    const testUser = await userRepo.findOneOrFail({
+      where: { id: ctx.testUserId },
+    });
+
+    const action = await actionRepo.save(
+      actionRepo.create({
+        name: 'Markdown Test Action',
+        category: 'Test',
+        body: 'test body',
+      }),
+    );
+
+    const content = await editableContentRepo.save(
+      editableContentRepo.create({
+        body: 'update content',
+        attachments: [],
+      }),
+    );
+
+    const actionUpdate = await actionUpdateRepo.save(
+      actionUpdateRepo.create({
+        action,
+        title: 'Test Update',
+        date: new Date(),
+        visibleAt: new Date(Date.now() - 1000),
+        shortNotifString:
+          '## Heading\n\nSome **bold** and *italic* text with a [link](https://example.com)',
+        notifyType: ActionUpdateNotifyType.None,
+        content,
+      }),
+    );
+
+    const unreadContent = await unreadContentRepo.save(
+      unreadContentRepo.create({
+        user: testUser,
+        contentType: UnreadContentType.ActionUpdate,
+        contentId: actionUpdate.id,
+        sendTime: new Date(),
+        shouldPush: false,
+      }),
+    );
+
+    const res = await ctx.agent.get('/notifs').expect(200);
+    const notif = res.body.find(
+      (n: { id: number; sourceType: string }) =>
+        n.id === unreadContent.id &&
+        n.sourceType === NotificationSourceType.UnreadContent,
+    );
+
+    expect(notif).toBeDefined();
+    expect(notif.message).not.toContain('##');
+    expect(notif.message).not.toContain('**');
+    expect(notif.message).not.toContain('*italic*');
+    expect(notif.message).not.toContain('[link]');
+    expect(notif.message).not.toContain('(https://');
+    expect(notif.message).toContain('Heading');
+    expect(notif.message).toContain('bold');
+    expect(notif.message).toContain('italic');
+    expect(notif.message).toContain('link');
   });
 });
