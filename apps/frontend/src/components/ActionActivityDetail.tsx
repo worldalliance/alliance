@@ -37,7 +37,7 @@ export function ErrorBoundary(error: unknown) {
 export interface ActionActivityDetailContext {
   action: ActionDto;
   activities: ActionActivityDto[];
-  handleLikeActivity: (activityId: number) => Promise<void>;
+  handleLikeActivity: (activityId: number) => Promise<unknown>;
   setActivities: (activities: ActionActivityDto[]) => void;
 }
 

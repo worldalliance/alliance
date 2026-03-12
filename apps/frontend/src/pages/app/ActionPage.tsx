@@ -20,6 +20,7 @@ import useActivities, {
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
 import { useCallback } from "react";
+import { ActionActivityDetailContext } from "../../components/ActionActivityDetail";
 
 export async function loader({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -50,7 +51,7 @@ export default function ActionPage() {
 
   useCIDFromParams(actionId);
 
-  const { activities, handleLikeActivity } = useActivities({
+  const { activities, handleLikeActivity, setActivities } = useActivities({
     list: ActivityList.Action,
     objectId: actionId,
     limit: 10,
@@ -113,7 +114,10 @@ export default function ActionPage() {
                 publicMode,
                 onDeclineAction,
                 onOptOutAction,
-              } satisfies TaskPanelContext
+                activities,
+                handleLikeActivity,
+                setActivities,
+              } satisfies TaskPanelContext & ActionActivityDetailContext
             }
           />
         </div>
