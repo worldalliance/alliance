@@ -12,6 +12,7 @@ import type { AnyField, FormSchema } from "@alliance/shared/forms/formschema";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
 import { cn } from "@alliance/shared/styles/util";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   Plus,
   Trash2,
@@ -515,6 +516,8 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
     everyoneShouldComplete,
   } = props;
 
+  const { error: pushError } = useToast();
+
   const visualizationUsers = useMemo(() => {
     if (everyoneShouldComplete || !activeContractUserIds) return availableUsers;
     return availableUsers.filter((u) => activeContractUserIds.has(u.id));
@@ -560,12 +563,21 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
     try {
       const text = await navigator.clipboard.readText();
       const parsed = JSON.parse(text);
-      onChange(parsed as CohortExpression);
+      // Basic shape validation: must be a leaf (has "type") or operator (has "op")
+      if (
+        typeof parsed === "object" &&
+        parsed !== null &&
+        ("type" in parsed || "op" in parsed)
+      ) {
+        onChange(parsed as CohortExpression);
+      } else {
+        pushError("Clipboard does not contain a valid cohort expression");
+      }
     } catch {
-      // invalid JSON or clipboard access denied — silently ignore
+      pushError("Failed to paste — invalid JSON or clipboard not available");
     }
     setMenuOpen(false);
-  }, [onChange]);
+  }, [onChange, pushError]);
 
   // Fetch compare action's cohort expression when selected
   useEffect(() => {
