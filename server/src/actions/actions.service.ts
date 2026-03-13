@@ -148,6 +148,8 @@ import {
   evaluateCohortExpressionForUser,
   SingleUserCohortContext,
 } from './cohort-expression.evaluator';
+import { EventLogService } from 'src/eventlog/eventlog.service';
+import { EventType } from 'src/eventlog/event-log.entity';
 
 const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -210,6 +212,7 @@ export class ActionsService {
     private readonly likeNotificationService: LikeNotificationService,
     private readonly forumService: ForumService,
     private readonly liveActivityService: LiveActivityService,
+    private readonly eventLogService: EventLogService,
   ) {}
 
   async shiftPrioritiesAfterInsertion(): Promise<void> {
@@ -995,6 +998,17 @@ export class ActionsService {
     }
 
     const user = await this.userService.findOneOrFail(userId);
+
+    if (type === ActionActivityType.USER_WONT_COMPLETE) {
+      this.eventLogService.sendMessage({
+        type: EventType.ActionOptOut,
+        message: `${user.name} opted out of action ${action.name}`,
+        blob: {
+          actionId,
+          userId,
+        },
+      });
+    }
 
     if (!ALLOW_DUPLICATE[type]) {
       const existingActivity = await this.actionActivityRepository.findOne({

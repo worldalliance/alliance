@@ -21,6 +21,7 @@ export enum EventType {
   ForumActionAutocomplete = 'forum_action_autocomplete',
   ActionComment = 'action_comment',
   ForumReplyNotifFailure = 'forum_reply_notif_failure',
+  ActionOptOut = 'action_opt_out',
 }
 
 export const SEND_TO_SLACK: Record<EventType, boolean> = {
@@ -33,6 +34,7 @@ export const SEND_TO_SLACK: Record<EventType, boolean> = {
   [EventType.ForumActionAutocomplete]: true,
   [EventType.ActionComment]: true,
   [EventType.ForumReplyNotifFailure]: false,
+  [EventType.ActionOptOut]: true,
 };
 
 @Entity()
