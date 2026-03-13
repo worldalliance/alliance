@@ -127,8 +127,6 @@ import {
   computeIsAwayDuringAnyOfLastMemberAction,
   computeIsContractActiveDuringEntireLatestMemberAction,
   computeIsTaggedOrInManualCohort,
-  computeIsInCohortExpression,
-  type CohortEvaluationDeps,
 } from 'src/utils/action-user';
 import { computeIsAwayInRange } from 'src/utils/user';
 import { CommunityService } from 'src/community/community.service';
@@ -146,6 +144,10 @@ import {
   CreateFollowUpFormDto,
   UpdateFollowUpFormDto,
 } from './dto/follow-up-form.dto';
+import {
+  evaluateCohortExpressionForUser,
+  SingleUserCohortContext,
+} from './cohort-expression.evaluator';
 
 const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -209,14 +211,6 @@ export class ActionsService {
     private readonly forumService: ForumService,
     private readonly liveActivityService: LiveActivityService,
   ) {}
-
-  private get cohortDeps(): CohortEvaluationDeps {
-    return {
-      actionActivityRepository: this.actionActivityRepository,
-      formResponseRepository: this.formResponseRepository,
-      communityRepository: this.communityRepository,
-    };
-  }
 
   async shiftPrioritiesAfterInsertion(): Promise<void> {
     await this.actionRepository.manager.transaction(async (manager) => {
@@ -558,10 +552,9 @@ export class ActionsService {
             (event) => event.newStatus === ActionStatus.MemberAction,
           ) &&
           !actionsDismissed.has(action.id) &&
-          (await computeIsInCohortExpression({
+          (await this.computeIsInCohortExpression({
             user,
             cohortExpression: action.cohortExpression,
-            deps: this.cohortDeps,
           })) &&
           (action.everyoneShouldComplete ||
             computeIsContractActiveDuringEntireLatestMemberAction({
@@ -612,10 +605,9 @@ export class ActionsService {
       return false;
     }
 
-    return computeIsInCohortExpression({
+    return this.computeIsInCohortExpression({
       user,
       cohortExpression: action.cohortExpression,
-      deps: this.cohortDeps,
     });
   }
 
@@ -1577,10 +1569,9 @@ export class ActionsService {
       return false;
     }
 
-    const inCohort = await computeIsInCohortExpression({
+    const inCohort = await this.computeIsInCohortExpression({
       user,
       cohortExpression: action.cohortExpression,
-      deps: this.cohortDeps,
     });
 
     if (!inCohort) {
@@ -2659,10 +2650,9 @@ export class ActionsService {
             user: theUser,
             action,
           }) &&
-          (await computeIsInCohortExpression({
+          (await this.computeIsInCohortExpression({
             user: theUser,
             cohortExpression: action.cohortExpression,
-            deps: this.cohortDeps,
           }))
         ) {
           detail.status = UserActionRelationPillStatus.Away;
@@ -3713,5 +3703,103 @@ export class ActionsService {
     const result =
       await this.actionEventRecipientService.resolveCohortMemberIds(expression);
     return result ? Array.from(result) : [];
+  }
+
+  /**
+   * Check if a user is in a cohort expression's target set.
+   */
+  async computeIsInCohortExpression(params: {
+    user: User;
+    cohortExpression: CohortExpression | null | undefined;
+  }): Promise<boolean> {
+    const { user, cohortExpression } = params;
+
+    if (!cohortExpression) {
+      return false;
+    }
+
+    const ctx: SingleUserCohortContext = {
+      userId: user.id,
+      userHasTag: (tagId: string) => {
+        return (user.tags || []).some((tag) => tag.id === tagId);
+      },
+      userCompletedAction: async (actionId: number) => {
+        const activity = await this.actionActivityRepository.findOne({
+          where: {
+            userId: user.id,
+            actionId,
+            type: ActionActivityType.USER_COMPLETED,
+          },
+        });
+        return !!activity;
+      },
+      userInProgressAction: async (actionId: number) => {
+        const action = await this.actionRepository.findOneOrFail({
+          where: { id: actionId },
+          relations: { events: true },
+        });
+        const event = action.events.find(
+          (e) => e.newStatus === ActionStatus.MemberAction,
+        );
+        if (!event) return false;
+        const joined =
+          await this.actionEventRecipientService.findBaseUsersForEvent({
+            eventStatus: ActionStatus.MemberAction,
+            action,
+            eventId: event.id,
+          });
+        if (!joined) return false;
+        const terminal = await this.actionActivityRepository.findOne({
+          where: [
+            {
+              userId: user.id,
+              actionId,
+              type: ActionActivityType.USER_COMPLETED,
+            },
+            {
+              userId: user.id,
+              actionId,
+              type: ActionActivityType.USER_WONT_COMPLETE,
+            },
+          ],
+        });
+        return !terminal;
+      },
+      userMatchesFormField: async (fieldParams: {
+        formId: number;
+        fieldId: string;
+        responseEqualTo?: string;
+        responseAny?: boolean;
+      }) => {
+        const responses = await this.formResponseRepository.find({
+          where: {
+            formId: fieldParams.formId,
+            user: { id: user.id },
+          },
+        });
+        if (responses.length === 0) return false;
+        if (fieldParams.responseAny) return true;
+        if (fieldParams.responseEqualTo !== undefined) {
+          return responses.some(
+            (r) =>
+              String(r.answers?.[fieldParams.fieldId]) ===
+              fieldParams.responseEqualTo,
+          );
+        }
+        return responses.some(
+          (r) => r.answers?.[fieldParams.fieldId] !== undefined,
+        );
+      },
+      userIsGroupLead: async () => {
+        const count = await this.communityRepository
+          .createQueryBuilder('community')
+          .innerJoin('community.leaders', 'leader')
+          .where('leader.id = :userId', { userId: user.id })
+          .getCount();
+        return count > 0;
+      },
+    };
+
+    return evaluateCohortExpressionForUser(cohortExpression, ctx);
   }
 }

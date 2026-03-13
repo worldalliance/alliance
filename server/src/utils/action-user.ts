@@ -1,14 +1,8 @@
 /** @fileoverview Utils for relationships between actions and users */
 import { Action } from 'src/actions/entities/action.entity';
 import { User } from 'src/user/entities/user.entity';
-import {
-  evaluateCohortExpressionForUser,
-  type SingleUserCohortContext,
-} from 'src/actions/cohort-expression.evaluator';
-import type { CohortExpression } from 'src/actions/cohort-expression.types';
 import type { Repository } from 'typeorm';
 import type { ActionActivity } from 'src/actions/entities/action-activity.entity';
-import { ActionActivityType } from 'src/actions/entities/action-activity.entity';
 import type { FormResponse } from 'src/tasks/entities/formresponse.entity';
 import type { Community } from 'src/community/entities/community.entity';
 
@@ -59,105 +53,6 @@ export interface CohortEvaluationDeps {
   actionActivityRepository?: Repository<ActionActivity>;
   formResponseRepository?: Repository<FormResponse>;
   communityRepository?: Repository<Community>;
-}
-
-/**
- * Check if a user is in a cohort expression's target set.
- */
-export async function computeIsInCohortExpression(params: {
-  user: User;
-  cohortExpression: CohortExpression | null | undefined;
-  deps?: CohortEvaluationDeps;
-}): Promise<boolean> {
-  const { user, cohortExpression, deps } = params;
-
-  if (!cohortExpression) {
-    return false;
-  }
-
-  const ctx: SingleUserCohortContext = {
-    userId: user.id,
-    userHasTag(tagId: string) {
-      return (user.tags || []).some((tag) => tag.id === tagId);
-    },
-    async userCompletedAction(actionId: number) {
-      if (!deps?.actionActivityRepository) return false;
-      const activity = await deps.actionActivityRepository.findOne({
-        where: {
-          userId: user.id,
-          actionId,
-          type: ActionActivityType.USER_COMPLETED,
-        },
-      });
-      return !!activity;
-    },
-    async userInProgressAction(actionId: number) {
-      if (!deps?.actionActivityRepository) return false;
-      const joined = await deps.actionActivityRepository.findOne({
-        where: {
-          userId: user.id,
-          actionId,
-          type: ActionActivityType.USER_JOINED,
-        },
-      });
-      if (!joined) return false;
-      const terminal = await deps.actionActivityRepository.findOne({
-        where: [
-          {
-            userId: user.id,
-            actionId,
-            type: ActionActivityType.USER_COMPLETED,
-          },
-          {
-            userId: user.id,
-            actionId,
-            type: ActionActivityType.USER_WONT_COMPLETE,
-          },
-        ],
-      });
-      return !terminal;
-    },
-    async userMatchesFormField(fieldParams: {
-      formId: number;
-      fieldId: string;
-      responseEqualTo?: string;
-      responseAny?: boolean;
-    }) {
-      if (!deps?.formResponseRepository) return false;
-      const responses = await deps.formResponseRepository.find({
-        where: {
-          formId: fieldParams.formId,
-          user: { id: user.id },
-        },
-      });
-      if (responses.length === 0) return false;
-      if (fieldParams.responseAny) return true;
-      if (fieldParams.responseEqualTo !== undefined) {
-        return responses.some(
-          (r) =>
-            String(r.answers?.[fieldParams.fieldId]) ===
-            fieldParams.responseEqualTo,
-        );
-      }
-      return responses.some(
-        (r) => r.answers?.[fieldParams.fieldId] !== undefined,
-      );
-    },
-    async userIsGroupLead() {
-      if (!deps?.communityRepository) {
-        // Fall back to user entity data if loaded
-        return user.isCommunityLeader ?? false;
-      }
-      const count = await deps.communityRepository
-        .createQueryBuilder('community')
-        .innerJoin('community.leaders', 'leader')
-        .where('leader.id = :userId', { userId: user.id })
-        .getCount();
-      return count > 0;
-    },
-  };
-
-  return evaluateCohortExpressionForUser(cohortExpression, ctx);
 }
 
 // --- Legacy functions for GeneralUpdate compatibility ---
