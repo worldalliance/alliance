@@ -451,6 +451,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: "yarn"
 
       - name: Setup Bun
         if: github.ref_name == 'production'

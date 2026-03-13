@@ -459,48 +459,62 @@ const takeScreenshots = async () => {
     reducedMotion: "reduce" as const,
   };
 
+  // Create separate contexts for public and authenticated targets.
   const publicContext = await browser.newContext(contextOptions);
-  const publicPage = await publicContext.newPage();
-
-  let authContext = publicContext;
-  let authPage = publicPage;
+  let authContext: Awaited<ReturnType<typeof browser.newContext>> | null = null;
   if (hasAuthTargets) {
     authContext = await browser.newContext(contextOptions);
-    authPage = await authContext.newPage();
-    await loginTestUser(authPage);
+    const authLoginPage = await authContext.newPage();
+    await loginTestUser(authLoginPage);
+    await authLoginPage.close();
   }
 
-  for (const [index, target] of screenshotTargets.entries()) {
-    const page = target.requiresAuth ? authPage : publicPage;
+  // Capture screenshots in parallel batches for speed.
+  const CONCURRENCY = 4;
+  for (let i = 0; i < screenshotTargets.length; i += CONCURRENCY) {
+    const batch = screenshotTargets.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      batch.map(async (target, batchIdx) => {
+        const index = i + batchIdx;
+        const context = target.requiresAuth ? authContext! : publicContext;
+        const page = await context.newPage();
 
-    const url = new URL(target.path, baseUrl).toString();
-    const label = target.name || target.path;
-    const fileName = `${String(index + 1).padStart(2, "0")}-${sanitizeFileName(
-      label
-    )}.png`;
-    const filePath = path.join(outputDir, fileName);
+        try {
+          const url = new URL(target.path, baseUrl).toString();
+          const label = target.name || target.path;
+          const fileName = `${String(index + 1).padStart(
+            2,
+            "0"
+          )}-${sanitizeFileName(label)}.png`;
+          const filePath = path.join(outputDir, fileName);
 
-    console.log(`${logPrefix} Capturing ${url} -> ${fileName}`);
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-    if (target.waitForSelector) {
-      await page.waitForSelector(target.waitForSelector, {
-        timeout: target.waitForTimeoutMs ?? 20000,
-      });
-    } else {
-      await page
-        .waitForLoadState("networkidle", { timeout: 20000 })
-        .catch(() => {
-          // Some pages keep background requests open; ignore.
-        });
-    }
-    await page.waitForTimeout(100);
-    await page.screenshot({ path: filePath, fullPage: true });
+          console.log(`${logPrefix} Capturing ${url} -> ${fileName}`);
+          await page.goto(url, {
+            waitUntil: "domcontentloaded",
+            timeout: 60000,
+          });
+          if (target.waitForSelector) {
+            await page.waitForSelector(target.waitForSelector, {
+              timeout: target.waitForTimeoutMs ?? 20000,
+            });
+          } else {
+            await page
+              .waitForLoadState("networkidle", { timeout: 20000 })
+              .catch(() => {
+                // Some pages keep background requests open; ignore.
+              });
+          }
+          await page.waitForTimeout(100);
+          await page.screenshot({ path: filePath, fullPage: true });
+        } finally {
+          await page.close();
+        }
+      })
+    );
   }
 
-  await publicPage.close();
   await publicContext.close();
-  if (hasAuthTargets) {
-    await authPage.close();
+  if (authContext) {
     await authContext.close();
   }
   await browser.close();
