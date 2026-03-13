@@ -49,10 +49,6 @@ import {
   expressionReferencesTag,
   type CohortExpression,
 } from './cohort-expression.types';
-import {
-  evaluateCohortExpression,
-  type CohortEvaluationContext,
-} from './cohort-expression.evaluator';
 import { User } from 'src/user/entities/user.entity';
 import { ProfileDto } from 'src/user/dto/user.dto';
 import {
@@ -3714,93 +3710,8 @@ export class ActionsService {
   async evaluateCohortExpressionBatch(
     expression: CohortExpression,
   ): Promise<number[]> {
-    const ctx: CohortEvaluationContext = {
-      getUserIdsForTag: async (tagId: string) => {
-        if (!tagId) return new Set();
-        const tag = await this.tagRepository.findOne({
-          where: { id: tagId },
-          relations: { users: true },
-        });
-        return new Set((tag?.users ?? []).map((u) => u.id));
-      },
-      getUserIdsCompletedAction: async (actionId: number) => {
-        if (!actionId) return new Set();
-        const activities = await this.actionActivityRepository.find({
-          where: { actionId, type: ActionActivityType.USER_COMPLETED },
-        });
-        return new Set(activities.map((a) => a.userId));
-      },
-      getUserIdsInProgressAction: async (actionId: number) => {
-        if (!actionId) return new Set();
-        const action = await this.actionRepository.findOneOrFail({
-          where: { id: actionId },
-          relations: { events: true },
-        });
-        const event = action?.events.find(
-          (event) => event.newStatus === ActionStatus.MemberAction,
-        );
-        if (!event) return new Set();
-        const joined =
-          await this.actionEventRecipientService.findBaseUsersForEvent({
-            eventStatus: ActionStatus.MemberAction,
-            action: action,
-            eventId: event.id,
-          });
-        const terminal = await this.actionActivityRepository.find({
-          where: [
-            { actionId, type: ActionActivityType.USER_COMPLETED },
-            { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
-          ],
-        });
-        const terminalIds = new Set(terminal.map((a) => a.userId));
-        return new Set(
-          joined.map((u) => u.id).filter((id) => !terminalIds.has(id)),
-        );
-      },
-      getUserIdsForFormField: async (params) => {
-        if (!params.formId) return new Set();
-        const responses = await this.formResponseRepository.find({
-          where: { formId: params.formId },
-          relations: { user: true },
-        });
-        const matching = responses.filter((r) => {
-          if (params.responseEqualTo !== undefined && !params.responseAny) {
-            return (
-              String(
-                (r.answers as Record<string, unknown>)?.[params.fieldId],
-              ) === params.responseEqualTo
-            );
-          }
-          return (
-            (r.answers as Record<string, unknown>)?.[params.fieldId] !==
-            undefined
-          );
-        });
-        return new Set(
-          matching
-            .map((r) => r.user?.id)
-            .filter((id): id is number => typeof id === 'number'),
-        );
-      },
-      getGroupLeadUserIds: async () => {
-        const communities = await this.communityRepository.find({
-          relations: { leaders: true },
-        });
-        const ids = new Set<number>();
-        for (const c of communities) {
-          for (const leader of c.leaders ?? []) {
-            ids.add(leader.id);
-          }
-        }
-        return ids;
-      },
-      getAllCandidateUserIds: async () => {
-        const users = await this.userService.findActiveUsersWithTags();
-        return new Set(users.map((u) => u.id));
-      },
-    };
-
-    const result = await evaluateCohortExpression(expression, ctx);
-    return Array.from(result);
+    const result =
+      await this.actionEventRecipientService.resolveCohortMemberIds(expression);
+    return result ? Array.from(result) : [];
   }
 }

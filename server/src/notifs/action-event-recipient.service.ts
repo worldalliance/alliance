@@ -73,8 +73,18 @@ export class ActionEventRecipientService {
       },
       getUserIdsInProgressAction: async (actionId: number) => {
         if (!actionId) return new Set();
-        const joined = await this.actionActivityRepository.find({
-          where: { actionId, type: ActionActivityType.USER_JOINED },
+        const action = await this.actionRepository.findOneOrFail({
+          where: { id: actionId },
+          relations: { events: true },
+        });
+        const event = action.events.find(
+          (e) => e.newStatus === ActionStatus.MemberAction,
+        );
+        if (!event) return new Set();
+        const baseUsers = await this.findBaseUsersForEvent({
+          eventStatus: ActionStatus.MemberAction,
+          action,
+          eventId: event.id,
         });
         const terminal = await this.actionActivityRepository.find({
           where: [
@@ -84,7 +94,7 @@ export class ActionEventRecipientService {
         });
         const terminalIds = new Set(terminal.map((a) => a.userId));
         return new Set(
-          joined.map((a) => a.userId).filter((id) => !terminalIds.has(id)),
+          baseUsers.map((u) => u.id).filter((id) => !terminalIds.has(id)),
         );
       },
       getUserIdsForFormField: async (params) => {
