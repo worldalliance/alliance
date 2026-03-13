@@ -824,6 +824,7 @@ jobs:
             export DB_CA_CERT="${{ secrets.DB_CA_CERT }}"
             export PANGRAM_API_KEY=${{ secrets.PANGRAM_API_KEY }}
             export PANGRAM_API_URL=https://text.api.pangram.com/v3
+            export EXPO_ACCESS_TOKEN=${{ secrets.EXPO_ACCESS_TOKEN }}
 
             rm -rf nest-backend-deploy-backup || true
             mv nest-backend nest-backend-deploy-backup || true
