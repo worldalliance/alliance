@@ -33,7 +33,7 @@ export const actionActivityTransitiveVerb = {
 export const actionActivityIntransitiveVerb = {
   user_joined: "",
   user_completed: "completed",
-  user_submitted_follow_up_form: "followed-up",
+  user_submitted_follow_up_form: "followed up",
   user_declined: null,
   user_wont_complete: null,
   user_dismissed: null,
