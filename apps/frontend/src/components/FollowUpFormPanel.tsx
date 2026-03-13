@@ -118,13 +118,11 @@ export default function FollowUpFormPanel({
 
   return (
     <Card style={CardStyle.White} className="p-4 sm:p-6">
+      <p className="font-semibold mb-3">{formTitle}</p>
       {followUpForm.instructions != null &&
         followUpForm.instructions.trim() !== "" && (
           <Card style={CardStyle.Alert} className="mb-3 border-none rounded-md">
-            <p className="font-semibold">{formTitle}</p>
-            <div className="mt-1">
-              <AppMarkdownWrapper markdownContent={followUpForm.instructions} />
-            </div>
+            <AppMarkdownWrapper markdownContent={followUpForm.instructions} />
           </Card>
         )}
       <div className="w-full">
