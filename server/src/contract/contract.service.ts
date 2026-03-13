@@ -278,14 +278,13 @@ export class ContractService {
       communitiesP,
     ]);
 
-    await this.eventLogService.sendMessage({
-      type: EventType.ContractSuspended,
-      message: `${user.name} suspended their contract :(`,
-      userId: user.id,
-      blob: {
-        automatic,
-      },
-    });
+    if (!automatic) {
+      await this.eventLogService.sendMessage({
+        type: EventType.ContractSuspended,
+        message: `${user.name} suspended their contract :(`,
+        userId: user.id,
+      });
+    }
 
     return contractEvent.date;
   }
