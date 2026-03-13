@@ -178,10 +178,10 @@ export type ActionActivity = {
 
 export type FollowUpForm = {
     id: number;
-    name?: string;
-    startDate?: string;
-    endDate?: string;
-    instructions?: string;
+    name?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    instructions?: string | null;
     actionId: number;
     formId: number;
 };
@@ -1585,29 +1585,29 @@ export type Form = {
 
 export type FollowUpFormDto = {
     id: number;
-    name?: string;
-    startDate?: string;
-    endDate?: string;
-    instructions?: string;
+    name?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    instructions?: string | null;
     actionId: number;
     formId: number;
     form?: Form;
 };
 
 export type CreateFollowUpFormDto = {
-    name?: string;
-    startDate?: string;
-    endDate?: string;
-    instructions?: string;
+    name?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    instructions?: string | null;
     actionId: number;
     formId: number;
 };
 
 export type UpdateFollowUpFormDto = {
-    name?: string;
-    startDate?: string;
-    endDate?: string;
-    instructions?: string;
+    name?: string | null;
+    startDate?: string | null;
+    endDate?: string | null;
+    instructions?: string | null;
     formId?: number;
 };
 

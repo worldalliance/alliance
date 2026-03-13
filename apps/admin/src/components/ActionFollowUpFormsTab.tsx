@@ -119,10 +119,10 @@ export default function ActionFollowUpFormsTab({
         const res = await actionsUpdateFollowUpForm({
           path: { followUpFormId },
           body: {
-            name: fields.name?.trim() ?? "",
-            startDate: startIso,
-            endDate: endIso,
-            instructions: fields.instructions?.trim() ?? "",
+            name: fields.name?.trim() || null,
+            startDate: startIso || null,
+            endDate: endIso || null,
+            instructions: fields.instructions?.trim() || null,
           },
         });
         if (res.data) {

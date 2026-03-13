@@ -22,27 +22,39 @@ export class FollowUpForm {
   id: number;
 
   @Column({ type: 'text', nullable: true })
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+  })
   @Allow()
   @IsOptional()
   name?: string;
 
   @Column({ type: 'timestamptz', nullable: true })
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+  })
   @Type(() => Date)
   @Allow()
   @IsOptional()
   startDate?: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    type: Date,
+    nullable: true,
+  })
   @Type(() => Date)
   @Allow()
   @IsOptional()
   endDate?: Date;
 
   @Column({ type: 'text', nullable: true })
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+  })
   @Allow()
   @IsOptional()
   instructions?: string;
