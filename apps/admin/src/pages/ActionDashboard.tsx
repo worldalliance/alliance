@@ -135,7 +135,9 @@ const ActionDashboard: React.FC = () => {
   const [cohortExpression, setCohortExpression] =
     useState<CohortExpression | null>(null);
   const [availableUsers, setAvailableUsers] = useState<UserSelectUser[]>([]);
-  const [activeContractUserIds, setActiveContractUserIds] = useState<Set<number>>(new Set());
+  const [activeContractUserIds, setActiveContractUserIds] = useState<
+    Set<number>
+  >(new Set());
   const [usersLoading, setUsersLoading] = useState<boolean>(true);
 
   const [allActions, setAllActions] = useState<
@@ -247,7 +249,9 @@ const ActionDashboard: React.FC = () => {
           }));
           setAvailableUsers(mappedUsers);
           setActiveContractUserIds(
-            new Set(response.data.filter((u) => u.hasActiveContract).map((u) => u.id))
+            new Set(
+              response.data.filter((u) => u.hasActiveContract).map((u) => u.id)
+            )
           );
         }
       } catch (err) {
@@ -304,7 +308,7 @@ const ActionDashboard: React.FC = () => {
     body: "",
     timeEstimate: 0,
     shortDescription: "",
-    visibilityMode: "all_members",
+    visibilityMode: "public",
     commitmentless: true,
     isContractSigningAction: false,
     type: "Activity",
@@ -331,7 +335,7 @@ const ActionDashboard: React.FC = () => {
         body: "",
         timeEstimate: 0,
         shortDescription: "",
-        visibilityMode: "all_members",
+        visibilityMode: "public",
         commitmentless: true,
         type: "Activity",
         preventCompletion: false,
@@ -699,7 +703,9 @@ const ActionDashboard: React.FC = () => {
       const formData = {
         ...form,
         image: imageKey ?? undefined,
-        cohortExpression: (cohortExpression ?? undefined) as Record<string, unknown> | undefined,
+        cohortExpression: (cohortExpression ?? undefined) as
+          | Record<string, unknown>
+          | undefined,
       };
 
       if (isNew) {
