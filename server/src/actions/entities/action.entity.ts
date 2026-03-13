@@ -7,12 +7,14 @@ import {
   IsNotEmpty,
   IsOptional,
 } from 'class-validator';
-import { UpdateDateColumnTz } from 'src/datasources/basecolumns';
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from 'src/datasources/basecolumns';
 import type { Ty } from 'src/tasks/entities/type';
 import { User } from 'src/user/entities/user.entity';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinTable,
   ManyToMany,
@@ -146,7 +148,7 @@ export class Action {
   @IsOptional()
   taskFormId?: number;
 
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   @ApiProperty({ description: 'Timestamp when the action was created' })
   @Allow()
   @Type(() => Date)

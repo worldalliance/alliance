@@ -3,7 +3,6 @@ import { Type } from 'class-transformer';
 import { Allow, IsNotEmpty, IsOptional } from 'class-validator';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   JoinTable,
@@ -16,7 +15,10 @@ import {
 import { Notification } from '../../notifs/entities/notification.entity';
 import { User } from '../../user/entities/user.entity';
 import { EditableContent } from './editablecontent.entity';
-import { UpdateDateColumnTz } from 'src/datasources/basecolumns';
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from 'src/datasources/basecolumns';
 import type { Ty } from 'src/tasks/entities/type';
 
 export enum CommentParentObject {
@@ -73,7 +75,7 @@ export class Comment {
   @Allow()
   deleted: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   @ApiProperty()
   @Allow()
   @Type(() => Date)

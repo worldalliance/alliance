@@ -1,4 +1,9 @@
-import { View, ActivityIndicator, Dimensions } from "react-native";
+import {
+  View,
+  ActivityIndicator,
+  Dimensions,
+  useWindowDimensions,
+} from "react-native";
 import { Redirect, withLayoutContext } from "expo-router";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 
@@ -18,6 +23,7 @@ const Drawer = withLayoutContext(Navigator);
 export default function AppLayout() {
   const { isAuthenticated, isLoading, canConnectToServer } = useAuth();
   const insets = useSafeAreaInsets();
+  const dimensions = useWindowDimensions();
 
   if (isLoading) {
     return (
@@ -44,9 +50,9 @@ export default function AppLayout() {
         drawerContent={(props) => <Sidebar {...props} />}
         screenOptions={{
           headerShown: false,
-          drawerType: "front",
-          overlayColor: "rgba(0, 0, 0, 0.5)",
-          drawerStyle: { width: DRAWER_WIDTH, backgroundColor: "#fafafa" },
+          drawerType: dimensions.width >= 1024 ? "permanent" : "slide",
+          overlayColor: "rgba(0, 0, 0, 0.3)",
+          drawerStyle: { width: DRAWER_WIDTH, backgroundColor: "#ffffff" },
           swipeEdgeWidth: 300,
           swipeMinDistance: 30,
           sceneStyle: { paddingTop: insets.top, backgroundColor: "white" },

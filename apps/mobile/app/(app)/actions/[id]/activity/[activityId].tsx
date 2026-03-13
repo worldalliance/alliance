@@ -30,6 +30,7 @@ import Comments from "../../../../../components/Comments";
 import EditableContentForm from "../../../../../components/EditableContentForm";
 import EditableContentRenderer from "../../../../../components/EditableContentRenderer";
 import { actionActivityTransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
+import OutputRenderer from "../../../../../components/OutputRenderer";
 
 export default function ActivityDetailScreen() {
   const { id, activityId } = useLocalSearchParams<{
@@ -255,6 +256,14 @@ export default function ActivityDetailScreen() {
             </View>
           </View>
 
+          {activity.formResponseOutput &&
+            Object.keys(activity.formResponseOutput.publicAnswers ?? {})
+              .length > 0 && (
+              <View className="my-3">
+                <OutputRenderer submission={activity.formResponseOutput} />
+              </View>
+            )}
+
           {/* Timestamp and edit button */}
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-zinc-500 text-sm">
@@ -277,6 +286,7 @@ export default function ActivityDetailScreen() {
               <EditableContentForm
                 value={editContent}
                 onChange={setEditContent}
+                onSubmit={handleSave}
                 placeholder="Add a description..."
                 restoreDraft={false}
               />

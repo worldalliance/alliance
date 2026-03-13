@@ -1,4 +1,5 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
+import { Image, View } from "react-native";
 import type {
   FormResponseDto,
   FormResponseOutputDto,
@@ -8,18 +9,18 @@ import {
   resolveOutputView,
   type ResolvedOutputFieldItem,
 } from "@alliance/shared/outputrenderer";
-import { getApiUrl } from "../lib/config";
-import Card from "../ui/Card";
-import { CardStyle } from "@alliance/shared/styles/card";
-import { cn } from "@alliance/shared/styles/util";
-import ImageLightbox from "../ui/ImageLightbox";
-import RenderDisplayBlock from "./RenderDisplayBlock";
-import RenderField from "./RenderField";
 import type {
+  AnyField,
   DeviceVisibilityTarget,
   FormSchema,
   FormValue,
 } from "@alliance/shared/forms/formschema";
+import { cn } from "@alliance/shared/styles/util";
+import { getImageSource } from "../lib/config";
+import Card, { CardStyle } from "./system/Card";
+import Text from "./system/Text";
+import { RenderDisplayBlockMobile } from "./forms/FormRenderer";
+import { RenderField } from "./forms/RenderField";
 
 type OutputRendererProps = {
   schema?: FormSchema;
@@ -30,54 +31,47 @@ type OutputRendererProps = {
   deviceType?: DeviceVisibilityTarget;
   className?: string;
 };
+
 type SubmissionWithPublicAnswers =
   | (FormResponseOutputDto & { publicAnswers?: Record<string, boolean> })
   | (FormResponseDto & { publicAnswers?: Record<string, boolean> });
 
-const renderOutputFieldValue = (
-  item: ResolvedOutputFieldItem
-): ReactNode => {
+const canUseMobileFieldRenderer = (field: AnyField): boolean =>
+  field.kind !== "contract" && field.kind !== "custom" && field.kind !== "file";
+
+const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
   if (!item.field) {
     return (
-      <span className="text-xs text-gray-500">Field removed from form.</span>
+      <Text className="text-xs text-zinc-500">Field removed from form.</Text>
     );
   }
+
   if (item.field.kind === "file") {
     if (!item.fileValues.length) {
-      return <span className="text-xs text-gray-500">No file uploaded</span>;
+      return <Text className="text-xs text-zinc-500">No file uploaded</Text>;
     }
-    const imageUrls = item.fileValues.map((entry) => `${getApiUrl()}/images/${entry}`);
     return (
-      <ImageLightbox
-        images={imageUrls}
-        renderPreview={(openLightbox) => (
-          <div className="flex flex-wrap gap-2">
-            {imageUrls.map((src, idx) => (
-              <button
-                type="button"
-                key={idx}
-                className="focus:outline-none"
-                onClick={(e) => openLightbox(idx, e)}
-              >
-                <img
-                  src={src}
-                  alt="Uploaded file"
-                  className="w-28 h-28 object-cover rounded"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-      />
+      <View className="flex-row flex-wrap gap-2">
+        {item.fileValues.map((fileValue) => (
+          <Image
+            key={fileValue}
+            source={{ uri: getImageSource(fileValue) }}
+            className="w-24 h-24 rounded-lg bg-zinc-200"
+            resizeMode="cover"
+          />
+        ))}
+      </View>
     );
   }
+
   if (!item.formattedValue) {
-    return <span className="text-sm text-gray-400">No response</span>;
+    return <Text className="text-sm text-zinc-400">No response</Text>;
   }
-  return <span className="text-sm text-gray-900">{item.formattedValue}</span>;
+
+  return <Text className="text-base text-zinc-900">{item.formattedValue}</Text>;
 };
 
-export function OutputRenderer({
+function OutputRenderer({
   schema,
   submission,
   answers,
@@ -133,11 +127,11 @@ export function OutputRenderer({
 
   if (!selectedView || !effectiveSchema) {
     return (
-      <div className={className}>
-        <p className="text-sm text-gray-500">
+      <View className={className}>
+        <Text className="text-sm text-zinc-500">
           No output views configured for this form.
-        </p>
-      </div>
+        </Text>
+      </View>
     );
   }
 
@@ -146,53 +140,61 @@ export function OutputRenderer({
   }
 
   return (
-    <Card style={CardStyle.Grey}>
-      <div className={cn("space-y-2", className)}>
+    <Card cardStyle={CardStyle.Grey}>
+      <View className={cn("gap-2", className)}>
         {resolvedOutput.items.map((item) => {
           if (item.type === "display") {
-            return <RenderDisplayBlock block={item.block} key={item.key} />;
+            return (
+              <RenderDisplayBlockMobile block={item.block} key={item.key} />
+            );
           }
 
-          const content = renderOutputFieldValue(item);
           if (item.format === "card") {
             return (
               <Card key={item.key}>
                 {item.showLabel && (
-                  <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                  <Text className="mb-1 text-xs uppercase tracking-wide text-zinc-500">
                     {item.label}
-                  </p>
+                  </Text>
                 )}
-                <div className="text-lg">{content}</div>
+                <View>{renderFormattedOutputFieldValue(item)}</View>
               </Card>
             );
           }
+
           if (item.format === "textonly") {
             return (
-              <div key={item.key} className="text-sm text-gray-900">
+              <View key={item.key} className="flex-row flex-wrap items-center">
                 {item.showLabel && (
-                  <span className="font-medium text-gray-700">
+                  <Text className="font-medium text-zinc-700">
                     {item.label}:{" "}
-                  </span>
+                  </Text>
                 )}
-                {content}
-              </div>
+                <View>{renderFormattedOutputFieldValue(item)}</View>
+              </View>
             );
           }
+
           if (!item.renderField) {
             return null;
           }
+
           return (
-            <div key={item.key} className="space-y-1">
-              <RenderField
-                field={item.renderField}
-                value={item.value}
-                disabled
-                isOutputView
-              />
-            </div>
+            <View key={item.key} className="gap-1">
+              {item.renderField && canUseMobileFieldRenderer(item.renderField) ? (
+                <RenderField
+                  field={item.renderField}
+                  value={item.value}
+                  disabled
+                  isOutputView
+                />
+              ) : (
+                renderFormattedOutputFieldValue(item)
+              )}
+            </View>
           );
         })}
-      </div>
+      </View>
     </Card>
   );
 }

@@ -3,12 +3,12 @@ import { Type } from 'class-transformer';
 import { Allow } from 'class-validator';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 import { User } from '../../user/entities/user.entity';
 import { GeneralUpdate } from './general-update.entity';
 import type { Ty } from 'src/tasks/entities/type';
@@ -35,7 +35,7 @@ export class GeneralUpdateActivity {
   @Allow()
   type: GeneralUpdateActivityType;
 
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   @Allow()
   @Type(() => Date)
   @ApiProperty()

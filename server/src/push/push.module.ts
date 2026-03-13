@@ -1,5 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { PushService, EXPO_CLIENT } from './push.service';
+import { PushController } from './push.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Push } from './push.entity';
 import { UserDevice } from 'src/user/entities/user-device.entity';
@@ -14,6 +15,7 @@ import { Expo } from 'expo-server-sdk';
     TypeOrmModule.forFeature([Push, UserDevice, Notification, UnreadContent]),
     forwardRef(() => NotifsModule),
   ],
+  controllers: [PushController],
   providers: [
     {
       provide: EXPO_CLIENT,

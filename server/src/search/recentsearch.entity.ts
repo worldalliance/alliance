@@ -1,9 +1,5 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 import { SearchItemType } from './searchitem.dto';
 
 @Entity()
@@ -23,6 +19,6 @@ export class RecentSearch {
   @Column()
   userId: number;
 
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   createdAt: Date;
 }

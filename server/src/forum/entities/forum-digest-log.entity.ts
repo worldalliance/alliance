@@ -1,12 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   ManyToOne,
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
+import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 import { User } from 'src/user/entities/user.entity';
 import { ForumDigestPreference } from 'src/user/entities/user.entity';
 
@@ -57,7 +57,7 @@ export class ForumDigestLog {
   })
   notificationsSummary?: StoredNotificationSummary[];
 
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   @ApiProperty({ type: String, format: 'date-time' })
   createdAt: Date;
 }

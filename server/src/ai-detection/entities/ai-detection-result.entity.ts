@@ -3,12 +3,14 @@ import { Type } from 'class-transformer';
 import { Allow, IsOptional } from 'class-validator';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
   Unique,
-  UpdateDateColumn,
 } from 'typeorm';
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from 'src/datasources/basecolumns';
 
 export enum DetectableEntity {
   Comment = 'comment',
@@ -70,13 +72,13 @@ export class AiDetectionResult {
   @IsOptional()
   modelVersion?: string | null;
 
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   @ApiProperty()
   @Allow()
   @Type(() => Date)
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumnTz()
   @ApiProperty()
   @Allow()
   @Type(() => Date)

@@ -5,12 +5,12 @@ import { Allow, IsDefined, IsOptional } from 'class-validator';
 import { User } from 'src/user/entities/user.entity';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   Index,
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 import type { DeviceVisibilityTarget } from '../schema';
 import { Form } from './form.entity';
 import type { Ty } from './type';
@@ -70,7 +70,7 @@ export class FormResponse {
   @Type(() => String)
   sessionReplayUrl?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   @ApiProperty()
   @Allow()
   @Type(() => Date)

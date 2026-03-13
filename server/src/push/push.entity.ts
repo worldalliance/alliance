@@ -98,4 +98,8 @@ export class Push {
   )
   @JoinColumn({ name: 'actionEventNotifId' })
   actionEventNotif?: Ty<ActionEventNotif>;
+
+  @Column({ nullable: true })
+  @ApiPropertyOptional()
+  openedAt?: Date;
 }

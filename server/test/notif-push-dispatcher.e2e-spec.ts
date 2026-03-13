@@ -211,7 +211,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
 
       // Run the dispatcher (call private method directly to bypass NODE_ENV check)
       const messages =
-        await dispatcher.dispatchNotificationPushes('test-dispatch-1');
+        await dispatcher.findNotificationPushes('test-dispatch-1');
 
       // No messages should be generated since the device was registered after the notification
       expect(messages).toHaveLength(0);
@@ -230,7 +230,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       await createNotification(user, fiveMinutesAgo);
 
       const messages =
-        await dispatcher.dispatchNotificationPushes('test-dispatch-2');
+        await dispatcher.findNotificationPushes('test-dispatch-2');
 
       expect(messages).toHaveLength(1);
       expect(messages[0].expoPushToken).toBe(device.expoPushToken);
@@ -253,7 +253,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       await createNotification(user, thirtyMinutesAgo);
 
       const messages =
-        await dispatcher.dispatchNotificationPushes('test-dispatch-3');
+        await dispatcher.findNotificationPushes('test-dispatch-3');
 
       expect(messages).toHaveLength(1);
       expect(messages[0].expoPushToken).toBe(oldDevice.expoPushToken);

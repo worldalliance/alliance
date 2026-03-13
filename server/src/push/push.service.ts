@@ -69,6 +69,8 @@ export class PushService {
     const expoMessages: ExpoPushMessage[] = [];
     const pushEntities: Push[] = [];
 
+    console.log('sending messages', messages);
+
     for (const message of messages) {
       if (!Expo.isExpoPushToken(message.expoPushToken)) {
         console.error(
@@ -92,6 +94,7 @@ export class PushService {
         sound: 'default',
         body: message.body,
         data: {
+          cid: pushEntity.id,
           screen: message.screen,
           notificationId: message.notification?.id ?? message.unreadContent?.id,
           notificationSourceType: message.notification

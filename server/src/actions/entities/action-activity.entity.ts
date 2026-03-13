@@ -4,7 +4,6 @@ import { Allow, IsOptional } from 'class-validator';
 import { EditableContent } from 'src/forum/entities/editablecontent.entity';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   Index,
   JoinColumn,
@@ -14,6 +13,7 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 import { User } from '../../user/entities/user.entity';
 import { Action } from './action.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
@@ -82,7 +82,7 @@ export class ActionActivity {
   @ApiProperty()
   userId: number;
 
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   @Allow()
   @Type(() => Date)
   @ApiProperty()

@@ -1,10 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 
 export enum EmailType {
   Verification = 'verification',
@@ -57,7 +53,7 @@ export class Mail {
   emailType: EmailType;
 
   @ApiProperty()
-  @CreateDateColumn()
+  @CreateDateColumnTz()
   createdAt: Date;
 
   @Column({ nullable: true })

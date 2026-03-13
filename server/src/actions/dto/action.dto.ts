@@ -712,6 +712,7 @@ export class TimelineFeedItemDto {
 }
 
 export class EvaluateCohortExpressionDto {
+  // eslint-disable-next-line @darraghor/nestjs-typed/validated-non-primitive-property-needs-type-decorator
   @ApiProperty({ description: 'Cohort expression to evaluate' })
   @IsDefined()
   expression: CohortExpression;

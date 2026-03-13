@@ -13,6 +13,7 @@
     "ui",
     "forms",
     "formrenderer.ts",
+    "outputrenderer.ts",
     "../sharedweb/lib/useOutsideClick.ts",
     "../sharedweb/lib/config.ts",
     "client/hey-api.ts",

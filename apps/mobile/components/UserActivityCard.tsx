@@ -15,6 +15,7 @@ import LikeButton from "./LikeButton";
 import Comments from "./Comments";
 import EditableContentForm from "./EditableContentForm";
 import EditableContentRenderer from "./EditableContentRenderer";
+import OutputRenderer from "./OutputRenderer";
 import Text from "./system/Text";
 import {
   actionActivityCommentable,
@@ -153,6 +154,14 @@ export default function UserActivityCard({
             </Text>
           </View>
         </View>
+
+        {activity.formResponseOutput &&
+          Object.keys(activity.formResponseOutput.publicAnswers ?? {}).length >
+            0 && (
+            <View className="my-3">
+              <OutputRenderer submission={activity.formResponseOutput} />
+            </View>
+          )}
 
         {isEditing ? (
           <View className="mt-3 border border-zinc-200 rounded p-3 bg-zinc-50">

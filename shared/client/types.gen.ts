@@ -266,6 +266,7 @@ export type Push = {
     errorMessage?: string;
     lastCheckedStatusAt?: string;
     idempotencyKey?: string;
+    openedAt?: string;
 };
 
 export type ActionEventNotif = {
@@ -1015,6 +1016,10 @@ export type CreateMessageDto = {
     replyToId?: string;
 };
 
+export type PushOpenedDto = {
+    cid: number;
+};
+
 export type NotificationSourceType = 'notification' | 'unread_content';
 
 export type UnreadContentType = 'action_event' | 'forum_reply' | 'action_update';
@@ -1066,7 +1071,7 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
-export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure';
+export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out';
 
 export type EventLogUserDto = {
     id: number;
@@ -4125,6 +4130,19 @@ export type MessageGetMessagesResponses = {
 };
 
 export type MessageGetMessagesResponse = MessageGetMessagesResponses[keyof MessageGetMessagesResponses];
+
+export type PushMarkOpenedData = {
+    body: PushOpenedDto;
+    path?: never;
+    query?: never;
+    url: '/push/opened';
+};
+
+export type PushMarkOpenedResponses = {
+    200: Push;
+};
+
+export type PushMarkOpenedResponse = PushMarkOpenedResponses[keyof PushMarkOpenedResponses];
 
 export type NotifsFindAllData = {
     body?: never;

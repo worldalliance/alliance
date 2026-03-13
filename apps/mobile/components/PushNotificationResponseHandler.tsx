@@ -2,6 +2,7 @@ import {
   NotificationDto,
   NotificationSourceType,
   notifsSetRead,
+  pushMarkOpened,
 } from "@alliance/shared/client";
 import { QueryClient } from "@tanstack/react-query";
 import * as Notifications from "expo-notifications";
@@ -16,6 +17,7 @@ import {
 } from "@alliance/shared/lib/notificationIdentity";
 
 type PushData = {
+  cid?: number;
   screen?: string;
   notificationId?: number;
   notificationSourceType?: NotificationSourceType;
@@ -26,6 +28,7 @@ type NotificationsQueryData = {
 } & Record<string, unknown>;
 
 type PendingNotificationAction = {
+  cid?: number;
   notificationId?: number;
   notificationSourceType?: NotificationSourceType;
   screen?: string;
@@ -105,6 +108,14 @@ export default function PushNotificationResponseHandler({
 
   const handlePendingNotificationAction = useCallback(
     (pendingAction: PendingNotificationAction) => {
+      if (pendingAction.cid) {
+        void pushMarkOpened({ body: { cid: pendingAction.cid } }).catch(
+          (error) => {
+            console.error("failed to mark push as opened", error);
+          }
+        );
+      }
+
       if (pendingAction.notificationId && pendingAction.notificationSourceType) {
         markNotificationReadFromTap({
           id: pendingAction.notificationId,
@@ -136,6 +147,7 @@ export default function PushNotificationResponseHandler({
         | PushData
         | undefined;
       const pendingAction: PendingNotificationAction = {
+        cid: typeof data?.cid === "number" ? data.cid : undefined,
         notificationId:
           typeof data?.notificationId === "number"
             ? data.notificationId

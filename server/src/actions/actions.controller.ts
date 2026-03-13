@@ -658,7 +658,6 @@ export class ActionsController {
   async evaluateCohort(
     @Body() dto: EvaluateCohortExpressionDto,
   ): Promise<EvaluateCohortExpressionResponseDto> {
-    console.log('evaluateCohort', dto);
     const userIds = await this.actionsService.evaluateCohortExpressionBatch(
       dto.expression,
     );

@@ -25,18 +25,24 @@ export class NotifPushDispatcherWorker {
     private readonly pushService: PushService,
   ) {}
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async dispatchPushes() {
-    if (process.env.NODE_ENV !== 'production') {
+    if (
+      !(
+        process.env.NODE_ENV === 'production' ||
+        process.env.SEND_DEV_NOTIFS === '1'
+      )
+    ) {
       return;
     }
+    console.log('dispatching pushes');
     const dispatchID = v4().replace(/-/g, '');
 
     const messagesToSend: CreatePushMessage[] = [];
-    messagesToSend.push(...(await this.dispatchNotificationPushes(dispatchID)));
-    messagesToSend.push(
-      ...(await this.dispatchUnreadContentPushes(dispatchID)),
-    );
+    messagesToSend.push(...(await this.findNotificationPushes(dispatchID)));
+    messagesToSend.push(...(await this.findUnreadContentPushes(dispatchID)));
+
+    console.log('messages to send', messagesToSend.length);
 
     if (!messagesToSend.length) {
       return;
@@ -45,7 +51,7 @@ export class NotifPushDispatcherWorker {
     await this.pushService.sendMessages(messagesToSend);
   }
 
-  async dispatchNotificationPushes(
+  async findNotificationPushes(
     dispatchID: string,
   ): Promise<CreatePushMessage[]> {
     const claimed: { id: number }[] = (
@@ -136,11 +142,10 @@ export class NotifPushDispatcherWorker {
         )),
       );
     }
-
     return messages;
   }
 
-  private async dispatchUnreadContentPushes(
+  private async findUnreadContentPushes(
     dispatchID: string,
   ): Promise<CreatePushMessage[]> {
     const claimed: { id: number }[] = (
@@ -195,6 +200,9 @@ export class NotifPushDispatcherWorker {
         await this.unreadContentRepository.update(unreadContent.id, {
           shouldPush: false,
         });
+        console.log(
+          `skipping unread-content notif ${unreadContent.id} because it's not sendable`,
+        );
         continue;
       }
       messages.push(
@@ -210,6 +218,7 @@ export class NotifPushDispatcherWorker {
         )),
       );
     }
+    console.log('returning messages', messages.length);
 
     return messages;
   }

@@ -20,6 +20,8 @@ import type {
   CityField,
   CityFieldValue,
   FormValue,
+  ListField,
+  ListFieldValue,
   RangeField,
   TimeField,
 } from "@alliance/shared/forms/formschema";
@@ -30,6 +32,8 @@ import {
 } from "@alliance/shared/forms/timeUtils";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import { cn } from "@alliance/shared/styles/util";
+import Card, { CardStyle } from "../system/Card";
+import Button, { ButtonColor, ButtonSize } from "../system/Button";
 
 export type RenderFieldProps = {
   field: AnyField;
@@ -44,6 +48,7 @@ export type RenderFieldProps = {
   randomizationKey?: string;
   disableOptionRandomization?: boolean;
   user?: Omit<UserDto, "email">;
+  isOutputView?: boolean;
 };
 
 const sharedInputClasses =
@@ -122,6 +127,7 @@ export function RenderField({
   error,
   randomizationKey,
   disableOptionRandomization,
+  isOutputView,
 }: RenderFieldProps) {
   const [selectOpen, setSelectOpen] = useState(false);
   const errorMessage =
@@ -671,6 +677,118 @@ export function RenderField({
           {renderValidationMessage(errorMessage)}
         </View>
       );
+
+    case "list": {
+      const listField = field as ListField;
+      const subFields = listField.fields ?? [];
+      const rawList = Array.isArray(value) ? value : [];
+      const listValue: ListFieldValue = rawList.every(
+        (item): item is Record<string, FormValue> =>
+          item !== null && typeof item === "object" && !Array.isArray(item)
+      )
+        ? rawList
+        : [];
+      const defaultCount = Math.max(
+        0,
+        Math.floor(listField.defaultNumber ?? 0)
+      );
+      const minCards = Math.max(0, Math.floor(Number(listField.min || 0)));
+      const maxCards =
+        typeof listField.max === "number" && listField.max >= 0
+          ? Math.floor(listField.max)
+          : Infinity;
+      const cards: ListFieldValue =
+        value === undefined
+          ? Array.from({ length: defaultCount }, () => ({}))
+          : listValue;
+      const hiddenInOutputIds = new Set(
+        isOutputView ? listField.outputViewHiddenFieldIds ?? [] : []
+      );
+      const visibleSubFields = subFields.filter(
+        (subField) => !hiddenInOutputIds.has(subField.id)
+      );
+      const canDelete = cards.length > minCards;
+
+      const addCard = () => {
+        if (cards.length >= maxCards) {
+          return;
+        }
+        const nextCards: ListFieldValue =
+          value === undefined
+            ? Array.from({ length: defaultCount + 1 }, () => ({}))
+            : [...listValue, {}];
+        onChange?.(nextCards);
+      };
+
+      const removeCard = (index: number) => {
+        onChange?.(cards.filter((_, cardIndex) => cardIndex !== index));
+      };
+
+      const updateCard = (
+        index: number,
+        subFieldId: string,
+        subValue: FormValue
+      ) => {
+        const nextCards = [...cards];
+        nextCards[index] = {
+          ...(nextCards[index] ?? {}),
+          [subFieldId]: subValue,
+        };
+        onChange?.(nextCards);
+      };
+
+      return (
+        <View>
+          <RenderLabel field={field} error={errorMessage} />
+          <View className="gap-3">
+            {cards.map((card, cardIndex) => (
+              <Card
+                key={cardIndex}
+                cardStyle={CardStyle.White}
+                className="border border-zinc-200 gap-4"
+              >
+                {visibleSubFields.map((subField) => (
+                  <RenderField
+                    key={subField.id}
+                    field={subField}
+                    value={card[subField.id]}
+                    onChange={
+                      onChange
+                        ? (nextValue) =>
+                            updateCard(cardIndex, subField.id, nextValue)
+                        : undefined
+                    }
+                    onFocus={onFocus}
+                    disabled={disabled}
+                    randomizationKey={randomizationKey}
+                    disableOptionRandomization={disableOptionRandomization}
+                    isOutputView={isOutputView}
+                  />
+                ))}
+                {!disabled && (
+                  <Button
+                    onPress={() => removeCard(cardIndex)}
+                    disabled={!canDelete}
+                    color={ButtonColor.Red}
+                    size={ButtonSize.Small}
+                    title="Remove item"
+                  />
+                )}
+              </Card>
+            ))}
+            {!disabled && cards.length < maxCards && (
+              <Button
+                onPress={addCard}
+                color={ButtonColor.Light}
+                size={ButtonSize.Medium}
+                title={listField.addButtonLabel?.trim() || "Add item"}
+              />
+            )}
+          </View>
+          {renderValidationMessage(errorMessage)}
+        </View>
+      );
+    }
 
     case "custom":
       return (
