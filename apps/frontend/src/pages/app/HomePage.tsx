@@ -278,6 +278,7 @@ const HomePage = () => {
                         : action
                     )
                 );
+                queryClient.invalidateQueries({ queryKey: ["actions"] });
               }}
               onUpdateActionState={() => {
                 queryClient.invalidateQueries({ queryKey: ["actions"] });
