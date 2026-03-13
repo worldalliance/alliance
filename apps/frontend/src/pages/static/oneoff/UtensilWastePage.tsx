@@ -64,7 +64,6 @@ const UtensilWastePage: React.FC = () => {
                   <strong className="text-zinc-900">
                     $350 to $750 annually.
                   </strong>
-                  {""}.
                 </p>
               </div>
             </div>
