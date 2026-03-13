@@ -7,6 +7,7 @@ import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity'
 import { Notification } from 'src/notifs/entities/notification.entity';
 import { UnreadContent } from 'src/notifs/entities/unread-content.entity';
 import type { Ty } from 'src/tasks/entities/type';
+import { User } from 'src/user/entities/user.entity';
 import {
   Column,
   Entity,
@@ -25,6 +26,10 @@ export class Push {
   @PrimaryGeneratedColumn()
   @ApiProperty()
   id: number;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
+  user: Ty<User>;
 
   @Column()
   @ApiProperty()

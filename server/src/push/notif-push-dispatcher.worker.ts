@@ -35,14 +35,11 @@ export class NotifPushDispatcherWorker {
     ) {
       return;
     }
-    console.log('dispatching pushes');
     const dispatchID = v4().replace(/-/g, '');
 
     const messagesToSend: CreatePushMessage[] = [];
     messagesToSend.push(...(await this.findNotificationPushes(dispatchID)));
     messagesToSend.push(...(await this.findUnreadContentPushes(dispatchID)));
-
-    console.log('messages to send', messagesToSend.length);
 
     if (!messagesToSend.length) {
       return;
@@ -133,6 +130,7 @@ export class NotifPushDispatcherWorker {
         ...(await this.pushService.getPushForAllUserDevices(
           notif.user.id,
           {
+            userId: notif.user.id,
             body: notif.message,
             screen: notif.mobileAppLocation || notif.webAppLocation,
             notification: notif,
@@ -185,10 +183,6 @@ export class NotifPushDispatcherWorker {
       return [];
     }
 
-    console.log(
-      `found ${hydrated.length} unread-content notifs to send pushes for`,
-    );
-
     const messages: CreatePushMessage[] = [];
     for (const { unreadContent, dto } of hydrated) {
       const contentTypeToSendable: Record<UnreadContentType, boolean> = {
@@ -200,15 +194,13 @@ export class NotifPushDispatcherWorker {
         await this.unreadContentRepository.update(unreadContent.id, {
           shouldPush: false,
         });
-        console.log(
-          `skipping unread-content notif ${unreadContent.id} because it's not sendable`,
-        );
         continue;
       }
       messages.push(
         ...(await this.pushService.getPushForAllUserDevices(
           unreadContent.user.id,
           {
+            userId: unreadContent.user.id,
             body: dto.message,
             screen: dto.mobileAppLocation ?? dto.webAppLocation ?? undefined,
             unreadContent,
@@ -218,7 +210,7 @@ export class NotifPushDispatcherWorker {
         )),
       );
     }
-    console.log('returning messages', messages.length);
+    console.log('returning messages', messages);
 
     return messages;
   }

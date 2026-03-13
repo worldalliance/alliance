@@ -23,7 +23,9 @@ export class CreatePushMessage extends PickType(Push, [
   'screen',
   'notification',
   'unreadContent',
-]) {}
+]) {
+  userId: number;
+}
 
 @Injectable()
 export class PushService {
@@ -36,8 +38,13 @@ export class PushService {
     private readonly userDeviceRepository: Repository<UserDevice>,
   ) {}
 
-  async sendPushNotification(token: string, body: string): Promise<Push> {
+  async sendPushNotification(
+    userId: number,
+    token: string,
+    body: string,
+  ): Promise<Push> {
     const message: CreatePushMessage = {
+      userId,
       expoPushToken: token,
       body,
     };
@@ -78,7 +85,10 @@ export class PushService {
         );
         continue;
       }
-      let pushEntity = this.pushRepository.create(message);
+      let pushEntity = this.pushRepository.create({
+        ...message,
+        user: { id: message.userId },
+      });
       try {
         pushEntity = await this.pushRepository.save(pushEntity);
       } catch (error) {

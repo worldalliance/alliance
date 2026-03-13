@@ -1375,7 +1375,11 @@ export class UserService {
     if (!device || !device.expoPushToken) {
       throw new BadRequestException('User has no expo push token');
     }
-    return this.pushService.sendPushNotification(device.expoPushToken, message);
+    return this.pushService.sendPushNotification(
+      userId,
+      device.expoPushToken,
+      message,
+    );
   }
 
   async signedMembersCount(): Promise<number> {
