@@ -35,7 +35,7 @@ const UtensilWastePage: React.FC = () => {
           <div className="text-zinc-900 text-base md:text-lg max-w-3xl mx-auto space-y-8">
             <p>
               Many takeout orders include single-use plastic utensils by
-              default, even when they aren&apos;t needed. Alliance members are
+              default, even when they aren&apos;t wanted. Alliance members are
               asking local restaurants to implement{" "}
               <strong>opt-in utensil policies</strong> to reduce plastic waste.
             </p>
@@ -62,7 +62,7 @@ const UtensilWastePage: React.FC = () => {
                   Utensil kits cost between 5 and 10 cents each. By reducing
                   unnecessary distribution, an average restaurant could save{" "}
                   <strong className="text-zinc-900">
-                    $350 to $750 annually.
+                    $350 to $750 annually
                   </strong>
                   {""}.
                 </p>
