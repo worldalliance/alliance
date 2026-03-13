@@ -79,6 +79,8 @@ import {
   FormResponseOutputDto,
   GlobalFeedActionUpdateDto,
   GlobalFeedActivityGroupDto,
+  GlobalFeedActivityType,
+  GlobalFeedActivityTypes,
   GlobalFeedForumCommentsDto,
   GlobalFeedItemDto,
   GlobalFeedItemType,
@@ -3388,7 +3390,7 @@ export class ActionsService {
     const oneWeekAgo = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000);
 
     // 1. Fetch recent activities (last week) and group by action + type (no day bucketing)
-    const recentActivities = await this.actionActivityRepository
+    const recentActivities = (await this.actionActivityRepository
       .createQueryBuilder('activity')
       .leftJoinAndSelect('activity.user', 'user')
       .leftJoinAndSelect('activity.action', 'action')
@@ -3410,16 +3412,14 @@ export class ActionsService {
       ])
       .loadRelationIdAndMap('user.leaderOfIds', 'user.leaderOf')
       .where('activity.type IN (:...types)', {
-        types: [
-          ActionActivityType.USER_JOINED,
-          ActionActivityType.USER_COMPLETED,
-          ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
-        ],
+        types: GlobalFeedActivityTypes,
       })
       .andWhere('action.onboarding = false')
       .andWhere('activity.createdAt > :oneWeekAgo', { oneWeekAgo })
       .orderBy('activity.createdAt', 'DESC')
-      .getMany();
+      .getMany()) as (ActionActivity & {
+      type: GlobalFeedActivityType;
+    })[];
 
     // Group activities by action + type only (combine across all days)
     const activityGroups = new Map<
@@ -3428,7 +3428,7 @@ export class ActionsService {
         activities: ActionActivity[];
         actionId: number;
         actionName: string;
-        type: ActionActivityType;
+        type: GlobalFeedActivityType;
         latestDate: Date;
       }
     >();
@@ -3467,10 +3467,7 @@ export class ActionsService {
         users,
         actionId: group.actionId,
         actionName: group.actionName,
-        activityType:
-          group.type === ActionActivityType.USER_COMPLETED
-            ? 'completed'
-            : 'joined',
+        activityType: group.type,
         count: uniqueUsers.size,
       };
 

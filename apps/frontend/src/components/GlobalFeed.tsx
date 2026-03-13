@@ -15,6 +15,7 @@ import {
   // GlobalFeedNewMembersDto,
   ProfileDto,
 } from "@alliance/shared/client";
+import { actionActivityTransitiveVerb } from "@alliance/shared/lib/actionActivityConstants";
 
 interface ProfilePicRowProps {
   users: ProfileDto[];
@@ -54,7 +55,7 @@ interface ActivityGroupItemProps {
 }
 
 const ActivityGroupItem = ({ item, date }: ActivityGroupItemProps) => {
-  const verb = item.activityType === "completed" ? "completed" : "joined";
+  const verb = actionActivityTransitiveVerb[item.activityType] satisfies string;
   const isSingle = item.count === 1 && item.users.length > 0;
 
   return (

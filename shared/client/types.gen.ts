@@ -1503,11 +1503,13 @@ export type LatLonDto = {
 
 export type GlobalFeedItemType = 'activity_group' | 'action_update' | 'new_members' | 'forum_comments';
 
+export type GlobalFeedActivityTypes = 'user_joined' | 'user_completed' | 'user_submitted_follow_up_form';
+
 export type GlobalFeedActivityGroupDto = {
     users: Array<ProfileDto>;
     actionId: number;
     actionName: string;
-    activityType: string;
+    activityType: GlobalFeedActivityTypes;
     count: number;
 };
 

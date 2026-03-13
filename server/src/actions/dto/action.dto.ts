@@ -22,7 +22,10 @@ import {
   EditableContentDto,
 } from 'src/forum/dto/editablecontent.dto';
 import { ProfileDto } from 'src/user/dto/user.dto';
-import { ActionActivity } from '../entities/action-activity.entity';
+import {
+  ActionActivity,
+  ActionActivityType,
+} from '../entities/action-activity.entity';
 import { ActionEvent, ActionStatus } from '../entities/action-event.entity';
 import { Action } from '../entities/action.entity';
 import { getImageSource } from 'src/images/images.service';
@@ -570,6 +573,13 @@ export enum GlobalFeedItemType {
   ForumComments = 'forum_comments',
 }
 
+export const GlobalFeedActivityTypes = [
+  ActionActivityType.USER_JOINED,
+  ActionActivityType.USER_COMPLETED,
+  ActionActivityType.USER_SUBMITTED_FOLLOW_UP_FORM,
+] as const satisfies ActionActivityType[];
+export type GlobalFeedActivityType = (typeof GlobalFeedActivityTypes)[number];
+
 export class GlobalFeedActivityGroupDto {
   @ApiProperty({ type: () => ProfileDto, isArray: true })
   @Type(() => ProfileDto)
@@ -581,8 +591,11 @@ export class GlobalFeedActivityGroupDto {
   @ApiProperty()
   actionName: string;
 
-  @ApiProperty()
-  activityType: 'completed' | 'joined';
+  @ApiProperty({
+    enum: GlobalFeedActivityTypes,
+    enumName: 'GlobalFeedActivityTypes',
+  })
+  activityType: GlobalFeedActivityType;
 
   @ApiProperty()
   count: number;
