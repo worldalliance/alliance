@@ -1900,6 +1900,11 @@ export class ActionsService {
     if (!activity) {
       throw new NotFoundException('Activity not found');
     }
+    if (
+      !GlobalFeedActivityTypes.includes(activity.type as GlobalFeedActivityType)
+    ) {
+      throw new BadRequestException('Activity type is not supported');
+    }
     const user = await this.userService.findOneOrFail(userId);
 
     const qb = this.actionActivityRepository
@@ -1938,7 +1943,7 @@ export class ActionsService {
       await this.likeNotificationService.createOrUpdate({
         owner: updatedActivity.user,
         liker: user,
-        targetType: 'activity',
+        targetType: `activity:${updatedActivity.type as GlobalFeedActivityType}`,
         targetContent: updatedActivity.action.name,
         targetId: updatedActivity.id,
         webAppLocation: actionActivityUrl(

@@ -8,8 +8,12 @@ import {
 import { User } from 'src/user/entities/user.entity';
 import { ProfileDto } from 'src/user/dto/user.dto';
 import { NotifsService } from './notifs.service';
+import type { GlobalFeedActivityType } from 'src/actions/dto/action.dto';
 
-export type LikeNotificationTarget = 'post' | 'comment' | 'activity';
+export type LikeNotificationTarget =
+  | 'post'
+  | 'comment'
+  | `activity:${GlobalFeedActivityType}`;
 
 export type GroupingKey =
   | `activity_like:${number}`
@@ -164,11 +168,23 @@ export class LikeNotificationService {
       case 'comment':
         label = targetContent ? `comment: ${targetContent}` : 'comment';
         break;
-      case 'activity':
+      case 'activity:user_completed':
         label = targetContent
           ? `completion of: ${targetContent}`
           : 'action activity';
         break;
+      case 'activity:user_joined':
+        label = targetContent
+          ? `commitment to: ${targetContent}`
+          : 'action commitment';
+        break;
+      case 'activity:user_submitted_follow_up_form':
+        label = targetContent
+          ? `follow-up to: ${targetContent}`
+          : 'follow-up response';
+        break;
+      default:
+        targetType satisfies never;
     }
 
     if (count === 1 && likerName) {
