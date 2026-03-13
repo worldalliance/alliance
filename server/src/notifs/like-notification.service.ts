@@ -11,6 +11,12 @@ import { NotifsService } from './notifs.service';
 
 export type LikeNotificationTarget = 'post' | 'comment' | 'activity';
 
+export type GroupingKey =
+  | `activity_like:${number}`
+  | `forum_like:post:${number}:user:${number}`
+  | `forum_like:comment:${number}`
+  | `like:${LikeNotificationTarget}:${number}`;
+
 @Injectable()
 export class LikeNotificationService {
   constructor(
@@ -25,7 +31,7 @@ export class LikeNotificationService {
     targetType: LikeNotificationTarget;
     targetId: number;
     webAppLocation: string;
-    groupingKey?: string;
+    groupingKey?: GroupingKey;
     targetContent?: string;
     existingNotification?: Notification | null;
   }): Promise<void> {
@@ -101,7 +107,7 @@ export class LikeNotificationService {
     ownerId: number;
     targetType: LikeNotificationTarget;
     targetId: number;
-    groupingKey?: string;
+    groupingKey?: GroupingKey;
   }): Promise<Notification | null> {
     const groupingKey =
       params.groupingKey ?? `like:${params.targetType}:${params.targetId}`;

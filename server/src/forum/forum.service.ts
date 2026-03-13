@@ -24,7 +24,7 @@ import { Comment, CommentParentObject } from './entities/comment.entity';
 import { EditableContent } from './entities/editablecontent.entity';
 import { Post } from './entities/post.entity';
 import { Action } from 'src/actions/entities/action.entity';
-import { LikeNotificationService } from 'src/notifs/like-notification.service';
+import { GroupingKey, LikeNotificationService } from 'src/notifs/like-notification.service';
 import { EventLogService } from 'src/eventlog/eventlog.service';
 import {
   NotifsService,
@@ -747,7 +747,7 @@ export class ForumService {
       if (owner.id === liker.id) {
         continue;
       }
-      const groupingKey = `forum_like:post:${post.id}:user:${owner.id}`;
+      const groupingKey: GroupingKey = `forum_like:post:${post.id}:user:${owner.id}`;
       const existingNotif =
         await this.likeNotificationService.getActiveLikeNotification({
           ownerId: owner.id,
@@ -789,7 +789,7 @@ export class ForumService {
     if (!webAppLocation) {
       return;
     }
-    const groupingKey = `forum_like:comment:${comment.id}`;
+    const groupingKey: GroupingKey = `forum_like:comment:${comment.id}`;
     const existingNotif =
       await this.likeNotificationService.getActiveLikeNotification({
         ownerId: comment.authorId,
