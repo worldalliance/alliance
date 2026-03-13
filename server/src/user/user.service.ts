@@ -712,7 +712,7 @@ export class UserService {
     // buffer to let ranges start in the current day
     if (
       validateStartDate &&
-      startDate.getTime() + 1000 * 60 * 60 * 24 < now.getTime()
+      startDate.getTime() + 1000 * 60 * 60 * 36 < now.getTime()
     ) {
       throw new BadRequestException('Start date must be in the future.');
     }

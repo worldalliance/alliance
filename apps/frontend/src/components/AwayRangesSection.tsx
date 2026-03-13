@@ -140,7 +140,7 @@ const AwayRangesSection: React.FC = () => {
     } else {
       setError(
         (resp.error as { message: string }).message ??
-          `Error: ${resp.response.statusText}`
+          `Error: Could not create away range`
       );
     }
     setCreating(false);
@@ -435,21 +435,23 @@ const AwayRangesSection: React.FC = () => {
               </p>
             )}
           </div>
-          <Button
-            onClick={handleCreate}
-            color={ButtonColor.Black}
-            disabled={
-              creating ||
-              !startDateInput ||
-              !endDateInput ||
-              selectedReason === "Select a reason" ||
-              (selectedReasonIsOther && !noteInput)
-            }
-            className="w-full md:w-auto"
-          >
-            {creating ? "Creating..." : "Schedule"}
-          </Button>
-          {error && <p className="text-red-500">{error}</p>}
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={handleCreate}
+              color={ButtonColor.Black}
+              disabled={
+                creating ||
+                !startDateInput ||
+                !endDateInput ||
+                selectedReason === "Select a reason" ||
+                (selectedReasonIsOther && !noteInput)
+              }
+              className="w-full md:w-auto"
+            >
+              {creating ? "Creating..." : "Schedule"}
+            </Button>
+            {error && <p className="text-red-500">{error}</p>}
+          </div>
         </div>
       </div>
     </div>

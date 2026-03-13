@@ -1,17 +1,19 @@
 import {
   ArgumentsHost,
   Catch,
-  ExceptionFilter,
   HttpException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { BaseExceptionFilter } from '@nestjs/core';
 import type { Request } from 'express';
 import { PostHog } from 'posthog-node';
 
 @Catch()
-export class PosthogExceptionFilter implements ExceptionFilter {
-  constructor(private readonly posthog: PostHog) {}
+export class PosthogExceptionFilter extends BaseExceptionFilter {
+  constructor(private readonly posthog: PostHog) {
+    super();
+  }
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -24,7 +26,7 @@ export class PosthogExceptionFilter implements ExceptionFilter {
       exception instanceof NotFoundException ||
       exception instanceof UnauthorizedException //TODO: figure out actual filtering desired here
     ) {
-      throw exception;
+      return super.catch(exception, host);
     }
 
     const posthogSessionId = req.headers['X-POSTHOG-SESSION-ID'] ?? undefined;
@@ -45,6 +47,6 @@ export class PosthogExceptionFilter implements ExceptionFilter {
       },
     });
 
-    throw exception;
+    return super.catch(exception, host);
   }
 }
