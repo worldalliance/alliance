@@ -3711,8 +3711,10 @@ export class ActionsService {
   async computeIsInCohortExpression(params: {
     user: User;
     cohortExpression: CohortExpression | null | undefined;
+    visitedActionIds?: Set<number>;
   }): Promise<boolean> {
     const { user, cohortExpression } = params;
+    const visitedActionIds = params.visitedActionIds ?? new Set<number>();
 
     if (!cohortExpression) {
       return false;
@@ -3734,13 +3736,16 @@ export class ActionsService {
         return !!activity;
       },
       userInProgressAction: async (actionId: number) => {
+        if (visitedActionIds.has(actionId)) return false;
         const action = await this.actionRepository.findOne({
           where: { id: actionId },
         });
         if (!action) return false;
+        visitedActionIds.add(actionId);
         const inCohort = await this.computeIsInCohortExpression({
           user,
           cohortExpression: action.cohortExpression,
+          visitedActionIds,
         });
         if (!inCohort) return false;
         const terminal = await this.actionActivityRepository.findOne({
