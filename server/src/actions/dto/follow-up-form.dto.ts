@@ -25,8 +25,15 @@ export class CreateFollowUpFormDto extends PickType(FollowUpForm, [
   'startDate',
   'endDate',
   'name',
+  'instructions',
 ]) {}
 
 export class UpdateFollowUpFormDto extends PartialType(
-  PickType(FollowUpForm, ['name', 'startDate', 'endDate', 'formId']),
+  PickType(FollowUpForm, [
+    'name',
+    'startDate',
+    'endDate',
+    'formId',
+    'instructions',
+  ]),
 ) {}

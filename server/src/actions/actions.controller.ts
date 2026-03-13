@@ -600,12 +600,7 @@ export class ActionsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateFollowUpFormDto,
   ): Promise<FollowUpFormDto> {
-    const created = await this.actionsService.createFollowUpForm(id, {
-      formId: dto.formId,
-      startDate: dto.startDate,
-      endDate: dto.endDate,
-      name: dto.name,
-    });
+    const created = await this.actionsService.createFollowUpForm(id, dto);
     const withForm = await this.actionsService.findOne({
       id,
       serverSide: true,
@@ -623,12 +618,7 @@ export class ActionsController {
   ): Promise<FollowUpFormDto> {
     const updated = await this.actionsService.updateFollowUpForm(
       followUpFormId,
-      {
-        formId: dto.formId,
-        startDate: dto.startDate,
-        endDate: dto.endDate,
-        name: dto.name,
-      },
+      dto,
     );
     return updated as FollowUpFormDto;
   }

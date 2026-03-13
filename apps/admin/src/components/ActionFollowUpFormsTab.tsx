@@ -105,6 +105,7 @@ export default function ActionFollowUpFormsTab({
         name: string | null;
         startDate: string | null;
         endDate: string | null;
+        instructions: string | null;
       }
     ) => {
       setSavingFields(followUpFormId);
@@ -121,6 +122,7 @@ export default function ActionFollowUpFormsTab({
             name: fields.name?.trim() ?? "",
             startDate: startIso,
             endDate: endIso,
+            instructions: fields.instructions?.trim() ?? "",
           },
         });
         if (res.data) {
@@ -249,6 +251,7 @@ interface FollowUpFormCardProps {
       name: string | null;
       startDate: string | null;
       endDate: string | null;
+      instructions: string | null;
     }
   ) => Promise<void>;
   onSetFormId: (followUpFormId: number, formId: number) => Promise<void>;
@@ -271,12 +274,16 @@ function FollowUpFormCard({
   );
   const [endDate, setEndDate] = useState<string>(followUpForm.endDate ?? "");
   const [name, setName] = useState<string>(followUpForm.name ?? "");
+  const [instructions, setInstructions] = useState<string>(
+    followUpForm.instructions ?? ""
+  );
 
   const handleSaveFields = () => {
     onSaveFields(followUpForm.id, {
       name: name.trim() === "" ? null : name.trim(),
       startDate: startDate || null,
       endDate: endDate || null,
+      instructions: instructions.trim() === "" ? null : instructions.trim(),
     });
   };
 
@@ -293,6 +300,19 @@ function FollowUpFormCard({
             placeholder={`Follow-up form #${followUpForm.id}`}
             value={name}
             onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
+            Instructions (markdown)
+          </label>
+          <textarea
+            rows={4}
+            className="w-full border border-zinc-300 rounded-md px-3 py-2 text-sm"
+            placeholder="Optional instructions shown to users (supports markdown)"
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
           />
         </div>
 

@@ -56,6 +56,7 @@ import {
 import { User } from 'src/user/entities/user.entity';
 import { ProfileDto } from 'src/user/dto/user.dto';
 import {
+  DeepPartial,
   ILike,
   In,
   IsNull,
@@ -145,6 +146,10 @@ import {
   UpdateGeneralUpdateDto,
 } from './dto/general-update.dto';
 import { startDatePriorityComparator } from 'src/utils/general-update';
+import {
+  CreateFollowUpFormDto,
+  UpdateFollowUpFormDto,
+} from './dto/follow-up-form.dto';
 
 const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
 
@@ -1123,13 +1128,14 @@ export class ActionsService {
     updateActionDto: UpdateActionDto,
     userId: number,
   ): Promise<Action | null> {
-    const action = await this.actionRepository.findOne({
-      where: { id },
-      relations: {
-        authors: true,
-        suite: true,
-      },
-    });
+    const action: DeepPartial<Action> | null =
+      await this.actionRepository.findOne({
+        where: { id },
+        relations: {
+          authors: true,
+          suite: true,
+        },
+      });
 
     if (!action) {
       throw new NotFoundException('Action not found');
@@ -1138,16 +1144,9 @@ export class ActionsService {
 
     const { suiteId, authorIds, ...rest } = updateActionDto;
 
-    if (suiteId !== undefined) {
-      if (suiteId === null) {
-        action.suite = null;
-      } else {
-        const suite = await this.actionSuiteRepository.findOneOrFail({
-          where: { id: suiteId },
-        });
-        action.suite = suite;
-      }
-    }
+    action.suite = {
+      id: suiteId ?? undefined,
+    };
 
     if (authorIds !== undefined) {
       action.authors = authorIds.length
@@ -1195,53 +1194,30 @@ export class ActionsService {
 
   async createFollowUpForm(
     actionId: number,
-    dto: { formId: number; startDate?: Date; endDate?: Date; name?: string },
+    dto: CreateFollowUpFormDto,
   ): Promise<FollowUpForm> {
     const action = await this.findOne({ id: actionId, serverSide: true });
     const form = await this.formRepository.findOneOrFail({
       where: { id: dto.formId },
     });
     const followUpForm = this.followUpFormRepository.create({
-      actionId,
       action,
-      formId: dto.formId,
       form,
-      startDate: dto.startDate ?? undefined,
-      endDate: dto.endDate ?? undefined,
-      name: dto.name ?? undefined,
+      ...dto,
+      actionId,
     });
     return this.followUpFormRepository.save(followUpForm);
   }
 
   async updateFollowUpForm(
     followUpFormId: number,
-    dto: {
-      formId?: number;
-      startDate?: Date | null;
-      endDate?: Date | null;
-      name?: string | null;
-    },
+    dto: UpdateFollowUpFormDto,
   ): Promise<FollowUpForm> {
     const followUpForm = await this.followUpFormRepository.findOneOrFail({
       where: { id: followUpFormId },
       relations: { form: true, action: true },
     });
-    if (dto.formId !== undefined) {
-      const form = await this.formRepository.findOneOrFail({
-        where: { id: dto.formId },
-      });
-      followUpForm.formId = dto.formId;
-      followUpForm.form = form;
-    }
-    if (dto.startDate !== undefined) {
-      followUpForm.startDate = dto.startDate ?? undefined;
-    }
-    if (dto.endDate !== undefined) {
-      followUpForm.endDate = dto.endDate ?? undefined;
-    }
-    if (dto.name !== undefined) {
-      followUpForm.name = dto.name === null ? undefined : dto.name;
-    }
+    Object.assign(followUpForm, dto);
     return this.followUpFormRepository.save(followUpForm);
   }
 

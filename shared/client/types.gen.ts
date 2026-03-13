@@ -181,6 +181,7 @@ export type FollowUpForm = {
     name?: string;
     startDate?: string;
     endDate?: string;
+    instructions?: string;
     actionId: number;
     formId: number;
 };
@@ -1587,6 +1588,7 @@ export type FollowUpFormDto = {
     name?: string;
     startDate?: string;
     endDate?: string;
+    instructions?: string;
     actionId: number;
     formId: number;
     form?: Form;
@@ -1596,6 +1598,7 @@ export type CreateFollowUpFormDto = {
     name?: string;
     startDate?: string;
     endDate?: string;
+    instructions?: string;
     actionId: number;
     formId: number;
 };
@@ -1604,6 +1607,7 @@ export type UpdateFollowUpFormDto = {
     name?: string;
     startDate?: string;
     endDate?: string;
+    instructions?: string;
     formId?: number;
 };
 

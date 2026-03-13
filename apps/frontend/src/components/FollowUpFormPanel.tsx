@@ -6,12 +6,14 @@ import {
 import type {
   SubmitFormDto,
   SubmitFollowUpFormDto,
+  FollowUpForm,
 } from "@alliance/shared/client/types.gen";
 import FormRenderer, {
   computeFormStorageKey,
 } from "@alliance/sharedweb/forms/FormRenderer";
 import { FormSchema } from "@alliance/shared/forms/formschema";
 import Card from "@alliance/sharedweb/ui/Card";
+import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import posthog from "posthog-js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
@@ -19,19 +21,8 @@ import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 
-/** Follow-up form as returned from action (may include form from API). */
-type FollowUpFormWithForm = {
-  id: number;
-  formId: number;
-  name?: string;
-  startDate?: string;
-  endDate?: string;
-  actionId: number;
-  form?: FormDto;
-};
-
 interface FollowUpFormPanelProps {
-  followUpForm: FollowUpFormWithForm;
+  followUpForm: FollowUpForm;
   actionId: number;
   onSubmitted?: () => void;
 }
@@ -41,19 +32,14 @@ export default function FollowUpFormPanel({
   actionId,
   onSubmitted,
 }: FollowUpFormPanelProps) {
-  const [form, setForm] = useState<FormDto | null>(followUpForm.form ?? null);
+  const [form, setForm] = useState<FormDto | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!followUpForm.form);
+  const [loading, setLoading] = useState(true);
   const [formInstanceKey, setFormInstanceKey] = useState(0);
   const { user } = useAuth();
   const { success } = useToast();
 
   useEffect(() => {
-    if (followUpForm.form) {
-      setForm(followUpForm.form);
-      setLoading(false);
-      return;
-    }
     const fetchForm = async () => {
       const res = await tasksGetForm({
         path: { id: followUpForm.formId },
@@ -66,7 +52,7 @@ export default function FollowUpFormPanel({
       setForm(res.data);
     };
     fetchForm();
-  }, [followUpForm.form, followUpForm.formId]);
+  }, [followUpForm.formId]);
 
   const handleSubmit = useCallback(
     async (data: SubmitFormDto) => {
@@ -132,6 +118,15 @@ export default function FollowUpFormPanel({
 
   return (
     <Card style={CardStyle.White} className="p-4 sm:p-6">
+      {followUpForm.instructions != null &&
+        followUpForm.instructions.trim() !== "" && (
+          <Card style={CardStyle.Alert} className="mb-3 border-none rounded-md">
+            <p className="font-semibold">Follow-up instructions</p>
+            <div className="mt-1">
+              <AppMarkdownWrapper markdownContent={followUpForm.instructions} />
+            </div>
+          </Card>
+        )}
       {formTitle && <p className="text-title text-2xl! mb-4">{formTitle}</p>}
       <div className="w-full">
         <FormRenderer

@@ -41,6 +41,12 @@ export class FollowUpForm {
   @IsOptional()
   endDate?: Date;
 
+  @Column({ type: 'text', nullable: true })
+  @ApiPropertyOptional()
+  @Allow()
+  @IsOptional()
+  instructions?: string;
+
   // Relations
 
   @Column()
