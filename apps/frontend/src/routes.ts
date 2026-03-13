@@ -21,6 +21,7 @@ export default [
   route("/progress/:slug", "pages/static/ProgressPostPage.tsx"),
 
   route("/utensilinitiative", "pages/static/oneoff/UtensilWastePage.tsx"),
+  route("/restaurantguide", "pages/static/oneoff/RestaurantGuidePage.tsx"),
 
   route("/memberquotes", "pages/static/oneoff/MemberQuotesPage.tsx"),
 
