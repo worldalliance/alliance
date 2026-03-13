@@ -590,15 +590,15 @@ COPY public.form_response (id, "formId", answers, "userId", "createdAt", "schema
 
 COPY public.action_activity (id, "actionId", "userId", "createdAt", metadata, dollar_amount, type, "editableContentId", "declineReason", "isMoral", "outOfTime", "taskFormResponseId", "likesCount", source) FROM stdin;
 679	11	10	2025-10-19 02:35:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
-678	10	10	2025-10-19 02:35:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
-677	9	10	2025-10-19 02:35:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
+678	10	10	2025-10-19 02:35:45.797214	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
+677	9	10	2025-10-19 02:35:45.797215	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
 676	11	7	2025-10-19 02:34:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
-675	10	7	2025-10-19 02:34:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
-674	9	7	2025-10-19 02:34:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
+675	10	7	2025-10-19 02:34:45.797214	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
+674	9	7	2025-10-19 02:34:45.797215	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
 681	26	15	2025-10-19 05:20:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
 687	13	10	2025-10-19 06:02:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
-686	12	10	2025-10-19 06:02:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
-685	13	7	2025-10-19 06:02:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
+686	12	10	2025-10-19 06:02:45.797214	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
+685	13	7	2025-10-19 06:02:45.797215	\N	\N	user_completed	\N	\N	\N	\N	\N	0	user
 201	12	7	2025-09-30 23:10:42.026928	\N	\N	user_completed	\N	\N	\N	\N	\N	1	user
 660	10	11	2025-10-19 02:28:45.797213	\N	\N	user_completed	\N	\N	\N	\N	\N	1	user
 1108	60	11	2026-01-13 23:36:25.529804	\N	\N	user_dismissed	\N	\N	\N	\N	\N	0	user
