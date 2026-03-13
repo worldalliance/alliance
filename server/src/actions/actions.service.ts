@@ -3764,7 +3764,6 @@ export class ActionsService {
           relations: { user: true },
         });
         const matching = responses.filter((r) => {
-          if (params.responseAny) return true;
           if (params.responseEqualTo !== undefined) {
             return (
               String(

@@ -44,7 +44,7 @@ export default function ActionsScreen() {
     <View className="flex-1 bg-white">
       {isPending ? (
         <View className="flex-1">
-          <SimplePageTitle title="All Actions" />
+          <SimplePageTitle title="Actions" />
           <View className="flex-1 items-center justify-center bg-white">
             <ActivityIndicator size="large" color={colors.green} />
           </View>
@@ -57,11 +57,8 @@ export default function ActionsScreen() {
               minHeight: "80%",
             }}
             ListHeaderComponent={
-              <SimplePageTitle title="All Actions">
+              <SimplePageTitle title="Actions">
                 <View className="flex-row items-center gap-x-2">
-                  <Text className="text-sm text-white font-medium">
-                    Filter by:
-                  </Text>
                   <View className="relative">
                     <TouchableOpacity
                       onPress={() => setDropdownOpen(!dropdownOpen)}
