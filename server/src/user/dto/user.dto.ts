@@ -201,6 +201,32 @@ export class ReferralDto {
   referralCode: string;
 }
 
+export class UserCityCountDto {
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  cityId?: number | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  cityName?: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  countryCode?: string | null;
+
+  @ApiProperty()
+  @Allow()
+  count: number;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  latitude?: number | null;
+
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  longitude?: number | null;
+}
+
 export class SingleGroupAssignmentDto {
   @ApiProperty()
   @Type(() => Number)

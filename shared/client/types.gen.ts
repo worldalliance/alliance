@@ -784,6 +784,15 @@ export type FriendStatusDto = {
     didReceiveRequest: boolean;
 };
 
+export type UserCityCountDto = {
+    cityId?: number | null;
+    cityName?: string | null;
+    countryCode?: string | null;
+    count: number;
+    latitude?: number | null;
+    longitude?: number | null;
+};
+
 export type ProfileDtoWithFriends = {
     id: number;
     admin: boolean;
@@ -3341,6 +3350,19 @@ export type UserListResponses = {
 };
 
 export type UserListResponse = UserListResponses[keyof UserListResponses];
+
+export type UserCityCountsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/cityCounts';
+};
+
+export type UserCityCountsResponses = {
+    200: Array<UserCityCountDto>;
+};
+
+export type UserCityCountsResponse = UserCityCountsResponses[keyof UserCityCountsResponses];
 
 export type UserUserDetailData = {
     body?: never;

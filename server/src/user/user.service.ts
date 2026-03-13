@@ -19,6 +19,7 @@ import {
   FriendStatusDto,
   ProfileDto,
   UpdateProfileDto,
+  UserCityCountDto,
 } from './dto/user.dto';
 import { DEFAULT_TIME_ZONE, User } from './entities/user.entity';
 import { groupUrl, profileUrl } from 'src/search/approutes';
@@ -560,6 +561,65 @@ export class UserService {
       throw new NotFoundException(`User ${userId} not found`);
     }
     return user.city ?? undefined;
+  }
+
+  async getUserCityCounts(): Promise<UserCityCountDto[]> {
+    // return (
+    //   await this.userRepository.find({
+    //     relations: { contractEvents: true },
+    //   })
+    // ).filter((user) => user.hasActiveContract)
+
+    const allUsers = await this.userRepository.find({
+      relations: { contractEvents: true, city: true },
+    });
+    const users = allUsers.filter((user) => user.hasActiveContract);
+
+    let nullCityCount = 0;
+
+    const cityCounts = users.reduce(
+      (acc, user) => {
+        const cityId = user.city?.id ?? null;
+        if (cityId) {
+          acc[cityId] = (acc[cityId] ?? 0) + 1;
+        } else {
+          nullCityCount++;
+        }
+        return acc;
+      },
+      {} as Record<number, number>,
+    );
+
+    const cities = await this.cityRepository.find({
+      where: { id: In(Object.keys(cityCounts)) },
+    });
+    const cityById = new Map(cities.map((c) => [c.id, c]));
+
+    const cityCountsArray = Object.entries(cityCounts).map(
+      ([cityId, count]) => {
+        const city = cityById.get(parseInt(cityId, 10));
+        return {
+          cityId: city?.id ?? null,
+          cityName: city?.name ?? null,
+          countryCode: city?.countryCode ?? null,
+          count,
+          latitude: city?.latitude ?? null,
+          longitude: city?.longitude ?? null,
+        } as UserCityCountDto;
+      },
+    );
+
+    return [
+      ...cityCountsArray,
+      {
+        cityId: null,
+        cityName: 'Unknown',
+        countryCode: null,
+        count: nullCityCount,
+        latitude: null,
+        longitude: null,
+      },
+    ];
   }
 
   async findOnePrefill(id: number): Promise<PrefillUser> {

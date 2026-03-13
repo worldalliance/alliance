@@ -27,6 +27,7 @@ import {
   Calendar,
   ImageUp,
   BarChart2,
+  Map,
   Newspaper,
   ChevronDown,
   ChevronRight,
@@ -301,6 +302,11 @@ const Sidebar: React.FC = () => {
                     to: "/priority",
                     label: "Priority",
                     icon: <ListOrdered size={16} />,
+                  },
+                  {
+                    to: "/member-map",
+                    label: "Member Map",
+                    icon: <Map size={16} />,
                   },
                 ].map((link) => (
                   <Link

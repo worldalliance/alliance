@@ -34,6 +34,7 @@ import {
   ProfileDto,
   ProfileDtoWithFriends,
   UpdateProfileDto,
+  UserCityCountDto,
   UserDto,
 } from './dto/user.dto';
 import { UserService } from './user.service';
@@ -295,6 +296,13 @@ export class UserController {
     return (
       await this.userService.findAll({ contractEvents: true, referredBy: true })
     ).map((user) => new UserDto(user));
+  }
+
+  @Get('cityCounts')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [UserCityCountDto] })
+  async cityCounts(): Promise<UserCityCountDto[]> {
+    return this.userService.getUserCityCounts();
   }
 
   @Get('userdetail/:id')
