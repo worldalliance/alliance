@@ -5,14 +5,17 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { BaseExceptionFilter } from '@nestjs/core';
+import { AbstractHttpAdapter, BaseExceptionFilter } from '@nestjs/core';
 import type { Request } from 'express';
 import { PostHog } from 'posthog-node';
 
 @Catch()
 export class PosthogExceptionFilter extends BaseExceptionFilter {
-  constructor(private readonly posthog: PostHog) {
-    super();
+  constructor(
+    private readonly posthog: PostHog,
+    applicationRef: AbstractHttpAdapter,
+  ) {
+    super(applicationRef);
   }
 
   catch(exception: unknown, host: ArgumentsHost) {
@@ -29,7 +32,7 @@ export class PosthogExceptionFilter extends BaseExceptionFilter {
       return super.catch(exception, host);
     }
 
-    const posthogSessionId = req.headers['X-POSTHOG-SESSION-ID'] ?? undefined;
+    const posthogSessionId = req.headers['x-posthog-session-id'] ?? undefined;
 
     this.posthog.captureException(exception, 'server', {
       event: '$exception',

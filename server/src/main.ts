@@ -1,5 +1,5 @@
 import { ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -105,7 +105,8 @@ async function bootstrap() {
   }
 
   if (client) {
-    app.useGlobalFilters(new PosthogExceptionFilter(client));
+    const { httpAdapter } = app.get(HttpAdapterHost);
+    app.useGlobalFilters(new PosthogExceptionFilter(client, httpAdapter));
     setupExpressErrorHandler(client, app);
   }
 
