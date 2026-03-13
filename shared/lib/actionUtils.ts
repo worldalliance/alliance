@@ -102,8 +102,12 @@ export function isFollowUpFormActive(f: {
   endDate?: string;
 }): boolean {
   const now = new Date();
-  if (f.startDate != null && new Date(f.startDate) > now) return false;
-  if (f.endDate != null && new Date(f.endDate) < now) return false;
+  if (f.startDate == null || new Date(f.startDate) > now) {
+    return false;
+  }
+  if (f.endDate != null && new Date(f.endDate) < now) {
+    return false;
+  }
   return true;
 }
 
