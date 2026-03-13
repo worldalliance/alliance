@@ -6,11 +6,17 @@ type Restaurant = {
   id: number;
   name: string;
   url: string;
-  quote: string;
+  img: string;
 };
 
 const UtensilWastePage: React.FC = () => {
-  const restaurants: Restaurant[] = [];
+  const restaurants: Restaurant[] = [
+    {
+      name: "Katsuo + Kombu",
+      url: "https://www.instagram.com/katsuo_and_kombu/",
+      img: "https://d2s742iet3d3t1.cloudfront.net/restaurants/restaurant-151140000000000000/restaurant_1684962456.png"
+    }
+  ];
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -109,37 +115,21 @@ const UtensilWastePage: React.FC = () => {
           {filteredRestaurants.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 -mx-2 md:-mx-12">
               {filteredRestaurants.map((restaurant) => (
-                <div
-                  key={restaurant.id}
-                  className="border border-zinc-200 p-5 md:p-6 rounded bg-white flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6"
+                <a
+                  key={restaurant.name}
+                  href={restaurant.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="border border-zinc-200 p-2 md:p-4 rounded bg-white flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6 hover:bg-zinc-50"
                 >
-                  <div className="flex flex-row items-center gap-4 sm:flex-shrink-0 sm:w-40 sm:pt-1">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-medium text-zinc-900 truncate">
-                        {restaurant.name}
-                      </h3>
-                      <a
-                        href={restaurant.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-sm text-zinc-500 hover:text-zinc-800 transition-colors block truncate"
-                      >
-                        {restaurant.url
-                          .replace("https://", "")
-                          .replace("www.", "")}
-                      </a>
-                    </div>
-                    <div className="w-12 h-12 bg-zinc-50 border border-zinc-100 rounded flex-shrink-0 sm:hidden" />
-                  </div>
+                  <div className="flex flex-row items-center gap-4 sm:flex-shrink-0 w-full">
+                    <img src={restaurant.img} alt={restaurant.name} className="w-16 h-16 rounded-md object-cover shrink-0" />
 
-                  <div className="flex-1 min-w-0 sm:border-l sm:border-zinc-100 sm:pl-6">
-                    <p className="text-xs text-zinc-500 italic leading-relaxed">
-                      "{restaurant.quote}"
-                    </p>
+                    <h3 className="flex-1 text-lg font-medium text-zinc-900">
+                      {restaurant.name}
+                    </h3>
                   </div>
-
-                  <div className="w-14 h-14 bg-zinc-50 border border-zinc-100 rounded flex-shrink-0 hidden sm:block" />
-                </div>
+                </a>
               ))}
             </div>
           ) : searchQuery.trim() !== "" ? (
