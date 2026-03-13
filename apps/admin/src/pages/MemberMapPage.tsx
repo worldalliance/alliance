@@ -58,7 +58,7 @@ const MemberMapPage: React.FC = () => {
       }
 
       const labelParts = [row.cityName, row.countryCode].filter(
-        (part): part is string => !!part
+        (part): part is string => !!part,
       );
       const label = labelParts.join(", ") || "Unknown location";
       const key =
@@ -84,7 +84,7 @@ const MemberMapPage: React.FC = () => {
 
   const totalMembers = useMemo(
     () => cityCounts.reduce((sum, row) => sum + row.count, 0),
-    [cityCounts]
+    [cityCounts],
   );
 
   const maxCount = useMemo(
@@ -92,7 +92,7 @@ const MemberMapPage: React.FC = () => {
       aggregatedPoints.length
         ? Math.max(...aggregatedPoints.map((p) => p.count))
         : 0,
-    [aggregatedPoints]
+    [aggregatedPoints],
   );
 
   const colorScale = useMemo(() => {
@@ -137,11 +137,11 @@ const MemberMapPage: React.FC = () => {
             )}
             <div className="w-full overflow-hidden rounded-lg border border-zinc-200 bg-slate-900">
               <ComposableMap
-                projection="geoEqualEarth"
+                projection="geoMercator"
                 width={svgWidth}
                 height={svgHeight}
                 className="w-full h-[min(420px,60vh)]"
-                style={{ background: "#020617" }}
+                style={{ background: "#1045e3" }}
               >
                 <Geographies geography={geoUrl}>
                   {({ geographies }: { geographies: { rsmKey: string }[] }) =>
@@ -149,8 +149,8 @@ const MemberMapPage: React.FC = () => {
                       <Geography
                         key={geo.rsmKey}
                         geography={geo}
-                        fill="#0f172a"
-                        stroke="#1f2937"
+                        fill="#18a824"
+                        stroke="#1045e3"
                         strokeWidth={0.4}
                       />
                     ))
@@ -179,20 +179,16 @@ const MemberMapPage: React.FC = () => {
                   );
                 })}
               </ComposableMap>
-              <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-200 bg-white/80 backdrop-blur">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-200 bg-white backdrop-blur">
                 <div className="flex flex-col gap-1">
                   <p className="text-xs font-medium text-zinc-700 uppercase tracking-wide">
                     Intensity
                   </p>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] text-zinc-500">Fewer</span>
-                    <div className="h-2 w-32 rounded-full bg-gradient-to-r from-rose-100 via-orange-400 to-rose-700" />
+                    <div className="h-2 w-32 rounded-full bg-linear-to-r from-rose-100 via-orange-400 to-rose-700" />
                     <span className="text-[11px] text-zinc-500">More</span>
                   </div>
-                </div>
-                <div className="flex flex-col items-end text-[11px] text-zinc-500">
-                  <span>Projection: equirectangular</span>
-                  <span>Source: member locations</span>
                 </div>
               </div>
             </div>
