@@ -299,13 +299,7 @@ const HomePage = () => {
               ) : (
                 <>
                   <div className="flex flex-col items-center justify-evenly max-h-[30%] flex-8 gap-y-4">
-                    <div className="flex flex-col items-center gap-y-4">
-                      <CheckIcon size="large" />
-                      <p className="text-center text-zinc-500 text-lg lg:text-xl">
-                        {noTasksToDoRightNow}
-                      </p>
-                    </div>
-                    {activeCompletableFollowUpForms.length > 0 && (
+                    {activeCompletableFollowUpForms.length > 0 ? (
                       <div className="flex flex-col gap-y-4 w-full max-w-2xl">
                         {activeCompletableFollowUpForms.map(
                           ({ followUpForm, actionId }) => (
@@ -321,6 +315,13 @@ const HomePage = () => {
                             />
                           )
                         )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-y-4">
+                        <CheckIcon size="large" />
+                        <p className="text-center text-zinc-500 text-lg lg:text-xl">
+                          {noTasksToDoRightNow}
+                        </p>
                       </div>
                     )}
                     <HomeNotifsCard />

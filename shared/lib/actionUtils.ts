@@ -98,14 +98,14 @@ export function homePagePriorityComparator(
 }
 
 export function isFollowUpFormActive(f: {
-  startDate?: string;
-  endDate?: string;
+  startDate?: string | null;
+  endDate?: string | null;
 }): boolean {
   const now = new Date();
-  if (f.startDate == null || new Date(f.startDate) > now) {
+  if (!f.startDate || new Date(f.startDate) > now) {
     return false;
   }
-  if (f.endDate != null && new Date(f.endDate) < now) {
+  if (f.endDate && new Date(f.endDate) < now) {
     return false;
   }
   return true;
