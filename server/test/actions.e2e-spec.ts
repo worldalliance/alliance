@@ -629,6 +629,15 @@ describe('Actions (e2e)', () => {
           },
         }),
       );
+      await eventRepo.save(
+        eventRepo.create({
+          title: 'Prerequisite Launch',
+          description: 'Prerequisite',
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action: prerequisiteAction,
+        }),
+      );
 
       const inProgressUser = await userService.create({
         email: `inprogress-${Date.now()}@example.com`,
