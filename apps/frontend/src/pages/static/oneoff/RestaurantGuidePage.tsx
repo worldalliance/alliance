@@ -4,14 +4,14 @@ import PrelaunchNavbar from "../../../components/PrelaunchNavbar";
 
 const RestaurantGuidePage: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex-col flex bg-white">
       <PrelaunchNavbar transparent={false} absolute={false} />
       <div className="flex-1 max-w-6xl mx-auto pt-12 md:pt-28 pb-56 px-5 flex flex-col gap-y-16 md:gap-y-24">
         <div className="text-center">
           <h1 className="text-title mb-6">Opt-In Implementation Guide</h1>
           <p className="text-zinc-900 text-base md:text-lg max-w-3xl mx-auto">
             Step-by-step instructions to configure your ordering platforms and
-            require a mandatory yes/no utensil selection.
+            require a mandatory per-item utensil selection.
           </p>
         </div>
 
@@ -21,56 +21,69 @@ const RestaurantGuidePage: React.FC = () => {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="border border-zinc-200 p-6 rounded bg-white">
+            <div className="border border-green p-6 rounded bg-white">
               <h3 className="text-xl font-medium text-zinc-900 mb-6">
                 DoorDash
               </h3>
               <ol className="list-decimal text-zinc-800 space-y-4 pl-4 text-sm md:text-base">
                 <li>
-                  <strong>Regulated Cities:</strong> Automatically enabled by
-                  DoorDash.
+                  Go to <strong>Menu Manager</strong> and select{" "}
+                  <strong>Modifier Groups</strong>.
                 </li>
                 <li>
-                  <strong>Other Markets:</strong> You must create a manual item.
+                  Create a new group named <strong>"Include Utensils?"</strong>.
                 </li>
                 <li>
-                  Go to <strong>Menu</strong> &gt; <strong>Menu Manager</strong>
-                  .
+                  Add options: <strong>"Yes"</strong> ($0.00) and{" "}
+                  <strong>"No"</strong> ($0.00).
                 </li>
                 <li>
-                  Click <strong>Add</strong> &gt; <strong>New Item</strong>.
+                  Set <strong>Required</strong> to "Yes" and set both Min and
+                  Max selection to 1.
                 </li>
-                <li>Name it "Single-Use Utensils" and set price to $0.00.</li>
                 <li>
-                  Click <strong>Save</strong>.
+                  <strong>Apply to Items:</strong> Bulk-assign this modifier
+                  group under the <strong>Used In</strong> tab to every item
+                  eaten with utensils.
+                </li>
+                <li>
+                  <strong>Publish</strong> to update your live menu.
                 </li>
               </ol>
             </div>
 
-            <div className="border border-zinc-200 p-6 rounded bg-white">
+            <div className="border border-green p-6 rounded bg-white">
               <h3 className="text-xl font-medium text-zinc-900 mb-6">
                 Uber Eats
               </h3>
               <ol className="list-decimal text-zinc-800 space-y-4 pl-4 text-sm md:text-base">
                 <li>
-                  <strong>Tablet Users:</strong> Toggle is automatically
-                  presented to customers.
+                  Open <strong>Uber Eats Manager</strong> and navigate to the{" "}
+                  <strong>Menu</strong> tab.
                 </li>
                 <li>
-                  <strong>Linked Register Systems:</strong> Create a $0.00
-                  "Utensils" item in your restaurant's main register system.
+                  Select <strong>Modifier Groups</strong> &gt;{" "}
+                  <strong>New Group</strong>.
                 </li>
                 <li>
-                  Map the item's Reference Code in your menu management portal.
+                  Name it <strong>"Utensils Included?"</strong> and add "Yes"
+                  and "No" choices.
                 </li>
                 <li>
-                  Contact your <strong>Uber Support Representative</strong> to
-                  activate the checkout prompt.
+                  Toggle <strong>Required selection</strong> to "On".
+                </li>
+                <li>
+                  In the <strong>Items</strong> tab, link this group to all
+                  relevant appetizers and entrees.
+                </li>
+                <li>
+                  Save changes to ensure the prompt appears on every applicable
+                  dish.
                 </li>
               </ol>
             </div>
 
-            <div className="border border-zinc-200 p-6 rounded bg-white">
+            <div className="border border-green p-6 rounded bg-white">
               <h3 className="text-xl font-medium text-zinc-900 mb-6">
                 Grubhub
               </h3>
@@ -95,7 +108,7 @@ const RestaurantGuidePage: React.FC = () => {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="border border-zinc-200 p-6 rounded bg-zinc-50">
+            <div className="border border-green p-6 rounded bg-white">
               <h3 className="text-lg font-medium text-zinc-900 mb-4">Toast</h3>
               <ol className="list-decimal text-zinc-800 space-y-3 pl-4 text-sm md:text-base">
                 <li>
@@ -127,7 +140,7 @@ const RestaurantGuidePage: React.FC = () => {
               </ol>
             </div>
 
-            <div className="border border-zinc-200 p-6 rounded bg-zinc-50">
+            <div className="border border-green p-6 rounded bg-white">
               <h3 className="text-lg font-medium text-zinc-900 mb-4">Square</h3>
               <ol className="list-decimal text-zinc-800 space-y-3 pl-4 text-sm md:text-base">
                 <li>
@@ -157,12 +170,13 @@ const RestaurantGuidePage: React.FC = () => {
           </div>
         </div>
 
-        <div className="w-full border-t border-zinc-100 pt-16">
+        {/* Removed 'border-t' from the div below to get rid of the horizontal line */}
+        <div className="w-full pt-8">
           <h2 className="text-title-small mb-8 text-center">
             Staff Operations
           </h2>
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white border border-zinc-200 rounded p-6">
+            <div className="bg-white border border-green rounded p-6">
               <h4 className="font-bold text-zinc-900 mb-2">
                 1. Relocate Inventory
               </h4>
@@ -171,7 +185,7 @@ const RestaurantGuidePage: React.FC = () => {
                 habit of automatic inclusion.
               </p>
             </div>
-            <div className="bg-white border border-zinc-200 rounded p-6">
+            <div className="bg-white border border-green rounded p-6">
               <h4 className="font-bold text-zinc-900 mb-2">
                 2. Ticket Visibility
               </h4>
@@ -180,7 +194,7 @@ const RestaurantGuidePage: React.FC = () => {
                 highlight the "Yes/No" utensil modifier.
               </p>
             </div>
-            <div className="bg-white border border-zinc-200 rounded p-6">
+            <div className="bg-white border border-green rounded p-6">
               <h4 className="font-bold text-zinc-900 mb-2">
                 3. Staff Briefing
               </h4>
