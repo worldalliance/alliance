@@ -24,7 +24,7 @@ type ActionActivityVerbMapping = {
 export const actionActivityTransitiveVerb = {
   user_joined: "committed to",
   user_completed: "completed",
-  user_submitted_follow_up_form: "followed-up on",
+  user_submitted_follow_up_form: "followed up on",
   user_declined: null,
   user_wont_complete: null,
   user_dismissed: null,
