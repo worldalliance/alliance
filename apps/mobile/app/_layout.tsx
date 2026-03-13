@@ -154,7 +154,7 @@ export default function RootLayout() {
 
     registerForPushNotificationsAsync()
       .then((token) => registerToken(token))
-      .catch((error: any) => console.error(`${error}`));
+      .catch((error: any) => console.error(error));
   }, [registerToken]);
 
   // Register Live Activity push-to-start token (iOS only)

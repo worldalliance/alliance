@@ -61,7 +61,7 @@ export default function LargeActionCard({
         action={action}
         friendActivities={friendActivities}
       />
-      <View className="mt-6 border-t border-zinc-200 pt-6 pb-[300px]">
+      <View className="mt-6 border-t border-zinc-200 pt-6">
         <ActionTaskPanel
           action={action}
           userRelation={userRelation}
