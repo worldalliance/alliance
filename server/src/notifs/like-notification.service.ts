@@ -73,14 +73,15 @@ export class LikeNotificationService {
       const updatedUsers = [...(existingNotif.associatedUsers ?? []), liker];
       existingNotif.associatedUsers = updatedUsers;
       existingNotif.groupingCount = updatedUsers.length;
-      existingNotif.message = this.buildMessage(
+      existingNotif.message = this.buildMessage({
         targetType,
-        updatedUsers.length,
-        existingNotif.targetContent,
-        updatedUsers.length === 1
-          ? new ProfileDto(updatedUsers[0]).displayName
-          : undefined,
-      );
+        count: updatedUsers.length,
+        targetContent: existingNotif.targetContent,
+        likerName:
+          updatedUsers.length === 1
+            ? new ProfileDto(updatedUsers[0]).displayName
+            : undefined,
+      });
       await this.notifRepository.save(existingNotif);
       return;
     }
@@ -90,12 +91,12 @@ export class LikeNotificationService {
       user: owner,
       associatedUsers: [liker],
       category: NotificationCategory.Likes,
-      message: this.buildMessage(
+      message: this.buildMessage({
         targetType,
-        1,
+        count: 1,
         targetContent,
-        likerProfile.displayName,
-      ),
+        likerName: likerProfile.displayName,
+      }),
       targetContent,
       webAppLocation,
       groupingKey,
@@ -132,26 +133,29 @@ export class LikeNotificationService {
     if (dedupedUsers.length !== (notification.associatedUsers?.length ?? 0)) {
       notification.associatedUsers = dedupedUsers;
       notification.groupingCount = dedupedUsers.length;
-      notification.message = this.buildMessage(
-        params.targetType,
-        dedupedUsers.length,
-        notification.targetContent,
-        dedupedUsers.length === 1
-          ? new ProfileDto(dedupedUsers[0]).displayName
-          : undefined,
-      );
+      notification.message = this.buildMessage({
+        targetType: params.targetType,
+        count: dedupedUsers.length,
+        targetContent: notification.targetContent,
+        likerName:
+          dedupedUsers.length === 1
+            ? new ProfileDto(dedupedUsers[0]).displayName
+            : undefined,
+      });
       await this.notifRepository.save(notification);
     }
 
     return notification;
   }
 
-  private buildMessage(
-    targetType: LikeNotificationTarget,
-    count: number,
-    targetContent?: string,
-    likerName?: string,
-  ): string {
+  private buildMessage(params: {
+    targetType: LikeNotificationTarget;
+    count: number;
+    targetContent?: string;
+    likerName?: string;
+  }): string {
+    const { targetType, count, targetContent, likerName } = params;
+
     let label;
     switch (targetType) {
       case 'post':
