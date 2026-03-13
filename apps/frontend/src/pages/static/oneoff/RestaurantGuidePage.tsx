@@ -27,24 +27,20 @@ const RestaurantGuidePage: React.FC = () => {
               </h3>
               <ol className="list-decimal text-zinc-800 space-y-4 pl-4 text-sm md:text-base">
                 <li>
-                  Log in to the <strong>DoorDash Merchant Portal</strong>.
+                  <strong>Regulated Cities:</strong> Automatically enabled by
+                  DoorDash.
                 </li>
                 <li>
-                  Navigate to <strong>Settings</strong> in the left sidebar.
+                  <strong>Other Markets:</strong> You must create a manual item.
                 </li>
                 <li>
-                  Click <strong>Store Settings</strong>.
-                </li>
-                <li>
-                  Scroll to <strong>Single-Use Items</strong>.
-                </li>
-                <li>
-                  Toggle on{" "}
-                  <strong>
-                    "Require customers to request single-use items"
-                  </strong>
+                  Go to <strong>Menu</strong> &gt; <strong>Menu Manager</strong>
                   .
                 </li>
+                <li>
+                  Click <strong>Add</strong> &gt; <strong>New Item</strong>.
+                </li>
+                <li>Name it "Single-Use Utensils" and set price to $0.00.</li>
                 <li>
                   Click <strong>Save</strong>.
                 </li>
@@ -57,22 +53,19 @@ const RestaurantGuidePage: React.FC = () => {
               </h3>
               <ol className="list-decimal text-zinc-800 space-y-4 pl-4 text-sm md:text-base">
                 <li>
-                  Log in to <strong>Uber Eats Manager</strong>.
+                  <strong>Tablet Users:</strong> Toggle is automatically
+                  presented to customers.
                 </li>
                 <li>
-                  Click the <strong>Settings</strong> icon in the sidebar.
+                  <strong>Linked Register Systems:</strong> Create a $0.00
+                  "Utensils" item in your restaurant's main register system.
                 </li>
                 <li>
-                  Navigate to the <strong>General</strong> tab.
+                  Map the item's Reference Code in your menu management portal.
                 </li>
                 <li>
-                  Scroll to <strong>Utensils and single-use items</strong>.
-                </li>
-                <li>
-                  Toggle the setting to <strong>On</strong>.
-                </li>
-                <li>
-                  Click <strong>Save</strong>.
+                  Contact your <strong>Uber Support Representative</strong> to
+                  activate the checkout prompt.
                 </li>
               </ol>
             </div>
@@ -82,21 +75,14 @@ const RestaurantGuidePage: React.FC = () => {
                 Grubhub
               </h3>
               <ol className="list-decimal text-zinc-800 space-y-4 pl-4 text-sm md:text-base">
+                <li>Grubhub defaults to zero utensils globally.</li>
                 <li>
-                  Log in to <strong>Grubhub for Restaurants</strong>.
+                  Customers are automatically prompted to opt-in at checkout.
                 </li>
+                <li>No merchant portal configuration is required.</li>
                 <li>
-                  Go to the left sidebar and select <strong>Settings</strong>.
-                </li>
-                <li>
-                  Click on <strong>Menu</strong>.
-                </li>
-                <li>
-                  Find the <strong>Single-use items</strong> section.
-                </li>
-                <li>Enable the toggle to require diner opt-in.</li>
-                <li>
-                  Click <strong>Save changes</strong>.
+                  Review the <strong>Special order instructions</strong> on
+                  tickets for diner requests.
                 </li>
               </ol>
             </div>
@@ -131,7 +117,10 @@ const RestaurantGuidePage: React.FC = () => {
                 <li>
                   Add two Modifier Options: "Yes" ($0.00) and "No" ($0.00).
                 </li>
-                <li>Attach this group to your takeout and delivery menus.</li>
+                <li>
+                  <strong>Crucial:</strong> Verify channel visibility is enabled
+                  for all third-party integrations.
+                </li>
                 <li>
                   <strong>Publish</strong> your changes.
                 </li>
@@ -142,21 +131,26 @@ const RestaurantGuidePage: React.FC = () => {
               <h3 className="text-lg font-medium text-zinc-900 mb-4">Square</h3>
               <ol className="list-decimal text-zinc-800 space-y-3 pl-4 text-sm md:text-base">
                 <li>
-                  Go to your Square Dashboard and select <strong>Items</strong>{" "}
-                  &gt; <strong>Modifiers</strong>.
+                  Go to your Dashboard and select <strong>Items</strong> &gt;{" "}
+                  <strong>Modifiers</strong>.
                 </li>
                 <li>
-                  Click <strong>Create Modifier Set</strong>.
+                  Click <strong>Create a modifier</strong> and name it "Include
+                  Utensils?".
                 </li>
-                <li>Name it "Include Utensils?".</li>
                 <li>Add two options: "Yes" and "No" (both priced at $0.00).</li>
-                <li>Apply this set to your online menu items.</li>
                 <li>
-                  Edit the item settings and toggle{" "}
-                  <strong>Require Modifier</strong> to On.
+                  Under Selection Rules, toggle <strong>Required</strong> to On.
                 </li>
                 <li>
-                  <strong>Save</strong> your changes.
+                  Strictly set <strong>Maximum Modifiers</strong> limit to
+                  exactly 1.
+                </li>
+                <li>
+                  Ensure <strong>online visibility</strong> is enabled.
+                </li>
+                <li>
+                  Apply to menu items and <strong>Save</strong>.
                 </li>
               </ol>
             </div>
