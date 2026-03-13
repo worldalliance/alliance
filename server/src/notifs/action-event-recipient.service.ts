@@ -86,6 +86,7 @@ export class ActionEventRecipientService {
           action,
           eventId: event.id,
         });
+        if (action.status !== ActionStatus.MemberAction) return new Set();
         const terminal = await this.actionActivityRepository.find({
           where: [
             { actionId, type: ActionActivityType.USER_COMPLETED },

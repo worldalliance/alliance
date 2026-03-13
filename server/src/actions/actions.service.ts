@@ -3739,30 +3739,37 @@ export class ActionsService {
         if (visitedActionIds.has(actionId)) return false;
         const action = await this.actionRepository.findOne({
           where: { id: actionId },
+          relations: { events: true },
         });
         if (!action) return false;
         visitedActionIds.add(actionId);
-        const inCohort = await this.computeIsInCohortExpression({
-          user,
-          cohortExpression: action.cohortExpression,
-          visitedActionIds,
-        });
-        if (!inCohort) return false;
-        const terminal = await this.actionActivityRepository.findOne({
-          where: [
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_COMPLETED,
-            },
-            {
-              userId: user.id,
-              actionId,
-              type: ActionActivityType.USER_WONT_COMPLETE,
-            },
-          ],
-        });
-        return !terminal;
+        try {
+          const inCohort = await this.computeIsInCohortExpression({
+            user,
+            cohortExpression: action.cohortExpression,
+            visitedActionIds,
+          });
+          if (action.status !== ActionStatus.MemberAction) return false;
+
+          if (!inCohort) return false;
+          const terminal = await this.actionActivityRepository.findOne({
+            where: [
+              {
+                userId: user.id,
+                actionId,
+                type: ActionActivityType.USER_COMPLETED,
+              },
+              {
+                userId: user.id,
+                actionId,
+                type: ActionActivityType.USER_WONT_COMPLETE,
+              },
+            ],
+          });
+          return !terminal;
+        } finally {
+          visitedActionIds.delete(actionId);
+        }
       },
       userMatchesFormField: async (fieldParams: {
         formId: number;
@@ -3777,7 +3784,6 @@ export class ActionsService {
           },
         });
         if (responses.length === 0) return false;
-        if (fieldParams.responseAny) return true;
         if (fieldParams.responseEqualTo !== undefined) {
           return responses.some(
             (r) =>
@@ -3785,9 +3791,13 @@ export class ActionsService {
               fieldParams.responseEqualTo,
           );
         }
-        return responses.some(
-          (r) => r.answers?.[fieldParams.fieldId] !== undefined,
-        );
+        const matching = responses.filter((r) => {
+          const answer = (r.answers as Record<string, unknown>)?.[
+            fieldParams.fieldId
+          ];
+          return !!answer && !(Array.isArray(answer) && answer.length === 0);
+        });
+        return matching.length > 0;
       },
       userIsGroupLead: async () => {
         const count = await this.communityRepository

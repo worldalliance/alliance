@@ -3,6 +3,7 @@ import { actionsEvaluateCohort } from "@alliance/shared/client";
 import type { CohortExpression } from "@alliance/shared/cohort-expression.types";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { cn } from "@alliance/shared/styles/util";
+import { Search } from "lucide-react";
 
 interface CohortVisualizationProps {
   expression: CohortExpression | null | undefined;
@@ -26,6 +27,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
     new Set()
   );
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [hoveredUser, setHoveredUser] = useState<UserSelectUser | null>(null);
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({
     x: 0,
@@ -69,8 +71,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
     let cancelled = false;
     actionsEvaluateCohort({
       body: {
-        expression:
-          selectedSubExpression as unknown as Record<string, unknown>,
+        expression: selectedSubExpression as unknown as Record<string, unknown>,
       },
     })
       .then((res) => {
@@ -157,10 +158,19 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
     [users, matchedIds, compareMatchedIds, compareExpression, expression]
   );
 
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase();
+    return users.filter((u) => u.name.toLowerCase().includes(q)).slice(0, 5);
+  }, [users, searchQuery]);
+
+  const searchMatchIds = useMemo(
+    () => new Set(searchResults.map((u) => u.id)),
+    [searchResults]
+  );
+
   if (users.length === 0) {
-    return (
-      <p className="text-xs text-gray-400 italic">No members loaded.</p>
-    );
+    return <p className="text-xs text-gray-400 italic">No members loaded.</p>;
   }
 
   return (
@@ -206,6 +216,62 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
         )}
       </div>
 
+      <div className="relative">
+        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search for a user..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-7 pr-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 bg-zinc-50"
+        />
+      </div>
+      {searchResults.length > 0 && (
+        <div className="space-y-1">
+          {searchResults.map((user) => {
+            const inCohort = expression ? matchedIds.has(user.id) : false;
+            const inCompare =
+              compareExpression && compareMatchedIds.has(user.id);
+            return (
+              <div
+                key={user.id}
+                className="flex items-center gap-2 text-sm px-1"
+              >
+                <span className="font-medium text-gray-700">{user.name}</span>
+                {expression ? (
+                  <span
+                    className={cn(
+                      "text-xs px-1.5 py-0.5 rounded-full",
+                      inCohort
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-gray-100 text-gray-500"
+                    )}
+                  >
+                    {inCohort ? "in cohort" : "not in cohort"}
+                  </span>
+                ) : (
+                  <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                    no expression
+                  </span>
+                )}
+                {compareExpression && (
+                  <span
+                    className={cn(
+                      "text-xs px-1.5 py-0.5 rounded-full",
+                      inCompare
+                        ? "bg-violet-100 text-violet-700"
+                        : "bg-gray-100 text-gray-500"
+                    )}
+                  >
+                    {inCompare ? "in compare" : "not in compare"}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div
         ref={containerRef}
         className="relative flex flex-wrap"
@@ -242,7 +308,10 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
               key={user.id}
               className={cn(
                 "rounded-full cursor-default transition-colors",
-                bgColor
+                bgColor,
+                searchQuery &&
+                  searchMatchIds.has(user.id) &&
+                  "ring-2 ring-gray-800 ring-offset-1"
               )}
               style={{
                 width: `${DOT_SIZE}px`,
