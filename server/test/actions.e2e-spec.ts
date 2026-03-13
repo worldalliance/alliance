@@ -622,6 +622,11 @@ describe('Actions (e2e)', () => {
           body: 'Body',
           taskContents: 'Task',
           visibilityMode: VisibilityMode.Public,
+          commitmentless: true,
+          cohortExpression: {
+            type: 'Tag',
+            tagId: ctx.defaultTag.id,
+          },
         }),
       );
 
@@ -629,12 +634,14 @@ describe('Actions (e2e)', () => {
         email: `inprogress-${Date.now()}@example.com`,
         password: 'Password123!',
         name: 'In Progress User',
+        tags: [ctx.defaultTag],
       });
 
       const doneUser = await userService.create({
         email: `done-${Date.now()}@example.com`,
         password: 'Password123!',
         name: 'Done User',
+        tags: [ctx.defaultTag],
       });
 
       const neverJoinedUser = await userService.create({

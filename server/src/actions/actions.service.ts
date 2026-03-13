@@ -3734,21 +3734,15 @@ export class ActionsService {
         return !!activity;
       },
       userInProgressAction: async (actionId: number) => {
-        const action = await this.actionRepository.findOneOrFail({
+        const action = await this.actionRepository.findOne({
           where: { id: actionId },
-          relations: { events: true },
         });
-        const event = action.events.find(
-          (e) => e.newStatus === ActionStatus.MemberAction,
-        );
-        if (!event) return false;
-        const joined =
-          await this.actionEventRecipientService.findBaseUsersForEvent({
-            eventStatus: ActionStatus.MemberAction,
-            action,
-            eventId: event.id,
-          });
-        if (!joined) return false;
+        if (!action) return false;
+        const inCohort = await this.computeIsInCohortExpression({
+          user,
+          cohortExpression: action.cohortExpression,
+        });
+        if (!inCohort) return false;
         const terminal = await this.actionActivityRepository.findOne({
           where: [
             {
