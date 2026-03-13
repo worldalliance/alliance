@@ -94,8 +94,7 @@ export class ActionEventRecipientService {
           relations: { user: true },
         });
         const matching = responses.filter((r) => {
-          if (params.responseAny) return true;
-          if (params.responseEqualTo !== undefined) {
+          if (params.responseEqualTo !== undefined && !params.responseAny) {
             return (
               String(
                 (r.answers as Record<string, unknown>)?.[params.fieldId],
@@ -306,33 +305,37 @@ export class ActionEventRecipientService {
   ): Promise<User[]> {
     const actions = actionSuite ? actionSuite.actions : [event.action];
 
-    const [usersWithTags, usersDismissed, cohortMemberIds, completionActivities] =
-      await Promise.all([
-        this.userService.findByIds(
-          users.map((user) => user.id),
-          { tags: true, awayRanges: true, contractEvents: true },
-        ),
-        this.actionActivityRepository
-          .find({
-            where: {
-              action: { id: event.action.id },
-              type: ActionActivityType.USER_DISMISSED,
-            },
-          })
-          .then((acts) => new Set(acts.map((a) => a.userId))),
-        this.resolveCohortMemberIds(event.action.cohortExpression),
-        this.actionActivityRepository.find({
+    const [
+      usersWithTags,
+      usersDismissed,
+      cohortMemberIds,
+      completionActivities,
+    ] = await Promise.all([
+      this.userService.findByIds(
+        users.map((user) => user.id),
+        { tags: true, awayRanges: true, contractEvents: true },
+      ),
+      this.actionActivityRepository
+        .find({
           where: {
-            userId: In(users.map((user) => user.id)),
-            actionId: In(actions.map((action) => action.id)),
-            type: In([
-              ActionActivityType.USER_COMPLETED,
-              ActionActivityType.USER_DECLINED,
-              ActionActivityType.USER_WONT_COMPLETE,
-            ]),
+            action: { id: event.action.id },
+            type: ActionActivityType.USER_DISMISSED,
           },
-        }),
-      ]);
+        })
+        .then((acts) => new Set(acts.map((a) => a.userId))),
+      this.resolveCohortMemberIds(event.action.cohortExpression),
+      this.actionActivityRepository.find({
+        where: {
+          userId: In(users.map((user) => user.id)),
+          actionId: In(actions.map((action) => action.id)),
+          type: In([
+            ActionActivityType.USER_COMPLETED,
+            ActionActivityType.USER_DECLINED,
+            ActionActivityType.USER_WONT_COMPLETE,
+          ]),
+        },
+      }),
+    ]);
 
     const idToUser = new Map(usersWithTags.map((user) => [user.id, user]));
 
@@ -350,17 +353,16 @@ export class ActionEventRecipientService {
     }
 
     return users
-      .filter(
-        (user) =>
-          this.computeShouldParticipate({
-            eventDate: event.date,
-            deadlineDate: deadlineEvent?.date ?? null,
-            everyoneShouldComplete: event.action.everyoneShouldComplete,
-            cohortMemberIds,
-            user: idToUser.get(user.id)!,
-            userDismissed: usersDismissed.has(user.id),
-            onboarding: event.action.onboarding,
-          }),
+      .filter((user) =>
+        this.computeShouldParticipate({
+          eventDate: event.date,
+          deadlineDate: deadlineEvent?.date ?? null,
+          everyoneShouldComplete: event.action.everyoneShouldComplete,
+          cohortMemberIds,
+          user: idToUser.get(user.id)!,
+          userDismissed: usersDismissed.has(user.id),
+          onboarding: event.action.onboarding,
+        }),
       )
       .filter((user) => !userToHasCompletedAllActions.get(user.id));
   }

@@ -3764,7 +3764,7 @@ export class ActionsService {
           relations: { user: true },
         });
         const matching = responses.filter((r) => {
-          if (params.responseEqualTo !== undefined) {
+          if (params.responseEqualTo !== undefined && !params.responseAny) {
             return (
               String(
                 (r.answers as Record<string, unknown>)?.[params.fieldId],
