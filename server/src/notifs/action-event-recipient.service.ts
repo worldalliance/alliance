@@ -114,7 +114,7 @@ export class ActionEventRecipientService {
           const answer = (r.answers as Record<string, unknown>)?.[
             params.fieldId
           ];
-          return !!answer && !(Array.isArray(answer) && answer.length === 0);
+          return answer !== undefined && answer !== null && !(Array.isArray(answer) && answer.length === 0);
         });
         return new Set(
           matching
