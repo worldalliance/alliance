@@ -111,10 +111,10 @@ export class ActionEventRecipientService {
               ) === params.responseEqualTo
             );
           }
-          return (
-            (r.answers as Record<string, unknown>)?.[params.fieldId] !==
-            undefined
-          );
+          const answer = (r.answers as Record<string, unknown>)?.[
+            params.fieldId
+          ];
+          return !!answer && !(Array.isArray(answer) && answer.length === 0);
         });
         return new Set(
           matching
