@@ -81,7 +81,7 @@ const SmallActionCard: React.FC<SmallActionCardProps> = ({
                 <Tag style={TagStyle.GreyOutline}>Gathering commitments</Tag>
               )}
               {waitingForOffice && (
-                <Tag style={TagStyle.GreyOutline}>Pending office action</Tag>
+                <Tag style={TagStyle.GreyOutline}>Office taking action</Tag>
               )}
               {waitingOnOthers && (
                 <Tag style={TagStyle.GreyOutline}>

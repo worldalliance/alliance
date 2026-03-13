@@ -46,7 +46,7 @@ const statusOptions: Record<ActionStatus, string> = {
 const defaultEventNames: Record<ActionStatus, string> = {
   draft: "Draft",
   gathering_commitments: "Gathering commitments",
-  office_action: "Pending office action",
+  office_action: "Office taking action",
   member_action: "Members taking action",
   resolution: "Pending office resolution",
   completed: "Action completed",
