@@ -200,7 +200,7 @@ const MessageInput = ({
         </div>
       )}
 
-      <div className="relative border border-zinc-200 rounded-md bg-zinc-100 focus-within:ring-1 focus-within:ring-zinc-400">
+      <div className="relative border border-zinc-200 rounded-md bg-zinc-100 focus-within:ring-1 focus-within:ring-zinc-400 flex flex-row">
         <TextareaAutosize
           ref={inputRef}
           value={message}
@@ -209,7 +209,7 @@ const MessageInput = ({
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           placeholder="Message"
-          className="border-none bg-transparent p-3 text-black resize-none focus:outline-none pr-18 text-[16px]"
+          className="border-none bg-transparent p-3 text-black resize-none focus:outline-none pr-18 text-[16px] flex-1"
           minRows={1}
         />
         <div className="absolute right-2 top-0 bottom-0 flex items-center">
