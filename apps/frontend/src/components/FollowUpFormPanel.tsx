@@ -121,13 +121,12 @@ export default function FollowUpFormPanel({
       {followUpForm.instructions != null &&
         followUpForm.instructions.trim() !== "" && (
           <Card style={CardStyle.Alert} className="mb-3 border-none rounded-md">
-            <p className="font-semibold">Follow-up instructions</p>
+            <p className="font-semibold">{formTitle}</p>
             <div className="mt-1">
               <AppMarkdownWrapper markdownContent={followUpForm.instructions} />
             </div>
           </Card>
         )}
-      {formTitle && <p className="text-title text-2xl! mb-4">{formTitle}</p>}
       <div className="w-full">
         <FormRenderer
           key={formInstanceKey}
