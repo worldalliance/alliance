@@ -53,22 +53,29 @@ const UtensilWastePage: React.FC = () => {
               </div>
               <div className="border border-green rounded-xl p-6 md:p-8 bg-white shadow-sm">
                 <h3 className="font-bold text-greentext mb-3 uppercase tracking-wider text-sm">
-                  Economic Efficiency
+                  Operating Cost Savings
                 </h3>
                 <p className="text-zinc-600 leading-relaxed text-base">
                   Utensil kits cost between 5 and 10 cents each. By reducing
                   unnecessary distribution, an average restaurant can save{" "}
                   <strong className="text-zinc-900">
                     $350 to $750 annually
-                  </strong>{" "}
-                  in overhead costs.
+                  </strong>
+                  {""}.
                 </p>
               </div>
             </div>
 
-            <p className="text-zinc-500 text-sm max-w-2xl mx-auto">
-              This shift aligns with global movements.
-            </p>
+            <div className="text-zinc-500 text-sm max-w-2xl mx-auto space-y-2">
+              <p>
+                This shift follows a growing legal precedent. The{" "}
+                <strong>European Union</strong> has already implemented strict
+                bans on single-use plastic cutlery, while{" "}
+                <strong>California</strong> recently enacted legislation (AB
+                1276) requiring that single-use foodware only be provided upon
+                request.
+              </p>
+            </div>
           </div>
         </div>
 
