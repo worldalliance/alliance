@@ -3,7 +3,6 @@ import Footer from "../../../components/Footer";
 import PrelaunchNavbar from "../../../components/PrelaunchNavbar";
 
 type Restaurant = {
-  id: number;
   name: string;
   url: string;
   img: string;
