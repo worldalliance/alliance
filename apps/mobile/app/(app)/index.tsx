@@ -46,7 +46,7 @@ export default function HomeScreen() {
     queryKey: ["actions"],
     queryFn: () =>
       actionsFindAllLoggedIn({ query: { sorted: true } }).then(
-        (response) => response.data ?? []
+        (response) => response.data ?? [],
       ),
   });
 
@@ -71,7 +71,7 @@ export default function HomeScreen() {
 
       refetch();
     },
-    [actions, refetch]
+    [actions, refetch],
   );
 
   const { data: awayRanges, isPending: awayRangesPending } = useQuery({
@@ -86,10 +86,10 @@ export default function HomeScreen() {
       });
       queryClient.setQueryData<GeneralUpdateDto[]>(
         GENERAL_UPDATES_QUERY_KEY,
-        (prev) => prev?.filter((u) => u.id !== generalUpdateId) ?? []
+        (prev) => prev?.filter((u) => u.id !== generalUpdateId) ?? [],
       );
     },
-    [queryClient]
+    [queryClient],
   );
 
   const loading = isPending || awayRangesPending || generalUpdatesPending;
@@ -106,7 +106,7 @@ export default function HomeScreen() {
 
   const currentTaskOrGeneralUpdate = useMemo(() => {
     return [...todoActions, ...(generalUpdates ?? [])].sort(
-      homePagePriorityComparator
+      homePagePriorityComparator,
     )[0];
   }, [todoActions, generalUpdates]);
 
@@ -131,16 +131,20 @@ export default function HomeScreen() {
 
   if (!currentTaskOrGeneralUpdate) {
     return (
-      <View
-        className="flex-1 items-center justify-center py-16 px-5 bg-white"
-        testID="vr-home-ready"
-      >
-        <View className="w-12 h-12 rounded-full bg-green items-center justify-center mb-4">
-          <Check size={32} color="#fff" strokeWidth={3} />
+      <View className="flex-1 ">
+        <SimplePageTitle title="Actions" />
+
+        <View
+          className="flex-1 items-center justify-center py-16 px-5 bg-white"
+          testID="vr-home-ready"
+        >
+          <View className="w-12 h-12 rounded-full bg-green items-center justify-center mb-4">
+            <Check size={32} color="#fff" strokeWidth={3} />
+          </View>
+          <Text className="text-zinc-500 text-lg text-center">
+            {noTasksToDoRightNow}
+          </Text>
         </View>
-        <Text className="text-zinc-500 text-lg text-center">
-          {noTasksToDoRightNow}
-        </Text>
       </View>
     );
   }

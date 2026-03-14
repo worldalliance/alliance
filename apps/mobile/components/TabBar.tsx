@@ -1,6 +1,13 @@
 import { View, TouchableOpacity } from "react-native";
 import { usePathname, router } from "expo-router";
-import { Bell, Layers, ListTodo, User } from "lucide-react-native";
+import {
+  Bell,
+  Layers,
+  ListTodo,
+  MessageSquare,
+  User,
+  Users,
+} from "lucide-react-native";
 import { colors } from "../lib/style/colors";
 import { useAuth } from "../lib/AuthContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,9 +29,14 @@ const tabs = [
     matchPaths: ["/notifications"],
   },
   {
-    href: "/profile" as const,
-    icon: User,
-    matchPaths: ["/profile", "/user"],
+    href: "/messages" as const,
+    icon: MessageSquare,
+    matchPaths: ["/messages"],
+  },
+  {
+    href: "/groups" as const,
+    icon: Users,
+    matchPaths: ["/groups"],
   },
 ];
 
