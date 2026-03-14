@@ -41,7 +41,7 @@ export class ActionEventNotifWorker {
     private readonly actionEventNotifsRepository: Repository<ActionEventNotif>,
     private readonly reminderService: ActionEventReminderService,
     private readonly pushService: PushService,
-  ) {   }
+  ) {}
 
   @Cron('*/3 * * * *')
   async dispatchDueNotifs() {
@@ -91,11 +91,15 @@ export class ActionEventNotifWorker {
     );
 
     let uncompletedMembersInGroupCount: number | undefined = undefined;
-    if(plan.group.cohortType === ReminderCohortType.GroupLeadsWithUncompleted) {
-      uncompletedMembersInGroupCount = (await this.reminderService.findUncompletedMembersInCommunities(
-        plan.group,
-        plan.user,
-      )).length;
+    if (
+      plan.group.cohortType === ReminderCohortType.GroupLeadsWithUncompleted
+    ) {
+      uncompletedMembersInGroupCount = (
+        await this.reminderService.findUncompletedMembersInCommunities(
+          plan.group,
+          plan.user,
+        )
+      ).length;
     }
 
     return processKeywordReplacements(text, {
@@ -152,6 +156,7 @@ export class ActionEventNotifWorker {
       const pushes = await this.pushService.getPushForAllUserDevices(
         plan.user.id,
         {
+          userId: plan.user.id,
           body: pushMessage,
           screen: '/',
           idempotencyKey: plan.group.id.toString(),
