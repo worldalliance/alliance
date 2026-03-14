@@ -122,6 +122,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       const messages = await pushService.getPushForAllUserDevices(
         user.id,
         {
+          userId: user.id,
           body: 'Test message',
           idempotencyKey: 'test-1',
         },
@@ -144,6 +145,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       const messages = await pushService.getPushForAllUserDevices(
         user.id,
         {
+          userId: user.id,
           body: 'Old notification',
           idempotencyKey: 'test-2',
         },
@@ -168,6 +170,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       const messages = await pushService.getPushForAllUserDevices(
         user.id,
         {
+          userId: user.id,
           body: 'Mid-age notification',
           idempotencyKey: 'test-3',
         },
@@ -186,6 +189,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       const device2 = await createDevice(user, now);
 
       const messages = await pushService.getPushForAllUserDevices(user.id, {
+        userId: user.id,
         body: 'No filter',
         idempotencyKey: 'test-4',
       });
