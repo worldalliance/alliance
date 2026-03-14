@@ -74,6 +74,7 @@ export class MessagePushListener {
         const messages = await this.pushService.getPushForAllUserDevices(
           participant.user.id,
           {
+            userId: participant.user.id,
             body,
             screen,
             idempotencyKey: `msg-${message.id}-${participant.user.id}`,

@@ -152,6 +152,7 @@ export class ActionEventNotifWorker {
       const pushes = await this.pushService.getPushForAllUserDevices(
         plan.user.id,
         {
+          userId: plan.user.id,
           body: pushMessage,
           screen: '/',
           idempotencyKey: plan.group.id.toString(),
