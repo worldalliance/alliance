@@ -154,31 +154,30 @@ const UserActivityCard = ({
         )}
         onClick={handleActivityClick}
       >
-        <div className="*:inline">
+        <div className="flex flex-wrap items-center">
           <Link
             to={href("/member/:id", { id: activity.user.id.toString() })}
-            className="mr-2 inline"
+            className="inline-flex items-center text-zinc-900 hover:underline"
             onClick={(e) => e.stopPropagation()}
           >
-            <AvatarProfile pfp={activity.user.profilePicture} size="small" />
+            <AvatarProfile
+              pfp={activity.user.profilePicture}
+              size="small"
+              className="mr-2 shrink-0"
+            />
+            <span>{activity.user.displayName}</span>
           </Link>
-          <Link
-            to={href("/member/:id", { id: activity.user.id.toString() })}
-            className="text-zinc-900 hover:underline"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {activity.user.displayName}
-          </Link>
-          <p className="text-zinc-900">{` ${verb} `}</p>
+          <span className="whitespace-pre text-zinc-900">{` ${verb} `}</span>
+
           {activity.actionName ? (
-            <p
+            <span
               className="text-green cursor-pointer hover:underline font-medium"
               onClick={handleClick}
             >
               {activity.actionName}
-            </p>
+            </span>
           ) : (
-            <p>this action</p>
+            <span>this action</span>
           )}
         </div>
         {isEditing ? (
@@ -216,16 +215,13 @@ const UserActivityCard = ({
                 <EditableContentRenderer content={activity.editableContent} />
               </div>
             )}
-            <>
-              {activity.formResponseOutput &&
-                Object.keys(activity.formResponseOutput.publicAnswers ?? {})
-                  .length > 0 && (
-                  <div className="my-3">
-                    <OutputRenderer submission={activity.formResponseOutput} />
-                  </div>
-                )}
-            </>
-
+            {activity.formResponseOutput &&
+              Object.keys(activity.formResponseOutput.publicAnswers ?? {})
+                .length > 0 && (
+                <div className="my-3">
+                  <OutputRenderer submission={activity.formResponseOutput} />
+                </div>
+              )}
             <div className="flex flex-row justify-between w-full items-end">
               <p className="text-zinc-500">{timeSinceCompleted}</p>
               <div
