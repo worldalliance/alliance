@@ -163,7 +163,7 @@ const UserActivityCard = ({
             <AvatarProfile
               pfp={activity.user.profilePicture}
               size="small"
-              className="mr-2 shrink-0"
+              className="mr-2"
             />
             <span>{activity.user.displayName}</span>
           </Link>
