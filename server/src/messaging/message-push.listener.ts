@@ -74,6 +74,7 @@ export class MessagePushListener {
         const messages = await this.pushService.getPushForAllUserDevices(
           participant.user.id,
           {
+            userId: participant.user.id,
             body,
             screen,
             idempotencyKey: `msg-${message.id}-${participant.user.id}`,
@@ -93,7 +94,10 @@ export class MessagePushListener {
     }
   }
 
-  private buildPushBody(message: MessageDto, conversation: Conversation): string {
+  private buildPushBody(
+    message: MessageDto,
+    conversation: Conversation,
+  ): string {
     const senderName = message.author.displayName;
     const hasAttachments =
       message.attachments && message.attachments.length > 0;
