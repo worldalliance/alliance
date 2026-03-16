@@ -2,7 +2,6 @@ import {
   View,
   ActivityIndicator,
   RefreshControl,
-  ScrollView,
 } from "react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -229,6 +228,7 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         testID="vr-home-ready"
+        contentContainerStyle={{ flex: 1 }}
       >
         {body}
       </KeyboardAwareScrollView>
