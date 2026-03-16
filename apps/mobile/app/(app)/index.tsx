@@ -129,12 +129,15 @@ export default function HomeScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([
-      refetch(),
-      refetchGeneralUpdates(),
-      refetchAwayRanges(),
-    ]);
-    setRefreshing(false);
+    try {
+      await Promise.all([
+        refetch(),
+        refetchGeneralUpdates(),
+        refetchAwayRanges(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
   }, [refetch, refetchGeneralUpdates, refetchAwayRanges]);
 
   const scrollPageTo = useCallback((y: number) => {
