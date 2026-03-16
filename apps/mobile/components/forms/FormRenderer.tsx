@@ -287,7 +287,9 @@ const FormRenderer = ({
   const scrollToField = useCallback(
     (fieldId: string) => {
       const yPosition = fieldPositions.current[fieldId];
-      scrollPageTo(Math.max(0, yPosition + 100));
+      if (yPosition != null) {
+        scrollPageTo(Math.max(0, yPosition + 100));
+      }
     },
     [scrollPageTo],
   );
