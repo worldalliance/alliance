@@ -56,7 +56,7 @@ function toSafeFileName(value: string) {
 
 function getDraftPath(draftKey?: string) {
   const safeKey = toSafeFileName(getStorageKey(draftKey));
-  return  Paths.join(Paths.document, `${safeKey}.json`);
+  return Paths.join(Paths.document, `${safeKey}.json`);
 }
 
 const EditableContentForm: React.FC<EditableContentFormProps> = ({
