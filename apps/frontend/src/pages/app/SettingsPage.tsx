@@ -400,7 +400,7 @@ const SettingsPage: React.FC = () => {
                     ariaLabel="Email notifications"
                     yesLabel="On"
                     noLabel="Off"
-                  yesColor={ButtonColor.Green}
+                    yesColor={ButtonColor.Green}
                   />
                 </div>
                 <div className="flex flex-row items-center justify-between gap-x-4 py-3">
@@ -413,7 +413,7 @@ const SettingsPage: React.FC = () => {
                     ariaLabel="Text/SMS notifications"
                     yesLabel="On"
                     noLabel="Off"
-                  yesColor={ButtonColor.Green}
+                    yesColor={ButtonColor.Green}
                   />
                 </div>
                 {showPushSettings && (
@@ -427,7 +427,7 @@ const SettingsPage: React.FC = () => {
                       ariaLabel="Push notifications"
                       yesLabel="On"
                       noLabel="Off"
-                    yesColor={ButtonColor.Green}
+                      yesColor={ButtonColor.Green}
                     />
                   </div>
                 )}
@@ -449,7 +449,7 @@ const SettingsPage: React.FC = () => {
                       ariaLabel="Receive reminders for group members with uncompleted tasks"
                       yesLabel="On"
                       noLabel="Off"
-                    yesColor={ButtonColor.Green}
+                      yesColor={ButtonColor.Green}
                     />
                   </div>
                 ) : null}
@@ -492,7 +492,7 @@ const SettingsPage: React.FC = () => {
                       ariaLabel="Push notifications for likes"
                       yesLabel="On"
                       noLabel="Off"
-                    yesColor={ButtonColor.Green}
+                      yesColor={ButtonColor.Green}
                     />
                   </div>
                   <div className="flex flex-row items-center justify-between gap-x-4 py-3">
@@ -505,7 +505,7 @@ const SettingsPage: React.FC = () => {
                       ariaLabel="Push notifications for comments"
                       yesLabel="On"
                       noLabel="Off"
-                    yesColor={ButtonColor.Green}
+                      yesColor={ButtonColor.Green}
                     />
                   </div>
                   <div className="flex flex-row items-center justify-between gap-x-4 py-3">
@@ -518,7 +518,7 @@ const SettingsPage: React.FC = () => {
                       ariaLabel="Push notifications for friend requests"
                       yesLabel="On"
                       noLabel="Off"
-                    yesColor={ButtonColor.Green}
+                      yesColor={ButtonColor.Green}
                     />
                   </div>
                   <div className="flex flex-row items-center justify-between gap-x-4 py-3">
@@ -531,7 +531,7 @@ const SettingsPage: React.FC = () => {
                       ariaLabel="Push notifications for messages"
                       yesLabel="On"
                       noLabel="Off"
-                    yesColor={ButtonColor.Green}
+                      yesColor={ButtonColor.Green}
                     />
                   </div>
                 </div>
@@ -582,7 +582,7 @@ const SettingsPage: React.FC = () => {
                       ariaLabel="Share email with community lead"
                       yesLabel="On"
                       noLabel="Off"
-                    yesColor={ButtonColor.Green}
+                      yesColor={ButtonColor.Green}
                     />
                   </div>
                   <div className="flex flex-row items-center justify-between gap-x-4 py-3">
@@ -597,7 +597,7 @@ const SettingsPage: React.FC = () => {
                       ariaLabel="Share phone number with community lead"
                       yesLabel="On"
                       noLabel="Off"
-                    yesColor={ButtonColor.Green}
+                      yesColor={ButtonColor.Green}
                     />
                   </div>
                 </div>
