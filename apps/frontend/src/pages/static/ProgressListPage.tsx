@@ -84,7 +84,7 @@ const ProgressListPage: React.FC = () => {
                   key={post.slug}
                   className="flex flex-row items-center justify-between hover:bg-zinc-50 p-4"
                 >
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1 min-w-0 flex-1">
                     <p className="text-xs md:text-sm text-blue uppercase font-medium tracking-wide">
                       {formatLongDateEnUS(new Date(post.frontmatter.date))}
                     </p>
