@@ -234,6 +234,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         setPickerError("Permission to access photos is required.");
+        inputRef.current?.focus();
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -242,7 +243,10 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         quality: 0.8,
         base64: true,
       });
-      if (result.canceled || !result.assets.length) return;
+      if (result.canceled || !result.assets.length) {
+        inputRef.current?.focus();
+        return;
+      }
       const attachments = result.assets
         .map((asset) => {
           if (!asset.base64) {
