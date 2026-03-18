@@ -26,7 +26,7 @@ const ActionPageTaskPanelCardWrapper = ({
           "p-4 sm:p-6",
           taskPanelTop
             ? "border-t-0 rounded-t-none"
-            : "border-t rounded-t-none",
+            : "border-t",
         )}
       >
         {taskPanel}

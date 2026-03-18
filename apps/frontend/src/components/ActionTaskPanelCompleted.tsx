@@ -42,24 +42,6 @@ const ActionTaskPanelCompleted = ({
         }
         taskPanelStyle={CardStyle.GreyBorder}
       />
-      // <>
-      //   {completedCard}
-      //   <Card
-      //     style={CardStyle.Grey}
-      //     className="inline-block !p-3 md:!p-6 space-y-4 -mt-3 rounded-t-none"
-      //   >
-      //     <FormRenderer
-      //       form={formResponse.schemaSnapshot as unknown as FormSchema}
-      //       id={formResponse.formId}
-      //       actionId={action.id}
-      //       completedFormResponse={formResponse}
-      //       renderFormAsCompleted
-      //       onSubmit={null}
-      //       userId={formResponse.user?.id}
-      //       user={formResponse.user ?? undefined}
-      //     />
-      //   </Card>
-      // </>
     );
   } else {
     return <Card style={CardStyle.White}>{completedCard}</Card>;
