@@ -153,7 +153,7 @@ export default function FollowUpFormPanel({
       {error && (
         <Card
           style={border ? CardStyle.WhiteBorder : CardStyle.White}
-          className="mt-4 border-red-400! bg-red-50!"
+          className="mt-4 !border-red-400 !bg-red-50"
         >
           <div className="text-red-500">{error}</div>
         </Card>
