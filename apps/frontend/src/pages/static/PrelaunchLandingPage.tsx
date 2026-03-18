@@ -32,7 +32,7 @@ function PreviewActionCard({ action }: { action: ActionDto }) {
   return (
     <Link
       to={href("/actions/:id", { id: action.id.toString() })}
-      className="group relative flex flex-row items-start justify-between gap-4 rounded-lg bg-white  p-4 lg:p-6 hover:bg-zinc-50"
+      className="group relative flex flex-row items-start justify-between gap-4 rounded-lg bg-white p-4 lg:p-6 hover:bg-zinc-50"
     >
       <div className="flex flex-col gap-1 min-w-0 flex-1">
         <p className="text-lg lg:text-xl font-medium text-black">
@@ -90,7 +90,7 @@ const PrelaunchLandingPage: React.FC = () => {
 
         <section className="bg-page w-full mx-auto px-8 py-12 lg:py-24">
           <div className="max-w-[1000px] flex flex-col items-center justify-start gap-y-4 lg:gap-y-6 mx-auto">
-            <p className="text-heading-public text-black  w-full">
+            <p className="text-heading-public text-black w-full">
               Recent actions
             </p>
             {isPending ? (
