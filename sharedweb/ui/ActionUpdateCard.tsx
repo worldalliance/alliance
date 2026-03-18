@@ -108,8 +108,10 @@ const ActionUpdateCard = ({
     <div className="flex flex-col rounded overflow-hidden">
       <div
         className={cn(
-          "px-4 py-3 sm:py-4 sm:px-6 w-full gap-y-1  border-b border-zinc-200",
-          border ? "bg-gray-1 border border-b-0 border-zinc-200" : " bg-white",
+          "px-4 py-3 sm:py-4 sm:px-6 w-full gap-y-1 border-b border-zinc-200",
+          border
+            ? `bg-gray-1 border border-zinc-200 ${update.content.body ? "border-b-0" : ""}`
+            : "bg-white",
         )}
       >
         <div className="flex flex-col">
