@@ -34,9 +34,14 @@ const MembersListPage = () => {
     queryKey: ["userMembersWithFriends", { requireSignedContract: true }],
     queryFn: () =>
       userMembersWithFriends({ query: { requireSignedContract: true } }).then(
-        (res) => res.data?.filter((m) => !m.anonymous) ?? []
+        (res) => res.data ?? []
       ),
   });
+
+  const visibleMembers = useMemo(
+    () => members.filter((m) => !m.anonymous),
+    [members]
+  );
 
   const { data: sentRequests = [], isLoading: isLoadingSentRequests } =
     useQuery({
@@ -76,7 +81,7 @@ const MembersListPage = () => {
     useMemo(() => {
       const fofs: ProfileDtoWithFriends[] = [];
       const fofIds = new Set<number>();
-      for (const member of members) {
+      for (const member of visibleMembers) {
         if (
           member.id !== user?.id &&
           !friendIds.has(member.id) &&
@@ -86,16 +91,16 @@ const MembersListPage = () => {
           fofIds.add(member.id);
         }
       }
-      const others = members.filter((m) => !fofIds.has(m.id));
-      const staff = members.filter((m) => m.staff);
-      const leads = members.filter((m) => m.isCommunityLeader);
+      const others = visibleMembers.filter((m) => !fofIds.has(m.id));
+      const staff = visibleMembers.filter((m) => m.staff);
+      const leads = visibleMembers.filter((m) => m.isCommunityLeader);
       return {
         allFriendsOfFriends: fofs,
         allOtherMembers: others,
         staffMembers: staff,
         leadsMembers: leads,
       };
-    }, [members, user?.id, friendIds]);
+    }, [visibleMembers, user?.id, friendIds]);
 
   const { friendsOfFriends, otherMembers, filteredLeads, filteredStaff } =
     useMemo(() => {
@@ -182,7 +187,7 @@ const MembersListPage = () => {
 
           {filterMode === MemberFilterMode.All && (
             <>
-              {members.length > 0 ? (
+              {visibleMembers.length > 0 ? (
                 renderMembers([...friendsOfFriends, ...otherMembers])
               ) : (
                 <p className="text-center text-zinc-500 py-4">None found</p>
