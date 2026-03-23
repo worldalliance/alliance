@@ -78,7 +78,7 @@ function AvatarProfile({
   alt?: string;
 }) {
   return (
-    <Avatar size={size} className={className}>
+    <Avatar size={size} className={className} key={pfp ?? "default"}>
       {pfp ? (
         <>
           <AvatarImage src={pfp} alt={alt} />
