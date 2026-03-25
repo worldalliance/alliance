@@ -842,9 +842,6 @@ const ActionDashboard: React.FC = () => {
     const trimmedShortDescription = action.shortDescription?.trim() ?? "";
     const trimmedBody = action.body?.trim() ?? "";
     const partOfSuite = Boolean(action.suite?.id);
-    const thumbnail = action.squareThumbnailImage?.trim() ?? "";
-    const hasThumbnail = thumbnail.length > 0;
-
     const items: ReadinessCheckItem[] = [
       {
         id: "shortDescription",
@@ -857,9 +854,9 @@ const ActionDashboard: React.FC = () => {
         isReady: trimmedBody.length > 0,
       },
       {
-        id: "thumbnail",
-        label: "Has a thumbnail",
-        isReady: hasThumbnail,
+        id: "timeEstimate",
+        label: "Time estimate set",
+        isReady: (action.timeEstimate ?? 0) > 0,
       },
       {
         id: "suite",
