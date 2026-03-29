@@ -124,13 +124,22 @@ export class TasksService {
     return this.formRepository.save(createFormDto);
   }
 
-  async getForm(formId: number): Promise<Form> {
+  async getForm(formId: number): Promise<FormDto> {
     const form = await this.formRepository.findOne({ where: { id: formId } });
     if (!form) {
       throw new NotFoundException('Form not found');
     }
 
-    return this.transformImageUrls(await this.transformContractFields(form));
+    const transformed = await this.transformImageUrls(
+      await this.transformContractFields(form),
+    );
+    const action = await this.actionRepository.findOne({
+      where: { taskFormId: formId },
+    });
+    return {
+      ...transformed,
+      usedInAction: action ? new ActionDto(action) : undefined,
+    };
   }
 
   private resolveAggregateValue(
@@ -762,8 +771,14 @@ export class TasksService {
     validatorResults: Record<string, boolean>,
     user?: User,
   ): Promise<FormResponse> {
+    const trimmedAnswers = Object.fromEntries(
+      Object.entries(dto.answers).map(([k, v]) => [
+        k,
+        typeof v === 'string' ? v.trim() : v,
+      ]),
+    );
     const formResponse = this.formResponseRepository.create({
-      answers: dto.answers,
+      answers: trimmedAnswers,
       schemaSnapshot: dto.schemaSnapshot,
       visibilityValidatorResults:
         dto.visibilityValidatorResults ?? validatorResults,

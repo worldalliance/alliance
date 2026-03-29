@@ -1,10 +1,12 @@
 import {
+  actionsActionRelations,
   actionsShareLinksForForm,
   FormResponseDto,
   ProfileDto,
   tasksGetForm,
   tasksGetFormResponses,
   type FormDto,
+  type UserActionRelationDetailDto,
 } from "@alliance/shared/client";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import type {
@@ -28,7 +30,7 @@ import { CirclePlay } from "lucide-react";
 import { CardStyle } from "@alliance/shared/styles/card";
 import FormResponseStatistics from "../components/FormResponseStatistics";
 
-export type FormWithSchema = Pick<FormDto, "id" | "title"> & {
+export type FormWithSchema = Pick<FormDto, "id" | "title" | "usedInAction"> & {
   schema: FormSchema;
   pages?: Page[];
 };
@@ -186,6 +188,10 @@ const FormResponses: React.FC = () => {
     Record<string, ProfileDto>
   >({});
 
+  const [withdrawnUserMap, setWithdrawnUserMap] = useState<
+    Record<number, UserActionRelationDetailDto>
+  >({});
+
   const [params, setParams] = useSearchParams();
   const tabParam = params.get("tab");
   const tab = isTab(tabParam) ? tabParam : "responses";
@@ -242,6 +248,23 @@ const FormResponses: React.FC = () => {
         );
       });
     }
+  }, [form]);
+
+  useEffect(() => {
+    const actionId = form?.usedInAction?.id;
+    if (!actionId) return;
+    actionsActionRelations().then((res) => {
+      const map: Record<number, UserActionRelationDetailDto> = {};
+      for (const userEntry of res.data?.users ?? []) {
+        const relation = userEntry.relations.find(
+          (r) => r.actionId === actionId && r.status === "wont_complete"
+        );
+        if (relation) {
+          map[userEntry.userId] = relation;
+        }
+      }
+      setWithdrawnUserMap(map);
+    });
   }, [form]);
 
   const loadData = useCallback(async () => {
@@ -606,6 +629,11 @@ const FormResponses: React.FC = () => {
         : "anonymous"))
     : "";
 
+  const currentWithdrawal = currentResponse?.user?.id != null
+    ? (withdrawnUserMap[currentResponse.user.id] ?? null)
+    : null;
+
+
   const getRespondentName = useCallback(
     (response: FormResponseDto): string => {
       return (
@@ -830,12 +858,38 @@ const FormResponses: React.FC = () => {
               {currentResponse && (
                 <div className="flex items-center gap-4">
                   <div className="text-right min-w-[200px]">
-                    <p className="font-medium text-gray-900 truncate max-w-[700px]">
-                      {respondentName}
-                    </p>
+                    <div className="flex items-center justify-end gap-2">
+                      <p className="font-medium text-gray-900 truncate max-w-[700px]">
+                        {respondentName}
+                      </p>
+                      {currentWithdrawal && (
+                          <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 whitespace-nowrap">
+                            Withdrew
+                          </span>
+                        )}
+                    </div>
                     <p className="text-sm text-gray-500">
                       {new Date(currentResponse.createdAt).toLocaleString()}
                     </p>
+                    {currentWithdrawal && (
+                          <div className="mt-1 flex flex-col items-end gap-0.5 text-xs">
+                            {currentWithdrawal.declineReason && (
+                              <span className="text-gray-600 italic max-w-[300px] text-right">
+                                "{currentWithdrawal.declineReason}"
+                              </span>
+                            )}
+                            {currentWithdrawal.isMoral && (
+                              <span className="text-amber-600 font-medium">
+                                Moral objection
+                              </span>
+                            )}
+                            {currentWithdrawal.outOfTime && (
+                              <span className="text-orange-600 font-medium">
+                                Out of time
+                              </span>
+                            )}
+                          </div>
+                        )}
                   </div>
                   {currentResponse.sessionReplayUrl && (
                     <Button
@@ -1011,9 +1065,17 @@ const FormResponses: React.FC = () => {
                         )}
                       >
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-gray-900">
-                            {getRespondentName(response)}
-                          </p>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p className="truncate text-sm font-semibold text-gray-900">
+                              {getRespondentName(response)}
+                            </p>
+                            {response.user?.id != null &&
+                              withdrawnUserMap[response.user.id] && (
+                                <span className="inline-flex shrink-0 items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+                                  Withdrew
+                                </span>
+                              )}
+                          </div>
                           <p className="text-xs text-gray-500">
                             {new Date(response.createdAt).toLocaleString()}
                           </p>
