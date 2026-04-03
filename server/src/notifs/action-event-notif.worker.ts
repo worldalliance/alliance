@@ -1,4 +1,3 @@
-// action-event-notif.worker.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -30,6 +29,22 @@ export type UncompletedTaskSummary = { name: string; timeEstimate?: number };
 
 const PROCESS_ONE_LOCK_KEY1 = 0xa11a;
 const PROCESS_ONE_LOCK_KEY2 = 0xce01;
+
+/**
+ * True when send time is at or after the linked deadline event (proxy for post-deadline / “failed to complete” sends).
+ * If `deadlineEvent` is missing on the group, returns false — skip logic does not apply.
+ */
+function isPostDeadlineReminderPlan(plan: NotificationPlan): boolean {
+  const deadline = plan.group.deadlineEvent?.date;
+  if (!deadline) return false;
+  return plan.scheduledFor.getTime() >= deadline.getTime();
+}
+
+/** When passed from `processOne`, avoids re-querying for each channel (push / SMS / email). */
+type ResolvedReminderKeywords = {
+  uncompletedTasks: UncompletedTaskSummary[];
+  uncompletedMembersInGroupCount?: number;
+};
 
 @Injectable()
 export class ActionEventNotifWorker {
@@ -85,25 +100,44 @@ export class ActionEventNotifWorker {
   async findUncompletedTasksForPlan(
     plan: NotificationPlan,
   ): Promise<UncompletedTaskSummary[]> {
-    const tasks = await this.actionsService.findUncompletedTasks(
-      plan.user.id,
-      plan.group.useSuiteTaskCount ? plan.group.actionSuite?.id : undefined,
-    );
-    if (plan.group.excludeOptionalActions) {
-      return tasks.filter((task) => !task.optional);
-    }
-    return tasks;
+    const tasks =
+      (await this.actionsService.findUncompletedTasks(
+        plan.user.id,
+        plan.group.useSuiteTaskCount ? plan.group.actionSuite?.id : undefined,
+      )) ?? [];
+    const filtered = plan.group.excludeOptionalActions
+      ? tasks.filter((task) => !task.optional)
+      : tasks;
+    return filtered.map((task) => ({
+      name: task.name,
+      timeEstimate: task.timeEstimate,
+    }));
   }
 
   async processCustomReminderText(
     text: string,
     plan: NotificationPlan,
     cid: string,
-    uncompletedTasks: UncompletedTaskSummary[],
+    /** Pre-resolved from `processOne`, or a plain task list (e.g. tests / previews). */
+    resolvedOrTasks?: ResolvedReminderKeywords | UncompletedTaskSummary[],
   ): Promise<string> {
-    let uncompletedMembersInGroupCount: number | undefined = undefined;
+    let uncompletedTasks: UncompletedTaskSummary[];
+    let uncompletedMembersInGroupCount: number | undefined;
+
+    if (resolvedOrTasks === undefined) {
+      uncompletedTasks = await this.findUncompletedTasksForPlan(plan);
+    } else if (Array.isArray(resolvedOrTasks)) {
+      uncompletedTasks = resolvedOrTasks;
+    } else {
+      uncompletedTasks =
+        resolvedOrTasks.uncompletedTasks ??
+        (await this.findUncompletedTasksForPlan(plan));
+      uncompletedMembersInGroupCount =
+        resolvedOrTasks.uncompletedMembersInGroupCount;
+    }
     if (
-      plan.group.cohortType === ReminderCohortType.GroupLeadsWithUncompleted
+      plan.group.cohortType === ReminderCohortType.GroupLeadsWithUncompleted &&
+      uncompletedMembersInGroupCount === undefined
     ) {
       uncompletedMembersInGroupCount = (
         await this.reminderService.findUncompletedMembersInCommunities(
@@ -132,15 +166,6 @@ export class ActionEventNotifWorker {
   private async processOne(plan: NotificationPlan) {
     const cid = generateCIDForNotif();
 
-    const uncompletedTasks = await this.findUncompletedTasksForPlan(plan);
-
-    if (
-      uncompletedTasks.length === 0 &&
-      plan.group.cohortType !== ReminderCohortType.GroupLeadsWithUncompleted
-    ) {
-      return;
-    }
-
     const idempotency_key = `reminder:${plan.group.id}:${plan.user.id}`;
 
     const plannedNotif = this.actionEventNotifsRepository.create({
@@ -162,6 +187,44 @@ export class ActionEventNotifWorker {
       throw error;
     }
 
+    const uncompletedTasks = await this.findUncompletedTasksForPlan(plan);
+
+    let uncompletedMembersInGroupCount: number | undefined;
+    if (
+      plan.group.cohortType === ReminderCohortType.GroupLeadsWithUncompleted
+    ) {
+      uncompletedMembersInGroupCount = (
+        await this.reminderService.findUncompletedMembersInCommunities(
+          plan.group,
+          plan.user,
+        )
+      ).length;
+    }
+
+    const postDeadline = isPostDeadlineReminderPlan(plan);
+    const skipReminder =
+      plan.group.cohortType === ReminderCohortType.GroupLeadsWithUncompleted
+        ? postDeadline && uncompletedMembersInGroupCount === 0
+        : postDeadline && uncompletedTasks.length === 0;
+
+    const resolvedKeywords: ResolvedReminderKeywords = { uncompletedTasks };
+    if (
+      plan.group.cohortType === ReminderCohortType.GroupLeadsWithUncompleted &&
+      uncompletedMembersInGroupCount !== undefined
+    ) {
+      resolvedKeywords.uncompletedMembersInGroupCount =
+        uncompletedMembersInGroupCount;
+    }
+
+    if (skipReminder) {
+      notif.sent = true;
+      await this.actionEventNotifsRepository.save(notif);
+      this.logger.log(
+        `Skipping post-deadline reminder group ${plan.group.id} for user ${plan.user.id}: no uncompleted tasks (or no uncompleted group members for leader reminder)`,
+      );
+      return;
+    }
+
     let sendingAnyNotif = false;
     if (shouldPushUser(plan.user)) {
       sendingAnyNotif = true;
@@ -169,7 +232,7 @@ export class ActionEventNotifWorker {
         plan.group.pushMessage,
         plan,
         cid,
-        uncompletedTasks,
+        resolvedKeywords,
       );
 
       const pushes = await this.pushService.getPushForAllUserDevices(
@@ -194,7 +257,7 @@ export class ActionEventNotifWorker {
         plan.group.textMessage,
         plan,
         cid,
-        uncompletedTasks,
+        resolvedKeywords,
       );
       const result = await this.mmsService.sendMms(
         plan.user.phoneNumber!,
@@ -215,13 +278,13 @@ export class ActionEventNotifWorker {
         plan.group.emailMessage,
         plan,
         cid,
-        uncompletedTasks,
+        resolvedKeywords,
       );
       const emailSubject = await this.processCustomReminderText(
         plan.group.emailSubject,
         plan,
         cid,
-        uncompletedTasks,
+        resolvedKeywords,
       );
 
       const result = await this.mailService.sendActionEventNotificationEmail(

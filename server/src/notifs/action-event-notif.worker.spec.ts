@@ -21,6 +21,183 @@ import { User } from 'src/user/entities/user.entity';
 import { ActionEventReminderService } from './action-event-reminder.service';
 import { ActionDto } from 'src/actions/dto/action.dto';
 import { PushService } from 'src/push/push.service';
+import * as notifsService from './notifs.service';
+import { EmailStatus, type Mail } from 'src/mail/mail.entity';
+
+describe('ActionEventNotifWorker.processOne', () => {
+  const spies = () => {
+    const emailSpy = jest
+      .spyOn(notifsService, 'shouldEmailUser')
+      .mockReturnValue(true);
+    const textSpy = jest
+      .spyOn(notifsService, 'shouldTextUser')
+      .mockReturnValue(false);
+    const pushSpy = jest
+      .spyOn(notifsService, 'shouldPushUser')
+      .mockReturnValue(false);
+    return { emailSpy, textSpy, pushSpy };
+  };
+
+  it('does not email post-deadline when user has zero uncompleted tasks', async () => {
+    const { emailSpy, textSpy, pushSpy } = spies();
+
+    const actionsService = {
+      findUncompletedTasks: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<ActionsService>;
+
+    const mailService = {
+      sendActionEventNotificationEmail: jest.fn(),
+    };
+
+    const save = jest.fn(async (n: ActionEventNotif) => n);
+    const repo = {
+      create: jest.fn((x: Partial<ActionEventNotif>) => x),
+      save,
+    } as unknown as Repository<ActionEventNotif>;
+
+    const reminderService = {
+      findUncompletedMembersInCommunities: jest.fn(),
+    } as unknown as ActionEventReminderService;
+
+    const worker = new ActionEventNotifWorker(
+      {} as DataSource,
+      mailService as unknown as MailService,
+      {} as MmsService,
+      actionsService,
+      repo,
+      reminderService,
+      {} as PushService,
+    );
+
+    const action = { id: 1, name: 'Action A' } as Action;
+    const memberActionEvent = {
+      id: 10,
+      action,
+      date: new Date('2025-01-01T12:00:00Z'),
+      newStatus: ActionStatus.MemberAction,
+    } as ActionEvent;
+    const deadlineEvent = {
+      id: 11,
+      action,
+      date: new Date('2025-01-10T12:00:00Z'),
+      newStatus: ActionStatus.Completed,
+    } as ActionEvent;
+    const plan: NotificationPlan = {
+      scheduledFor: new Date('2025-01-11T12:00:00Z'),
+      user: { id: 99, name: 'Test User' } as User,
+      group: {
+        id: 55,
+        cohortType: ReminderCohortType.AllUncompleted,
+        useSuiteTaskCount: false,
+        memberActionEvent,
+        deadlineEvent,
+        emailMessage: 'x',
+        emailSubject: 'y',
+        textMessage: '',
+        pushMessage: '',
+      } as ReminderGroup,
+    };
+
+    await (
+      worker as unknown as {
+        processOne: (p: NotificationPlan) => Promise<void>;
+      }
+    ).processOne(plan);
+
+    expect(actionsService.findUncompletedTasks).toHaveBeenCalledWith(
+      99,
+      undefined,
+    );
+    expect(actionsService.findUncompletedTasks).toHaveBeenCalledTimes(1);
+    expect(
+      mailService.sendActionEventNotificationEmail,
+    ).not.toHaveBeenCalled();
+    expect(save).toHaveBeenCalledTimes(2);
+    const finalArg = save.mock.calls[1][0] as ActionEventNotif;
+    expect(finalArg.sent).toBe(true);
+
+    emailSpy.mockRestore();
+    textSpy.mockRestore();
+    pushSpy.mockRestore();
+  });
+
+  it('still emails pre-deadline when user has zero uncompleted tasks', async () => {
+    const { emailSpy, textSpy, pushSpy } = spies();
+
+    const actionsService = {
+      findUncompletedTasks: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<ActionsService>;
+
+    const mailService = {
+      sendActionEventNotificationEmail: jest
+        .fn()
+        .mockResolvedValue({ status: EmailStatus.Sent } as Mail),
+    };
+
+    const save = jest.fn(async (n: ActionEventNotif) => n);
+    const repo = {
+      create: jest.fn((x: Partial<ActionEventNotif>) => x),
+      save,
+    } as unknown as Repository<ActionEventNotif>;
+
+    const reminderService = {
+      findUncompletedMembersInCommunities: jest.fn(),
+    } as unknown as ActionEventReminderService;
+
+    const worker = new ActionEventNotifWorker(
+      {} as DataSource,
+      mailService as unknown as MailService,
+      {} as MmsService,
+      actionsService,
+      repo,
+      reminderService,
+      {} as PushService,
+    );
+
+    const action = { id: 1, name: 'Action A' } as Action;
+    const memberActionEvent = {
+      id: 10,
+      action,
+      date: new Date('2025-01-01T12:00:00Z'),
+      newStatus: ActionStatus.MemberAction,
+    } as ActionEvent;
+    const deadlineEvent = {
+      id: 11,
+      action,
+      date: new Date('2025-01-20T12:00:00Z'),
+      newStatus: ActionStatus.Completed,
+    } as ActionEvent;
+    const plan: NotificationPlan = {
+      scheduledFor: new Date('2025-01-10T12:00:00Z'),
+      user: { id: 99, name: 'Test User' } as User,
+      group: {
+        id: 56,
+        cohortType: ReminderCohortType.AllUncompleted,
+        useSuiteTaskCount: false,
+        memberActionEvent,
+        deadlineEvent,
+        emailMessage: 'body',
+        emailSubject: 'subj',
+        textMessage: '',
+        pushMessage: '',
+      } as ReminderGroup,
+    };
+
+    await (
+      worker as unknown as {
+        processOne: (p: NotificationPlan) => Promise<void>;
+      }
+    ).processOne(plan);
+
+    expect(mailService.sendActionEventNotificationEmail).toHaveBeenCalled();
+    expect(actionsService.findUncompletedTasks).toHaveBeenCalledTimes(1);
+    expect(save.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+    emailSpy.mockRestore();
+    textSpy.mockRestore();
+    pushSpy.mockRestore();
+  });
+});
 
 describe('ActionEventNotifWorker.processCustomReminderText', () => {
   let worker: ActionEventNotifWorker;
