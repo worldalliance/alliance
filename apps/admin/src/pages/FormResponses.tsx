@@ -29,6 +29,11 @@ import { useParams, useSearchParams } from "react-router";
 import { CirclePlay } from "lucide-react";
 import { CardStyle } from "@alliance/shared/styles/card";
 import FormResponseStatistics from "../components/FormResponseStatistics";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@alliance/sharedweb/ui/HoverCard";
 
 export type FormWithSchema = Pick<FormDto, "id" | "title" | "usedInAction"> & {
   schema: FormSchema;
@@ -863,33 +868,33 @@ const FormResponses: React.FC = () => {
                         {respondentName}
                       </p>
                       {currentWithdrawal && (
-                          <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200 whitespace-nowrap">
-                            Withdrew
-                          </span>
-                        )}
+                        <HoverCard>
+                          <HoverCardTrigger
+                            render={
+                              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800 whitespace-nowrap cursor-default">
+                                Withdrew
+                              </span>
+                            }
+                          />
+                          <HoverCardContent>
+                            <div className="flex flex-col items-center gap-0.5">
+                              {currentWithdrawal.outOfTime && (
+                                <span className="text-orange-600">Out of time</span>
+                              )}
+                              {currentWithdrawal.isMoral && (
+                                <span className="text-amber-600">Moral objection</span>
+                              )}
+                              {currentWithdrawal.declineReason && (
+                                <span className="text-zinc-500">{currentWithdrawal.declineReason}</span>
+                              )}
+                            </div>
+                          </HoverCardContent>
+                        </HoverCard>
+                      )}
                     </div>
                     <p className="text-sm text-gray-500">
                       {new Date(currentResponse.createdAt).toLocaleString()}
                     </p>
-                    {currentWithdrawal && (
-                          <div className="mt-1 flex flex-col items-end gap-0.5 text-xs">
-                            {currentWithdrawal.declineReason && (
-                              <span className="text-gray-600 italic max-w-[300px] text-right">
-                                "{currentWithdrawal.declineReason}"
-                              </span>
-                            )}
-                            {currentWithdrawal.isMoral && (
-                              <span className="text-amber-600 font-medium">
-                                Moral objection
-                              </span>
-                            )}
-                            {currentWithdrawal.outOfTime && (
-                              <span className="text-orange-600 font-medium">
-                                Out of time
-                              </span>
-                            )}
-                          </div>
-                        )}
                   </div>
                   {currentResponse.sessionReplayUrl && (
                     <Button
@@ -1071,7 +1076,7 @@ const FormResponses: React.FC = () => {
                             </p>
                             {response.user?.id != null &&
                               withdrawnUserMap[response.user.id] && (
-                                <span className="inline-flex shrink-0 items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+                                <span className="inline-flex shrink-0 items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
                                   Withdrew
                                 </span>
                               )}
