@@ -133,7 +133,7 @@ export class TasksService {
     return this.transformImageUrls(await this.transformContractFields(form));
   }
 
-  async getFormDto(formId: number): Promise<FormDto> {
+  async getFormWithAction(formId: number): Promise<FormDto> {
     const form = await this.getForm(formId);
     const action = await this.actionRepository.findOne({
       where: { taskFormId: formId },

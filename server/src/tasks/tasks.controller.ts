@@ -113,7 +113,7 @@ export class TasksController {
   @Get('slug/:id')
   @ApiOkResponse({ type: FormDto })
   async getForm(@Param('id', ParseIntPipe) id: number) {
-    return this.tasksService.getFormDto(id);
+    return this.tasksService.getFormWithAction(id);
   }
 
   @Get('aggregateViews/:id')
