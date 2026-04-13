@@ -2,9 +2,10 @@ import { UserActionRelation } from "@alliance/shared/client";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Link2 } from "lucide-react";
 import { isRouteErrorResponse, useOutletContext } from "react-router";
 import { Link } from "react-router";
+import { useState } from "react";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import { ActionTaskPanelPropsShared } from "@alliance/shared/lib/actionTaskPanel";
 import ActionTaskPanel from "./ActionTaskPanel";
@@ -62,12 +63,7 @@ const taskPanelHeaderByState: Record<
   [ActionPageTaskPanelState.NotAssigned]: (
     <p>{taskHeaders.actionPage.notAssigned}</p>
   ),
-  [ActionPageTaskPanelState.Completed]: (
-    <div className="flex items-center gap-x-3">
-      <CheckIcon size="small" />
-      <p>{taskHeaders.actionPage.completed}</p>
-    </div>
-  ),
+  [ActionPageTaskPanelState.Completed]: null,
   [ActionPageTaskPanelState.Declined]: <p>{taskHeaders.actionPage.withdrew}</p>,
   [ActionPageTaskPanelState.MemberActionClosed]: (
     <p>{taskHeaders.actionPage.memberActionClosed}</p>
@@ -112,6 +108,7 @@ const ActionPageTaskPanel = () => {
     useOutletContext<TaskPanelContext>();
 
   const { user, isAuthenticated } = useAuth();
+  const [copied, setCopied] = useState(false);
 
   const state = getActionPageTaskPanelState({
     action,
@@ -124,7 +121,33 @@ const ActionPageTaskPanel = () => {
     action,
     shouldLoadCompletedTaskFormByState[state],
   );
-  const taskPanelHeader = taskPanelHeaderByState[state];
+
+  const handleShareCopy = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/actions/${action.id}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const completedHeader = (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-x-3">
+        <CheckIcon size="small" />
+        <p>{taskHeaders.actionPage.completed}</p>
+      </div>
+      <button
+        onClick={handleShareCopy}
+        className="flex items-center gap-x-1 text-zinc-500 hover:text-zinc-700"
+      >
+        <Link2 className="w-3.5 h-3.5" />
+        <span className="text-sm">{copied ? "Copied to Clipboard!" : "Share"}</span>
+      </button>
+    </div>
+  );
+
+  const taskPanelHeader =
+    state === ActionPageTaskPanelState.Completed
+      ? completedHeader
+      : taskPanelHeaderByState[state];
   const { header: headerStyle, body: bodyStyle } = cardStylesForState(state);
 
   switch (state) {

@@ -4,9 +4,10 @@ import {
   CircleCheck,
   CircleChevronRight,
   ArrowRight,
+  Link2,
 } from "lucide-react";
 import { cn } from "@alliance/shared/styles/util";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import type { ActionDto, FollowUpForm } from "@alliance/shared/client";
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 
@@ -152,19 +153,35 @@ export function TaskNavigatorCompletedRow({
   activeFollowUpFormId: number | null;
   onSelectFollowUp: (formId: number) => void;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(
+      `${window.location.origin}/actions/${action.id}`,
+    );
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <div className="flex flex-col gap-y-1">
-      <TaskNavigatorRow
-        linkTo={href("/actions/:id", { id: action.id.toString() })}
-        className="text-zinc-400 line-through hover:text-zinc-500"
-        icon={<CircleCheck size={ICON_SIZE} className="shrink-0 text-green" />}
-        label={
-          <>
-            {action.optional && "(Optional) "}
-            {action.name}
-          </>
-        }
-      />
+      <div className="flex items-center gap-x-2 rounded-lg py-1 px-2 w-full hover:bg-grey-2">
+        <CircleCheck size={ICON_SIZE} className="shrink-0 text-green" />
+        <Link
+          to={href("/actions/:id", { id: action.id.toString() })}
+          className="text-zinc-400 line-through grow hover:text-zinc-500"
+        >
+          {action.optional && "(Optional) "}
+          {action.name}
+        </Link>
+        <button
+          onClick={handleShare}
+          className="shrink-0 flex items-center gap-x-1 text-zinc-400 hover:text-zinc-600"
+        >
+          <Link2 size={12} />
+          <span className="text-xs">{copied ? "Copied to Clipboard!" : "Share"}</span>
+        </button>
+      </div>
       <TaskNavigatorFollowUpRows
         forms={followUpForms}
         activeFollowUpFormId={activeFollowUpFormId}

@@ -31,10 +31,15 @@ export async function loader({ params }: { params: { id: string } }) {
 }
 
 export function meta({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
+  const title = data ? data.name + " - Alliance" : "Alliance";
   return [
-    {
-      title: data ? data.name + " - Alliance" : "Alliance",
-    },
+    { title },
+    { property: "og:title", content: title },
+    ...(data?.shortDescription
+      ? [{ property: "og:description", content: data.shortDescription }]
+      : []),
+    ...(data?.image ? [{ property: "og:image", content: data.image }] : []),
+    { property: "og:type", content: "website" },
   ];
 }
 

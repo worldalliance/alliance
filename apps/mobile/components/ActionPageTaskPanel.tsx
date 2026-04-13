@@ -10,16 +10,18 @@ import {
 } from "@alliance/shared/lib/actionPageTaskPanel";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import { taskHeaders } from "@alliance/shared/lib/copy";
-import { ArrowRight } from "lucide-react-native";
+import { ArrowRight, Link2 } from "lucide-react-native";
 import { Link } from "expo-router";
-import { ReactNode } from "react";
-import { View } from "react-native";
+import { ReactNode, useState } from "react";
+import { TouchableOpacity, View } from "react-native";
 import { colors } from "../lib/style/colors";
+import { getBaseUrl } from "../lib/config";
 import CheckIcon from "./system/CheckIcon";
 import StackedCard from "./system/StackedCard";
 import Text, { FontWeight } from "./system/Text";
 import ActionTaskPanel from "./ActionTaskPanel";
 import { useAuth } from "../lib/AuthContext";
+import * as Clipboard from "expo-clipboard";
 
 export interface ActionPageTaskPanelProps {
   action: ActionDto;
@@ -46,12 +48,7 @@ const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
   [ActionPageTaskPanelState.NotAssigned]: (
     <Text>{taskHeaders.actionPage.notAssigned}</Text>
   ),
-  [ActionPageTaskPanelState.Completed]: (
-    <View className="flex-row items-center gap-x-3">
-      <CheckIcon size="small" />
-      <Text>{taskHeaders.actionPage.completed}</Text>
-    </View>
-  ),
+  [ActionPageTaskPanelState.Completed]: null,
   [ActionPageTaskPanelState.Declined]: (
     <Text>{taskHeaders.actionPage.withdrew}</Text>
   ),
@@ -102,6 +99,8 @@ const ActionPageTaskPanel = ({
   scrollToEnd,
 }: ActionPageTaskPanelProps) => {
   const { user, isAuthenticated } = useAuth();
+  const [copied, setCopied] = useState(false);
+
   const state = getActionPageTaskPanelState({
     action,
     userRelation,
@@ -112,7 +111,36 @@ const ActionPageTaskPanel = ({
     action,
     shouldLoadCompletedTaskFormByState[state],
   );
-  const taskPanelHeader = taskPanelTopByState[state];
+
+  const handleShareCopy = async () => {
+    await Clipboard.setStringAsync(`${getBaseUrl()}/actions/${action.id}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const completedHeader = (
+    <View className="flex-row items-center justify-between">
+      <View className="flex-row items-center gap-x-3">
+        <CheckIcon size="small" />
+        <Text>{taskHeaders.actionPage.completed}</Text>
+      </View>
+      <TouchableOpacity
+        onPress={handleShareCopy}
+        className="flex-row items-center gap-x-1"
+        activeOpacity={0.7}
+      >
+        <Link2 size={14} color={copied ? colors.green : "#71717a"} />
+        <Text className={copied ? "text-green text-sm" : "text-zinc-500 text-sm"}>
+          {copied ? "Copied to Clipboard!" : "Share"}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const taskPanelHeader =
+    state === ActionPageTaskPanelState.Completed
+      ? completedHeader
+      : taskPanelTopByState[state];
   const { header: headerStyle, body: bodyStyle } = cardStylesForState(state);
 
   const panelHandlers = {
