@@ -160,6 +160,16 @@ select {
   opacity: 0.2;
 }
 
+input[type=number]:disabled::-webkit-inner-spin-button,
+input[type=number]:disabled::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number]:disabled {
+  -moz-appearance: textfield;
+}
+
 .p-AccordionButton {
   display: none !important;
 }
