@@ -107,15 +107,14 @@ export default function ActionPage() {
               Log in
             </Link>
           </p>
-          <p>
-            Would you like to join the Alliance?{" "}
-            <Link
-              to={`/invite${refCode ? `?ref=${refCode}` : ""}`}
-              className="text-link"
-            >
-              Invite link
-            </Link>
-          </p>
+          {refCode && (
+            <p>
+              Would you like to join the Alliance?{" "}
+              <Link to={`/invite?ref=${refCode}`} className="text-link">
+                Invite link
+              </Link>
+            </p>
+          )}
         </div>
       </div>
     );
