@@ -113,7 +113,10 @@ const ActionPageTaskPanel = ({
   );
 
   const handleShareCopy = async () => {
-    await Clipboard.setStringAsync(`${getBaseUrl()}/actions/${action.id}`);
+    const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
+    await Clipboard.setStringAsync(
+      `${getBaseUrl()}/actions/${action.id}${ref}`,
+    );
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

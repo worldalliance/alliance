@@ -124,7 +124,10 @@ const ActionPageTaskPanel = () => {
   );
 
   const handleShareCopy = () => {
-    navigator.clipboard.writeText(`${getBaseUrl()}/actions/${action.id}`);
+    const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
+    navigator.clipboard.writeText(
+      `${getBaseUrl()}/actions/${action.id}${ref}`,
+    );
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

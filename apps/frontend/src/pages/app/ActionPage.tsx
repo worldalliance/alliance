@@ -1,4 +1,4 @@
-import { actionsFindOne } from "@alliance/shared/client";
+import { actionsFindOne, userReferrerProfile } from "@alliance/shared/client";
 import {
   href,
   Link,
@@ -6,6 +6,7 @@ import {
   useLocation,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router";
 import ActionActivityList from "../../components/ActionActivityList";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
@@ -22,23 +23,44 @@ import { useCallback } from "react";
 import { ActionActivityDetailContext } from "../../components/ActionActivityDetail";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
 
-export async function loader({ params }: { params: { id: string } }) {
+export async function loader({
+  params,
+  request,
+}: {
+  params: { id: string };
+  request: Request;
+}) {
   const { id } = params;
-  const action = await actionsFindOne({
-    path: { id: parseInt(id) },
-  });
-  return action.data;
+  const url = new URL(request.url);
+  const refCode = url.searchParams.get("ref");
+
+  const [action, referrer] = await Promise.all([
+    actionsFindOne({ path: { id: parseInt(id) } }),
+    refCode
+      ? userReferrerProfile({ path: { code: refCode } }).catch(() => null)
+      : Promise.resolve(null),
+  ]);
+
+  return { action: action.data, referrerName: referrer?.data?.displayName ?? null };
 }
 
 export function meta({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
-  const title = data ? data.name + " - Alliance" : "Alliance";
+  const action = data?.action;
+  const referrerName = data?.referrerName;
+
+  const title = action
+    ? referrerName
+      ? `${referrerName} completed "${action.name}"`
+      : action.name + " - Alliance"
+    : "Alliance";
+
   return [
     { title },
     { property: "og:title", content: title },
-    ...(data?.shortDescription
-      ? [{ property: "og:description", content: data.shortDescription }]
+    ...(action?.shortDescription
+      ? [{ property: "og:description", content: action.shortDescription }]
       : []),
-    ...(data?.image ? [{ property: "og:image", content: data.image }] : []),
+    ...(action?.image ? [{ property: "og:image", content: action.image }] : []),
     { property: "og:type", content: "website" },
   ];
 }
@@ -51,6 +73,8 @@ export default function ActionPage() {
   const actionId = parseInt(idParam!);
 
   const { isAuthenticated, user, loading: userLoading } = useAuth();
+  const [searchParams] = useSearchParams();
+  const refCode = searchParams.get("ref");
 
   useCIDFromParams(actionId);
 
@@ -73,16 +97,24 @@ export default function ActionPage() {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <div className="space-y-4">
-          <p>This action is only visible to Alliance members.</p>
+          <p>You need to be a member to view this action.</p>
           <p>
-            Please{" "}
+            Already a member?{" "}
             <Link
               to={href("/login") + `?redirect=${location.pathname}`}
               className="text-link"
             >
-              log in
-            </Link>{" "}
-            if that&apos;s you.
+              Log in
+            </Link>
+          </p>
+          <p>
+            Would you like to join the Alliance?{" "}
+            <Link
+              to={`/invite${refCode ? `?ref=${refCode}` : ""}`}
+              className="text-link"
+            >
+              Invite link
+            </Link>
           </p>
         </div>
       </div>

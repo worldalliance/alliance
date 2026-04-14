@@ -10,6 +10,7 @@ import { cn } from "@alliance/shared/styles/util";
 import { type ReactNode, useState } from "react";
 import type { ActionDto, FollowUpForm } from "@alliance/shared/client";
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
+import { useAuth } from "../../lib/AuthContext";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 
 const ICON_SIZE = 16;
@@ -155,9 +156,13 @@ export function TaskNavigatorCompletedRow({
   onSelectFollowUp: (formId: number) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const { user } = useAuth();
 
   const handleShare = () => {
-    navigator.clipboard.writeText(`${getBaseUrl()}/actions/${action.id}`);
+    const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
+    navigator.clipboard.writeText(
+      `${getBaseUrl()}/actions/${action.id}${ref}`,
+    );
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
