@@ -28,7 +28,9 @@ const ProfilePicRow = ({
   maxDisplay = 20,
   showExtraCount = false,
 }: ProfilePicRowProps) => {
-  const displayUsers = users.slice(0, maxDisplay);
+  const displayUsers = [...users]
+    .sort((a, b) => (b.profilePicture ? 1 : 0) - (a.profilePicture ? 1 : 0))
+    .slice(0, maxDisplay);
   const extraCount = users.length > maxDisplay ? users.length - maxDisplay : 0;
 
   return (
