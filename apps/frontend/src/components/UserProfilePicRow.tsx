@@ -8,9 +8,11 @@ import { useState } from "react";
 import { href } from "react-router";
 
 const UserProfilePicRow = ({ users }: { users: ProfileDto[] }) => {
-  const unique = users.filter(function (item, pos, self) {
-    return self.findIndex((t) => t.id === item.id) === pos;
-  });
+  const unique = users
+    .filter(function (item, pos, self) {
+      return self.findIndex((t) => t.id === item.id) === pos;
+    })
+    .sort((a, b) => (b.profilePicture ? 1 : 0) - (a.profilePicture ? 1 : 0));
 
   const [expanded, setExpanded] = useState(false);
 
