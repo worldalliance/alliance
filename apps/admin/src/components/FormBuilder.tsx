@@ -65,6 +65,7 @@ import { customComponentRegistry } from "@alliance/sharedweb/forms/components";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { AggregateBuilder } from "./AggregateBuilder";
 import { OutputBuilder } from "./OutputBuilder";
+import { ShareableTextBuilder } from "./ShareableTextBuilder";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   CustomValidatorDraft,
@@ -362,7 +363,7 @@ export function FormBuilder({
   const activeEditor = searchParams.get("editor") ?? "form";
 
   const setActiveEditor = useCallback(
-    (editor: "form" | "outputs" | "aggregates") => {
+    (editor: "form" | "shareable" | "outputs" | "aggregates") => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set("editor", editor);
@@ -1842,7 +1843,19 @@ export function FormBuilder({
                     )}
                     onClick={() => setActiveEditor("form")}
                   >
-                    Form builder
+                    Form Builder
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      "px-3 py-2 rounded-md text-nowrap",
+                      activeEditor === "shareable"
+                        ? "bg-white shadow text-gray-900"
+                        : "text-gray-600",
+                    )}
+                    onClick={() => setActiveEditor("shareable")}
+                  >
+                    Shareable Text
                   </button>
                   <button
                     type="button"
@@ -1854,7 +1867,7 @@ export function FormBuilder({
                     )}
                     onClick={() => setActiveEditor("outputs")}
                   >
-                    Output views
+                    Output View
                   </button>
                   <button
                     type="button"
@@ -1866,7 +1879,7 @@ export function FormBuilder({
                     )}
                     onClick={() => setActiveEditor("aggregates")}
                   >
-                    Aggregate views
+                    Aggregate Views
                   </button>
                 </div>
               )}
@@ -2048,7 +2061,12 @@ export function FormBuilder({
             ref={contentScrollRef}
             className="flex-1 p-6 overflow-y-auto min-h-0"
           >
-            {activeEditor === "outputs" && !generalUpdateName ? (
+            {activeEditor === "shareable" && !generalUpdateName ? (
+              <ShareableTextBuilder
+                schema={schema}
+                onSchemaChange={updateSchema}
+              />
+            ) : activeEditor === "outputs" && !generalUpdateName ? (
               <OutputBuilder schema={schema} onSchemaChange={updateSchema} />
             ) : activeEditor === "aggregates" && !generalUpdateName ? (
               <AggregateBuilder schema={schema} onSchemaChange={updateSchema} />

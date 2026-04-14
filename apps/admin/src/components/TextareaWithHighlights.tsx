@@ -13,6 +13,12 @@ export interface TextareaWithHighlightProps {
   caseSensitive?: boolean;
   editable?: boolean;
   highlightHashPipeSyntax?: boolean;
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+  onClick?: React.MouseEventHandler<HTMLTextAreaElement>;
+  onDrop?: React.DragEventHandler<HTMLTextAreaElement>;
+  onDragOver?: React.DragEventHandler<HTMLTextAreaElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;
+  onKeyUp?: React.KeyboardEventHandler<HTMLTextAreaElement>;
 }
 
 function escapeHtml(s: string) {
@@ -37,10 +43,17 @@ export default function TextareaWithHighlight({
   caseSensitive = false,
   editable = true,
   highlightHashPipeSyntax = false,
+  textareaRef,
+  onClick,
+  onDrop,
+  onDragOver,
+  onKeyDown,
+  onKeyUp,
 }: TextareaWithHighlightProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const internalTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const resolvedTextareaRef = textareaRef ?? internalTextareaRef;
 
   const highlightRegex = useMemo(() => {
     const parts = (keywords || [])
@@ -79,7 +92,7 @@ export default function TextareaWithHighlight({
 
   // Sync overlay scroll with textarea scroll.
   useEffect(() => {
-    const ta = textareaRef.current;
+    const ta = resolvedTextareaRef.current;
     const ov = overlayRef.current;
     if (!ta || !ov) return;
 
@@ -89,11 +102,11 @@ export default function TextareaWithHighlight({
     };
     ta.addEventListener("scroll", onScroll, { passive: true });
     return () => ta.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [resolvedTextareaRef]);
 
   // Mirror key computed styles and position overlay to textarea's content box.
   useEffect(() => {
-    const ta = textareaRef.current;
+    const ta = resolvedTextareaRef.current;
     const ov = overlayRef.current;
     const wrap = wrapperRef.current;
     if (!ta || !ov || !wrap) return;
@@ -150,7 +163,7 @@ export default function TextareaWithHighlight({
     const ro = new ResizeObserver(applyComputed);
     ro.observe(ta);
     return () => ro.disconnect();
-  }, []);
+  }, [resolvedTextareaRef]);
 
   return (
     <div ref={wrapperRef} className={cn("relative", className)}>
@@ -173,9 +186,14 @@ export default function TextareaWithHighlight({
       />
 
       <textarea
-        ref={textareaRef}
+        ref={resolvedTextareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onClick={onClick}
+        onDrop={onDrop}
+        onDragOver={onDragOver}
+        onKeyDown={onKeyDown}
+        onKeyUp={onKeyUp}
         placeholder={placeholder}
         className={cn(
           "w-full resize-y",

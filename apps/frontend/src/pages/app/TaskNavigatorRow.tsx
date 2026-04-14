@@ -4,11 +4,19 @@ import {
   CircleCheck,
   CircleChevronRight,
   ArrowRight,
+  Link2,
 } from "lucide-react";
 import { cn } from "@alliance/shared/styles/util";
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import type { ActionDto, FollowUpForm } from "@alliance/shared/client";
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
+import { useAuth } from "../../lib/AuthContext";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import {
+  buildShareText,
+  getShareableTextTemplate,
+} from "@alliance/shared/lib/shareText";
 
 const ICON_SIZE = 16;
 
@@ -152,6 +160,25 @@ export function TaskNavigatorCompletedRow({
   activeFollowUpFormId: number | null;
   onSelectFollowUp: (formId: number) => void;
 }) {
+  const [copied, setCopied] = useState(false);
+  const { user } = useAuth();
+  const formResponse = useCompletedTaskForm(action, true);
+  const shareTemplate = getShareableTextTemplate(
+    formResponse?.schemaSnapshot as Record<string, unknown> | undefined,
+  );
+
+  const handleShare = () => {
+    const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
+    const url = `${getBaseUrl()}/actions/${action.id}${ref}`;
+    const text = buildShareText({
+      template: shareTemplate,
+      formResponse,
+      url,
+    });
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   return (
     <div className="flex flex-col gap-y-1">
       <div className="flex items-center gap-x-2 rounded-lg py-1 px-2 w-full hover:bg-grey-2">
@@ -163,6 +190,15 @@ export function TaskNavigatorCompletedRow({
           {action.optional && "(Optional) "}
           {action.name}
         </Link>
+        <button
+          onClick={handleShare}
+          className="shrink-0 flex items-center gap-x-1 text-zinc-400 hover:text-zinc-600"
+        >
+          <Link2 size={12} />
+          <span className="text-xs">
+            {copied ? "Copied to Clipboard!" : "Share"}
+          </span>
+        </button>
       </div>
       <TaskNavigatorFollowUpRows
         forms={followUpForms}
