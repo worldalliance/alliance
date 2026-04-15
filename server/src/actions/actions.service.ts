@@ -1914,6 +1914,16 @@ export class ActionsService {
       });
     }
 
+    if (removedLike && updatedActivity.user) {
+      await this.likeNotificationService.removeOnUnlike({
+        ownerId: updatedActivity.user.id,
+        unlikerId: user.id,
+        targetType: `activity:${updatedActivity.type as GlobalFeedActivityType}`,
+        targetId: updatedActivity.id,
+        groupingKey: `activity_like:${updatedActivity.id}`,
+      });
+    }
+
     return new ActionActivityDto(updatedActivity, {
       includeLikes: true,
       likedByMe: !unlike,

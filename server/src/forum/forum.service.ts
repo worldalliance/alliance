@@ -726,6 +726,12 @@ export class ForumService {
       } else {
         await this.sendPostLikeNotification(object as Post, user);
       }
+    } else {
+      if (type === 'comment') {
+        await this.removeCommentLikeNotification(object as Comment, user);
+      } else {
+        await this.removePostLikeNotification(object as Post, user);
+      }
     }
 
     return obj;
@@ -812,6 +818,45 @@ export class ForumService {
       webAppLocation,
       groupingKey,
       existingNotification: existingNotif ?? undefined,
+    });
+  }
+
+  private async removePostLikeNotification(post: Post, unliker: User) {
+    const allAuthors: User[] = [];
+    if (post.author) {
+      allAuthors.push(post.author);
+    }
+    if (post.authors?.length) {
+      allAuthors.push(...post.authors);
+    }
+    const seenIds = new Set<number>();
+    const uniqueAuthors = allAuthors.filter((u) => {
+      if (seenIds.has(u.id)) return false;
+      seenIds.add(u.id);
+      return true;
+    });
+
+    for (const owner of uniqueAuthors) {
+      await this.likeNotificationService.removeOnUnlike({
+        ownerId: owner.id,
+        unlikerId: unliker.id,
+        targetType: 'post',
+        targetId: post.id,
+        groupingKey: `forum_like:post:${post.id}:user:${owner.id}`,
+      });
+    }
+  }
+
+  private async removeCommentLikeNotification(comment: Comment, unliker: User) {
+    if (!comment.author) {
+      return;
+    }
+    await this.likeNotificationService.removeOnUnlike({
+      ownerId: comment.authorId,
+      unlikerId: unliker.id,
+      targetType: 'comment',
+      targetId: comment.id,
+      groupingKey: `forum_like:comment:${comment.id}`,
     });
   }
 

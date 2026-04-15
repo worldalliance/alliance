@@ -114,6 +114,51 @@ export class LikeNotificationService {
     });
   }
 
+  async removeOnUnlike(params: {
+    ownerId: number;
+    unlikerId: number;
+    targetType: LikeNotificationTarget;
+    targetId: number;
+    groupingKey?: GroupingKey;
+  }): Promise<void> {
+    const { ownerId, unlikerId, targetType, targetId } = params;
+    const groupingKey =
+      params.groupingKey ?? `like:${targetType}:${targetId}`;
+
+    const notif = await this.getActiveLikeNotification({
+      ownerId,
+      targetType,
+      targetId,
+      groupingKey,
+    });
+
+    if (!notif) {
+      return;
+    }
+
+    const updatedUsers = (notif.associatedUsers ?? []).filter(
+      (u) => u.id !== unlikerId,
+    );
+
+    if (updatedUsers.length === 0) {
+      await this.notifRepository.remove(notif);
+      return;
+    }
+
+    notif.associatedUsers = updatedUsers;
+    notif.groupingCount = updatedUsers.length;
+    notif.message = this.buildMessage({
+      targetType,
+      count: updatedUsers.length,
+      targetContent: notif.targetContent,
+      likerName:
+        updatedUsers.length === 1
+          ? new ProfileDto(updatedUsers[0]).displayName
+          : undefined,
+    });
+    await this.notifRepository.save(notif);
+  }
+
   async getActiveLikeNotification(params: {
     ownerId: number;
     targetType: LikeNotificationTarget;
