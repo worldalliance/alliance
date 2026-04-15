@@ -13,7 +13,7 @@ import CommunityMemberTableRow from "./CommunityMemberTableRow";
 import DropdownSelect from "./DropdownSelect";
 
 export enum CommunityMembersFilterMode {
-  All = "All members",
+  All = "Any status",
   Completed = "Completed",
   NotYetCompleted = "Not yet completed",
 }

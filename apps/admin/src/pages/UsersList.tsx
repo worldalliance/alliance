@@ -63,7 +63,7 @@ const UsersList: React.FC = () => {
   });
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [filterMode, setFilterMode] = useState<UserFilterMode>(
-    UserFilterMode.ALL
+    UserFilterMode.SIGNED
   );
   const [isTagFilterOpen, setIsTagFilterOpen] = useState(false);
   const tagDropdownRef = useOutsideClick(() => setIsTagFilterOpen(false));
