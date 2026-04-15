@@ -107,6 +107,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         <ActionTaskPanelActivity
           action={action}
           onCompleteAction={handleCompleteWithTracking}
+          disabled={disabled}
         />
       );
     }

@@ -7,7 +7,7 @@ import {
   Link2,
 } from "lucide-react";
 import { cn } from "@alliance/shared/styles/util";
-import { type ReactNode, useState } from "react";
+import { type ReactNode } from "react";
 import type { ActionDto, FollowUpForm } from "@alliance/shared/client";
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { useAuth } from "../../lib/AuthContext";
@@ -18,6 +18,7 @@ import {
   getShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
+import ShareConfettiButton from "../../components/ShareConfettiButton";
 
 const ICON_SIZE = 16;
 
@@ -161,7 +162,6 @@ export function TaskNavigatorCompletedRow({
   activeFollowUpFormId: number | null;
   onSelectFollowUp: (formId: number) => void;
 }) {
-  const [copied, setCopied] = useState(false);
   const { user } = useAuth();
   const formResponse = useCompletedTaskForm(action, true);
   const shareTemplate = getShareableTextTemplate(
@@ -176,9 +176,7 @@ export function TaskNavigatorCompletedRow({
       formResponse,
       url,
     });
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    return navigator.clipboard.writeText(text);
   };
   return (
     <div className="flex flex-col gap-y-1">
@@ -191,17 +189,15 @@ export function TaskNavigatorCompletedRow({
           {action.optional && "(Optional) "}
           {action.name}
         </Link>
-        <button
+        <ShareConfettiButton
           onClick={handleShare}
-          className="shrink-0 flex items-center gap-x-1 text-zinc-400 hover:text-zinc-600"
-        >
-          <Link2 size={12} />
-          <span className="text-xs">
-            {copied
-              ? clipboardCopy.copiedToClipboard
-              : clipboardCopy.share}
-          </span>
-        </button>
+          icon={Link2}
+          label={clipboardCopy.share}
+          copiedLabel={clipboardCopy.copiedToClipboard}
+          className="shrink-0 text-zinc-400 hover:text-zinc-600"
+          iconClassName="w-3 h-3"
+          labelClassName="text-xs"
+        />
       </div>
       <TaskNavigatorFollowUpRows
         forms={followUpForms}

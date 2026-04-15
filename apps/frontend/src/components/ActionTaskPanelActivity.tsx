@@ -3,15 +3,18 @@ import Button from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { CardStyle } from "@alliance/shared/styles/card";
 import ReactMarkdown from "react-markdown";
+import ConfettiWrapper from "./ConfettiWrapper";
 
 interface ActionTaskPanelActivityProps {
   action: ActionDto;
   onCompleteAction: () => void;
+  disabled?: boolean;
 }
 
 const ActionTaskPanelActivity = ({
   action,
   onCompleteAction,
+  disabled = false,
 }: ActionTaskPanelActivityProps) => {
   return (
     <Card style={CardStyle.White}>
@@ -24,7 +27,18 @@ const ActionTaskPanelActivity = ({
           <ReactMarkdown>{action.taskContents}</ReactMarkdown>
         </div>
         <div className="flex justify-end">
-          <Button onClick={onCompleteAction}>Mark Complete</Button>
+          <ConfettiWrapper disabled={disabled} onTrigger={onCompleteAction}>
+            {({ disabled: confettiDisabled, onClick, onKeyDown, onPointerDown }) => (
+              <Button
+                onClick={onClick}
+                onKeyDown={onKeyDown}
+                onPointerDown={onPointerDown}
+                disabled={confettiDisabled}
+              >
+                {disabled ? "Completed" : "Mark Complete"}
+              </Button>
+            )}
+          </ConfettiWrapper>
         </div>
       </div>
     </Card>

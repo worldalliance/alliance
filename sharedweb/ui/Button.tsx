@@ -14,7 +14,7 @@ type ButtonProps = React.PropsWithChildren & {
         ref?: React.RefObject<HTMLButtonElement | null>;
       } & Pick<
         React.HTMLAttributes<HTMLButtonElement>,
-        "onMouseEnter" | "onMouseLeave"
+        "onMouseEnter" | "onMouseLeave" | "onKeyDown" | "onPointerDown"
       > &
         (
           | {
@@ -33,7 +33,7 @@ type ButtonProps = React.PropsWithChildren & {
         onClick: (e: React.MouseEvent<HTMLElement>) => void;
       } & Pick<
         React.HTMLAttributes<HTMLDivElement>,
-        "onMouseEnter" | "onMouseLeave"
+        "onMouseEnter" | "onMouseLeave" | "onKeyDown" | "onPointerDown"
       >)
   );
 
@@ -68,6 +68,8 @@ const Button: React.FC<ButtonProps> = ({
   onMouseEnter,
   hoverText,
   onMouseLeave,
+  onKeyDown,
+  onPointerDown,
   size = "medium",
   asDiv,
 }) => {
@@ -105,6 +107,8 @@ const Button: React.FC<ButtonProps> = ({
         onClick={onClick}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
+        onKeyDown={onKeyDown}
+        onPointerDown={onPointerDown}
       >
         {children}
         {hoverText && <div className={hoverClassName}>{hoverText}</div>}
@@ -123,6 +127,8 @@ const Button: React.FC<ButtonProps> = ({
       disabled={disabled}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      onKeyDown={onKeyDown}
+      onPointerDown={onPointerDown}
     >
       {children}
       {hoverText && <div className={hoverClassName}>{hoverText}</div>}
