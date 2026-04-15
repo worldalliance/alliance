@@ -23,6 +23,11 @@ import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import { useLiveTaskFormAggregateViews } from "../lib/useLiveTaskFormAggregateViews";
+import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import {
+  buildShareText,
+  getShareableTextTemplate,
+} from "@alliance/shared/lib/shareText";
 
 const ActionContents = () => {
   const context = useOutletContext<TaskPanelContext>();
@@ -39,6 +44,13 @@ const ActionContents = () => {
   const { isAuthenticated, user } = useAuth();
   const [shareCopied, setShareCopied] = useState(false);
   const loggedInMode = !action.publicOnly;
+  const isCompleted = context.userRelation === "completed";
+  const formResponse = useCompletedTaskForm(action, isCompleted);
+  const shareTemplate = isCompleted
+    ? getShareableTextTemplate(
+        formResponse?.schemaSnapshot as Record<string, unknown> | undefined,
+      )
+    : undefined;
 
   useEffect(() => {
     if (location.hash === "#description") {
@@ -79,7 +91,13 @@ const ActionContents = () => {
 
   const handleShareAction = () => {
     const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
-    navigator.clipboard.writeText(`${getBaseUrl()}/actions/${action.id}${ref}`);
+    const url = `${getBaseUrl()}/actions/${action.id}${ref}`;
+    const text = buildShareText({
+      template: shareTemplate,
+      formResponse,
+      url,
+    });
+    navigator.clipboard.writeText(text);
     setShareCopied(true);
     setTimeout(() => setShareCopied(false), 2000);
   };
