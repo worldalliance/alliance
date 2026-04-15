@@ -32,6 +32,9 @@ interface ActionTaskPanelFormProps {
   disabled?: boolean;
   publicAction?: boolean;
   formResponse?: FormResponseDto;
+  redirectOnComplete?: boolean;
+  onSubmitted?: (formResponse: FormResponseDto) => void;
+  createAccountHref?: string;
 }
 
 const ActionTaskPanelForm = ({
@@ -44,6 +47,9 @@ const ActionTaskPanelForm = ({
   disabled = false,
   publicAction = false,
   formResponse,
+  redirectOnComplete = publicAction,
+  onSubmitted,
+  createAccountHref,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const { user, refreshUser } = useAuth();
@@ -84,7 +90,10 @@ const ActionTaskPanelForm = ({
               body: data,
             });
         if (response.response.ok) {
-          if (publicAction) {
+          if (response.data) {
+            onSubmitted?.(response.data);
+          }
+          if (publicAction && redirectOnComplete) {
             window.location.href = "/actions/completed";
           }
           if (typeof window !== "undefined" && form) {
@@ -183,6 +192,7 @@ const ActionTaskPanelForm = ({
           onAbandonAction={onAbandonAction}
           renderFormAsCompleted={disabled}
           publicAction={publicAction}
+          createAccountHref={createAccountHref}
           phDistinctId={distinctId}
           sessionReplayUrl={sessionReplayUrl}
         />

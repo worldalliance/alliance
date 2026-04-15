@@ -6,6 +6,7 @@ export enum ActionPageTaskPanelState {
   PublicOnly = "public_only",
   PublicOnlyAuthenticated = "public_only_authenticated",
   NotAuthenticated = "not_authenticated",
+  GuestRef = "guest_ref",
   OnboardingSignContractFirst = "onboarding_sign_contract_first",
   NotAssigned = "not_assigned",
   Completed = "completed",
@@ -28,6 +29,7 @@ const stateIsDisabled = {
   [ActionPageTaskPanelState.PublicOnly]: ActionPageTaskPanelEnabled.Enabled,
   [ActionPageTaskPanelState.NotAuthenticated]:
     ActionPageTaskPanelEnabled.Disabled,
+  [ActionPageTaskPanelState.GuestRef]: ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.NotAssigned]: ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.Completed]: ActionPageTaskPanelEnabled.Disabled,
   [ActionPageTaskPanelState.Declined]: ActionPageTaskPanelEnabled.Disabled,
@@ -50,6 +52,7 @@ export const shouldLoadCompletedTaskFormByState = {
   [ActionPageTaskPanelState.PublicOnlyAuthenticated]: false,
   [ActionPageTaskPanelState.PublicOnly]: false,
   [ActionPageTaskPanelState.NotAuthenticated]: false,
+  [ActionPageTaskPanelState.GuestRef]: false,
   [ActionPageTaskPanelState.NotAssigned]: false,
   [ActionPageTaskPanelState.Completed]: true,
   [ActionPageTaskPanelState.Declined]: true,
@@ -87,8 +90,10 @@ export function getActionPageTaskPanelState(params: {
   userRelation: UserActionRelation | null;
   contractSigned: boolean;
   isAuthenticated: boolean;
+  hasRefCode?: boolean;
 }): ActionPageTaskPanelState {
-  const { action, userRelation, contractSigned, isAuthenticated } = params;
+  const { action, userRelation, contractSigned, isAuthenticated, hasRefCode } =
+    params;
 
   if (action.publicOnly) {
     return isAuthenticated
@@ -96,8 +101,11 @@ export function getActionPageTaskPanelState(params: {
       : ActionPageTaskPanelState.PublicOnly;
   }
 
-  if (!action.reqAuthenticated)
-    return ActionPageTaskPanelState.NotAuthenticated;
+  if (!action.reqAuthenticated) {
+    return hasRefCode
+      ? ActionPageTaskPanelState.GuestRef
+      : ActionPageTaskPanelState.NotAuthenticated;
+  }
 
   if (!action.canParticipate && !action.preventCompletion)
     return ActionPageTaskPanelState.NotAssigned;

@@ -113,7 +113,7 @@ export default function ActionPage() {
           {refCode && (
             <p>
               Would you like to join the Alliance?{" "}
-              <Link to={`/invite?ref=${refCode}`} className="text-link">
+              <Link to={`/signup?ref=${refCode}`} className="text-link">
                 Invite link
               </Link>
             </p>

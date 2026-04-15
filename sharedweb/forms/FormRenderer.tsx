@@ -58,6 +58,7 @@ type FormRendererProps = {
   form: FormSchema;
   id: number;
   publicAction?: boolean;
+  createAccountHref?: string;
   actionId: number;
   persistKey?: string | null;
   initialPageIndex?: number;
@@ -148,6 +149,7 @@ const FormRenderer = ({
   form,
   id,
   publicAction,
+  createAccountHref,
   onSubmit,
   persistKey,
   userId,
@@ -1539,15 +1541,25 @@ const FormRenderer = ({
                   )
                 ) : readOnly ? null : onSubmit ? (
                   <div className="flex flex-1 space-x-2 items-center">
-                    <BaseButton
-                      variant={BaseButtonVariant.Black}
-                      className="w-full"
-                      disabled={submitting}
-                      type="submit"
-                    >
-                      {schema.submit?.label ||
-                        (followUp ? "Submit" : "Complete")}
-                    </BaseButton>
+                    {createAccountHref ? (
+                      <a
+                        href={createAccountHref}
+                        className="flex w-full items-center justify-center rounded bg-green px-4 py-2 text-base font-medium text-white hover:bg-[#4d8c1d]"
+                        style={{ fontWeight: 450 }}
+                      >
+                        Create an account to submit
+                      </a>
+                    ) : (
+                      <BaseButton
+                        variant={BaseButtonVariant.Black}
+                        className="w-full"
+                        disabled={submitting}
+                        type="submit"
+                      >
+                        {schema.submit?.label ||
+                          (followUp ? "Submit" : "Complete")}
+                      </BaseButton>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-1 space-x-2 items-center">

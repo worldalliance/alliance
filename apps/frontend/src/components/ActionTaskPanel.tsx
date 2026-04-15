@@ -10,11 +10,16 @@ import posthog from "posthog-js";
 import { canCompleteAction } from "@alliance/shared/lib/actionUtils";
 import { UserActionRelation } from "@alliance/shared/client";
 import ActionTaskPanelActivity from "./ActionTaskPanelActivity";
+import { FormResponseDto } from "@alliance/shared/client";
 
 export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   userRelation: UserActionRelation;
   missedDeadline?: boolean;
   card?: boolean;
+  redirectOnComplete?: boolean;
+  onFormSubmitted?: (formResponse: FormResponseDto) => void;
+  createAccountHref?: string;
+  forceRenderTask?: boolean;
 };
 
 const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
@@ -24,6 +29,11 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   card = false,
   disabled = false,
   formResponse,
+  guestMode = false,
+  redirectOnComplete,
+  onFormSubmitted,
+  createAccountHref,
+  forceRenderTask = false,
 }: ActionTaskPanelProps) => {
   const handleCompleteAction = useCallback(() => {
     onCompleteAction();
@@ -47,6 +57,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
       action,
       onCompleteAction: handleCompleteAction,
       onOptOutAction,
+      guestMode,
     });
 
   const errorMessageNode = useMemo(() => {
@@ -71,12 +82,13 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
         actionId={action.id}
         disabled={true}
         formResponse={formResponse}
+        onSubmitted={onFormSubmitted}
       />
     );
   }
 
   let completionElement = null;
-  if (canCompleteAction(action)) {
+  if (canCompleteAction(action) || forceRenderTask) {
     if (action.type === "Funding") {
       //   completionElement = (
       //     <StripeWrapper actionId={action.id}>
@@ -89,13 +101,16 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
     if (action.type === "Activity" && action.taskFormId) {
       completionElement = (
         <ActionTaskPanelForm
-          publicAction={action.publicOnly}
+          publicAction={action.publicOnly || guestMode}
           taskFormId={action.taskFormId}
           onCompleteAction={handleCompleteWithTracking}
           onFormStarted={handleFormStarted}
           onAbandonAction={handleAbandonAction}
           card={card}
           actionId={action.id}
+          redirectOnComplete={redirectOnComplete}
+          onSubmitted={onFormSubmitted}
+          createAccountHref={guestMode ? createAccountHref : undefined}
         />
       );
     }
@@ -108,6 +123,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
           action={action}
           onCompleteAction={handleCompleteWithTracking}
           disabled={disabled}
+          createAccountHref={guestMode ? createAccountHref : undefined}
         />
       );
     }
