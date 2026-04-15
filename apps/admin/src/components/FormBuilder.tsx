@@ -1038,7 +1038,7 @@ export function FormBuilder({
   useEffect(() => {
     if (navigationBlocker.state === "blocked") {
       const confirmExit = window.confirm(
-        "You have unsaved changes. Are you sure you want to leave this page?",
+          "You have unsaved changes. Are you sure you want to leave this page?",
       );
 
       if (confirmExit) {

@@ -8,7 +8,10 @@ import {
   getActionPageTaskPanelState,
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
-import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import {
+  useCompletedTaskForm,
+  useTaskForm,
+} from "@alliance/shared/lib/actionTaskPanelCompleted";
 import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
 import { ArrowRight, Link2 } from "lucide-react-native";
 import { Link } from "expo-router";
@@ -24,7 +27,7 @@ import { useAuth } from "../lib/AuthContext";
 import * as Clipboard from "expo-clipboard";
 import {
   buildShareText,
-  getShareableTextTemplate,
+  getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
 
 export interface ActionPageTaskPanelProps {
@@ -115,9 +118,13 @@ const ActionPageTaskPanel = ({
     action,
     shouldLoadCompletedTaskFormByState[state],
   );
-  const shareTemplate = getShareableTextTemplate(
-    formResponse?.schemaSnapshot as Record<string, unknown> | undefined,
-  );
+  const taskForm = useTaskForm(action, state === ActionPageTaskPanelState.Completed);
+  const shareTemplate = getCompletedShareableTextTemplate({
+    schemaSnapshot: formResponse?.schemaSnapshot as
+      | Record<string, unknown>
+      | undefined,
+    currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
+  });
 
   const handleShareCopy = async () => {
     const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";

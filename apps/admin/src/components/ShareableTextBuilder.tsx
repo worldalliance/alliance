@@ -1,4 +1,5 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
+import FormTextarea from "./FormTextarea";
 import TextareaWithHighlights from "./TextareaWithHighlights";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -11,6 +12,7 @@ interface ShareableTextBuilderProps {
 
 const REFERRAL_URL_PREVIEW =
   "https://alliance.example/actions/123?ref=member-code";
+const SHAREABLE_TOKEN_PATTERN = /#\{[^}]*\}/g;
 
 type ShareableField = Pick<AnyField, "id" | "label" | "kind"> & {
   pageTitle: string;
@@ -60,10 +62,11 @@ export function ShareableTextBuilder({
     [fields],
   );
 
-  const template = schema.shareableTextTemplate ?? "";
+  const completedTemplate = schema.shareableTextTemplate ?? "";
+  const defaultTemplate = schema.defaultShareableTextTemplate ?? "";
   const activeToken = useMemo(
-    () => getActiveTokenQuery(template, caretIndex),
-    [template, caretIndex],
+    () => getActiveTokenQuery(completedTemplate, caretIndex),
+    [completedTemplate, caretIndex],
   );
 
   const suggestions = useMemo(() => {
@@ -88,10 +91,20 @@ export function ShareableTextBuilder({
     setActiveIndex(0);
   }, [activeToken?.query]);
 
-  const updateTemplate = (nextTemplate: string) => {
+  const updateCompletedTemplate = (nextTemplate: string) => {
     onSchemaChange({
       ...schema,
       shareableTextTemplate: nextTemplate,
+    });
+  };
+
+  const updateDefaultTemplate = (nextTemplate: string) => {
+    onSchemaChange({
+      ...schema,
+      defaultShareableTextTemplate: nextTemplate.replace(
+        SHAREABLE_TOKEN_PATTERN,
+        "",
+      ),
     });
   };
 
@@ -103,7 +116,7 @@ export function ShareableTextBuilder({
 
   const insertToken = (field: ShareableField, replaceActiveToken = false) => {
     const textarea = textareaRef.current;
-    const currentValue = template;
+    const currentValue = completedTemplate;
     const selectionStart = textarea?.selectionStart ?? currentValue.length;
     const selectionEnd = textarea?.selectionEnd ?? selectionStart;
     const token = `#{${field.id}}`;
@@ -123,7 +136,7 @@ export function ShareableTextBuilder({
       token +
       currentValue.slice(replacementRange.end);
 
-    updateTemplate(nextValue);
+    updateCompletedTemplate(nextValue);
 
     window.requestAnimationFrame(() => {
       const nextCaret = replacementRange.start + token.length;
@@ -164,7 +177,7 @@ export function ShareableTextBuilder({
       <div className="rounded-lg border border-gray-200 bg-white p-6">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900">
-            Shareable Text
+            Shareable Text for Completed Tasks
           </h2>
           <p className="mt-1 text-sm text-gray-600">
             Build the text copied when a member shares a completed action. Type
@@ -178,9 +191,9 @@ export function ShareableTextBuilder({
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <div className="relative">
             <TextareaWithHighlights
-              value={template}
+              value={completedTemplate}
               onChange={(next) => {
-                updateTemplate(next);
+                updateCompletedTemplate(next);
                 window.requestAnimationFrame(syncCaret);
               }}
               keywords={keywords}
@@ -302,6 +315,59 @@ export function ShareableTextBuilder({
                 ))
               )}
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            Default Shareable Text
+          </h2>
+          <p className="mt-1 text-sm text-gray-600">
+            This text is copied when a user shares the action before completing
+            it. User-input tokens and dragged form fields are not supported in
+            this box.
+          </p>
+        </div>
+
+        <FormTextarea
+          value={defaultTemplate}
+          onChange={(event) => updateDefaultTemplate(event.target.value)}
+          placeholder="Example: Join me in taking this action."
+          minRows={6}
+          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        />
+
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
+          <p className="text-sm font-medium text-amber-950">
+            No user inputs in this text box
+          </p>
+          <p className="mt-1 text-xs text-amber-900">
+            Entries like <span className="font-mono">#{"{field}"}</span> are
+            removed here because this default message is used before the user
+            has completed the task.
+          </p>
+        </div>
+
+        <div className="mt-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-blue-950">
+                Member Referral URL
+              </p>
+              <p className="mt-1 text-xs text-blue-800">
+                This is always appended automatically when the action is
+                shared. It is not editable here and cannot be removed from the
+                real share text.
+              </p>
+            </div>
+            <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-blue-900">
+              Always Included
+            </span>
+          </div>
+          <div className="mt-3 rounded-md border border-blue-200 bg-white px-3 py-2 font-mono text-xs text-blue-900">
+            {REFERRAL_URL_PREVIEW}
           </div>
         </div>
       </div>

@@ -1,5 +1,8 @@
 import { UserActionRelation } from "@alliance/shared/client";
-import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import {
+  useCompletedTaskForm,
+  useTaskForm,
+} from "@alliance/shared/lib/actionTaskPanelCompleted";
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { ArrowRight, Link2 } from "lucide-react";
@@ -20,7 +23,7 @@ import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import {
   buildShareText,
-  getShareableTextTemplate,
+  getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
 import ShareConfettiButton from "./ShareConfettiButton";
 
@@ -125,9 +128,13 @@ const ActionPageTaskPanel = () => {
     action,
     shouldLoadCompletedTaskFormByState[state],
   );
-  const shareTemplate = getShareableTextTemplate(
-    formResponse?.schemaSnapshot as Record<string, unknown> | undefined,
-  );
+  const taskForm = useTaskForm(action, state === ActionPageTaskPanelState.Completed);
+  const shareTemplate = getCompletedShareableTextTemplate({
+    schemaSnapshot: formResponse?.schemaSnapshot as
+      | Record<string, unknown>
+      | undefined,
+    currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
+  });
 
   const handleShareCopy = () => {
     const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";

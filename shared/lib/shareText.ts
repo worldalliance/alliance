@@ -50,6 +50,29 @@ export function getShareableTextTemplate(
   return typeof template === "string" ? template : undefined;
 }
 
+export function getDefaultShareableTextTemplate(
+  schemaLike: FormSchema | Record<string, unknown> | null | undefined,
+): string | undefined {
+  if (!schemaLike || typeof schemaLike !== "object") {
+    return undefined;
+  }
+  const template = (schemaLike as FormSchema).defaultShareableTextTemplate;
+  return typeof template === "string" ? template : undefined;
+}
+
+export function getCompletedShareableTextTemplate({
+  schemaSnapshot,
+  currentSchema,
+}: {
+  schemaSnapshot?: FormSchema | Record<string, unknown> | null;
+  currentSchema?: FormSchema | Record<string, unknown> | null;
+}): string | undefined {
+  return (
+    getShareableTextTemplate(schemaSnapshot) ??
+    getShareableTextTemplate(currentSchema)
+  );
+}
+
 /**
  * Interpolates a share text template using form response answers.
  *

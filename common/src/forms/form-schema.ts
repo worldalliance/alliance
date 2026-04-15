@@ -239,6 +239,7 @@ export interface FormSchema {
   pages: Page[];
   submit?: { label?: string };
   shareableTextTemplate?: string;
+  defaultShareableTextTemplate?: string;
 
   outputViews: OutputViewSchema[];
   aggregateViews?: AggregateViewSchema[];

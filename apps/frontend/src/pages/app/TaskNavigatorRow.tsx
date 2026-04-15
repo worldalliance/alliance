@@ -12,10 +12,13 @@ import type { ActionDto, FollowUpForm } from "@alliance/shared/client";
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { useAuth } from "../../lib/AuthContext";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
-import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import {
+  useCompletedTaskForm,
+  useTaskForm,
+} from "@alliance/shared/lib/actionTaskPanelCompleted";
 import {
   buildShareText,
-  getShareableTextTemplate,
+  getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import ShareConfettiButton from "../../components/ShareConfettiButton";
@@ -164,9 +167,13 @@ export function TaskNavigatorCompletedRow({
 }) {
   const { user } = useAuth();
   const formResponse = useCompletedTaskForm(action, true);
-  const shareTemplate = getShareableTextTemplate(
-    formResponse?.schemaSnapshot as Record<string, unknown> | undefined,
-  );
+  const taskForm = useTaskForm(action, true);
+  const shareTemplate = getCompletedShareableTextTemplate({
+    schemaSnapshot: formResponse?.schemaSnapshot as
+      | Record<string, unknown>
+      | undefined,
+    currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
+  });
 
   const handleShare = () => {
     const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
