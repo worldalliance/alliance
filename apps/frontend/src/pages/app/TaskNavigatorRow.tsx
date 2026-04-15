@@ -17,6 +17,7 @@ import {
   buildShareText,
   getShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
+import { clipboardCopy } from "@alliance/shared/lib/copy";
 
 const ICON_SIZE = 16;
 
@@ -196,7 +197,9 @@ export function TaskNavigatorCompletedRow({
         >
           <Link2 size={12} />
           <span className="text-xs">
-            {copied ? "Copied to Clipboard!" : "Share"}
+            {copied
+              ? clipboardCopy.copiedToClipboard
+              : clipboardCopy.share}
           </span>
         </button>
       </div>

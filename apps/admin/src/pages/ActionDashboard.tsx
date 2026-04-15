@@ -66,6 +66,7 @@ import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { cn } from "@alliance/shared/styles/util";
+import { clipboardCopy } from "@alliance/shared/lib/copy";
 
 // Status color mapping
 export const getStatusColor = (status: ActionDto["status"]) => {
@@ -1137,7 +1138,9 @@ const ActionDashboard: React.FC = () => {
                           disabled={jsonCopied}
                           className="text-nowrap"
                         >
-                          {jsonCopied ? "in clipboard" : "Export JSON"}
+                          {jsonCopied
+                            ? clipboardCopy.inClipboard
+                            : clipboardCopy.exportJson}
                         </Button>
                       </Dropdown>
                     )}

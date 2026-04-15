@@ -28,6 +28,7 @@ import {
   buildShareText,
   getShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
+import { clipboardCopy } from "@alliance/shared/lib/copy";
 
 const ActionContents = () => {
   const context = useOutletContext<TaskPanelContext>();
@@ -120,7 +121,9 @@ const ActionContents = () => {
               className="self-start flex items-center gap-x-1 text-zinc-500 hover:text-zinc-700"
             >
               <span className="text-sm">
-                {shareCopied ? "Copied to clipboard" : "Share"}
+                {shareCopied
+                  ? clipboardCopy.copiedToClipboard
+                  : clipboardCopy.share}
               </span>
               <ExternalLinkIcon className="w-3.5 h-3.5 shrink-0" />
             </button>

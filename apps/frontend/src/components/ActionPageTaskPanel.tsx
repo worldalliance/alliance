@@ -17,7 +17,7 @@ import {
   getActionPageTaskPanelState,
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
-import { taskHeaders } from "@alliance/shared/lib/copy";
+import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import {
   buildShareText,
@@ -154,7 +154,9 @@ const ActionPageTaskPanel = () => {
       >
         <Link2 className="w-3.5 h-3.5" />
         <span className="text-sm">
-          {copied ? "Copied to Clipboard!" : "Share"}
+          {copied
+            ? clipboardCopy.copiedToClipboard
+            : clipboardCopy.share}
         </span>
       </button>
     </div>

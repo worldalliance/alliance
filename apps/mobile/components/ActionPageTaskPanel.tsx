@@ -9,7 +9,7 @@ import {
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
-import { taskHeaders } from "@alliance/shared/lib/copy";
+import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
 import { ArrowRight, Link2 } from "lucide-react-native";
 import { Link } from "expo-router";
 import { ReactNode, useState } from "react";
@@ -145,7 +145,9 @@ const ActionPageTaskPanel = ({
       >
         <Link2 size={14} color={copied ? colors.green : "#71717a"} />
         <Text className={copied ? "text-green text-sm" : "text-zinc-500 text-sm"}>
-          {copied ? "Copied to Clipboard!" : "Share"}
+          {copied
+            ? clipboardCopy.copiedToClipboard
+            : clipboardCopy.share}
         </Text>
       </TouchableOpacity>
     </View>

@@ -177,5 +177,12 @@ export const referralQrCopy = {
   linkUnavailable: "Your referral link is not available.",
 } as const;
 
+export const clipboardCopy = {
+  share: "Share",
+  copiedToClipboard: "Copied to Clipboard!",
+  exportJson: "Export JSON",
+  inClipboard: "in clipboard",
+} as const;
+
 export const suspendContractConfirmation =
   "Are you sure you want to suspend your contract? You will be removed from your groups.";
