@@ -21,7 +21,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { cn } from "@alliance/shared/styles/util";
 import UserCard from "../components/UserCard";
-import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import { href, Link, useSearchParams } from "react-router";
 import { LayoutGrid, List, Shuffle } from "lucide-react";
@@ -31,13 +30,6 @@ import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 
 type ViewMode = "cards" | "rows";
-
-enum UserFilterMode {
-  ALL = "All",
-  SIGNED = "Signed",
-  SUSPENDED = "Suspended",
-  NOT_SIGNED = "Not signed",
-}
 
 const UsersList: React.FC = () => {
   const [users, setUsers] = useState<UserDto[]>([]);
@@ -62,9 +54,6 @@ const UsersList: React.FC = () => {
     userActionRelations,
   });
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [filterMode, setFilterMode] = useState<UserFilterMode>(
-    UserFilterMode.SIGNED
-  );
   const [isTagFilterOpen, setIsTagFilterOpen] = useState(false);
   const tagDropdownRef = useOutsideClick(() => setIsTagFilterOpen(false));
   const [pendingTagOps, setPendingTagOps] = useState<Set<string>>(
@@ -74,7 +63,7 @@ const UsersList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [params, setParams] = useSearchParams();
-  const viewMode = (params.get("viewMode") as ViewMode | undefined) ?? "cards";
+  const viewMode = (params.get("viewMode") as ViewMode | undefined) ?? "rows";
 
   const [shuffledIds, setShuffledIds] = useState<number[] | null>(null);
 
@@ -178,31 +167,8 @@ const UsersList: React.FC = () => {
     });
   }, [filteredByTags, searchQuery]);
 
-  const modeToUsers = useMemo(() => {
-    return Object.values(UserFilterMode).reduce((acc, mode) => {
-      acc[mode] = filteredBySearch.filter((user) => {
-        if (mode === UserFilterMode.ALL) {
-          return true;
-        }
-        const lastEvent = user.contractEvents?.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        )[0];
-        if (mode === UserFilterMode.NOT_SIGNED) {
-          return !user.contractEvents?.length;
-        }
-        if (mode === UserFilterMode.SIGNED) {
-          return lastEvent?.type === "signed";
-        }
-        if (mode === UserFilterMode.SUSPENDED) {
-          return lastEvent?.type === "suspended";
-        }
-      });
-      return acc;
-    }, {} as Record<UserFilterMode, UserDto[]>);
-  }, [filteredBySearch]);
-
   const handleShuffle = useCallback(() => {
-    const current = modeToUsers[filterMode] ?? [];
+    const current = filteredBySearch;
 
     const seed = Math.random().toString(36).substring(2, 15);
     setShuffledIds(
@@ -211,7 +177,7 @@ const UsersList: React.FC = () => {
         seed
       )
     );
-  }, [filterMode, modeToUsers]);
+  }, [filteredBySearch]);
 
   const selectedTagNames = useMemo(() => {
     if (!selectedTagIds.length) return [] as string[];
@@ -221,7 +187,7 @@ const UsersList: React.FC = () => {
 
   useEffect(() => {
     setShuffledIds(null);
-  }, [filterMode, selectedTagIds, searchQuery]);
+  }, [selectedTagIds, searchQuery]);
 
   const groupFilterLabel = useMemo(() => {
     if (!selectedTagIds.length) {
@@ -249,16 +215,13 @@ const UsersList: React.FC = () => {
   const resetAllFilters = () => {
     setSearchQuery("");
     setSelectedTagIds([]);
-    setFilterMode(UserFilterMode.ALL);
   };
 
   const hasActiveFilters =
-    searchQuery.trim() !== "" ||
-    selectedTagIds.length > 0 ||
-    filterMode !== UserFilterMode.ALL;
+    searchQuery.trim() !== "" || selectedTagIds.length > 0;
 
   const usersAsProfiles = useMemo((): ProfileDto[] => {
-    return (modeToUsers[filterMode] ?? []).map((user) => {
+    return filteredBySearch.map((user) => {
       const lastEvent = user.contractEvents?.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
       )[0];
@@ -275,20 +238,38 @@ const UsersList: React.FC = () => {
         anonymous: user.anonymous,
       };
     });
-  }, [modeToUsers, filterMode]);
+  }, [filteredBySearch]);
+
+  const { completedAllCurrentActions } = useMemo<{
+    completedAllCurrentActions: Record<number, boolean>;
+    nCompleted: number;
+    nTotal: number;
+  }>(() => {
+    if (!userActionRelations) {
+      return {
+        completedAllCurrentActions: {} as Record<number, boolean>,
+        nCompleted: 0,
+        nTotal: 0,
+      };
+    }
+
+    return calculateCompletionData({
+      filteredActionIds: activeActions.map((a) => a.id),
+      userActionRelations,
+    });
+  }, [activeActions, userActionRelations]);
 
   const displayedUsers = useMemo(() => {
-    const list = modeToUsers[filterMode] ?? [];
     if (
       shuffledIds != null &&
-      shuffledIds.length === list.length &&
-      list.every((u) => shuffledIds!.includes(u.id))
+      shuffledIds.length === filteredBySearch.length &&
+      filteredBySearch.every((u) => shuffledIds!.includes(u.id))
     ) {
-      const byId = Object.fromEntries(list.map((u) => [u.id, u]));
+      const byId = Object.fromEntries(filteredBySearch.map((u) => [u.id, u]));
       return shuffledIds.map((id) => byId[id]).filter(Boolean);
     }
-    return list;
-  }, [filterMode, modeToUsers, shuffledIds]);
+    return filteredBySearch;
+  }, [filteredBySearch, shuffledIds]);
 
   const displayedProfiles = useMemo((): ProfileDto[] => {
     const list = usersAsProfiles;
@@ -320,24 +301,7 @@ const UsersList: React.FC = () => {
     });
   }, []);
 
-  const { completedAllCurrentActions } = useMemo<{
-    completedAllCurrentActions: Record<number, boolean>;
-    nCompleted: number;
-    nTotal: number;
-  }>(() => {
-    if (!userActionRelations) {
-      return {
-        completedAllCurrentActions: {} as Record<number, boolean>,
-        nCompleted: 0,
-        nTotal: 0,
-      };
-    }
 
-    return calculateCompletionData({
-      filteredActionIds: activeActions.map((a) => a.id),
-      userActionRelations,
-    });
-  }, [activeActions, userActionRelations]);
 
   const updateTagInState = useCallback((updatedTag: TagDto) => {
     setTags((prev) => {
@@ -402,14 +366,6 @@ const UsersList: React.FC = () => {
           className="text-sm border border-gray-2 text-black bg-white px-3 rounded-sm py-2 w-64 focus:outline-none focus:border-black"
         />
         <div className="flex flex-row gap-3 items-center">
-          <DropdownSelect
-            options={UserFilterMode}
-            secondaryLabel={([, mode]) =>
-              (modeToUsers[mode]?.length ?? 0).toString()
-            }
-            value={filterMode}
-            onChange={([, mode]) => setFilterMode(mode)}
-          />
           <div className="relative" ref={tagDropdownRef}>
             <button
               type="button"
@@ -494,17 +450,6 @@ const UsersList: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setParams({ viewMode: "cards" })}
-            className={cn(
-              "p-2 rounded",
-              viewMode === "cards" ? "bg-zinc-200" : "hover:bg-zinc-100"
-            )}
-            title="Card view"
-          >
-            <LayoutGrid size={18} className="text-zinc-600" />
-          </button>
-          <button
-            type="button"
             onClick={() => setParams({ viewMode: "rows" })}
             className={cn(
               "p-2 rounded",
@@ -513,6 +458,17 @@ const UsersList: React.FC = () => {
             title="Table view"
           >
             <List size={18} className="text-zinc-600" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setParams({ viewMode: "cards" })}
+            className={cn(
+              "p-2 rounded",
+              viewMode === "cards" ? "bg-zinc-200" : "hover:bg-zinc-100"
+            )}
+            title="Card view"
+          >
+            <LayoutGrid size={18} className="text-zinc-600" />
           </button>
         </div>
       </div>
@@ -553,6 +509,7 @@ const UsersList: React.FC = () => {
             maxActionsPerWeek={maxActionsPerWeek}
             completedAllCurrentActions={completedAllCurrentActions}
             showInfoTooltip
+            showContractFilter
           />
         </div>
       )}

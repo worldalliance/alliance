@@ -106,7 +106,10 @@ export class CommunityService {
 
   async findAllCommunities(): Promise<Community[]> {
     const communities = await this.communityRepository.find({
-      relations: COMMUNITY_DEFAULT_RELATIONS,
+      relations: {
+        ...COMMUNITY_DEFAULT_RELATIONS,
+        users: { contractEvents: true } as const,
+      },
     });
     return communities.sort((a, b) => a.name.localeCompare(b.name));
   }

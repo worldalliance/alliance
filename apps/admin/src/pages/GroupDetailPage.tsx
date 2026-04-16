@@ -866,6 +866,7 @@ const CommunityDetailPage: React.FC = () => {
           memberContactInfo={memberContactInfo ?? undefined}
           completedAllCurrentActions={completedAllCurrentActions}
           showInfoTooltip
+          showContractFilter
         />
       </div>
     </div>

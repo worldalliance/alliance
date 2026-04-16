@@ -12,10 +12,17 @@ import {
 import CommunityMemberTableRow from "./CommunityMemberTableRow";
 import DropdownSelect from "./DropdownSelect";
 
-export enum CommunityMembersFilterMode {
+export enum CompletionFilterMode {
   All = "Any status",
   Completed = "Completed",
   NotYetCompleted = "Not yet completed",
+}
+
+export enum ContractFilterMode {
+  ALL = "All",
+  SIGNED = "Signed",
+  SUSPENDED = "Suspended",
+  NOT_SIGNED = "Not signed",
 }
 
 type CommunityMembersTableProps = {
@@ -30,6 +37,7 @@ type CommunityMembersTableProps = {
   completedAllCurrentActions?: Record<number, boolean>;
   maxActionsPerWeek: Record<number, number> | null;
   showInfoTooltip?: boolean;
+  showContractFilter?: boolean;
 };
 
 const CommunityMembersTable = ({
@@ -44,9 +52,13 @@ const CommunityMembersTable = ({
   completedAllCurrentActions = {},
   maxActionsPerWeek,
   showInfoTooltip = false,
+  showContractFilter = false,
 }: CommunityMembersTableProps) => {
-  const [filterMode, setFilterMode] = useState<CommunityMembersFilterMode>(
-    CommunityMembersFilterMode.All,
+  const [completionFilter, setCompletionFilter] = useState<CompletionFilterMode>(
+    CompletionFilterMode.All,
+  );
+  const [contractFilter, setContractFilter] = useState<ContractFilterMode>(
+    showContractFilter ? ContractFilterMode.SIGNED : ContractFilterMode.ALL,
   );
   const visibleActions = useMemo(() => {
     return actions.filter((action) => action.status !== "planned");
@@ -60,20 +72,53 @@ const CommunityMembersTable = ({
     [userActionRelations, actions],
   );
 
-  const membersByFilterMode = useMemo(() => {
+  const filteredByContract = useMemo(() => {
+    if (contractFilter === ContractFilterMode.ALL) {
+      return members;
+    }
+    return members.filter((user) => {
+      if (contractFilter === ContractFilterMode.NOT_SIGNED) {
+        return !user.lastContractEvent;
+      }
+      if (contractFilter === ContractFilterMode.SIGNED) {
+        return user.lastContractEvent?.type === "signed";
+      }
+      if (contractFilter === ContractFilterMode.SUSPENDED) {
+        return user.lastContractEvent?.type === "suspended";
+      }
+      return true;
+    });
+  }, [contractFilter, members]);
+
+  const membersByContract = useMemo(() => {
     return {
-      [CommunityMembersFilterMode.All]: members,
-      [CommunityMembersFilterMode.NotYetCompleted]: members.filter(
+      [ContractFilterMode.ALL]: members,
+      [ContractFilterMode.SIGNED]: members.filter(
+        (user) => user.lastContractEvent?.type === "signed",
+      ),
+      [ContractFilterMode.SUSPENDED]: members.filter(
+        (user) => user.lastContractEvent?.type === "suspended",
+      ),
+      [ContractFilterMode.NOT_SIGNED]: members.filter(
+        (user) => !user.lastContractEvent,
+      ),
+    };
+  }, [members]);
+
+  const membersByCompletion = useMemo(() => {
+    return {
+      [CompletionFilterMode.All]: filteredByContract,
+      [CompletionFilterMode.NotYetCompleted]: filteredByContract.filter(
         (user) => !completedAllCurrentActions[user.id],
       ),
-      [CommunityMembersFilterMode.Completed]: members.filter(
+      [CompletionFilterMode.Completed]: filteredByContract.filter(
         (user) => completedAllCurrentActions[user.id],
       ),
     };
-  }, [completedAllCurrentActions, members]);
+  }, [completedAllCurrentActions, filteredByContract]);
 
   const filteredSortedMembers = useMemo(() => {
-    const filtered = membersByFilterMode[filterMode] ?? [];
+    const filtered = membersByCompletion[completionFilter] ?? [];
     if (!amLeader) return filtered;
     return sortMembersByNextTaskDue(
       filtered,
@@ -82,11 +127,22 @@ const CommunityMembersTable = ({
     );
   }, [
     amLeader,
-    filterMode,
+    completionFilter,
     memberContactInfo,
-    membersByFilterMode,
+    membersByCompletion,
     deadlineTimestampByUserId,
   ]);
+
+  const hasActiveFilters =
+    completionFilter !== CompletionFilterMode.All ||
+    (showContractFilter && contractFilter !== ContractFilterMode.SIGNED);
+
+  const resetFilters = () => {
+    setCompletionFilter(CompletionFilterMode.All);
+    setContractFilter(
+      showContractFilter ? ContractFilterMode.SIGNED : ContractFilterMode.ALL,
+    );
+  };
 
   return (
     <div className="flex flex-col py-4 mt-4">
@@ -167,14 +223,35 @@ const CommunityMembersTable = ({
                   <p className="text-zinc-500 text-sm">
                     Sort by completion of current actions
                   </p>
-                  <DropdownSelect
-                    options={CommunityMembersFilterMode}
-                    secondaryLabel={([, mode]) =>
-                      membersByFilterMode[mode].length.toString()
-                    }
-                    value={filterMode}
-                    onChange={([, mode]) => setFilterMode(mode)}
-                  />
+                  <div className="flex flex-row gap-3 items-center">
+                    {showContractFilter && (
+                      <DropdownSelect
+                        options={ContractFilterMode}
+                        secondaryLabel={([, mode]) =>
+                          membersByContract[mode].length.toString()
+                        }
+                        value={contractFilter}
+                        onChange={([, mode]) => setContractFilter(mode)}
+                      />
+                    )}
+                    <DropdownSelect
+                      options={CompletionFilterMode}
+                      secondaryLabel={([, mode]) =>
+                        membersByCompletion[mode].length.toString()
+                      }
+                      value={completionFilter}
+                      onChange={([, mode]) => setCompletionFilter(mode)}
+                    />
+                    {hasActiveFilters && (
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="text-sm text-zinc-500 hover:text-zinc-700 hover:underline"
+                      >
+                        Reset filters
+                      </button>
+                    )}
+                  </div>
                 </div>
               </td>
             </tr>
