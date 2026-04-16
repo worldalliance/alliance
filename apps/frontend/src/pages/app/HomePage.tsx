@@ -84,6 +84,9 @@ const HomePage = () => {
   }, [user, refreshUser]);
 
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
+  const [pendingCompletedActionId, setPendingCompletedActionId] = useState<
+    number | null
+  >(null);
   const [actionProgressViews, setActionProgressViews] = useState<
     Record<number, AggregateViewSchema[]>
   >({});
@@ -451,18 +454,22 @@ const HomePage = () => {
               }
               userRelation={selectedTaskNavigatorItem.action.userRelation}
               onCompleteAction={() => {
-                queryClient.setQueryData<ActionDto[] | undefined>(
-                  ["actions"],
-                  (prev) =>
-                    prev?.map((action) =>
-                      action.id === selectedTaskNavigatorItem.action.id
-                        ? { ...action, userRelation: "completed" as const }
-                        : action,
-                    ),
-                );
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
+                setPendingCompletedActionId(selectedTaskNavigatorItem.action.id);
+                return true;
               }}
               onUpdateActionState={() => {
+                if (pendingCompletedActionId !== null) {
+                  queryClient.setQueryData<ActionDto[] | undefined>(
+                    ["actions"],
+                    (prev) =>
+                      prev?.map((action) =>
+                        action.id === pendingCompletedActionId
+                          ? { ...action, userRelation: "completed" as const }
+                          : action,
+                      ),
+                  );
+                  setPendingCompletedActionId(null);
+                }
                 queryClient.invalidateQueries({ queryKey: ["actions"] });
                 mainScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
                 document.scrollingElement?.scrollTo({
@@ -560,6 +567,7 @@ const HomePage = () => {
     actions,
     loading,
     selectedTaskNavigatorItem,
+    pendingCompletedActionId,
     user,
     handleDismissAction,
     handleDismissGeneralUpdate,

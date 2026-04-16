@@ -20,9 +20,12 @@ import { UserActionRelation } from "@alliance/shared/client";
 export interface LargeActionCardProps extends LargeActionCardPropsShared {
   showDetails?: boolean;
   className?: string;
-  onCompleteAction: () => void;
+  onCompleteAction: () => boolean | void | Promise<boolean | void>;
   userRelation: UserActionRelation;
 }
+
+const TASK_COMPLETE_EXIT_MS = 500;
+const TASK_COMPLETE_CONFETTI_LEAD_MS = 150;
 
 enum LargeActionCardState {
   Minified = "minified",
@@ -61,15 +64,21 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
   }, [action]);
 
   const handleUpdateActionState = useCallback(() => {
-    setState(LargeActionCardState.Closed);
+    setTimeout(() => {
+      setState(LargeActionCardState.Closed);
+    }, TASK_COMPLETE_CONFETTI_LEAD_MS);
     setTimeout(() => {
       onUpdateActionState();
-    }, 200);
+    }, TASK_COMPLETE_CONFETTI_LEAD_MS + TASK_COMPLETE_EXIT_MS);
   }, [onUpdateActionState]);
 
-  const handleCompleteAction = useCallback(() => {
-    onCompleteAction();
+  const handleCompleteAction = useCallback(async () => {
+    const didSucceed = await onCompleteAction();
+    if (didSucceed === false) {
+      return false;
+    }
     handleUpdateActionState();
+    return true;
   }, [onCompleteAction, handleUpdateActionState]);
 
   const goToActionPage = useCallback(
@@ -85,13 +94,17 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
   const nextEvent = getNextEvent(action);
 
   return (
-    <>
+    <div
+      className={cn(
+        "overflow-hidden origin-top transition-[max-height,opacity,transform,margin] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] max-h-[1200px] opacity-100 translate-y-0 scale-y-100",
+        state === LargeActionCardState.Closed &&
+          "max-h-0 opacity-0 -translate-y-4 scale-y-90 pointer-events-none",
+      )}
+    >
       <Card
         className={cn(
-          "p-4 sm:p-6 transition-all duration-300 w-full relative rounded-md",
-          state === LargeActionCardState.Closed && "opacity-0 overflow-hidden",
+          "p-4 sm:p-6 w-full relative rounded-md",
           state === LargeActionCardState.Minified && "pb-4",
-          state !== LargeActionCardState.Closed && "opacity-100",
           className,
         )}
       >
@@ -141,7 +154,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
           </div>
         </div>
       </Card>
-    </>
+    </div>
   );
 };
 

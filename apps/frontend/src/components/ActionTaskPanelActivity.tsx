@@ -1,14 +1,14 @@
 import { ActionDto } from "@alliance/shared/client";
 import Button from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import ConfettiWrapper from "@alliance/sharedweb/ui/ConfettiWrapper";
 import { CardStyle } from "@alliance/shared/styles/card";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router";
-import ConfettiWrapper from "./ConfettiWrapper";
 
 interface ActionTaskPanelActivityProps {
   action: ActionDto;
-  onCompleteAction: () => void;
+  onCompleteAction: () => boolean | void | Promise<boolean | void>;
   disabled?: boolean;
   createAccountHref?: string;
 }
@@ -38,7 +38,11 @@ const ActionTaskPanelActivity = ({
               Create an account to submit
             </Link>
           ) : (
-            <ConfettiWrapper disabled={disabled} onTrigger={onCompleteAction}>
+            <ConfettiWrapper
+              disabled={disabled}
+              onTrigger={onCompleteAction}
+              burstPlacement="local"
+            >
               {({ disabled: confettiDisabled, onClick, onKeyDown, onPointerDown }) => (
                 <Button
                   onClick={onClick}

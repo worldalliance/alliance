@@ -27,6 +27,13 @@ import {
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
 import { taskHeaders } from "@alliance/shared/lib/copy";
+import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import {
+  buildShareText,
+  getCompletedShareableTextTemplate,
+} from "@alliance/shared/lib/shareText";
+import ShareButton from "./ShareButton";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   console.error(error);
@@ -171,6 +178,15 @@ const ActionPageTaskPanel = () => {
         <CheckIcon size={24} />
         <p>{taskHeaders.actionPage.completed}</p>
       </div>
+      <ShareButton
+        onClick={handleShareCopy}
+        icon={Link2}
+        label={clipboardCopy.share}
+        copiedLabel={clipboardCopy.copiedToClipboard}
+        className="text-zinc-500 hover:text-zinc-700"
+        iconClassName="w-3.5 h-3.5 shrink-0"
+        labelClassName="text-sm order-first"
+      />
     </div>
   );
   const guestCompletedHeader = (
@@ -179,14 +195,14 @@ const ActionPageTaskPanel = () => {
         <CheckIcon size="small" />
         <p>{taskHeaders.actionPage.completed}</p>
       </div>
-      <ShareConfettiButton
+      <ShareButton
         onClick={handleShareCopy}
         icon={Link2}
         label={clipboardCopy.share}
         copiedLabel={clipboardCopy.copiedToClipboard}
         className="text-zinc-500 hover:text-zinc-700"
-        iconClassName="w-3.5 h-3.5"
-        labelClassName="text-sm"
+        iconClassName="w-3.5 h-3.5 shrink-0"
+        labelClassName="text-sm order-first"
       />
     </div>
   );

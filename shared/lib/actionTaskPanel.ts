@@ -9,7 +9,7 @@ import {
 
 export interface ActionTaskPanelPropsShared {
   action: ActionDto;
-  onCompleteAction: () => void;
+  onCompleteAction: () => boolean | void | Promise<boolean | void>;
   onOptOutAction: () => void;
   disabled?: boolean;
   formResponse?: FormResponseDto;
@@ -35,11 +35,11 @@ export const useTaskFormHandlers = ({
         });
         if (req.error) {
           setActionError("Something went wrong. Please try again.");
-          return;
+          return false;
         }
       }
       setActionError(null);
-      onCompleteAction();
+      return onCompleteAction();
     },
     [action, guestMode, onCompleteAction],
   );

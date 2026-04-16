@@ -52,6 +52,7 @@ import BaseButton, {
   BaseButtonSize,
   BaseButtonVariant,
 } from "../ui/BaseButton";
+import ConfettiWrapper from "../ui/ConfettiWrapper";
 import { Ellipsis } from "lucide-react";
 
 type FormRendererProps = {
@@ -1091,65 +1092,114 @@ const FormRenderer = ({
     }
   };
 
+  const formTrackingParams = {
+    formId: id,
+    actionId,
+    currentPageIndex,
+    pageCount: schema.pages.length,
+    enabled: !!onSubmit && !readOnly,
+  };
+
+  useFormPageDurationTracking(formTrackingParams);
+  const trackValidationError =
+    useFormValidationErrorTracking(formTrackingParams);
+
+  const submitCurrentPage = useCallback(
+    async (options?: { optimistic?: boolean }) => {
+      const optimistic = options?.optimistic ?? false;
+      if (submitting) {
+        return false;
+      }
+
+      setSubmitting(true);
+
+      if (readOnly || !onSubmit) {
+        setSubmitting(false);
+        return false;
+      }
+
+      if (!isLastPage) {
+        const result = await validatePage(currentPageIndex, true);
+        if (result.isValid) {
+          setCurrentPageIndex((prev) => prev + 1);
+        } else {
+          trackValidationError(result.firstInvalidFieldId);
+        }
+        setSubmitting(false);
+        return false;
+      }
+
+      const { isValid, firstInvalidPageIndex, firstInvalidFieldId } =
+        await validateAllPages();
+      if (!isValid) {
+        trackValidationError(firstInvalidFieldId);
+        if (
+          typeof firstInvalidPageIndex === "number" &&
+          firstInvalidPageIndex !== currentPageIndex
+        ) {
+          setCurrentPageIndex(firstInvalidPageIndex);
+        }
+        setSubmitting(false);
+        return false;
+      }
+
+      const sanitizedAnswers = filterAnswersByFieldIds(formData, fieldLookup);
+
+      const sid = searchParams.get("sid");
+
+      const submissionPayload: SubmitFormDto = {
+        answers: sanitizedAnswers,
+        schemaSnapshot: form as unknown as Record<string, unknown>,
+        actionId,
+        visibilityValidatorResults,
+        deviceType,
+        publicAnswers: resolvedPublicAnswers,
+        phDistinctId,
+        sessionReplayUrl,
+        sid: sid ?? undefined,
+      };
+
+      if (optimistic) {
+        void onSubmit(submissionPayload).finally(() => {
+          setSubmitting(false);
+        });
+        return true;
+      }
+
+      try {
+        await onSubmit(submissionPayload);
+        return true;
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [
+      actionId,
+      currentPageIndex,
+      deviceType,
+      fieldLookup,
+      form,
+      formData,
+      isLastPage,
+      onSubmit,
+      phDistinctId,
+      readOnly,
+      resolvedPublicAnswers,
+      searchParams,
+      sessionReplayUrl,
+      submitting,
+      trackValidationError,
+      validateAllPages,
+      validatePage,
+      visibilityValidatorResults,
+    ],
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (submitting) {
-      return;
-    }
-
-    setSubmitting(true);
-
-    if (readOnly || !onSubmit) {
-      setSubmitting(false);
-      return;
-    }
-
-    if (!isLastPage) {
-      const result = await validatePage(currentPageIndex, true);
-      if (result.isValid) {
-        setCurrentPageIndex((prev) => prev + 1);
-      } else {
-        trackValidationError(result.firstInvalidFieldId);
-      }
-      setSubmitting(false);
-      return;
-    }
-
-    const { isValid, firstInvalidPageIndex, firstInvalidFieldId } =
-      await validateAllPages();
-    if (!isValid) {
-      trackValidationError(firstInvalidFieldId);
-      if (
-        typeof firstInvalidPageIndex === "number" &&
-        firstInvalidPageIndex !== currentPageIndex
-      ) {
-        setCurrentPageIndex(firstInvalidPageIndex);
-      }
-      setSubmitting(false);
-      return;
-    }
-
-    const sanitizedAnswers = filterAnswersByFieldIds(formData, fieldLookup);
-
-    const sid = searchParams.get("sid");
-
-    const submissionPayload: SubmitFormDto = {
-      answers: sanitizedAnswers,
-      schemaSnapshot: form as unknown as Record<string, unknown>,
-      actionId,
-      visibilityValidatorResults,
-      deviceType,
-      publicAnswers: resolvedPublicAnswers,
-      phDistinctId,
-      sessionReplayUrl,
-      sid: sid ?? undefined,
-    };
-
-    onSubmit(submissionPayload).finally(() => {
-      setSubmitting(false);
-    });
+    await submitCurrentPage();
   };
 
   const validateForPreview = useCallback(async () => {
@@ -1343,18 +1393,6 @@ const FormRenderer = ({
       });
     }
   }, [currentPageIndex]);
-
-  const formTrackingParams = {
-    formId: id,
-    actionId,
-    currentPageIndex,
-    pageCount: schema.pages.length,
-    enabled: !!onSubmit && !readOnly,
-  };
-
-  useFormPageDurationTracking(formTrackingParams);
-  const trackValidationError =
-    useFormValidationErrorTracking(formTrackingParams);
 
   useEffect(() => {
     setFieldErrors({});
@@ -1550,15 +1588,30 @@ const FormRenderer = ({
                         Create an account to submit
                       </a>
                     ) : (
-                      <BaseButton
-                        variant={BaseButtonVariant.Black}
-                        className="w-full"
-                        disabled={submitting}
-                        type="submit"
+                      <ConfettiWrapper
+                        burstPlacement="local"
+                        onTrigger={() => submitCurrentPage({ optimistic: true })}
                       >
-                        {schema.submit?.label ||
-                          (followUp ? "Submit" : "Complete")}
-                      </BaseButton>
+                        {({
+                          disabled: confettiDisabled,
+                          onClick,
+                          onKeyDown,
+                          onPointerDown,
+                        }) => (
+                          <BaseButton
+                            variant={BaseButtonVariant.Black}
+                            className="w-full"
+                            disabled={submitting || confettiDisabled}
+                            type="button"
+                            onClick={onClick}
+                            onKeyDown={onKeyDown}
+                            onPointerDown={onPointerDown}
+                          >
+                            {schema.submit?.label ||
+                              (followUp ? "Submit" : "Complete")}
+                          </BaseButton>
+                        )}
+                      </ConfettiWrapper>
                     )}
                   </div>
                 ) : (

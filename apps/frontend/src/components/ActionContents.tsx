@@ -32,7 +32,7 @@ import {
   getDefaultShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
-import ShareConfettiButton from "./ShareConfettiButton";
+import ShareButton from "./ShareButton";
 
 const ActionContents = () => {
   const context = useOutletContext<TaskPanelContext>();
@@ -139,7 +139,7 @@ const ActionContents = () => {
       <div className="flex flex-row justify-between items-start mb-6">
         {action !== undefined && (
           <div className="flex flex-col gap-y-3">
-            <ShareConfettiButton
+            <ShareButton
               onClick={handleShareAction}
               icon={ExternalLinkIcon}
               label={clipboardCopy.share}

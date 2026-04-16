@@ -16,7 +16,7 @@ import {
 } from "@alliance/shared/lib/shareText";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
-import ShareConfettiButton from "../../components/ShareConfettiButton";
+import ShareButton from "../../components/ShareButton";
 
 const ICON_SIZE = 16;
 
@@ -191,7 +191,7 @@ export function TaskNavigatorCompletedRow({
           {action.optional && "(Optional) "}
           {action.name}
         </Link>
-        <ShareConfettiButton
+        <ShareButton
           onClick={handleShare}
           icon={Link2}
           label={clipboardCopy.share}

@@ -35,13 +35,17 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   createAccountHref,
   forceRenderTask = false,
 }: ActionTaskPanelProps) => {
-  const handleCompleteAction = useCallback(() => {
-    onCompleteAction();
+  const handleCompleteAction = useCallback(async () => {
+    const didSucceed = await onCompleteAction();
+    if (didSucceed === false) {
+      return false;
+    }
     posthog.capture("action_completed", {
       actionId: action.id,
       actionType: action.type,
       actionName: action.name,
     });
+    return true;
   }, [onCompleteAction, action.id, action.type, action.name]);
 
   const handleFormStarted = useCallback(() => {
