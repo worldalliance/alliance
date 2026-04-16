@@ -220,9 +220,6 @@ const CommunityMembersTable = ({
               <td colSpan={amLeader ? 4 : 2} className="px-5 md:px-0 pb-6 pt-6">
                 <div className="flex flex-col gap-y-2">
                   <p className="text-xl md:text-2xl font-semibold">Members</p>
-                  <p className="text-zinc-500 text-sm">
-                    Sort by completion of current actions
-                  </p>
                   <div className="flex flex-row gap-3 items-center">
                     {showContractFilter && (
                       <DropdownSelect
