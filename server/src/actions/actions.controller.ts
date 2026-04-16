@@ -52,6 +52,7 @@ import {
   CreateActionSuiteDto,
   CreateActionUpdateDto,
   CreateReminderGroupDto,
+  ActionSharePreviewDto,
   ExportActionDto,
   GlobalFeedItemDto,
   OptOutActionDto,
@@ -499,6 +500,17 @@ export class ActionsController {
     @Request() req: JwtRequest,
   ): Promise<ActionDto | null> {
     return this.actionsService.findOneDto(id, req.user?.sub);
+  }
+
+  @Get(':id/sharePreview')
+  @Public()
+  @ApiQuery({ name: 'ref', required: false, type: String })
+  @ApiOkResponse({ type: ActionSharePreviewDto })
+  async getSharePreview(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('ref') refCode?: string,
+  ): Promise<ActionSharePreviewDto> {
+    return this.actionsService.getSharePreview(id, refCode);
   }
 
   @Get('adminslug/:id')

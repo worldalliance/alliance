@@ -71,6 +71,7 @@ import {
   ActionActivityDto,
   ActionDto,
   ActionEventDto,
+  ActionSharePreviewDto,
   ActionSuiteDto,
   ActionUpdateDto,
   CreateActionActivityDto,
@@ -685,6 +686,49 @@ export class ActionsService {
         : undefined,
       reqAuthenticated: !!user,
     });
+  }
+
+  async getSharePreview(
+    actionId: number,
+    refCode?: string,
+  ): Promise<ActionSharePreviewDto> {
+    // Match public action visibility before exposing referrer completion state.
+    await this.findOne({ id: actionId });
+
+    const response = new ActionSharePreviewDto();
+    response.completedByReferrer = false;
+    response.firstName = null;
+
+    const trimmedRefCode = refCode?.trim();
+    if (!trimmedRefCode) {
+      return response;
+    }
+
+    const invite = await this.userService.findInviteByCode(trimmedRefCode);
+    const referrer =
+      invite?.invitingUser ??
+      (await this.userService.findOneByReferralCode(trimmedRefCode));
+
+    if (!referrer) {
+      return response;
+    }
+
+    response.firstName = this.getFirstNameForSharePreview(referrer);
+    response.completedByReferrer =
+      (await this.getActionRelation(actionId, referrer.id)) ===
+      UserActionRelation.Completed;
+
+    return response;
+  }
+
+  private getFirstNameForSharePreview(
+    user: Pick<User, 'anonymous' | 'name'>,
+  ): string {
+    if (user.anonymous) {
+      return 'Someone';
+    }
+
+    return user.name.trim().split(/\s+/)[0] || 'Someone';
   }
 
   async findAllGeneralUpdates(): Promise<GeneralUpdate[]> {

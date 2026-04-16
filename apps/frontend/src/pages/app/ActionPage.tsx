@@ -1,4 +1,5 @@
-import { actionsFindOne, userReferrerProfile } from "@alliance/shared/client";
+import { actionsFindOne } from "@alliance/shared/client";
+import { getApiUrl } from "@alliance/sharedweb/lib/config";
 import {
   href,
   Link,
@@ -34,27 +35,44 @@ export async function loader({
   const url = new URL(request.url);
   const refCode = url.searchParams.get("ref");
 
-  const [action, referrer] = await Promise.all([
+  const [action, sharePreview] = await Promise.all([
     actionsFindOne({ path: { id: parseInt(id) } }),
     refCode
-      ? userReferrerProfile({ path: { code: refCode } }).catch(() => null)
+      ? fetch(
+          `${getApiUrl()}/actions/${id}/sharePreview?${new URLSearchParams({
+            ref: refCode,
+          }).toString()}`,
+        )
+          .then(async (response) => {
+            if (!response.ok) {
+              return null;
+            }
+
+            return (await response.json()) as {
+              firstName?: string | null;
+              completedByReferrer: boolean;
+            };
+          })
+          .catch(() => null)
       : Promise.resolve(null),
   ]);
 
   return {
     action: action.data,
-    referrerName: referrer?.data?.displayName ?? null,
+    sharePreview,
   };
 }
 
 export function meta({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
   const action = data?.action;
-  const referrerName = data?.referrerName;
+  const sharePreview = data?.sharePreview;
 
   const title = action
-    ? referrerName
-      ? `${referrerName} completed "${action.name}"`
-      : action.name + " - Alliance"
+    ? sharePreview?.firstName
+      ? sharePreview.completedByReferrer
+        ? `${sharePreview.firstName} completed ${action.name}`
+        : `${sharePreview.firstName} invites you to try ${action.name}`
+      : action.name
     : "Alliance";
 
   return [
