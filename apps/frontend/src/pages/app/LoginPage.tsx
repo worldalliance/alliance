@@ -76,7 +76,7 @@ const LoginPage: React.FC = () => {
       },
     });
     if (loginResponse.response.ok) {
-      onLogin();
+      await onLogin();
       navigate(returnUrl || href("/tasks"));
     } else {
       setError("Invalid email or password");

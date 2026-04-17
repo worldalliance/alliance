@@ -6,7 +6,7 @@ import {
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { ArrowRight, Link2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   href,
   isRouteErrorResponse,
@@ -33,7 +33,12 @@ import {
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
+import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import ShareButton from "./ShareButton";
+import {
+  getGuestTaskCompletion,
+  saveGuestTaskCompletion,
+} from "../lib/guestTaskCompletion";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   console.error(error);
@@ -112,6 +117,15 @@ const taskPanelHeaderByState: Record<
 };
 
 const bodyPaddingClasses = "p-4 sm:p-6";
+
+function toDeviceVisibilityTarget(
+  value: string | undefined,
+): DeviceVisibilityTarget | undefined {
+  if (value === "mobile" || value === "tablet" || value === "desktop") {
+    return value;
+  }
+  return undefined;
+}
 
 const ActionPageTaskPanel = () => {
   const { userRelation, action, ...panelHandlers } =
@@ -277,6 +291,24 @@ const ActionPageTaskPanel = () => {
     setShowGuestJoinPrompt(true);
   };
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      setGuestCompleted(false);
+      setGuestFormResponse(null);
+      return;
+    }
+
+    const savedCompletion = getGuestTaskCompletion(action.id);
+    if (!savedCompletion) {
+      setGuestCompleted(false);
+      setGuestFormResponse(null);
+      return;
+    }
+
+    setGuestCompleted(true);
+    setGuestFormResponse(savedCompletion.formResponse);
+  }, [action.id, isAuthenticated]);
+
   const renderStackedCard = (bottom: React.ReactNode) => (
     <div className="relative">
       <StackedCard
@@ -356,6 +388,31 @@ const ActionPageTaskPanel = () => {
           onFormSubmitted={
             guestMode
               ? (response) => {
+                  if (action.taskFormId) {
+                    saveGuestTaskCompletion({
+                      actionId: action.id,
+                      taskFormId: action.taskFormId,
+                      submission: {
+                        actionId: action.id,
+                        answers: response.answers,
+                        schemaSnapshot:
+                          (response.schemaSnapshot as Record<string, unknown>) ??
+                          {},
+                        visibilityValidatorResults:
+                          response.visibilityValidatorResults ?? undefined,
+                        deviceType: toDeviceVisibilityTarget(
+                          response.deviceType ?? undefined,
+                        ),
+                        publicAnswers: response.publicAnswers ?? undefined,
+                        phDistinctId: response.phDistinctId ?? undefined,
+                        sessionReplayUrl:
+                          response.sessionReplayUrl ?? undefined,
+                        sid: response.sid ?? undefined,
+                      },
+                      formResponse: response,
+                      completedAt: response.createdAt ?? new Date().toISOString(),
+                    });
+                  }
                   setGuestFormResponse(response);
                   handleGuestComplete();
                 }

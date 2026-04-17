@@ -19,6 +19,7 @@ import React, {
 import posthog from "posthog-js";
 import type { QueryClient } from "@tanstack/react-query";
 import { testAuthUser } from "../stories/testData";
+import { syncGuestTaskCompletions } from "./guestTaskCompletion";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -26,7 +27,7 @@ interface AuthContextType {
   isImpersonation: boolean;
   refreshUser: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  onLogin: () => void;
+  onLogin: () => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -40,6 +41,34 @@ export const AuthProvider: React.FC<
     const [user, setUser] = useState<UserDto | undefined>();
     const [isImpersonation, setIsImpersonation] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    const syncGuestCompletionsForUser = useCallback(async () => {
+      const { syncedActionIds } = await syncGuestTaskCompletions();
+      if (syncedActionIds.length > 0) {
+        queryClient.clear();
+      }
+      return syncedActionIds.length;
+    }, [queryClient]);
+
+    const loadAuthenticatedUser = useCallback(async () => {
+      const { data } = await authMe();
+      if (!data) {
+        throw new Error("No user data");
+      }
+
+      setUser(data.user);
+      setIsImpersonation(data.isImpersonation ?? false);
+
+      const syncedCount = await syncGuestCompletionsForUser();
+
+      if (syncedCount > 0) {
+        const { data: refreshedData } = await authMe();
+        if (refreshedData) {
+          setUser(refreshedData.user);
+          setIsImpersonation(refreshedData.isImpersonation ?? false);
+        }
+      }
+    }, [syncGuestCompletionsForUser]);
 
     useEffect(() => {
       if (import.meta.env.PROD) {
@@ -60,23 +89,16 @@ export const AuthProvider: React.FC<
 
       const bootstrap = async () => {
         try {
-          const { data } = await authMe();
-          if (data) {
-            if (!cancelled) {
-              setUser(data.user);
-              setIsImpersonation(data.isImpersonation ?? false);
-            }
-          } else {
-            throw new Error("No user data");
+          await loadAuthenticatedUser();
+          if (cancelled) {
+            return;
           }
         } catch {
           try {
             await authRefreshTokens();
-
-            const { data } = await authMe();
-            if (!cancelled && data) {
-              setUser(data.user);
-              setIsImpersonation(data.isImpersonation ?? false);
+            await loadAuthenticatedUser();
+            if (cancelled) {
+              return;
             }
           } catch {
             console.log("AuthContext", "refresh failed");
@@ -90,7 +112,7 @@ export const AuthProvider: React.FC<
       return () => {
         cancelled = true;
       };
-    }, []);
+    }, [loadAuthenticatedUser]);
 
     const login = useCallback(
       async (email: string, password: string) => {
@@ -104,15 +126,10 @@ export const AuthProvider: React.FC<
         }
 
         queryClient.clear();
-
-        const { data } = await authMe();
-        if (data) {
-          setUser(data.user);
-          setIsImpersonation(data.isImpersonation ?? false);
-        }
+        await loadAuthenticatedUser();
         setLoading(false);
       },
-      [queryClient],
+      [loadAuthenticatedUser, queryClient],
     );
 
     const logout = useCallback(async () => {
@@ -123,15 +140,10 @@ export const AuthProvider: React.FC<
       window.location.href = "/login";
     }, [queryClient]);
 
-    const onLogin = useCallback(() => {
-      authMe().then((res) => {
-        if (res.data) {
-          queryClient.clear();
-          setUser(res.data.user);
-          setIsImpersonation(res.data.isImpersonation ?? false);
-        }
-      });
-    }, [queryClient]);
+    const onLogin = useCallback(async () => {
+      queryClient.clear();
+      await loadAuthenticatedUser();
+    }, [loadAuthenticatedUser, queryClient]);
 
     const refreshUser = useCallback(async () => {
       const { data } = await authMe();
@@ -172,7 +184,7 @@ export const useAuth = (): AuthContextType => {
       user: testAuthUser,
       isImpersonation: false,
       login: () => Promise.resolve(),
-      onLogin: () => {},
+      onLogin: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       refreshUser: () => Promise.resolve(),
       loading: false,
@@ -187,7 +199,7 @@ export const useAuth = (): AuthContextType => {
       user: undefined,
       isImpersonation: false,
       login: () => Promise.resolve(),
-      onLogin: () => {},
+      onLogin: () => Promise.resolve(),
       logout: () => Promise.resolve(),
       refreshUser: () => Promise.resolve(),
       loading: false,

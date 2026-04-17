@@ -26,6 +26,7 @@ import { FEATURED_IMPACT_ACTIONS } from "../../content/featuredImpactActions";
 import { ChevronRight } from "lucide-react";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import Footer from "../../components/Footer";
+import { syncGuestTaskCompletions } from "../../lib/guestTaskCompletion";
 
 function formatSignupSocialProofNames(
   profiles: Pick<ProfileDto, "displayName">[],
@@ -169,6 +170,7 @@ const SignupPage: React.FC = () => {
         const checkAuth = await authMe();
 
         if (checkAuth.response.ok) {
+          await syncGuestTaskCompletions();
           const user = checkAuth.data?.user;
           if (user) {
             posthog.identify(user.id.toString(), {
