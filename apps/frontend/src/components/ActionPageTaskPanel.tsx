@@ -261,11 +261,7 @@ const ActionPageTaskPanel = () => {
       <Link to={loginHref} className="text-green hover:underline">
         Log in
       </Link>{" "}
-      or{" "}
-      <Link to={href("/signup")} className="text-green hover:underline">
-        sign up
-      </Link>{" "}
-      to join the Alliance.
+     to complete this task. 
     </p>
   );
 
