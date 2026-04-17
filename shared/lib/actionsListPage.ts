@@ -22,6 +22,8 @@ export const filterActions = (
   switch (mode) {
     case FilterMode.All:
       return actions.filter((action) => action.status !== "planned");
+    case FilterMode.CompletedByMe:
+      return actions.filter((action) => action.userRelation === "completed");
     case FilterMode.PendingOfficeResolution:
       return actions.filter((action) => action.status === "office_action");
     case FilterMode.MemberAction:

@@ -322,6 +322,15 @@ const HomePage = () => {
                   })}
                 </>
               )}
+
+              <div className="pt-2 flex justify-center">
+                <Link
+                  to={href("/actions")}
+                  className="text-zinc-500 hover:text-zinc-700 hover:underline"
+                >
+                  See more
+                </Link>
+              </div>
             </div>
           </TaskNavigatorListShell>
         )}

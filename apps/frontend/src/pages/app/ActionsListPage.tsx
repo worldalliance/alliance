@@ -15,7 +15,9 @@ import { href, Link } from "react-router";
 const ActionsListPage = () => {
   const { data: actions, isPending } = useActionsQuery();
 
-  const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);
+  const [filterMode, setFilterMode] = useState<FilterMode>(
+    FilterMode.CompletedByMe,
+  );
 
   const modeToActions: Record<FilterMode, ActionDto[]> = useMemo(() => {
     return Object.values(FilterMode).reduce(

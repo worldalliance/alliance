@@ -111,6 +111,7 @@ export function isFollowUpFormActive(f: {
 
 export enum FilterMode {
   All = "All",
+  CompletedByMe = "Completed by me",
   MemberAction = "Members taking action",
   PendingOfficeResolution = "Pending office resolution",
   Past = "Past",
