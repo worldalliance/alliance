@@ -47,13 +47,13 @@ import {
   CheckIcon,
   ChevronDown,
   ChevronUp,
+  EyeOff,
   ListChecks,
   Users,
   UserCheck,
   UserMinus,
   UserX,
   TrendingUp,
-  InfoIcon,
 } from "lucide-react";
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import { useNavigate, useParams, useSearchParams } from "react-router";
@@ -1298,17 +1298,17 @@ const ActionDashboard: React.FC = () => {
                       </Card>
                     )}
                     {action.optional && (
-                      <Card
-                        style={CardStyle.White}
-                        className="!p-4 items-center flex-row"
-                      >
+                      <Card style={CardStyle.White} className="!p-4">
                         <div className="flex items-center gap-3">
-                          <div className="p-2 bg-blue-100 rounded-lg">
-                            <InfoIcon className="h-5 w-5 text-blue-600" />
+                          <div className="p-2 bg-gray-100 rounded-lg">
+                            <EyeOff className="h-5 w-5 text-gray-600" />
                           </div>
-                          <p className="text font-medium text-gray-800">
-                            Optional action
-                          </p>
+                          <div>
+                            <p className="text-2xl font-bold">
+                              {actionStats?.usersDismissed ?? 0}
+                            </p>
+                            <p className="text-xs text-gray-500">Dismissed</p>
+                          </div>
                         </div>
                       </Card>
                     )}

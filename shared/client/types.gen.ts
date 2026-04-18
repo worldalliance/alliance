@@ -2435,9 +2435,7 @@ export type TableDataDto = {
     /**
      * Table rows data - each row is an array of values corresponding to columns
      */
-    rows: Array<Array<string | number | boolean | {
-        [key: string]: unknown;
-    } | unknown>>;
+    rows: Array<Array<unknown>>;
     /**
      * Total number of records in the table (before pagination)
      */
@@ -2748,6 +2746,10 @@ export type ActionStatsWithOnboardingDto = {
      * Number of users who withdrew from this action (declined or wont_complete)
      */
     usersWithdrawn: number;
+    /**
+     * Number of users who dismissed this optional action
+     */
+    usersDismissed: number;
     /**
      * Completion rate as a fraction (usersCompleted / usersJoined)
      */

@@ -35,6 +35,12 @@ export class ActionStatsRecord {
   })
   usersWithdrawn: number;
 
+  @Column({ default: 0 })
+  @ApiProperty({
+    description: 'Number of users who dismissed this optional action',
+  })
+  usersDismissed: number;
+
   @Column({ type: 'float' })
   @ApiProperty({
     description: 'Completion rate as a fraction (usersCompleted / usersJoined)',

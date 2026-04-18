@@ -292,6 +292,7 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const actionIds = actions.map((action) => action.id);
     const withdrawalByActionId = new Map<number, number>();
+    const dismissalByActionId = new Map<number, number>();
     if (actionIds.length > 0) {
       const withdrawalCounts = await this.actionActivityRepository
         .createQueryBuilder('activity')
@@ -313,6 +314,25 @@ ORDER BY pp.total_session_duration_seconds DESC
           withdrawalByActionId.set(actionId, withdrawnCount);
         }
       }
+
+      const dismissalCounts = await this.actionActivityRepository
+        .createQueryBuilder('activity')
+        .select('activity.actionId', 'actionId')
+        .addSelect('COUNT(DISTINCT activity.userId)', 'dismissedCount')
+        .where('activity.actionId IN (:...actionIds)', { actionIds })
+        .andWhere('activity.type = :type', {
+          type: ActionActivityType.USER_DISMISSED,
+        })
+        .groupBy('activity.actionId')
+        .getRawMany<{ actionId: string; dismissedCount: string }>();
+
+      for (const row of dismissalCounts) {
+        const actionId = Number(row.actionId);
+        const dismissedCount = Number(row.dismissedCount);
+        if (!Number.isNaN(actionId) && !Number.isNaN(dismissedCount)) {
+          dismissalByActionId.set(actionId, dismissedCount);
+        }
+      }
     }
 
     for (const action of actions) {
@@ -331,6 +351,7 @@ ORDER BY pp.total_session_duration_seconds DESC
       const usersJoined = action.usersJoined;
       const usersCompleted = action.usersCompleted;
       const usersWithdrawn = withdrawalByActionId.get(action.id) ?? 0;
+      const usersDismissed = dismissalByActionId.get(action.id) ?? 0;
       const completionRate = usersJoined > 0 ? usersCompleted / usersJoined : 0;
 
       // Find member_action event dates
@@ -370,6 +391,7 @@ ORDER BY pp.total_session_duration_seconds DESC
         existingRecord.usersCompleted = usersCompleted;
         existingRecord.usersJoined = usersJoined;
         existingRecord.usersWithdrawn = usersWithdrawn;
+        existingRecord.usersDismissed = usersDismissed;
         existingRecord.completionRate = completionRate;
         existingRecord.lastCalculatedAt = now;
         existingRecord.actionCompletedAt = completedDate ?? undefined;
@@ -385,6 +407,7 @@ ORDER BY pp.total_session_duration_seconds DESC
           usersCompleted,
           usersJoined,
           usersWithdrawn,
+          usersDismissed,
           completionRate,
           lastCalculatedAt: now,
           actionCompletedAt: completedDate ?? undefined,
