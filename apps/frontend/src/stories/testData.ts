@@ -137,6 +137,7 @@ export const testAuthUser: UserDto = {
   profilePicture: null,
   profileDescription: null,
   communities: [],
+  tags: [],
   invitedCommunities: [],
   formDataPreference: "public",
   shareInfoPublicly: true,

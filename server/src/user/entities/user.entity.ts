@@ -365,6 +365,7 @@ export class User {
   welcomeMail: Mail | null;
 
   @ManyToMany(() => Tag, (tag) => tag.users, { onDelete: 'CASCADE' })
+  @ApiProperty({ type: () => Tag, isArray: true })
   @Type(() => Tag)
   tags: Ty<Tag>[];
 

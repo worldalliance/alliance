@@ -144,6 +144,7 @@ export class UserDto extends PickType(User, [
   'customCityString',
   'undergoingGroupAssignment',
   'receiveReplyNotifications',
+  'tags',
 ]) {
   @ApiPropertyOptional()
   @IsOptional()

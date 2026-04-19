@@ -300,6 +300,15 @@ export class UserController {
     ).map((user) => new UserDto(user));
   }
 
+  @Get('list-graph')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: UserDto, isArray: true })
+  async listForGraph(): Promise<UserDto[]> {
+    return (
+      await this.userService.findAll({ contractEvents: true, referredBy: true, communities: true, tags: true })
+    ).map((user) => new UserDto(user));
+  }
+
   @Get('cityCounts')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [UserCityCountDto] })

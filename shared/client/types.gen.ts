@@ -59,6 +59,8 @@ export type ReferralSource = 'referral_link' | 'onetime_invite';
 
 export type OnetimeInviteStatus = 'request_pending' | 'request_rejected' | 'link_unused' | 'link_used';
 
+export type CommunityInviteStatus = 'request_pending' | 'request_rejected' | 'invitee_pending' | 'invitee_accepted' | 'invitee_rejected' | 'cancelled';
+
 export type NotificationCategory = 'action_event' | 'forum_reply' | 'friend_request' | 'friend_request_accepted' | 'action_update' | 'likes' | 'removed_from_community' | 'removed_from_community_for_leader' | 'member_left_community' | 'member_suspended_removed_from_community' | 'member_joined_community' | 'community_assigned' | 'new_member_referred' | 'community_invite_created' | 'community_invite_rejected' | 'community_invite_accepted' | 'onetime_invite_request_created' | 'onetime_invite_request_approved' | 'onetime_invite_request_rejected' | 'community_invite_request_created' | 'community_invite_request_rejected';
 
 export type NotifPriority = 'low' | 'high';
@@ -188,17 +190,6 @@ export type FollowUpForm = {
     };
     actionId: number;
     formId: number;
-};
-
-export type Tag = {
-    id: string;
-    name: string;
-    description: string;
-    publicDisplayName?: string;
-    createdAt: string;
-    updatedAt: string;
-    users: Array<User>;
-    generalUpdates: Array<GeneralUpdate>;
 };
 
 export type GeneralUpdate = {
@@ -494,20 +485,6 @@ export type Comment = {
     likesCount: number;
 };
 
-export type CommunityInviteStatus = 'request_pending' | 'request_rejected' | 'invitee_pending' | 'invitee_accepted' | 'invitee_rejected' | 'cancelled';
-
-export type CommunityInvite = {
-    id: number;
-    status: CommunityInviteStatus;
-    createdAt: string;
-    updatedAt: string;
-    deletedAt: string | null;
-    invitingUser?: User;
-    invitedUser: User;
-    community: Community;
-    notifs?: Array<Notification>;
-};
-
 export type Notification = {
     id: number;
     category: NotificationCategory;
@@ -531,6 +508,34 @@ export type Notification = {
     onetimeInvite?: OnetimeInvite;
     communityInvite?: CommunityInvite;
     cid?: string;
+};
+
+export type CommunityInvite = {
+    id: number;
+    status: CommunityInviteStatus;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt: string | null;
+    invitingUser?: User;
+    invitedUser: User;
+    community: Community;
+    notifs?: Array<Notification>;
+};
+
+export type Community = {
+    id: number;
+    name: string;
+    description: string;
+    photo?: string;
+    public: boolean;
+    allowMemberInvites: boolean;
+    allowStaffAssignments: boolean;
+    maxCapacity: number | null;
+    users: Array<User>;
+    leaders?: Array<User>;
+    pendingUsers?: Array<User>;
+    invites?: Array<OnetimeInvite>;
+    internalInvites: Array<CommunityInvite>;
 };
 
 export type OnetimeInvite = {
@@ -614,6 +619,7 @@ export type User = {
     contractEvents?: Array<ContractEvent>;
     referredByInvite: OnetimeInvite | null;
     referralSource: ReferralSource;
+    tags: Array<Tag>;
     /**
      * The community that the user will join when they sign the contract
      */
@@ -626,20 +632,15 @@ export type User = {
     isCommunityLeader: boolean;
 };
 
-export type Community = {
-    id: number;
+export type Tag = {
+    id: string;
     name: string;
     description: string;
-    photo?: string;
-    public: boolean;
-    allowMemberInvites: boolean;
-    allowStaffAssignments: boolean;
-    maxCapacity: number | null;
+    publicDisplayName?: string;
+    createdAt: string;
+    updatedAt: string;
     users: Array<User>;
-    leaders?: Array<User>;
-    pendingUsers?: Array<User>;
-    invites?: Array<OnetimeInvite>;
-    internalInvites: Array<CommunityInvite>;
+    generalUpdates: Array<GeneralUpdate>;
 };
 
 export type UserDto = {
@@ -675,6 +676,7 @@ export type UserDto = {
     receiveReplyNotifications: boolean;
     contractEvents?: Array<ContractEvent>;
     referralSource: ReferralSource;
+    tags: Array<Tag>;
     communities: Array<Community>;
     leaderOfIds: Array<number>;
     invitedCommunities: Array<CommunityInvite>;
@@ -2435,9 +2437,7 @@ export type TableDataDto = {
     /**
      * Table rows data - each row is an array of values corresponding to columns
      */
-    rows: Array<Array<string | number | boolean | {
-        [key: string]: unknown;
-    } | unknown>>;
+    rows: Array<Array<unknown>>;
     /**
      * Total number of records in the table (before pagination)
      */
@@ -3370,6 +3370,19 @@ export type UserListResponses = {
 };
 
 export type UserListResponse = UserListResponses[keyof UserListResponses];
+
+export type UserListForGraphData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/list-graph';
+};
+
+export type UserListForGraphResponses = {
+    200: Array<UserDto>;
+};
+
+export type UserListForGraphResponse = UserListForGraphResponses[keyof UserListForGraphResponses];
 
 export type UserCityCountsData = {
     body?: never;

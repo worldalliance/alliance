@@ -21,6 +21,7 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   pushesForComments: true,
   profilePicture: null,
   communities: [],
+  tags: [],
   formDataPreference: "public",
   invitedCommunities: [],
   hasActiveContract: true,
