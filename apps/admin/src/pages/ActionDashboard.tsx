@@ -1207,6 +1207,27 @@ const ActionDashboard: React.FC = () => {
                   <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                     <Card style={CardStyle.White} className="!p-4">
                       <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 rounded-lg">
+                          <TrendingUp className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">
+                            {action.usersJoined > 0
+                              ? Math.round(
+                                  (action.usersCompleted / action.usersJoined) *
+                                    100
+                                )
+                              : 0}
+                            %
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Completion Rate
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                    <Card style={CardStyle.White} className="!p-4">
+                      <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-100 rounded-lg">
                           <Users className="h-5 w-5 text-blue-600" />
                         </div>
@@ -1245,27 +1266,6 @@ const ActionDashboard: React.FC = () => {
                             {actionStats?.usersWithdrawn ?? 0}
                           </p>
                           <p className="text-xs text-gray-500">Withdrawn</p>
-                        </div>
-                      </div>
-                    </Card>
-                    <Card style={CardStyle.White} className="!p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-100 rounded-lg">
-                          <TrendingUp className="h-5 w-5 text-purple-600" />
-                        </div>
-                        <div>
-                          <p className="text-2xl font-bold">
-                            {action.usersJoined > 0
-                              ? Math.round(
-                                  (action.usersCompleted / action.usersJoined) *
-                                    100
-                                )
-                              : 0}
-                            %
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Completion Rate
-                          </p>
                         </div>
                       </div>
                     </Card>
