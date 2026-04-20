@@ -21,10 +21,11 @@ import useActivities, {
 } from "@alliance/shared/lib/useActivities";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActionActivityDetailContext } from "../../components/ActionActivityDetail";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
 import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferral";
+import { getGuestTaskCompletion } from "../../lib/guestTaskCompletion";
 
 export async function loader({
   params,
@@ -101,9 +102,11 @@ export default function ActionPage() {
   const refCode = searchParams.get("ref");
   const signupHref = refCode ? `/signup?ref=${refCode}` : href("/signup");
   const [invitePopupDismissed, setInvitePopupDismissed] = useState(false);
+  const [completedPopupDismissed, setCompletedPopupDismissed] = useState(false);
   const [referralPanelAnimationNonce, setReferralPanelAnimationNonce] =
     useState(0);
   const [showReferralTaskPanel, setShowReferralTaskPanel] = useState(false);
+  const [guestCompleted, setGuestCompleted] = useState(false);
 
   useCIDFromParams(actionId);
 
@@ -121,11 +124,26 @@ export default function ActionPage() {
     setShowReferralTaskPanel(true);
     setReferralPanelAnimationNonce((prev) => prev + 1);
   }, []);
+  const handleGuestCompletionChange = useCallback((completed: boolean) => {
+    setGuestCompleted(completed);
+    if (completed) {
+      setCompletedPopupDismissed(false);
+    }
+  }, []);
 
   const { action, loading, onCompleteAction, onOptOutAction } =
     useActionHandlers(actionId, isAuthenticated, reloadTasks);
 
   const publicMode = !isAuthenticated;
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      setGuestCompleted(false);
+      return;
+    }
+
+    setGuestCompleted(!!getGuestTaskCompletion(actionId));
+  }, [actionId, isAuthenticated]);
 
   if (!action && !loading && !user && !userLoading) {
     return (
@@ -180,7 +198,7 @@ export default function ActionPage() {
   const showInvitePopup =
     isNonmemberPublicReferralAction &&
     !!sharePreview?.firstName &&
-    !invitePopupDismissed;
+    (guestCompleted ? !completedPopupDismissed : !invitePopupDismissed);
 
   return (
     <>
@@ -202,9 +220,20 @@ export default function ActionPage() {
           >
             <button
               type="button"
-              aria-label="Dismiss invitation popup"
+              aria-label={
+                guestCompleted
+                  ? "Dismiss completion popup"
+                  : "Dismiss invitation popup"
+              }
               className="absolute right-4 top-4 text-2xl leading-none text-zinc-400 transition hover:text-zinc-600"
-              onClick={() => setInvitePopupDismissed(true)}
+              onClick={() => {
+                if (guestCompleted) {
+                  setCompletedPopupDismissed(true);
+                  setShowReferralTaskPanel(true);
+                  return;
+                }
+                setInvitePopupDismissed(true);
+              }}
             >
               ×
             </button>
@@ -212,19 +241,37 @@ export default function ActionPage() {
               id="referral-invite-popup-title"
               className="pr-8 text-2xl font-semibold text-zinc-900"
             >
-              {sharePreview.firstName} has invited you to try this task.
+              {guestCompleted
+                ? "You've completed this task."
+                : `${sharePreview.firstName} has invited you to try this task.`}
             </h2>
             <p className="mt-4 text-base leading-7 text-zinc-700">
-              The Alliance is a global group of people cooperating to improve
-              the world. Join us!
+              {guestCompleted
+                ? "To maintain the integrity of our data, only member-submitted forms are formally processed."
+                : "The Alliance is a global group of people cooperating to improve the world. Join us!"}
             </p>
-            <button
-              type="button"
-              className="mt-6 inline-flex w-full justify-center rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
-              onClick={handleTryOutTask}
-            >
-              Try out this task
-            </button>
+            {guestCompleted ? (
+              <>
+                <p className="mt-4 text-base leading-7 text-zinc-700">
+                  Want your work to count? Join the Alliance to ensure your
+                  future contributions are acted upon.
+                </p>
+                <Link
+                  to={signupHref}
+                  className="mt-6 inline-flex w-full justify-center rounded-full bg-green px-6 py-3 text-base font-medium text-white transition hover:opacity-90"
+                >
+                  Sign up
+                </Link>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="mt-6 inline-flex w-full justify-center rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
+                onClick={handleTryOutTask}
+              >
+                Try out this task
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -238,6 +285,7 @@ export default function ActionPage() {
                 sharePreviewFirstName: sharePreview?.firstName ?? null,
                 showReferralTaskPanel,
                 referralPanelAnimationNonce,
+                onGuestCompletionChange: handleGuestCompletionChange,
                 onCompleteAction,
                 publicMode,
                 onOptOutAction,

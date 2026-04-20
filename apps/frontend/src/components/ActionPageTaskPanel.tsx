@@ -24,7 +24,6 @@ import {
   getActionPageTaskPanelState,
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
-import { taskHeaders } from "@alliance/shared/lib/copy";
 import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import {
@@ -65,6 +64,7 @@ export interface TaskPanelContext extends Omit<
   sharePreviewFirstName?: string | null;
   showReferralTaskPanel?: boolean;
   referralPanelAnimationNonce?: number;
+  onGuestCompletionChange?: (completed: boolean) => void;
 }
 
 const taskPanelHeaderByState: Record<
@@ -75,7 +75,14 @@ const taskPanelHeaderByState: Record<
     <p>{taskHeaders.actionPage.externalOnly}</p>
   ),
   [ActionPageTaskPanelState.PublicOnly]: null,
-  [ActionPageTaskPanelState.NotAuthenticated]: null,
+  [ActionPageTaskPanelState.NotAuthenticated]: (
+    <p>
+      <Link to="/login" className="text-green hover:underline">
+        Log in
+      </Link>{" "}
+      to complete this task.
+    </p>
+  ),
   [ActionPageTaskPanelState.GuestRef]: null,
   [ActionPageTaskPanelState.NotAssigned]: (
     <p>{taskHeaders.actionPage.notAssigned}</p>
@@ -136,6 +143,7 @@ const ActionPageTaskPanel = () => {
     sharePreviewFirstName,
     showReferralTaskPanel = false,
     referralPanelAnimationNonce = 0,
+    onGuestCompletionChange,
     ...panelHandlers
   } = useOutletContext<TaskPanelContext>();
 
@@ -217,7 +225,7 @@ const ActionPageTaskPanel = () => {
   const guestCompletedHeader = (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-x-3">
-        <CheckIcon size="small" />
+        <CheckIcon size={24} />
         <p>{taskHeaders.actionPage.completed}</p>
       </div>
       <ShareButton
@@ -247,7 +255,6 @@ const ActionPageTaskPanel = () => {
 
   const handleGuestComplete = () => {
     setGuestCompleted(true);
-    setShowGuestJoinPrompt(true);
   };
 
   useEffect(() => {
@@ -267,6 +274,10 @@ const ActionPageTaskPanel = () => {
     setGuestCompleted(true);
     setGuestFormResponse(savedCompletion.formResponse);
   }, [action.id, isAuthenticated]);
+
+  useEffect(() => {
+    onGuestCompletionChange?.(guestCompleted);
+  }, [guestCompleted, onGuestCompletionChange]);
 
   useEffect(() => {
     if (!isNonmemberPublicReferralAction || referralPanelAnimationNonce === 0) {
@@ -296,17 +307,34 @@ const ActionPageTaskPanel = () => {
               <div className="-mx-4 -mt-4 mb-4 overflow-hidden sm:-mx-6 sm:-mt-6">
                 <div
                   className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-6 sm:py-5 ${
-                    animateReferralPanel ? "referral-panel-slide-in" : ""
+                    !guestCompleted && animateReferralPanel
+                      ? "referral-panel-slide-in"
+                      : ""
                   }`}
                 >
-                  <p className="text-lg font-semibold leading-8 text-zinc-900">
-                    {sharePreviewFirstName ?? "Your friend"} has invited you to
-                    try this task.
-                  </p>
-                  <p className="mt-3 text-base leading-7 text-zinc-700">
-                    The Alliance is a global group of people cooperating to
-                    improve the world. Join us!
-                  </p>
+                  {guestCompleted ? (
+                    <>
+                      <p className="text-base leading-7 text-zinc-700">
+                        To maintain the integrity of our data, only
+                        member-submitted forms are formally processed.
+                      </p>
+                      <p className="mt-3 text-base leading-7 text-zinc-700">
+                        Want your work to count? Join the Alliance to ensure
+                        your future contributions are acted upon.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-lg font-semibold leading-8 text-zinc-900">
+                        {sharePreviewFirstName ?? "Your friend"} has invited you
+                        to try this task.
+                      </p>
+                      <p className="mt-3 text-base leading-7 text-zinc-700">
+                        The Alliance is a global group of people cooperating to
+                        improve the world. Join us!
+                      </p>
+                    </>
+                  )}
                   <Link
                     to={signupHref}
                     className="mt-5 block w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
@@ -317,16 +345,6 @@ const ActionPageTaskPanel = () => {
               </div>
             )}
             {bottom}
-            {guestCompleted && isNonmemberPublicReferralAction && signupHref && (
-              <div className="mt-4">
-                <Link
-                  to={signupHref}
-                  className="block w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
-                >
-                  Sign up to ensure your contributions are acted upon.
-                </Link>
-              </div>
-            )}
           </>
         }
         bottomCardStyle={bodyStyle}
@@ -355,17 +373,14 @@ const ActionPageTaskPanel = () => {
               id="guest-completion-popup-title"
               className="pr-8 text-lg font-semibold leading-8 text-zinc-900"
             >
-              <p>Thank you for trying this task!</p>
+              <p>You&apos;ve completed this task.</p>
               <p className="mt-3">
                 To maintain the integrity of our data, only member-submitted
                 forms are formally processed.
               </p>
               <p className="mt-3">
-                Want your work to count? Join the Alliance with{" "}
-                {sharePreviewFirstName
-                  ? `${sharePreviewFirstName}'s referral`
-                  : "your friend's referral"}{" "}
-                to ensure your future contributions are acted upon.
+                Want your work to count? Join the Alliance to ensure your
+                future contributions are acted upon.
               </p>
             </div>
             <div className="mt-6 flex flex-col items-stretch gap-3">

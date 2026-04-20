@@ -52,6 +52,7 @@ const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
       <Text> to complete this task.</Text>
     </View>
   ),
+  [ActionPageTaskPanelState.GuestRef]: null,
   [ActionPageTaskPanelState.NotAssigned]: (
     <Text>{taskHeaders.actionPage.notAssigned}</Text>
   ),
@@ -179,6 +180,7 @@ const ActionPageTaskPanel = ({
     case ActionPageTaskPanelState.Completed:
     case ActionPageTaskPanelState.PublicOnlyAuthenticated:
     case ActionPageTaskPanelState.NotAuthenticated:
+    case ActionPageTaskPanelState.GuestRef:
     case ActionPageTaskPanelState.NotAssigned:
     case ActionPageTaskPanelState.MemberActionClosed:
     case ActionPageTaskPanelState.OnboardingSignContractFirst:
