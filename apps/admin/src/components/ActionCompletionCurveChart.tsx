@@ -302,6 +302,15 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
           (series) => series.key === `action-${selectedActionId}`
         );
 
+    // Compute display x-axis range from the selected curves only
+    const selectedCurveIds = new Set(
+      filteredActionSeries.map((s) => s.key.replace("action-", ""))
+    );
+    const displayedCurves = selectedCurveIds.size > 0
+      ? eligibleCurves.filter((c) => selectedCurveIds.has(String(c.actionId)))
+      : eligibleCurves;
+    const displayedMaxX = computeMaxOffset(displayedCurves, isHourly);
+
     const displayedSeries = [...filteredActionSeries, averageSeries];
     const allSeries = [...actionSeries, averageSeries];
 
@@ -319,7 +328,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
 
     return {
       multiLineData: displayedSeries,
-      maxX,
+      maxX: displayedMaxX,
       yDomain: [0, paddedMax] as [number, number],
     };
   }, [actionCompletionCurves, actionId, selectedActionId, isHourly]);
