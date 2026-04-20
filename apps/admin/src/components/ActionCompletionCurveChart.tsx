@@ -15,10 +15,32 @@ type ActionCompletionCurveChartProps = {
   refreshKey?: number;
 };
 
-const LOCKED_MAX_DAY = 7;
-const LOCKED_MAX_HOUR = 168; // 7 days * 24 hours
-
 type GranularityMode = "daily" | "hourly";
+
+function computeMaxOffset(
+  curves: ActionCompletionCurveDto[],
+  isHourly: boolean,
+): number {
+  const msPerUnit = isHourly ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+  let max = 0;
+  for (const curve of curves) {
+    if (isHourly) {
+      const lastOffset = curve.hourOffsets?.at(-1);
+      if (lastOffset !== undefined && lastOffset + 1 > max) max = lastOffset + 1;
+    } else {
+      const lastOffset = curve.dayOffsets?.at(-1);
+      if (lastOffset !== undefined && lastOffset > max) max = lastOffset;
+    }
+    // Also derive from dates if offsets are shorter than the full action duration
+    if (curve.memberActionStartDate && curve.memberActionEndDate) {
+      const start = new Date(curve.memberActionStartDate).getTime();
+      const end = new Date(curve.memberActionEndDate).getTime();
+      const duration = Math.ceil((end - start) / msPerUnit);
+      if (duration > max) max = duration;
+    }
+  }
+  return Math.max(1, max);
+}
 
 const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
   title = "Completions throughout week",
@@ -137,7 +159,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       };
     }
 
-    const maxX = isHourly ? LOCKED_MAX_HOUR : LOCKED_MAX_DAY;
+    const maxX = computeMaxOffset(eligibleCurves, isHourly);
 
     const colorScale = chroma
       .scale(["#0ea5e9", "#6366f1", "#14b8a6"])

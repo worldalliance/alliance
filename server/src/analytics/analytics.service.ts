@@ -532,7 +532,6 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const isHourly = granularity === 'hourly';
     const msPerBucket = isHourly ? 60 * 60 * 1000 : msPerDay;
-    const maxBuckets = isHourly ? 168 : undefined; // 7 days * 24 hours
 
     return eligibleActions.map((record) => {
       const startDate = new Date(record.memberActionStartDate!);
@@ -541,13 +540,10 @@ ORDER BY pp.total_session_duration_seconds DESC
         : null;
       const endDate =
         plannedEndDate && plannedEndDate < now ? plannedEndDate : now;
-      let bucketCount = Math.max(
+      const bucketCount = Math.max(
         1,
         Math.ceil((endDate.getTime() - startDate.getTime()) / msPerBucket),
       );
-      if (maxBuckets !== undefined) {
-        bucketCount = Math.min(bucketCount, maxBuckets);
-      }
 
       const counts = new Array<number>(bucketCount).fill(0);
       const completions = completionsByActionId.get(record.actionId) ?? [];
