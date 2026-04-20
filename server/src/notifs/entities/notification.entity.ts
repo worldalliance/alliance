@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   Column,
   Entity,
+  Index,
   JoinTable,
   ManyToMany,
   ManyToOne,
@@ -80,6 +81,11 @@ export const NOTIFICATION_CATEGORY_PRIORITIES = {
 } satisfies Record<NotificationCategory, NotifPriority>;
 
 @Entity()
+@Index('IDX_notification_user_groupingKey_category', [
+  'user',
+  'groupingKey',
+  'category',
+])
 export class Notification {
   // Fields
 

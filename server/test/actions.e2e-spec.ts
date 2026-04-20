@@ -1820,6 +1820,105 @@ describe('Actions (e2e)', () => {
 
       await actionRepo.delete(action.id);
     });
+
+    it('removes the like notification when the sole liker unlikes', async () => {
+      const { action } = await createPublishedAction('Activity Sole Unlike', {
+        status: ActionStatus.MemberAction,
+      });
+
+      const completion = await request(ctx.app.getHttpServer())
+        .post(`/actions/complete/${action.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .expect(201);
+
+      const activityId = completion.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/likeActivity/${activityId}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/unlikeActivity/${activityId}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      const likeNotifs = await notifRepo.find({
+        where: {
+          user: { id: ctx.testUserId },
+          category: NotificationCategory.Likes,
+          groupingKey: `activity_like:${activityId}`,
+        },
+      });
+
+      expect(likeNotifs).toHaveLength(0);
+
+      await actionRepo.delete(action.id);
+    });
+
+    it('decrements the like notification when one of multiple likers unlikes', async () => {
+      const { action } = await createPublishedAction(
+        'Activity Partial Unlike',
+        { status: ActionStatus.MemberAction },
+      );
+
+      const completion = await request(ctx.app.getHttpServer())
+        .post(`/actions/complete/${action.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .expect(201);
+
+      const activityId = completion.body.id;
+
+      const secondLiker = await userService.create({
+        email: `second-liker-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Second Liker',
+        tags: [ctx.defaultTag],
+      });
+      const secondLikerToken = ctx.jwtService.sign(
+        {
+          sub: secondLiker.id,
+          email: secondLiker.email,
+          name: secondLiker.name,
+        },
+        { secret: process.env.JWT_SECRET },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/likeActivity/${activityId}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/likeActivity/${activityId}`)
+        .set('Authorization', `Bearer ${secondLikerToken}`)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/actions/unlikeActivity/${activityId}`)
+        .set('Authorization', `Bearer ${secondLikerToken}`)
+        .expect(201);
+
+      const likeNotifs = await notifRepo.find({
+        where: {
+          user: { id: ctx.testUserId },
+          category: NotificationCategory.Likes,
+          groupingKey: `activity_like:${activityId}`,
+        },
+        relations: { associatedUsers: true },
+      });
+
+      expect(likeNotifs).toHaveLength(1);
+      expect(likeNotifs[0].groupingCount).toBe(1);
+      expect(likeNotifs[0].associatedUsers).toHaveLength(1);
+      expect(likeNotifs[0].associatedUsers?.[0].id).toBe(ctx.adminUserId);
+      expect(likeNotifs[0].message).toBe(
+        'Test Admin liked your completion of: Activity Partial Unlike',
+      );
+
+      await userRepo.delete(secondLiker.id);
+      await actionRepo.delete(action.id);
+    });
   });
 
   describe('Global feed', () => {

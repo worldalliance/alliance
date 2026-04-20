@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, type Repository } from 'typeorm';
+import { IsNull, type EntityManager, type Repository } from 'typeorm';
 import {
   Notification,
   NotificationCategory,
@@ -37,7 +37,6 @@ export class LikeNotificationService {
     webAppLocation: string;
     groupingKey?: GroupingKey;
     targetContent?: string;
-    existingNotification?: Notification | null;
   }): Promise<void> {
     const {
       owner,
@@ -54,63 +53,72 @@ export class LikeNotificationService {
 
     const groupingKey = params.groupingKey ?? `like:${targetType}:${targetId}`;
 
-    const existingNotif =
-      params.existingNotification ??
-      (await this.getActiveLikeNotification({
-        ownerId: owner.id,
-        targetType,
-        targetId,
-        groupingKey,
-      }));
+    // Advisory lock on the groupingKey serializes create/update/delete for
+    // this notification across all three code paths, including the
+    // create-branch where there is no row yet to take a row lock on.
+    await this.notifRepository.manager.transaction(async (manager) => {
+      await this.acquireGroupingKeyLock(manager, groupingKey);
+      const notifRepo = manager.getRepository(Notification);
+      const existingNotif = await notifRepo.findOne({
+        where: {
+          user: { id: owner.id },
+          groupingKey,
+          category: NotificationCategory.Likes,
+          readAt: IsNull(),
+        },
+        relations: { associatedUsers: true },
+      });
 
-    if (existingNotif) {
-      if (
-        (existingNotif.associatedUsers ?? []).some(
-          (user) => user.id === liker.id,
-        )
-      ) {
+      if (existingNotif) {
+        if (
+          (existingNotif.associatedUsers ?? []).some(
+            (user) => user.id === liker.id,
+          )
+        ) {
+          return;
+        }
+
+        existingNotif.targetContent =
+          existingNotif.targetContent ?? targetContent;
+        const updatedUsers = [...(existingNotif.associatedUsers ?? []), liker];
+        existingNotif.associatedUsers = updatedUsers;
+        existingNotif.groupingCount = updatedUsers.length;
+        existingNotif.readAt = null;
+        existingNotif.sendTime = new Date();
+        existingNotif.shouldPush = true;
+        existingNotif.pushClaimedBy = null;
+        existingNotif.pushClaimedAt = null;
+        existingNotif.pushDispatchedAt = null;
+        existingNotif.message = this.buildMessage({
+          targetType,
+          count: updatedUsers.length,
+          targetContent: existingNotif.targetContent,
+          likerName:
+            updatedUsers.length === 1
+              ? new ProfileDto(updatedUsers[0]).displayName
+              : undefined,
+        });
+        await notifRepo.save(existingNotif);
         return;
       }
 
-      existingNotif.targetContent =
-        existingNotif.targetContent ?? targetContent;
-      const updatedUsers = [...(existingNotif.associatedUsers ?? []), liker];
-      existingNotif.associatedUsers = updatedUsers;
-      existingNotif.groupingCount = updatedUsers.length;
-      existingNotif.readAt = null;
-      existingNotif.sendTime = new Date();
-      existingNotif.shouldPush = true;
-      existingNotif.pushClaimedBy = null;
-      existingNotif.pushClaimedAt = null;
-      existingNotif.pushDispatchedAt = null;
-      existingNotif.message = this.buildMessage({
-        targetType,
-        count: updatedUsers.length,
-        targetContent: existingNotif.targetContent,
-        likerName:
-          updatedUsers.length === 1
-            ? new ProfileDto(updatedUsers[0]).displayName
-            : undefined,
-      });
-      await this.notifRepository.save(existingNotif);
-      return;
-    }
-
-    const likerProfile = new ProfileDto(liker);
-    await this.notifsService.sendNotif({
-      user: owner,
-      associatedUsers: [liker],
-      category: NotificationCategory.Likes,
-      message: this.buildMessage({
-        targetType,
-        count: 1,
+      const likerProfile = new ProfileDto(liker);
+      const newNotif = this.notifsService.createNotif({
+        user: owner,
+        associatedUsers: [liker],
+        category: NotificationCategory.Likes,
+        message: this.buildMessage({
+          targetType,
+          count: 1,
+          targetContent,
+          likerName: likerProfile.displayName,
+        }),
         targetContent,
-        likerName: likerProfile.displayName,
-      }),
-      targetContent,
-      webAppLocation,
-      groupingKey,
-      groupingCount: 1,
+        webAppLocation,
+        groupingKey,
+        groupingCount: 1,
+      });
+      await notifRepo.save(newNotif);
     });
   }
 
@@ -122,41 +130,69 @@ export class LikeNotificationService {
     groupingKey?: GroupingKey;
   }): Promise<void> {
     const { ownerId, unlikerId, targetType, targetId } = params;
-    const groupingKey =
-      params.groupingKey ?? `like:${targetType}:${targetId}`;
 
-    const notif = await this.getActiveLikeNotification({
-      ownerId,
-      targetType,
-      targetId,
-      groupingKey,
-    });
-
-    if (!notif) {
+    if (ownerId === unlikerId) {
       return;
     }
 
-    const updatedUsers = (notif.associatedUsers ?? []).filter(
-      (u) => u.id !== unlikerId,
+    const groupingKey = params.groupingKey ?? `like:${targetType}:${targetId}`;
+
+    // Advisory lock on the groupingKey serializes this with createOrUpdate
+    // (see matching lock there), including races where the notification row
+    // doesn't exist yet. Only target unread notifications — a read
+    // notification is a frozen record of what the owner already saw, and
+    // editing it risks picking the wrong row when a read+unread pair shares
+    // the same groupingKey.
+    await this.notifRepository.manager.transaction(async (manager) => {
+      await this.acquireGroupingKeyLock(manager, groupingKey);
+      const notifRepo = manager.getRepository(Notification);
+      const notif = await notifRepo.findOne({
+        where: {
+          user: { id: ownerId },
+          groupingKey,
+          category: NotificationCategory.Likes,
+          readAt: IsNull(),
+        },
+        relations: { associatedUsers: true },
+      });
+
+      if (!notif) {
+        return;
+      }
+
+      const updatedUsers = (notif.associatedUsers ?? []).filter(
+        (u) => u.id !== unlikerId,
+      );
+
+      if (updatedUsers.length === 0) {
+        await notifRepo.remove(notif);
+        return;
+      }
+
+      notif.associatedUsers = updatedUsers;
+      notif.groupingCount = updatedUsers.length;
+      notif.message = this.buildMessage({
+        targetType,
+        count: updatedUsers.length,
+        targetContent: notif.targetContent,
+        likerName:
+          updatedUsers.length === 1
+            ? new ProfileDto(updatedUsers[0]).displayName
+            : undefined,
+      });
+      // Intentionally don't reset shouldPush/sendTime/pushClaimed* — an unlike shouldn't trigger a new push.
+      await notifRepo.save(notif);
+    });
+  }
+
+  private async acquireGroupingKeyLock(
+    manager: EntityManager,
+    groupingKey: string,
+  ): Promise<void> {
+    await manager.query(
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      [groupingKey],
     );
-
-    if (updatedUsers.length === 0) {
-      await this.notifRepository.remove(notif);
-      return;
-    }
-
-    notif.associatedUsers = updatedUsers;
-    notif.groupingCount = updatedUsers.length;
-    notif.message = this.buildMessage({
-      targetType,
-      count: updatedUsers.length,
-      targetContent: notif.targetContent,
-      likerName:
-        updatedUsers.length === 1
-          ? new ProfileDto(updatedUsers[0]).displayName
-          : undefined,
-    });
-    await this.notifRepository.save(notif);
   }
 
   async getActiveLikeNotification(params: {

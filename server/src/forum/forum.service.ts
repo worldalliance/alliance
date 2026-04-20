@@ -24,10 +24,7 @@ import { Comment, CommentParentObject } from './entities/comment.entity';
 import { EditableContent } from './entities/editablecontent.entity';
 import { Post } from './entities/post.entity';
 import { Action } from 'src/actions/entities/action.entity';
-import {
-  GroupingKey,
-  LikeNotificationService,
-} from 'src/notifs/like-notification.service';
+import { LikeNotificationService } from 'src/notifs/like-notification.service';
 import { EventLogService } from 'src/eventlog/eventlog.service';
 import {
   NotifsService,
@@ -737,7 +734,7 @@ export class ForumService {
     return obj;
   }
 
-  private async sendPostLikeNotification(post: Post, liker: User) {
+  private getUniquePostAuthors(post: Post): User[] {
     const allAuthors: User[] = [];
     if (post.author) {
       allAuthors.push(post.author);
@@ -746,25 +743,16 @@ export class ForumService {
       allAuthors.push(...post.authors);
     }
     const seenIds = new Set<number>();
-    const uniqueAuthors = allAuthors.filter((u) => {
+    return allAuthors.filter((u) => {
       if (seenIds.has(u.id)) return false;
       seenIds.add(u.id);
       return true;
     });
+  }
 
-    for (const owner of uniqueAuthors) {
+  private async sendPostLikeNotification(post: Post, liker: User) {
+    for (const owner of this.getUniquePostAuthors(post)) {
       if (owner.id === liker.id) {
-        continue;
-      }
-      const groupingKey: GroupingKey = `forum_like:post:${post.id}:user:${owner.id}`;
-      const existingNotif =
-        await this.likeNotificationService.getActiveLikeNotification({
-          ownerId: owner.id,
-          targetType: 'post',
-          targetId: post.id,
-          groupingKey,
-        });
-      if (this.notificationIncludesUser(existingNotif, liker.id)) {
         continue;
       }
       await this.likeNotificationService.createOrUpdate({
@@ -774,8 +762,7 @@ export class ForumService {
         targetId: post.id,
         targetContent: post.title,
         webAppLocation: postUrl(post.id),
-        groupingKey,
-        existingNotification: existingNotif ?? undefined,
+        groupingKey: `forum_like:post:${post.id}:user:${owner.id}`,
       });
     }
   }
@@ -798,17 +785,6 @@ export class ForumService {
     if (!webAppLocation) {
       return;
     }
-    const groupingKey: GroupingKey = `forum_like:comment:${comment.id}`;
-    const existingNotif =
-      await this.likeNotificationService.getActiveLikeNotification({
-        ownerId: comment.authorId,
-        targetType: 'comment',
-        targetId: comment.id,
-        groupingKey,
-      });
-    if (this.notificationIncludesUser(existingNotif, liker.id)) {
-      return;
-    }
     await this.likeNotificationService.createOrUpdate({
       owner: comment.author,
       liker,
@@ -816,27 +792,15 @@ export class ForumService {
       targetId: comment.id,
       targetContent: comment.editableContent?.body,
       webAppLocation,
-      groupingKey,
-      existingNotification: existingNotif ?? undefined,
+      groupingKey: `forum_like:comment:${comment.id}`,
     });
   }
 
   private async removePostLikeNotification(post: Post, unliker: User) {
-    const allAuthors: User[] = [];
-    if (post.author) {
-      allAuthors.push(post.author);
-    }
-    if (post.authors?.length) {
-      allAuthors.push(...post.authors);
-    }
-    const seenIds = new Set<number>();
-    const uniqueAuthors = allAuthors.filter((u) => {
-      if (seenIds.has(u.id)) return false;
-      seenIds.add(u.id);
-      return true;
-    });
-
-    for (const owner of uniqueAuthors) {
+    for (const owner of this.getUniquePostAuthors(post)) {
+      if (owner.id === unliker.id) {
+        continue;
+      }
       await this.likeNotificationService.removeOnUnlike({
         ownerId: owner.id,
         unlikerId: unliker.id,
@@ -848,7 +812,7 @@ export class ForumService {
   }
 
   private async removeCommentLikeNotification(comment: Comment, unliker: User) {
-    if (!comment.author) {
+    if (!comment.author || comment.authorId === unliker.id) {
       return;
     }
     await this.likeNotificationService.removeOnUnlike({
@@ -858,18 +822,6 @@ export class ForumService {
       targetId: comment.id,
       groupingKey: `forum_like:comment:${comment.id}`,
     });
-  }
-
-  private notificationIncludesUser(
-    notification: Notification | null,
-    userId: number,
-  ): boolean {
-    if (!notification) {
-      return false;
-    }
-    return (notification.associatedUsers ?? []).some(
-      (associatedUser) => associatedUser.id === userId,
-    );
   }
 
   async deleteReply(id: number, userId: number): Promise<void> {

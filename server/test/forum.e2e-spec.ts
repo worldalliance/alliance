@@ -1175,6 +1175,164 @@ describe('Forum (e2e)', () => {
       expect(coAuthorLikeNotifs).toHaveLength(1);
     });
 
+    it('removes the comment like notification when the sole liker unlikes', async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Post With Comment For Sole Unlike',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const commentResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/comments')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: 'Sole-unlike comment', attachments: [] },
+          parentObjectId: postResponse.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+
+      const commentId = commentResponse.body.id;
+      const groupingKey = `forum_like:comment:${commentId}`;
+
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/comments/${commentId}/like`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      let likeNotifs = await notifRepo.find({
+        where: {
+          user: { id: ctx.testUserId },
+          category: NotificationCategory.Likes,
+          groupingKey,
+        },
+      });
+      expect(likeNotifs).toHaveLength(1);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/comments/${commentId}/unlike`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      likeNotifs = await notifRepo.find({
+        where: {
+          user: { id: ctx.testUserId },
+          category: NotificationCategory.Likes,
+          groupingKey,
+        },
+      });
+      expect(likeNotifs).toHaveLength(0);
+    });
+
+    it('leaves a read like notification untouched when the liker unlikes', async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Post With Read Like Notif',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+      const groupingKey = `forum_like:post:${postId}:user:${ctx.testUserId}`;
+
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/posts/${postId}/like`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      const readAt = new Date();
+      await notifRepo.update(
+        {
+          user: { id: ctx.testUserId },
+          category: NotificationCategory.Likes,
+          groupingKey,
+        },
+        { readAt },
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/posts/${postId}/unlike`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      const notifs = await notifRepo.find({
+        where: {
+          user: { id: ctx.testUserId },
+          category: NotificationCategory.Likes,
+          groupingKey,
+        },
+        relations: { associatedUsers: true },
+      });
+      expect(notifs).toHaveLength(1);
+      expect(notifs[0].readAt).not.toBeNull();
+      expect(notifs[0].associatedUsers).toHaveLength(1);
+      expect(notifs[0].associatedUsers?.[0].id).toBe(ctx.adminUserId);
+    });
+
+    it('decrements each author\'s like notification on a multi-author post when one of two likers unlikes', async () => {
+      const { user: coAuthor } = await createExtraUserAndToken();
+
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Multi-Author Post For Partial Unlike',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const postId = postResponse.body.id;
+
+      await request(ctx.app.getHttpServer())
+        .patch(`/forum/admin/posts/${postId}/authors`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ authorIds: [ctx.testUserId, coAuthor.id] })
+        .expect(200);
+
+      const { token: secondLikerToken } = await createExtraUserAndToken();
+
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/posts/${postId}/like`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/posts/${postId}/like`)
+        .set('Authorization', `Bearer ${secondLikerToken}`)
+        .expect(201);
+
+      await request(ctx.app.getHttpServer())
+        .post(`/forum/posts/${postId}/unlike`)
+        .set('Authorization', `Bearer ${secondLikerToken}`)
+        .expect(201);
+
+      for (const ownerId of [ctx.testUserId, coAuthor.id]) {
+        const notifs = await notifRepo.find({
+          where: {
+            user: { id: ownerId },
+            category: NotificationCategory.Likes,
+            groupingKey: `forum_like:post:${postId}:user:${ownerId}`,
+          },
+          relations: { associatedUsers: true },
+        });
+        expect(notifs).toHaveLength(1);
+        expect(notifs[0].groupingCount).toBe(1);
+        expect(notifs[0].associatedUsers).toHaveLength(1);
+        expect(notifs[0].associatedUsers?.[0].id).toBe(ctx.adminUserId);
+        expect(notifs[0].message).toBe(
+          'Test Admin liked your post: Multi-Author Post For Partial Unlike',
+        );
+      }
+    });
+
     it('includes co-authored posts in findPostsByUser', async () => {
       const { user: coAuthor } = await createExtraUserAndToken();
 
