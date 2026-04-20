@@ -58,7 +58,7 @@ const InviteGraphPage = () => {
   const [loading, setLoading] = useState(true);
 
   // Filters
-  const [contractFilter, setContractFilter] = useState<ContractFilter>("all");
+  const [contractFilter, setContractFilter] = useState<ContractFilter>("active");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [communityFilter, setCommunityFilter] = useState<string>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
@@ -124,13 +124,13 @@ const InviteGraphPage = () => {
   }, [users, contractFilter, roleFilter, communityFilter, tagFilter]);
 
   const hasActiveFilters =
-    contractFilter !== "all" ||
+    contractFilter !== "active" ||
     roleFilter !== "all" ||
     communityFilter !== "all" ||
     tagFilter !== "all";
 
   const clearFilters = useCallback(() => {
-    setContractFilter("all");
+    setContractFilter("active");
     setRoleFilter("all");
     setCommunityFilter("all");
     setTagFilter("all");
