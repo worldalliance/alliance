@@ -1578,7 +1578,7 @@ const FormRenderer = ({
                     </BaseButton>
                   )
                 ) : readOnly ? null : onSubmit ? (
-                  <div className="flex flex-1 space-x-2 items-center">
+                  <div className="w-full">
                     {createAccountHref ? (
                       <a
                         href={createAccountHref}
@@ -1588,34 +1588,38 @@ const FormRenderer = ({
                         Create an account to submit
                       </a>
                     ) : (
-                      <ConfettiWrapper
-                        burstPlacement="local"
-                        onTrigger={() => submitCurrentPage({ optimistic: true })}
-                      >
-                        {({
-                          disabled: confettiDisabled,
-                          onClick,
-                          onKeyDown,
-                          onPointerDown,
-                        }) => (
-                          <BaseButton
-                            variant={BaseButtonVariant.Black}
-                            className="w-full"
-                            disabled={submitting || confettiDisabled}
-                            type="button"
-                            onClick={onClick}
-                            onKeyDown={onKeyDown}
-                            onPointerDown={onPointerDown}
-                          >
-                            {schema.submit?.label ||
-                              (followUp ? "Submit" : "Complete")}
-                          </BaseButton>
-                        )}
-                      </ConfettiWrapper>
+                      <div className="w-full">
+                        <ConfettiWrapper
+                          burstPlacement="local"
+                          onTrigger={() =>
+                            submitCurrentPage({ optimistic: true })
+                          }
+                        >
+                          {({
+                            disabled: confettiDisabled,
+                            onClick,
+                            onKeyDown,
+                            onPointerDown,
+                          }) => (
+                            <BaseButton
+                              variant={BaseButtonVariant.Black}
+                              className="w-full"
+                              disabled={submitting || confettiDisabled}
+                              type="button"
+                              onClick={onClick}
+                              onKeyDown={onKeyDown}
+                              onPointerDown={onPointerDown}
+                            >
+                              {schema.submit?.label ||
+                                (followUp ? "Submit" : "Complete")}
+                            </BaseButton>
+                          )}
+                        </ConfettiWrapper>
+                      </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-1 space-x-2 items-center">
+                  <div className="w-full">
                     <BaseButton
                       variant={BaseButtonVariant.Black}
                       className="!cursor-not-allowed w-full"

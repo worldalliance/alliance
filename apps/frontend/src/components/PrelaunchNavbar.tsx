@@ -21,6 +21,8 @@ interface PrelaunchNavbarProps {
   absolute?: boolean;
   showLogo?: boolean;
   ref?: React.RefObject<HTMLDivElement | null>;
+  showSignupButton?: boolean;
+  signupHref?: string;
 }
 
 const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
@@ -28,6 +30,8 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
   absolute = true,
   showLogo = true,
   ref,
+  showSignupButton = false,
+  signupHref = href("/signup"),
 }: PrelaunchNavbarProps) => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -68,18 +72,32 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
       <div className="flex flex-row items-center gap-x-5 sm:gap-x-10 text-base sm:text-lg">
         {links.map((link) =>
           link === NavbarPage.LogIn ? (
-            <Link
-              to={destinations[link]}
-              key={link}
-              className={cn(
-                "py-1 md:py-1.5 px-3 md:px-5 rounded-full whitespace-nowrap font-medium",
-                transparent
-                  ? "bg-white text-black hover:bg-zinc-100"
-                  : "bg-black text-white hover:bg-zinc-800",
+            <div key={link} className="flex flex-row items-center gap-x-3">
+              <Link
+                to={destinations[link]}
+                className={cn(
+                  "py-1 md:py-1.5 px-3 md:px-5 rounded-full whitespace-nowrap font-medium",
+                  transparent
+                    ? "bg-white text-black hover:bg-zinc-100"
+                    : "bg-black text-white hover:bg-zinc-800",
+                )}
+              >
+                {link}
+              </Link>
+              {showSignupButton && (
+                <Link
+                  to={signupHref}
+                  className={cn(
+                    "py-1 md:py-1.5 px-3 md:px-5 rounded-full whitespace-nowrap font-medium",
+                    transparent
+                      ? "bg-green text-white hover:bg-[#4d8c1d]"
+                      : "bg-green text-white hover:bg-[#4d8c1d]",
+                  )}
+                >
+                  Sign up
+                </Link>
               )}
-            >
-              {link}
-            </Link>
+            </div>
           ) : (
             <Link
               to={destinations[link]}

@@ -4,6 +4,7 @@ import {
   href,
   Link,
   Outlet,
+  useLoaderData,
   useLocation,
   useNavigate,
   useParams,
@@ -20,9 +21,10 @@ import useActivities, {
 } from "@alliance/shared/lib/useActivities";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { ActionActivityDetailContext } from "../../components/ActionActivityDetail";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
+import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferral";
 
 export async function loader({
   params,
@@ -90,12 +92,15 @@ export default function ActionPage() {
   const { id: idParam } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const { sharePreview } = useLoaderData() as Awaited<ReturnType<typeof loader>>;
   useNavbarOptions({ whiteBackground: true });
   const actionId = parseInt(idParam!);
 
   const { isAuthenticated, user, loading: userLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get("ref");
+  const signupHref = refCode ? `/signup?ref=${refCode}` : href("/signup");
+  const [invitePopupDismissed, setInvitePopupDismissed] = useState(false);
 
   useCIDFromParams(actionId);
 
@@ -157,10 +162,64 @@ export default function ActionPage() {
 
   const showSidebar =
     !publicMode && !action.publicOnly && action.status === "member_action";
+  const isNonmemberPublicReferralAction = isNonmemberOnPublicActionReferral({
+    referralCode: refCode,
+    isAuthenticated,
+    userLoading,
+  });
+  const showHeaderSignupButton =
+    publicMode && isNonmemberPublicReferralAction;
+  const showInvitePopup =
+    isNonmemberPublicReferralAction &&
+    !!sharePreview?.firstName &&
+    !invitePopupDismissed;
 
   return (
     <>
-      {publicMode && <PrelaunchNavbar transparent={false} absolute={false} />}
+      {publicMode && (
+        <PrelaunchNavbar
+          transparent={false}
+          absolute={false}
+          showSignupButton={showHeaderSignupButton}
+          signupHref={signupHref}
+        />
+      )}
+      {showInvitePopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="referral-invite-popup-title"
+            className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+          >
+            <button
+              type="button"
+              aria-label="Dismiss invitation popup"
+              className="absolute right-4 top-4 text-2xl leading-none text-zinc-400 transition hover:text-zinc-600"
+              onClick={() => setInvitePopupDismissed(true)}
+            >
+              ×
+            </button>
+            <h2
+              id="referral-invite-popup-title"
+              className="pr-8 text-2xl font-semibold text-zinc-900"
+            >
+              {sharePreview.firstName} has invited you to try this task.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-zinc-700">
+              The Alliance is a global group of people cooperating to improve
+              the world. Join us!
+            </p>
+            <button
+              type="button"
+              className="mt-6 inline-flex w-full justify-center rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
+              onClick={() => setInvitePopupDismissed(true)}
+            >
+              Try out this task
+            </button>
+          </div>
+        </div>
+      )}
       <div className="w-full flex flex-row justify-between py-10 px-4 md:px-8 xl:px-16 bg-white min-h-[calc(100vh-var(--navbar-top-bar-height))]">
         <div className="flex flex-col md:pr-4 xl:pr-12 max-w-2xl lg:max-w-3xl mx-auto w-full">
           <Outlet
@@ -168,6 +227,7 @@ export default function ActionPage() {
               {
                 action,
                 userRelation: action.userRelation ?? null,
+                sharePreviewFirstName: sharePreview?.firstName ?? null,
                 onCompleteAction,
                 publicMode,
                 onOptOutAction,

@@ -8,9 +8,7 @@ import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { ArrowRight, Link2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
-  href,
   isRouteErrorResponse,
-  useLocation,
   useOutletContext,
   useSearchParams,
 } from "react-router";
@@ -39,6 +37,7 @@ import {
   getGuestTaskCompletion,
   saveGuestTaskCompletion,
 } from "../lib/guestTaskCompletion";
+import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   console.error(error);
@@ -63,6 +62,7 @@ export interface TaskPanelContext extends Omit<
 > {
   publicMode: boolean;
   userRelation: UserActionRelation | null;
+  sharePreviewFirstName?: string | null;
 }
 
 const taskPanelHeaderByState: Record<
@@ -128,18 +128,16 @@ function toDeviceVisibilityTarget(
 }
 
 const ActionPageTaskPanel = () => {
-  const { userRelation, action, ...panelHandlers } =
+  const { userRelation, action, sharePreviewFirstName, ...panelHandlers } =
     useOutletContext<TaskPanelContext>();
 
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loading: userLoading } = useAuth();
   const [guestCompleted, setGuestCompleted] = useState(false);
   const [guestFormResponse, setGuestFormResponse] =
     useState<FormResponseDto | null>(null);
   const [showGuestJoinPrompt, setShowGuestJoinPrompt] = useState(false);
-  const location = useLocation();
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get("ref");
-  const loginHref = `/login?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
   const signupHref = refCode ? `/signup?ref=${refCode}` : null;
 
   const state = getActionPageTaskPanelState({
@@ -155,12 +153,16 @@ const ActionPageTaskPanel = () => {
     !!refCode &&
     (state === ActionPageTaskPanelState.PublicOnly ||
       state === ActionPageTaskPanelState.GuestRef);
+  const isNonmemberPublicReferralAction = isNonmemberOnPublicActionReferral({
+    referralCode: refCode,
+    isAuthenticated,
+    userLoading,
+  });
   const readOnlyGuestPreview =
     !isAuthenticated &&
     !refCode &&
     (state === ActionPageTaskPanelState.PublicOnly ||
       state === ActionPageTaskPanelState.NotAuthenticated);
-  const guestHeaderMode = guestMode;
   const formResponse = useCompletedTaskForm(
     action,
     shouldLoadCompletedTaskFormByState[state],
@@ -221,61 +223,13 @@ const ActionPageTaskPanel = () => {
     </div>
   );
 
-  const loginOrSignupHeader = signupHref ? (
-    <p>
-      <Link to={loginHref} className="text-green hover:underline">
-        Log in
-      </Link>{" "}
-      or{" "}
-      <Link to={signupHref} className="text-green hover:underline">
-        sign up
-      </Link>{" "}
-      to complete this task.
-    </p>
-  ) : (
-    <p>
-      <Link to={loginHref} className="text-green hover:underline">
-        Log in
-      </Link>{" "}
-      to complete this task.
-    </p>
-  );
-  const guestHeader = signupHref ? (
-    <p>
-      <Link to={loginHref} className="text-green hover:underline">
-        Log in
-      </Link>{" "}
-      or{" "}
-      <Link to={signupHref} className="text-green hover:underline">
-        sign up
-      </Link>{" "}
-      to join the Alliance. You can try out this task as a guest.
-    </p>
-  ) : (
-    loginOrSignupHeader
-  );
-  const readOnlyGuestHeader = signupHref ? (
-    loginOrSignupHeader
-  ) : (
-    <p>
-      <Link to={loginHref} className="text-green hover:underline">
-        Log in
-      </Link>{" "}
-     to complete this task. 
-    </p>
-  );
-
   let taskPanelHeader = taskPanelHeaderByState[state];
   if (guestCompleted) {
     taskPanelHeader = guestCompletedHeader;
   } else if (state === ActionPageTaskPanelState.Completed) {
     taskPanelHeader = completedHeader;
-  } else if (guestHeaderMode) {
-    taskPanelHeader = guestHeader;
-  } else if (readOnlyGuestPreview) {
-    taskPanelHeader = readOnlyGuestHeader;
-  } else if (state === ActionPageTaskPanelState.NotAuthenticated) {
-    taskPanelHeader = loginOrSignupHeader;
+  } else if (isNonmemberPublicReferralAction) {
+    taskPanelHeader = null;
   }
   const completedStyles = cardStylesForState(ActionPageTaskPanelState.Completed);
   const { header: headerStyle, body: bodyStyle } = guestCompleted
@@ -310,33 +264,75 @@ const ActionPageTaskPanel = () => {
       <StackedCard
         top={taskPanelHeader}
         topCardStyle={headerStyle}
-        bottom={bottom}
+        bottom={
+          <>
+            {bottom}
+            {guestCompleted && isNonmemberPublicReferralAction && signupHref && (
+              <div className="mt-4">
+                <Link
+                  to={signupHref}
+                  className="block w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
+                >
+                  Sign up to ensure your contributions are acted upon.
+                </Link>
+              </div>
+            )}
+          </>
+        }
         bottomCardStyle={bodyStyle}
         bottomCardClassName={bodyPaddingClasses}
       />
-      {guestCompleted && showGuestJoinPrompt && signupHref && (
-        <div className="fixed bottom-6 right-6 z-30 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl">
-          <p className="text-base font-semibold text-zinc-900">
-            Do you want to join the Alliance?
-          </p>
-          <p className="mt-1 text-sm text-zinc-600">
-            Sign up to keep going with more actions and join through your
-            friend&apos;s referral link.
-          </p>
-          <div className="mt-4 flex items-center gap-3">
-            <Link
-              to={signupHref}
-              className="rounded-full bg-green px-4 py-2 text-sm font-medium text-white"
-            >
-              Sign up
-            </Link>
+      {guestCompleted &&
+        showGuestJoinPrompt &&
+        signupHref &&
+        isNonmemberPublicReferralAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="guest-completion-popup-title"
+            className="relative w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"
+          >
             <button
               type="button"
+              aria-label="Dismiss completion popup"
+              className="absolute right-4 top-4 text-2xl leading-none text-zinc-400 transition hover:text-zinc-600"
               onClick={() => setShowGuestJoinPrompt(false)}
-              className="text-sm text-zinc-500 hover:text-zinc-700"
             >
-              Not now
+              ×
             </button>
+            <div
+              id="guest-completion-popup-title"
+              className="pr-8 text-lg font-semibold leading-8 text-zinc-900"
+            >
+              <p>Thank you for trying this task!</p>
+              <p className="mt-3">
+                To maintain the integrity of our data, only member-submitted
+                forms are formally processed.
+              </p>
+              <p className="mt-3">
+                Want your work to count? Join the Alliance with{" "}
+                {sharePreviewFirstName
+                  ? `${sharePreviewFirstName}'s referral`
+                  : "your friend's referral"}{" "}
+                to ensure your future contributions are acted upon.
+              </p>
+            </div>
+            <div className="mt-6 flex flex-col items-stretch gap-3">
+              <Link
+                to={signupHref}
+                className="w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
+              >
+                Sign up
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowGuestJoinPrompt(false)}
+                className="text-sm text-zinc-500 hover:text-zinc-700"
+              >
+                Not now
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -378,7 +374,11 @@ const ActionPageTaskPanel = () => {
           disabled={readOnlyGuestPreview || guestCompleted}
           formResponse={effectiveFormResponse}
           guestMode={guestMode}
-          createAccountHref={guestMode ? signupHref ?? undefined : undefined}
+          createAccountHref={
+            guestMode && !isNonmemberPublicReferralAction
+              ? signupHref ?? undefined
+              : undefined
+          }
           forceRenderTask={guestMode || readOnlyGuestPreview}
           redirectOnComplete={!guestMode}
           onFormSubmitted={
