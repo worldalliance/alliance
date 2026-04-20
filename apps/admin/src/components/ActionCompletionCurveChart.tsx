@@ -56,6 +56,8 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
     actionId !== undefined ? String(actionId) : "all"
   );
   const [granularity, setGranularity] = useState<GranularityMode>("hourly");
+  const [minDurationDays, setMinDurationDays] = useState<string>("");
+  const [maxDurationDays, setMaxDurationDays] = useState<string>("");
 
   useEffect(() => {
     if (actionId === undefined) return;
@@ -133,9 +135,53 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
     }
   }, [actionId, completionCurveActionOptions, selectedActionId]);
 
+  // Default duration filter to ±3 days of the selected action's duration
+  const effectiveActionId = actionId !== undefined ? String(actionId) : selectedActionId;
+  useEffect(() => {
+    if (effectiveActionId === "all") {
+      setMinDurationDays("");
+      setMaxDurationDays("");
+      return;
+    }
+    const curve = actionCompletionCurves.find(
+      (c) => String(c.actionId) === effectiveActionId
+    );
+    if (!curve?.memberActionStartDate) return;
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const start = new Date(curve.memberActionStartDate).getTime();
+    const end = curve.memberActionEndDate
+      ? new Date(curve.memberActionEndDate).getTime()
+      : Date.now();
+    const durationDays = Math.ceil((end - start) / msPerDay);
+    setMinDurationDays(String(Math.max(0, durationDays - 3)));
+    setMaxDurationDays(String(durationDays + 3));
+  }, [effectiveActionId, actionCompletionCurves]);
+
   const isHourly = granularity === "hourly";
 
   const actionCompletionCurveChartData = useMemo(() => {
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const minDays = minDurationDays !== "" ? Number(minDurationDays) : null;
+    const maxDays = maxDurationDays !== "" ? Number(maxDurationDays) : null;
+
+    function curveDurationDays(curve: ActionCompletionCurveDto): number | null {
+      if (!curve.memberActionStartDate) return null;
+      const start = new Date(curve.memberActionStartDate).getTime();
+      const end = curve.memberActionEndDate
+        ? new Date(curve.memberActionEndDate).getTime()
+        : Date.now();
+      return Math.ceil((end - start) / msPerDay);
+    }
+
+    function passesDurationFilter(curve: ActionCompletionCurveDto): boolean {
+      if (minDays === null && maxDays === null) return true;
+      const days = curveDurationDays(curve);
+      if (days === null) return false;
+      if (minDays !== null && days < minDays) return false;
+      if (maxDays !== null && days > maxDays) return false;
+      return true;
+    }
+
     const eligibleCurves = actionCompletionCurves.filter((curve) => {
       if (isHourly) {
         const offsets = curve.hourOffsets;
@@ -151,7 +197,9 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       );
     });
 
-    if (eligibleCurves.length === 0) {
+    const durationFilteredCurves = eligibleCurves.filter(passesDurationFilter);
+
+    if (durationFilteredCurves.length === 0) {
       return {
         multiLineData: [] as MultiLineSeries[],
         maxX: 0,
@@ -159,17 +207,17 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       };
     }
 
-    const maxX = computeMaxOffset(eligibleCurves, isHourly);
+    const maxX = computeMaxOffset(durationFilteredCurves, isHourly);
 
     const colorScale = chroma
       .scale(["#0ea5e9", "#6366f1", "#14b8a6"])
       .mode("lch")
-      .domain([0, Math.max(1, eligibleCurves.length - 1)]);
+      .domain([0, Math.max(1, durationFilteredCurves.length - 1)]);
 
     const sumByBucket = new Array<number>(maxX + 1).fill(0);
     const countByBucket = new Array<number>(maxX + 1).fill(0);
 
-    const actionSeries: MultiLineSeries[] = eligibleCurves
+    const actionSeries: MultiLineSeries[] = durationFilteredCurves
       .slice()
       .sort((a, b) => a.actionName.localeCompare(b.actionName))
       .map((curve, index) => {
@@ -307,8 +355,8 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       filteredActionSeries.map((s) => s.key.replace("action-", ""))
     );
     const displayedCurves = selectedCurveIds.size > 0
-      ? eligibleCurves.filter((c) => selectedCurveIds.has(String(c.actionId)))
-      : eligibleCurves;
+      ? durationFilteredCurves.filter((c) => selectedCurveIds.has(String(c.actionId)))
+      : durationFilteredCurves;
     const displayedMaxX = computeMaxOffset(displayedCurves, isHourly);
 
     const displayedSeries = [...filteredActionSeries, averageSeries];
@@ -331,7 +379,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
       maxX: displayedMaxX,
       yDomain: [0, paddedMax] as [number, number],
     };
-  }, [actionCompletionCurves, actionId, selectedActionId, isHourly]);
+  }, [actionCompletionCurves, actionId, selectedActionId, isHourly, minDurationDays, maxDurationDays]);
 
   const showDropdown = showSelector && actionId === undefined;
 
@@ -420,6 +468,40 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
               </select>
             </div>
           )}
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-gray-600">
+              Duration (days)
+            </label>
+            <input
+              type="number"
+              min={0}
+              placeholder="min"
+              value={minDurationDays}
+              onChange={(e) => setMinDurationDays(e.target.value)}
+              className="w-14 rounded-md border border-gray-300 px-2 py-1 text-xs bg-white"
+            />
+            <span className="text-gray-400">–</span>
+            <input
+              type="number"
+              min={0}
+              placeholder="max"
+              value={maxDurationDays}
+              onChange={(e) => setMaxDurationDays(e.target.value)}
+              className="w-14 rounded-md border border-gray-300 px-2 py-1 text-xs bg-white"
+            />
+            {(minDurationDays !== "" || maxDurationDays !== "") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMinDurationDays("");
+                  setMaxDurationDays("");
+                }}
+                className="text-xs text-zinc-500 hover:text-zinc-700 hover:underline"
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
         </div>
       }
       getHoverContent={(point, series) => {
