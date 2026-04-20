@@ -146,14 +146,17 @@ const InviteGraphPage = () => {
     const width = svgRef.current.clientWidth;
     const height = svgRef.current.clientHeight;
 
+    // Build the graph data
     const usedInvites = invites.filter(
       (inv) => inv.status === "link_used" && inv.invitedUserId
     );
 
+    // Users 7 and 10 are treated as the root node
     const ROOT_USER_IDS = new Set([7, 10]);
     const resolveNodeId = (userId: number) =>
       ROOT_USER_IDS.has(userId) ? "center" : `user-${userId}`;
 
+    // Build nodes for all users (excluding root users, they become the center)
     const nodes: GraphNode[] = users
       .filter((u) => !ROOT_USER_IDS.has(u.id))
       .map((u) => ({
@@ -163,10 +166,11 @@ const InviteGraphPage = () => {
         profilePicture: u.profilePicture,
       }));
 
+    // Add center node (represents root users + uninvited)
     const rootUsers = users.filter((u) => ROOT_USER_IDS.has(u.id));
-    const centerLabel =
-      rootUsers.map((u) => (u.anonymous ? "Someone" : u.name)).join(" & ") ||
-      "Root";
+    const centerLabel = rootUsers
+      .map((u) => (u.anonymous ? "Someone" : u.name))
+      .join(" & ") || "Root";
     const centerNode: GraphNode = {
       id: "center",
       displayName: centerLabel,
@@ -175,7 +179,8 @@ const InviteGraphPage = () => {
     };
     nodes.push(centerNode);
 
-    const linkSet = new Set<string>();
+    // Build links from both invite system and referredBy, deduplicating
+    const linkSet = new Set<string>(); // "sourceId->targetId"
     const links: GraphLink[] = [];
 
     const addLink = (sourceId: string, targetId: string) => {
@@ -185,6 +190,7 @@ const InviteGraphPage = () => {
       links.push({ source: sourceId, target: targetId });
     };
 
+    // Links from OnetimeInvite data
     for (const inv of usedInvites) {
       if (inv.invitingUser && inv.invitedUserId) {
         const src = resolveNodeId(inv.invitingUser.id);
@@ -193,11 +199,10 @@ const InviteGraphPage = () => {
       }
     }
 
+    // Links from referredBy relation
     for (const u of users) {
       if (ROOT_USER_IDS.has(u.id)) continue;
-      const referredById = (
-        u as UserDto & { referredById?: number | null }
-      ).referredById;
+      const referredById = (u as UserDto & { referredById?: number | null }).referredById;
       if (referredById != null) {
         const src = resolveNodeId(referredById);
         const tgt = resolveNodeId(u.id);
@@ -205,12 +210,14 @@ const InviteGraphPage = () => {
       }
     }
 
+    // Track which users have an incoming link (were referred/invited)
     const linkedTargets = new Set<string>();
     for (const l of links) {
       const tgt = typeof l.target === "string" ? l.target : l.target.id;
       linkedTargets.add(tgt);
     }
 
+    // Users without any incoming link go to center
     for (const u of users) {
       if (ROOT_USER_IDS.has(u.id)) continue;
       if (!linkedTargets.has(`user-${u.id}`)) {
@@ -218,7 +225,7 @@ const InviteGraphPage = () => {
       }
     }
 
-    // Build adjacency lists
+    // Build adjacency lists (source -> targets, target -> source)
     const childrenMap = new Map<string, Set<string>>();
     const parentMap = new Map<string, string>();
     for (const l of links) {
@@ -229,6 +236,7 @@ const InviteGraphPage = () => {
       parentMap.set(tgt, src);
     }
 
+    // Collect all descendants (children, grandchildren, etc.)
     function getDescendants(nodeId: string): Set<string> {
       const result = new Set<string>();
       const stack = [nodeId];
@@ -246,6 +254,7 @@ const InviteGraphPage = () => {
       return result;
     }
 
+    // Walk up the parent chain to root
     function getAncestors(nodeId: string): Set<string> {
       const result = new Set<string>();
       let current = parentMap.get(nodeId);
@@ -259,6 +268,7 @@ const InviteGraphPage = () => {
     // Create defs for clip paths and patterns
     const defs = svg.append("defs");
 
+    // Clip path for user nodes
     defs
       .append("clipPath")
       .attr("id", "clip-node")
@@ -271,15 +281,16 @@ const InviteGraphPage = () => {
       .append("circle")
       .attr("r", CENTER_RADIUS);
 
-    for (const n of nodes) {
-      if (n.profilePicture && !n.isCenter) {
+    // Create image patterns for each user
+    for (const node of nodes) {
+      if (node.profilePicture && !node.isCenter) {
         defs
           .append("pattern")
-          .attr("id", `pfp-${n.id}`)
+          .attr("id", `pfp-${node.id}`)
           .attr("width", 1)
           .attr("height", 1)
           .append("image")
-          .attr("href", n.profilePicture)
+          .attr("href", node.profilePicture)
           .attr("width", NODE_RADIUS * 2)
           .attr("height", NODE_RADIUS * 2)
           .attr("preserveAspectRatio", "xMidYMid slice");
@@ -288,6 +299,7 @@ const InviteGraphPage = () => {
 
     const g = svg.append("g");
 
+    // Zoom behavior
     const zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.2, 4])
       .on("zoom", (event) => {
@@ -296,6 +308,7 @@ const InviteGraphPage = () => {
 
     svg.call(zoomBehavior);
 
+    // Create simulation
     const simulation = forceSimulation<GraphNode>(nodes)
       .force(
         "link",
@@ -308,6 +321,7 @@ const InviteGraphPage = () => {
       .force("collision", forceCollide().radius(NODE_RADIUS + 5))
       .stop();
 
+    // Pre-warm simulation so layout is stable before rendering
     const tickCount = 500;
     for (let i = 0; i < tickCount; i++) simulation.tick();
 
@@ -321,7 +335,7 @@ const InviteGraphPage = () => {
       .attr("stroke-width", 1.5)
       .attr("stroke-opacity", 0.6);
 
-    // Arrow markers
+    // Draw arrow markers
     defs
       .append("marker")
       .attr("id", "arrowhead")
@@ -371,6 +385,7 @@ const InviteGraphPage = () => {
       .join("g")
       .attr("cursor", "pointer");
 
+    // Background circle (fallback / border)
     node
       .append("circle")
       .attr("r", (d) => (d.isCenter ? CENTER_RADIUS : NODE_RADIUS))
@@ -382,6 +397,7 @@ const InviteGraphPage = () => {
       .attr("stroke", (d) => (d.isCenter ? "#9ca3af" : "#d1d5db"))
       .attr("stroke-width", (d) => (d.isCenter ? 2 : 1.5));
 
+    // Fallback icon for users without pfp (not center)
     node
       .filter((d) => !d.profilePicture && !d.isCenter)
       .append("text")
@@ -391,6 +407,7 @@ const InviteGraphPage = () => {
       .attr("fill", "#9ca3af")
       .text("?");
 
+    // Center node label
     node
       .filter((d) => !!d.isCenter)
       .append("text")
@@ -401,12 +418,11 @@ const InviteGraphPage = () => {
       .attr("fill", "#6b7280")
       .text("ROOT");
 
+    // Name labels
     node
       .append("text")
       .attr("text-anchor", "middle")
-      .attr("dy", (d) =>
-        d.isCenter ? CENTER_RADIUS + 14 : NODE_RADIUS + 14
-      )
+      .attr("dy", (d) => (d.isCenter ? CENTER_RADIUS + 14 : NODE_RADIUS + 14))
       .attr("font-size", 10)
       .attr("fill", "#374151")
       .text((d) => (d.isCenter ? "" : d.displayName));
@@ -456,6 +472,7 @@ const InviteGraphPage = () => {
       );
     });
 
+    // Click empty space to clear
     svg.on("click", () => {
       graphRef.current!.setSelectedNodeId(null);
       svgRef.current?.dispatchEvent(
@@ -463,8 +480,10 @@ const InviteGraphPage = () => {
       );
     });
 
+    // Tooltip on hover
     node.append("title").text((d) => d.displayName);
 
+    // Position update helper
     function updatePositions() {
       link
         .attr("x1", (d) => (d.source as GraphNode).x!)
@@ -475,9 +494,13 @@ const InviteGraphPage = () => {
       node.attr("transform", (d) => `translate(${d.x},${d.y})`);
     }
 
+    // Apply pre-warmed positions
     updatePositions();
+
+    // Re-enable simulation for interactive dragging
     simulation.on("tick", updatePositions).restart();
 
+    // Initial zoom to fit
     svg.call(
       zoomBehavior.transform,
       zoomIdentity
