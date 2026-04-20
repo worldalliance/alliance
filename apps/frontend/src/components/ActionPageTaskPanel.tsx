@@ -63,6 +63,8 @@ export interface TaskPanelContext extends Omit<
   publicMode: boolean;
   userRelation: UserActionRelation | null;
   sharePreviewFirstName?: string | null;
+  showReferralTaskPanel?: boolean;
+  referralPanelAnimationNonce?: number;
 }
 
 const taskPanelHeaderByState: Record<
@@ -128,14 +130,21 @@ function toDeviceVisibilityTarget(
 }
 
 const ActionPageTaskPanel = () => {
-  const { userRelation, action, sharePreviewFirstName, ...panelHandlers } =
-    useOutletContext<TaskPanelContext>();
+  const {
+    userRelation,
+    action,
+    sharePreviewFirstName,
+    showReferralTaskPanel = false,
+    referralPanelAnimationNonce = 0,
+    ...panelHandlers
+  } = useOutletContext<TaskPanelContext>();
 
   const { user, isAuthenticated, loading: userLoading } = useAuth();
   const [guestCompleted, setGuestCompleted] = useState(false);
   const [guestFormResponse, setGuestFormResponse] =
     useState<FormResponseDto | null>(null);
   const [showGuestJoinPrompt, setShowGuestJoinPrompt] = useState(false);
+  const [animateReferralPanel, setAnimateReferralPanel] = useState(false);
   const [searchParams] = useSearchParams();
   const refCode = searchParams.get("ref");
   const signupHref = refCode ? `/signup?ref=${refCode}` : null;
@@ -259,6 +268,21 @@ const ActionPageTaskPanel = () => {
     setGuestFormResponse(savedCompletion.formResponse);
   }, [action.id, isAuthenticated]);
 
+  useEffect(() => {
+    if (!isNonmemberPublicReferralAction || referralPanelAnimationNonce === 0) {
+      return;
+    }
+
+    setAnimateReferralPanel(true);
+    const timeoutId = window.setTimeout(() => {
+      setAnimateReferralPanel(false);
+    }, 550);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isNonmemberPublicReferralAction, referralPanelAnimationNonce]);
+
   const renderStackedCard = (bottom: React.ReactNode) => (
     <div className="relative">
       <StackedCard
@@ -266,6 +290,32 @@ const ActionPageTaskPanel = () => {
         topCardStyle={headerStyle}
         bottom={
           <>
+            {isNonmemberPublicReferralAction &&
+              showReferralTaskPanel &&
+              signupHref && (
+              <div className="-mx-4 -mt-4 mb-4 overflow-hidden sm:-mx-6 sm:-mt-6">
+                <div
+                  className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-6 sm:py-5 ${
+                    animateReferralPanel ? "referral-panel-slide-in" : ""
+                  }`}
+                >
+                  <p className="text-lg font-semibold leading-8 text-zinc-900">
+                    {sharePreviewFirstName ?? "Your friend"} has invited you to
+                    try this task.
+                  </p>
+                  <p className="mt-3 text-base leading-7 text-zinc-700">
+                    The Alliance is a global group of people cooperating to
+                    improve the world. Join us!
+                  </p>
+                  <Link
+                    to={signupHref}
+                    className="mt-5 block w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              </div>
+            )}
             {bottom}
             {guestCompleted && isNonmemberPublicReferralAction && signupHref && (
               <div className="mt-4">

@@ -101,6 +101,9 @@ export default function ActionPage() {
   const refCode = searchParams.get("ref");
   const signupHref = refCode ? `/signup?ref=${refCode}` : href("/signup");
   const [invitePopupDismissed, setInvitePopupDismissed] = useState(false);
+  const [referralPanelAnimationNonce, setReferralPanelAnimationNonce] =
+    useState(0);
+  const [showReferralTaskPanel, setShowReferralTaskPanel] = useState(false);
 
   useCIDFromParams(actionId);
 
@@ -113,6 +116,11 @@ export default function ActionPage() {
   const reloadTasks = useCallback(() => {
     navigate(href("/actions/:id", { id: actionId.toString() }));
   }, [actionId, navigate]);
+  const handleTryOutTask = useCallback(() => {
+    setInvitePopupDismissed(true);
+    setShowReferralTaskPanel(true);
+    setReferralPanelAnimationNonce((prev) => prev + 1);
+  }, []);
 
   const { action, loading, onCompleteAction, onOptOutAction } =
     useActionHandlers(actionId, isAuthenticated, reloadTasks);
@@ -213,7 +221,7 @@ export default function ActionPage() {
             <button
               type="button"
               className="mt-6 inline-flex w-full justify-center rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
-              onClick={() => setInvitePopupDismissed(true)}
+              onClick={handleTryOutTask}
             >
               Try out this task
             </button>
@@ -228,6 +236,8 @@ export default function ActionPage() {
                 action,
                 userRelation: action.userRelation ?? null,
                 sharePreviewFirstName: sharePreview?.firstName ?? null,
+                showReferralTaskPanel,
+                referralPanelAnimationNonce,
                 onCompleteAction,
                 publicMode,
                 onOptOutAction,
