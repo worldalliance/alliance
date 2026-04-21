@@ -42,5 +42,6 @@ import { Guest } from 'src/auth/entities/guest.entity';
   ],
   controllers: [TasksController],
   providers: [TasksService],
+  exports: [TasksService],
 })
 export class TasksModule {}
