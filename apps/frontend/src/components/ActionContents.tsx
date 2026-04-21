@@ -122,6 +122,7 @@ const ActionContents = () => {
     const text = buildShareText({
       template: shareTemplate,
       formResponse,
+      userName: user?.name,
       url,
     });
     return navigator.clipboard.writeText(text);

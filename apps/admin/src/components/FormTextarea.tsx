@@ -1,3 +1,4 @@
+import type React from "react";
 import { useCallback, useRef } from "react";
 import TextareaAutosize, {
   type TextareaAutosizeProps,
@@ -6,14 +7,21 @@ import { htmlToMarkdownFromDocs } from "@alliance/sharedweb/lib/htmlToMarkdown";
 
 export interface FormTextareaProps extends TextareaAutosizeProps {
   value?: string;
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
 }
 
-function FormTextarea({ value, onChange, ...props }: FormTextareaProps) {
+function FormTextarea({
+  value,
+  onChange,
+  textareaRef,
+  ...props
+}: FormTextareaProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const resolvedRef = textareaRef ?? ref;
 
   const onPaste = useCallback(
     (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      const ta = ref.current;
+      const ta = resolvedRef.current;
       if (!ta) return;
 
       const html = e.clipboardData.getData("text/html");
@@ -36,12 +44,12 @@ function FormTextarea({ value, onChange, ...props }: FormTextareaProps) {
         },
       } as React.ChangeEvent<HTMLTextAreaElement>);
     },
-    [onChange]
+    [onChange, resolvedRef]
   );
 
   return (
     <TextareaAutosize
-      ref={ref}
+      ref={resolvedRef}
       onPaste={onPaste}
       value={value}
       onChange={onChange}

@@ -1,6 +1,59 @@
 import type { FormResponseDto } from "../client/types.gen";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 
+const FIRST_NAME_TOKEN = "[First Name]";
+const FULL_NAME_TOKEN = "[Full Name]";
+
+const getUserNameParts = (name?: string | null) => {
+  const trimmedName = name?.trim() ?? "";
+  if (!trimmedName) {
+    return {
+      firstName: null,
+      fullName: null,
+    };
+  }
+
+  const [firstName] = trimmedName.split(/\s+/, 1);
+  return {
+    firstName: firstName || null,
+    fullName: trimmedName,
+  };
+};
+
+const replaceLiteralToken = (
+  value: string,
+  token: string,
+  replacement: string,
+) => value.split(token).join(replacement);
+
+const interpolateMemberNameTokens = ({
+  template,
+  userName,
+}: {
+  template: string;
+  userName?: string | null;
+}) => {
+  const { firstName, fullName } = getUserNameParts(userName);
+
+  let interpolatedTemplate = template;
+  if (firstName) {
+    interpolatedTemplate = replaceLiteralToken(
+      interpolatedTemplate,
+      FIRST_NAME_TOKEN,
+      firstName,
+    );
+  }
+  if (fullName) {
+    interpolatedTemplate = replaceLiteralToken(
+      interpolatedTemplate,
+      FULL_NAME_TOKEN,
+      fullName,
+    );
+  }
+
+  return interpolatedTemplate;
+};
+
 const resolveAnswerValue = (value: unknown): string | null => {
   if (value === undefined || value === null) {
     return null;
@@ -67,10 +120,20 @@ export function getCompletedShareableTextTemplate({
   schemaSnapshot?: FormSchema | Record<string, unknown> | null;
   currentSchema?: FormSchema | Record<string, unknown> | null;
 }): string | undefined {
-  return (
-    getShareableTextTemplate(schemaSnapshot) ??
-    getShareableTextTemplate(currentSchema)
-  );
+  const snapshotTemplate = getShareableTextTemplate(schemaSnapshot);
+  if (typeof snapshotTemplate === "string" && snapshotTemplate.trim()) {
+    return snapshotTemplate;
+  }
+
+  const currentCompletedTemplate = getShareableTextTemplate(currentSchema);
+  if (
+    typeof currentCompletedTemplate === "string" &&
+    currentCompletedTemplate.trim()
+  ) {
+    return currentCompletedTemplate;
+  }
+
+  return getDefaultShareableTextTemplate(currentSchema);
 }
 
 /**
@@ -86,7 +149,12 @@ export function interpolateShareText(
   formResponse: FormResponseDto,
 ): string {
   const schema = formResponse.schemaSnapshot as unknown as FormSchema;
-  if (!schema?.pages) return template;
+  const interpolatedTemplate = interpolateMemberNameTokens({
+    template,
+    userName: formResponse.user?.name,
+  });
+
+  if (!schema?.pages) return interpolatedTemplate;
 
   const replaceToken = (match: string, token: string) => {
     const field = findSchemaField(schema, token);
@@ -97,23 +165,25 @@ export function interpolateShareText(
     return resolved ?? match;
   };
 
-  return template.replace(/#\{([^}]+)\}/g, replaceToken);
+  return interpolatedTemplate.replace(/#\{([^}]+)\}/g, replaceToken);
 }
 
 export function buildShareText({
   template,
   formResponse,
+  userName,
   url,
 }: {
   template?: string | null;
   formResponse?: FormResponseDto | null;
+  userName?: string | null;
   url: string;
 }): string {
   if (!template) return url;
 
   const interpolated = formResponse
     ? interpolateShareText(template, formResponse)
-    : template;
+    : interpolateMemberNameTokens({ template, userName });
   const trimmed = interpolated.trim();
 
   return trimmed ? `${trimmed}\n\n${url}` : url;

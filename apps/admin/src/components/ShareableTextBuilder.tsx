@@ -1,5 +1,4 @@
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
-import FormTextarea from "./FormTextarea";
 import TextareaWithHighlights from "./TextareaWithHighlights";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -13,8 +12,40 @@ interface ShareableTextBuilderProps {
 const REFERRAL_URL_PREVIEW =
   "https://alliance.example/actions/123?ref=member-code";
 const SHAREABLE_TOKEN_PATTERN = /#\{[^}]*\}/g;
+const COMPLETED_SHAREABLE_INSERTION_DATA_KEY =
+  "application/x-completed-shareable-text-token";
+const DEFAULT_SHAREABLE_INSERTION_DATA_KEY =
+  "application/x-default-shareable-text-token";
 
-type ShareableField = Pick<AnyField, "id" | "label" | "kind"> & {
+const SHAREABLE_NAME_TOKENS = [
+  {
+    id: "member-first-name",
+    label: "[First Name]",
+    token: "[First Name]",
+    kind: "member",
+    pageTitle: "Member details",
+  },
+  {
+    id: "member-full-name",
+    label: "[Full Name]",
+    token: "[Full Name]",
+    kind: "member",
+    pageTitle: "Member details",
+  },
+] as const;
+
+type ShareableField = {
+  id: string;
+  label: string;
+  kind: AnyField["kind"];
+  pageTitle: string;
+};
+
+type ShareableInsertable = {
+  id: string;
+  label: string;
+  token: string;
+  kind: string;
   pageTitle: string;
 };
 
@@ -53,20 +84,36 @@ export function ShareableTextBuilder({
   schema,
   onSchemaChange,
 }: ShareableTextBuilderProps) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const [caretIndex, setCaretIndex] = useState(0);
+  const completedTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const defaultTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [completedCaretIndex, setCompletedCaretIndex] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const fields = useMemo(() => collectShareableFields(schema), [schema]);
-  const keywords = useMemo(
-    () => fields.map((field) => `#{${field.id}}`),
+  const completedInsertables = useMemo<ShareableInsertable[]>(
+    () => [
+      ...SHAREABLE_NAME_TOKENS,
+      ...fields.map((field) => ({
+        ...field,
+        token: `#{${field.id}}`,
+      })),
+    ],
     [fields],
+  );
+  const keywords = useMemo(
+    () => completedInsertables.map((item) => item.token),
+    [completedInsertables],
+  );
+  const defaultInsertables = SHAREABLE_NAME_TOKENS;
+  const defaultKeywords = useMemo(
+    () => defaultInsertables.map((item) => item.token),
+    [defaultInsertables],
   );
 
   const completedTemplate = schema.shareableTextTemplate ?? "";
   const defaultTemplate = schema.defaultShareableTextTemplate ?? "";
   const activeToken = useMemo(
-    () => getActiveTokenQuery(completedTemplate, caretIndex),
-    [completedTemplate, caretIndex],
+    () => getActiveTokenQuery(completedTemplate, completedCaretIndex),
+    [completedTemplate, completedCaretIndex],
   );
 
   const suggestions = useMemo(() => {
@@ -101,25 +148,25 @@ export function ShareableTextBuilder({
   const updateDefaultTemplate = (nextTemplate: string) => {
     onSchemaChange({
       ...schema,
-      defaultShareableTextTemplate: nextTemplate.replace(
-        SHAREABLE_TOKEN_PATTERN,
-        "",
-      ),
+      defaultShareableTextTemplate: nextTemplate.replace(SHAREABLE_TOKEN_PATTERN, ""),
     });
   };
 
-  const syncCaret = () => {
-    const textarea = textareaRef.current;
+  const syncCompletedCaret = () => {
+    const textarea = completedTextareaRef.current;
     if (!textarea) return;
-    setCaretIndex(textarea.selectionStart ?? 0);
+    setCompletedCaretIndex(textarea.selectionStart ?? 0);
   };
 
-  const insertToken = (field: ShareableField, replaceActiveToken = false) => {
-    const textarea = textareaRef.current;
+  const insertCompletedToken = (
+    item: ShareableInsertable,
+    replaceActiveToken = false,
+  ) => {
+    const textarea = completedTextareaRef.current;
     const currentValue = completedTemplate;
     const selectionStart = textarea?.selectionStart ?? currentValue.length;
     const selectionEnd = textarea?.selectionEnd ?? selectionStart;
-    const token = `#{${field.id}}`;
+    const token = item.token;
     const replacementRange =
       replaceActiveToken && activeToken
         ? {
@@ -140,9 +187,30 @@ export function ShareableTextBuilder({
 
     window.requestAnimationFrame(() => {
       const nextCaret = replacementRange.start + token.length;
-      textareaRef.current?.focus();
-      textareaRef.current?.setSelectionRange(nextCaret, nextCaret);
-      setCaretIndex(nextCaret);
+      completedTextareaRef.current?.focus();
+      completedTextareaRef.current?.setSelectionRange(nextCaret, nextCaret);
+      setCompletedCaretIndex(nextCaret);
+    });
+  };
+
+  const insertDefaultToken = (item: (typeof SHAREABLE_NAME_TOKENS)[number]) => {
+    const textarea = defaultTextareaRef.current;
+    const currentValue = defaultTemplate;
+    const selectionStart = textarea?.selectionStart ?? currentValue.length;
+    const selectionEnd = textarea?.selectionEnd ?? selectionStart;
+    const token = item.token;
+
+    const nextValue =
+      currentValue.slice(0, selectionStart) +
+      token +
+      currentValue.slice(selectionEnd);
+
+    updateDefaultTemplate(nextValue);
+
+    window.requestAnimationFrame(() => {
+      const nextCaret = selectionStart + token.length;
+      defaultTextareaRef.current?.focus();
+      defaultTextareaRef.current?.setSelectionRange(nextCaret, nextCaret);
     });
   };
 
@@ -162,12 +230,21 @@ export function ShareableTextBuilder({
       }
       if (event.key === "Enter" || event.key === "Tab") {
         event.preventDefault();
-        insertToken(suggestions[activeIndex] ?? suggestions[0], true);
+        const suggestion = suggestions[activeIndex] ?? suggestions[0];
+        if (suggestion) {
+          insertCompletedToken(
+            {
+              ...suggestion,
+              token: `#{${suggestion.id}}`,
+            },
+            true,
+          );
+        }
         return;
       }
       if (event.key === "Escape") {
         event.preventDefault();
-        setCaretIndex(-1);
+        setCompletedCaretIndex(-1);
       }
     }
   };
@@ -194,29 +271,31 @@ export function ShareableTextBuilder({
               value={completedTemplate}
               onChange={(next) => {
                 updateCompletedTemplate(next);
-                window.requestAnimationFrame(syncCaret);
+                window.requestAnimationFrame(syncCompletedCaret);
               }}
               keywords={keywords}
               placeholder='Example: I have #{field-123} things!'
               rows={10}
-              textareaRef={textareaRef}
-              onClick={syncCaret}
-              onKeyUp={syncCaret}
+              textareaRef={completedTextareaRef}
+              onClick={syncCompletedCaret}
+              onKeyUp={syncCompletedCaret}
               onKeyDown={handleKeyDown}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault();
-                const fieldId = event.dataTransfer.getData(
-                  "application/x-shareable-text-field-id",
+                const droppedToken = event.dataTransfer.getData(
+                  COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
                 );
-                if (!fieldId) {
+                if (!droppedToken) {
                   return;
                 }
-                const field = fields.find((candidate) => candidate.id === fieldId);
-                if (!field) {
+                const item = completedInsertables.find(
+                  (candidate) => candidate.token === droppedToken,
+                );
+                if (!item) {
                   return;
                 }
-                insertToken(field, false);
+                insertCompletedToken(item, false);
               }}
             />
 
@@ -249,7 +328,13 @@ export function ShareableTextBuilder({
                     type="button"
                     onMouseDown={(event) => {
                       event.preventDefault();
-                      insertToken(field, true);
+                      insertCompletedToken(
+                        {
+                          ...field,
+                          token: `#{${field.id}}`,
+                        },
+                        true,
+                      );
                     }}
                     className={cn(
                       "flex w-full items-start justify-between gap-3 px-4 py-3 text-left hover:bg-blue-50",
@@ -283,37 +368,81 @@ export function ShareableTextBuilder({
               </p>
             </div>
 
-            <div className="space-y-2">
-              {fields.length === 0 ? (
-                <p className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
-                  Add form fields in Form Builder first.
+            <div className="max-h-[32rem] space-y-3 overflow-y-auto pr-1">
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Member Details
                 </p>
-              ) : (
-                fields.map((field) => (
+                {SHAREABLE_NAME_TOKENS.map((item) => (
                   <button
-                    key={field.id}
+                    key={item.id}
                     type="button"
                     draggable
                     onDragStart={(event) => {
                       event.dataTransfer.effectAllowed = "copy";
                       event.dataTransfer.setData(
-                        "application/x-shareable-text-field-id",
-                        field.id,
+                        COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
+                        item.token,
                       );
-                      event.dataTransfer.setData("text/plain", `#{${field.id}}`);
+                      event.dataTransfer.setData("text/plain", item.token);
                     }}
-                    onClick={() => insertToken(field, false)}
+                    onClick={() => insertCompletedToken(item, false)}
                     className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
                   >
                     <div className="font-medium text-gray-900">
-                      {field.label}
+                      {item.label}
                     </div>
                     <div className="mt-1 text-xs text-gray-500">
-                      #{`{${field.id}}`} · {field.pageTitle}
+                      {item.token} · {item.pageTitle}
                     </div>
                   </button>
-                ))
-              )}
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Form Fields
+                </p>
+                {fields.length === 0 ? (
+                  <p className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
+                    Add form fields in Form Builder first.
+                  </p>
+                ) : (
+                  fields.map((field) => (
+                    <button
+                      key={field.id}
+                      type="button"
+                      draggable
+                      onDragStart={(event) => {
+                        const token = `#{${field.id}}`;
+                        event.dataTransfer.effectAllowed = "copy";
+                        event.dataTransfer.setData(
+                          COMPLETED_SHAREABLE_INSERTION_DATA_KEY,
+                          token,
+                        );
+                        event.dataTransfer.setData("text/plain", token);
+                      }}
+                      onClick={() =>
+                        insertCompletedToken(
+                          {
+                            ...field,
+                            token: `#{${field.id}}`,
+                          },
+                          false,
+                        )
+                      }
+                      className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
+                    >
+                      <div className="font-medium text-gray-900">
+                        {field.label}
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        #{`{${field.id}}`} · {field.pageTitle}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -326,48 +455,108 @@ export function ShareableTextBuilder({
           </h2>
           <p className="mt-1 text-sm text-gray-600">
             This text is copied when a user shares the action before completing
-            it. User-input tokens and dragged form fields are not supported in
-            this box.
+            it. Only member-detail tokens are supported in this box.
           </p>
         </div>
 
-        <FormTextarea
-          value={defaultTemplate}
-          onChange={(event) => updateDefaultTemplate(event.target.value)}
-          placeholder="Example: Join me in taking this action."
-          minRows={6}
-          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-        />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div>
+            <TextareaWithHighlights
+              value={defaultTemplate}
+              onChange={updateDefaultTemplate}
+              keywords={defaultKeywords}
+              placeholder="Example: Join me in taking this action."
+              rows={6}
+              textareaRef={defaultTextareaRef}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => {
+                event.preventDefault();
+                const droppedToken = event.dataTransfer.getData(
+                  DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
+                );
+                if (!droppedToken) {
+                  return;
+                }
+                const item = defaultInsertables.find(
+                  (candidate) => candidate.token === droppedToken,
+                );
+                if (!item) {
+                  return;
+                }
+                insertDefaultToken(item);
+              }}
+              textareaClassName="rounded-lg border border-gray-300 px-4 py-3 text-sm text-gray-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
 
-        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
-          <p className="text-sm font-medium text-amber-950">
-            No user inputs in this text box
-          </p>
-          <p className="mt-1 text-xs text-amber-900">
-            Entries like <span className="font-mono">#{"{field}"}</span> are
-            removed here because this default message is used before the user
-            has completed the task.
-          </p>
-        </div>
-
-        <div className="mt-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-medium text-blue-950">
-                Member Referral URL
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
+              <p className="text-sm font-medium text-amber-950">
+                No form-field inputs in this text box
               </p>
-              <p className="mt-1 text-xs text-blue-800">
-                This is always appended automatically when the action is
-                shared. It is not editable here and cannot be removed from the
-                real share text.
+              <p className="mt-1 text-xs text-amber-900">
+                Entries like <span className="font-mono">#{"{field}"}</span> are
+                removed here because this default message is used before the
+                user has completed the task. Member-detail tokens like{" "}
+                <span className="font-mono">[First Name]</span> and{" "}
+                <span className="font-mono">[Full Name]</span> are supported.
               </p>
             </div>
-            <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-blue-900">
-              Always Included
-            </span>
+
+            <div className="mt-3 rounded-lg border border-dashed border-blue-200 bg-blue-50/60 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-blue-950">
+                    Member Referral URL
+                  </p>
+                  <p className="mt-1 text-xs text-blue-800">
+                    This is always appended automatically when the action is
+                    shared. It is not editable here and cannot be removed from the
+                    real share text.
+                  </p>
+                </div>
+                <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-blue-900">
+                  Always Included
+                </span>
+              </div>
+              <div className="mt-3 rounded-md border border-blue-200 bg-white px-3 py-2 font-mono text-xs text-blue-900">
+                {REFERRAL_URL_PREVIEW}
+              </div>
+            </div>
           </div>
-          <div className="mt-3 rounded-md border border-blue-200 bg-white px-3 py-2 font-mono text-xs text-blue-900">
-            {REFERRAL_URL_PREVIEW}
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold text-gray-900">
+                Member Details
+              </h3>
+              <p className="mt-1 text-xs text-gray-500">
+                Drag or click a member detail to insert it into Default Shareable Text.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {defaultInsertables.map((item) => (
+                <button
+                  key={`default-${item.id}`}
+                  type="button"
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "copy";
+                    event.dataTransfer.setData(
+                      DEFAULT_SHAREABLE_INSERTION_DATA_KEY,
+                      item.token,
+                    );
+                    event.dataTransfer.setData("text/plain", item.token);
+                  }}
+                  onClick={() => insertDefaultToken(item)}
+                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50"
+                >
+                  <div className="font-medium text-gray-900">{item.label}</div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    {item.token} · {item.pageTitle}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
