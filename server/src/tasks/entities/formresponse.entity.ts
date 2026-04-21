@@ -71,7 +71,7 @@ export class FormResponse {
   @ManyToOne(() => Guest, { onDelete: 'CASCADE', nullable: true })
   @IsOptional()
   @Type(() => Guest)
-  guest?: Ty<Guest>;
+  guest?: Relation<Guest>;
 
   @Column({ type: 'text', nullable: true })
   @ApiPropertyOptional()
