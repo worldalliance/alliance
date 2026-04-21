@@ -30,9 +30,7 @@ describe("buildShareText name-token interpolation", () => {
       url: URL,
     });
 
-    expect(result).toBe(
-      `Ada says hi. Ada invites you.\n\n${URL}`,
-    );
+    expect(result).toBe(`Ada says hi. Ada invites you.\n\n${URL}`);
   });
 
   it("handles a single-word name (first === full)", () => {
@@ -77,11 +75,11 @@ describe("buildShareText name-token interpolation", () => {
   });
 
   it("returns the url alone when the template is missing or empty after interpolation", () => {
-    expect(
-      buildShareText({ template: null, userName: "Ada", url: URL }),
-    ).toBe(URL);
-    expect(
-      buildShareText({ template: "   ", userName: "Ada", url: URL }),
-    ).toBe(URL);
+    expect(buildShareText({ template: null, userName: "Ada", url: URL })).toBe(
+      URL,
+    );
+    expect(buildShareText({ template: "   ", userName: "Ada", url: URL })).toBe(
+      URL,
+    );
   });
 });
