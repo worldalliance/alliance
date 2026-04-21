@@ -3,9 +3,9 @@ import { buildShareText } from "./shareText";
 const URL = "https://example.com/actions/1?ref=share-abc";
 
 describe("buildShareText name-token interpolation", () => {
-  it("replaces [First Name] with the first whitespace-delimited word", () => {
+  it("replaces #{first-name} with the first whitespace-delimited word", () => {
     const result = buildShareText({
-      template: "Hi, I'm [First Name]!",
+      template: `Hi, I'm #{first-name}!`,
       userName: "Ada Lovelace",
       url: URL,
     });
@@ -13,9 +13,9 @@ describe("buildShareText name-token interpolation", () => {
     expect(result).toBe(`Hi, I'm Ada!\n\n${URL}`);
   });
 
-  it("replaces [Full Name] with the trimmed full name", () => {
+  it("replaces #{full-name} with the trimmed full name", () => {
     const result = buildShareText({
-      template: "Sincerely, [Full Name]",
+      template: `Sincerely, #{full-name}`,
       userName: "  Ada Lovelace  ",
       url: URL,
     });
@@ -25,7 +25,7 @@ describe("buildShareText name-token interpolation", () => {
 
   it("replaces every occurrence of a token, not just the first", () => {
     const result = buildShareText({
-      template: "[First Name] says hi. [First Name] invites you.",
+      template: `#{first-name} says hi. #{first-name} invites you.`,
       userName: "Ada",
       url: URL,
     });
@@ -35,7 +35,7 @@ describe("buildShareText name-token interpolation", () => {
 
   it("handles a single-word name (first === full)", () => {
     const result = buildShareText({
-      template: "[First Name] / [Full Name]",
+      template: `#{first-name} / #{full-name}`,
       userName: "Ada",
       url: URL,
     });
@@ -45,7 +45,7 @@ describe("buildShareText name-token interpolation", () => {
 
   it("collapses multiple internal whitespace for the first-name split", () => {
     const result = buildShareText({
-      template: "[First Name]!",
+      template: `#{first-name}!`,
       userName: "Ada   Byron   Lovelace",
       url: URL,
     });
@@ -55,23 +55,23 @@ describe("buildShareText name-token interpolation", () => {
 
   it("leaves tokens untouched when the userName is missing", () => {
     const resultUndefined = buildShareText({
-      template: "Hi, [First Name]",
+      template: `Hi, #{first-name}`,
       url: URL,
     });
     const resultEmpty = buildShareText({
-      template: "Hi, [First Name]",
+      template: `Hi, #{first-name}`,
       userName: "",
       url: URL,
     });
     const resultWhitespace = buildShareText({
-      template: "Hi, [First Name]",
+      template: `Hi, #{first-name}`,
       userName: "   ",
       url: URL,
     });
 
-    expect(resultUndefined).toBe(`Hi, [First Name]\n\n${URL}`);
-    expect(resultEmpty).toBe(`Hi, [First Name]\n\n${URL}`);
-    expect(resultWhitespace).toBe(`Hi, [First Name]\n\n${URL}`);
+    expect(resultUndefined).toBe(`Hi, #{first-name}\n\n${URL}`);
+    expect(resultEmpty).toBe(`Hi, #{first-name}\n\n${URL}`);
+    expect(resultWhitespace).toBe(`Hi, #{first-name}\n\n${URL}`);
   });
 
   it("returns the url alone when the template is missing or empty after interpolation", () => {

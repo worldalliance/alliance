@@ -31,11 +31,6 @@ export class FormResponse {
   @IsDefined()
   formId: number;
 
-  @Column({ type: 'int', nullable: true })
-  @ApiPropertyOptional()
-  @IsOptional()
-  actionId?: number;
-
   @ManyToOne(() => Form, (f) => f.responses, { onDelete: 'CASCADE' })
   @IsDefined()
   @Type(() => Form)

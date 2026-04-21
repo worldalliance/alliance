@@ -20,7 +20,7 @@ import { AdminGuard } from 'src/auth/guards/admin.guard';
 import {
   AuthGuard,
   extractGuestTokenFromCookie,
-  extractTokenFromHeader,
+  extractGuestTokenFromHeader,
 } from 'src/auth/guards/auth.guard';
 import type { JwtRequest } from 'src/auth/guards/jwtreq';
 import { Public } from 'src/auth/public.decorator';
@@ -74,7 +74,7 @@ export class TasksController {
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
     const token =
-      extractTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
+      extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
     const guestPayload = token
       ? await this.authService.verifyGuestToken(token)
       : null;
@@ -137,7 +137,7 @@ export class TasksController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<FormResponseDto> {
     const token =
-      extractTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
+      extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
     const guestPayload = token
       ? await this.authService.verifyGuestToken(token)
       : null;

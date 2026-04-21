@@ -70,6 +70,16 @@ export function extractGuestTokenFromCookie(
   return request.cookies?.guest_token;
 }
 
+export function extractGuestTokenFromHeader(
+  request: Request,
+): string | undefined {
+  const header = request.headers['x-guest-token'];
+  if (typeof header !== 'string' || header.length === 0) {
+    return undefined;
+  }
+  return header;
+}
+
 export function extractTokenFromHeader(request: Request): string | undefined {
   const [type, token] = request.headers.authorization?.split(' ') ?? [];
   return type === 'Bearer' ? token : undefined;

@@ -1,8 +1,8 @@
 import type { FormResponseDto } from "../client/types.gen";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 
-const FIRST_NAME_TOKEN = "[First Name]";
-const FULL_NAME_TOKEN = "[Full Name]";
+export const FIRST_NAME_TOKEN = "#{first-name}";
+export const FULL_NAME_TOKEN = "#{full-name}";
 
 const getUserNameParts = (name?: string | null) => {
   const trimmedName = name?.trim() ?? "";

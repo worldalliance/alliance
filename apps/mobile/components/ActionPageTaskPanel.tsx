@@ -146,7 +146,11 @@ const ActionPageTaskPanel = ({
       formResponse,
       url,
     });
-    await Clipboard.setStringAsync(text);
+    try {
+      await Clipboard.setStringAsync(text);
+    } catch {
+      return;
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

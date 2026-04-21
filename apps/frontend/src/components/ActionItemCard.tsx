@@ -11,6 +11,7 @@ import ShareButton from "./ShareButton";
 import { ExternalLinkIcon } from "lucide-react";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { actionsGetActionReferralCode } from "@alliance/shared/client";
 
 export interface ActionItemCardProps extends ActionItemCardPropsShared {
@@ -79,7 +80,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
     if (shareCode) {
       url = `${url}?ref=${shareCode}`;
     }
-    return navigator.clipboard.writeText(url);
+    return copyToClipboard(url);
   }, [action.id]);
 
   return (

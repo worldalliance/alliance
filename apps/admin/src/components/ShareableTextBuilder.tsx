@@ -3,6 +3,10 @@ import TextareaWithHighlights from "./TextareaWithHighlights";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@alliance/shared/styles/util";
+import {
+  FIRST_NAME_TOKEN,
+  FULL_NAME_TOKEN,
+} from "@alliance/shared/lib/shareText";
 
 interface ShareableTextBuilderProps {
   schema: FormSchema;
@@ -20,15 +24,15 @@ const DEFAULT_SHAREABLE_INSERTION_DATA_KEY =
 const SHAREABLE_NAME_TOKENS = [
   {
     id: "member-first-name",
-    label: "[First Name]",
-    token: "[First Name]",
+    label: FIRST_NAME_TOKEN,
+    token: FIRST_NAME_TOKEN,
     kind: "member",
     pageTitle: "Member details",
   },
   {
     id: "member-full-name",
-    label: "[Full Name]",
-    token: "[Full Name]",
+    label: FULL_NAME_TOKEN,
+    token: FULL_NAME_TOKEN,
     kind: "member",
     pageTitle: "Member details",
   },
@@ -127,9 +131,7 @@ export function ShareableTextBuilder({
     return fields
       .filter((field) => {
         const label = field.label?.toLowerCase() ?? "";
-        return (
-          field.id.toLowerCase().includes(query) || label.includes(query)
-        );
+        return field.id.toLowerCase().includes(query) || label.includes(query);
       })
       .slice(0, 8);
   }, [activeToken, fields]);
@@ -148,7 +150,10 @@ export function ShareableTextBuilder({
   const updateDefaultTemplate = (nextTemplate: string) => {
     onSchemaChange({
       ...schema,
-      defaultShareableTextTemplate: nextTemplate.replace(SHAREABLE_TOKEN_PATTERN, ""),
+      defaultShareableTextTemplate: nextTemplate.replace(
+        SHAREABLE_TOKEN_PATTERN,
+        "",
+      ),
     });
   };
 
@@ -274,7 +279,7 @@ export function ShareableTextBuilder({
                 window.requestAnimationFrame(syncCompletedCaret);
               }}
               keywords={keywords}
-              placeholder='Example: I have #{field-123} things!'
+              placeholder="Example: I have #{field-123} things!"
               rows={10}
               textareaRef={completedTextareaRef}
               onClick={syncCompletedCaret}
@@ -496,8 +501,9 @@ export function ShareableTextBuilder({
                 Entries like <span className="font-mono">#{"{field}"}</span> are
                 removed here because this default message is used before the
                 user has completed the task. Member-detail tokens like{" "}
-                <span className="font-mono">[First Name]</span> and{" "}
-                <span className="font-mono">[Full Name]</span> are supported.
+                <span className="font-mono">{FIRST_NAME_TOKEN}</span> and{" "}
+                <span className="font-mono">{FULL_NAME_TOKEN}</span> are
+                supported.
               </p>
             </div>
 
@@ -509,8 +515,8 @@ export function ShareableTextBuilder({
                   </p>
                   <p className="mt-1 text-xs text-blue-800">
                     This is always appended automatically when the action is
-                    shared. It is not editable here and cannot be removed from the
-                    real share text.
+                    shared. It is not editable here and cannot be removed from
+                    the real share text.
                   </p>
                 </div>
                 <span className="rounded-full bg-white px-2 py-1 text-xs font-medium text-blue-900">
@@ -529,7 +535,8 @@ export function ShareableTextBuilder({
                 Member Details
               </h3>
               <p className="mt-1 text-xs text-gray-500">
-                Drag or click a member detail to insert it into Default Shareable Text.
+                Drag or click a member detail to insert it into Default
+                Shareable Text.
               </p>
             </div>
 

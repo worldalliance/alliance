@@ -636,8 +636,6 @@ export class TasksService {
       submitFormDto,
       validatorResults,
       user,
-      undefined,
-      submitFormDto.actionId,
     );
 
     await this.actionsService.completeAction(submitFormDto.actionId, userId, {
@@ -717,26 +715,22 @@ export class TasksService {
     return savedForm;
   }
 
-  async replayGuestSubmissions(
-    guestId: string,
-    userId: number,
-  ): Promise<void> {
+  async replayGuestSubmissions(guestId: string, userId: number): Promise<void> {
     const responses = await this.formResponseRepository.find({
       where: { guest: { id: guestId } },
     });
     for (const response of responses) {
-      if (response.actionId == null) {
+      const action = await this.actionRepository.findOne({
+        where: { taskFormId: response.formId },
+      });
+      if (!action) {
         continue;
       }
       const dto: SubmitFormDto = {
-        actionId: response.actionId,
+        actionId: action.id,
         answers: response.answers,
         schemaSnapshot: response.schemaSnapshot,
-        visibilityValidatorResults:
-          response.visibilityValidatorResults as unknown as Record<
-            number,
-            boolean
-          >,
+        visibilityValidatorResults: response.visibilityValidatorResults,
         deviceType: response.deviceType,
         publicAnswers: response.publicAnswers,
         phDistinctId: response.phDistinctId,
@@ -767,7 +761,6 @@ export class TasksService {
       submitFormDto.visibilityValidatorResults ?? {},
       undefined,
       guestId,
-      submitFormDto.actionId,
     );
   }
 
@@ -816,7 +809,6 @@ export class TasksService {
     validatorResults: Record<string, boolean>,
     user?: User,
     guestId?: string,
-    actionId?: number,
   ): Promise<FormResponse> {
     const formResponse = this.formResponseRepository.create({
       answers: dto.answers,
@@ -830,7 +822,6 @@ export class TasksService {
       sid: dto.sid,
       form,
       formId,
-      actionId,
       user,
       guest: guestId ? { id: guestId } : undefined,
     });

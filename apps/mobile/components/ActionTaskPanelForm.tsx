@@ -83,9 +83,7 @@ const ActionTaskPanelForm = ({
           ? await tasksSubmitPublicForm({
               path: { id: taskFormId },
               body: data,
-              headers: guestToken
-                ? { Authorization: `Bearer ${guestToken}` }
-                : undefined,
+              headers: guestToken ? { "X-Guest-Token": guestToken } : undefined,
             })
           : await tasksSubmitForm({
               path: { id: taskFormId },

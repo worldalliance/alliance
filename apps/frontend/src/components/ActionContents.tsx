@@ -25,6 +25,7 @@ import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLinkIcon } from "lucide-react";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import { useLiveTaskFormAggregateViews } from "../lib/useLiveTaskFormAggregateViews";
@@ -135,7 +136,7 @@ const ActionContents = () => {
       userName: user?.name,
       url,
     });
-    return navigator.clipboard.writeText(text);
+    return copyToClipboard(text);
   };
 
   return (

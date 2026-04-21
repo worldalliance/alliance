@@ -31,6 +31,7 @@ import {
   taskHeaders,
 } from "@alliance/shared/lib/copy";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import {
   buildShareText,
   getCompletedShareableTextTemplate,
@@ -203,7 +204,7 @@ const ActionPageTaskPanel = () => {
       formResponse: effectiveFormResponse,
       url,
     });
-    return navigator.clipboard.writeText(text);
+    return copyToClipboard(text);
   };
   const completedHeader = (
     <div className="flex items-center justify-between">
