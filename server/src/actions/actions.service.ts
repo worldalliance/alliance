@@ -698,6 +698,7 @@ export class ActionsService {
     const response = new ActionSharePreviewDto();
     response.completedByReferrer = false;
     response.firstName = null;
+    response.validReferral = false;
 
     const trimmedCode = shareCode?.trim();
     if (!trimmedCode) {
@@ -716,6 +717,7 @@ export class ActionsService {
       return response;
     }
 
+    response.validReferral = true;
     response.firstName = this.getFirstNameForSharePreview(shareUrl.user);
     response.completedByReferrer =
       (await this.getActionRelation(actionId, shareUrl.user.id)) ===

@@ -124,6 +124,9 @@ export class ActionSharePreviewDto {
 
   @ApiProperty({ type: Boolean })
   completedByReferrer: boolean;
+
+  @ApiProperty({ type: Boolean })
+  validReferral: boolean;
 }
 
 export class PreviewEmailHtmlResponse {

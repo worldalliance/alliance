@@ -11,7 +11,7 @@ import ShareButton from "./ShareButton";
 import { ExternalLinkIcon } from "lucide-react";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
-import { useAuth } from "../lib/AuthContext";
+import { actionsGetActionReferralCode } from "@alliance/shared/client";
 
 export interface ActionItemCardProps extends ActionItemCardPropsShared {
   className?: string;
@@ -68,15 +68,19 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   className,
   friendCommitmentActivities,
 }) => {
-  const { user } = useAuth();
   const shouldShowCompletedBar = showCompletedBar(action);
   const stage = getStageMeta(action.status);
 
-  const handleShareAction = useCallback(() => {
-    const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
-    const url = `${getBaseUrl()}/actions/${action.id}${ref}`;
+  const handleShareAction = useCallback(async () => {
+    let url = `${getBaseUrl()}/actions/${action.id}`;
+    const { data: shareCode } = await actionsGetActionReferralCode({
+      path: { id: action.id },
+    });
+    if (shareCode) {
+      url = `${url}?ref=${shareCode}`;
+    }
     return navigator.clipboard.writeText(url);
-  }, [action.id, user?.referralCode]);
+  }, [action.id]);
 
   return (
     <div className={cn("relative p-3 md:p-4 hover:bg-zinc-50", className)}>

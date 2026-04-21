@@ -1595,6 +1595,7 @@ export type SetPriorityDto = {
 export type ActionSharePreviewDto = {
     firstName?: string;
     completedByReferrer: boolean;
+    validReferral: boolean;
 };
 
 export type Form = {

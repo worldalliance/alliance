@@ -91,7 +91,8 @@ export default function ActionPage() {
 
   const { isAuthenticated, user, loading: userLoading } = useAuth();
   const [searchParams] = useSearchParams();
-  const refCode = searchParams.get("ref");
+  const rawRefCode = searchParams.get("ref");
+  const refCode = sharePreview?.validReferral ? rawRefCode : null;
   const signupHref = refCode ? `/signup?ref=${refCode}` : href("/signup");
   const [invitePopupDismissed, setInvitePopupDismissed] = useState(false);
   const [completedPopupDismissed, setCompletedPopupDismissed] = useState(false);
@@ -151,14 +152,12 @@ export default function ActionPage() {
               Log in
             </Link>
           </p>
-          {refCode && (
-            <p>
-              Would you like to join the Alliance?{" "}
-              <Link to={`/signup?ref=${refCode}`} className="text-link">
-                Invite link
-              </Link>
-            </p>
-          )}
+          <p>
+            Would you like to join the Alliance?{" "}
+            <Link to={signupHref} className="text-link">
+              Sign up
+            </Link>
+          </p>
         </div>
       </div>
     );
@@ -274,6 +273,7 @@ export default function ActionPage() {
               {
                 action,
                 userRelation: action.userRelation ?? null,
+                referralCode: refCode,
                 sharePreviewFirstName: sharePreview?.firstName ?? null,
                 showReferralTaskPanel,
                 referralPanelAnimationNonce,

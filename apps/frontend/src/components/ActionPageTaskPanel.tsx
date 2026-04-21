@@ -11,11 +11,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { ArrowRight, Link2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-  isRouteErrorResponse,
-  useOutletContext,
-  useSearchParams,
-} from "react-router";
+import { isRouteErrorResponse, useOutletContext } from "react-router";
 import { Link } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import { ActionTaskPanelPropsShared } from "@alliance/shared/lib/actionTaskPanel";
@@ -65,6 +61,7 @@ export interface TaskPanelContext extends Omit<
 > {
   publicMode: boolean;
   userRelation: UserActionRelation | null;
+  referralCode?: string | null;
   sharePreviewFirstName?: string | null;
   showReferralTaskPanel?: boolean;
   referralPanelAnimationNonce?: number;
@@ -144,6 +141,7 @@ const ActionPageTaskPanel = () => {
   const {
     userRelation,
     action,
+    referralCode,
     sharePreviewFirstName,
     showReferralTaskPanel = false,
     referralPanelAnimationNonce = 0,
@@ -157,8 +155,7 @@ const ActionPageTaskPanel = () => {
     useState<FormResponseDto | null>(null);
   const [showGuestJoinPrompt, setShowGuestJoinPrompt] = useState(false);
   const [animateReferralPanel, setAnimateReferralPanel] = useState(false);
-  const [searchParams] = useSearchParams();
-  const refCode = searchParams.get("ref");
+  const refCode = referralCode ?? null;
   const signupHref = refCode ? `/signup?ref=${refCode}` : null;
 
   const state = getActionPageTaskPanelState({
