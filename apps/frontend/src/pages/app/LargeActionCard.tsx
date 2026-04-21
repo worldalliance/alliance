@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { href, useNavigate } from "react-router";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -63,13 +63,22 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
     setState(LargeActionCardState.Default);
   }, [action]);
 
+  const exitTimeoutsRef = useRef<number[]>([]);
+  useEffect(() => {
+    return () => {
+      exitTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
+      exitTimeoutsRef.current = [];
+    };
+  }, []);
+
   const handleUpdateActionState = useCallback(() => {
-    setTimeout(() => {
+    const closeId = window.setTimeout(() => {
       setState(LargeActionCardState.Closed);
     }, TASK_COMPLETE_CONFETTI_LEAD_MS);
-    setTimeout(() => {
+    const updateId = window.setTimeout(() => {
       onUpdateActionState();
     }, TASK_COMPLETE_CONFETTI_LEAD_MS + TASK_COMPLETE_EXIT_MS);
+    exitTimeoutsRef.current.push(closeId, updateId);
   }, [onUpdateActionState]);
 
   const handleCompleteAction = useCallback(async () => {

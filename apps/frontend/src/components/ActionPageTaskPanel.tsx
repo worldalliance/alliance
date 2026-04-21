@@ -24,7 +24,11 @@ import {
   getActionPageTaskPanelState,
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
-import { clipboardCopy, taskHeaders } from "@alliance/shared/lib/copy";
+import {
+  clipboardCopy,
+  guestReferral,
+  taskHeaders,
+} from "@alliance/shared/lib/copy";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import {
   buildShareText,
@@ -153,7 +157,6 @@ const ActionPageTaskPanel = () => {
   const [guestCompleted, setGuestCompleted] = useState(false);
   const [guestFormResponse, setGuestFormResponse] =
     useState<FormResponseDto | null>(null);
-  const [showGuestJoinPrompt, setShowGuestJoinPrompt] = useState(false);
   const [animateReferralPanel, setAnimateReferralPanel] = useState(false);
   const refCode = referralCode ?? null;
   const signupHref = refCode ? `/signup?ref=${refCode}` : null;
@@ -229,28 +232,9 @@ const ActionPageTaskPanel = () => {
       />
     </div>
   );
-  const guestCompletedHeader = (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-x-3">
-        <CheckIcon size={24} />
-        <p>{taskHeaders.actionPage.completed}</p>
-      </div>
-      <ShareButton
-        onClick={handleShareCopy}
-        icon={Link2}
-        label={clipboardCopy.share}
-        copiedLabel={clipboardCopy.copiedToClipboard}
-        className="text-zinc-500 hover:text-zinc-700"
-        iconClassName="w-3.5 h-3.5 shrink-0"
-        labelClassName="text-sm order-first"
-      />
-    </div>
-  );
 
   let taskPanelHeader = taskPanelHeaderByState[state];
-  if (guestCompleted) {
-    taskPanelHeader = guestCompletedHeader;
-  } else if (state === ActionPageTaskPanelState.Completed) {
+  if (guestCompleted || state === ActionPageTaskPanelState.Completed) {
     taskPanelHeader = completedHeader;
   } else if (isNonmemberPublicReferralAction) {
     taskPanelHeader = null;
@@ -322,23 +306,22 @@ const ActionPageTaskPanel = () => {
                   {guestCompleted ? (
                     <>
                       <p className="text-base leading-7 text-zinc-700">
-                        To maintain the integrity of our data, only
-                        member-submitted forms are formally processed.
+                        {guestReferral.completionIntegrityExplanation}
                       </p>
                       <p className="mt-3 text-base leading-7 text-zinc-700">
-                        Want your work to count? Join the Alliance to ensure
-                        your future contributions are acted upon.
+                        {guestReferral.joinToCountContributions}
                       </p>
                     </>
                   ) : (
                     <>
                       <p className="text-lg font-semibold leading-8 text-zinc-900">
-                        {sharePreviewFirstName ?? "Your friend"} has invited you
-                        to try this task.
+                        {guestReferral.inviteToTryTask(
+                          sharePreviewFirstName ??
+                            guestReferral.defaultReferrerName,
+                        )}
                       </p>
                       <p className="mt-3 text-base leading-7 text-zinc-700">
-                        The Alliance is a global group of people cooperating to
-                        improve the world. Join us!
+                        {guestReferral.allianceIntro}
                       </p>
                     </>
                   )}
@@ -357,57 +340,6 @@ const ActionPageTaskPanel = () => {
         bottomCardStyle={bodyStyle}
         bottomCardClassName={bodyPaddingClasses}
       />
-      {guestCompleted &&
-        showGuestJoinPrompt &&
-        signupHref &&
-        isNonmemberPublicReferralAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="guest-completion-popup-title"
-            className="relative w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl"
-          >
-            <button
-              type="button"
-              aria-label="Dismiss completion popup"
-              className="absolute right-4 top-4 text-2xl leading-none text-zinc-400 transition hover:text-zinc-600"
-              onClick={() => setShowGuestJoinPrompt(false)}
-            >
-              ×
-            </button>
-            <div
-              id="guest-completion-popup-title"
-              className="pr-8 text-lg font-semibold leading-8 text-zinc-900"
-            >
-              <p>You&apos;ve completed this task.</p>
-              <p className="mt-3">
-                To maintain the integrity of our data, only member-submitted
-                forms are formally processed.
-              </p>
-              <p className="mt-3">
-                Want your work to count? Join the Alliance to ensure your
-                future contributions are acted upon.
-              </p>
-            </div>
-            <div className="mt-6 flex flex-col items-stretch gap-3">
-              <Link
-                to={signupHref}
-                className="w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
-              >
-                Sign up
-              </Link>
-              <button
-                type="button"
-                onClick={() => setShowGuestJoinPrompt(false)}
-                className="text-sm text-zinc-500 hover:text-zinc-700"
-              >
-                Not now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 

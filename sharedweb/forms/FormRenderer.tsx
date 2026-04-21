@@ -18,7 +18,10 @@ import {
 import { useOutsideClick } from "../../sharedweb/lib/useOutsideClick";
 import Dropdown from "../ui/Dropdown";
 import { cn } from "@alliance/shared/styles/util";
-import { outputFieldPublicToggle } from "@alliance/shared/lib/copy";
+import {
+  guestReferral,
+  outputFieldPublicToggle,
+} from "@alliance/shared/lib/copy";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
 import type {
@@ -1585,7 +1588,7 @@ const FormRenderer = ({
                         className="flex w-full items-center justify-center rounded bg-green px-4 py-2 text-base font-medium text-white hover:bg-[#4d8c1d]"
                         style={{ fontWeight: 450 }}
                       >
-                        Create an account to submit
+                        {guestReferral.createAccountToSubmit}
                       </a>
                     ) : (
                       <div className="w-full">

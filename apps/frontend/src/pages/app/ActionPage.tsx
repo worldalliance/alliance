@@ -28,6 +28,7 @@ import { ActionActivityDetailContext } from "../../components/ActionActivityDeta
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
 import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferral";
 import { getGuestTaskCompletion } from "../../lib/guestTaskCompletion";
+import { guestReferral, taskHeaders } from "@alliance/shared/lib/copy";
 
 export async function loader({
   params,
@@ -233,19 +234,21 @@ export default function ActionPage() {
               className="pr-8 text-2xl font-semibold text-zinc-900"
             >
               {guestCompleted
-                ? "You've completed this task."
-                : `${sharePreview.firstName} has invited you to try this task.`}
+                ? taskHeaders.actionPage.completed
+                : guestReferral.inviteToTryTask(
+                    sharePreview.firstName ??
+                      guestReferral.defaultReferrerName,
+                  )}
             </h2>
             <p className="mt-4 text-base leading-7 text-zinc-700">
               {guestCompleted
-                ? "To maintain the integrity of our data, only member-submitted forms are formally processed."
-                : "The Alliance is a global group of people cooperating to improve the world. Join us!"}
+                ? guestReferral.completionIntegrityExplanation
+                : guestReferral.allianceIntro}
             </p>
             {guestCompleted ? (
               <>
                 <p className="mt-4 text-base leading-7 text-zinc-700">
-                  Want your work to count? Join the Alliance to ensure your
-                  future contributions are acted upon.
+                  {guestReferral.joinToCountContributions}
                 </p>
                 <Link
                   to={signupHref}
@@ -260,7 +263,7 @@ export default function ActionPage() {
                 className="mt-6 inline-flex w-full justify-center rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
                 onClick={handleTryOutTask}
               >
-                Try out this task
+                {guestReferral.tryOutTaskButton}
               </button>
             )}
           </div>

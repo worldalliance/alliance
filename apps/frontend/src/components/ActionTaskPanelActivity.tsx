@@ -5,6 +5,7 @@ import ConfettiWrapper from "@alliance/sharedweb/ui/ConfettiWrapper";
 import { CardStyle } from "@alliance/shared/styles/card";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router";
+import { guestReferral } from "@alliance/shared/lib/copy";
 
 interface ActionTaskPanelActivityProps {
   action: ActionDto;
@@ -35,7 +36,7 @@ const ActionTaskPanelActivity = ({
               to={createAccountHref}
               className="inline-flex items-center rounded-full bg-green px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green/90"
             >
-              Create an account to submit
+              {guestReferral.createAccountToSubmit}
             </Link>
           ) : (
             <ConfettiWrapper

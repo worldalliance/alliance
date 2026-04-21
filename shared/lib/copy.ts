@@ -184,6 +184,20 @@ export const clipboardCopy = {
   inClipboard: "in clipboard",
 } as const;
 
+export const guestReferral = {
+  inviteToTryTask: (firstName: string) =>
+    `${firstName} has invited you to try this task.`,
+  defaultReferrerName: "Your friend",
+  allianceIntro:
+    "The Alliance is a global group of people cooperating to improve the world. Join us!",
+  tryOutTaskButton: "Try out this task",
+  completionIntegrityExplanation:
+    "To maintain the integrity of our data, only member-submitted forms are formally processed.",
+  joinToCountContributions:
+    "Want your work to count? Join the Alliance to ensure your future contributions are acted upon.",
+  createAccountToSubmit: "Create an account to submit",
+} as const;
+
 export const suspendContractConfirmation =
   "Are you sure you want to suspend your contract? You will be removed from your groups.";
 

@@ -120,7 +120,7 @@ export class PreviewTextMessageResponse {
 
 export class ActionSharePreviewDto {
   @ApiPropertyOptional()
-  firstName?: string | null;
+  firstName?: string;
 
   @ApiProperty({ type: Boolean })
   completedByReferrer: boolean;

@@ -513,7 +513,7 @@ export class ActionsController {
     return this.actionsService.getSharePreview(id, shareCode);
   }
 
-  @Get(':id/referralCode')
+  @Post(':id/referralCode')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: String })
   async getActionReferralCode(

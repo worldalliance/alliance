@@ -697,7 +697,6 @@ export class ActionsService {
 
     const response = new ActionSharePreviewDto();
     response.completedByReferrer = false;
-    response.firstName = null;
     response.validReferral = false;
 
     const trimmedCode = shareCode?.trim();
@@ -730,36 +729,11 @@ export class ActionsService {
     actionId: number,
     userId: number,
   ): Promise<string> {
-    const existing = await this.actionShareUrlRepository.findOne({
-      where: {
-        action: { id: actionId },
-        user: { id: userId },
-      },
-    });
-    if (existing?.sid) {
-      return existing.sid;
-    }
-
-    await this.getShareLink(actionId, userId);
-    const created = await this.actionShareUrlRepository.findOne({
-      where: {
-        action: { id: actionId },
-        user: { id: userId },
-      },
-    });
-    if (!created?.sid) {
+    const shareUrl = await this.getOrCreateActionShareUrl(actionId, userId);
+    if (!shareUrl.sid) {
       throw new BadRequestException('Unable to create share code');
     }
-    return created.sid;
-  }
-
-  async findShareUrlBySid(sid: string): Promise<ActionShareUrl | null> {
-    const trimmed = sid.trim();
-    if (!trimmed) return null;
-    return this.actionShareUrlRepository.findOne({
-      where: { sid: trimmed },
-      relations: { user: true, action: true },
-    });
+    return shareUrl.sid;
   }
 
   private getFirstNameForSharePreview(
@@ -3239,6 +3213,14 @@ export class ActionsService {
   }
 
   async getShareLink(actionId: number, userId: number): Promise<string> {
+    const shareUrl = await this.getOrCreateActionShareUrl(actionId, userId);
+    return shareUrl.url;
+  }
+
+  private async getOrCreateActionShareUrl(
+    actionId: number,
+    userId: number,
+  ): Promise<ActionShareUrl> {
     const existing = await this.actionShareUrlRepository.findOne({
       where: {
         action: { id: actionId },
@@ -3246,7 +3228,7 @@ export class ActionsService {
       },
     });
     if (existing) {
-      return existing.url;
+      return existing;
     }
 
     const sid = this.generateCIDForShareUrl();
@@ -3259,7 +3241,7 @@ export class ActionsService {
       throw new BadRequestException('specified action not found');
     }
 
-    const shareUrl = await this.actionShareUrlRepository.create({
+    const shareUrl = this.actionShareUrlRepository.create({
       url,
       user: { id: userId },
       action,
@@ -3269,8 +3251,7 @@ export class ActionsService {
       },
     });
 
-    await this.actionShareUrlRepository.save(shareUrl);
-    return shareUrl.url;
+    return this.actionShareUrlRepository.save(shareUrl);
   }
 
   async getShareLinksForForm(formId: number): Promise<ShareUrlDto[]> {

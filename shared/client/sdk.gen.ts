@@ -1465,7 +1465,7 @@ export const actionsGetSharePreview = <ThrowOnError extends boolean = false>(opt
 };
 
 export const actionsGetActionReferralCode = <ThrowOnError extends boolean = false>(options: Options<ActionsGetActionReferralCodeData, ThrowOnError>) => {
-    return (options.client ?? _heyApiClient).get<ActionsGetActionReferralCodeResponse, unknown, ThrowOnError>({
+    return (options.client ?? _heyApiClient).post<ActionsGetActionReferralCodeResponse, unknown, ThrowOnError>({
         url: '/actions/{id}/referralCode',
         ...options
     });
