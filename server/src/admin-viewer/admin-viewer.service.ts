@@ -841,12 +841,20 @@ export class AdminViewerService {
         params.push(trimmedValue);
         return `"${column.name}"::text ILIKE $${params.length}`;
       }
+      case ColumnDataType.RELATION: {
+        const numericFk = Number(trimmedValue);
+        if (!Number.isNaN(numericFk) && Number.isInteger(numericFk)) {
+          params.push(numericFk);
+          return `"${column.name}" = $${params.length}`;
+        }
+        params.push(trimmedValue);
+        return `"${column.name}"::text = $${params.length}`;
+      }
       case ColumnDataType.DATE:
       case ColumnDataType.DATETIME:
       case ColumnDataType.JSON:
       case ColumnDataType.STRING:
-      case ColumnDataType.UNKNOWN:
-      case ColumnDataType.RELATION: {
+      case ColumnDataType.UNKNOWN: {
         params.push(`%${trimmedValue}%`);
         return `"${column.name}"::text ILIKE $${params.length}`;
       }
