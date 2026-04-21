@@ -1,5 +1,4 @@
 import { cn } from "@alliance/shared/styles/util";
-import ConfettiWrapper from "@alliance/sharedweb/ui/ConfettiWrapper";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -55,25 +54,16 @@ export default function ShareButton({
   };
 
   return (
-    <ConfettiWrapper onTrigger={handleClick}>
-      {({ disabled, onClick, onKeyDown, onPointerDown }) => (
-        <button
-          type="button"
-          onClick={onClick}
-          onKeyDown={onKeyDown}
-          onPointerDown={onPointerDown}
-          disabled={disabled}
-          className={cn(
-            "flex items-center gap-x-1 transition-colors disabled:cursor-default",
-            className,
-          )}
-        >
-          <Icon className={iconClassName} />
-          <span className={labelClassName}>
-            {isCopied ? copiedLabel : label}
-          </span>
-        </button>
+    <button
+      type="button"
+      onClick={handleClick}
+      className={cn(
+        "flex items-center gap-x-1 transition-colors disabled:cursor-default",
+        className,
       )}
-    </ConfettiWrapper>
+    >
+      <Icon className={iconClassName} />
+      <span className={labelClassName}>{isCopied ? copiedLabel : label}</span>
+    </button>
   );
 }
