@@ -842,6 +842,16 @@ export class AdminViewerService {
         return `"${column.name}"::text ILIKE $${params.length}`;
       }
       case ColumnDataType.RELATION: {
+        const parts = trimmedValue.split(',').map((p) => p.trim()).filter(Boolean);
+        if (parts.length > 1) {
+          const numerics = parts.map(Number);
+          if (numerics.every((n) => !Number.isNaN(n) && Number.isInteger(n))) {
+            const placeholders = numerics.map((n) => { params.push(n); return `$${params.length}`; });
+            return `"${column.name}" IN (${placeholders.join(', ')})`;
+          }
+          const placeholders = parts.map((p) => { params.push(p); return `$${params.length}`; });
+          return `"${column.name}"::text IN (${placeholders.join(', ')})`;
+        }
         const numericFk = Number(trimmedValue);
         if (!Number.isNaN(numericFk) && Number.isInteger(numericFk)) {
           params.push(numericFk);
