@@ -17,6 +17,52 @@ export interface ActionItemCardProps extends ActionItemCardPropsShared {
   className?: string;
 }
 
+function getStageMeta(status: ActionItemCardPropsShared["action"]["status"]) {
+  switch (status) {
+    case "planned":
+      return {
+        label: "Planned",
+        className: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
+      };
+    case "office_action":
+      return {
+        label: "Pending office action",
+        className: "bg-amber-50 text-amber-800 ring-1 ring-amber-200",
+      };
+    case "member_action":
+      return {
+        label: "Members taking action",
+        className: "bg-green/10 text-green-900 ring-1 ring-green/20",
+      };
+    case "resolution":
+      return {
+        label: "Office reviewing results",
+        className: "bg-orange-50 text-orange-800 ring-1 ring-orange-200",
+      };
+    case "completed":
+      return {
+        label: "Action completed",
+        className: "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200",
+      };
+    case "failed":
+      return {
+        label: "Action failed",
+        className: "bg-red-50 text-red-700 ring-1 ring-red-200",
+      };
+    case "abandoned":
+      return {
+        label: "Action abandoned",
+        className: "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200",
+      };
+    case "draft":
+    default:
+      return {
+        label: "Draft",
+        className: "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200",
+      };
+  }
+}
+
 const ActionItemCard: React.FC<ActionItemCardProps> = ({
   action,
   className,
@@ -24,6 +70,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
 }) => {
   const { user } = useAuth();
   const shouldShowCompletedBar = showCompletedBar(action);
+  const stage = getStageMeta(action.status);
 
   const handleShareAction = useCallback(() => {
     const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
@@ -47,10 +94,24 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
             <div className="flex flex-row items-start gap-x-8">
               <div className="flex-1 flex flex-col">
                 <div className="flex flex-row items-center justify-between gap-x-2">
-                  <p className="font-medium text-black">{action.name}</p>
-                  {action.userRelation === "completed" && (
-                    <CheckIcon size={20} />
-                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-black">{action.name}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
+                        stage.className,
+                      )}
+                    >
+                      {stage.label}
+                    </span>
+                    <span className="flex w-5 justify-center">
+                      {action.userRelation === "completed" && (
+                        <CheckIcon size={20} />
+                      )}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-zinc-500">{action.shortDescription}</p>
               </div>
