@@ -5,6 +5,7 @@ import {
 } from "@alliance/shared/client";
 import {
   useCompletedTaskForm,
+  useGuestTaskForm,
   useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -34,12 +35,7 @@ import {
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
-import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import ShareButton from "./ShareButton";
-import {
-  getGuestTaskCompletion,
-  saveGuestTaskCompletion,
-} from "../lib/guestTaskCompletion";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
@@ -132,15 +128,6 @@ const taskPanelHeaderByState: Record<
 
 const bodyPaddingClasses = "p-4 sm:p-6";
 
-function toDeviceVisibilityTarget(
-  value: string | undefined,
-): DeviceVisibilityTarget | undefined {
-  if (value === "mobile" || value === "tablet" || value === "desktop") {
-    return value;
-  }
-  return undefined;
-}
-
 const ActionPageTaskPanel = () => {
   const {
     userRelation,
@@ -154,8 +141,7 @@ const ActionPageTaskPanel = () => {
   } = useOutletContext<TaskPanelContext>();
 
   const { user, isAuthenticated, loading: userLoading } = useAuth();
-  const [guestCompleted, setGuestCompleted] = useState(false);
-  const [guestFormResponse, setGuestFormResponse] =
+  const [localGuestFormResponse, setLocalGuestFormResponse] =
     useState<FormResponseDto | null>(null);
   const [animateReferralPanel, setAnimateReferralPanel] = useState(false);
   const refCode = referralCode ?? null;
@@ -187,6 +173,10 @@ const ActionPageTaskPanel = () => {
     action,
     shouldLoadCompletedTaskFormByState[state],
   );
+  const fetchedGuestFormResponse = useGuestTaskForm(action, !isAuthenticated);
+  const guestFormResponse =
+    localGuestFormResponse ?? fetchedGuestFormResponse ?? null;
+  const guestCompleted = !isAuthenticated && !!guestFormResponse;
   const effectiveFormResponse = guestFormResponse ?? formResponse ?? undefined;
   const isCompletedPanel =
     state === ActionPageTaskPanelState.Completed || guestCompleted;
@@ -244,27 +234,11 @@ const ActionPageTaskPanel = () => {
     ? completedStyles
     : cardStylesForState(state);
 
-  const handleGuestComplete = () => {
-    setGuestCompleted(true);
-  };
-
   useEffect(() => {
     if (isAuthenticated) {
-      setGuestCompleted(false);
-      setGuestFormResponse(null);
-      return;
+      setLocalGuestFormResponse(null);
     }
-
-    const savedCompletion = getGuestTaskCompletion(action.id);
-    if (!savedCompletion) {
-      setGuestCompleted(false);
-      setGuestFormResponse(null);
-      return;
-    }
-
-    setGuestCompleted(true);
-    setGuestFormResponse(savedCompletion.formResponse);
-  }, [action.id, isAuthenticated]);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     onGuestCompletionChange?.(guestCompleted);
@@ -374,7 +348,7 @@ const ActionPageTaskPanel = () => {
           userRelation="none"
           action={action}
           {...panelHandlers}
-          onCompleteAction={guestMode ? handleGuestComplete : panelHandlers.onCompleteAction}
+          onCompleteAction={guestMode ? () => {} : panelHandlers.onCompleteAction}
           disabled={readOnlyGuestPreview || guestCompleted}
           formResponse={effectiveFormResponse}
           guestMode={guestMode}
@@ -386,37 +360,7 @@ const ActionPageTaskPanel = () => {
           forceRenderTask={guestMode || readOnlyGuestPreview}
           redirectOnComplete={!guestMode}
           onFormSubmitted={
-            guestMode
-              ? (response) => {
-                  if (action.taskFormId) {
-                    saveGuestTaskCompletion({
-                      actionId: action.id,
-                      taskFormId: action.taskFormId,
-                      submission: {
-                        actionId: action.id,
-                        answers: response.answers,
-                        schemaSnapshot:
-                          (response.schemaSnapshot as Record<string, unknown>) ??
-                          {},
-                        visibilityValidatorResults:
-                          response.visibilityValidatorResults ?? undefined,
-                        deviceType: toDeviceVisibilityTarget(
-                          response.deviceType ?? undefined,
-                        ),
-                        publicAnswers: response.publicAnswers ?? undefined,
-                        phDistinctId: response.phDistinctId ?? undefined,
-                        sessionReplayUrl:
-                          response.sessionReplayUrl ?? undefined,
-                        sid: response.sid ?? undefined,
-                      },
-                      formResponse: response,
-                      completedAt: response.createdAt ?? new Date().toISOString(),
-                    });
-                  }
-                  setGuestFormResponse(response);
-                  handleGuestComplete();
-                }
-              : undefined
+            guestMode ? (response) => setLocalGuestFormResponse(response) : undefined
           }
         />,
       );

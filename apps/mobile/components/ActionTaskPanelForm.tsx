@@ -14,6 +14,7 @@ import { usePostHog } from "posthog-react-native";
 import Text from "./system/Text";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../lib/AuthContext";
+import { ensureGuestToken } from "../lib/guestSession";
 
 interface ActionTaskPanelFormProps {
   taskFormId: number;
@@ -77,10 +78,14 @@ const ActionTaskPanelForm = ({
     ? async (data: SubmitFormDto) => {
         setError(null);
 
+        const guestToken = publicAction ? await ensureGuestToken() : null;
         const response = publicAction
           ? await tasksSubmitPublicForm({
               path: { id: taskFormId },
               body: data,
+              headers: guestToken
+                ? { Authorization: `Bearer ${guestToken}` }
+                : undefined,
             })
           : await tasksSubmitForm({
               path: { id: taskFormId },

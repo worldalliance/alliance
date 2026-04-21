@@ -5,6 +5,7 @@ import {
   IsEmail,
   IsOptional,
   IsEnum,
+  IsString,
   Allow,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -36,4 +37,9 @@ export class SignUpDto {
   @IsOptional()
   @ApiPropertyOptional()
   readonly referralCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional()
+  readonly guestToken?: string;
 }

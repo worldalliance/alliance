@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -13,9 +15,15 @@ import { type PWResetJwtPayload, UserService } from '../user/user.service';
 import { AuthTokens } from './dto/authtokens.dto';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInResponseDto } from './dto/signin.dto';
-import { type JwtPayload, JWTTokenType } from './guards/jwtreq';
+import {
+  type GuestJwtPayload,
+  type JwtPayload,
+  JWTTokenType,
+} from './guards/jwtreq';
 import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
 import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
+import { Guest } from './entities/guest.entity';
+import { TasksService } from 'src/tasks/tasks.service';
 
 @Injectable()
 export class AuthService {
@@ -25,10 +33,16 @@ export class AuthService {
     private mailService: MailService,
     @InjectRepository(ActionShareUrl)
     private actionShareUrlRepository: Repository<ActionShareUrl>,
+    @InjectRepository(Guest)
+    private guestRepository: Repository<Guest>,
+    @Inject(forwardRef(() => TasksService))
+    private tasksService: TasksService,
   ) {}
 
   public static ACCESS_COOKIE = 'access_token';
   public static REFRESH_COOKIE = 'refresh_token';
+  public static GUEST_COOKIE = 'guest_token';
+  private static GUEST_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
   setAuthCookies(res: Response, access: string, refresh?: string) {
     const prod = process.env.NODE_ENV === 'production';
@@ -54,6 +68,80 @@ export class AuthService {
   clearAuthCookies(res: Response) {
     res.clearCookie(AuthService.ACCESS_COOKIE, { path: '/' });
     res.clearCookie(AuthService.REFRESH_COOKIE, { path: '/' });
+  }
+
+  setGuestCookie(res: Response, token: string) {
+    const prod = process.env.NODE_ENV === 'production';
+    res.cookie(AuthService.GUEST_COOKIE, token, {
+      httpOnly: true,
+      secure: prod,
+      sameSite: 'strict',
+      path: '/',
+      maxAge: AuthService.GUEST_COOKIE_MAX_AGE_MS,
+    });
+  }
+
+  clearGuestCookie(res: Response) {
+    res.clearCookie(AuthService.GUEST_COOKIE, { path: '/' });
+  }
+
+  async createGuestSession(
+    existingToken?: string,
+  ): Promise<{ guestId: string; guestToken: string }> {
+    if (existingToken) {
+      const payload = await this.verifyGuestToken(existingToken);
+      if (payload) {
+        const existing = await this.guestRepository.findOne({
+          where: { id: payload.sub },
+        });
+        if (existing) {
+          return { guestId: existing.id, guestToken: existingToken };
+        }
+      }
+    }
+    const guest = await this.guestRepository.save(
+      this.guestRepository.create(),
+    );
+    const payload: GuestJwtPayload = {
+      sub: guest.id,
+      tokenType: JWTTokenType.guest,
+    };
+    const guestToken = await this.jwtService.signAsync(payload, {
+      expiresIn: '30d',
+    });
+    return { guestId: guest.id, guestToken };
+  }
+
+  async verifyGuestToken(token: string): Promise<GuestJwtPayload | null> {
+    try {
+      const payload = await this.jwtService.verifyAsync<GuestJwtPayload>(
+        token,
+        {
+          secret: process.env.JWT_SECRET,
+        },
+      );
+      if (payload.tokenType !== JWTTokenType.guest) {
+        return null;
+      }
+      return payload;
+    } catch {
+      return null;
+    }
+  }
+
+  async mergeGuestIntoUser(guestId: string, userId: number): Promise<void> {
+    await this.tasksService.replayGuestSubmissions(guestId, userId);
+    await this.guestRepository.delete({ id: guestId });
+  }
+
+  async mergeGuestFromToken(
+    guestToken: string | undefined,
+    userId: number,
+  ): Promise<void> {
+    if (!guestToken) return;
+    const payload = await this.verifyGuestToken(guestToken);
+    if (!payload) return;
+    await this.mergeGuestIntoUser(payload.sub, userId);
   }
 
   /**
@@ -139,7 +227,7 @@ export class AuthService {
     email: string,
     password: string,
     adminOnly: boolean = false,
-  ): Promise<SignInResponseDto & AuthTokens> {
+  ): Promise<SignInResponseDto & AuthTokens & { userId: number }> {
     const user = await this.usersService.findOneByEmail(email);
 
     if (!user) {
@@ -158,6 +246,7 @@ export class AuthService {
       access_token: await this.generateAccessToken(user),
       refresh_token: await this.generateRefreshToken(user),
       isAdmin: user.admin,
+      userId: user.id,
     };
   }
 

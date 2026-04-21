@@ -4,6 +4,7 @@ import { Type } from 'class-transformer';
 import { Allow, IsDefined, IsOptional } from 'class-validator';
 import { User } from 'src/user/entities/user.entity';
 import {
+  Check,
   Column,
   Entity,
   Index,
@@ -12,11 +13,13 @@ import {
 } from 'typeorm';
 import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 import type { DeviceVisibilityTarget } from '@alliance/common/forms/device';
+import { Guest } from 'src/auth/entities/guest.entity';
 import { Form } from './form.entity';
 import type { Relation } from 'src/utils/Repository';
 
 @Entity()
 @Index(['user', 'formId'])
+@Check(`NOT ("userId" IS NOT NULL AND "guestId" IS NOT NULL)`)
 export class FormResponse {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -27,6 +30,11 @@ export class FormResponse {
   @ApiProperty()
   @IsDefined()
   formId: number;
+
+  @Column({ type: 'int', nullable: true })
+  @ApiPropertyOptional()
+  @IsOptional()
+  actionId?: number;
 
   @ManyToOne(() => Form, (f) => f.responses, { onDelete: 'CASCADE' })
   @IsDefined()
@@ -63,6 +71,12 @@ export class FormResponse {
   @IsOptional()
   @Type(() => User)
   user?: Relation<User>;
+
+  @ApiPropertyOptional({ type: () => Guest })
+  @ManyToOne(() => Guest, { onDelete: 'CASCADE', nullable: true })
+  @IsOptional()
+  @Type(() => Guest)
+  guest?: Ty<Guest>;
 
   @Column({ type: 'text', nullable: true })
   @ApiPropertyOptional()

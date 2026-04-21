@@ -27,8 +27,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ActionActivityDetailContext } from "../../components/ActionActivityDetail";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
 import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferral";
-import { getGuestTaskCompletion } from "../../lib/guestTaskCompletion";
+import { useGuestTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import { guestReferral, taskHeaders } from "@alliance/shared/lib/copy";
+import { X } from "lucide-react";
 
 export async function loader({
   params,
@@ -86,7 +87,9 @@ export default function ActionPage() {
   const { id: idParam } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { sharePreview } = useLoaderData() as Awaited<ReturnType<typeof loader>>;
+  const { sharePreview } = useLoaderData() as Awaited<
+    ReturnType<typeof loader>
+  >;
   useNavbarOptions({ whiteBackground: true });
   const actionId = parseInt(idParam!);
 
@@ -130,14 +133,15 @@ export default function ActionPage() {
 
   const publicMode = !isAuthenticated;
 
+  const guestFormResponse = useGuestTaskForm(action ?? null, !isAuthenticated);
+
   useEffect(() => {
     if (isAuthenticated) {
       setGuestCompleted(false);
       return;
     }
-
-    setGuestCompleted(!!getGuestTaskCompletion(actionId));
-  }, [actionId, isAuthenticated]);
+    setGuestCompleted(!!guestFormResponse);
+  }, [isAuthenticated, guestFormResponse]);
 
   if (!action && !loading && !user && !userLoading) {
     return (
@@ -185,8 +189,7 @@ export default function ActionPage() {
     isAuthenticated,
     userLoading,
   });
-  const showHeaderSignupButton =
-    publicMode && isNonmemberPublicReferralAction;
+  const showHeaderSignupButton = publicMode && isNonmemberPublicReferralAction;
   const showInvitePopup =
     isNonmemberPublicReferralAction &&
     !!sharePreview?.firstName &&
@@ -227,7 +230,7 @@ export default function ActionPage() {
                 setInvitePopupDismissed(true);
               }}
             >
-              ×
+              <X />
             </button>
             <h2
               id="referral-invite-popup-title"
@@ -236,8 +239,7 @@ export default function ActionPage() {
               {guestCompleted
                 ? taskHeaders.actionPage.completed
                 : guestReferral.inviteToTryTask(
-                    sharePreview.firstName ??
-                      guestReferral.defaultReferrerName,
+                    sharePreview.firstName ?? guestReferral.defaultReferrerName,
                   )}
             </h2>
             <p className="mt-4 text-base leading-7 text-zinc-700">

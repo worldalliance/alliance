@@ -4,6 +4,7 @@ export type SignInDto = {
     mode: 'cookie' | 'header';
     email: string;
     password: string;
+    guestToken?: string;
 };
 
 export type SignInResponseDto = {
@@ -20,6 +21,7 @@ export type SignUpDto = {
     password: string;
     mode: TokenMode;
     referralCode?: string;
+    guestToken?: string;
 };
 
 export type AuthTokens = {
@@ -128,6 +130,11 @@ export type EditableContent = {
     attachments: Array<string>;
 };
 
+export type Guest = {
+    id: string;
+    createdAt: string;
+};
+
 export type FormResponse = {
     id: number;
     formId: number;
@@ -142,6 +149,7 @@ export type FormResponse = {
     };
     deviceType?: string;
     user?: User;
+    guest?: Guest;
     sessionReplayUrl?: string;
     createdAt: string;
     phDistinctId?: string;
@@ -689,6 +697,16 @@ export type UserDto = {
 export type AuthMeResponseDto = {
     user: UserDto;
     isImpersonation?: boolean;
+};
+
+export type CreateGuestSessionDto = {
+    mode: 'cookie' | 'header';
+    guestToken?: string;
+};
+
+export type GuestSessionResponseDto = {
+    guestId: string;
+    guestToken?: string;
 };
 
 export type ForgotPasswordDto = {
@@ -3033,6 +3051,19 @@ export type AuthLogoutData = {
 export type AuthLogoutResponses = {
     200: unknown;
 };
+
+export type AuthCreateGuestSessionData = {
+    body: CreateGuestSessionDto;
+    path?: never;
+    query?: never;
+    url: '/auth/guest-session';
+};
+
+export type AuthCreateGuestSessionResponses = {
+    200: GuestSessionResponseDto;
+};
+
+export type AuthCreateGuestSessionResponse = AuthCreateGuestSessionResponses[keyof AuthCreateGuestSessionResponses];
 
 export type AuthForgotPasswordData = {
     body: ForgotPasswordDto;
@@ -6895,6 +6926,21 @@ export type TasksGetMyFormResponseResponses = {
 };
 
 export type TasksGetMyFormResponseResponse = TasksGetMyFormResponseResponses[keyof TasksGetMyFormResponseResponses];
+
+export type TasksGetGuestFormResponseData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/tasks/guestResponse/{id}';
+};
+
+export type TasksGetGuestFormResponseResponses = {
+    200: FormResponseDto;
+};
+
+export type TasksGetGuestFormResponseResponse = TasksGetGuestFormResponseResponses[keyof TasksGetGuestFormResponseResponses];
 
 export type TasksGetFormData = {
     body?: never;

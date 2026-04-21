@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserModule } from '../user/user.module';
 import { JwtModule } from '@nestjs/jwt';
@@ -8,6 +8,8 @@ import { MailModule } from 'src/mail/mail.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
+import { Guest } from './entities/guest.entity';
+import { TasksModule } from 'src/tasks/tasks.module';
 
 @Module({
   imports: [
@@ -21,10 +23,11 @@ import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
         signOptions: { expiresIn: '1d' },
       }),
     }),
-    TypeOrmModule.forFeature([User, ActionShareUrl]),
+    TypeOrmModule.forFeature([User, ActionShareUrl, Guest]),
+    forwardRef(() => TasksModule),
   ],
   providers: [AuthService],
   controllers: [AuthController],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

@@ -3,7 +3,10 @@ import {
   Body,
   Controller,
   Delete,
+  forwardRef,
   Get,
+  Inject,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -14,9 +17,15 @@ import {
 import { ApiOkResponse } from '@nestjs/swagger';
 import { ActionActivityDto, OptOutActionDto } from 'src/actions/dto/action.dto';
 import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
+import {
+  AuthGuard,
+  extractGuestTokenFromCookie,
+  extractTokenFromHeader,
+} from 'src/auth/guards/auth.guard';
 import type { JwtRequest } from 'src/auth/guards/jwtreq';
 import { Public } from 'src/auth/public.decorator';
+import { AuthService } from 'src/auth/auth.service';
+import type { Request as ExpressRequest } from 'express';
 import {
   CreateCustomValidatorDto,
   CreateCustomValidatorResponseDto,
@@ -39,7 +48,11 @@ import { TasksService } from './tasks.service';
 
 @Controller('tasks')
 export class TasksController {
-  constructor(private readonly tasksService: TasksService) {}
+  constructor(
+    private readonly tasksService: TasksService,
+    @Inject(forwardRef(() => AuthService))
+    private readonly authService: AuthService,
+  ) {}
 
   @Post('submitForm/:id')
   @UseGuards(AuthGuard)
@@ -56,10 +69,16 @@ export class TasksController {
   @Public()
   @ApiOkResponse({ type: FormResponseDto })
   async submitPublicForm(
+    @Request() req: ExpressRequest,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
-    return this.tasksService.submitFormPublic(+id, body);
+    const token =
+      extractTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
+    const guestPayload = token
+      ? await this.authService.verifyGuestToken(token)
+      : null;
+    return this.tasksService.submitFormPublic(+id, body, guestPayload?.sub);
   }
 
   @Post('submitFollowUpForm/:followUpFormId')
@@ -108,6 +127,24 @@ export class TasksController {
     @Request() req: JwtRequest,
   ) {
     return this.tasksService.getMyFormResponse(req.user.sub, id);
+  }
+
+  @Get('guestResponse/:id')
+  @Public()
+  @ApiOkResponse({ type: FormResponseDto })
+  async getGuestFormResponse(
+    @Request() req: ExpressRequest,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<FormResponseDto> {
+    const token =
+      extractTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
+    const guestPayload = token
+      ? await this.authService.verifyGuestToken(token)
+      : null;
+    if (!guestPayload) {
+      throw new NotFoundException('No guest session');
+    }
+    return this.tasksService.getGuestFormResponse(guestPayload.sub, id);
   }
 
   @Get('slug/:id')

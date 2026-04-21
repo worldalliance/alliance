@@ -3,6 +3,7 @@ import type { Request } from 'express';
 export enum JWTTokenType {
     access = 'access',
     refresh = 'refresh',
+    guest = 'guest',
 }
 
 export interface JwtRequest extends Request {
@@ -13,5 +14,10 @@ export interface JwtPayload {
     email: string;
     tokenType: JWTTokenType;
     isImpersonation?: boolean;
+}
+
+export interface GuestJwtPayload {
+    sub: string;
+    tokenType: JWTTokenType.guest;
 }
 

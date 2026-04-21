@@ -7,6 +7,10 @@ import {
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { authRegister } from "@alliance/shared/client";
+import {
+  clearGuestToken,
+  getStoredGuestToken,
+} from "../../lib/guestSession";
 import Button from "../../components/system/Button";
 import Input from "../../components/system/Input";
 import PasswordVisibilityToggle from "../../components/system/PasswordVisibilityToggle";
@@ -62,14 +66,19 @@ const SignupScreen = () => {
 
     setIsSubmitting(true);
     try {
+      const guestToken = (await getStoredGuestToken()) ?? undefined;
       await authRegister({
         body: {
           name,
           email,
           password,
           mode: "header",
+          guestToken,
         },
       });
+      if (guestToken) {
+        await clearGuestToken();
+      }
 
       Alert.alert(
         "Registration Successful",

@@ -19,7 +19,6 @@ import React, {
 import posthog from "posthog-js";
 import type { QueryClient } from "@tanstack/react-query";
 import { testAuthUser } from "../stories/testData";
-import { syncGuestTaskCompletions } from "./guestTaskCompletion";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -42,14 +41,6 @@ export const AuthProvider: React.FC<
     const [isImpersonation, setIsImpersonation] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    const syncGuestCompletionsForUser = useCallback(async () => {
-      const { syncedActionIds } = await syncGuestTaskCompletions();
-      if (syncedActionIds.length > 0) {
-        queryClient.clear();
-      }
-      return syncedActionIds.length;
-    }, [queryClient]);
-
     const loadAuthenticatedUser = useCallback(
       async (isCancelled?: () => boolean) => {
         const { data } = await authMe();
@@ -60,19 +51,8 @@ export const AuthProvider: React.FC<
 
         setUser(data.user);
         setIsImpersonation(data.isImpersonation ?? false);
-
-        const syncedCount = await syncGuestCompletionsForUser();
-        if (isCancelled?.()) return;
-
-        if (syncedCount > 0) {
-          const { data: refreshedData } = await authMe();
-          if (refreshedData && !isCancelled?.()) {
-            setUser(refreshedData.user);
-            setIsImpersonation(refreshedData.isImpersonation ?? false);
-          }
-        }
       },
-      [syncGuestCompletionsForUser],
+      [],
     );
 
     useEffect(() => {

@@ -22,6 +22,7 @@ import { usePostHog } from "posthog-react-native";
 import { run } from "@alliance/common/run";
 import type { QueryClient } from "@tanstack/react-query";
 import { SecureStorage, SecureStorageKey } from "./SecureStorage";
+import { clearGuestToken, getStoredGuestToken } from "./guestSession";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -129,9 +130,13 @@ export const AuthProvider: React.FC<
     async (email: string, password: string) => {
       setIsLoading(true);
       try {
+        const guestToken = (await getStoredGuestToken()) ?? undefined;
         const response = await authLogin({
-          body: { email, password, mode: "header" },
+          body: { email, password, mode: "header", guestToken },
         });
+        if (guestToken) {
+          await clearGuestToken();
+        }
 
         if (response.error || !response.data) {
           throw new Error("Login failed");
