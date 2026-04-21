@@ -1,4 +1,8 @@
-import { FormResponseDto, UserActionRelation } from "@alliance/shared/client";
+import {
+  actionsGetActionReferralCode,
+  FormResponseDto,
+  UserActionRelation,
+} from "@alliance/shared/client";
 import {
   useCompletedTaskForm,
   useTaskForm,
@@ -178,8 +182,7 @@ const ActionPageTaskPanel = () => {
   const readOnlyGuestPreview =
     !isAuthenticated &&
     !refCode &&
-    (state === ActionPageTaskPanelState.PublicOnly ||
-      state === ActionPageTaskPanelState.NotAuthenticated);
+    state === ActionPageTaskPanelState.NotAuthenticated;
   const formResponse = useCompletedTaskForm(
     action,
     shouldLoadCompletedTaskFormByState[state],
@@ -195,9 +198,16 @@ const ActionPageTaskPanel = () => {
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
-  const handleShareCopy = () => {
-    const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
-    const url = `${getBaseUrl()}/actions/${action.id}${ref}`;
+  const handleShareCopy = async () => {
+    let url = `${getBaseUrl()}/actions/${action.id}`;
+    if (isAuthenticated) {
+      const { data: shareCode } = await actionsGetActionReferralCode({
+        path: { id: action.id },
+      });
+      if (shareCode) {
+        url = `${url}?ref=${shareCode}`;
+      }
+    }
     const text = buildShareText({
       template: shareTemplate,
       formResponse: effectiveFormResponse,

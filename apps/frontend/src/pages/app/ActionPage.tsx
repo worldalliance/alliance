@@ -1,5 +1,7 @@
-import { actionsFindOne } from "@alliance/shared/client";
-import { getApiUrl } from "@alliance/sharedweb/lib/config";
+import {
+  actionsFindOne,
+  actionsGetSharePreview,
+} from "@alliance/shared/client";
 import {
   href,
   Link,
@@ -41,21 +43,11 @@ export async function loader({
   const [action, sharePreview] = await Promise.all([
     actionsFindOne({ path: { id: parseInt(id) } }),
     refCode
-      ? fetch(
-          `${getApiUrl()}/actions/${id}/sharePreview?${new URLSearchParams({
-            ref: refCode,
-          }).toString()}`,
-        )
-          .then(async (response) => {
-            if (!response.ok) {
-              return null;
-            }
-
-            return (await response.json()) as {
-              firstName?: string | null;
-              completedByReferrer: boolean;
-            };
-          })
+      ? actionsGetSharePreview({
+          path: { id: parseInt(id) },
+          query: { ref: refCode },
+        })
+          .then((res) => res.data ?? null)
           .catch(() => null)
       : Promise.resolve(null),
   ]);

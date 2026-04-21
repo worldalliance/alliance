@@ -508,9 +508,19 @@ export class ActionsController {
   @ApiOkResponse({ type: ActionSharePreviewDto })
   async getSharePreview(
     @Param('id', ParseIntPipe) id: number,
-    @Query('ref') refCode?: string,
+    @Query('ref') shareCode?: string,
   ): Promise<ActionSharePreviewDto> {
-    return this.actionsService.getSharePreview(id, refCode);
+    return this.actionsService.getSharePreview(id, shareCode);
+  }
+
+  @Get(':id/referralCode')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: String })
+  async getActionReferralCode(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: JwtRequest,
+  ): Promise<string> {
+    return this.actionsService.getOrCreateActionReferralCode(id, req.user.sub);
   }
 
   @Get('adminslug/:id')

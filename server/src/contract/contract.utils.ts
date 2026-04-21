@@ -10,6 +10,25 @@ import { NotificationCategory } from 'src/notifs/entities/notification.entity';
 import { groupUrl, profileUrl } from 'src/search/approutes';
 
 /** Community selection strategy per referral source. Extensible for new ReferralSource values. */
+function selectCommunityForLinkReferral(referredBy: User): Community | null {
+  const led = referredBy.communities?.filter((c) =>
+    isCommunityLedBy(c, referredBy.id),
+  );
+  if (!led?.length) {
+    return null;
+  }
+  const byFreeSlots = [...led].sort(
+    (a, b) => getCommunityFreeSlots(b) - getCommunityFreeSlots(a),
+  );
+  return (
+    byFreeSlots[0] ??
+    referredBy.communities?.find(
+      (c) => communityHasCapacity(c) && !isCommunityLedBy(c, referredBy.id),
+    ) ??
+    null
+  );
+}
+
 export const REFERRAL_COMMUNITY_SELECTORS: Record<
   ReferralSource,
   (referredBy: User) => Community | null
@@ -21,24 +40,8 @@ export const REFERRAL_COMMUNITY_SELECTORS: Record<
       ) ?? null
     );
   },
-  [ReferralSource.ReferralLink](referredBy) {
-    const led = referredBy.communities?.filter((c) =>
-      isCommunityLedBy(c, referredBy.id),
-    );
-    if (!led?.length) {
-      return null;
-    }
-    const byFreeSlots = [...led].sort(
-      (a, b) => getCommunityFreeSlots(b) - getCommunityFreeSlots(a),
-    );
-    return (
-      byFreeSlots[0] ??
-      referredBy.communities?.find(
-        (c) => communityHasCapacity(c) && !isCommunityLedBy(c, referredBy.id),
-      ) ??
-      null
-    );
-  },
+  [ReferralSource.ReferralLink]: selectCommunityForLinkReferral,
+  [ReferralSource.ActionShareLink]: selectCommunityForLinkReferral,
 };
 
 export function memberJoinedCommunityNotif(

@@ -50,25 +50,30 @@ export const AuthProvider: React.FC<
       return syncedActionIds.length;
     }, [queryClient]);
 
-    const loadAuthenticatedUser = useCallback(async () => {
-      const { data } = await authMe();
-      if (!data) {
-        throw new Error("No user data");
-      }
-
-      setUser(data.user);
-      setIsImpersonation(data.isImpersonation ?? false);
-
-      const syncedCount = await syncGuestCompletionsForUser();
-
-      if (syncedCount > 0) {
-        const { data: refreshedData } = await authMe();
-        if (refreshedData) {
-          setUser(refreshedData.user);
-          setIsImpersonation(refreshedData.isImpersonation ?? false);
+    const loadAuthenticatedUser = useCallback(
+      async (isCancelled?: () => boolean) => {
+        const { data } = await authMe();
+        if (!data) {
+          throw new Error("No user data");
         }
-      }
-    }, [syncGuestCompletionsForUser]);
+        if (isCancelled?.()) return;
+
+        setUser(data.user);
+        setIsImpersonation(data.isImpersonation ?? false);
+
+        const syncedCount = await syncGuestCompletionsForUser();
+        if (isCancelled?.()) return;
+
+        if (syncedCount > 0) {
+          const { data: refreshedData } = await authMe();
+          if (refreshedData && !isCancelled?.()) {
+            setUser(refreshedData.user);
+            setIsImpersonation(refreshedData.isImpersonation ?? false);
+          }
+        }
+      },
+      [syncGuestCompletionsForUser],
+    );
 
     useEffect(() => {
       if (import.meta.env.PROD) {
@@ -86,17 +91,19 @@ export const AuthProvider: React.FC<
 
     useEffect(() => {
       let cancelled = false;
+      const isCancelled = () => cancelled;
 
       const bootstrap = async () => {
         try {
-          await loadAuthenticatedUser();
+          await loadAuthenticatedUser(isCancelled);
           if (cancelled) {
             return;
           }
         } catch {
           try {
             await authRefreshTokens();
-            await loadAuthenticatedUser();
+            if (cancelled) return;
+            await loadAuthenticatedUser(isCancelled);
             if (cancelled) {
               return;
             }
@@ -112,7 +119,8 @@ export const AuthProvider: React.FC<
       return () => {
         cancelled = true;
       };
-    }, [loadAuthenticatedUser]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const login = useCallback(
       async (email: string, password: string) => {

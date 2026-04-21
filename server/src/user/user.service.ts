@@ -60,6 +60,7 @@ import {
 } from './dto/device.dto';
 import { UserDevice } from './entities/user-device.entity';
 import { LiveActivityRegistration } from 'src/apns/entities/live-activity-registration.entity';
+import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
 import { PushService } from 'src/push/push.service';
 import { Push } from 'src/push/push.entity';
 import { EventLogService } from 'src/eventlog/eventlog.service';
@@ -98,6 +99,8 @@ export class UserService {
     private readonly userDeviceRepository: Repository<UserDevice>,
     @InjectRepository(LiveActivityRegistration)
     private readonly liveActivityRegistrationRepository: Repository<LiveActivityRegistration>,
+    @InjectRepository(ActionShareUrl)
+    private readonly actionShareUrlRepository: Repository<ActionShareUrl>,
     private readonly jwtService: JwtService,
     private readonly imagesService: ImagesService,
     private readonly mailService: MailService,
@@ -228,6 +231,16 @@ export class UserService {
     relations?: Relations<User>,
   ): Promise<User | null> {
     return this.userRepository.findOne({ where: { referralCode }, relations });
+  }
+
+  async findUserByActionShareSid(sid: string): Promise<User | null> {
+    const trimmed = sid.trim();
+    if (!trimmed) return null;
+    const shareUrl = await this.actionShareUrlRepository.findOne({
+      where: { sid: trimmed },
+      relations: { user: true },
+    });
+    return shareUrl?.user ?? null;
   }
 
   async remove(id: number): Promise<void> {

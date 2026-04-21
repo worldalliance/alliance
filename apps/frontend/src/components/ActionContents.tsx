@@ -1,5 +1,5 @@
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import { tasksGetForm } from "@alliance/shared/client";
+import { actionsGetActionReferralCode, tasksGetForm } from "@alliance/shared/client";
 import type { ProfileDto } from "@alliance/shared/client/types.gen";
 import {
   Link,
@@ -46,7 +46,7 @@ const ActionContents = () => {
     context.userRelation,
   );
 
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const loggedInMode = !action.publicOnly;
   const isCompleted = context.userRelation === "completed";
   const formResponse = useCompletedTaskForm(action, isCompleted);
@@ -116,9 +116,16 @@ const ActionContents = () => {
 
   const nextEvent = getNextEvent(action);
 
-  const handleShareAction = () => {
-    const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
-    const url = `${getBaseUrl()}/actions/${action.id}${ref}`;
+  const handleShareAction = async () => {
+    let url = `${getBaseUrl()}/actions/${action.id}`;
+    if (isAuthenticated) {
+      const { data: shareCode } = await actionsGetActionReferralCode({
+        path: { id: action.id },
+      });
+      if (shareCode) {
+        url = `${url}?ref=${shareCode}`;
+      }
+    }
     const text = buildShareText({
       template: shareTemplate,
       formResponse,

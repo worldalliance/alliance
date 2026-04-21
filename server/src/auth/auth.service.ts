@@ -5,6 +5,8 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { MailService } from '../mail/mail.service';
 import { ReferralSource, User } from '../user/entities/user.entity';
 import { type PWResetJwtPayload, UserService } from '../user/user.service';
@@ -13,6 +15,7 @@ import { SignUpDto } from './dto/sign-up.dto';
 import { SignInResponseDto } from './dto/signin.dto';
 import { type JwtPayload, JWTTokenType } from './guards/jwtreq';
 import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
+import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +23,8 @@ export class AuthService {
     private usersService: UserService,
     private jwtService: JwtService,
     private mailService: MailService,
+    @InjectRepository(ActionShareUrl)
+    private actionShareUrlRepository: Repository<ActionShareUrl>,
   ) {}
 
   public static ACCESS_COOKIE = 'access_token';
@@ -74,6 +79,17 @@ export class AuthService {
         invite,
         referringUser: invite.invitingUser,
         referralSource: ReferralSource.OnetimeInvite,
+      };
+    }
+    const shareUrl = await this.actionShareUrlRepository.findOne({
+      where: { sid: referralCode },
+      relations: { user: true },
+    });
+    if (shareUrl?.user) {
+      return {
+        invite: null,
+        referringUser: shareUrl.user,
+        referralSource: ReferralSource.ActionShareLink,
       };
     }
     const referringUser =

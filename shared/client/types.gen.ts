@@ -55,7 +55,7 @@ export type ContractEvent = {
     contract?: Contract | null;
 };
 
-export type ReferralSource = 'referral_link' | 'onetime_invite';
+export type ReferralSource = 'referral_link' | 'onetime_invite' | 'action_share_link';
 
 export type OnetimeInviteStatus = 'request_pending' | 'request_rejected' | 'link_unused' | 'link_used';
 
@@ -1590,6 +1590,11 @@ export type SetGeneralUpdatePriorityDto = {
 export type SetPriorityDto = {
     actionPriorities: Array<SetActionPriorityDto>;
     generalUpdatePriorities: Array<SetGeneralUpdatePriorityDto>;
+};
+
+export type ActionSharePreviewDto = {
+    firstName?: string;
+    completedByReferrer: boolean;
 };
 
 export type Form = {
@@ -5272,6 +5277,38 @@ export type ActionsFindOneResponses = {
 };
 
 export type ActionsFindOneResponse = ActionsFindOneResponses[keyof ActionsFindOneResponses];
+
+export type ActionsGetSharePreviewData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: {
+        ref?: string;
+    };
+    url: '/actions/{id}/sharePreview';
+};
+
+export type ActionsGetSharePreviewResponses = {
+    200: ActionSharePreviewDto;
+};
+
+export type ActionsGetSharePreviewResponse = ActionsGetSharePreviewResponses[keyof ActionsGetSharePreviewResponses];
+
+export type ActionsGetActionReferralCodeData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/{id}/referralCode';
+};
+
+export type ActionsGetActionReferralCodeResponses = {
+    200: string;
+};
+
+export type ActionsGetActionReferralCodeResponse = ActionsGetActionReferralCodeResponses[keyof ActionsGetActionReferralCodeResponses];
 
 export type ActionsFindOneAdminData = {
     body?: never;

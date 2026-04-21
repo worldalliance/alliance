@@ -2,7 +2,11 @@ import { Link, href } from "react-router";
 import { Circle, CircleChevronRight, ArrowRight, Link2 } from "lucide-react";
 import { cn } from "@alliance/shared/styles/util";
 import { type ReactNode } from "react";
-import type { ActionDto, FollowUpForm } from "@alliance/shared/client";
+import {
+  actionsGetActionReferralCode,
+  type ActionDto,
+  type FollowUpForm,
+} from "@alliance/shared/client";
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { useAuth } from "../../lib/AuthContext";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
@@ -160,7 +164,7 @@ export function TaskNavigatorCompletedRow({
   activeFollowUpFormId: number | null;
   onSelectFollowUp: (formId: number) => void;
 }) {
-  const { user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const formResponse = useCompletedTaskForm(action, true);
   const taskForm = useTaskForm(action, true);
   const shareTemplate = getCompletedShareableTextTemplate({
@@ -170,9 +174,16 @@ export function TaskNavigatorCompletedRow({
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
-  const handleShare = () => {
-    const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
-    const url = `${getBaseUrl()}/actions/${action.id}${ref}`;
+  const handleShare = async () => {
+    let url = `${getBaseUrl()}/actions/${action.id}`;
+    if (isAuthenticated) {
+      const { data: shareCode } = await actionsGetActionReferralCode({
+        path: { id: action.id },
+      });
+      if (shareCode) {
+        url = `${url}?ref=${shareCode}`;
+      }
+    }
     const text = buildShareText({
       template: shareTemplate,
       formResponse,

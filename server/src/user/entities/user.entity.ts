@@ -71,6 +71,7 @@ export enum PublicFormResponseDefault {
 export enum ReferralSource {
   ReferralLink = 'referral_link',
   OnetimeInvite = 'onetime_invite',
+  ActionShareLink = 'action_share_link',
 }
 
 @Entity()

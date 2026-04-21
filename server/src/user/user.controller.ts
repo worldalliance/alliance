@@ -488,6 +488,10 @@ export class UserController {
     if (invite) {
       return new ProfileDto(invite.invitingUser);
     }
+    const shareUrlUser = await this.userService.findUserByActionShareSid(code);
+    if (shareUrlUser) {
+      return new ProfileDto(shareUrlUser);
+    }
     const user = await this.userService.findOneByReferralCode(code);
     if (!user) {
       throw new NotFoundException('Referrer not found');

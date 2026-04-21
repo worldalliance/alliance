@@ -27,6 +27,7 @@ import { NotifsModule } from 'src/notifs/notifs.module';
 import { CommunityModule } from 'src/community/community.module';
 import { LiveActivityRegistration } from 'src/apns/entities/live-activity-registration.entity';
 import { ALL_MEMBERS_TAG_NAME } from 'src/constants';
+import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ALL_MEMBERS_TAG_NAME } from 'src/constants';
       User,
       Action,
       ActionActivity,
+      ActionShareUrl,
       City,
       Community,
       CommunityInvite,

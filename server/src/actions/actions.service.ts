@@ -690,7 +690,7 @@ export class ActionsService {
 
   async getSharePreview(
     actionId: number,
-    refCode?: string,
+    shareCode?: string,
   ): Promise<ActionSharePreviewDto> {
     // Match public action visibility before exposing referrer completion state.
     await this.findOne({ id: actionId });
@@ -699,26 +699,65 @@ export class ActionsService {
     response.completedByReferrer = false;
     response.firstName = null;
 
-    const trimmedRefCode = refCode?.trim();
-    if (!trimmedRefCode) {
+    const trimmedCode = shareCode?.trim();
+    if (!trimmedCode) {
       return response;
     }
 
-    const invite = await this.userService.findInviteByCode(trimmedRefCode);
-    const referrer =
-      invite?.invitingUser ??
-      (await this.userService.findOneByReferralCode(trimmedRefCode));
+    const shareUrl = await this.actionShareUrlRepository.findOne({
+      where: {
+        action: { id: actionId },
+        sid: trimmedCode,
+      },
+      relations: { user: true },
+    });
 
-    if (!referrer) {
+    if (!shareUrl?.user) {
       return response;
     }
 
-    response.firstName = this.getFirstNameForSharePreview(referrer);
+    response.firstName = this.getFirstNameForSharePreview(shareUrl.user);
     response.completedByReferrer =
-      (await this.getActionRelation(actionId, referrer.id)) ===
+      (await this.getActionRelation(actionId, shareUrl.user.id)) ===
       UserActionRelation.Completed;
 
     return response;
+  }
+
+  async getOrCreateActionReferralCode(
+    actionId: number,
+    userId: number,
+  ): Promise<string> {
+    const existing = await this.actionShareUrlRepository.findOne({
+      where: {
+        action: { id: actionId },
+        user: { id: userId },
+      },
+    });
+    if (existing?.sid) {
+      return existing.sid;
+    }
+
+    await this.getShareLink(actionId, userId);
+    const created = await this.actionShareUrlRepository.findOne({
+      where: {
+        action: { id: actionId },
+        user: { id: userId },
+      },
+    });
+    if (!created?.sid) {
+      throw new BadRequestException('Unable to create share code');
+    }
+    return created.sid;
+  }
+
+  async findShareUrlBySid(sid: string): Promise<ActionShareUrl | null> {
+    const trimmed = sid.trim();
+    if (!trimmed) return null;
+    return this.actionShareUrlRepository.findOne({
+      where: { sid: trimmed },
+      relations: { user: true, action: true },
+    });
   }
 
   private getFirstNameForSharePreview(

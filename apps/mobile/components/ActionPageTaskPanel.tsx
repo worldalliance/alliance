@@ -2,6 +2,7 @@ import {
   ActionDto,
   UserActionRelation,
 } from "@alliance/shared/client/types.gen";
+import { actionsGetActionReferralCode } from "@alliance/shared/client";
 import {
   ActionPageTaskPanelState,
   cardStylesForState,
@@ -131,8 +132,15 @@ const ActionPageTaskPanel = ({
   });
 
   const handleShareCopy = async () => {
-    const ref = user?.referralCode ? `?ref=${user.referralCode}` : "";
-    const url = `${getBaseUrl()}/actions/${action.id}${ref}`;
+    let url = `${getBaseUrl()}/actions/${action.id}`;
+    if (isAuthenticated) {
+      const { data: shareCode } = await actionsGetActionReferralCode({
+        path: { id: action.id },
+      });
+      if (shareCode) {
+        url = `${url}?ref=${shareCode}`;
+      }
+    }
     const text = buildShareText({
       template: shareTemplate,
       formResponse,
