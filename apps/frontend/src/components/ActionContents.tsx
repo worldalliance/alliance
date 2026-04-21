@@ -1,5 +1,8 @@
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import { actionsGetActionReferralCode, tasksGetForm } from "@alliance/shared/client";
+import {
+  actionsGetActionReferralCode,
+  tasksGetForm,
+} from "@alliance/shared/client";
 import type { ProfileDto } from "@alliance/shared/client/types.gen";
 import {
   Link,
@@ -46,7 +49,7 @@ const ActionContents = () => {
     context.userRelation,
   );
 
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const loggedInMode = !action.publicOnly;
   const isCompleted = context.userRelation === "completed";
   const formResponse = useCompletedTaskForm(action, isCompleted);
