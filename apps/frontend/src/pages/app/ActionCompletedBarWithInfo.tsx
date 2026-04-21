@@ -7,7 +7,7 @@ import {
 import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
 import { href, Link } from "react-router";
 import { cn } from "@alliance/shared/styles/util";
-import { useMemo } from "react";
+import { ReactNode, useMemo } from "react";
 
 interface ActionCompletedBarWithInfoProps extends ActionCompletedBarWithInfoPropsShared {
   className?: string;
@@ -16,6 +16,7 @@ interface ActionCompletedBarWithInfoProps extends ActionCompletedBarWithInfoProp
   showInfoTooltip?: boolean;
   seeAllLink?: boolean;
   dark?: boolean;
+  labelAction?: ReactNode;
 }
 
 const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
@@ -27,6 +28,7 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
   showInfoTooltip = false,
   seeAllLink = false,
   dark = false,
+  labelAction,
 }: ActionCompletedBarWithInfoProps) => {
   const { labelString, percentage } = getCompletedPercentage(action);
 
@@ -49,6 +51,7 @@ const ActionCompletedBarWithInfo: React.FC<ActionCompletedBarWithInfoProps> = ({
           <p className={cn(`text-${textSize}`, `text-${textColor}`)}>
             {labelString}
           </p>
+          {labelAction}
           {showInfoTooltip && (
             <InfoTooltip
               content={
