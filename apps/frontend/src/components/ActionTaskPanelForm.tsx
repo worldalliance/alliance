@@ -80,7 +80,7 @@ const ActionTaskPanelForm = ({
 
   const draftEnabled =
     !formResponse && !disabled && !publicAction && isAuthenticated;
-  const { data: draftFormResponse, isPending: draftPending } = useQuery({
+  const { data: draftFormResponse } = useQuery({
     queryKey: ["linkedGuestDraft", taskFormId],
     queryFn: async () => {
       const response = await tasksGetLinkedGuestDraft({
@@ -93,7 +93,7 @@ const ActionTaskPanelForm = ({
   });
 
   const handleSubmitForm = onCompleteAction
-    ? async (data: SubmitFormDto) => {
+    ? async (data: SubmitFormDto): Promise<boolean> => {
         setError(null);
 
         if (publicAction) {
@@ -127,21 +127,22 @@ const ActionTaskPanelForm = ({
             refreshUser();
           }
           onCompleteAction(false); //tasksSubmitForm handles completion here
-        } else {
-          if ((response.error as Error).message === "Form already submitted") {
-            window.location.reload();
-            return;
-          }
-          console.error(response.error);
-          posthog.captureException(response.error, {
-            event: "form_submit_error",
-            properties: {
-              actionId,
-              $exception_fingerprint: "FormSubmitError",
-            },
-          });
-          setError("Failed to submit action.");
+          return true;
         }
+        if ((response.error as Error).message === "Form already submitted") {
+          window.location.reload();
+          return false;
+        }
+        console.error(response.error);
+        posthog.captureException(response.error, {
+          event: "form_submit_error",
+          properties: {
+            actionId,
+            $exception_fingerprint: "FormSubmitError",
+          },
+        });
+        setError("Failed to submit action.");
+        return false;
       }
     : null;
 
@@ -167,8 +168,8 @@ const ActionTaskPanelForm = ({
     );
   }
 
-  if (!form || (draftEnabled && draftPending)) {
-    if (isPending || draftPending) {
+  if (!form) {
+    if (isPending) {
       return (
         <div
           className={cn(

@@ -232,20 +232,11 @@ export class TasksService {
     form,
     submitFormDto,
     userId,
-    isGuest,
   }: {
     form: Form;
     submitFormDto: SubmitFormDto;
-  } & (
-    | {
-        userId: number;
-        isGuest?: false;
-      }
-    | {
-        userId?: undefined;
-        isGuest: true;
-      }
-  )): Promise<Record<number, boolean>> {
+    userId: number;
+  }): Promise<Record<number, boolean>> {
     const schema = form.schema as unknown as FormSchema;
     const validatorIds = new Set<number>();
 
@@ -286,7 +277,7 @@ export class TasksService {
     }
 
     const validatorResults: Record<number, boolean> = {};
-    if (validatorIds.size > 0 && !isGuest) {
+    if (validatorIds.size > 0) {
       const results = await Promise.all(
         Array.from(validatorIds).map(async (validatorId) => {
           try {
@@ -308,7 +299,7 @@ export class TasksService {
     // Fetch previous form responses for cross-form visibility conditions
     const sourceFormIds = collectSourceFormIds(schema);
     const previousAnswerData: Record<number, Record<string, unknown>> = {};
-    if (sourceFormIds.length > 0 && !isGuest) {
+    if (sourceFormIds.length > 0) {
       const entries = await Promise.all(
         sourceFormIds.map(async (formId) => {
           try {
@@ -739,17 +730,11 @@ export class TasksService {
   }): Promise<FormResponse> {
     const form = await this.getForm(formId);
 
-    const validatorResults = await this.validateFormSubmission({
-      form,
-      submitFormDto,
-      isGuest: true,
-    });
-
     return this.createAndSaveFormResponse({
       form,
       formId,
       dto: submitFormDto,
-      validatorResults,
+      validatorResults: submitFormDto.visibilityValidatorResults ?? {},
       guestId,
     });
   }
@@ -992,8 +977,8 @@ export class TasksService {
   async getGuestFormResponse(
     guestId: string,
     formId: number,
-  ): Promise<FormResponseDto> {
-    return this.formResponseRepository.findOneOrFail({
+  ): Promise<FormResponseDto | null> {
+    return this.formResponseRepository.findOne({
       where: { formId, guest: { id: guestId } },
       order: { createdAt: 'DESC', id: 'DESC' },
     });
@@ -1002,8 +987,8 @@ export class TasksService {
   async getLinkedGuestDraftFormResponse(
     userId: number,
     formId: number,
-  ): Promise<FormResponseDto> {
-    return this.formResponseRepository.findOneOrFail({
+  ): Promise<FormResponseDto | null> {
+    return this.formResponseRepository.findOne({
       where: { formId, guest: { linkedUser: { id: userId } } },
       order: { createdAt: 'DESC', id: 'DESC' },
     });

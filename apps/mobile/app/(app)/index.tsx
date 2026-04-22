@@ -338,7 +338,9 @@ export default function HomeScreen() {
           <LargeActionCard
             action={currentItem.action}
             dismissProps={dismissProps}
-            onUpdateActionState={refetch}
+            onUpdateActionState={() => {
+              refetch();
+            }}
             scrollPageTo={scrollPageTo}
             scrollToEnd={scrollToEnd}
             onSubmitSuccess={handleSubmitSuccess}

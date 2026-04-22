@@ -85,7 +85,7 @@ type FormRendererProps = {
   fieldLabelRightContent?: Record<string, React.ReactNode>;
   /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
   adminPreviewUserId?: string | number;
-  onSubmit: ((data: SubmitFormDto) => Promise<void>) | null; // null for admin preview
+  onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null;
 } & (
   | {
       isGeneralUpdate?: false;
@@ -306,6 +306,10 @@ const FormRenderer = ({
     }
   });
   const formTopRef = useRef<HTMLDivElement>(null);
+  // Precedence: localStorage (active local edits) > draft (guest prefill, may
+  // arrive after mount) > empty. Once either localStorage or a draft is applied,
+  // we lock out later draft applies so we never stomp user edits.
+  const draftLockedRef = useRef(false);
   const [formData, setFormData] = useState<Record<string, FormValue>>(() => {
     if (readOnly) {
       const answers =
@@ -313,10 +317,7 @@ const FormRenderer = ({
       return filterAnswersByFieldIds(answers, fieldLookup);
     }
 
-    // Precedence: localStorage (active local edits) > draft (guest prefill) > empty.
-    const readLocalStorageAnswers = ():
-      | Record<string, FormValue>
-      | null => {
+    const readLocalStorageAnswers = (): Record<string, FormValue> | null => {
       if (typeof window === "undefined" || !persistKey) return null;
       try {
         const raw = window.localStorage.getItem(storageKey);
@@ -336,6 +337,7 @@ const FormRenderer = ({
 
     const localAnswers = readLocalStorageAnswers();
     if (localAnswers) {
+      draftLockedRef.current = true;
       return applyDefaultValues(localAnswers, defaultValueMap);
     }
 
@@ -346,6 +348,7 @@ const FormRenderer = ({
         )
       : null;
     if (draftAnswers && Object.keys(draftAnswers).length > 0) {
+      draftLockedRef.current = true;
       return applyDefaultValues(draftAnswers, defaultValueMap);
     }
 
@@ -642,6 +645,23 @@ const FormRenderer = ({
       cancelled = true;
     };
   }, [previousAnswerSourceFormIds, adminPreviewUserId]);
+
+  // --- Apply guest draft answers when they arrive after mount ---
+  // The draft query is fired in parallel with the form render so we don't
+  // block paint on it; apply it here if the user hasn't started editing and
+  // localStorage didn't already win the initial-state race.
+  useEffect(() => {
+    if (readOnly) return;
+    if (draftLockedRef.current) return;
+    if (!draftFormResponse?.answers) return;
+    const draftAnswers = filterAnswersByFieldIds(
+      draftFormResponse.answers as Record<string, FormValue>,
+      fieldLookup,
+    );
+    if (Object.keys(draftAnswers).length === 0) return;
+    draftLockedRef.current = true;
+    setFormData(applyDefaultValues(draftAnswers, defaultValueMap));
+  }, [draftFormResponse, readOnly, fieldLookup, defaultValueMap]);
 
   // --- Prefill list fields from previous answer data ---
   useEffect(() => {
@@ -975,6 +995,7 @@ const FormRenderer = ({
 
   const ensureStarted = () => {
     if (readOnly) return;
+    draftLockedRef.current = true;
     if (!hasEmittedStart) {
       try {
         onFormStarted?.();
@@ -1122,96 +1143,86 @@ const FormRenderer = ({
   const trackValidationError =
     useFormValidationErrorTracking(formTrackingParams);
 
-  const submitCurrentPage = useCallback(
-    async (options?: { optimistic?: boolean }) => {
-      const optimistic = options?.optimistic ?? false;
-      if (submitting) {
-        return false;
+  const submitCurrentPage = useCallback(async (): Promise<boolean> => {
+    if (submitting) {
+      return false;
+    }
+
+    setSubmitting(true);
+
+    if (readOnly || !onSubmit) {
+      setSubmitting(false);
+      return false;
+    }
+
+    if (!isLastPage) {
+      const result = await validatePage(currentPageIndex, true);
+      if (result.isValid) {
+        setCurrentPageIndex((prev) => prev + 1);
+      } else {
+        trackValidationError(result.firstInvalidFieldId);
       }
+      setSubmitting(false);
+      return false;
+    }
 
-      setSubmitting(true);
-
-      if (readOnly || !onSubmit) {
-        setSubmitting(false);
-        return false;
+    const { isValid, firstInvalidPageIndex, firstInvalidFieldId } =
+      await validateAllPages();
+    if (!isValid) {
+      trackValidationError(firstInvalidFieldId);
+      if (
+        typeof firstInvalidPageIndex === "number" &&
+        firstInvalidPageIndex !== currentPageIndex
+      ) {
+        setCurrentPageIndex(firstInvalidPageIndex);
       }
+      setSubmitting(false);
+      return false;
+    }
 
-      if (!isLastPage) {
-        const result = await validatePage(currentPageIndex, true);
-        if (result.isValid) {
-          setCurrentPageIndex((prev) => prev + 1);
-        } else {
-          trackValidationError(result.firstInvalidFieldId);
-        }
-        setSubmitting(false);
-        return false;
-      }
+    const sanitizedAnswers = filterAnswersByFieldIds(formData, fieldLookup);
 
-      const { isValid, firstInvalidPageIndex, firstInvalidFieldId } =
-        await validateAllPages();
-      if (!isValid) {
-        trackValidationError(firstInvalidFieldId);
-        if (
-          typeof firstInvalidPageIndex === "number" &&
-          firstInvalidPageIndex !== currentPageIndex
-        ) {
-          setCurrentPageIndex(firstInvalidPageIndex);
-        }
-        setSubmitting(false);
-        return false;
-      }
+    const sid = searchParams.get("sid");
 
-      const sanitizedAnswers = filterAnswersByFieldIds(formData, fieldLookup);
-
-      const sid = searchParams.get("sid");
-
-      const submissionPayload: SubmitFormDto = {
-        answers: sanitizedAnswers,
-        schemaSnapshot: form as unknown as Record<string, unknown>,
-        actionId,
-        visibilityValidatorResults,
-        deviceType,
-        publicAnswers: resolvedPublicAnswers,
-        phDistinctId,
-        sessionReplayUrl,
-        sid: sid ?? undefined,
-      };
-
-      if (optimistic) {
-        void onSubmit(submissionPayload).finally(() => {
-          setSubmitting(false);
-        });
-        return true;
-      }
-
-      try {
-        await onSubmit(submissionPayload);
-        return true;
-      } finally {
-        setSubmitting(false);
-      }
-    },
-    [
+    const submissionPayload: SubmitFormDto = {
+      answers: sanitizedAnswers,
+      schemaSnapshot: form as unknown as Record<string, unknown>,
       actionId,
-      currentPageIndex,
-      deviceType,
-      fieldLookup,
-      form,
-      formData,
-      isLastPage,
-      onSubmit,
-      phDistinctId,
-      readOnly,
-      resolvedPublicAnswers,
-      searchParams,
-      sessionReplayUrl,
-      submitting,
-      trackValidationError,
-      validateAllPages,
-      validatePage,
       visibilityValidatorResults,
-    ],
-  );
+      deviceType,
+      publicAnswers: resolvedPublicAnswers,
+      phDistinctId,
+      sessionReplayUrl,
+      sid: sid ?? undefined,
+    };
+
+    try {
+      return await onSubmit(submissionPayload);
+    } catch {
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
+  }, [
+    actionId,
+    currentPageIndex,
+    deviceType,
+    fieldLookup,
+    form,
+    formData,
+    isLastPage,
+    onSubmit,
+    phDistinctId,
+    readOnly,
+    resolvedPublicAnswers,
+    searchParams,
+    sessionReplayUrl,
+    submitting,
+    trackValidationError,
+    validateAllPages,
+    validatePage,
+    visibilityValidatorResults,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1609,9 +1620,7 @@ const FormRenderer = ({
                       <div className="w-full">
                         <ConfettiWrapper
                           burstPlacement="local"
-                          onTrigger={() =>
-                            submitCurrentPage({ optimistic: true })
-                          }
+                          onTrigger={submitCurrentPage}
                         >
                           {({
                             disabled: confettiDisabled,

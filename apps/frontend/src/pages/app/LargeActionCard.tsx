@@ -71,24 +71,31 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
     };
   }, []);
 
-  const handleUpdateActionState = useCallback(() => {
-    const closeId = window.setTimeout(() => {
-      setState(LargeActionCardState.Closed);
-    }, TASK_COMPLETE_CONFETTI_LEAD_MS);
-    const updateId = window.setTimeout(() => {
-      onUpdateActionState();
-    }, TASK_COMPLETE_CONFETTI_LEAD_MS + TASK_COMPLETE_EXIT_MS);
-    exitTimeoutsRef.current.push(closeId, updateId);
-  }, [onUpdateActionState]);
+  const handleUpdateActionState = useCallback(
+    (completedActionId?: number) => {
+      const closeId = window.setTimeout(() => {
+        setState(LargeActionCardState.Closed);
+      }, TASK_COMPLETE_CONFETTI_LEAD_MS);
+      const updateId = window.setTimeout(() => {
+        onUpdateActionState(completedActionId);
+      }, TASK_COMPLETE_CONFETTI_LEAD_MS + TASK_COMPLETE_EXIT_MS);
+      exitTimeoutsRef.current.push(closeId, updateId);
+    },
+    [onUpdateActionState],
+  );
 
   const handleCompleteAction = useCallback(async () => {
     const didSucceed = await onCompleteAction();
     if (didSucceed === false) {
       return false;
     }
-    handleUpdateActionState();
+    handleUpdateActionState(action.id);
     return true;
-  }, [onCompleteAction, handleUpdateActionState]);
+  }, [onCompleteAction, handleUpdateActionState, action.id]);
+
+  const handleOptOutAction = useCallback(() => {
+    handleUpdateActionState();
+  }, [handleUpdateActionState]);
 
   const goToActionPage = useCallback(
     (e: React.MouseEvent) => {
@@ -158,7 +165,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
               action={action}
               userRelation={userRelation}
               onCompleteAction={handleCompleteAction}
-              onOptOutAction={handleUpdateActionState}
+              onOptOutAction={handleOptOutAction}
             />
           </div>
         </div>

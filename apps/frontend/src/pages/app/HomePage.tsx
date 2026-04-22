@@ -84,9 +84,6 @@ const HomePage = () => {
   }, [user, refreshUser]);
 
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
-  const [pendingCompletedActionId, setPendingCompletedActionId] = useState<
-    number | null
-  >(null);
   const [actionProgressViews, setActionProgressViews] = useState<
     Record<number, AggregateViewSchema[]>
   >({});
@@ -462,22 +459,18 @@ const HomePage = () => {
                   : undefined
               }
               userRelation={selectedTaskNavigatorItem.action.userRelation}
-              onCompleteAction={() => {
-                setPendingCompletedActionId(selectedTaskNavigatorItem.action.id);
-                return true;
-              }}
-              onUpdateActionState={() => {
-                if (pendingCompletedActionId !== null) {
+              onCompleteAction={() => true}
+              onUpdateActionState={(completedActionId) => {
+                if (completedActionId !== undefined) {
                   queryClient.setQueryData<ActionDto[] | undefined>(
                     ["actions"],
                     (prev) =>
                       prev?.map((action) =>
-                        action.id === pendingCompletedActionId
+                        action.id === completedActionId
                           ? { ...action, userRelation: "completed" as const }
                           : action,
                       ),
                   );
-                  setPendingCompletedActionId(null);
                 }
                 queryClient.invalidateQueries({ queryKey: ["actions"] });
                 mainScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
@@ -576,7 +569,6 @@ const HomePage = () => {
     actions,
     loading,
     selectedTaskNavigatorItem,
-    pendingCompletedActionId,
     user,
     handleDismissAction,
     handleDismissGeneralUpdate,

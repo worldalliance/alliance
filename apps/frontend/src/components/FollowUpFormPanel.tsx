@@ -57,7 +57,7 @@ export default function FollowUpFormPanel({
   }, [followUpForm.formId]);
 
   const handleSubmit = useCallback(
-    async (data: SubmitFormDto) => {
+    async (data: SubmitFormDto): Promise<boolean> => {
       setError(null);
       const body: SubmitFollowUpFormDto = {
         answers: data.answers,
@@ -84,14 +84,15 @@ export default function FollowUpFormPanel({
         success("Response submitted!");
         setFormInstanceKey((k) => k + 1);
         onSubmitted?.();
-      } else {
-        console.error(response.error);
-        posthog.captureException(response.error, {
-          event: "follow_up_form_submit_error",
-          properties: { actionId, followUpFormId: followUpForm.id },
-        });
-        setError("Failed to submit. Please try again.");
+        return true;
       }
+      console.error(response.error);
+      posthog.captureException(response.error, {
+        event: "follow_up_form_submit_error",
+        properties: { actionId, followUpFormId: followUpForm.id },
+      });
+      setError("Failed to submit. Please try again.");
+      return false;
     },
     [followUpForm.id, form, actionId, onSubmitted, success],
   );
