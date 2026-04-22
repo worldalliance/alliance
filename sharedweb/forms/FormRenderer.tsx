@@ -310,6 +310,9 @@ const FormRenderer = ({
   // arrive after mount) > empty. Once either localStorage or a draft is applied,
   // we lock out later draft applies so we never stomp user edits.
   const draftLockedRef = useRef(false);
+  // Guard against double-submit when the submit button's click handler
+  // (ConfettiWrapper) and the form's submit event both call submitCurrentPage.
+  const submittingRef = useRef(false);
   const [formData, setFormData] = useState<Record<string, FormValue>>(() => {
     if (readOnly) {
       const answers =
@@ -1144,15 +1147,20 @@ const FormRenderer = ({
     useFormValidationErrorTracking(formTrackingParams);
 
   const submitCurrentPage = useCallback(async (): Promise<boolean> => {
-    if (submitting) {
+    if (submittingRef.current) {
       return false;
     }
-
+    submittingRef.current = true;
     setSubmitting(true);
 
-    if (readOnly || !onSubmit) {
+    const finishSubmit = (result: boolean) => {
+      submittingRef.current = false;
       setSubmitting(false);
-      return false;
+      return result;
+    };
+
+    if (readOnly || !onSubmit) {
+      return finishSubmit(false);
     }
 
     if (!isLastPage) {
@@ -1162,8 +1170,7 @@ const FormRenderer = ({
       } else {
         trackValidationError(result.firstInvalidFieldId);
       }
-      setSubmitting(false);
-      return false;
+      return finishSubmit(false);
     }
 
     const { isValid, firstInvalidPageIndex, firstInvalidFieldId } =
@@ -1176,8 +1183,7 @@ const FormRenderer = ({
       ) {
         setCurrentPageIndex(firstInvalidPageIndex);
       }
-      setSubmitting(false);
-      return false;
+      return finishSubmit(false);
     }
 
     const sanitizedAnswers = filterAnswersByFieldIds(formData, fieldLookup);
@@ -1201,6 +1207,7 @@ const FormRenderer = ({
     } catch {
       return false;
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }, [
@@ -1217,7 +1224,6 @@ const FormRenderer = ({
     resolvedPublicAnswers,
     searchParams,
     sessionReplayUrl,
-    submitting,
     trackValidationError,
     validateAllPages,
     validatePage,
@@ -1632,7 +1638,7 @@ const FormRenderer = ({
                               variant={BaseButtonVariant.Black}
                               className="w-full"
                               disabled={submitting || confettiDisabled}
-                              type="button"
+                              type="submit"
                               onClick={onClick}
                               onKeyDown={onKeyDown}
                               onPointerDown={onPointerDown}

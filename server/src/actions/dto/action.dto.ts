@@ -129,6 +129,13 @@ export class ActionSharePreviewDto {
   validReferral: boolean;
 }
 
+export class ActionReferralCodeDto {
+  @ApiProperty({ type: String })
+  @IsDefined()
+  @IsString()
+  referralCode: string;
+}
+
 export class PreviewEmailHtmlResponse {
   @ApiProperty({ type: String })
   @IsDefined()

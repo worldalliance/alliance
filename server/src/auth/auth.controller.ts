@@ -69,7 +69,7 @@ export class AuthController {
       await this.authService.login(signInDto.email, signInDto.password);
 
     this.authService.setAuthCookies(res, access_token, refresh_token);
-    await this.mergeGuestSession(req, res, userId);
+    await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
     if (signInDto.mode === 'header') {
       return { access_token, refresh_token, isAdmin };
     }
@@ -90,7 +90,7 @@ export class AuthController {
       await this.authService.login(signInDto.email, signInDto.password, true);
 
     this.authService.setAuthCookies(res, access_token, refresh_token);
-    await this.mergeGuestSession(req, res, userId);
+    await this.mergeGuestSession(signInDto.guestToken, req, res, userId);
     if (signInDto.mode === 'header') {
       return { access_token, refresh_token, isAdmin };
     }
@@ -98,13 +98,12 @@ export class AuthController {
   }
 
   private async mergeGuestSession(
+    bodyToken: string | undefined,
     req: ExpressRequest,
     res: Response,
     userId: number,
   ): Promise<void> {
-    const guestToken =
-      (req.body?.guestToken as string | undefined) ??
-      extractGuestTokenFromCookie(req);
+    const guestToken = bodyToken ?? extractGuestTokenFromCookie(req);
     if (!guestToken) {
       return;
     }
@@ -136,7 +135,7 @@ export class AuthController {
       await this.authService.login(signUp.email, signUp.password);
 
     this.authService.setAuthCookies(res, access_token, refresh_token);
-    await this.mergeGuestSession(req, res, userId);
+    await this.mergeGuestSession(signUp.guestToken, req, res, userId);
     if (signUp.mode === 'header') {
       return { access_token, refresh_token, isAdmin };
     }
@@ -198,9 +197,8 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<GuestSessionResponseDto> {
     const existingToken =
-      (body.mode === 'header'
-        ? (req.body?.guestToken as string | undefined)
-        : undefined) ?? extractGuestTokenFromCookie(req);
+      (body.mode === 'header' ? body.guestToken : undefined) ??
+      extractGuestTokenFromCookie(req);
     const { guestId, guestToken } =
       await this.authService.createGuestSession(existingToken);
     this.authService.setGuestCookie(res, guestToken);

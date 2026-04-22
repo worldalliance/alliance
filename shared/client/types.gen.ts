@@ -1617,6 +1617,10 @@ export type ActionSharePreviewDto = {
     validReferral: boolean;
 };
 
+export type ActionReferralCodeDto = {
+    referralCode: string;
+};
+
 export type Form = {
     id: number;
     title: string;
@@ -5338,7 +5342,7 @@ export type ActionsGetActionReferralCodeData = {
 };
 
 export type ActionsGetActionReferralCodeResponses = {
-    200: string;
+    200: ActionReferralCodeDto;
 };
 
 export type ActionsGetActionReferralCodeResponse = ActionsGetActionReferralCodeResponses[keyof ActionsGetActionReferralCodeResponses];

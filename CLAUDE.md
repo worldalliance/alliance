@@ -4,6 +4,8 @@
 
 For all controller endpoints, ensure the function has an `@ApiOkResponse({ type:  })` decorator to properly specify the openapi output (omit type if returning void), and ensure that the function returns that same DTO type.
 
+**Before adding or editing an endpoint's return type, read `.claude/skills/DTO_RETURN_TYPES.md`.** Controller return types must always be a DTO class — never a primitive, never `DtoType | null`. Wrap primitives in a DTO, and represent "not found" with `NotFoundException` or a wrapper DTO.
+
 For DTOs, use mapped types based on database entities rather than redefining values, e.g. `SampleDto extends OmitType(SampleEntity, ['sample']) {}`. Use @ApiPropertyOptional for all optional (? marked) properties rather than setting nullable
 
 For new endpoints, use either @AuthGuard, @AdminGuard, or @CommunityLeaderGuard depending on the appropriate level of security.

@@ -52,6 +52,7 @@ import {
   CreateActionSuiteDto,
   CreateActionUpdateDto,
   CreateReminderGroupDto,
+  ActionReferralCodeDto,
   ActionSharePreviewDto,
   ExportActionDto,
   GlobalFeedItemDto,
@@ -515,11 +516,11 @@ export class ActionsController {
 
   @Post(':id/referralCode')
   @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: String })
+  @ApiOkResponse({ type: ActionReferralCodeDto })
   async getActionReferralCode(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: JwtRequest,
-  ): Promise<string> {
+  ): Promise<ActionReferralCodeDto> {
     return this.actionsService.getOrCreateActionReferralCode(id, req.user.sub);
   }
 

@@ -134,11 +134,11 @@ const ActionPageTaskPanel = ({
   const handleShareCopy = async () => {
     let url = `${getBaseUrl()}/actions/${action.id}`;
     if (isAuthenticated) {
-      const { data: shareCode } = await actionsGetActionReferralCode({
+      const { data } = await actionsGetActionReferralCode({
         path: { id: action.id },
       });
-      if (shareCode) {
-        url = `${url}?ref=${shareCode}`;
+      if (data?.referralCode) {
+        url = `${url}?ref=${data.referralCode}`;
       }
     }
     const text = buildShareText({

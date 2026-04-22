@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -135,14 +136,14 @@ export class TasksController {
   async getGuestFormResponse(
     @Request() req: ExpressRequest,
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<FormResponseDto | null> {
+  ): Promise<FormResponseDto> {
     const token =
       extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
     const guestPayload = token
       ? await this.authService.verifyGuestToken(token)
       : null;
     if (!guestPayload) {
-      return null;
+      throw new NotFoundException('No guest session');
     }
     return this.tasksService.getGuestFormResponse(guestPayload.sub, id);
   }
@@ -153,7 +154,7 @@ export class TasksController {
   async getLinkedGuestDraft(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: JwtRequest,
-  ): Promise<FormResponseDto | null> {
+  ): Promise<FormResponseDto> {
     return this.tasksService.getLinkedGuestDraftFormResponse(req.user.sub, id);
   }
 

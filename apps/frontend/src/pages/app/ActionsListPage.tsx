@@ -15,9 +15,7 @@ import { href, Link } from "react-router";
 const ActionsListPage = () => {
   const { data: actions, isPending } = useActionsQuery();
 
-  const [filterMode, setFilterMode] = useState<FilterMode>(
-    FilterMode.CompletedByMe,
-  );
+  const [userFilterMode, setUserFilterMode] = useState<FilterMode | null>(null);
 
   const modeToActions: Record<FilterMode, ActionDto[]> = useMemo(() => {
     return Object.values(FilterMode).reduce(
@@ -28,6 +26,12 @@ const ActionsListPage = () => {
       {} as Record<FilterMode, ActionDto[]>,
     );
   }, [actions]);
+
+  const filterMode =
+    userFilterMode ??
+    (modeToActions[FilterMode.CompletedByMe].length > 0
+      ? FilterMode.CompletedByMe
+      : FilterMode.All);
 
   useGrayBackground();
 
@@ -45,7 +49,7 @@ const ActionsListPage = () => {
             options={FilterMode}
             secondaryLabel={([, mode]) => modeToActions[mode].length.toString()}
             value={filterMode}
-            onChange={([, mode]) => setFilterMode(mode)}
+            onChange={([, mode]) => setUserFilterMode(mode)}
           />
         </div>
         <Link

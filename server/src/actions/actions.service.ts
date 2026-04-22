@@ -71,6 +71,7 @@ import {
   ActionActivityDto,
   ActionDto,
   ActionEventDto,
+  ActionReferralCodeDto,
   ActionSharePreviewDto,
   ActionSuiteDto,
   ActionUpdateDto,
@@ -728,12 +729,12 @@ export class ActionsService {
   async getOrCreateActionReferralCode(
     actionId: number,
     userId: number,
-  ): Promise<string> {
+  ): Promise<ActionReferralCodeDto> {
     const shareUrl = await this.getOrCreateActionShareUrl(actionId, userId);
     if (!shareUrl.sid) {
       throw new BadRequestException('Unable to create share code');
     }
-    return shareUrl.sid;
+    return { referralCode: shareUrl.sid };
   }
 
   private getFirstNameForSharePreview(

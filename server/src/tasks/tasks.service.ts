@@ -968,30 +968,42 @@ export class TasksService {
     userId: number,
     formId: number,
   ): Promise<FormResponseDto> {
-    return this.formResponseRepository.findOneOrFail({
+    const response = await this.formResponseRepository.findOne({
       where: { formId, user: { id: userId } },
       order: { createdAt: 'DESC', id: 'DESC' },
     });
+    if (!response) {
+      throw new NotFoundException('Form response not found');
+    }
+    return response;
   }
 
   async getGuestFormResponse(
     guestId: string,
     formId: number,
-  ): Promise<FormResponseDto | null> {
-    return this.formResponseRepository.findOne({
+  ): Promise<FormResponseDto> {
+    const response = await this.formResponseRepository.findOne({
       where: { formId, guest: { id: guestId } },
       order: { createdAt: 'DESC', id: 'DESC' },
     });
+    if (!response) {
+      throw new NotFoundException('Guest form response not found');
+    }
+    return response;
   }
 
   async getLinkedGuestDraftFormResponse(
     userId: number,
     formId: number,
-  ): Promise<FormResponseDto | null> {
-    return this.formResponseRepository.findOne({
+  ): Promise<FormResponseDto> {
+    const response = await this.formResponseRepository.findOne({
       where: { formId, guest: { linkedUser: { id: userId } } },
       order: { createdAt: 'DESC', id: 'DESC' },
     });
+    if (!response) {
+      throw new NotFoundException('Linked guest draft not found');
+    }
+    return response;
   }
 
   async customValidators(): Promise<CustomValidatorTypeDto[]> {

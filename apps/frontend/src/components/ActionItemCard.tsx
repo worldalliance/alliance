@@ -74,11 +74,11 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
 
   const handleShareAction = useCallback(async () => {
     let url = `${getBaseUrl()}/actions/${action.id}`;
-    const { data: shareCode } = await actionsGetActionReferralCode({
+    const { data } = await actionsGetActionReferralCode({
       path: { id: action.id },
     });
-    if (shareCode) {
-      url = `${url}?ref=${shareCode}`;
+    if (data?.referralCode) {
+      url = `${url}?ref=${data.referralCode}`;
     }
     return copyToClipboard(url);
   }, [action.id]);
