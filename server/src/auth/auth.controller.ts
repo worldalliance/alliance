@@ -27,10 +27,6 @@ import { AuthTokens, AuthMeResponseDto } from './dto/authtokens.dto';
 import ForgotPasswordDto, { ResetPasswordDto } from './dto/forgotpassword.dto';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto, SignInResponseDto, type TokenMode } from './dto/signin.dto';
-import {
-  CreateGuestSessionDto,
-  GuestSessionResponseDto,
-} from './dto/guest-session.dto';
 import { AdminGuard } from './guards/admin.guard';
 import {
   AuthGuard,
@@ -185,27 +181,6 @@ export class AuthController {
   @ApiOkResponse()
   async logout(@Res({ passthrough: true }) res: Response) {
     this.authService.clearAuthCookies(res);
-  }
-
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @ApiOkResponse({ type: GuestSessionResponseDto })
-  @Post('guest-session')
-  async createGuestSession(
-    @Request() req: ExpressRequest,
-    @Body() body: CreateGuestSessionDto,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<GuestSessionResponseDto> {
-    const existingToken =
-      (body.mode === 'header' ? body.guestToken : undefined) ??
-      extractGuestTokenFromCookie(req);
-    const { guestId, guestToken } =
-      await this.authService.createGuestSession(existingToken);
-    this.authService.setGuestCookie(res, guestToken);
-    if (body.mode === 'header') {
-      return { guestId, guestToken };
-    }
-    return { guestId };
   }
 
   @Public()

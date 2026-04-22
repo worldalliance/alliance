@@ -700,16 +700,6 @@ export type AuthMeResponseDto = {
     isImpersonation?: boolean;
 };
 
-export type CreateGuestSessionDto = {
-    mode: 'cookie' | 'header';
-    guestToken?: string;
-};
-
-export type GuestSessionResponseDto = {
-    guestId: string;
-    guestToken?: string;
-};
-
 export type ForgotPasswordDto = {
     email: string;
 };
@@ -3056,19 +3046,6 @@ export type AuthLogoutData = {
 export type AuthLogoutResponses = {
     200: unknown;
 };
-
-export type AuthCreateGuestSessionData = {
-    body: CreateGuestSessionDto;
-    path?: never;
-    query?: never;
-    url: '/auth/guest-session';
-};
-
-export type AuthCreateGuestSessionResponses = {
-    200: GuestSessionResponseDto;
-};
-
-export type AuthCreateGuestSessionResponse = AuthCreateGuestSessionResponses[keyof AuthCreateGuestSessionResponses];
 
 export type AuthForgotPasswordData = {
     body: ForgotPasswordDto;

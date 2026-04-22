@@ -82,6 +82,7 @@ async function bootstrap() {
     origin: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
+    exposedHeaders: ['X-Guest-Token'],
   });
   app.useWebSocketAdapter(new SocketIoAdapter(app));
   app.set('trust proxy', 'loopback');

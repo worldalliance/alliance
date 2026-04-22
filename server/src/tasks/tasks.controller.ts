@@ -10,6 +10,7 @@ import {
   Post,
   Put,
   Request,
+  Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
@@ -23,7 +24,9 @@ import {
 import type { JwtRequest } from 'src/auth/guards/jwtreq';
 import { Public } from 'src/auth/public.decorator';
 import { AuthService } from 'src/auth/auth.service';
-import type { Request as ExpressRequest } from 'express';
+import type { Request as ExpressRequest, Response } from 'express';
+
+const GUEST_TOKEN_RESPONSE_HEADER = 'X-Guest-Token';
 import {
   CreateCustomValidatorDto,
   CreateCustomValidatorResponseDto,
@@ -67,18 +70,20 @@ export class TasksController {
   @ApiOkResponse({ type: FormResponseDto })
   async submitPublicForm(
     @Request() req: ExpressRequest,
+    @Res({ passthrough: true }) res: Response,
     @Param('id', ParseIntPipe) id: number,
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
-    const token =
+    const incomingToken =
       extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
-    const guestPayload = token
-      ? await this.authService.verifyGuestToken(token)
-      : null;
+    const { guestId, guestToken } =
+      await this.authService.createGuestSession(incomingToken);
+    this.authService.setGuestCookie(res, guestToken);
+    res.setHeader(GUEST_TOKEN_RESPONSE_HEADER, guestToken);
     return this.tasksService.submitFormPublic({
       formId: +id,
       submitFormDto: body,
-      guestId: guestPayload?.sub,
+      guestId,
     });
   }
 

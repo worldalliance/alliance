@@ -1,5 +1,4 @@
 import {
-  authCreateGuestSession,
   FormResponseDto,
   SubmitFormDto,
   tasksGetForm,
@@ -96,9 +95,6 @@ const ActionTaskPanelForm = ({
     ? async (data: SubmitFormDto): Promise<boolean> => {
         setError(null);
 
-        if (publicAction) {
-          await authCreateGuestSession({ body: { mode: "cookie" } });
-        }
         const response = publicAction
           ? await tasksSubmitPublicForm({
               path: { id: taskFormId },
