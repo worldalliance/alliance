@@ -3,9 +3,7 @@ import {
   Body,
   Controller,
   Delete,
-  forwardRef,
   Get,
-  Inject,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -50,7 +48,6 @@ import { TasksService } from './tasks.service';
 export class TasksController {
   constructor(
     private readonly tasksService: TasksService,
-    @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
   ) {}
 
@@ -78,7 +75,11 @@ export class TasksController {
     const guestPayload = token
       ? await this.authService.verifyGuestToken(token)
       : null;
-    return this.tasksService.submitFormPublic(+id, body, guestPayload?.sub);
+    return this.tasksService.submitFormPublic({
+      formId: +id,
+      submitFormDto: body,
+      guestId: guestPayload?.sub,
+    });
   }
 
   @Post('submitFollowUpForm/:followUpFormId')
@@ -145,6 +146,16 @@ export class TasksController {
       throw new NotFoundException('No guest session');
     }
     return this.tasksService.getGuestFormResponse(guestPayload.sub, id);
+  }
+
+  @Get('draft/:id')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FormResponseDto })
+  async getLinkedGuestDraft(
+    @Param('id', ParseIntPipe) id: number,
+    @Request() req: JwtRequest,
+  ): Promise<FormResponseDto> {
+    return this.tasksService.getLinkedGuestDraftFormResponse(req.user.sub, id);
   }
 
   @Get('slug/:id')

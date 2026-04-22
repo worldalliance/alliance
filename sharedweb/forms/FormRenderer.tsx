@@ -80,6 +80,8 @@ type FormRendererProps = {
   followUp?: boolean;
   renderFormAsCompleted?: boolean;
   completedFormResponse?: FormResponseDto;
+  /** Prefill form with these answers when there is no locally-persisted draft. Used to restore a guest's answers after signup. */
+  draftFormResponse?: FormResponseDto | null;
   fieldLabelRightContent?: Record<string, React.ReactNode>;
   /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
   adminPreviewUserId?: string | number;
@@ -165,6 +167,7 @@ const FormRenderer = ({
   renderFormAsCompleted,
   followUp,
   completedFormResponse,
+  draftFormResponse,
   fieldLabelRightContent,
   adminPreviewUserId,
   actionId,
@@ -310,31 +313,43 @@ const FormRenderer = ({
       return filterAnswersByFieldIds(answers, fieldLookup);
     }
 
-    if (typeof window === "undefined") {
-      return applyDefaultValues(undefined, defaultValueMap);
-    }
-
-    if (!persistKey) {
-      return applyDefaultValues({}, defaultValueMap);
-    }
-
-    try {
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) {
-        return applyDefaultValues({}, defaultValueMap);
+    // Precedence: localStorage (active local edits) > draft (guest prefill) > empty.
+    const readLocalStorageAnswers = ():
+      | Record<string, FormValue>
+      | null => {
+      if (typeof window === "undefined" || !persistKey) return null;
+      try {
+        const raw = window.localStorage.getItem(storageKey);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const storedFormData =
+          parsed?.formData && typeof parsed.formData === "object"
+            ? (parsed.formData as Record<string, FormValue>)
+            : null;
+        if (!storedFormData) return null;
+        const filtered = filterAnswersByFieldIds(storedFormData, fieldLookup);
+        return Object.keys(filtered).length > 0 ? filtered : null;
+      } catch {
+        return null;
       }
-      const parsed = JSON.parse(raw);
-      const storedFormData =
-        parsed?.formData && typeof parsed.formData === "object"
-          ? (parsed.formData as Record<string, FormValue>)
-          : undefined;
-      const filtered = storedFormData
-        ? filterAnswersByFieldIds(storedFormData, fieldLookup)
-        : {};
-      return applyDefaultValues(filtered, defaultValueMap);
-    } catch {
-      return applyDefaultValues({}, defaultValueMap);
+    };
+
+    const localAnswers = readLocalStorageAnswers();
+    if (localAnswers) {
+      return applyDefaultValues(localAnswers, defaultValueMap);
     }
+
+    const draftAnswers = draftFormResponse?.answers
+      ? filterAnswersByFieldIds(
+          draftFormResponse.answers as Record<string, FormValue>,
+          fieldLookup,
+        )
+      : null;
+    if (draftAnswers && Object.keys(draftAnswers).length > 0) {
+      return applyDefaultValues(draftAnswers, defaultValueMap);
+    }
+
+    return applyDefaultValues({}, defaultValueMap);
   });
 
   const [publicAnswerOverrides, setPublicAnswerOverrides] = useState<

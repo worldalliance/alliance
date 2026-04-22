@@ -212,15 +212,17 @@ const ActionPageTaskPanel = () => {
         <CheckIcon size={24} />
         <p>{taskHeaders.actionPage.completed}</p>
       </div>
-      <ShareButton
-        onClick={handleShareCopy}
-        icon={Link2}
-        label={clipboardCopy.share}
-        copiedLabel={clipboardCopy.copiedToClipboard}
-        className="text-zinc-500 hover:text-zinc-700"
-        iconClassName="w-3.5 h-3.5 shrink-0"
-        labelClassName="text-sm order-first"
-      />
+      {isAuthenticated && (
+        <ShareButton
+          onClick={handleShareCopy}
+          icon={Link2}
+          label={clipboardCopy.share}
+          copiedLabel={clipboardCopy.copiedToClipboard}
+          className="text-zinc-500 hover:text-zinc-700"
+          iconClassName="w-3.5 h-3.5 shrink-0"
+          labelClassName="text-sm order-first"
+        />
+      )}
     </div>
   );
 

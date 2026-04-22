@@ -133,6 +133,7 @@ export type EditableContent = {
 export type Guest = {
     id: string;
     createdAt: string;
+    linkedUser?: User;
 };
 
 export type FormResponse = {
@@ -6941,6 +6942,21 @@ export type TasksGetGuestFormResponseResponses = {
 };
 
 export type TasksGetGuestFormResponseResponse = TasksGetGuestFormResponseResponses[keyof TasksGetGuestFormResponseResponses];
+
+export type TasksGetLinkedGuestDraftData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/tasks/draft/{id}';
+};
+
+export type TasksGetLinkedGuestDraftResponses = {
+    200: FormResponseDto;
+};
+
+export type TasksGetLinkedGuestDraftResponse = TasksGetLinkedGuestDraftResponses[keyof TasksGetLinkedGuestDraftResponses];
 
 export type TasksGetFormData = {
     body?: never;

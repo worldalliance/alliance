@@ -3,6 +3,7 @@ import {
   FormResponseDto,
   SubmitFormDto,
   tasksGetForm,
+  tasksGetLinkedGuestDraft,
   tasksSubmitForm,
   tasksSubmitPublicForm,
 } from "@alliance/shared/client";
@@ -53,7 +54,7 @@ const ActionTaskPanelForm = ({
   createAccountHref,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
-  const { user, refreshUser } = useAuth();
+  const { user, isAuthenticated, refreshUser } = useAuth();
   const {
     data: form,
     error: formError,
@@ -75,6 +76,20 @@ const ActionTaskPanelForm = ({
       return response.data;
     },
     enabled: !formResponse,
+  });
+
+  const draftEnabled =
+    !formResponse && !disabled && !publicAction && isAuthenticated;
+  const { data: draftFormResponse, isPending: draftPending } = useQuery({
+    queryKey: ["linkedGuestDraft", taskFormId],
+    queryFn: async () => {
+      const response = await tasksGetLinkedGuestDraft({
+        path: { id: taskFormId },
+      });
+      return response.data ?? null;
+    },
+    enabled: draftEnabled,
+    retry: false,
   });
 
   const handleSubmitForm = onCompleteAction
@@ -152,8 +167,8 @@ const ActionTaskPanelForm = ({
     );
   }
 
-  if (!form) {
-    if (isPending) {
+  if (!form || (draftEnabled && draftPending)) {
+    if (isPending || draftPending) {
       return (
         <div
           className={cn(
@@ -197,6 +212,7 @@ const ActionTaskPanelForm = ({
           renderFormAsCompleted={disabled}
           publicAction={publicAction}
           createAccountHref={createAccountHref}
+          draftFormResponse={draftFormResponse}
           phDistinctId={distinctId}
           sessionReplayUrl={sessionReplayUrl}
         />

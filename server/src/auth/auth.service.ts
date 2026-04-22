@@ -1,7 +1,5 @@
 import {
   BadRequestException,
-  forwardRef,
-  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -23,7 +21,6 @@ import {
 import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
 import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
 import { Guest } from './entities/guest.entity';
-import { TasksService } from 'src/tasks/tasks.service';
 
 @Injectable()
 export class AuthService {
@@ -35,8 +32,6 @@ export class AuthService {
     private actionShareUrlRepository: Repository<ActionShareUrl>,
     @InjectRepository(Guest)
     private guestRepository: Repository<Guest>,
-    @Inject(forwardRef(() => TasksService))
-    private tasksService: TasksService,
   ) {}
 
   public static ACCESS_COOKIE = 'access_token';
@@ -93,8 +88,9 @@ export class AuthService {
       if (payload) {
         const existing = await this.guestRepository.findOne({
           where: { id: payload.sub },
+          relations: { linkedUser: true },
         });
-        if (existing) {
+        if (existing && !existing.linkedUser) {
           return { guestId: existing.id, guestToken: existingToken };
         }
       }
@@ -130,8 +126,15 @@ export class AuthService {
   }
 
   async mergeGuestIntoUser(guestId: string, userId: number): Promise<void> {
-    await this.tasksService.replayGuestSubmissions(guestId, userId);
-    await this.guestRepository.delete({ id: guestId });
+    // Claim the guest atomically; only the first merger succeeds. Guest form
+    // responses stay attached to the guest and are surfaced to the user as
+    // drafts via TasksService.getLinkedGuestDraftFormResponse.
+    await this.guestRepository
+      .createQueryBuilder()
+      .update(Guest)
+      .set({ linkedUser: { id: userId } })
+      .where('id = :guestId AND "linkedUserId" IS NULL', { guestId })
+      .execute();
   }
 
   async mergeGuestFromToken(

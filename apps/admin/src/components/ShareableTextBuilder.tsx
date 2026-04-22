@@ -16,6 +16,10 @@ interface ShareableTextBuilderProps {
 const REFERRAL_URL_PREVIEW =
   "https://alliance.example/actions/123?ref=member-code";
 const SHAREABLE_TOKEN_PATTERN = /#\{[^}]*\}/g;
+const DEFAULT_TEMPLATE_ALLOWED_TOKENS = new Set<string>([
+  FIRST_NAME_TOKEN,
+  FULL_NAME_TOKEN,
+]);
 const COMPLETED_SHAREABLE_INSERTION_DATA_KEY =
   "application/x-completed-shareable-text-token";
 const DEFAULT_SHAREABLE_INSERTION_DATA_KEY =
@@ -152,7 +156,7 @@ export function ShareableTextBuilder({
       ...schema,
       defaultShareableTextTemplate: nextTemplate.replace(
         SHAREABLE_TOKEN_PATTERN,
-        "",
+        (match) => (DEFAULT_TEMPLATE_ALLOWED_TOKENS.has(match) ? match : ""),
       ),
     });
   };

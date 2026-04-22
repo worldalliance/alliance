@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AiDetectionModule } from 'src/ai-detection/ai-detection.module';
 import { Action } from 'src/actions/entities/action.entity';
@@ -38,10 +38,9 @@ import { Guest } from 'src/auth/entities/guest.entity';
     EventLogModule,
     AiDetectionModule,
     ContractModule,
-    forwardRef(() => AuthModule),
+    AuthModule,
   ],
   controllers: [TasksController],
   providers: [TasksService],
-  exports: [TasksService],
 })
 export class TasksModule {}

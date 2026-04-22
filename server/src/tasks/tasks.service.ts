@@ -228,11 +228,24 @@ export class TasksService {
     return form;
   }
 
-  async validateFormSubmission(
-    form: Form,
-    submitFormDto: SubmitFormDto,
-    userId: number,
-  ): Promise<Record<number, boolean>> {
+  async validateFormSubmission({
+    form,
+    submitFormDto,
+    userId,
+    isGuest,
+  }: {
+    form: Form;
+    submitFormDto: SubmitFormDto;
+  } & (
+    | {
+        userId: number;
+        isGuest?: false;
+      }
+    | {
+        userId?: undefined;
+        isGuest: true;
+      }
+  )): Promise<Record<number, boolean>> {
     const schema = form.schema as unknown as FormSchema;
     const validatorIds = new Set<number>();
 
@@ -273,7 +286,7 @@ export class TasksService {
     }
 
     const validatorResults: Record<number, boolean> = {};
-    if (validatorIds.size > 0) {
+    if (validatorIds.size > 0 && !isGuest) {
       const results = await Promise.all(
         Array.from(validatorIds).map(async (validatorId) => {
           try {
@@ -295,7 +308,7 @@ export class TasksService {
     // Fetch previous form responses for cross-form visibility conditions
     const sourceFormIds = collectSourceFormIds(schema);
     const previousAnswerData: Record<number, Record<string, unknown>> = {};
-    if (sourceFormIds.length > 0) {
+    if (sourceFormIds.length > 0 && !isGuest) {
       const entries = await Promise.all(
         sourceFormIds.map(async (formId) => {
           try {
@@ -495,11 +508,11 @@ export class TasksService {
       throw new BadRequestException('Form already submitted');
     }
 
-    const validatorResults = await this.validateFormSubmission(
+    const validatorResults = await this.validateFormSubmission({
       form,
       submitFormDto,
       userId,
-    );
+    });
 
     const phoneNumber = this.getFirstAutoExtractAnswer(
       form,
@@ -630,13 +643,13 @@ export class TasksService {
       });
     }
 
-    const savedForm = await this.createAndSaveFormResponse(
+    const savedForm = await this.createAndSaveFormResponse({
       form,
       formId,
-      submitFormDto,
+      dto: submitFormDto,
       validatorResults,
       user,
-    );
+    });
 
     await this.actionsService.completeAction(submitFormDto.actionId, userId, {
       taskFormResponse: savedForm,
@@ -691,19 +704,19 @@ export class TasksService {
     const form = followUpForm.form;
     const user = await this.userService.findOneOrFail(userId);
 
-    const validatorResults = await this.validateFormSubmission(
+    const validatorResults = await this.validateFormSubmission({
       form,
-      submitFollowUpFormDto as SubmitFormDto,
+      submitFormDto: submitFollowUpFormDto as SubmitFormDto,
       userId,
-    );
+    });
 
-    const savedForm = await this.createAndSaveFormResponse(
+    const savedForm = await this.createAndSaveFormResponse({
       form,
-      form.id,
-      submitFollowUpFormDto,
+      formId: form.id,
+      dto: submitFollowUpFormDto,
       validatorResults,
       user,
-    );
+    });
 
     await this.actionsService.createActionActivity({
       actionId: followUpForm.actionId,
@@ -715,53 +728,30 @@ export class TasksService {
     return savedForm;
   }
 
-  async replayGuestSubmissions(guestId: string, userId: number): Promise<void> {
-    const responses = await this.formResponseRepository.find({
-      where: { guest: { id: guestId } },
-    });
-    for (const response of responses) {
-      const action = await this.actionRepository.findOne({
-        where: { taskFormId: response.formId },
-      });
-      if (!action) {
-        continue;
-      }
-      const dto: SubmitFormDto = {
-        actionId: action.id,
-        answers: response.answers,
-        schemaSnapshot: response.schemaSnapshot,
-        visibilityValidatorResults: response.visibilityValidatorResults,
-        deviceType: response.deviceType,
-        publicAnswers: response.publicAnswers,
-        phDistinctId: response.phDistinctId,
-        sessionReplayUrl: response.sessionReplayUrl,
-        sid: response.sid,
-      };
-      try {
-        await this.submitForm(response.formId, userId, dto);
-      } catch (err) {
-        this.logger.warn(
-          `Failed to replay guest form response ${response.id} for user ${userId}: ${(err as Error)?.message}`,
-        );
-      }
-    }
-  }
-
-  async submitFormPublic(
-    formId: number,
-    submitFormDto: SubmitFormDto,
-    guestId?: string,
-  ): Promise<FormResponse> {
+  async submitFormPublic({
+    formId,
+    submitFormDto,
+    guestId,
+  }: {
+    formId: number;
+    submitFormDto: SubmitFormDto;
+    guestId?: string;
+  }): Promise<FormResponse> {
     const form = await this.getForm(formId);
 
-    return this.createAndSaveFormResponse(
+    const validatorResults = await this.validateFormSubmission({
+      form,
+      submitFormDto,
+      isGuest: true,
+    });
+
+    return this.createAndSaveFormResponse({
       form,
       formId,
-      submitFormDto,
-      submitFormDto.visibilityValidatorResults ?? {},
-      undefined,
+      dto: submitFormDto,
+      validatorResults,
       guestId,
-    );
+    });
   }
 
   async optoutForm(
@@ -775,13 +765,13 @@ export class TasksService {
     const form = await this.getForm(formId);
     const user = await this.userService.findOneOrFail(userId);
 
-    const savedForm = await this.createAndSaveFormResponse(
+    const savedForm = await this.createAndSaveFormResponse({
       form,
       formId,
-      partialFormData,
-      partialFormData?.visibilityValidatorResults ?? {},
+      dto: partialFormData,
+      validatorResults: partialFormData?.visibilityValidatorResults ?? {},
       user,
-    );
+    });
 
     return this.actionsService.createActionActivity({
       actionId,
@@ -793,9 +783,16 @@ export class TasksService {
     });
   }
 
-  private async createAndSaveFormResponse(
-    form: Form,
-    formId: number,
+  private async createAndSaveFormResponse({
+    form,
+    formId,
+    dto,
+    validatorResults,
+    user,
+    guestId,
+  }: {
+    form: Form;
+    formId: number;
     dto: {
       answers: Record<string, unknown>;
       schemaSnapshot: Record<string, unknown>;
@@ -805,11 +802,11 @@ export class TasksService {
       phDistinctId?: string;
       sessionReplayUrl?: string;
       sid?: string;
-    },
-    validatorResults: Record<string, boolean>,
-    user?: User,
-    guestId?: string,
-  ): Promise<FormResponse> {
+    };
+    validatorResults: Record<string, boolean>;
+    user?: User;
+    guestId?: string;
+  }): Promise<FormResponse> {
     const formResponse = this.formResponseRepository.create({
       answers: dto.answers,
       schemaSnapshot: dto.schemaSnapshot,
@@ -986,28 +983,30 @@ export class TasksService {
     userId: number,
     formId: number,
   ): Promise<FormResponseDto> {
-    const responses = await this.formResponseRepository.find({
+    return this.formResponseRepository.findOneOrFail({
       where: { formId, user: { id: userId } },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', id: 'DESC' },
     });
-    if (!responses.length) {
-      throw new NotFoundException('Form response not found');
-    }
-    return responses[0];
   }
 
   async getGuestFormResponse(
     guestId: string,
     formId: number,
   ): Promise<FormResponseDto> {
-    const responses = await this.formResponseRepository.find({
+    return this.formResponseRepository.findOneOrFail({
       where: { formId, guest: { id: guestId } },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', id: 'DESC' },
     });
-    if (!responses.length) {
-      throw new NotFoundException('Form response not found');
-    }
-    return responses[0];
+  }
+
+  async getLinkedGuestDraftFormResponse(
+    userId: number,
+    formId: number,
+  ): Promise<FormResponseDto> {
+    return this.formResponseRepository.findOneOrFail({
+      where: { formId, guest: { linkedUser: { id: userId } } },
+      order: { createdAt: 'DESC', id: 'DESC' },
+    });
   }
 
   async customValidators(): Promise<CustomValidatorTypeDto[]> {

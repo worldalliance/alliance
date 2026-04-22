@@ -1,4 +1,4 @@
-import { forwardRef, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserModule } from '../user/user.module';
 import { JwtModule } from '@nestjs/jwt';
@@ -9,7 +9,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/user/entities/user.entity';
 import { ActionShareUrl } from 'src/actions/entities/action-share-url.entity';
 import { Guest } from './entities/guest.entity';
-import { TasksModule } from 'src/tasks/tasks.module';
 
 @Module({
   imports: [
@@ -24,7 +23,6 @@ import { TasksModule } from 'src/tasks/tasks.module';
       }),
     }),
     TypeOrmModule.forFeature([User, ActionShareUrl, Guest]),
-    forwardRef(() => TasksModule),
   ],
   providers: [AuthService],
   controllers: [AuthController],
