@@ -93,15 +93,6 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
 
   let completionElement = null;
   if (canCompleteAction(action) || forceRenderTask) {
-    if (action.type === "Funding") {
-      //   completionElement = (
-      //     <StripeWrapper actionId={action.id}>
-      //       <ActionTaskPanelFunding
-      //         onPaymentSuccess={handleCompleteWithTracking}
-      //       />
-      //     </StripeWrapper>
-      //   );
-    }
     if (action.type === "Activity" && action.taskFormId) {
       completionElement = (
         <ActionTaskPanelForm
@@ -114,7 +105,6 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
           actionId={action.id}
           redirectOnComplete={redirectOnComplete}
           onSubmitted={onFormSubmitted}
-          createAccountHref={guestMode ? createAccountHref : undefined}
         />
       );
     }

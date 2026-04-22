@@ -35,7 +35,6 @@ interface ActionTaskPanelFormProps {
   formResponse?: FormResponseDto;
   redirectOnComplete?: boolean;
   onSubmitted?: (formResponse: FormResponseDto) => void;
-  createAccountHref?: string;
 }
 
 const ActionTaskPanelForm = ({
@@ -50,7 +49,6 @@ const ActionTaskPanelForm = ({
   formResponse,
   redirectOnComplete = publicAction,
   onSubmitted,
-  createAccountHref,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated, refreshUser } = useAuth();
@@ -85,7 +83,7 @@ const ActionTaskPanelForm = ({
       const response = await tasksGetLinkedGuestDraft({
         path: { id: taskFormId },
       });
-      return response.data ?? null;
+      return response.data?.draft ?? null;
     },
     enabled: draftEnabled,
     retry: false,
@@ -95,12 +93,12 @@ const ActionTaskPanelForm = ({
     ? async (data: SubmitFormDto): Promise<boolean> => {
         setError(null);
 
-        const response = publicAction
-          ? await tasksSubmitPublicForm({
+        const response = isAuthenticated
+          ? await tasksSubmitForm({
               path: { id: taskFormId },
               body: data,
             })
-          : await tasksSubmitForm({
+          : await tasksSubmitPublicForm({
               path: { id: taskFormId },
               body: data,
             });
@@ -108,7 +106,7 @@ const ActionTaskPanelForm = ({
           if (response.data) {
             onSubmitted?.(response.data);
           }
-          if (publicAction && redirectOnComplete) {
+          if (!isAuthenticated && redirectOnComplete) {
             window.location.href = "/actions/completed";
           }
           if (typeof window !== "undefined" && form) {
@@ -208,7 +206,6 @@ const ActionTaskPanelForm = ({
           onAbandonAction={onAbandonAction}
           renderFormAsCompleted={disabled}
           publicAction={publicAction}
-          createAccountHref={createAccountHref}
           draftFormResponse={draftFormResponse}
           phDistinctId={distinctId}
           sessionReplayUrl={sessionReplayUrl}

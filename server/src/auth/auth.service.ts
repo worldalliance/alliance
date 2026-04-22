@@ -4,7 +4,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MailService } from '../mail/mail.service';
@@ -13,6 +13,10 @@ import { type PWResetJwtPayload, UserService } from '../user/user.service';
 import { AuthTokens } from './dto/authtokens.dto';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInResponseDto } from './dto/signin.dto';
+import {
+  extractAccessTokenFromCookie,
+  extractTokenFromHeader,
+} from './guards/auth.guard';
 import {
   type GuestJwtPayload,
   type JwtPayload,
@@ -70,7 +74,7 @@ export class AuthService {
     res.cookie(AuthService.GUEST_COOKIE, token, {
       httpOnly: true,
       secure: prod,
-      sameSite: 'strict',
+      sameSite: 'lax',
       path: '/',
       maxAge: AuthService.GUEST_COOKIE_MAX_AGE_MS,
     });
@@ -106,6 +110,29 @@ export class AuthService {
       expiresIn: '30d',
     });
     return { guestId: guest.id, guestToken };
+  }
+
+  private static TOKEN_TYPE_IS_AUTHENTICATED: Record<JWTTokenType, boolean> = {
+    [JWTTokenType.access]: true,
+    [JWTTokenType.refresh]: false,
+    [JWTTokenType.guest]: false,
+  };
+
+  async getAuthenticatedUserId(req: Request): Promise<number | null> {
+    const token =
+      extractTokenFromHeader(req) ?? extractAccessTokenFromCookie(req);
+    if (!token) return null;
+    try {
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
+        secret: process.env.JWT_SECRET,
+      });
+      if (!AuthService.TOKEN_TYPE_IS_AUTHENTICATED[payload.tokenType]) {
+        return null;
+      }
+      return payload.sub;
+    } catch {
+      return null;
+    }
   }
 
   async verifyGuestToken(token: string): Promise<GuestJwtPayload | null> {

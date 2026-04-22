@@ -25,8 +25,6 @@ import type { JwtRequest } from 'src/auth/guards/jwtreq';
 import { Public } from 'src/auth/public.decorator';
 import { AuthService } from 'src/auth/auth.service';
 import type { Request as ExpressRequest, Response } from 'express';
-
-const GUEST_TOKEN_RESPONSE_HEADER = 'X-Guest-Token';
 import {
   CreateCustomValidatorDto,
   CreateCustomValidatorResponseDto,
@@ -42,10 +40,13 @@ import {
   FormAggregateViewsDto,
   FormDto,
   FormResponseDto,
+  LinkedGuestDraftDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
 } from './form.dto';
 import { TasksService } from './tasks.service';
+
+const GUEST_TOKEN_RESPONSE_HEADER = 'X-Guest-Token';
 
 @Controller('tasks')
 export class TasksController {
@@ -74,6 +75,13 @@ export class TasksController {
     @Param('id', ParseIntPipe) id: number,
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
+    const authenticatedUserId =
+      await this.authService.getAuthenticatedUserId(req);
+    if (authenticatedUserId !== null) {
+      throw new BadRequestException(
+        'Authenticated users must use /tasks/submitForm/:id',
+      );
+    }
     const incomingToken =
       extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
     const { guestId, guestToken } =
@@ -155,11 +163,11 @@ export class TasksController {
 
   @Get('draft/:id')
   @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: FormResponseDto })
+  @ApiOkResponse({ type: LinkedGuestDraftDto })
   async getLinkedGuestDraft(
     @Param('id', ParseIntPipe) id: number,
     @Request() req: JwtRequest,
-  ): Promise<FormResponseDto> {
+  ): Promise<LinkedGuestDraftDto> {
     return this.tasksService.getLinkedGuestDraftFormResponse(req.user.sub, id);
   }
 

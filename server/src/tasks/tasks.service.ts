@@ -43,6 +43,7 @@ import {
   FormAggregateViewsDto,
   FormDto,
   FormResponseDto,
+  LinkedGuestDraftDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
 } from './form.dto';
@@ -730,6 +731,15 @@ export class TasksService {
   }): Promise<FormResponse> {
     const form = await this.getForm(formId);
 
+    if (guestId) {
+      const existing = await this.formResponseRepository.findOne({
+        where: { formId, guest: { id: guestId } },
+      });
+      if (existing) {
+        throw new BadRequestException('Form already submitted');
+      }
+    }
+
     return this.createAndSaveFormResponse({
       form,
       formId,
@@ -995,15 +1005,20 @@ export class TasksService {
   async getLinkedGuestDraftFormResponse(
     userId: number,
     formId: number,
-  ): Promise<FormResponseDto> {
-    const response = await this.formResponseRepository.findOne({
+  ): Promise<LinkedGuestDraftDto> {
+    // If the user has already submitted this form as an authenticated user,
+    // any linked-guest draft is stale and shouldn't be surfaced as a prefill.
+    const userResponse = await this.formResponseRepository.findOne({
+      where: { formId, user: { id: userId } },
+    });
+    if (userResponse) {
+      return {};
+    }
+    const draft = await this.formResponseRepository.findOne({
       where: { formId, guest: { linkedUser: { id: userId } } },
       order: { createdAt: 'DESC', id: 'DESC' },
     });
-    if (!response) {
-      throw new NotFoundException('Linked guest draft not found');
-    }
-    return response;
+    return draft ? { draft } : {};
   }
 
   async customValidators(): Promise<CustomValidatorTypeDto[]> {

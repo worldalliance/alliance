@@ -64,6 +64,7 @@ import {
   MoreThan,
   Not,
   Or,
+  QueryFailedError,
   type Repository,
 } from 'typeorm';
 import { UserService } from '../user/user.service';
@@ -3252,7 +3253,24 @@ export class ActionsService {
       },
     });
 
-    return this.actionShareUrlRepository.save(shareUrl);
+    try {
+      return await this.actionShareUrlRepository.save(shareUrl);
+    } catch (err) {
+      // Lost a race with a concurrent creator; the unique (actionId, userId)
+      // constraint guarantees exactly one row exists now — return it.
+      if (err instanceof QueryFailedError && (err as { code?: string }).code === '23505') {
+        const winner = await this.actionShareUrlRepository.findOne({
+          where: {
+            action: { id: actionId },
+            user: { id: userId },
+          },
+        });
+        if (winner) {
+          return winner;
+        }
+      }
+      throw err;
+    }
   }
 
   async getShareLinksForForm(formId: number): Promise<ShareUrlDto[]> {

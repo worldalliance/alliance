@@ -26,7 +26,6 @@ interface ActionTaskPanelFormProps {
     partialFormData: SubmitFormDto,
   ) => void;
   actionId: number;
-  publicAction?: boolean;
   scrollPageTo: (y: number, animated?: boolean) => void;
   scrollToEnd: (animated?: boolean) => void;
   onSubmitSuccess?: () => void;
@@ -40,7 +39,6 @@ const ActionTaskPanelForm = ({
   onFormStarted,
   onAbandonAction,
   actionId,
-  publicAction = false,
   scrollPageTo,
   scrollToEnd,
   onSubmitSuccess = noop,
@@ -48,7 +46,7 @@ const ActionTaskPanelForm = ({
   formResponse,
 }: ActionTaskPanelFormProps) => {
   const posthog = usePostHog();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -78,23 +76,23 @@ const ActionTaskPanelForm = ({
     ? async (data: SubmitFormDto) => {
         setError(null);
 
-        const storedGuestToken = publicAction
-          ? await getStoredGuestToken()
-          : null;
-        const response = publicAction
-          ? await tasksSubmitPublicForm({
+        const storedGuestToken = isAuthenticated
+          ? null
+          : await getStoredGuestToken();
+        const response = isAuthenticated
+          ? await tasksSubmitForm({
+              path: { id: taskFormId },
+              body: data,
+            })
+          : await tasksSubmitPublicForm({
               path: { id: taskFormId },
               body: data,
               headers: storedGuestToken
                 ? { "X-Guest-Token": storedGuestToken }
                 : undefined,
-            })
-          : await tasksSubmitForm({
-              path: { id: taskFormId },
-              body: data,
             });
         if (response.response.ok) {
-          if (publicAction) {
+          if (!isAuthenticated) {
             const issuedGuestToken =
               response.response.headers.get("x-guest-token");
             if (issuedGuestToken && issuedGuestToken !== storedGuestToken) {

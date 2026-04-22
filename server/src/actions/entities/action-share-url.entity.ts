@@ -11,11 +11,13 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
 } from 'typeorm';
 import { Action } from './action.entity';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 @Entity()
+@Unique(['action', 'user'])
 export class ActionShareUrl {
   @PrimaryGeneratedColumn('uuid')
   id: string;

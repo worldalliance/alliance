@@ -54,6 +54,7 @@ const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
     </View>
   ),
   [ActionPageTaskPanelState.GuestRef]: null,
+  [ActionPageTaskPanelState.GuestCompleted]: null,
   [ActionPageTaskPanelState.NotAssigned]: (
     <Text>{taskHeaders.actionPage.notAssigned}</Text>
   ),
@@ -115,6 +116,8 @@ const ActionPageTaskPanel = ({
     userRelation,
     contractSigned: user?.hasActiveContract ?? false,
     isAuthenticated,
+    hasRefCode: false,
+    hasGuestResponse: false,
   });
   const formResponse = useCompletedTaskForm(
     action,
@@ -191,6 +194,7 @@ const ActionPageTaskPanel = ({
   switch (state) {
     case ActionPageTaskPanelState.Declined:
     case ActionPageTaskPanelState.Completed:
+    case ActionPageTaskPanelState.GuestCompleted:
     case ActionPageTaskPanelState.PublicOnlyAuthenticated:
     case ActionPageTaskPanelState.NotAuthenticated:
     case ActionPageTaskPanelState.GuestRef:

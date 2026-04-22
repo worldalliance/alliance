@@ -23,6 +23,7 @@ import {
   ActionPageTaskPanelState,
   cardStylesForState,
   getActionPageTaskPanelState,
+  isFormDisabledByState,
   shouldLoadCompletedTaskFormByState,
 } from "@alliance/shared/lib/actionPageTaskPanel";
 import {
@@ -86,6 +87,7 @@ const taskPanelHeaderByState: Record<
     </p>
   ),
   [ActionPageTaskPanelState.GuestRef]: null,
+  [ActionPageTaskPanelState.GuestCompleted]: null,
   [ActionPageTaskPanelState.NotAssigned]: (
     <p>{taskHeaders.actionPage.notAssigned}</p>
   ),
@@ -148,14 +150,21 @@ const ActionPageTaskPanel = () => {
   const refCode = referralCode ?? null;
   const signupHref = refCode ? `/signup?ref=${refCode}` : null;
 
+  const fetchedGuestFormResponse = useGuestTaskForm(action, !isAuthenticated);
+  const guestFormResponse =
+    localGuestFormResponse ?? fetchedGuestFormResponse ?? null;
+  const hasGuestResponse = !isAuthenticated && !!guestFormResponse;
+
   const state = getActionPageTaskPanelState({
     action,
     userRelation,
     contractSigned: user?.hasActiveContract ?? false,
     isAuthenticated,
     hasRefCode: !!refCode,
+    hasGuestResponse,
   });
   const resolvedUserRelation = userRelation ?? "none";
+  const guestCompleted = state === ActionPageTaskPanelState.GuestCompleted;
   const guestMode =
     !isAuthenticated &&
     !!refCode &&
@@ -166,18 +175,11 @@ const ActionPageTaskPanel = () => {
     isAuthenticated,
     userLoading,
   });
-  const readOnlyGuestPreview =
-    !isAuthenticated &&
-    !refCode &&
-    state === ActionPageTaskPanelState.NotAuthenticated;
+  const formDisabledByState = isFormDisabledByState(state);
   const formResponse = useCompletedTaskForm(
     action,
     shouldLoadCompletedTaskFormByState[state],
   );
-  const fetchedGuestFormResponse = useGuestTaskForm(action, !isAuthenticated);
-  const guestFormResponse =
-    localGuestFormResponse ?? fetchedGuestFormResponse ?? null;
-  const guestCompleted = !isAuthenticated && !!guestFormResponse;
   const effectiveFormResponse = guestFormResponse ?? formResponse ?? undefined;
   const isCompletedPanel =
     state === ActionPageTaskPanelState.Completed || guestCompleted;
@@ -228,15 +230,12 @@ const ActionPageTaskPanel = () => {
   );
 
   let taskPanelHeader = taskPanelHeaderByState[state];
-  if (guestCompleted || state === ActionPageTaskPanelState.Completed) {
+  if (isCompletedPanel) {
     taskPanelHeader = completedHeader;
   } else if (isNonmemberPublicReferralAction) {
     taskPanelHeader = null;
   }
-  const completedStyles = cardStylesForState(ActionPageTaskPanelState.Completed);
-  const { header: headerStyle, body: bodyStyle } = guestCompleted
-    ? completedStyles
-    : cardStylesForState(state);
+  const { header: headerStyle, body: bodyStyle } = cardStylesForState(state);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -273,45 +272,45 @@ const ActionPageTaskPanel = () => {
             {isNonmemberPublicReferralAction &&
               showReferralTaskPanel &&
               signupHref && (
-              <div className="-mx-4 -mt-4 mb-4 overflow-hidden sm:-mx-6 sm:-mt-6">
-                <div
-                  className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-6 sm:py-5 ${
-                    !guestCompleted && animateReferralPanel
-                      ? "referral-panel-slide-in"
-                      : ""
-                  }`}
-                >
-                  {guestCompleted ? (
-                    <>
-                      <p className="text-base leading-7 text-zinc-700">
-                        {guestReferral.completionIntegrityExplanation}
-                      </p>
-                      <p className="mt-3 text-base leading-7 text-zinc-700">
-                        {guestReferral.joinToCountContributions}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-lg font-semibold leading-8 text-zinc-900">
-                        {guestReferral.inviteToTryTask(
-                          sharePreviewFirstName ??
-                            guestReferral.defaultReferrerName,
-                        )}
-                      </p>
-                      <p className="mt-3 text-base leading-7 text-zinc-700">
-                        {guestReferral.allianceIntro}
-                      </p>
-                    </>
-                  )}
-                  <Link
-                    to={signupHref}
-                    className="mt-5 block w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
+                <div className="-mx-4 -mt-4 mb-4 overflow-hidden sm:-mx-6 sm:-mt-6">
+                  <div
+                    className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-6 sm:py-5 ${
+                      !guestCompleted && animateReferralPanel
+                        ? "referral-panel-slide-in"
+                        : ""
+                    }`}
                   >
-                    Sign up
-                  </Link>
+                    {guestCompleted ? (
+                      <>
+                        <p className="text-base leading-7 text-zinc-700">
+                          {guestReferral.completionIntegrityExplanation}
+                        </p>
+                        <p className="mt-3 text-base leading-7 text-zinc-700">
+                          {guestReferral.joinToCountContributions}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-lg font-semibold leading-8 text-zinc-900">
+                          {guestReferral.inviteToTryTask(
+                            sharePreviewFirstName ??
+                              guestReferral.defaultReferrerName,
+                          )}
+                        </p>
+                        <p className="mt-3 text-base leading-7 text-zinc-700">
+                          {guestReferral.allianceIntro}
+                        </p>
+                      </>
+                    )}
+                    <Link
+                      to={signupHref}
+                      className="mt-5 block w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
+                    >
+                      Sign up
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             {bottom}
           </>
         }
@@ -324,6 +323,8 @@ const ActionPageTaskPanel = () => {
   switch (state) {
     case ActionPageTaskPanelState.Declined:
     case ActionPageTaskPanelState.Completed:
+    case ActionPageTaskPanelState.GuestCompleted:
+    case ActionPageTaskPanelState.PublicOnlyAuthenticated:
     case ActionPageTaskPanelState.NotAssigned:
     case ActionPageTaskPanelState.MemberActionClosed:
     case ActionPageTaskPanelState.OnboardingSignContractFirst:
@@ -336,14 +337,6 @@ const ActionPageTaskPanel = () => {
           formResponse={effectiveFormResponse}
         />,
       );
-    case ActionPageTaskPanelState.PublicOnlyAuthenticated:
-      return renderStackedCard(
-        <ActionTaskPanel
-          userRelation={resolvedUserRelation}
-          action={action}
-          {...panelHandlers}
-        />,
-      );
     case ActionPageTaskPanelState.NotAuthenticated:
     case ActionPageTaskPanelState.GuestRef:
     case ActionPageTaskPanelState.PublicOnly:
@@ -352,19 +345,19 @@ const ActionPageTaskPanel = () => {
           userRelation="none"
           action={action}
           {...panelHandlers}
-          onCompleteAction={guestMode ? () => {} : panelHandlers.onCompleteAction}
-          disabled={readOnlyGuestPreview || guestCompleted}
+          onCompleteAction={
+            guestMode ? () => {} : panelHandlers.onCompleteAction
+          }
+          disabled={formDisabledByState}
           formResponse={effectiveFormResponse}
           guestMode={guestMode}
-          createAccountHref={
-            guestMode && !isNonmemberPublicReferralAction
-              ? signupHref ?? undefined
-              : undefined
-          }
-          forceRenderTask={guestMode || readOnlyGuestPreview}
+          createAccountHref={guestMode ? (signupHref ?? undefined) : undefined}
+          forceRenderTask={guestMode || formDisabledByState}
           redirectOnComplete={!guestMode}
           onFormSubmitted={
-            guestMode ? (response) => setLocalGuestFormResponse(response) : undefined
+            guestMode
+              ? (response) => setLocalGuestFormResponse(response)
+              : undefined
           }
         />,
       );

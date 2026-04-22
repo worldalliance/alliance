@@ -2668,6 +2668,10 @@ export type FormDto = {
     usedInAction?: ActionDto;
 };
 
+export type LinkedGuestDraftDto = {
+    draft?: FormResponseDto;
+};
+
 export type FormAggregateViewsDto = {
     aggregateViews: Array<{
         [key: string]: unknown;
@@ -6934,7 +6938,7 @@ export type TasksGetLinkedGuestDraftData = {
 };
 
 export type TasksGetLinkedGuestDraftResponses = {
-    200: FormResponseDto;
+    200: LinkedGuestDraftDto;
 };
 
 export type TasksGetLinkedGuestDraftResponse = TasksGetLinkedGuestDraftResponses[keyof TasksGetLinkedGuestDraftResponses];

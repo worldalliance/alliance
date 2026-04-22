@@ -89,3 +89,16 @@ export class FormResponseDto extends PickType(FormResponse, [
   @Type(() => AiDetectionResultDto)
   aiDetectionResults?: AiDetectionResultDto[];
 }
+
+/**
+ * Wrapper for the linked-guest-draft lookup. Two distinct "no draft" states
+ * (the user already has a real submission; or their linked guest never
+ * submitted) both resolve to `draft` being absent — this lets the caller
+ * branch on presence without catching a 404 that would hide genuine errors.
+ */
+export class LinkedGuestDraftDto {
+  @ApiPropertyOptional({ type: () => FormResponseDto })
+  @IsOptional()
+  @Type(() => FormResponseDto)
+  draft?: FormResponseDto;
+}
