@@ -31,6 +31,25 @@ import { PosthogService } from 'src/posthog/posthog.service';
 import { PushDto } from 'src/push/dto/push.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Public } from '../auth/public.decorator';
+import { FriendStatus } from './entities/friend.entity';
+import {
+  AssignGroupsDto,
+  FriendStatusDto,
+  NMembersResponseDto,
+  ProfileDto,
+  ProfileDtoWithFriends,
+  SignupSocialProofDto,
+  UpdateProfileDto,
+  UserCityCountDto,
+  UserDto,
+} from './dto/user.dto';
+import { UserService } from './user.service';
+import { AddUserToTagDto, CreateTagDto, TagDto, TagSummaryDto } from './dto/tag.dto';
+import {
+  CreateOnetimeInviteDto,
+  OnetimeInviteDto,
+  RequestOnetimeInviteDto,
+} from './dto/invite.dto';
 import {
   CreateAwayRangeDto,
   UpdateAwayRangeDto,
@@ -43,30 +62,6 @@ import {
   TestPushNotificationDto,
   UserDeviceDto,
 } from './dto/device.dto';
-import {
-  CreateOnetimeInviteDto,
-  OnetimeInviteDto,
-  RequestOnetimeInviteDto,
-} from './dto/invite.dto';
-import {
-  AddUserToTagDto,
-  CreateTagDto,
-  TagDto,
-  TagSummaryDto,
-} from './dto/tag.dto';
-import {
-  AssignGroupsDto,
-  FriendStatusDto,
-  NMembersResponseDto,
-  ProfileDto,
-  ProfileDtoWithFriends,
-  SignupSocialProofDto,
-  UpdateProfileDto,
-  UserCityCountDto,
-  UserDto,
-} from './dto/user.dto';
-import { FriendStatus } from './entities/friend.entity';
-import { UserService } from './user.service';
 
 class VerifyEmailBody {
   @IsString()
