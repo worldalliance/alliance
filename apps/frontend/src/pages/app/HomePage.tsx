@@ -84,6 +84,7 @@ const HomePage = () => {
   }, [user, refreshUser]);
 
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
+  const actionCardRef = useRef<HTMLDivElement | null>(null);
   const [actionProgressViews, setActionProgressViews] = useState<
     Record<number, AggregateViewSchema[]>
   >({});
@@ -436,42 +437,58 @@ const HomePage = () => {
 
           {selectedTaskNavigatorItem?.kind === "action" &&
           selectedTaskNavigatorItem.action.userRelation ? (
-            <LargeActionCard
-              action={selectedTaskNavigatorItem.action}
-              dismissProps={
-                taskDismissInfo
-                  ? {
-                      ...taskDismissInfo,
-                      onDismiss: () =>
-                        handleDismissAction(
-                          selectedTaskNavigatorItem.action.id,
-                        ),
-                    }
-                  : undefined
-              }
-              userRelation={selectedTaskNavigatorItem.action.userRelation}
-              onCompleteAction={() => {
-                queryClient.setQueryData<ActionDto[] | undefined>(
-                  ["actions"],
-                  (prev) =>
-                    prev?.map((action) =>
-                      action.id === selectedTaskNavigatorItem.action.id
-                        ? { ...action, userRelation: "completed" as const }
-                        : action,
-                    ),
-                );
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
-              }}
-              onUpdateActionState={() => {
-                queryClient.invalidateQueries({ queryKey: ["actions"] });
-                mainScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                document.scrollingElement?.scrollTo({
-                  top: 0,
-                  behavior: "auto",
-                });
-                window.scrollTo({ top: 0, behavior: "auto" });
-              }}
-            />
+            <div ref={actionCardRef}>
+              <LargeActionCard
+                action={selectedTaskNavigatorItem.action}
+                dismissProps={
+                  taskDismissInfo
+                    ? {
+                        ...taskDismissInfo,
+                        onDismiss: () =>
+                          handleDismissAction(
+                            selectedTaskNavigatorItem.action.id,
+                          ),
+                      }
+                    : undefined
+                }
+                userRelation={selectedTaskNavigatorItem.action.userRelation}
+                onCompleteAction={() => {
+                  queryClient.setQueryData<ActionDto[] | undefined>(
+                    ["actions"],
+                    (prev) =>
+                      prev?.map((action) =>
+                        action.id === selectedTaskNavigatorItem.action.id
+                          ? { ...action, userRelation: "completed" as const }
+                          : action,
+                      ),
+                  );
+                  queryClient.invalidateQueries({ queryKey: ["actions"] });
+                }}
+                onUpdateActionState={() => {
+                  queryClient.invalidateQueries({ queryKey: ["actions"] });
+                  mainScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                  document.scrollingElement?.scrollTo({
+                    top: 0,
+                    behavior: "auto",
+                  });
+                  window.scrollTo({ top: 0, behavior: "auto" });
+                }}
+                onPageChange={() => {
+                  const card = actionCardRef.current;
+                  const scrollContainer = mainScrollRef.current;
+                  if (card && scrollContainer) {
+                    const cardTop =
+                      card.getBoundingClientRect().top -
+                      scrollContainer.getBoundingClientRect().top +
+                      scrollContainer.scrollTop;
+                    scrollContainer.scrollTo({
+                      top: cardTop,
+                      behavior: "instant",
+                    });
+                  }
+                }}
+              />
+            </div>
           ) : selectedTaskNavigatorItem?.kind === "followUpForm" ? (
             <div className="w-full mx-auto">
               <FollowUpFormPanel

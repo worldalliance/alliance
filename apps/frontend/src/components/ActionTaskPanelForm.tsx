@@ -32,6 +32,7 @@ interface ActionTaskPanelFormProps {
   disabled?: boolean;
   publicAction?: boolean;
   formResponse?: FormResponseDto;
+  onPageChange?: () => void;
 }
 
 const ActionTaskPanelForm = ({
@@ -44,6 +45,7 @@ const ActionTaskPanelForm = ({
   disabled = false,
   publicAction = false,
   formResponse,
+  onPageChange,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const { user, refreshUser } = useAuth();
@@ -185,6 +187,7 @@ const ActionTaskPanelForm = ({
           publicAction={publicAction}
           phDistinctId={distinctId}
           sessionReplayUrl={sessionReplayUrl}
+          onPageChange={onPageChange}
         />
       </div>
       {error && (

@@ -79,6 +79,7 @@ type FormRendererProps = {
   /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
   adminPreviewUserId?: string | number;
   onSubmit: ((data: SubmitFormDto) => Promise<void>) | null; // null for admin preview
+  onPageChange?: () => void;
 } & (
   | {
       isGeneralUpdate?: false;
@@ -166,6 +167,7 @@ const FormRenderer = ({
   sessionReplayUrl,
   isGeneralUpdate,
   onDismiss,
+  onPageChange,
 }: FormRendererProps) => {
   // Compute schema and a namespaced storage key for persistence (if enabled)
   const schema = form as unknown as FormSchema;
@@ -1335,12 +1337,16 @@ const FormRenderer = ({
   useEffect(() => {
     if (prevPageIndexRef.current !== currentPageIndex) {
       prevPageIndexRef.current = currentPageIndex;
-      formTopRef.current?.scrollIntoView({
-        behavior: "instant",
-        block: "start",
-      });
+      if (onPageChange) {
+        onPageChange();
+      } else {
+        formTopRef.current?.scrollIntoView({
+          behavior: "instant",
+          block: "start",
+        });
+      }
     }
-  }, [currentPageIndex]);
+  }, [currentPageIndex, onPageChange]);
 
   const formTrackingParams = {
     formId: id,

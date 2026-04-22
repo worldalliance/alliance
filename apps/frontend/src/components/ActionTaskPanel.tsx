@@ -15,6 +15,7 @@ export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   userRelation: UserActionRelation;
   missedDeadline?: boolean;
   card?: boolean;
+  onPageChange?: () => void;
 };
 
 const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
@@ -24,6 +25,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   card = false,
   disabled = false,
   formResponse,
+  onPageChange,
 }: ActionTaskPanelProps) => {
   const handleCompleteAction = useCallback(() => {
     onCompleteAction();
@@ -96,6 +98,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
           onAbandonAction={handleAbandonAction}
           card={card}
           actionId={action.id}
+          onPageChange={onPageChange}
         />
       );
     }
