@@ -147,11 +147,17 @@ export function getCompletedShareableTextTemplate({
 export function interpolateShareText(
   template: string,
   formResponse: FormResponseDto,
+  userName?: string | null,
 ): string {
   const schema = formResponse.schemaSnapshot as unknown as FormSchema;
+  // Form-response fetches don't always eager-load user, so fall back to the
+  // explicitly passed userName. A blank user.name string is treated as absent.
+  const responseName = formResponse.user?.name;
+  const resolvedUserName =
+    responseName && responseName.trim() ? responseName : userName;
   const interpolatedTemplate = interpolateMemberNameTokens({
     template,
-    userName: formResponse.user?.name,
+    userName: resolvedUserName,
   });
 
   if (!schema?.pages) return interpolatedTemplate;
@@ -182,7 +188,7 @@ export function buildShareText({
   if (!template) return url;
 
   const interpolated = formResponse
-    ? interpolateShareText(template, formResponse)
+    ? interpolateShareText(template, formResponse, userName)
     : interpolateMemberNameTokens({ template, userName });
   const trimmed = interpolated.trim();
 

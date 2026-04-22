@@ -164,7 +164,7 @@ export function TaskNavigatorCompletedRow({
   activeFollowUpFormId: number | null;
   onSelectFollowUp: (formId: number) => void;
 }) {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const formResponse = useCompletedTaskForm(action, true);
   const taskForm = useTaskForm(action, true);
   const shareTemplate = getCompletedShareableTextTemplate({
@@ -187,6 +187,7 @@ export function TaskNavigatorCompletedRow({
     const text = buildShareText({
       template: shareTemplate,
       formResponse,
+      userName: user?.name,
       url,
     });
     return navigator.clipboard.writeText(text);

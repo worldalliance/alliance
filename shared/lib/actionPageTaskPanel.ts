@@ -101,7 +101,7 @@ export function getActionPageTaskPanelState(params: {
       : ActionPageTaskPanelState.PublicOnly;
   }
 
-  if (!action.reqAuthenticated) {
+  if (!action.reqAuthenticated && !isAuthenticated) {
     return hasRefCode
       ? ActionPageTaskPanelState.GuestRef
       : ActionPageTaskPanelState.NotAuthenticated;

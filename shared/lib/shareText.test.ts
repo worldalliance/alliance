@@ -1,6 +1,21 @@
+import type { FormResponseDto } from "../client/types.gen";
 import { buildShareText } from "./shareText";
 
 const URL = "https://example.com/actions/1?ref=share-abc";
+
+const makeFormResponse = (
+  overrides: Partial<FormResponseDto> = {},
+): FormResponseDto =>
+  ({
+    id: 1,
+    formId: 1,
+    answers: {},
+    visibilityValidatorResults: {},
+    publicAnswers: {},
+    createdAt: new Date().toISOString(),
+    schemaSnapshot: {},
+    ...overrides,
+  }) as FormResponseDto;
 
 describe("buildShareText name-token interpolation", () => {
   it("replaces #{first-name} with the first whitespace-delimited word", () => {
@@ -81,5 +96,106 @@ describe("buildShareText name-token interpolation", () => {
     expect(buildShareText({ template: "   ", userName: "Ada", url: URL })).toBe(
       URL,
     );
+  });
+});
+
+describe("buildShareText with formResponse", () => {
+  it("prefers formResponse.user.name when present", () => {
+    const result = buildShareText({
+      template: `Hi, #{first-name}!`,
+      formResponse: makeFormResponse({
+        user: { name: "Ada Lovelace" } as FormResponseDto["user"],
+      }),
+      userName: "Grace Hopper",
+      url: URL,
+    });
+
+    expect(result).toBe(`Hi, Ada!\n\n${URL}`);
+  });
+
+  it("falls back to supplied userName when formResponse.user is undefined", () => {
+    const result = buildShareText({
+      template: `Hi, #{first-name}!`,
+      formResponse: makeFormResponse(),
+      userName: "Ada Lovelace",
+      url: URL,
+    });
+
+    expect(result).toBe(`Hi, Ada!\n\n${URL}`);
+  });
+
+  it("falls back to supplied userName when formResponse.user.name is missing", () => {
+    const result = buildShareText({
+      template: `Hi, #{full-name}!`,
+      formResponse: makeFormResponse({
+        user: {} as FormResponseDto["user"],
+      }),
+      userName: "Ada Lovelace",
+      url: URL,
+    });
+
+    expect(result).toBe(`Hi, Ada Lovelace!\n\n${URL}`);
+  });
+
+  it("leaves name tokens untouched when neither formResponse.user nor userName supply a name", () => {
+    const result = buildShareText({
+      template: `Hi, #{first-name}!`,
+      formResponse: makeFormResponse(),
+      url: URL,
+    });
+
+    expect(result).toBe(`Hi, #{first-name}!\n\n${URL}`);
+  });
+
+  it("interpolates form-field tokens alongside name tokens", () => {
+    const result = buildShareText({
+      template: `#{first-name} wrote: #{note}`,
+      formResponse: makeFormResponse({
+        answers: { note: "hello world" },
+        schemaSnapshot: {
+          pages: [
+            {
+              fields: [{ id: "note", label: "Note", kind: "shortText" }],
+            },
+          ],
+        } as FormResponseDto["schemaSnapshot"],
+      }),
+      userName: "Ada Lovelace",
+      url: URL,
+    });
+
+    expect(result).toBe(`Ada wrote: hello world\n\n${URL}`);
+  });
+
+  it("interpolates form-field tokens even when user name is unavailable", () => {
+    const result = buildShareText({
+      template: `I said: #{note} — #{first-name}`,
+      formResponse: makeFormResponse({
+        answers: { note: "hi" },
+        schemaSnapshot: {
+          pages: [
+            {
+              fields: [{ id: "note", label: "Note", kind: "shortText" }],
+            },
+          ],
+        } as FormResponseDto["schemaSnapshot"],
+      }),
+      url: URL,
+    });
+
+    expect(result).toBe(`I said: hi — #{first-name}\n\n${URL}`);
+  });
+
+  it("ignores blank formResponse.user.name and falls back to userName", () => {
+    const result = buildShareText({
+      template: `Sincerely, #{full-name}`,
+      formResponse: makeFormResponse({
+        user: { name: "   " } as FormResponseDto["user"],
+      }),
+      userName: "Ada Lovelace",
+      url: URL,
+    });
+
+    expect(result).toBe(`Sincerely, Ada Lovelace\n\n${URL}`);
   });
 });

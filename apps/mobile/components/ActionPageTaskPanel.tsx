@@ -144,6 +144,7 @@ const ActionPageTaskPanel = ({
     const text = buildShareText({
       template: shareTemplate,
       formResponse,
+      userName: user?.name,
       url,
     });
     try {

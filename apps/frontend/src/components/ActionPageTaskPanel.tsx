@@ -202,6 +202,7 @@ const ActionPageTaskPanel = () => {
     const text = buildShareText({
       template: shareTemplate,
       formResponse: effectiveFormResponse,
+      userName: user?.name,
       url,
     });
     return copyToClipboard(text);
