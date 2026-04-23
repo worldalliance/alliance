@@ -38,6 +38,7 @@ type CommunityMembersTableProps = {
   maxActionsPerWeek: Record<number, number> | null;
   showInfoTooltip?: boolean;
   showContractFilter?: boolean;
+  disableSort?: boolean;
 };
 
 const CommunityMembersTable = ({
@@ -53,6 +54,7 @@ const CommunityMembersTable = ({
   maxActionsPerWeek,
   showInfoTooltip = false,
   showContractFilter = false,
+  disableSort = false,
 }: CommunityMembersTableProps) => {
   const [completionFilter, setCompletionFilter] = useState<CompletionFilterMode>(
     CompletionFilterMode.All,
@@ -119,7 +121,7 @@ const CommunityMembersTable = ({
 
   const filteredSortedMembers = useMemo(() => {
     const filtered = membersByCompletion[completionFilter] ?? [];
-    if (!amLeader) return filtered;
+    if (disableSort || !amLeader) return filtered;
     return sortMembersByNextTaskDue(
       filtered,
       deadlineTimestampByUserId,
@@ -127,6 +129,7 @@ const CommunityMembersTable = ({
     );
   }, [
     amLeader,
+    disableSort,
     completionFilter,
     memberContactInfo,
     membersByCompletion,

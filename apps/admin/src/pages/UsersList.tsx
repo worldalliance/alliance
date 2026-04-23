@@ -510,6 +510,7 @@ const UsersList: React.FC = () => {
             completedAllCurrentActions={completedAllCurrentActions}
             showInfoTooltip
             showContractFilter
+            disableSort={shuffledIds != null}
           />
         </div>
       )}
