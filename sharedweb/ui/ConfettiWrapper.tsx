@@ -1,9 +1,4 @@
-import type {
-  KeyboardEvent,
-  MouseEvent,
-  PointerEvent,
-  ReactNode,
-} from "react";
+import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@alliance/shared/styles/util";
 
@@ -100,6 +95,7 @@ export default function ConfettiWrapper({
 }: ConfettiWrapperProps) {
   const burstIdRef = useRef(0);
   const burstTimeoutsRef = useRef<number[]>([]);
+  const fixedBurstElsRef = useRef<Set<HTMLElement>>(new Set());
   const wrapperRef = useRef<HTMLSpanElement | null>(null);
   const lastPointerDownRef = useRef<{
     clientX: number;
@@ -114,6 +110,12 @@ export default function ConfettiWrapper({
       burstTimeoutsRef.current.forEach((timeoutId) =>
         window.clearTimeout(timeoutId),
       );
+      fixedBurstElsRef.current.forEach((burstEl) => burstEl.remove());
+      fixedBurstElsRef.current.clear();
+      const layer = document.getElementById(CONFETTI_LAYER_ID);
+      if (layer && !layer.childElementCount) {
+        layer.remove();
+      }
     };
   }, []);
 
@@ -183,8 +185,7 @@ export default function ConfettiWrapper({
       pieceEl.style.animationFillMode = "forwards";
       pieceEl.style.animationDelay = `${piece.delay}ms`;
       pieceEl.style.backgroundColor = piece.color;
-      pieceEl.style.borderRadius =
-        piece.shape === "circle" ? "9999px" : "2px";
+      pieceEl.style.borderRadius = piece.shape === "circle" ? "9999px" : "2px";
       pieceEl.style.height =
         piece.shape === "circle" ? `${piece.size}px` : "4px";
       pieceEl.style.width =
@@ -202,11 +203,13 @@ export default function ConfettiWrapper({
     });
 
     layer.appendChild(burstEl);
+    fixedBurstElsRef.current.add(burstEl);
 
     const timeoutId = window.setTimeout(() => {
       burstTimeoutsRef.current = burstTimeoutsRef.current.filter(
         (currentTimeoutId) => currentTimeoutId !== timeoutId,
       );
+      fixedBurstElsRef.current.delete(burstEl);
       burstEl.remove();
       if (layer && !layer.childElementCount) {
         layer.remove();

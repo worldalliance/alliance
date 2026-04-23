@@ -43,6 +43,7 @@ import {
   FormAggregateViewsDto,
   FormDto,
   FormResponseDto,
+  GuestFormResponseDto,
   LinkedGuestDraftDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
@@ -991,15 +992,12 @@ export class TasksService {
   async getGuestFormResponse(
     guestId: string,
     formId: number,
-  ): Promise<FormResponseDto> {
+  ): Promise<GuestFormResponseDto> {
     const response = await this.formResponseRepository.findOne({
-      where: { formId, guest: { id: guestId } },
+      where: { formId, guest: { id: guestId, linkedUser: IsNull() } },
       order: { createdAt: 'DESC', id: 'DESC' },
     });
-    if (!response) {
-      throw new NotFoundException('Guest form response not found');
-    }
-    return response;
+    return response ? { response } : {};
   }
 
   async getLinkedGuestDraftFormResponse(

@@ -1,8 +1,5 @@
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import {
-  actionsGetActionReferralCode,
-  tasksGetForm,
-} from "@alliance/shared/client";
+import { tasksGetForm } from "@alliance/shared/client";
 import type { ProfileDto } from "@alliance/shared/client/types.gen";
 import {
   Link,
@@ -31,6 +28,7 @@ import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressB
 import { useLiveTaskFormAggregateViews } from "../lib/useLiveTaskFormAggregateViews";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import {
+  buildActionShareUrl,
   buildShareText,
   getCompletedShareableTextTemplate,
   getDefaultShareableTextTemplate,
@@ -121,15 +119,11 @@ const ActionContents = () => {
   const nextEvent = getNextEvent(action);
 
   const handleShareAction = async () => {
-    let url = `${getBaseUrl()}/actions/${action.id}`;
-    if (isAuthenticated) {
-      const { data } = await actionsGetActionReferralCode({
-        path: { id: action.id },
-      });
-      if (data?.referralCode) {
-        url = `${url}?ref=${data.referralCode}`;
-      }
-    }
+    const url = await buildActionShareUrl({
+      actionId: action.id,
+      baseUrl: getBaseUrl(),
+      isAuthenticated,
+    });
     const text = buildShareText({
       template: shareTemplate,
       formResponse,

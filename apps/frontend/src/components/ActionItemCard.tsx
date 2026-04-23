@@ -12,7 +12,7 @@ import { ExternalLinkIcon } from "lucide-react";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
-import { actionsGetActionReferralCode } from "@alliance/shared/client";
+import { buildActionShareUrl } from "@alliance/shared/lib/shareText";
 
 export interface ActionItemCardProps extends ActionItemCardPropsShared {
   className?: string;
@@ -73,13 +73,11 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
   const stage = getStageMeta(action.status);
 
   const handleShareAction = useCallback(async () => {
-    let url = `${getBaseUrl()}/actions/${action.id}`;
-    const { data } = await actionsGetActionReferralCode({
-      path: { id: action.id },
+    const url = await buildActionShareUrl({
+      actionId: action.id,
+      baseUrl: getBaseUrl(),
+      isAuthenticated: true,
     });
-    if (data?.referralCode) {
-      url = `${url}?ref=${data.referralCode}`;
-    }
     return copyToClipboard(url);
   }, [action.id]);
 

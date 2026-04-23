@@ -23,11 +23,10 @@ import useActivities, {
 } from "@alliance/shared/lib/useActivities";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { ActionActivityDetailContext } from "../../components/ActionActivityDetail";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
 import { isNonmemberOnPublicActionReferral } from "../../lib/publicActionReferral";
-import { useGuestTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import { guestReferral, taskHeaders } from "@alliance/shared/lib/copy";
 import { X } from "lucide-react";
 
@@ -69,7 +68,7 @@ export function meta({ data }: { data: Awaited<ReturnType<typeof loader>> }) {
       ? sharePreview.completedByReferrer
         ? `${sharePreview.firstName} completed ${action.name}`
         : `${sharePreview.firstName} invites you to try ${action.name}`
-      : action.name
+      : `${action.name} - Alliance`
     : "Alliance";
 
   return [
@@ -97,7 +96,9 @@ export default function ActionPage() {
   const [searchParams] = useSearchParams();
   const rawRefCode = searchParams.get("ref");
   const refCode = sharePreview?.validReferral ? rawRefCode : null;
-  const signupHref = refCode ? `/signup?ref=${refCode}` : href("/signup");
+  const signupHref = refCode
+    ? `/signup?ref=${encodeURIComponent(refCode)}`
+    : href("/signup");
   const [invitePopupDismissed, setInvitePopupDismissed] = useState(false);
   const [completedPopupDismissed, setCompletedPopupDismissed] = useState(false);
   const [referralPanelAnimationNonce, setReferralPanelAnimationNonce] =
@@ -132,16 +133,6 @@ export default function ActionPage() {
     useActionHandlers(actionId, isAuthenticated, reloadTasks);
 
   const publicMode = !isAuthenticated;
-
-  const guestFormResponse = useGuestTaskForm(action ?? null, !isAuthenticated);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      setGuestCompleted(false);
-      return;
-    }
-    setGuestCompleted(!!guestFormResponse);
-  }, [isAuthenticated, guestFormResponse]);
 
   if (!action && !loading && !user && !userLoading) {
     return (

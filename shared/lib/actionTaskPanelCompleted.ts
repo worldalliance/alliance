@@ -37,7 +37,7 @@ export const useGuestTaskForm = (
       const response = await tasksGetGuestFormResponse({
         path: { id: taskFormId! },
       });
-      return response.data ?? null;
+      return response.data?.response ?? null;
     },
     enabled: enabled && taskFormId != null,
     retry: false,

@@ -3,18 +3,19 @@ import { Circle, CircleChevronRight, ArrowRight, Link2 } from "lucide-react";
 import { cn } from "@alliance/shared/styles/util";
 import { type ReactNode } from "react";
 import {
-  actionsGetActionReferralCode,
   type ActionDto,
   type FollowUpForm,
 } from "@alliance/shared/client";
 import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
 import { useAuth } from "../../lib/AuthContext";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import {
   useCompletedTaskForm,
   useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import {
+  buildActionShareUrl,
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
@@ -175,22 +176,18 @@ export function TaskNavigatorCompletedRow({
   });
 
   const handleShare = async () => {
-    let url = `${getBaseUrl()}/actions/${action.id}`;
-    if (isAuthenticated) {
-      const { data } = await actionsGetActionReferralCode({
-        path: { id: action.id },
-      });
-      if (data?.referralCode) {
-        url = `${url}?ref=${data.referralCode}`;
-      }
-    }
+    const url = await buildActionShareUrl({
+      actionId: action.id,
+      baseUrl: getBaseUrl(),
+      isAuthenticated,
+    });
     const text = buildShareText({
       template: shareTemplate,
       formResponse,
       userName: user?.name,
       url,
     });
-    return navigator.clipboard.writeText(text);
+    return copyToClipboard(text);
   };
   return (
     <div className="flex flex-col gap-y-1">

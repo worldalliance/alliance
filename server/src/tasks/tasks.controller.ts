@@ -4,7 +4,6 @@ import {
   Controller,
   Delete,
   Get,
-  NotFoundException,
   Param,
   ParseIntPipe,
   Post,
@@ -40,6 +39,7 @@ import {
   FormAggregateViewsDto,
   FormDto,
   FormResponseDto,
+  GuestFormResponseDto,
   LinkedGuestDraftDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
@@ -145,18 +145,18 @@ export class TasksController {
 
   @Get('guestResponse/:id')
   @Public()
-  @ApiOkResponse({ type: FormResponseDto })
+  @ApiOkResponse({ type: GuestFormResponseDto })
   async getGuestFormResponse(
     @Request() req: ExpressRequest,
     @Param('id', ParseIntPipe) id: number,
-  ): Promise<FormResponseDto> {
+  ): Promise<GuestFormResponseDto> {
     const token =
       extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
     const guestPayload = token
       ? await this.authService.verifyGuestToken(token)
       : null;
     if (!guestPayload) {
-      throw new NotFoundException('No guest session');
+      return {};
     }
     return this.tasksService.getGuestFormResponse(guestPayload.sub, id);
   }

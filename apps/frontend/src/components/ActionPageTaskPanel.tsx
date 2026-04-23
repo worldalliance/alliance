@@ -1,8 +1,4 @@
-import {
-  actionsGetActionReferralCode,
-  FormResponseDto,
-  UserActionRelation,
-} from "@alliance/shared/client";
+import { FormResponseDto, UserActionRelation } from "@alliance/shared/client";
 import {
   useCompletedTaskForm,
   useGuestTaskForm,
@@ -34,6 +30,7 @@ import {
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import {
+  buildActionShareUrl,
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
@@ -148,7 +145,9 @@ const ActionPageTaskPanel = () => {
     useState<FormResponseDto | null>(null);
   const [animateReferralPanel, setAnimateReferralPanel] = useState(false);
   const refCode = referralCode ?? null;
-  const signupHref = refCode ? `/signup?ref=${refCode}` : null;
+  const signupHref = refCode
+    ? `/signup?ref=${encodeURIComponent(refCode)}`
+    : null;
 
   const fetchedGuestFormResponse = useGuestTaskForm(action, !isAuthenticated);
   const guestFormResponse =
@@ -192,15 +191,11 @@ const ActionPageTaskPanel = () => {
   });
 
   const handleShareCopy = async () => {
-    let url = `${getBaseUrl()}/actions/${action.id}`;
-    if (isAuthenticated) {
-      const { data } = await actionsGetActionReferralCode({
-        path: { id: action.id },
-      });
-      if (data?.referralCode) {
-        url = `${url}?ref=${data.referralCode}`;
-      }
-    }
+    const url = await buildActionShareUrl({
+      actionId: action.id,
+      baseUrl: getBaseUrl(),
+      isAuthenticated,
+    });
     const text = buildShareText({
       template: shareTemplate,
       formResponse: effectiveFormResponse,

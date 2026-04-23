@@ -2668,6 +2668,10 @@ export type FormDto = {
     usedInAction?: ActionDto;
 };
 
+export type GuestFormResponseDto = {
+    response?: FormResponseDto;
+};
+
 export type LinkedGuestDraftDto = {
     draft?: FormResponseDto;
 };
@@ -6923,7 +6927,7 @@ export type TasksGetGuestFormResponseData = {
 };
 
 export type TasksGetGuestFormResponseResponses = {
-    200: FormResponseDto;
+    200: GuestFormResponseDto;
 };
 
 export type TasksGetGuestFormResponseResponse = TasksGetGuestFormResponseResponses[keyof TasksGetGuestFormResponseResponses];

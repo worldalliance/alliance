@@ -2,7 +2,6 @@ import {
   ActionDto,
   UserActionRelation,
 } from "@alliance/shared/client/types.gen";
-import { actionsGetActionReferralCode } from "@alliance/shared/client";
 import {
   ActionPageTaskPanelState,
   cardStylesForState,
@@ -27,6 +26,7 @@ import ActionTaskPanel from "./ActionTaskPanel";
 import { useAuth } from "../lib/AuthContext";
 import * as Clipboard from "expo-clipboard";
 import {
+  buildActionShareUrl,
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
@@ -40,7 +40,11 @@ export interface ActionPageTaskPanelProps {
   scrollToEnd: (animated?: boolean) => void;
 }
 
-const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
+// Guest-completion states (GuestRef, GuestCompleted) are web-only; mobile
+// pins hasRefCode/hasGuestResponse to false below so they're never reached.
+const taskPanelTopByState: Partial<
+  Record<ActionPageTaskPanelState, ReactNode>
+> = {
   [ActionPageTaskPanelState.PublicOnlyAuthenticated]: (
     <Text>{taskHeaders.actionPage.externalOnly}</Text>
   ),
@@ -53,8 +57,6 @@ const taskPanelTopByState: Record<ActionPageTaskPanelState, ReactNode> = {
       <Text> to complete this task.</Text>
     </View>
   ),
-  [ActionPageTaskPanelState.GuestRef]: null,
-  [ActionPageTaskPanelState.GuestCompleted]: null,
   [ActionPageTaskPanelState.NotAssigned]: (
     <Text>{taskHeaders.actionPage.notAssigned}</Text>
   ),
@@ -135,15 +137,11 @@ const ActionPageTaskPanel = ({
   });
 
   const handleShareCopy = async () => {
-    let url = `${getBaseUrl()}/actions/${action.id}`;
-    if (isAuthenticated) {
-      const { data } = await actionsGetActionReferralCode({
-        path: { id: action.id },
-      });
-      if (data?.referralCode) {
-        url = `${url}?ref=${data.referralCode}`;
-      }
-    }
+    const url = await buildActionShareUrl({
+      actionId: action.id,
+      baseUrl: getBaseUrl(),
+      isAuthenticated,
+    });
     const text = buildShareText({
       template: shareTemplate,
       formResponse,
@@ -194,13 +192,15 @@ const ActionPageTaskPanel = ({
   switch (state) {
     case ActionPageTaskPanelState.Declined:
     case ActionPageTaskPanelState.Completed:
-    case ActionPageTaskPanelState.GuestCompleted:
     case ActionPageTaskPanelState.PublicOnlyAuthenticated:
     case ActionPageTaskPanelState.NotAuthenticated:
-    case ActionPageTaskPanelState.GuestRef:
     case ActionPageTaskPanelState.NotAssigned:
     case ActionPageTaskPanelState.MemberActionClosed:
     case ActionPageTaskPanelState.OnboardingSignContractFirst:
+    // Guest-completion states never occur on mobile (hasRefCode/hasGuestResponse
+    // pinned false); fall through to the disabled rendering just in case.
+    case ActionPageTaskPanelState.GuestRef:
+    case ActionPageTaskPanelState.GuestCompleted:
       return (
         <StackedCard
           top={taskPanelHeader}
