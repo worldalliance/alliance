@@ -459,19 +459,19 @@ const HomePage = () => {
                   : undefined
               }
               userRelation={selectedTaskNavigatorItem.action.userRelation}
-              onCompleteAction={() => true}
-              onUpdateActionState={(completedActionId) => {
-                if (completedActionId !== undefined) {
-                  queryClient.setQueryData<ActionDto[] | undefined>(
-                    ["actions"],
-                    (prev) =>
-                      prev?.map((action) =>
-                        action.id === completedActionId
-                          ? { ...action, userRelation: "completed" as const }
-                          : action,
-                      ),
-                  );
-                }
+              onCompleteAction={() => {
+                queryClient.setQueryData<ActionDto[] | undefined>(
+                  ["actions"],
+                  (prev) =>
+                    prev?.map((action) =>
+                      action.id === selectedTaskNavigatorItem.action.id
+                        ? { ...action, userRelation: "completed" as const }
+                        : action,
+                    ),
+                );
+                queryClient.invalidateQueries({ queryKey: ["actions"] });
+              }}
+              onUpdateActionState={() => {
                 queryClient.invalidateQueries({ queryKey: ["actions"] });
                 mainScrollRef.current?.scrollTo({
                   top: 0,

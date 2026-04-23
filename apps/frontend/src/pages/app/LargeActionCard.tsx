@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useState, type RefObject } from "react";
 import { href, useNavigate } from "react-router";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -26,13 +20,10 @@ import { UserActionRelation } from "@alliance/shared/client";
 export interface LargeActionCardProps extends LargeActionCardPropsShared {
   showDetails?: boolean;
   className?: string;
-  onCompleteAction: () => boolean | void | Promise<boolean | void>;
+  onCompleteAction: () => void;
   userRelation: UserActionRelation;
   scrollContainerRef?: RefObject<HTMLElement | null>;
 }
-
-const TASK_COMPLETE_EXIT_MS = 500;
-const TASK_COMPLETE_CONFETTI_LEAD_MS = 150;
 
 enum LargeActionCardState {
   Minified = "minified",
@@ -71,39 +62,17 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
     setState(LargeActionCardState.Default);
   }, [action]);
 
-  const exitTimeoutsRef = useRef<number[]>([]);
-  useEffect(() => {
-    return () => {
-      exitTimeoutsRef.current.forEach((id) => window.clearTimeout(id));
-      exitTimeoutsRef.current = [];
-    };
-  }, []);
+  const handleUpdateActionState = useCallback(() => {
+    setState(LargeActionCardState.Closed);
+    setTimeout(() => {
+      onUpdateActionState();
+    }, 200);
+  }, [onUpdateActionState]);
 
-  const handleUpdateActionState = useCallback(
-    (completedActionId?: number) => {
-      const closeId = window.setTimeout(() => {
-        setState(LargeActionCardState.Closed);
-      }, TASK_COMPLETE_CONFETTI_LEAD_MS);
-      const updateId = window.setTimeout(() => {
-        onUpdateActionState(completedActionId);
-      }, TASK_COMPLETE_CONFETTI_LEAD_MS + TASK_COMPLETE_EXIT_MS);
-      exitTimeoutsRef.current.push(closeId, updateId);
-    },
-    [onUpdateActionState],
-  );
-
-  const handleCompleteAction = useCallback(async () => {
-    const didSucceed = await onCompleteAction();
-    if (didSucceed === false) {
-      return false;
-    }
-    handleUpdateActionState(action.id);
-    return true;
-  }, [onCompleteAction, handleUpdateActionState, action.id]);
-
-  const handleOptOutAction = useCallback(() => {
+  const handleCompleteAction = useCallback(() => {
+    onCompleteAction();
     handleUpdateActionState();
-  }, [handleUpdateActionState]);
+  }, [onCompleteAction, handleUpdateActionState]);
 
   const goToActionPage = useCallback(
     (e: React.MouseEvent) => {
@@ -118,17 +87,13 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
   const nextEvent = getNextEvent(action);
 
   return (
-    <div
-      className={cn(
-        "overflow-hidden origin-top transition-[max-height,opacity,transform,margin] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] max-h-[1200px] opacity-100 translate-y-0 scale-y-100",
-        state === LargeActionCardState.Closed &&
-          "max-h-0 opacity-0 -translate-y-4 scale-y-90 pointer-events-none",
-      )}
-    >
+    <>
       <Card
         className={cn(
-          "p-4 sm:p-6 w-full relative rounded-md",
+          "p-4 sm:p-6 transition-all duration-300 w-full relative rounded-md",
+          state === LargeActionCardState.Closed && "opacity-0 overflow-hidden",
           state === LargeActionCardState.Minified && "pb-4",
+          state !== LargeActionCardState.Closed && "opacity-100",
           className,
         )}
       >
@@ -173,13 +138,13 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
               action={action}
               userRelation={userRelation}
               onCompleteAction={handleCompleteAction}
-              onOptOutAction={handleOptOutAction}
+              onOptOutAction={handleUpdateActionState}
               scrollContainerRef={scrollContainerRef}
             />
           </div>
         </div>
       </Card>
-    </div>
+    </>
   );
 };
 

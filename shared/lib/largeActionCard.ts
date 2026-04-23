@@ -8,7 +8,7 @@ import { taskHeaders } from "./copy";
 
 export interface LargeActionCardPropsShared {
   action: ActionWithAwayStatus;
-  onUpdateActionState: (completedActionId?: number) => void;
+  onUpdateActionState: () => void;
   dismissProps?: {
     header: string;
     message: string;
