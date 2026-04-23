@@ -54,13 +54,13 @@ const PeoplePage: React.FC = () => {
       description: "Former Editor-in-Chief, CNET",
     },
     {
+      name: "Beth Barnes",
+      description: "Founder and CEO of METR",
+    },
+    {
       name: "Durwood Zaelke",
       description:
         "President, Institute for Governance & Sustainable Development",
-    },
-    {
-      name: "Beth Barnes",
-      description: "Founder and CEO of METR",
     },
     {
       name: "Tom Luben",
@@ -73,6 +73,10 @@ const PeoplePage: React.FC = () => {
     {
       name: "Gernot Wagner",
       description: "Climate economist, Columbia Business School",
+    },
+    {
+      name: "Jennifer King",
+      description: "Privacy & Data Policy Fellow, Stanford HAI",
     },
   ];
 
@@ -174,11 +178,15 @@ const PeoplePage: React.FC = () => {
             This list only includes experts who have chosen to make their
             information public.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-8 mt-8">
+          <div className="grid grid-cols-2 md:grid-cols-2 gap-x-6 gap-y-8 mt-8">
             {experts.map((expert) => (
               <div key={expert.name} className="">
-                <p className="text-zinc-900 text-base">{expert.name}</p>
-                <p className="text-zinc-500 text-base">{expert.description}</p>
+                <p className="text-zinc-900 text-base md:text-lg">
+                  {expert.name}
+                </p>
+                <p className="text-zinc-500 text-base md:text-lg">
+                  {expert.description}
+                </p>
               </div>
             ))}
           </div>

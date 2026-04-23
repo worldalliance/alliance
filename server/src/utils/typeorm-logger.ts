@@ -4,6 +4,7 @@ import { Logger as NestLogger } from '@nestjs/common';
 import { PostHog } from 'posthog-node';
 import client from 'prom-client';
 import { register } from '../metrics';
+import { requestContext } from './request-context';
 
 const dbQueryTotal = new client.Counter({
   name: 'db_query_total',
@@ -49,11 +50,16 @@ export class AppTypeOrmLogger implements TypeOrmLogger {
   }
 
   logQueryError(error: string | Error, query: string, parameters?: any[]) {
+    const ctx = requestContext.getStore();
     this.logger.error({
       event: 'db.query_error',
       sql: query,
       params: this.safeParams(parameters),
       error: error instanceof Error ? error.message : error,
+      request_id: ctx?.requestId,
+      request_method: ctx?.method,
+      request_url: ctx?.url,
+      request_user_id: ctx?.userId,
     });
   }
 
@@ -97,8 +103,10 @@ export class AppTypeOrmLogger implements TypeOrmLogger {
 
     if (!this.client) return;
 
+    const ctx = requestContext.getStore();
+
     this.client.capture({
-      distinctId: 'server',
+      distinctId: ctx?.userId ? `user:${ctx.userId}` : 'server',
       event: 'db.slow_query',
       properties: {
         durationMs: time,
@@ -106,6 +114,10 @@ export class AppTypeOrmLogger implements TypeOrmLogger {
         full_trace: stack,
         service_trace: serviceStackLines,
         controller_trace: controllerStackLines,
+        request_id: ctx?.requestId,
+        request_method: ctx?.method,
+        request_url: ctx?.url,
+        request_user_id: ctx?.userId,
       },
     });
   }

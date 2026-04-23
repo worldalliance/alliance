@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { href, useNavigate } from "react-router";
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -22,6 +28,7 @@ export interface LargeActionCardProps extends LargeActionCardPropsShared {
   className?: string;
   onCompleteAction: () => boolean | void | Promise<boolean | void>;
   userRelation: UserActionRelation;
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 }
 
 const TASK_COMPLETE_EXIT_MS = 500;
@@ -45,6 +52,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
   onCompleteAction,
   showDetails = true,
   className = "",
+  scrollContainerRef,
 }: LargeActionCardProps) => {
   const navigate = useNavigate();
 
@@ -166,6 +174,7 @@ const LargeActionCard: React.FC<LargeActionCardProps> = ({
               userRelation={userRelation}
               onCompleteAction={handleCompleteAction}
               onOptOutAction={handleOptOutAction}
+              scrollContainerRef={scrollContainerRef}
             />
           </div>
         </div>

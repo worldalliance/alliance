@@ -32,20 +32,17 @@ export const defaultPushMessage =
 
 // missed deadline
 
-export const defaultMissedDeadlineEmailSubject =
-  "Failed to complete Alliance task by deadline";
+export const defaultMissedDeadlineEmailSubject = "Missed Alliance task";
 
 export const defaultMissedDeadlineEmailContents = `Hi #{firstname},
 
-The deadline for the current task has passed and you have not completed it. If you have completed it, please contact us — we may have made a mistake.
+The deadline for the current task has passed and you have not completed it. If you did complete it, please contact us — we may have made a mistake.
 
-The Alliance relies on the dependability of all members. If you are no longer interested in being a member of the Alliance, please suspend your contract.
+The Alliance counts on every member. Please know that if you miss several actions in a row, we will suspend your contract and no longer assign you tasks.`;
 
-If you do not complete the next action, we will suspend your contract on your behalf.`;
-
-export const defaultMissedDeadlineTextMessage = `You failed to complete the current Alliance task. The deadline has now passed. If you have completed it, please contact us — we may have made a mistake. 
+export const defaultMissedDeadlineTextMessage = `The deadline for the current task has passed and you have not completed it. If you did complete it, please contact us — we may have made a mistake. 
   
-  If you are no longer interested in being a member of the Alliance, please suspend your contract. If you do not complete the next task, we will suspend your contract on your behalf.`;
+The Alliance counts on every member. Please know that if you miss several actions in a row, we will suspend your contract and no longer assign you tasks.`;
 
 // group leads reminder
 

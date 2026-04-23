@@ -1601,6 +1601,13 @@ export type SetPriorityDto = {
     generalUpdatePriorities: Array<SetGeneralUpdatePriorityDto>;
 };
 
+export type CommunityCompletedActionsCountDto = {
+    /**
+     * Number of member action completions (user_completed activities) recorded for current members of this community
+     */
+    completedCount: number;
+};
+
 export type ActionSharePreviewDto = {
     firstName?: string;
     completedByReferrer: boolean;
@@ -5280,6 +5287,21 @@ export type ActionsCommunityActivityResponses = {
 };
 
 export type ActionsCommunityActivityResponse = ActionsCommunityActivityResponses[keyof ActionsCommunityActivityResponses];
+
+export type ActionsCommunityCompletedActionsCountData = {
+    body?: never;
+    path?: never;
+    query: {
+        communityId: number;
+    };
+    url: '/actions/communityCompletedActionsCount';
+};
+
+export type ActionsCommunityCompletedActionsCountResponses = {
+    200: CommunityCompletedActionsCountDto;
+};
+
+export type ActionsCommunityCompletedActionsCountResponse = ActionsCommunityCompletedActionsCountResponses[keyof ActionsCommunityCompletedActionsCountResponses];
 
 export type ActionsFindOneData = {
     body?: never;

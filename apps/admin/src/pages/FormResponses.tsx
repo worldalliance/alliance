@@ -987,6 +987,7 @@ const FormResponses: React.FC = () => {
                           onSubmit={null}
                           userId={currentResponse?.user?.id}
                           user={currentResponse?.user ?? undefined}
+                          adminPreviewUserId={currentResponse?.user?.id}
                           disableOptionRandomization
                           fieldLabelRightContent={currentResponseAiInlineLabels}
                         />

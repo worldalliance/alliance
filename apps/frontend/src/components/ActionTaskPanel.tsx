@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type RefObject } from "react";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 // import ActionTaskPanelFunding from "./ActionTaskPanelFunding";
 // import { StripeWrapper } from "./StripeWrapper";
@@ -20,6 +20,7 @@ export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   onFormSubmitted?: (formResponse: FormResponseDto) => void;
   createAccountHref?: string;
   forceRenderTask?: boolean;
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 };
 
 const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
@@ -34,6 +35,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   onFormSubmitted,
   createAccountHref,
   forceRenderTask = false,
+  scrollContainerRef,
 }: ActionTaskPanelProps) => {
   const handleCompleteAction = useCallback(async () => {
     const didSucceed = await onCompleteAction();
@@ -105,6 +107,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
           actionId={action.id}
           redirectOnComplete={redirectOnComplete}
           onSubmitted={onFormSubmitted}
+          scrollContainerRef={scrollContainerRef}
         />
       );
     }

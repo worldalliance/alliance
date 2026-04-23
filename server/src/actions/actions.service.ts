@@ -1775,6 +1775,46 @@ export class ActionsService {
     );
   }
 
+  async countCommunityCompletedActions(
+    userId: number,
+    communityId: number,
+  ): Promise<{ completedCount: number }> {
+    const memberRow = await this.communityRepository
+      .createQueryBuilder('c')
+      .select('c.id', 'id')
+      .innerJoin(
+        'community_users_user',
+        'cuu',
+        'cuu."communityId" = c.id AND cuu."userId" = :userId',
+        { userId },
+      )
+      .where('c.id = :communityId', { communityId })
+      .getRawOne<{ id: number }>();
+
+    if (!memberRow) {
+      await this.communityRepository.findOneOrFail({
+        where: { id: communityId },
+        select: { id: true },
+      });
+      throw new NotFoundException('User is not a member of this community');
+    }
+
+    const completedCount = await this.actionActivityRepository
+      .createQueryBuilder('activity')
+      .innerJoin(
+        'community_users_user',
+        'cuu',
+        'cuu."userId" = activity.userId AND cuu."communityId" = :communityId',
+        { communityId },
+      )
+      .where('activity.type = :type', {
+        type: ActionActivityType.USER_COMPLETED,
+      })
+      .getCount();
+
+    return { completedCount };
+  }
+
   async homeFeed(
     userId: number,
     limit: number = 20,

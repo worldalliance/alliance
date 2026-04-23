@@ -217,15 +217,15 @@ const PrelaunchLandingPage: React.FC = () => {
             <div className="flex flex-col gap-4">
               <p className="text-title-large w-full text-black">Our impact</p>
               <p className="text-lg text-zinc-500 lg:text-xl">
-                At this stage, we are taking small-scale actions focused on
-                learning.
+                At this stage, we are taking small-scale actions in order to
+                learn and build our processes.
               </p>
             </div>
           </div>
           <div className={`${LANDING_BIG_COL} flex flex-col mt-8 md:mt-12`}>
             <div className="flex flex-col sm:flex-row gap-4 items-center">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {FEATURED_IMPACT_ACTIONS.map((action) => (
+                {FEATURED_IMPACT_ACTIONS.slice(0, 4).map((action) => (
                   <FeaturedImpactCard key={action.actionId} {...action} />
                 ))}
               </div>

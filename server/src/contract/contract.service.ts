@@ -83,13 +83,17 @@ export class ContractService {
   }): Promise<Date> {
     const { userId, signedName, contractId } = params;
 
-    const user = await this.userService.findOneOrFail(userId, {
-      contractEvents: true,
-      referredBy: { communities: { leaders: true, users: true } },
-      referredByInvite: { community: { leaders: true, users: true } },
-      communities: true,
-      pendingCommunity: { leaders: true, users: true },
+    // Cheap initial load
+    let user = await this.userRepository.findOneOrFail({
+      where: { id: userId },
+      relations: {
+        contractEvents: true,
+        referredBy: true,
+        referredByInvite: true,
+        pendingCommunity: true,
+      },
     });
+
     const switchingContracts = user.hasActiveContract;
     const contractEvent = this.contractEventRepository.create({
       user,
@@ -105,14 +109,21 @@ export class ContractService {
       return contractEvent.date;
     }
 
+    const firstSigning = user.contractEvents!.length === 0;
     const promises: Promise<unknown>[] = [];
     const notifs: CreateNotifParams[] = [];
-    const firstSigning = user.contractEvents!.length === 0;
     const userUpdate: Partial<User> = {
       id: user.id,
       pendingCommunity: null,
     };
     if (!firstSigning) {
+      user = await this.userRepository.findOneOrFail({
+        where: { id: userId },
+        relations: {
+          contractEvents: true,
+          pendingCommunity: { users: true, leaders: true },
+        },
+      });
       if (
         user.pendingCommunity &&
         communityHasCapacity(user.pendingCommunity)
@@ -131,8 +142,16 @@ export class ContractService {
           }),
         );
       }
-    } else if (user.referredByInvite?.community) {
-      const community = user.referredByInvite.community;
+    } else if (user.referredByInvite?.communityId) {
+      user = await this.userRepository.findOneOrFail({
+        where: { id: userId },
+        relations: {
+          contractEvents: true,
+          referredBy: true,
+          referredByInvite: { community: { users: true, leaders: true } },
+        },
+      });
+      const community = user.referredByInvite!.community!;
       let referrerNotified = false;
       await this.communityService.addUsersToCommunityAndRefreshConversation({
         user,
@@ -156,7 +175,14 @@ export class ContractService {
         notifs.push(newMemberReferredNotif(user, user.referredBy));
       }
     } else if (user.referredBy) {
-      const referredBy = user.referredBy;
+      user = await this.userRepository.findOneOrFail({
+        where: { id: userId },
+        relations: {
+          contractEvents: true,
+          referredBy: { communities: { users: true, leaders: true } },
+        },
+      });
+      const referredBy = user.referredBy!;
       const community = run(() => {
         const selector = REFERRAL_COMMUNITY_SELECTORS[user.referralSource];
         if (!selector) {
@@ -186,7 +212,6 @@ export class ContractService {
         notifs.push(newMemberReferredNotif(user, referredBy));
       }
     } else {
-      // no community and no referrer
       userUpdate.undergoingGroupAssignment = true;
     }
 

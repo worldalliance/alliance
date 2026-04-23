@@ -10,7 +10,7 @@ const FeaturedImpactCard: React.FC<FeaturedImpactAction> = ({
   return (
     <Link
       to={href("/actions/:id", { id: actionId.toString() })}
-      className="flex flex-col gap-4 border border-grey-1 group hover:border-grey-3 rounded-md p-4 sm:p-6"
+      className="flex flex-col gap-4 bg-grey-0 group hover:border-grey-3 rounded-md p-4 sm:p-8"
     >
       <p className="text-lg text-zinc-500 lg:text-xl">
         <span className="font-semibold text-black group-hover:underline">

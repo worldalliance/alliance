@@ -12,7 +12,7 @@ import FormRenderer, {
 import { FormSchema } from "@alliance/common/forms/form-schema";
 import Card from "@alliance/sharedweb/ui/Card";
 import posthog from "posthog-js";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type RefObject } from "react";
 import { useAuth } from "../lib/AuthContext";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -35,6 +35,7 @@ interface ActionTaskPanelFormProps {
   formResponse?: FormResponseDto;
   redirectOnComplete?: boolean;
   onSubmitted?: (formResponse: FormResponseDto) => void;
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 }
 
 const ActionTaskPanelForm = ({
@@ -49,6 +50,7 @@ const ActionTaskPanelForm = ({
   formResponse,
   redirectOnComplete = publicAction,
   onSubmitted,
+  scrollContainerRef,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated, refreshUser } = useAuth();
@@ -209,6 +211,7 @@ const ActionTaskPanelForm = ({
           draftFormResponse={draftFormResponse}
           phDistinctId={distinctId}
           sessionReplayUrl={sessionReplayUrl}
+          scrollContainerRef={scrollContainerRef}
         />
       </div>
       {error && (

@@ -74,6 +74,7 @@ import {
   EvaluateCohortExpressionResponseDto,
   ActionWithdrawalDto,
 } from './dto/action.dto';
+import { CommunityCompletedActionsCountDto } from './dto/community-completed-actions-count.dto';
 import {
   NotificationScheduleEntryDto,
   NotificationScheduleQueryDto,
@@ -489,6 +490,24 @@ export class ActionsController {
       communityId,
       comments,
       req.user.sub,
+    );
+  }
+
+  @Get('communityCompletedActionsCount')
+  @UseGuards(AuthGuard)
+  @ApiOperation({
+    summary:
+      'Count of member action completions for current members of a community',
+  })
+  @ApiOkResponse({ type: CommunityCompletedActionsCountDto })
+  @ApiQuery({ name: 'communityId', type: Number })
+  async communityCompletedActionsCount(
+    @Request() req: JwtRequest,
+    @Query('communityId', ParseIntPipe) communityId: number,
+  ): Promise<CommunityCompletedActionsCountDto> {
+    return this.actionsService.countCommunityCompletedActions(
+      req.user.sub,
+      communityId,
     );
   }
 

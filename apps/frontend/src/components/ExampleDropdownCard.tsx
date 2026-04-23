@@ -23,7 +23,7 @@ const ExampleDropdownCard: React.FC<ExampleDropdownCardProps> = ({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 rounded p-6",
+        "flex flex-col gap-3 rounded-md p-6",
         bgColor === "grey"
           ? "bg-grey-0 hover:bg-grey-1"
           : "bg-white hover:bg-green/5",

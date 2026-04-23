@@ -6,11 +6,13 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import bodyParser from 'body-parser';
 import { useContainer } from 'class-validator';
 import cookieParser from 'cookie-parser';
+import { randomUUID } from 'node:crypto';
 import { PostHog, setupExpressErrorHandler } from 'posthog-node';
 import type { ServerOptions } from 'socket.io';
 import { AppModule } from './app.module';
 import { PosthogExceptionFilter } from './posthog.filter';
 import { MetricsInterceptor } from './metrics';
+import { requestContext } from './utils/request-context';
 
 function validateEnv() {
   const requiredVars = [
@@ -77,6 +79,16 @@ async function bootstrap() {
     }),
   );
   app.useGlobalInterceptors(new MetricsInterceptor());
+  app.use((req, _res, next) => {
+    requestContext.run(
+      {
+        requestId: randomUUID(),
+        method: req.method,
+        url: req.originalUrl,
+      },
+      () => next(),
+    );
+  });
   app.use(cookieParser());
   app.enableCors({
     origin: true,

@@ -75,7 +75,7 @@ const ProfileDropdown = () => {
         </>
       )}
       {isOpen && (
-        <div className="absolute top-full shadow-lg/5 right-0 bg-white rounded min-w-[175px] max-h-[500px] overflow-y-auto cursor-default flex flex-col *:hover:bg-zinc-100 *:px-4 *:py-2 text-base z-50">
+        <div className="absolute top-full z-60 shadow-lg/5 right-0 bg-white rounded min-w-[175px] max-h-[500px] overflow-y-auto cursor-default flex flex-col *:hover:bg-zinc-100 *:px-4 *:py-2 text-base">
           <Link to={profileUrl} onClick={() => setIsOpen(false)}>
             Profile
           </Link>

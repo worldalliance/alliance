@@ -85,7 +85,8 @@ type FormRendererProps = {
   fieldLabelRightContent?: Record<string, React.ReactNode>;
   /** When set, previousAnswer blocks fetch this user's responses via the admin all-responses endpoint. */
   adminPreviewUserId?: string | number;
-  onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null;
+  onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null; // null for admin preview
+  scrollContainerRef?: React.RefObject<HTMLElement | null>;
 } & (
   | {
       isGeneralUpdate?: false;
@@ -175,6 +176,7 @@ const FormRenderer = ({
   sessionReplayUrl,
   isGeneralUpdate,
   onDismiss,
+  scrollContainerRef,
 }: FormRendererProps) => {
   // Compute schema and a namespaced storage key for persistence (if enabled)
   const schema = form as unknown as FormSchema;
@@ -1420,9 +1422,30 @@ const FormRenderer = ({
 
   const prevPageIndexRef = useRef(currentPageIndex);
   useEffect(() => {
-    if (prevPageIndexRef.current !== currentPageIndex) {
-      prevPageIndexRef.current = currentPageIndex;
-      formTopRef.current?.scrollIntoView({
+    if (prevPageIndexRef.current === currentPageIndex) {
+      return;
+    }
+    prevPageIndexRef.current = currentPageIndex;
+    const container = scrollContainerRef?.current;
+    const top = formTopRef.current;
+    if (container && top) {
+      const rawScrollMarginTop = parseFloat(
+        getComputedStyle(top).scrollMarginTop,
+      );
+      const scrollMarginTop = Number.isFinite(rawScrollMarginTop)
+        ? rawScrollMarginTop
+        : 0;
+      const targetTop =
+        top.getBoundingClientRect().top -
+        container.getBoundingClientRect().top +
+        container.scrollTop -
+        scrollMarginTop;
+      container.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: "instant",
+      });
+    } else {
+      top?.scrollIntoView({
         behavior: "instant",
         block: "start",
       });

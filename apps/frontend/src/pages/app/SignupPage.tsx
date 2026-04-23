@@ -354,7 +354,7 @@ const SignupPage: React.FC = () => {
               </div>
               <div className="flex flex-col gap-4 mb-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {FEATURED_IMPACT_ACTIONS.map((action) => (
+                  {FEATURED_IMPACT_ACTIONS.slice(0, 4).map((action) => (
                     <FeaturedImpactCard key={action.actionId} {...action} />
                   ))}
                 </div>

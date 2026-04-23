@@ -473,13 +473,17 @@ const HomePage = () => {
                   );
                 }
                 queryClient.invalidateQueries({ queryKey: ["actions"] });
-                mainScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                mainScrollRef.current?.scrollTo({
+                  top: 0,
+                  behavior: "instant",
+                });
                 document.scrollingElement?.scrollTo({
                   top: 0,
-                  behavior: "auto",
+                  behavior: "instant",
                 });
-                window.scrollTo({ top: 0, behavior: "auto" });
+                window.scrollTo({ top: 0, behavior: "instant" });
               }}
+              scrollContainerRef={mainScrollRef}
             />
           ) : selectedTaskNavigatorItem?.kind === "followUpForm" ? (
             <div className="w-full mx-auto">

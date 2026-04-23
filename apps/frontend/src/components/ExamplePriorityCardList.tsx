@@ -14,7 +14,7 @@ const ExamplePriorityCardList: React.FC<ExamplePriorityCardListProps> = ({
   titleClass = "",
 }: ExamplePriorityCardListProps) => {
   return (
-    <div className="flex flex-col rounded gap-y-2">
+    <div className="flex flex-col gap-y-2">
       {alliancePriorities.map((priority) => (
         <ExamplePriorityCard
           bgColor={bgColor}

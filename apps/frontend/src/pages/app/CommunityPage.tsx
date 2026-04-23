@@ -1,4 +1,5 @@
 import {
+  actionsCommunityCompletedActionsCount,
   actionsGetCommunityMemberInfo,
   communityDelete,
   communityGetMemberContactInfo,
@@ -42,6 +43,7 @@ import { Link } from "react-router";
 import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { useMyCommunities } from "../../lib/useMyCommunities";
 import CommunityInvitesLeaderTab from "../../components/CommunityInvitesLeaderTab";
+import UserProfileTab from "../../components/UserProfileTab";
 
 export type Tab = "activity" | "members" | "groups" | "invites";
 
@@ -177,6 +179,17 @@ const CommunityPage = () => {
     enabled: !!community,
   });
 
+  const { data: communityCompletedActionsCount = 0 } = useQuery({
+    queryKey: ["communityCompletedActionsCount", community?.id ?? null],
+    queryFn: () =>
+      community
+        ? actionsCommunityCompletedActionsCount({
+            query: { communityId: community.id },
+          }).then((resp) => resp.data?.completedCount ?? 0)
+        : 0,
+    enabled: !!community,
+  });
+
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -197,6 +210,9 @@ const CommunityPage = () => {
     const timeoutId = window.setTimeout(() => {
       void queryClient.invalidateQueries({
         queryKey: ["communityMemberInfo", community.id, user?.id ?? null],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["communityCompletedActionsCount", community.id],
       });
     }, delayMs);
 
@@ -460,83 +476,92 @@ const CommunityPage = () => {
   return (
     <TwoColumnLayout
       main={
-        <div className="xl:p-10 xl:pr-5 max-w-[900px] mx-auto p-3 md:p-5">
-          {tab !== "groups" && (
-            <>
-              <div className="flex flex-col gap-y-2 my-8">
-                <div className="flex flex-row mb-4 justify-between">
-                  {isEditing ? (
-                    <ImageEditor
-                      key={photoEditorKey}
-                      initialImageUrl={editPhotoUrl}
-                      onChange={setEditPhotoUrl}
-                      allowedMimeTypes={sharp_allowed_mime_types}
-                      isUploading={isPhotoUploadPending}
-                    />
-                  ) : (
-                    <AvatarProfile pfp={community.photo ?? null} size="huge" />
-                  )}
-                  <div className="flex flex-col gap-y-1 sm:gap-y-2 items-end">
-                    <div className="flex flex-col items-end sm:flex-row sm:items-start gap-y-1 gap-x-1">
-                      {amLeader && (
-                        <>
-                          {isEditing ? (
-                            <div className="flex flex-row gap-x-1 items-start">
-                              {canDelete && (
-                                <Button
-                                  color={ButtonColor.Red}
-                                  onClick={handleDelete}
-                                  disabled={isSaving}
-                                >
-                                  Delete
-                                </Button>
-                              )}
-                              <Button
-                                color={ButtonColor.Light}
-                                onClick={handleCancel}
-                                disabled={isSaving}
-                              >
-                                Cancel
-                              </Button>
-                              <Button
-                                color={ButtonColor.Blue}
-                                onClick={handleSave}
-                                disabled={isSaving || !editName.trim()}
-                              >
-                                {isSaving ? "Saving..." : "Save"}
-                              </Button>
-                            </div>
-                          ) : (
+        <div className="relative xl:p-10 xl:pr-5 max-w-[900px] mx-auto p-0 md:p-5">
+          <div className="p-3 relative z-10 flex flex-col md:flex-row items-end md:items-center md:justify-end gap-x-4">
+            <Link
+              to={"/groups-guide"}
+              className="shrink-0 text-sm md:text-base text-zinc-500 hover:text-black py-1"
+            >
+              About groups
+            </Link>
+            <CommunitySelectDropdown
+              communities={communities}
+              currentCommunityId={community.id}
+              onSelectCommunity={(communityId) => {
+                setParams({ communityId, tab: "activity" });
+              }}
+              onManageGroups={() => setParams({ tab: "groups" })}
+              titleOverride={"My groups"}
+              notifCount={pendingCommunityInvites.length}
+            />
+          </div>
+          <div className="mx-2 space-y-2 mt-8">
+            {tab !== "groups" && (
+              <Card className="relative z-0 px-4 md:px-8 pb-6 gap-y-2">
+                {isEditing ? (
+                  <ImageEditor
+                    key={photoEditorKey}
+                    className="mt-[-55px]"
+                    initialImageUrl={editPhotoUrl}
+                    onChange={setEditPhotoUrl}
+                    allowedMimeTypes={sharp_allowed_mime_types}
+                    isUploading={isPhotoUploadPending}
+                  />
+                ) : (
+                  <AvatarProfile
+                    pfp={community.photo ?? null}
+                    size="huge"
+                    className="mt-[-55px]"
+                  />
+                )}
+                <div className="absolute right-0 top-0 z-10 flex flex-row flex-wrap items-start justify-end gap-2 p-5">
+                  {amLeader && (
+                    <>
+                      {isEditing ? (
+                        <div className="flex flex-row flex-wrap justify-end gap-x-1 gap-y-1">
+                          {canDelete && (
                             <Button
-                              color={ButtonColor.White}
-                              onClick={() => setIsEditing(true)}
+                              color={ButtonColor.Red}
+                              onClick={handleDelete}
+                              disabled={isSaving}
                             >
-                              Edit
+                              Delete
                             </Button>
                           )}
-                        </>
+                          <Button
+                            color={ButtonColor.Light}
+                            onClick={handleCancel}
+                            disabled={isSaving}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            color={ButtonColor.Blue}
+                            onClick={handleSave}
+                            disabled={isSaving || !editName.trim()}
+                          >
+                            {isSaving ? "Saving..." : "Save"}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          color={ButtonColor.White}
+                          onClick={() => setIsEditing(true)}
+                        >
+                          Edit
+                        </Button>
                       )}
-                      <CommunitySelectDropdown
-                        communities={communities}
-                        currentCommunityId={community.id}
-                        onSelectCommunity={(communityId) => {
-                          setParams({ communityId, tab: "activity" });
-                        }}
-                        onManageGroups={() => setParams({ tab: "groups" })}
-                        titleOverride={"My groups"}
-                        notifCount={pendingCommunityInvites.length}
-                      />
-                    </div>
-                  </div>
+                    </>
+                  )}
                 </div>
-                <div className="flex flex-col gap-y-4 mb-8">
+                <div className="flex flex-col gap-y-4 mb-2 mt-3">
                   {isEditing ? (
                     <div className="flex flex-col gap-y-4">
                       <input
                         type="text"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
-                        className="text-title border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none w-full"
+                        className="text-title-small w-full border-none !bg-zinc-100 px-2 -mx-2 rounded focus:outline-none"
                         placeholder="Enter group name"
                       />
                       <textarea
@@ -665,10 +690,12 @@ const CommunityPage = () => {
                     </div>
                   ) : (
                     <>
-                      <h1 className="text-title">{community.name}</h1>
+                      <div className="flex gap-2">
+                        <h1 className="text-title-small">{community.name}</h1>
+                      </div>
                       <AppMarkdownWrapper
                         markdownContent={community.description}
-                        className="text-base"
+                        className="mb-2 text-base"
                       />
                     </>
                   )}
@@ -676,7 +703,7 @@ const CommunityPage = () => {
 
                 <div
                   className={cn(
-                    "max-w-[400px]",
+                    "max-w-[400px] mt-2",
                     completionData.nTotal === 0 && "invisible",
                   )}
                 >
@@ -695,81 +722,93 @@ const CommunityPage = () => {
                     dark
                   />
                 </div>
-              </div>
-              <div className="border-b border-zinc-200 flex flex-row items-end justify-between">
-                <div className="flex flex-row gap-x-2 justify-start">
-                  {tabs.map((m) => (
-                    <Button
-                      color={ButtonColor.Transparent}
-                      key={m}
-                      onClick={() => setParams({ tab: m })}
-                      aria-pressed={m === tab}
-                      className={cn(
-                        "!border-b-[1.5px] rounded-none",
-                        m === tab ? "!border-b-green" : "!border-b-transparent",
-                      )}
-                    >
-                      <div className="flex flex-row gap-x-2">
-                        <span>{TAB_DISPLAY_NAMES[m]}</span>
-                      </div>
-                    </Button>
-                  ))}
+                <div className="mt-4 flex flex-row flex-wrap items-center justify-between gap-x-2 gap-y-2 transition-none">
+                  <div className="flex flex-row flex-wrap gap-2">
+                    {tabs.map((m) => (
+                      <UserProfileTab
+                        key={m}
+                        number={
+                          m === "activity"
+                            ? communityCompletedActionsCount
+                            : m === "members"
+                              ? memberCount
+                              : undefined
+                        }
+                        label={
+                          m === "activity"
+                            ? communityCompletedActionsCount === 1
+                              ? "action completed"
+                              : "actions completed"
+                            : m === "members"
+                              ? memberCount === 1
+                                ? "member"
+                                : "members"
+                              : TAB_DISPLAY_NAMES[m]
+                        }
+                        shortLabel={
+                          m === "activity"
+                            ? "actions"
+                            : m === "members"
+                              ? "members"
+                              : TAB_DISPLAY_NAMES[m]
+                        }
+                        selected={tab === m}
+                        onClick={() => setParams({ tab: m })}
+                      />
+                    ))}
+                  </div>
                 </div>
-                <Link
-                  to={"/groups-guide"}
-                  className="text-zinc-500 hover:text-black py-2"
-                >
-                  About groups
-                </Link>
-              </div>
-            </>
-          )}
+              </Card>
+            )}
 
-          {tab === "activity" && (
-            <CommunityActivityTab
-              communityId={community.id}
-              userId={user?.id}
-            />
-          )}
-          {tab === "members" && (
-            <CommunityMembersTable
-              leaders={leaders}
-              members={nonLeaderMembers}
-              communityId={community.id}
-              onRemoveMember={(memberId) =>
-                removeMemberFromCommunity(community.id, memberId)
-              }
-              amLeader={amLeader ?? false}
-              memberContactInfo={memberContactInfo ?? undefined}
-              userActionRelations={userActionRelations ?? undefined}
-              actions={actionSummaries}
-              maxActionsPerWeek={maxActionsPerWeek}
-              completedAllCurrentActions={
-                completionData.completedAllCurrentActions
-              }
-              showInfoTooltip
-            />
-          )}
-          {tab === "groups" && groupManagementPage}
-          {tab === "invites" && (
-            <CommunityInvitesLeaderTab
-              communityId={community.id}
-              existingMembers={community.users}
-              setInviteNotifCount={() => {}}
-            />
-          )}
-          <BottomSpacer />
-          {!chatOpen && messagingEnabled && isLargeScreen && (
-            <div className="absolute bottom-5 right-7 bg-white hover:bg-zinc-100">
-              <Button
-                color={ButtonColor.Outline}
-                onClick={() => setChatOpen(true)}
-                className="!px-3 !py-3"
-              >
-                <MessageSquare size="20" />
-              </Button>
+            <div className="pb-24 mt-2">
+              {tab === "activity" && (
+                <CommunityActivityTab
+                  communityId={community.id}
+                  userId={user?.id}
+                />
+              )}
+              {tab === "members" && (
+                <CommunityMembersTable
+                  leaders={leaders}
+                  members={nonLeaderMembers}
+                  communityId={community.id}
+                  onRemoveMember={(memberId) =>
+                    removeMemberFromCommunity(community.id, memberId)
+                  }
+                  amLeader={amLeader ?? false}
+                  memberContactInfo={memberContactInfo ?? undefined}
+                  userActionRelations={userActionRelations ?? undefined}
+                  actions={actionSummaries}
+                  maxActionsPerWeek={maxActionsPerWeek}
+                  completedAllCurrentActions={
+                    completionData.completedAllCurrentActions
+                  }
+                  showInfoTooltip
+                />
+              )}
+              {tab === "groups" && groupManagementPage}
+              {tab === "invites" && (
+                <CommunityInvitesLeaderTab
+                  communityId={community.id}
+                  existingMembers={community.users}
+                  setInviteNotifCount={() => {}}
+                />
+              )}
+              <BottomSpacer />
             </div>
-          )}
+            {!chatOpen && messagingEnabled && isLargeScreen && (
+              <div className="fixed bottom-5 right-7 z-10 bg-white hover:bg-zinc-100">
+                <Button
+                  color={ButtonColor.Outline}
+                  onClick={() => setChatOpen(true)}
+                  className="!px-3 !py-3"
+                >
+                  <MessageSquare size="20" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       }
       sidebar={
