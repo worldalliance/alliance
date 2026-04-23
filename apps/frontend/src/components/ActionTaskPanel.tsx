@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type RefObject } from "react";
 import ActionTaskPanelForm from "./ActionTaskPanelForm";
 // import ActionTaskPanelFunding from "./ActionTaskPanelFunding";
 // import { StripeWrapper } from "./StripeWrapper";
@@ -15,7 +15,7 @@ export type ActionTaskPanelProps = ActionTaskPanelPropsShared & {
   userRelation: UserActionRelation;
   missedDeadline?: boolean;
   card?: boolean;
-  onPageChange?: () => void;
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 };
 
 const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
@@ -25,7 +25,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
   card = false,
   disabled = false,
   formResponse,
-  onPageChange,
+  scrollContainerRef,
 }: ActionTaskPanelProps) => {
   const handleCompleteAction = useCallback(() => {
     onCompleteAction();
@@ -98,7 +98,7 @@ const ActionTaskPanel: React.FC<ActionTaskPanelProps> = ({
           onAbandonAction={handleAbandonAction}
           card={card}
           actionId={action.id}
-          onPageChange={onPageChange}
+          scrollContainerRef={scrollContainerRef}
         />
       );
     }
