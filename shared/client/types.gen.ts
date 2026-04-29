@@ -2756,9 +2756,7 @@ export type TableDataDto = {
     /**
      * Table rows data - each row is an array of values corresponding to columns
      */
-    rows: Array<Array<string | number | boolean | {
-        [key: string]: unknown;
-    } | unknown>>;
+    rows: Array<Array<unknown>>;
     /**
      * Total number of records in the table (before pagination)
      */
