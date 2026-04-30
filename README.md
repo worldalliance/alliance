@@ -17,6 +17,7 @@ In root dir: `bun install` (install [Bun](https://bun.sh) 1.3.x+ if missing; `pa
 `cp .env.example .env` (and make necessary edits)
 
 Install PostgreSQL 17:
+
 - **macOS (Homebrew):** `brew install postgresql@17 && brew services start postgresql@17`
 - **Ubuntu/Debian:** Add the [PGDG apt repository](https://www.postgresql.org/download/linux/debian/), then install:
   ```bash
@@ -40,9 +41,15 @@ Start the admin panel: `cd apps/admin && bun dev` (or `bun run admin:dev` from r
 
 ### server
 
-(First time only) install bun 1.3.6: `curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"`
+#### First time only:
+
+Install bun 1.3.6: `curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"` (If
+you have done [Setup - to install frontend deps](#setup) then `bun` will have already been installed.)
 
 Run the migrations: `(cd server && bun migration:run)`
+
+_Note_ if you get an error `role "postgres" does not exist`, first run `createuser -s postgres`.
+And if you get an error `database "alliance" does not exist`, first run `createdb alliance`.
 
 Start the server: `cd server && bun dev` (or `bun server:dev` from root dir)
 
@@ -51,6 +58,10 @@ When opening the app locally for the first time, you can log in with the account
 ### Loading data
 
 Developers often want to test local code with a cleaned version of the production database. To allow for this, we have a script, `./misc/load_staging_data.sh` that will copy the data from the staging server into the local postgres. For this to work, you first need to set up your `.ssh/config` with a `staging` destination with the appropriate ssh key (ask an existing developer for the keys / ip)
+
+### Viewing the database
+
+`psql alliance -U postgres`
 
 ### Mobile
 
