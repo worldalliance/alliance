@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   evaluateCohortExpression,
@@ -32,6 +32,8 @@ import { ActionEventNotifType } from './entities/action-event-notif.entity';
 
 @Injectable()
 export class ActionEventRecipientService {
+  private readonly logger = new Logger(ActionEventRecipientService.name);
+
   constructor(
     @InjectRepository(ActionActivity)
     private readonly actionActivityRepository: Repository<ActionActivity>,
@@ -216,6 +218,9 @@ export class ActionEventRecipientService {
       const events = action.events;
       const event = events.find((e) => e.id === eventId);
       if (!event) {
+        this.logger.warn(
+          `Event not found: ${eventId} for action ${action.id}`,
+        );
         result.set(action.id, []);
         continue;
       }
