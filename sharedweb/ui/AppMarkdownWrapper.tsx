@@ -2,17 +2,24 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getApiUrl } from "../lib/config";
+import Link from "./Link";
 
 // TOOD add heading, body color enums
 
 interface AppMarkdownWrapperProps {
   markdownContent: string;
   className?: string;
+  /**
+   * if true, markdown links that match action link format will be rendered
+   * with an action link component instead of a standard anchor tag.
+   */
+  distinguishActionLinks?: boolean;
 }
 
 const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   markdownContent,
   className,
+  distinguishActionLinks,
 }) => {
   return (
     <div className={className}>
@@ -58,12 +65,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
             <li className="first:mt-0 mt-2 pl-1 [&>p]:my-0" {...props} />
           ),
           a: ({ ...props }) => (
-            <a
-              className="text-link"
-              target="_blank"
-              rel="noreferrer"
-              {...props}
-            />
+            <Link distinguishActions={distinguishActionLinks} {...props} />
           ),
           blockquote: ({ ...props }) => (
             <blockquote

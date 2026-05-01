@@ -263,7 +263,10 @@ const ActionContents = () => {
           <>
             <div id="description">
               <p className="font-semibold text-xl mb-4">Description</p>
-              <AppMarkdownWrapper markdownContent={action?.body} />
+              <AppMarkdownWrapper
+                markdownContent={action?.body}
+                distinguishActionLinks={true}
+              />
             </div>
 
             {isAuthenticated && (
