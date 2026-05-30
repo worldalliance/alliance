@@ -2,16 +2,19 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getApiUrl } from "../lib/config";
+import ActionLink, { getActionIdFromHref } from "./ActionLink";
 import Link from "./Link";
 
 // TOOD add heading, body color enums
 
-interface AppMarkdownWrapperProps {
+export interface AppMarkdownWrapperProps {
   markdownContent: string;
   className?: string;
   /**
-   * if true, markdown links that match action link format will be rendered
-   * with an action link component instead of a standard anchor tag.
+   * When true (the default), markdown links that point to an action are
+   * rendered with {@link ActionLink} — visually distinguished and with a hover
+   * preview — instead of a standard anchor tag. Set to false to opt a surface
+   * out (e.g. where an action preview would be noise).
    */
   distinguishActionLinks?: boolean;
 }
@@ -19,7 +22,7 @@ interface AppMarkdownWrapperProps {
 const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   markdownContent,
   className,
-  distinguishActionLinks,
+  distinguishActionLinks = true,
 }) => {
   return (
     <div className={className}>
@@ -64,9 +67,13 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           li: ({ ...props }) => (
             <li className="first:mt-0 mt-2 pl-1 [&>p]:my-0" {...props} />
           ),
-          a: ({ ...props }) => (
-            <Link distinguishActions={distinguishActionLinks} {...props} />
-          ),
+          a: ({ node: _node, ...props }) =>
+            distinguishActionLinks &&
+            getActionIdFromHref(props.href) != null ? (
+              <ActionLink {...props} />
+            ) : (
+              <Link {...props} />
+            ),
           blockquote: ({ ...props }) => (
             <blockquote
               className="border-l-2 border-gray-300 pl-4 my-4"
