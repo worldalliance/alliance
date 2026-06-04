@@ -560,24 +560,41 @@ export class ActionsService {
         includeDismissed: true,
       });
 
-    // 2. One query: all deadline events for these actions
-    const allDeadlineEvents = await this.actionEventRepository.find({
-      where: {
-        action: { id: In(actionIds) },
-        newStatus: In(Array.from(POST_MEMBER_ACTION_STATUSES)),
-      },
-      relations: { action: true },
-      order: { date: 'ASC' },
-    });
-    // Group by actionId, then pick the first one after the MemberAction event
+    // 2. One query: first deadline event per action after its MemberAction date.
+    // Filters per-action by date in SQL (matching the original MoreThan + take:1),
+    // then picks the earliest per action in JS from the already-ordered results.
     const deadlineByAction = new Map<number, ActionEvent>();
-    const memberActionDateByAction = new Map(
-      entries.map((e) => [e.action.id, e.event.date]),
-    );
-    for (const de of allDeadlineEvents) {
+
+    const qb = this.actionEventRepository
+      .createQueryBuilder('de')
+      .innerJoinAndSelect('de.action', 'action')
+      .where('de.actionId IN (:...actionIds)', { actionIds })
+      .andWhere('de.newStatus IN (:...statuses)', {
+        statuses: Array.from(POST_MEMBER_ACTION_STATUSES),
+      });
+
+    // Per-action date filters so the DB only returns events after each
+    // action's MemberAction date
+    const dateConditions: string[] = [];
+    const dateParams: Record<string, Date | number> = {};
+    for (const [i, entry] of entries.entries()) {
+      const actionParam = `actionId_${i}`;
+      const dateParam = `maDate_${i}`;
+      dateConditions.push(
+        `(de.actionId = :${actionParam} AND de.date > :${dateParam})`,
+      );
+      dateParams[actionParam] = entry.action.id;
+      dateParams[dateParam] = entry.event.date;
+    }
+    qb.andWhere(`(${dateConditions.join(' OR ')})`, dateParams);
+    qb.orderBy('de.actionId', 'ASC').addOrderBy('de.date', 'ASC');
+
+    const filteredDeadlineEvents = await qb.getMany();
+
+    // Pick the first event per action (results are ordered by date ASC)
+    for (const de of filteredDeadlineEvents) {
       const actionId = de.action.id;
-      const maDate = memberActionDateByAction.get(actionId);
-      if (maDate && de.date > maDate && !deadlineByAction.has(actionId)) {
+      if (!deadlineByAction.has(actionId)) {
         deadlineByAction.set(actionId, de);
       }
     }
