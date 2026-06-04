@@ -46,12 +46,12 @@ const STATUS_META: Record<
   draft: null,
   planned: { label: "Planned", className: "bg-blue-50 text-blue-700" },
   office_action: { label: "Underway", className: "bg-amber-50 text-amber-700" },
-  member_action: { label: "Open now", className: "bg-green-50 text-green-700" },
+  member_action: { label: "Open now", className: "bg-green/10 text-green" },
   resolution: {
     label: "In resolution",
     className: "bg-amber-50 text-amber-700",
   },
-  completed: { label: "Completed", className: "bg-green-50 text-green-700" },
+  completed: { label: "Completed", className: "bg-green/10 text-green" },
   failed: { label: "Failed", className: "bg-red-50 text-red-600" },
   abandoned: { label: "Abandoned", className: "bg-zinc-100 text-zinc-500" },
 };
@@ -124,7 +124,11 @@ export default function ActionLink({
           aria-hidden
         />
       </HoverCardTrigger>
-      <HoverCardContent side="top" sideOffset={6} className="overflow-hidden p-0">
+      <HoverCardContent
+        side="top"
+        sideOffset={6}
+        className="overflow-hidden p-0"
+      >
         <ActionPreviewBody data={data} isError={isError} />
       </HoverCardContent>
     </HoverCard>
@@ -187,7 +191,7 @@ function ActionPreviewCard({ action }: { action: ActionDto }) {
       )}
       <ActionPreviewMeta action={action} nextEvent={nextEvent} />
       {completed && (
-        <span className="mt-0.5 flex items-center gap-x-1 text-[11px] font-medium text-green-700">
+        <span className="mt-0.5 flex items-center gap-x-1 text-[11px] font-medium text-green">
           <CheckCircle2 size={12} className="shrink-0" />
           You&apos;ve completed this
         </span>
@@ -217,7 +221,8 @@ function ActionPreviewMeta({
   if (action.type === "Funding" && action.donationAmount) {
     items.push(
       <span key="donation" className="flex items-center gap-x-1">
-        <Coins size={12} className="shrink-0" />${(action.donationAmount / 100).toFixed(0)} suggested
+        <Coins size={12} className="shrink-0" />$
+        {(action.donationAmount / 100).toFixed(0)} suggested
       </span>,
     );
   } else if (nextEvent) {
