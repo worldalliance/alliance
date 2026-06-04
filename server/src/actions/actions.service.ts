@@ -560,46 +560,7 @@ export class ActionsService {
         includeDismissed: true,
       });
 
-    // 2. One query: first deadline event per action after its MemberAction date.
-    // Filters per-action by date in SQL (matching the original MoreThan + take:1),
-    // then picks the earliest per action in JS from the already-ordered results.
-    const deadlineByAction = new Map<number, ActionEvent>();
-
-    const qb = this.actionEventRepository
-      .createQueryBuilder('de')
-      .innerJoinAndSelect('de.action', 'action')
-      .where('de.actionId IN (:...actionIds)', { actionIds })
-      .andWhere('de.newStatus IN (:...statuses)', {
-        statuses: Array.from(POST_MEMBER_ACTION_STATUSES),
-      });
-
-    // Per-action date filters so the DB only returns events after each
-    // action's MemberAction date
-    const dateConditions: string[] = [];
-    const dateParams: Record<string, Date | number> = {};
-    for (const [i, entry] of entries.entries()) {
-      const actionParam = `actionId_${i}`;
-      const dateParam = `maDate_${i}`;
-      dateConditions.push(
-        `(de.actionId = :${actionParam} AND de.date > :${dateParam})`,
-      );
-      dateParams[actionParam] = entry.action.id;
-      dateParams[dateParam] = entry.event.date;
-    }
-    qb.andWhere(`(${dateConditions.join(' OR ')})`, dateParams);
-    qb.orderBy('de.actionId', 'ASC').addOrderBy('de.date', 'ASC');
-
-    const filteredDeadlineEvents = await qb.getMany();
-
-    // Pick the first event per action (results are ordered by date ASC)
-    for (const de of filteredDeadlineEvents) {
-      const actionId = de.action.id;
-      if (!deadlineByAction.has(actionId)) {
-        deadlineByAction.set(actionId, de);
-      }
-    }
-
-    // 3. One query: all completion + withdrawal activities
+    // 2. One query: all completion + withdrawal activities
     const allActivities = await this.actionActivityRepository.find({
       where: {
         actionId: In(actionIds),
@@ -625,7 +586,7 @@ export class ActionsService {
       }
     }
 
-    // 4. Per-action assembly (same logic as findJoinedUsersForAction)
+    // 3. Per-action assembly (same logic as findJoinedUsersForAction)
     const result = new Map<number, number[]>();
     for (const action of actions) {
       const baseUsers = baseUsersByAction.get(action.id);
@@ -634,15 +595,14 @@ export class ActionsService {
         continue;
       }
 
-      const deadlineEvent = deadlineByAction.get(action.id);
-      const notAwayForDeadline = deadlineEvent
-        ? baseUsers.filter((user) => !user.isAwayAt(deadlineEvent.date))
-        : baseUsers;
+      const notAwayDuringMemberActionPhase = baseUsers.filter(
+        (user) => !computeIsAwayDuringAnyOfMemberAction({ action, user }),
+      );
 
       const withdrawals = withdrawalsByAction.get(action.id) ?? new Set();
       const completions = completionsByAction.get(action.id) ?? [];
 
-      const notAwayUsersMinusWithdrawals = notAwayForDeadline.filter(
+      const notAwayUsersMinusWithdrawals = notAwayDuringMemberActionPhase.filter(
         (user) => !withdrawals.has(user.id),
       );
       const set = new Set([
