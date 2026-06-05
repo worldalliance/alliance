@@ -24,12 +24,12 @@ const addDays = (date: Date, days: number) =>
 describe('Batched vs single method parity (e2e)', () => {
   let ctx: TestContext;
   let actionsService: ActionsService;
-  let contractService: ContractService;
+  let _contractService: ContractService;
   let userService: UserService;
   let actionRepo: Repository<Action>;
   let eventRepo: Repository<ActionEvent>;
   let activityRepo: Repository<ActionActivity>;
-  let userRepo: Repository<User>;
+  let _userRepo: Repository<User>;
 
   let userA: User;
   let userB: User;
@@ -60,7 +60,7 @@ describe('Batched vs single method parity (e2e)', () => {
       }),
     );
 
-    const memberEvent = await eventRepo.save(
+    await eventRepo.save(
       eventRepo.create({
         title: `${name} member`,
         description: 'Member phase',
@@ -95,13 +95,13 @@ describe('Batched vs single method parity (e2e)', () => {
   beforeAll(async () => {
     ctx = await createTestApp([]);
     actionsService = ctx.app.get(ActionsService);
-    contractService = ctx.app.get(ContractService);
+    _contractService = ctx.app.get(ContractService);
     userService = ctx.app.get(UserService);
 
     actionRepo = ctx.dataSource.getRepository(Action);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
-    userRepo = ctx.dataSource.getRepository(User);
+    _userRepo = ctx.dataSource.getRepository(User);
 
     const contractSignedAt = new Date('2023-01-01T00:00:00Z');
 
