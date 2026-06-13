@@ -256,6 +256,12 @@ const SignupPage: React.FC = () => {
                   improve the world. We&apos;re in an early, experimental
                   phase—membership is invite-only.
                 </p>
+                <p className="text-lg md:text-xl text-zinc-500 mt-3">
+                  Members complete high-impact actions each week, collectively
+                  taking no longer than 15 minutes. Actions might include
+                  contacting their local government, participating in a study,
+                  or providing feedback.
+                </p>
                 {(signupSocialProofPending ||
                   (signupSocialProof?.profiles?.length ?? 0) > 0) && (
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-4 mt-3 min-h-9">
@@ -298,6 +304,9 @@ const SignupPage: React.FC = () => {
                     referralCode={referralCode}
                     disabled={isPreviewMode}
                   />
+                  <div className="mt-6">
+                    <AllianceIntroYouTubeEmbed />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -407,9 +416,6 @@ const SignupPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-            </div>
-            <div className="w-full">
-              <AllianceIntroYouTubeEmbed />
             </div>
             <div className="flex flex-col">
               <h2 className="font-semibold text-2xl md:text-3xl font-serif mb-2">
