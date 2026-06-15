@@ -24,6 +24,9 @@ import { useQuery } from "@tanstack/react-query";
 const WEEKLY_COMMITMENT_CONFIRMATION =
   "I understand that the Alliance relies on my 15-minute contribution every single week and commit to completing each task to the best of my ability.";
 
+const normalizeConfirmation = (confirmation: string) =>
+  confirmation.trim().toLocaleLowerCase();
+
 const ContractPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { latestContract } = useContract();
@@ -32,6 +35,9 @@ const ContractPage: React.FC = () => {
     useState("");
   const [lastContractEvent, setLastContractEvent] =
     useState<ContractEventState>(null);
+  const weeklyCommitmentConfirmed =
+    normalizeConfirmation(weeklyCommitmentConfirmation) ===
+    normalizeConfirmation(WEEKLY_COMMITMENT_CONFIRMATION);
 
   const signedContractId =
     lastContractEvent?.contractId !== undefined &&
@@ -59,10 +65,7 @@ const ContractPage: React.FC = () => {
   }, [user]);
 
   const handleContractSign = async () => {
-    if (
-      !latestContract ||
-      weeklyCommitmentConfirmation !== WEEKLY_COMMITMENT_CONFIRMATION
-    ) {
+    if (!latestContract || !weeklyCommitmentConfirmed) {
       return;
     }
     try {
@@ -126,130 +129,158 @@ const ContractPage: React.FC = () => {
       <div className="gap-y-8 flex flex-col text-base md:text-lg">
         <h1 className="text-title">Membership contract</h1>
 
-        {signedContract && (
-          <div className="flex flex-col">
-            <MemberContract
-              markdownOverride={signedContract.markdown}
-              className="p-6"
-            />
-            {signedContractMessage}
-          </div>
-        )}
+        <section className="flex flex-col gap-y-4">
+          {signedContract && (
+            <div className="flex flex-col">
+              <MemberContract
+                markdownOverride={signedContract.markdown}
+                className="p-6"
+              />
+              {signedContractMessage}
+            </div>
+          )}
 
-        {latestContract && (
-          <div className="flex flex-col">
-            {signedContract && (
-              <p className="font-semibold p-2">
-                An updated contract is available.
-              </p>
-            )}
-            <MemberContract
-              markdownOverride={latestContract.markdown}
-              className="p-6"
-            />
-            {lastContractEvent?.type === "signed" &&
-            lastContractEvent.contractId === latestContract.id ? (
-              signedContractMessage
-            ) : (
-              <div className="flex flex-col gap-y-4 mt-4">
-                <div className="flex flex-col gap-y-2">
-                  <p className="font-semibold">
-                    Copy the phrase below to confirm your understanding of our
-                    weekly commitment:
-                  </p>
-                  <p className="rounded border border-zinc-200 bg-zinc-50 p-3">
-                    {WEEKLY_COMMITMENT_CONFIRMATION}
-                  </p>
-                  <textarea
-                    name="weeklyCommitmentConfirmation"
-                    aria-label="Weekly commitment confirmation"
-                    value={weeklyCommitmentConfirmation}
-                    onChange={(e) =>
-                      setWeeklyCommitmentConfirmation(e.target.value)
-                    }
-                    onPaste={(e) => e.preventDefault()}
-                    placeholder="Type the phrase here"
-                    rows={2}
-                    className="resize-y rounded border border-zinc-200 bg-white px-3 py-3 text-[11pt] transition-all duration-200 hover:border-zinc-300 focus:border-green focus:outline-none"
-                  />
-                </div>
-                <div className="flex flex-row w-full">
-                  <FormInput
-                    name="name"
-                    type="text"
-                    placeholder="Type your full name"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button
-                    disabled={
-                      !editName ||
-                      weeklyCommitmentConfirmation !==
-                        WEEKLY_COMMITMENT_CONFIRMATION
-                    }
-                    onClick={handleContractSign}
-                    color={ButtonColor.Black}
-                    className="ml-2 !h-auto px-6"
-                  >
-                    Sign
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-y-2 text-[16px]">
-          <div>
-            <h2 className="font-semibold mt-2 text-black">
-              What happens if I don&apos;t follow the contract?
-            </h2>
-            <p className="text-zinc-900">
-              If you miss 3 or more of the last 10 tasks you were assigned, your
-              contract will be suspended automatically. You can re-sign the
-              contract to re-join the Alliance.
-            </p>
-          </div>
-          <div>
-            <h2 className="font-semibold mt-2 text-black">
-              Are there any valid reasons to miss an action?
-            </h2>
-            <p className="text-zinc-900">
-              Yes. You may decline an action if you disagree with it morally, or
-              mark yourself as away for situations such as a vacation or family
-              emergency.
-            </p>
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold mt-2 text-black">
-              How do I end my membership?
-            </h2>
-            <p className="text-zinc-900">
-              You can end your membership at any time by suspending your
-              contract.
-            </p>
-            {lastContractEvent?.type === "signed" && (
-              <Button
-                onClick={handleContractSuspend}
-                color={ButtonColor.Red}
-                className="mt-4"
-              >
-                Suspend contract
-              </Button>
-            )}
-            {lastContractEvent?.type === "suspended" && (
-              <Card style={CardStyle.Red} className="mt-4 text-base">
-                <p>
-                  {getSuspensionMessage(
-                    lastContractEvent.date,
-                    lastContractEvent.automatic,
-                  )}
+          {latestContract && (
+            <div className="flex flex-col gap-y-4">
+              {signedContract && (
+                <p className="font-semibold">
+                  An updated contract is available.
                 </p>
-              </Card>
-            )}
-          </div>
-        </div>
+              )}
+              <MemberContract
+                markdownOverride={latestContract.markdown}
+                className="p-6"
+              />
+              {lastContractEvent?.type === "signed" &&
+              lastContractEvent.contractId === latestContract.id ? (
+                signedContractMessage
+              ) : (
+                <Card
+                  style={CardStyle.LightGreyBorder}
+                  className="gap-y-5 p-5 sm:p-6"
+                >
+                  <div className="flex flex-col gap-y-2">
+                    <h2 className="text-xl font-semibold text-black">
+                      Confirm your commitment
+                    </h2>
+                    <p className="text-base font-semibold text-zinc-700">
+                      Before signing, type the statement below to confirm that
+                      you understand the weekly commitment.
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-y-2">
+                    <p className="rounded border border-zinc-200 bg-white p-3 text-base">
+                      {WEEKLY_COMMITMENT_CONFIRMATION}
+                    </p>
+                    <textarea
+                      name="weeklyCommitmentConfirmation"
+                      aria-label="Weekly commitment confirmation"
+                      value={weeklyCommitmentConfirmation}
+                      onChange={(e) =>
+                        setWeeklyCommitmentConfirmation(e.target.value)
+                      }
+                      onPaste={(e) => e.preventDefault()}
+                      placeholder="Type the statement here"
+                      rows={2}
+                      className="resize-y rounded border border-zinc-200 bg-white px-3 py-3 text-[11pt] transition-all duration-200 hover:border-zinc-300 focus:border-green focus:outline-none"
+                    />
+                    <div className="flex flex-col gap-y-2 sm:flex-row">
+                      <FormInput
+                        name="name"
+                        type="text"
+                        placeholder="Type your full name"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        disabled={!editName || !weeklyCommitmentConfirmed}
+                        onClick={handleContractSign}
+                        color={ButtonColor.Black}
+                        className="!h-auto px-6 sm:ml-2"
+                      >
+                        Sign
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="text-[16px]">
+          <Card
+            style={CardStyle.LightGreyBorder}
+            className="gap-y-5 p-5 sm:p-6"
+          >
+            <h2 className="text-xl font-semibold text-black">
+              Questions about membership
+            </h2>
+            <div className="flex flex-col gap-y-1">
+              <h3 className="font-semibold text-black">
+                Why is there a contract?
+              </h3>
+              <p>
+                The contract helps us count on one another and plan effective
+                actions accordingly. By signing, you are also making a
+                commitment to your peers to work together consistently.
+              </p>
+            </div>
+            <div className="flex flex-col gap-y-1">
+              <h3 className="font-semibold text-black">
+                What happens if I don’t follow the contract?
+              </h3>
+              <p>
+                If you miss 3 or more of the last 10 tasks you were assigned,
+                your contract will be suspended automatically. You can re-sign
+                the contract to re-join the Alliance.
+              </p>
+            </div>
+            <div className="flex flex-col gap-y-1">
+              <h3 className="font-semibold text-black">
+                Are there any valid reasons to miss an action?
+              </h3>
+              <p>
+                You can press the three dots at the bottom right of an action,
+                next to the Complete button, to withdraw if you morally disagree
+                with the action or it took more than 15 minutes.
+              </p>
+              <p>
+                For prolonged periods, you can set yourself as away in Settings
+                for situations such as a vacation or emergency.
+              </p>
+            </div>
+            <div className="flex flex-col gap-y-1">
+              <h3 className="font-semibold text-black">
+                How do I end my membership?
+              </h3>
+              <p>
+                You can end your membership at any time by suspending your
+                contract on this page.
+              </p>
+              {lastContractEvent?.type === "signed" && (
+                <Button
+                  onClick={handleContractSuspend}
+                  color={ButtonColor.Red}
+                  className="mt-4"
+                >
+                  Suspend contract
+                </Button>
+              )}
+              {lastContractEvent?.type === "suspended" && (
+                <Card style={CardStyle.Red} className="mt-4 text-base">
+                  <p>
+                    {getSuspensionMessage(
+                      lastContractEvent.date,
+                      lastContractEvent.automatic,
+                    )}
+                  </p>
+                </Card>
+              )}
+            </div>
+          </Card>
+        </section>
       </div>
     </CenterLayout>
   );
