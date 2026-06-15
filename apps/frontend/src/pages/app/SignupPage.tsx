@@ -212,7 +212,7 @@ const SignupPage: React.FC = () => {
   return (
     <div className="min-h-screen w-full bg-white">
       <PrelaunchNavbar transparent={false} absolute={false} />
-      <div className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-12 lg:py-16 flex flex-col gap-y-12 lg:gap-y-16">
+      <div className="mx-auto w-full max-w-3xl px-4 sm:px-8 py-12 lg:py-16 flex flex-col gap-y-12 lg:gap-y-16 mb-16">
         <section className="flex flex-col gap-y-6">
           {isPreviewMode && (
             <p className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
@@ -257,10 +257,10 @@ const SignupPage: React.FC = () => {
                   phase—membership is invite-only.
                 </p>
                 <p className="text-lg md:text-xl text-zinc-500 mt-3">
-                  Members complete thoughtfully designed actions each week. The
-                  actions take no more than 15 minutes total and may include
-                  contacting local government officials, participating in a
-                  study, or providing feedback to nonprofits.
+                  Members spend 15 minutes a week completing thoughtfully
+                  designed actions. Past actions have included contacting local
+                  government officials, participating in studies, and providing
+                  feedback to nonprofits.
                 </p>
                 {(signupSocialProofPending ||
                   (signupSocialProof?.profiles?.length ?? 0) > 0) && (
@@ -353,9 +353,8 @@ const SignupPage: React.FC = () => {
               <div className="flex flex-col mb-6">
                 <p className="text-lg md:text-xl text-zinc-500">
                   <Link to={href("/progress")}>
-                    Members participate in actions that take 15 minutes a week.
-                    Our full-time team strives to plan actions that have a
-                    clear, measurable impact.
+                    Our full-time team designs actions to have a clear,
+                    measurable effect.
                   </Link>
                 </p>
               </div>
@@ -394,7 +393,7 @@ const SignupPage: React.FC = () => {
               </h2>
               <p className="text-zinc-500 text-lg md:text-xl mb-6">
                 We ask members to show up consistently so that we can develop
-                precise, effective action plans in advance.
+                precise, effective action plans.
               </p>
               <div className="flex flex-col gap-y-2">
                 {memberQuotes.map((memberQuote, index) => (
