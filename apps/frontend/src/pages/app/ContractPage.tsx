@@ -21,10 +21,15 @@ import {
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
 import { useQuery } from "@tanstack/react-query";
 
+const WEEKLY_COMMITMENT_CONFIRMATION =
+  "I understand that the Alliance relies on my 15-minute contribution every single week and commit to completing each task to the best of my ability.";
+
 const ContractPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { latestContract } = useContract();
   const [editName, setEditName] = useState("");
+  const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
+    useState("");
   const [lastContractEvent, setLastContractEvent] =
     useState<ContractEventState>(null);
 
@@ -54,7 +59,10 @@ const ContractPage: React.FC = () => {
   }, [user]);
 
   const handleContractSign = async () => {
-    if (!latestContract) {
+    if (
+      !latestContract ||
+      weeklyCommitmentConfirmation !== WEEKLY_COMMITMENT_CONFIRMATION
+    ) {
       return;
     }
     try {
@@ -71,6 +79,7 @@ const ContractPage: React.FC = () => {
           automatic: false,
           contractId: latestContract.id,
         });
+        setWeeklyCommitmentConfirmation("");
         await refreshUser();
       }
     } catch (error) {
@@ -142,23 +151,50 @@ const ContractPage: React.FC = () => {
             lastContractEvent.contractId === latestContract.id ? (
               signedContractMessage
             ) : (
-              <div className="flex flex-row mt-2 w-full">
-                <FormInput
-                  name="name"
-                  type="text"
-                  placeholder="Type your full name"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  disabled={!editName}
-                  onClick={handleContractSign}
-                  color={ButtonColor.Black}
-                  className="ml-2 !h-auto px-6"
-                >
-                  Sign
-                </Button>
+              <div className="flex flex-col gap-y-4 mt-4">
+                <div className="flex flex-col gap-y-2">
+                  <p className="font-semibold">
+                    Copy the phrase below to confirm your understanding of our
+                    weekly commitment:
+                  </p>
+                  <p className="rounded border border-zinc-200 bg-zinc-50 p-3">
+                    {WEEKLY_COMMITMENT_CONFIRMATION}
+                  </p>
+                  <textarea
+                    name="weeklyCommitmentConfirmation"
+                    aria-label="Weekly commitment confirmation"
+                    value={weeklyCommitmentConfirmation}
+                    onChange={(e) =>
+                      setWeeklyCommitmentConfirmation(e.target.value)
+                    }
+                    onPaste={(e) => e.preventDefault()}
+                    placeholder="Type the phrase here"
+                    rows={2}
+                    className="resize-y rounded border border-zinc-200 bg-white px-3 py-3 text-[11pt] transition-all duration-200 hover:border-zinc-300 focus:border-green focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-row w-full">
+                  <FormInput
+                    name="name"
+                    type="text"
+                    placeholder="Type your full name"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    disabled={
+                      !editName ||
+                      weeklyCommitmentConfirmation !==
+                        WEEKLY_COMMITMENT_CONFIRMATION
+                    }
+                    onClick={handleContractSign}
+                    color={ButtonColor.Black}
+                    className="ml-2 !h-auto px-6"
+                  >
+                    Sign
+                  </Button>
+                </div>
               </div>
             )}
           </div>
@@ -173,6 +209,16 @@ const ContractPage: React.FC = () => {
               If you miss 3 or more of the last 10 tasks you were assigned, your
               contract will be suspended automatically. You can re-sign the
               contract to re-join the Alliance.
+            </p>
+          </div>
+          <div>
+            <h2 className="font-semibold mt-2 text-black">
+              Are there any valid reasons to miss an action?
+            </h2>
+            <p className="text-zinc-900">
+              Yes. You may decline an action if you disagree with it morally, or
+              mark yourself as away for situations such as a vacation or family
+              emergency.
             </p>
           </div>
           <div>
