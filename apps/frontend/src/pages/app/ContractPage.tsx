@@ -157,19 +157,19 @@ const ContractPage: React.FC = () => {
               ) : (
                 <Card
                   style={CardStyle.LightGreyBorder}
-                  className="gap-y-5 p-5 sm:p-6"
+                  className="gap-y-4 p-5 sm:p-6"
                 >
-                  <div className="flex flex-col gap-y-2">
+                  <div className="flex flex-col gap-y-1">
                     <h2 className="text-xl font-semibold text-black">
                       Confirm your commitment
                     </h2>
-                    <p className="text-base font-semibold text-zinc-700">
+                    <p className="text-[16px] font-semibold text-zinc-700">
                       Before signing, type the statement below to confirm that
                       you understand the weekly commitment.
                     </p>
                   </div>
                   <div className="flex flex-col gap-y-2">
-                    <p className="rounded border border-zinc-200 bg-white p-3 text-base">
+                    <p className="rounded border border-l-4 border-zinc-200 border-l-green bg-white/70 px-4 py-3 text-[16px] italic text-zinc-800">
                       {WEEKLY_COMMITMENT_CONFIRMATION}
                     </p>
                     <textarea
@@ -184,7 +184,7 @@ const ContractPage: React.FC = () => {
                       rows={2}
                       className="resize-y rounded border border-zinc-200 bg-white px-3 py-3 text-[11pt] transition-all duration-200 hover:border-zinc-300 focus:border-green focus:outline-none"
                     />
-                    <div className="flex flex-col gap-y-2 sm:flex-row">
+                    <div className="flex flex-col gap-y-3 sm:flex-row">
                       <FormInput
                         name="name"
                         type="text"
@@ -214,48 +214,54 @@ const ContractPage: React.FC = () => {
             style={CardStyle.LightGreyBorder}
             className="gap-y-5 p-5 sm:p-6"
           >
-            <h2 className="text-xl font-semibold text-black">
-              Questions about membership
-            </h2>
+            <div className="flex flex-col gap-y-2">
+              <h2 className="text-[21px] font-semibold text-black">
+                Questions about membership
+              </h2>
+            </div>
             <div className="flex flex-col gap-y-1">
-              <h3 className="font-semibold text-black">
+              <h3 className="flex items-center gap-x-2 font-semibold text-black">
+                <span className="h-1.5 w-1.5 rounded-full bg-green" />
                 Why is there a contract?
               </h3>
-              <p>
+              <p className="text-[15.5px]">
                 The contract helps us count on one another and plan effective
                 actions accordingly. By signing, you are also making a
                 commitment to your peers to work together consistently.
               </p>
             </div>
             <div className="flex flex-col gap-y-1">
-              <h3 className="font-semibold text-black">
+              <h3 className="flex items-center gap-x-2 font-semibold text-black">
+                <span className="h-1.5 w-1.5 rounded-full bg-green" />
                 What happens if I don’t follow the contract?
               </h3>
-              <p>
+              <p className="text-[15.5px]">
                 If you miss 3 or more of the last 10 tasks you were assigned,
                 your contract will be suspended automatically. You can re-sign
                 the contract to re-join the Alliance.
               </p>
             </div>
             <div className="flex flex-col gap-y-1">
-              <h3 className="font-semibold text-black">
+              <h3 className="flex items-center gap-x-2 font-semibold text-black">
+                <span className="h-1.5 w-1.5 rounded-full bg-green" />
                 Are there any valid reasons to miss an action?
               </h3>
-              <p>
+              <p className="text-[15.5px]">
                 You can press the three dots at the bottom right of an action,
                 next to the Complete button, to withdraw if you morally disagree
                 with the action or it took more than 15 minutes.
               </p>
-              <p>
+              <p className="text-[15.5px]">
                 For prolonged periods, you can set yourself as away in Settings
                 for situations such as a vacation or emergency.
               </p>
             </div>
             <div className="flex flex-col gap-y-1">
-              <h3 className="font-semibold text-black">
+              <h3 className="flex items-center gap-x-2 font-semibold text-black">
+                <span className="h-1.5 w-1.5 rounded-full bg-green" />
                 How do I end my membership?
               </h3>
-              <p>
+              <p className="text-[15.5px]">
                 You can end your membership at any time by suspending your
                 contract on this page.
               </p>
