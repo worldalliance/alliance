@@ -257,10 +257,10 @@ const SignupPage: React.FC = () => {
                   phase—membership is invite-only.
                 </p>
                 <p className="text-lg md:text-xl text-zinc-500 mt-3">
-                  Members complete high-impact actions each week, collectively
-                  taking no longer than 15 minutes. Actions might include
-                  contacting their local government, participating in a study,
-                  or providing feedback.
+                  Members complete thoughtfully designed actions each week. The
+                  actions take no more than 15 minutes total and may include
+                  contacting local government officials, participating in a
+                  study, or providing feedback to nonprofits.
                 </p>
                 {(signupSocialProofPending ||
                   (signupSocialProof?.profiles?.length ?? 0) > 0) && (
