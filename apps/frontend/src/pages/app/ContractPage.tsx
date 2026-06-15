@@ -3,26 +3,26 @@ import {
   contractSignContract,
   contractSuspendContract,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import React, { useEffect, useMemo, useState } from "react";
-import MemberContract from "../../components/MemberContract";
-import FormInput from "@alliance/sharedweb/ui/FormInput";
-import { useAuth } from "../../lib/AuthContext";
-import { useContract } from "../../lib/useContract";
-import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import Card from "@alliance/sharedweb/ui/Card";
-import { CardStyle } from "@alliance/shared/styles/card";
 import {
   ContractEventState,
   getLastContractEvent,
-  getSuspensionMessage,
   getSignedMessage,
+  getSuspensionMessage,
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
+import { CardStyle } from "@alliance/shared/styles/card";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import Card from "@alliance/sharedweb/ui/Card";
+import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
+import FormInput from "@alliance/sharedweb/ui/FormInput";
 import { useQuery } from "@tanstack/react-query";
+import React, { useEffect, useMemo, useState } from "react";
+import MemberContract from "../../components/MemberContract";
+import { useAuth } from "../../lib/AuthContext";
+import { useContract } from "../../lib/useContract";
 
 const WEEKLY_COMMITMENT_CONFIRMATION =
-  "I understand that the Alliance relies on my 15-minute contribution every single week and commit to completing each task to the best of my ability.";
+  "I understand that the Alliance relies on my 15-minute contribution every single week. I commit to complete each task to the best of my ability.";
 
 const normalizeConfirmation = (confirmation: string) =>
   confirmation.trim().toLocaleLowerCase();
