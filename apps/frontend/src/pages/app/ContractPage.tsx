@@ -160,12 +160,12 @@ const ContractPage: React.FC = () => {
                   className="gap-y-4 p-5 sm:p-6"
                 >
                   <div className="flex flex-col gap-y-1">
-                    <h2 className="text-xl font-semibold text-black">
+                    <h2 className="text-xl md:text-2xl font-semibold text-black">
                       Confirm your commitment
                     </h2>
-                    <p className="text-[16px] font-semibold text-zinc-700">
-                      Before signing, type the statement below to confirm that
-                      you understand the weekly commitment.
+                    <p className="text-sm font-medium text-zinc-700">
+                      Before signing, please type the statement below to confirm
+                      that you understand the weekly commitment.
                     </p>
                   </div>
                   <div className="flex flex-col gap-y-2">
@@ -215,7 +215,7 @@ const ContractPage: React.FC = () => {
             className="gap-y-5 p-5 sm:p-6"
           >
             <div className="flex flex-col gap-y-2">
-              <h2 className="text-[21px] font-semibold text-black">
+              <h2 className="text-xl md:text-2xl font-semibold text-black">
                 Questions about membership
               </h2>
             </div>
@@ -224,10 +224,11 @@ const ContractPage: React.FC = () => {
                 <span className="h-1.5 w-1.5 rounded-full bg-green" />
                 Why is there a contract?
               </h3>
-              <p className="text-[15.5px]">
-                The contract helps us count on one another and plan effective
-                actions accordingly. By signing, you are also making a
-                commitment to your peers to work together consistently.
+              <p className="text-base">
+                The contract ensures that we can count on your participation,
+                which allows us to plan actions precisely. By signing, you are
+                also making a commitment to your peers to work together
+                consistently.
               </p>
             </div>
             <div className="flex flex-col gap-y-1">
@@ -235,7 +236,7 @@ const ContractPage: React.FC = () => {
                 <span className="h-1.5 w-1.5 rounded-full bg-green" />
                 What happens if I don’t follow the contract?
               </h3>
-              <p className="text-[15.5px]">
+              <p className="text-base">
                 If you miss 3 or more of the last 10 tasks you were assigned,
                 your contract will be suspended automatically. You can re-sign
                 the contract to re-join the Alliance.
@@ -244,24 +245,34 @@ const ContractPage: React.FC = () => {
             <div className="flex flex-col gap-y-1">
               <h3 className="flex items-center gap-x-2 font-semibold text-black">
                 <span className="h-1.5 w-1.5 rounded-full bg-green" />
-                Are there any valid reasons to miss an action?
+                Are there valid reasons to miss an action?
               </h3>
-              <p className="text-[15.5px]">
-                You can press the three dots at the bottom right of an action,
-                next to the Complete button, to withdraw if you morally disagree
-                with the action or it took more than 15 minutes.
+              <p className="text-base">
+                Yes. For our planning purposes, we ask that you inform us if you
+                will be unable to complete an action with one of the following
+                methods:
               </p>
-              <p className="text-[15.5px]">
-                For prolonged periods, you can set yourself as away in Settings
-                for situations such as a vacation or emergency.
-              </p>
+              <ol className="list-decimal list-inside pl-4 space-y-1">
+                <li className="text-base">
+                  You can withdraw from an action by tapping the three dots at
+                  the bottom right of an action, next to the Complete button.
+                  You can withdraw if the action is taking you longer than 15
+                  minutes to complete, or if you have a moral objection to the
+                  action.
+                </li>
+                <li className="text-base">
+                  You can mark yourself as away in Settings if you won&apos;t be
+                  able to complete an action for a prolonged period, such as
+                  during a vacation.
+                </li>
+              </ol>
             </div>
             <div className="flex flex-col gap-y-1">
               <h3 className="flex items-center gap-x-2 font-semibold text-black">
                 <span className="h-1.5 w-1.5 rounded-full bg-green" />
                 How do I end my membership?
               </h3>
-              <p className="text-[15.5px]">
+              <p className="text-base">
                 You can end your membership at any time by suspending your
                 contract on this page.
               </p>
