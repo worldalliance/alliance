@@ -252,7 +252,7 @@ const ContractPage: React.FC = () => {
                 will be unable to complete an action with one of the following
                 methods:
               </p>
-              <ol className="list-decimal list-inside pl-4 space-y-1">
+              <ol className="list-decimal list-outside pl-4 space-y-1">
                 <li className="text-base">
                   You can withdraw from an action by tapping the three dots at
                   the bottom right of an action, next to the Complete button.
