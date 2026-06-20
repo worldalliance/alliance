@@ -1,36 +1,28 @@
-import { ActionDto, ActionUpdateDto } from "@alliance/shared/client";
-import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
+import { ActionDto, ActionEventDto } from "@alliance/shared/client";
 import ActionCompletedBarWithInfo from "../../pages/app/ActionCompletedBarWithInfo";
-import Card from "@alliance/sharedweb/ui/Card";
 import { cn } from "@alliance/shared/styles/util";
+import { readableActionStatus } from "@alliance/shared/lib/actionStatus";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
-import { CardStyle } from "@alliance/shared/styles/card";
+import { formatDistance } from "date-fns";
 
 interface TimelineItemProps {
-  highlighted?: boolean;
-  title?: string;
-  description: string;
+  event: ActionEventDto;
   action: ActionDto;
-  showCompletedBar?: boolean;
-  updates?: ActionUpdateDto[];
-  time?: string;
+  highlighted?: boolean;
 }
 
+/**
+ * A demoted status-change marker in the action timeline: a quiet kicker (the
+ * status label) + time, with the organizer-written title as a small line.
+ * Updates are rendered separately as the headline dispatches.
+ */
 const TimelineItem: React.FC<TimelineItemProps> = ({
-  highlighted = false,
-  title,
-  description,
+  event,
   action,
-  showCompletedBar = false,
-  updates,
-  time,
+  highlighted = false,
 }: TimelineItemProps) => {
-  const sortedUpdates = [...(updates ?? [])].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-  );
-
   const { activities: friendActivities } = useActivities({
     list: ActivityList.FriendsForAction,
     objectId: action.id,
@@ -38,24 +30,16 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
     limit: 8,
   });
 
+  // Show the organizer-written title (e.g. "Action completed"); fall back to the
+  // status label only if the event has no title.
+  const label = event.title.trim() || readableActionStatus[event.newStatus];
+  const showCompletedBar =
+    event.newStatus === "member_action" && action.status !== "member_action";
+
   return (
-    <div className="flex flex-col gap-y-2">
-      <div className="flex flex-row items-center gap-x-2 mt-px">
-        <p
-          className={cn(
-            "font-medium",
-            highlighted ? "text-green" : "text-black",
-          )}
-        >
-          {title}
-        </p>
-        <p className="text-zinc-500">{time}</p>
-      </div>
-      {description && (
-        <p className="mt-1 text-zinc-500 text-sm">{description}</p>
-      )}
+    <div className="flex flex-col gap-y-1.5">
       {showCompletedBar && (
-        <Card style={CardStyle.WhiteBorder} className="p-6 mt-2">
+        <div className="mt-5 mb-6 mx-1">
           <ActionCompletedBarWithInfo
             friendActivities={friendActivities}
             action={action}
@@ -65,15 +49,21 @@ const TimelineItem: React.FC<TimelineItemProps> = ({
             seeAllLink
             dark
           />
-        </Card>
-      )}
-      {updates && updates.length > 0 && (
-        <div className="flex flex-col gap-y-1.5 mt-2">
-          {sortedUpdates?.map((update) => (
-            <ActionUpdateCard key={update.id} update={update} border />
-          ))}
         </div>
       )}
+      <div className="flex items-baseline gap-x-3 text-sm">
+        <span
+          className={cn(
+            "font-semibold",
+            highlighted ? "text-green" : "text-zinc-400",
+          )}
+        >
+          {label}
+        </span>
+        <span className="ml-auto shrink-0 whitespace-nowrap font-medium text-zinc-400">
+          {formatDistance(event.date, new Date(), { addSuffix: true })}
+        </span>
+      </div>
     </div>
   );
 };

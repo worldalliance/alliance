@@ -1,91 +1,36 @@
-import React, {
-  CSSProperties,
-  ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { ReactNode } from "react";
 import { cn } from "@alliance/shared/styles/util";
 
 interface TimelineProps {
   children: ReactNode[];
-  lineWidth?: number;
-  dotSize?: number;
-  lineColor?: string;
-  dotColor?: string;
   className?: string;
-  currentIdx?: number;
+  // Whether to draw a hairline divider above child i. Defaults to true for every
+  // row but the first; pass an array to suppress specific dividers.
+  dividers?: boolean[];
 }
 
 const Timeline: React.FC<TimelineProps> = ({
   children,
-  lineWidth = 2,
-  dotSize = 12,
-  lineColor = "var(--color-zinc-200)",
   className,
-  currentIdx,
+  dividers,
 }) => {
-  const halfDot = useMemo(() => dotSize / 2, [dotSize]);
-
-  const bottomElementRef = useRef<HTMLLIElement>(null);
-
-  const [lineStyle, setLineStyle] = useState<CSSProperties>({
-    width: lineWidth,
-    backgroundColor: lineColor,
-    top: halfDot,
-    bottom: bottomElementRef.current
-      ? bottomElementRef.current.clientHeight - halfDot
-      : 0,
-  });
-
-  useEffect(() => {
-    setLineStyle({
-      width: lineWidth,
-      backgroundColor: lineColor,
-      top: halfDot,
-      bottom: bottomElementRef.current
-        ? bottomElementRef.current.clientHeight - halfDot
-        : 0,
-    });
-  }, [bottomElementRef, lineWidth, lineColor, halfDot]);
-
-  const dotBaseStyle: CSSProperties = {
-    width: dotSize + 6,
-    height: dotSize + 6,
-    border: `3px solid white`,
-    aspectRatio: 1,
-    borderRadius: "50%",
-    position: "absolute",
-    left: `-${dotSize / 2 + 3}px`,
-    top: 0,
-    bottom: 0,
-  };
-
   return (
-    <div className={cn("relative pl-2", className)}>
-      {/* vertical line */}
-      <div className="absolute top-0 bottom-0 -ml-[1px]" style={lineStyle} />
-
-      <ul className="space-y-4">
-        {React.Children.map(children, (child, index) => (
-          <li
-            className="relative"
-            key={index}
-            ref={index === children.length - 1 ? bottomElementRef : null}
-          >
-            {/* timeline dot */}
-            <div
-              style={{ ...dotBaseStyle }}
+    <div className={cn("relative", className)}>
+      <ul>
+        {React.Children.map(children, (child, index) => {
+          const showDivider = index > 0 && (dividers ? dividers[index] : true);
+          return (
+            <li
               className={cn(
-                "absolute mt-1 flex items-center justify-center",
-                index === currentIdx ? "bg-green" : "bg-grey-1",
+                "py-3 first:pt-0 last:pb-0",
+                showDivider && "border-t border-zinc-200",
               )}
-            ></div>
-            {/* content */}
-            <div className="pl-4 sm:pl-6">{child}</div>
-          </li>
-        ))}
+              key={index}
+            >
+              {child}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

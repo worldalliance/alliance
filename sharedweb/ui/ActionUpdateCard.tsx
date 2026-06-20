@@ -1,9 +1,11 @@
 import { Link } from "react-router";
 import {
+  ActionStatus,
   ActionUpdateDto,
   CreateEditableContentDto,
 } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
+import { readableActionStatus } from "@alliance/shared/lib/actionStatus";
 import Button, { ButtonColor } from "./Button";
 import EditableContentForm from "./EditableContentForm";
 import EditableContentRenderer from "./EditableContentRenderer";
@@ -24,6 +26,12 @@ export interface ActionUpdateCardProps {
   admin?: boolean;
   onActionPageTimeline?: boolean;
   border?: boolean;
+  // Render without card chrome, formatted to match the timeline event items.
+  plain?: boolean;
+  // (plain only) status of the associated event — shown as the kicker.
+  status?: ActionStatus;
+  // (plain only) the most recent entry in the timeline (its kicker is green).
+  highlighted?: boolean;
 }
 
 const ActionUpdateCard = ({
@@ -33,6 +41,9 @@ const ActionUpdateCard = ({
   admin = false,
   onActionPageTimeline = true, // if not on action page timeline, need to have action title and link
   border = false,
+  plain = false,
+  status,
+  highlighted = false,
 }: ActionUpdateCardProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(update.title);
@@ -100,6 +111,47 @@ const ActionUpdateCard = ({
             {isSaving ? "Saving..." : "Save"}
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (plain) {
+    // Kicker text = the associated status label (e.g. "Office action"), or a plain
+    // "Update" when standalone or attached to member action. The most recent
+    // entry's kicker is green; others grey.
+    const kicker = {
+      text:
+        status && status !== "member_action"
+          ? readableActionStatus[status]
+          : "Update",
+      className: highlighted ? "text-green" : "text-zinc-400",
+    };
+
+    return (
+      <div className="flex flex-col gap-y-1.5">
+        <div className="flex items-baseline gap-x-3 text-sm">
+          {onActionPageTimeline && (
+            <span className={cn("font-semibold", kicker.className)}>
+              {kicker.text}
+            </span>
+          )}
+          <span className="ml-auto shrink-0 whitespace-nowrap font-medium text-zinc-400">
+            {formatTime(new Date(update.date), { addSuffix: true })}
+          </span>
+        </div>
+        <h3 className="font-serif text-lg leading-snug font-semibold tracking-tight text-zinc-900 md:text-xl">
+          {update.title}
+        </h3>
+        {!onActionPageTimeline && (
+          <Link to={`/actions/${update.actionId}`}>
+            <p className="text-link">{update.actionName}</p>
+          </Link>
+        )}
+        {!!update.content.body && (
+          <div className="mt-1 text-zinc-600 leading-relaxed">
+            <EditableContentRenderer content={update.content} className="" />
+          </div>
+        )}
       </div>
     );
   }

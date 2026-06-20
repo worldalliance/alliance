@@ -1,4 +1,9 @@
-import { ActionDto, ActionEventDto, ActionUpdateDto } from "../client";
+import {
+  ActionDto,
+  ActionEventDto,
+  ActionStatus,
+  ActionUpdateDto,
+} from "../client";
 
 /**
  * ActionEvent extended with associated updates
@@ -132,4 +137,81 @@ export function processActionTimeline(action: ActionDto): {
     highlightedId,
     highlightedIndex,
   };
+}
+
+/**
+ * A single entry in the dispatch-style timeline (web): either an update
+ * (primary content, headline dispatch) or a bare status change (quiet marker).
+ */
+export type DispatchEntry =
+  | {
+      kind: "update";
+      date: string;
+      update: ActionUpdateDto;
+      status?: ActionStatus;
+    }
+  | { kind: "status"; date: string; event: ActionEventDto };
+
+/**
+ * Process an action into a flat dispatch feed where updates are the headlines
+ * and status changes are demoted. Updates carry the status of their associated
+ * event (shown as a kicker). A status event renders on its own only when it has
+ * no updates — except `office_action` (always shown as its own marker) and the
+ * `member_action` event, which is kept so it can host the completion bar.
+ *
+ * Additive sibling of {@link processActionTimeline} (which mobile still uses);
+ * leave that one in place.
+ */
+export function processActionDispatches(action: ActionDto): {
+  entries: DispatchEntry[];
+  highlightedIndex: number;
+} {
+  let events = filterEvents(action.events);
+  events = addDraftEventIfNeeded(events, action.status);
+
+  // Status lookup spans ALL events, including ones filtered from display, so an
+  // update linked to e.g. a hidden 'planned' event still gets its label.
+  const eventsById = new Map<number, ActionEventDto>(
+    action.events.map((event) => [event.id, event]),
+  );
+
+  const eventsWithUpdates = associateUpdatesWithEvents(events, action.updates);
+
+  const updateEntries: DispatchEntry[] = filterFutureItems(action.updates).map(
+    (update): DispatchEntry => {
+      const event =
+        update.associatedEventId !== undefined
+          ? eventsById.get(update.associatedEventId)
+          : undefined;
+      return {
+        kind: "update",
+        date: update.date,
+        update,
+        status: event?.newStatus,
+      };
+    },
+  );
+
+  const statusEntries: DispatchEntry[] = eventsWithUpdates
+    .filter(
+      (event) =>
+        (event.updates?.length ?? 0) === 0 ||
+        event.newStatus === "office_action" ||
+        (event.newStatus === "member_action" &&
+          action.status !== "member_action"),
+    )
+    .map((event): DispatchEntry => ({
+      kind: "status",
+      date: event.date,
+      event,
+    }));
+
+  const entries = sortByDateDescending([...updateEntries, ...statusEntries]);
+
+  const now = new Date().getTime();
+  const highlightedIndex = entries.findIndex(
+    (entry) => new Date(entry.date).getTime() <= now,
+  );
+
+  return { entries, highlightedIndex };
 }
