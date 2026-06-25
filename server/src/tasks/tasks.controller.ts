@@ -37,9 +37,11 @@ import {
 } from './customvalidator.dto';
 import {
   CreateFormDto,
+  EditFormResponseDto,
   FormAggregateViewsDto,
   FormDto,
   FormResponseDto,
+  FormResponseVersionDto,
   FormSnapshotMigrationDto,
   GuestFormResponseDto,
   LinkedGuestDraftDto,
@@ -47,6 +49,7 @@ import {
   MigrateResponseSnapshotsResultDto,
   SubmitFollowUpFormDto,
   SubmitFormDto,
+  UpdateFormDto,
 } from './form.dto';
 import { TasksService } from './tasks.service';
 
@@ -231,12 +234,38 @@ export class TasksController {
     );
   }
 
+  @Patch('editResponse/:formId')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FormResponseDto })
+  async editFormResponse(
+    @Param('formId', ParseIntPipe) formId: number,
+    @Body() body: EditFormResponseDto,
+    @Request() req: JwtRequest,
+  ): Promise<FormResponseDto> {
+    return new FormResponseDto({
+      response: await this.tasksService.editFormResponse(
+        req.user.sub,
+        formId,
+        body,
+      ),
+    });
+  }
+
+  @Get('responseVersions/:formId')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [FormResponseVersionDto] })
+  async getResponseVersionsAdmin(
+    @Param('formId', ParseIntPipe) formId: number,
+  ): Promise<FormResponseVersionDto[]> {
+    return this.tasksService.getResponseVersions(formId);
+  }
+
   @Put('updateForm/:formId')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: FormDto })
   async updateFormAdmin(
     @Param('formId', ParseIntPipe) formId: number,
-    @Body() body: CreateFormDto,
+    @Body() body: UpdateFormDto,
   ): Promise<FormDto> {
     return new FormDto(await this.tasksService.updateForm(+formId, body));
   }

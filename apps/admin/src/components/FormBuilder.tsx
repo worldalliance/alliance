@@ -379,13 +379,15 @@ export function FormBuilder({
     JSON.stringify(buildInitialSchema()),
   );
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isEditable, setIsEditable] = useState(false);
+  const [riskLevel, setRiskLevel] = useState<"low" | "medium" | "high">("low");
 
   const [searchParams, setSearchParams] = useSearchParams();
 
   const activeEditor = searchParams.get("editor") ?? "form";
 
   const setActiveEditor = useCallback(
-    (editor: "form" | "shareable" | "outputs" | "aggregates") => {
+    (editor: "form" | "shareable" | "outputs" | "aggregates" | "settings") => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set("editor", editor);
@@ -601,6 +603,8 @@ export function FormBuilder({
             setSchema(nextSchema);
             setLastSavedSchemaJSON(JSON.stringify(nextSchema));
             setHasUnsavedChanges(false);
+            setIsEditable(!!form.isEditable);
+            setRiskLevel(form.riskLevel ?? "low");
           }
         }
       })
@@ -1221,6 +1225,8 @@ export function FormBuilder({
           body: {
             title: schemaForSave.title,
             schema: schemaForSave as unknown as Record<string, unknown>,
+            isEditable,
+            riskLevel,
           },
         });
       } else {
@@ -1271,6 +1277,8 @@ export function FormBuilder({
   }, [
     generalUpdateName,
     formId,
+    isEditable,
+    riskLevel,
     onSave,
     resolveCustomValidatorDrafts,
     schema,
@@ -1971,6 +1979,20 @@ export function FormBuilder({
                   >
                     Aggregate Views
                   </button>
+                  {formId && (
+                    <button
+                      type="button"
+                      className={cn(
+                        "px-3 py-2 rounded-md text-nowrap",
+                        activeEditor === "settings"
+                          ? "bg-white shadow text-gray-900"
+                          : "text-gray-600",
+                      )}
+                      onClick={() => setActiveEditor("settings")}
+                    >
+                      Form Settings
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -2151,7 +2173,110 @@ export function FormBuilder({
             ref={contentScrollRef}
             className="flex-1 p-6 overflow-y-auto min-h-0"
           >
-            {activeEditor === "shareable" && !generalUpdateName ? (
+            {activeEditor === "settings" && formId && !generalUpdateName ? (
+              <div className="max-w-2xl mx-auto">
+                <h2 className="text-lg font-semibold text-gray-900 mb-6">
+                  Form Settings
+                </h2>
+
+                {/* Risk level */}
+                <div className="bg-white rounded-lg border border-gray-200 mb-4">
+                  <div className="p-5 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">Risk level</p>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      Determines default behaviour for response editing. Use High for legal or compliance forms.
+                    </p>
+                  </div>
+                  {(
+                    [
+                      {
+                        value: "low" as const,
+                        label: "Low risk",
+                        description: "Surveys, questionnaires, general feedback.",
+                      },
+                      {
+                        value: "medium" as const,
+                        label: "Medium risk",
+                        description: "Personal information, applications.",
+                      },
+                      {
+                        value: "high" as const,
+                        label: "High risk",
+                        description: "Legal agreements, compliance forms.",
+                      },
+                    ] as const
+                  ).map(({ value, label, description }) => (
+                    <label
+                      key={value}
+                      className="flex items-start gap-3 p-5 border-b border-gray-100 last:border-0 cursor-pointer hover:bg-gray-50"
+                    >
+                      <input
+                        type="radio"
+                        name="riskLevel"
+                        value={value}
+                        checked={riskLevel === value}
+                        onChange={() => {
+                          setRiskLevel(value);
+                          setIsEditable(value === "low");
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="mt-0.5 h-4 w-4 text-blue-600"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{label}</p>
+                        <p className="text-sm text-gray-500">{description}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {/* Allow editing toggle */}
+                <div className="bg-white rounded-lg border border-gray-200 mb-6">
+                  <div className="flex items-center justify-between p-5">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        Allow response editing
+                      </p>
+                      <p className="text-sm text-gray-500 mt-0.5">
+                        Members can edit their submitted response up to 3 times.
+                        Enabled by default for low-risk forms.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isEditable}
+                      onClick={() => {
+                        setIsEditable((v) => !v);
+                        setHasUnsavedChanges(true);
+                      }}
+                      className={cn(
+                        "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none",
+                        isEditable ? "bg-blue-600" : "bg-gray-200",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200",
+                          isEditable ? "translate-x-5" : "translate-x-0",
+                        )}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleSaveForm}
+                    disabled={isSaving || isLoading || !hasUnsavedChanges}
+                    color={ButtonColor.Blue}
+                    size="small"
+                  >
+                    {isSaving ? "Saving..." : hasUnsavedChanges ? "Save Settings" : "No changes"}
+                  </Button>
+                </div>
+              </div>
+            ) : activeEditor === "shareable" && !generalUpdateName ? (
               <ShareableTextBuilder
                 schema={schema}
                 onSchemaChange={updateSchema}

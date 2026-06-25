@@ -12,7 +12,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { CreateDateColumnTz } from 'src/datasources/basecolumns';
+import { CreateDateColumnTz, UpdateDateColumnTz } from 'src/datasources/basecolumns';
 import type { DeviceVisibilityTarget } from '@alliance/common/forms/device';
 import { Guest } from 'src/auth/entities/guest.entity';
 import { Form } from './form.entity';
@@ -86,6 +86,17 @@ export class FormResponse {
   @Allow()
   @Type(() => Date)
   createdAt: Date;
+
+  @UpdateDateColumnTz()
+  @ApiProperty()
+  @Allow()
+  @Type(() => Date)
+  updatedAt: Date;
+
+  @Column({ default: 0 })
+  @ApiProperty()
+  @Allow()
+  editCount: number;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()

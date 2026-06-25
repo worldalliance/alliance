@@ -227,45 +227,49 @@ const ConversationInfoPanel = ({
               </p>
             )}
             <List className="w-full">
-              {selectedConvo.participants.map((participant) => (
-                <Link
-                  key={participant.user.id}
-                  to={href("/member/:id", {
-                    id: participant.user.id.toString(),
-                  })}
-                  className="p-4 hover:bg-zinc-100 flex flex-row items-center gap-x-3 justify-between"
-                >
-                  <div className="flex flex-row items-center gap-x-3">
-                    <AvatarProfile
-                      pfp={participant.user.profilePicture}
-                      size="large"
-                    />
-                    <p>{participant.user.displayName}</p>
-                  </div>
-                  <div className="flex flex-row items-center gap-x-2">
-                    {participant.state == "invited" &&
-                      (justAddedMember === participant.user.id ? (
-                        <p className="text-green">Invite sent!</p>
-                      ) : (
-                        <p className="text-zinc-500 mr-2">Invited</p>
-                      ))}
-                    {isAdmin &&
-                      participant.user.id !== user?.id &&
-                      selectedConvo.type === "multiple" && (
-                        <Button
-                          color={ButtonColor.Transparent}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleRemoveParticipant(participant.user.id);
-                          }}
-                          className="hover:!bg-zinc-200 !px-2"
-                        >
-                          <X size="18" color="var(--color-red-400)" />
-                        </Button>
-                      )}
-                  </div>
-                </Link>
-              ))}
+              {selectedConvo.participants
+                .sort((a, b) =>
+                  a.user.displayName.localeCompare(b.user.displayName),
+                )
+                .map((participant) => (
+                  <Link
+                    key={participant.user.id}
+                    to={href("/member/:id", {
+                      id: participant.user.id.toString(),
+                    })}
+                    className="p-4 hover:bg-zinc-100 flex flex-row items-center gap-x-3 justify-between"
+                  >
+                    <div className="flex flex-row items-center gap-x-3">
+                      <AvatarProfile
+                        pfp={participant.user.profilePicture}
+                        size="large"
+                      />
+                      <p>{participant.user.displayName}</p>
+                    </div>
+                    <div className="flex flex-row items-center gap-x-2">
+                      {participant.state == "invited" &&
+                        (justAddedMember === participant.user.id ? (
+                          <p className="text-green">Invite sent!</p>
+                        ) : (
+                          <p className="text-zinc-500 mr-2">Invited</p>
+                        ))}
+                      {isAdmin &&
+                        participant.user.id !== user?.id &&
+                        selectedConvo.type === "multiple" && (
+                          <Button
+                            color={ButtonColor.Transparent}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleRemoveParticipant(participant.user.id);
+                            }}
+                            className="hover:!bg-zinc-200 !px-2"
+                          >
+                            <X size="18" color="var(--color-red-400)" />
+                          </Button>
+                        )}
+                    </div>
+                  </Link>
+                ))}
             </List>
             {selectedConvo.type === "multiple" &&
               (participantMe?.role === "admin" ||

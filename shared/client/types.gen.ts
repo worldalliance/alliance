@@ -158,6 +158,8 @@ export type FormResponse = {
     guest?: Guest;
     sessionReplayUrl?: string;
     createdAt: string;
+    updatedAt: string;
+    editCount: number;
     phDistinctId?: string;
     formSnapshotId: number;
     sid?: string;
@@ -1880,12 +1882,16 @@ export type ActionReferralCodeDto = {
     referralCode: string;
 };
 
+export type FormRiskLevel = 'low' | 'medium' | 'high';
+
 export type Form = {
     id: number;
     title: string;
     formSnapshotId: number;
     createdAt: string;
     updatedAt: string;
+    isEditable: boolean;
+    riskLevel: FormRiskLevel;
 };
 
 export type FollowUpFormDto = {
@@ -2999,6 +3005,8 @@ export type FormResponseDto = {
     deviceType?: string;
     sessionReplayUrl?: string;
     createdAt: string;
+    updatedAt: string;
+    editCount: number;
     phDistinctId?: string;
     formSnapshotId: number;
     sid?: string;
@@ -3040,6 +3048,8 @@ export type FormDto = {
     id: number;
     title: string;
     formSnapshotId: number;
+    isEditable: boolean;
+    riskLevel: FormRiskLevel;
     schema: {
         [key: string]: unknown;
     };
@@ -3094,6 +3104,30 @@ export type FormAggregateViewsDto = {
     aggregateViews: Array<{
         [key: string]: unknown;
     }>;
+};
+
+export type EditFormResponseDto = {
+    answers: {
+        [key: string]: unknown;
+    };
+};
+
+export type FormResponseVersionDto = {
+    id: number;
+    version: number;
+    answers: {
+        [key: string]: unknown;
+    };
+    createdAt: string;
+};
+
+export type UpdateFormDto = {
+    title?: string;
+    isEditable?: boolean;
+    riskLevel?: FormRiskLevel;
+    schema?: {
+        [key: string]: unknown;
+    };
 };
 
 export type CustomValidatorType = 'UploadedPhoto' | 'SignedContract' | 'AddedProfileDescription' | 'RepliedToForumPost' | 'RepliedToForumPostOrChild' | 'HasPhoneNumber' | 'IsPhoneNumberValid' | 'MemberTag' | 'MemberCommunity' | 'AnyCommunity' | 'CustomExpression';
@@ -3264,6 +3298,17 @@ export type MemberReliabilityWindowDto = {
     weeks: number;
     firstWeek: MemberReliabilityRateDto;
     fourthWeekOrLater: MemberReliabilityRateDto;
+};
+
+export type MissedActionMemberDto = {
+    userId: number;
+    name: string;
+    lastActionName: string;
+};
+
+export type MissedActionsDto = {
+    missedLastAction: Array<MissedActionMemberDto>;
+    missedLastTwoActions: Array<MissedActionMemberDto>;
 };
 
 export type PlatformTenureCohortActionStatsDto = {
@@ -10682,8 +10727,56 @@ export type TasksGetFormAggregateViewsResponses = {
 
 export type TasksGetFormAggregateViewsResponse = TasksGetFormAggregateViewsResponses[keyof TasksGetFormAggregateViewsResponses];
 
+export type TasksEditFormResponseData = {
+    body: EditFormResponseDto;
+    path: {
+        formId: number;
+    };
+    query?: never;
+    url: '/tasks/editResponse/{formId}';
+};
+
+export type TasksEditFormResponseErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksEditFormResponseError = TasksEditFormResponseErrors[keyof TasksEditFormResponseErrors];
+
+export type TasksEditFormResponseResponses = {
+    200: FormResponseDto;
+};
+
+export type TasksEditFormResponseResponse = TasksEditFormResponseResponses[keyof TasksEditFormResponseResponses];
+
+export type TasksGetResponseVersionsAdminData = {
+    body?: never;
+    path: {
+        formId: number;
+    };
+    query?: never;
+    url: '/tasks/responseVersions/{formId}';
+};
+
+export type TasksGetResponseVersionsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksGetResponseVersionsAdminError = TasksGetResponseVersionsAdminErrors[keyof TasksGetResponseVersionsAdminErrors];
+
+export type TasksGetResponseVersionsAdminResponses = {
+    200: Array<FormResponseVersionDto>;
+};
+
+export type TasksGetResponseVersionsAdminResponse = TasksGetResponseVersionsAdminResponses[keyof TasksGetResponseVersionsAdminResponses];
+
 export type TasksUpdateFormAdminData = {
-    body: CreateFormDto;
+    body: UpdateFormDto;
     path: {
         formId: number;
     };
@@ -11076,6 +11169,28 @@ export type AnalyticsGetMemberReliabilityWindowAdminResponses = {
 };
 
 export type AnalyticsGetMemberReliabilityWindowAdminResponse = AnalyticsGetMemberReliabilityWindowAdminResponses[keyof AnalyticsGetMemberReliabilityWindowAdminResponses];
+
+export type AnalyticsGetMissedActionsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/analytics/missed-actions';
+};
+
+export type AnalyticsGetMissedActionsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type AnalyticsGetMissedActionsAdminError = AnalyticsGetMissedActionsAdminErrors[keyof AnalyticsGetMissedActionsAdminErrors];
+
+export type AnalyticsGetMissedActionsAdminResponses = {
+    200: MissedActionsDto;
+};
+
+export type AnalyticsGetMissedActionsAdminResponse = AnalyticsGetMissedActionsAdminResponses[keyof AnalyticsGetMissedActionsAdminResponses];
 
 export type AnalyticsGetPlatformTenureCohortAdminData = {
     body?: never;

@@ -9,6 +9,7 @@ import {
   ApiProperty,
   ApiPropertyOptional,
   OmitType,
+  PartialType,
   PickType,
 } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
@@ -26,6 +27,7 @@ import { ActionDto } from 'src/actions/dto/action.dto';
 import { AiDetectionResultDto } from 'src/ai-detection/dto/ai-detection-result.dto';
 import { AiDetectionResult } from 'src/ai-detection/entities/ai-detection-result.entity';
 import { UserDto } from 'src/user/dto/user.dto';
+import { FormResponseVersion } from './entities/form-response-version.entity';
 import { Form } from './entities/form.entity';
 import { FormResponse } from './entities/formresponse.entity';
 import { FormSnapshot } from './entities/formsnapshot.entity';
@@ -91,7 +93,22 @@ export class SubmitFollowUpFormDto extends OmitType(SubmitFormDto, [
   'actionId',
 ]) {}
 
-export class FormDto extends PickType(Form, ['id', 'title', 'formSnapshotId']) {
+export class UpdateFormDto extends PartialType(
+  PickType(Form, ['title', 'isEditable', 'riskLevel'] as const),
+) {
+  @ApiPropertyOptional({ type: Object })
+  @IsOptional()
+  @Type(() => Object)
+  schema?: Record<string, unknown>;
+}
+
+export class FormDto extends PickType(Form, [
+  'id',
+  'title',
+  'formSnapshotId',
+  'isEditable',
+  'riskLevel',
+]) {
   @ApiProperty()
   @IsDefined()
   @Type(() => Object)
@@ -107,6 +124,8 @@ export class FormDto extends PickType(Form, ['id', 'title', 'formSnapshotId']) {
     this.id = form.id;
     this.title = form.title;
     this.formSnapshotId = form.formSnapshotId;
+    this.isEditable = form.isEditable;
+    this.riskLevel = form.riskLevel;
     this.schema = form.formSnapshot.schema;
     this.usedInAction = usedInAction;
   }
@@ -132,6 +151,8 @@ export class FormResponseDto extends PickType(FormResponse, [
   'formId',
   'formSnapshotId',
   'createdAt',
+  'updatedAt',
+  'editCount',
   'visibilityValidatorResults',
   'phDistinctId',
   'sessionReplayUrl',
@@ -169,10 +190,34 @@ export class FormResponseDto extends PickType(FormResponse, [
     this.sid = response.sid;
     this.phDistinctId = response.phDistinctId;
     this.createdAt = response.createdAt;
+    this.updatedAt = response.updatedAt;
+    this.editCount = response.editCount;
     this.user = response.user;
     this.aiDetectionResults = aiDetectionResults?.map(
       (result) => new AiDetectionResultDto(result),
     );
+  }
+}
+
+export class EditFormResponseDto {
+  @ApiProperty({ type: Object })
+  @IsDefined()
+  @Type(() => Object)
+  answers: Record<string, unknown>;
+}
+
+export class FormResponseVersionDto extends PickType(FormResponseVersion, [
+  'id',
+  'version',
+  'answers',
+  'createdAt',
+]) {
+  constructor(v: FormResponseVersion) {
+    super();
+    this.id = v.id;
+    this.version = v.version;
+    this.answers = v.answers;
+    this.createdAt = v.createdAt;
   }
 }
 

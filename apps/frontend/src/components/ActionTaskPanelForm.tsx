@@ -4,6 +4,7 @@ import { FormSchema } from "@alliance/common/forms/form-schema";
 import {
   FormResponseDto,
   SubmitFormDto,
+  tasksEditFormResponse,
   tasksGetForm,
   tasksGetLinkedGuestDraft,
   tasksSubmitForm,
@@ -17,7 +18,7 @@ import FormRenderer, {
 } from "@alliance/sharedweb/forms/FormRenderer";
 import Card from "@alliance/sharedweb/ui/Card";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useQuery } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import posthog from "posthog-js";
 import { useMemo, useState, type RefObject } from "react";
 import { useAuth } from "../lib/AuthContext";
@@ -41,6 +42,24 @@ interface ActionTaskPanelFormProps {
   scrollContainerRef?: RefObject<HTMLElement | null>;
 }
 
+function formatDate(date: Date | string): string {
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatDateTime(date: Date | string): string {
+  return new Date(date).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 const ActionTaskPanelForm = ({
   taskFormId,
   onCompleteAction,
@@ -56,7 +75,11 @@ const ActionTaskPanelForm = ({
   scrollContainerRef,
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const { user, isAuthenticated, refreshUser } = useAuth();
+  const queryClient = useQueryClient();
+
   const {
     data: form,
     error: formError,
@@ -79,7 +102,6 @@ const ActionTaskPanelForm = ({
 
       return response.data;
     },
-    enabled: !formResponse,
   });
 
   const draftEnabled =
@@ -144,6 +166,25 @@ const ActionTaskPanelForm = ({
       }
     : null;
 
+  const handleEditSubmit = async (data: SubmitFormDto): Promise<boolean> => {
+    setEditError(null);
+    const response = await tasksEditFormResponse({
+      path: { formId: taskFormId },
+      body: { answers: data.answers },
+    });
+    if (response.response.ok && response.data) {
+      await queryClient.invalidateQueries({
+        queryKey: ["taskFormResponse", taskFormId],
+      });
+      setIsEditing(false);
+      return true;
+    }
+    setEditError(
+      errorMessage({ error: response.error, fallback: "Failed to save edits" }),
+    );
+    return false;
+  };
+
   const { distinctId, sessionReplayUrl } = useMemo(() => {
     return {
       distinctId: posthog.get_distinct_id(),
@@ -151,19 +192,74 @@ const ActionTaskPanelForm = ({
     };
   }, []);
 
-  if (formResponse) {
+  const canEdit =
+    !!formResponse && !!form?.isEditable && (formResponse.editCount ?? 0) < 3;
+
+  if (formResponse && !isEditing) {
     return (
-      <FormRenderer
-        form={formResponse.schemaSnapshot as unknown as FormSchema}
-        id={formResponse.formId}
-        formSnapshotId={formResponse.formSnapshotId}
-        actionId={actionId}
-        completedFormResponse={formResponse}
-        onSubmit={null}
-        userId={formResponse.user?.id}
-        user={formResponse.user}
-        renderFormAsCompleted
-      />
+      <div className="flex flex-col gap-y-3">
+        <div className="text-sm text-zinc-500 flex flex-col gap-y-0.5">
+          <span>Submitted on {formatDate(formResponse.createdAt)}</span>
+          {(formResponse.editCount ?? 0) > 0 && formResponse.updatedAt && (
+            <span>Last updated on {formatDateTime(formResponse.updatedAt)}</span>
+          )}
+        </div>
+        <FormRenderer
+          form={formResponse.schemaSnapshot as unknown as FormSchema}
+          id={formResponse.formId}
+          formSnapshotId={formResponse.formSnapshotId}
+          actionId={actionId}
+          completedFormResponse={formResponse}
+          onSubmit={null}
+          userId={formResponse.user?.id}
+          user={formResponse.user}
+          renderFormAsCompleted
+        />
+        {canEdit && (
+          <div className="flex flex-col gap-y-1">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="self-start text-sm font-medium text-blue-600 hover:text-blue-700 underline"
+            >
+              Edit Response
+            </button>
+            <span className="text-xs text-zinc-400">
+              {formResponse.editCount ?? 0} of 3 edits used
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (formResponse && isEditing) {
+    return (
+      <div className="flex flex-col gap-y-3">
+        <div className="rounded-md bg-amber-50 border border-amber-300 px-4 py-2 text-sm font-medium text-amber-800">
+          Editing Response
+        </div>
+        {editError && (
+          <Card style={CardStyle.White} className="!border-red-400 !bg-red-50">
+            <div className="text-red-500">{editError}</div>
+          </Card>
+        )}
+        <FormRenderer
+          form={formResponse.schemaSnapshot as unknown as FormSchema}
+          id={formResponse.formId}
+          formSnapshotId={formResponse.formSnapshotId}
+          actionId={actionId}
+          onSubmit={handleEditSubmit}
+          userId={formResponse.user?.id}
+          user={formResponse.user}
+          draftFormResponse={formResponse}
+        />
+        <button
+          onClick={() => setIsEditing(false)}
+          className="self-start text-sm text-zinc-500 hover:text-zinc-700 underline"
+        >
+          Cancel
+        </button>
+      </div>
     );
   }
 

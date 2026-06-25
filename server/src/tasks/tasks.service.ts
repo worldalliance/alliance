@@ -67,17 +67,21 @@ import {
   typeUsableForVisibility,
   typeUsesIdArgument,
 } from './entities/customvalidator.entity';
+import { FormResponseVersion } from './entities/form-response-version.entity';
 import { Form } from './entities/form.entity';
 import { FormResponse } from './entities/formresponse.entity';
 import { FormSnapshot } from './entities/formsnapshot.entity';
 import {
   CreateFormDto,
+  EditFormResponseDto,
   FormDto,
   FormResponseDto,
+  FormResponseVersionDto,
   type FormSnapshotMigration,
   type SnapshotResponseGroup,
   SubmitFollowUpFormDto,
   SubmitFormDto,
+  UpdateFormDto,
 } from './form.dto';
 import { FormSnapshotService } from './formsnapshot.service';
 
@@ -89,6 +93,8 @@ export class TasksService {
     private formRepository: Repository<Form>,
     @InjectRepository(FormResponse)
     private formResponseRepository: Repository<FormResponse>,
+    @InjectRepository(FormResponseVersion)
+    private formResponseVersionRepository: Repository<FormResponseVersion>,
     @InjectRepository(Action)
     private actionRepository: Repository<Action>,
     @InjectRepository(FollowUpForm)
@@ -480,11 +486,17 @@ export class TasksService {
 
   async updateForm(
     formId: number,
-    updateFormDto: CreateFormDto,
+    updateFormDto: UpdateFormDto,
   ): Promise<Form> {
     const form = await this.getForm(formId);
     if (updateFormDto.title !== undefined) {
       form.title = updateFormDto.title;
+    }
+    if (updateFormDto.isEditable !== undefined) {
+      form.isEditable = updateFormDto.isEditable;
+    }
+    if (updateFormDto.riskLevel !== undefined) {
+      form.riskLevel = updateFormDto.riskLevel;
     }
     let snapshotChanged = false;
     if (updateFormDto.schema) {
@@ -1462,6 +1474,77 @@ export class TasksService {
         );
     }
     return { isValid: true };
+  }
+
+  async editFormResponse(
+    userId: number,
+    formId: number,
+    dto: EditFormResponseDto,
+  ): Promise<FormResponse> {
+    const formResponse = await this.formResponseRepository.findOne({
+      where: { formId, user: { id: userId } },
+      relations: { formSnapshot: true, user: true },
+    });
+
+    this.logger.log(
+      `[editFormResponse] user=${userId} form=${formId} attempt=${(formResponse?.editCount ?? 0) + 1}/3`,
+    );
+
+    if (!formResponse) {
+      this.logger.error(`[editFormResponse] NOT FOUND user=${userId} form=${formId}`);
+      throw new NotFoundException('Form response not found');
+    }
+
+    const form = await this.formRepository.findOne({ where: { id: formId } });
+    if (!form?.isEditable) {
+      this.logger.warn(
+        `[editFormResponse] BLOCKED user=${userId} form=${formId} — form is not editable`,
+      );
+      throw new BadRequestException('This form does not allow editing');
+    }
+
+    if (formResponse.editCount >= 3) {
+      this.logger.warn(
+        `[editFormResponse] BLOCKED user=${userId} form=${formId} — edit limit reached (editCount=${formResponse.editCount})`,
+      );
+      throw new BadRequestException('Edit limit reached (3/3)');
+    }
+
+    await this.formResponseVersionRepository.save({
+      formResponseId: formResponse.id,
+      version: formResponse.editCount + 1,
+      answers: formResponse.answers,
+    });
+
+    formResponse.answers = dto.answers;
+    formResponse.editCount += 1;
+    const saved = await this.formResponseRepository.save(formResponse);
+
+    this.logger.log(
+      `[editFormResponse] SUCCESS\n${JSON.stringify(
+        {
+          responseId: saved.id,
+          version: saved.editCount,
+          userId,
+          formId,
+          submittedAt: saved.createdAt,
+          updatedAt: saved.updatedAt,
+          answers: saved.answers,
+        },
+        null,
+        2,
+      )}`,
+    );
+
+    return saved;
+  }
+
+  async getResponseVersions(formId: number): Promise<FormResponseVersionDto[]> {
+    const versions = await this.formResponseVersionRepository.find({
+      where: { formResponse: { formId } },
+      order: { createdAt: 'ASC' },
+    });
+    return versions.map((v) => new FormResponseVersionDto(v));
   }
 
   async getFormsForUserSID(userId: number): Promise<FormResponse[]> {

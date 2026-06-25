@@ -1,7 +1,7 @@
 // src/forms/form.entity.ts
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { Allow, IsArray, IsDefined } from 'class-validator';
+import { Allow, IsArray, IsDefined, IsEnum } from 'class-validator';
 import {
   Column,
   Entity,
@@ -22,6 +22,12 @@ import {
   UpdateDateColumnTz,
 } from 'src/datasources/basecolumns';
 import type { Relation } from 'src/utils/Repository';
+
+export enum FormRiskLevel {
+  Low = 'low',
+  Medium = 'medium',
+  High = 'high',
+}
 
 @Entity()
 export class Form {
@@ -72,4 +78,14 @@ export class Form {
   @Type(() => FormResponse)
   @IsArray()
   responses: Relation<FormResponse>[];
+
+  @Column({ default: false })
+  @ApiProperty()
+  @Allow()
+  isEditable: boolean;
+
+  @Column({ type: 'text', default: FormRiskLevel.Low })
+  @ApiProperty({ enum: FormRiskLevel, enumName: 'FormRiskLevel' })
+  @IsEnum(FormRiskLevel)
+  riskLevel: FormRiskLevel;
 }

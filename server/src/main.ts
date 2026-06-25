@@ -120,6 +120,7 @@ async function bootstrap() {
   });
   app.useWebSocketAdapter(new SocketIoAdapter(app));
   app.set('trust proxy', 'loopback');
+  app.set('etag', false);
 
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
