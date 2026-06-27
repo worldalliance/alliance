@@ -38,6 +38,7 @@ export const testUser = new User({
   password: '',
   admin: false,
   staff: false,
+  ambassador: false,
   leaderOfIds: [],
   profilePicture: '',
   profileDescription: '',

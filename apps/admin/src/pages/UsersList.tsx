@@ -232,6 +232,7 @@ const UsersList: React.FC = () => {
         id: user.id,
         admin: user.admin,
         staff: user.staff,
+        ambassador: user.ambassador,
         profilePicture: user.profilePicture,
         profileDescription: user.profileDescription,
         displayName: user.name,

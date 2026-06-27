@@ -111,6 +111,7 @@ const Message = ({
                 >
                   <UserDisplayName
                     staff={message.author.staff}
+                    ambassador={message.author.ambassador}
                     grouplead={message.author.isCommunityLeader}
                   >
                     {message.author.displayName}

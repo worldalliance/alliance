@@ -89,6 +89,7 @@ export const UserListRow = ({ user, onNavigate }: UserListRowProps) => (
       />
       <UserDisplayName
         staff={user.staff}
+        ambassador={user.ambassador}
         grouplead={user.isCommunityLeader}
         underline={false}
       >

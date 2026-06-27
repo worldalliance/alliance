@@ -81,6 +81,10 @@ const ReplyContent = ({
               >
                 <UserDisplayName
                   staff={ctx.showUserBadges && reply.author.staff}
+                  ambassador={ctx.showUserBadges && reply.author.ambassador}
+                  grouplead={
+                    ctx.showUserBadges && reply.author.isCommunityLeader
+                  }
                   expert={isExpert}
                   expertLabel={expertLabel}
                 >

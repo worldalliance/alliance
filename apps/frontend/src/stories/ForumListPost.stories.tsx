@@ -16,6 +16,7 @@ const samplePost: PostDto = {
     profilePicture: "",
     admin: false,
     staff: false,
+    ambassador: false,
     profileDescription: null,
     hasActiveContract: false,
     isCommunityLeader: false,

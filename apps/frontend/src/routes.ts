@@ -63,6 +63,7 @@ export default [
       route("/roadmap", "pages/app/RoadmapPage.tsx"),
       route("/terminology", "pages/app/TerminologyPage.tsx"),
       route("/action-design", "pages/app/ActionDesignPage.tsx"),
+      route("/ambassador-program", "pages/app/AmbassadorProgramPage.tsx"),
 
       route("/invites", "pages/app/InvitesPage.tsx"),
       route("/notifications", "pages/app/NotificationsPage.tsx"),

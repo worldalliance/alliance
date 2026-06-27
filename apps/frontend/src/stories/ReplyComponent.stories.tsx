@@ -14,6 +14,7 @@ const makeAuthor = (
   profilePicture: "",
   admin: false,
   staff: false,
+  ambassador: false,
   profileDescription: null,
   hasActiveContract: true,
   isCommunityLeader: false,

@@ -153,7 +153,11 @@ const ActionActivityDetail = () => {
                         id: activity.user.id.toString(),
                       })}
                     >
-                      <UserDisplayName staff={activity.user.staff}>
+                      <UserDisplayName
+                        staff={activity.user.staff}
+                        ambassador={activity.user.ambassador}
+                        grouplead={activity.user.isCommunityLeader}
+                      >
                         {activity.user.displayName}
                       </UserDisplayName>
                     </Link>{" "}

@@ -10,6 +10,7 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   forumDigestPreference: "off",
   admin: false,
   staff: false,
+  ambassador: false,
   pushesForMessages: true,
   referralSource: "onetime_invite",
   shareEmailWithCommunityLead: true,

@@ -160,6 +160,7 @@ export default function ConversationScreen() {
         anonymous: false,
         admin: user.admin,
         staff: user.staff,
+        ambassador: user.ambassador,
         profilePicture: user.profilePicture,
         profileDescription: user.profileDescription ?? null,
         displayName: user.name,

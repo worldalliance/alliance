@@ -38,7 +38,11 @@ const ForumActivityCommentCard = ({
       <div className="flex flex-row items-center gap-x-2 text-sm text-zinc-500">
         <AvatarProfile pfp={comment.author.profilePicture} size="small" />
         <span>
-          <UserDisplayName staff={comment.author.staff}>
+          <UserDisplayName
+            staff={comment.author.staff}
+            ambassador={comment.author.ambassador}
+            grouplead={comment.author.isCommunityLeader}
+          >
             {comment.author.displayName}
           </UserDisplayName>{" "}
           {`commented ${formatTime(new Date(comment.createdAt), {

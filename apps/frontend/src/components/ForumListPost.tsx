@@ -101,7 +101,12 @@ const ForumListPost = ({
                   size="small"
                   className="mr-2 -mt-1"
                 />
-                <UserDisplayName className="text-black" staff={a.staff}>
+                <UserDisplayName
+                  className="text-black"
+                  staff={a.staff}
+                  ambassador={a.ambassador}
+                  grouplead={a.isCommunityLeader}
+                >
                   {a.displayName}
                 </UserDisplayName>
               </span>
@@ -118,7 +123,11 @@ const ForumListPost = ({
         {post.lastComment && showReply && (
           <div className="flex items-center gap-x-1">
             <span onClick={lastCommentAuthorClick}>
-              <UserDisplayName>
+              <UserDisplayName
+                staff={post.lastComment.author.staff}
+                ambassador={post.lastComment.author.ambassador}
+                grouplead={post.lastComment.author.isCommunityLeader}
+              >
                 {post.lastComment.author.displayName}
               </UserDisplayName>
               {` replied ${formatTime(new Date(post.lastComment.createdAt), {

@@ -161,6 +161,7 @@ const PostDetailPage: React.FC = () => {
                       </div>
                       <UserDisplayName
                         staff={author.staff}
+                        ambassador={author.ambassador}
                         grouplead={author.isCommunityLeader}
                       >
                         {author.displayName}

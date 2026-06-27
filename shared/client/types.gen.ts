@@ -650,6 +650,7 @@ export type User = {
     forumDigestPreference: ForumDigestPreference;
     admin: boolean;
     staff: boolean;
+    ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
     referralCode: string | null;
@@ -713,6 +714,7 @@ export type UserDto = {
     forumDigestPreference: ForumDigestPreference;
     admin: boolean;
     staff: boolean;
+    ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
     referralCode: string | null;
@@ -762,6 +764,7 @@ export type ProfileDto = {
     id: number;
     admin: boolean;
     staff: boolean;
+    ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
     anonymous: boolean;
@@ -859,10 +862,15 @@ export type UserCityCountDto = {
     longitude?: number | null;
 };
 
+export type UpdateUserRolesAdminDto = {
+    ambassador?: boolean;
+};
+
 export type ProfileDtoWithFriends = {
     id: number;
     admin: boolean;
     staff: boolean;
+    ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
     anonymous: boolean;
@@ -4151,6 +4159,30 @@ export type UserUserDetailAdminResponses = {
 };
 
 export type UserUserDetailAdminResponse = UserUserDetailAdminResponses[keyof UserUserDetailAdminResponses];
+
+export type UserUpdateUserRolesAdminData = {
+    body: UpdateUserRolesAdminDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/userdetail/{id}/roles';
+};
+
+export type UserUpdateUserRolesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserUpdateUserRolesAdminError = UserUpdateUserRolesAdminErrors[keyof UserUpdateUserRolesAdminErrors];
+
+export type UserUpdateUserRolesAdminResponses = {
+    200: UserDto;
+};
+
+export type UserUpdateUserRolesAdminResponse = UserUpdateUserRolesAdminResponses[keyof UserUpdateUserRolesAdminResponses];
 
 export type UserListPublicAdminData = {
     body?: never;

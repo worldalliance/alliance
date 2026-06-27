@@ -8,6 +8,7 @@ import { Type } from 'class-transformer';
 import {
   Allow,
   IsArray,
+  IsBoolean,
   IsInt,
   IsOptional,
   ValidateNested,
@@ -44,6 +45,7 @@ export class FriendStatusDto {
 export class ProfileDto extends PickType(User, [
   'admin',
   'staff',
+  'ambassador',
   'id',
   'profilePicture',
   'profileDescription',
@@ -71,6 +73,7 @@ export class ProfileDto extends PickType(User, [
       | 'name'
       | 'admin'
       | 'staff'
+      | 'ambassador'
       | 'email'
       | 'anonymous'
       | 'profilePicture'
@@ -85,6 +88,7 @@ export class ProfileDto extends PickType(User, [
     this.profileDescription = user.profileDescription;
     this.admin = user.admin;
     this.staff = user.staff;
+    this.ambassador = user.ambassador;
     this.hasActiveContract = user.hasActiveContract;
     this.isCommunityLeader = user.isCommunityLeader;
     this.anonymous = user.anonymous;
@@ -168,6 +172,7 @@ export class UserDto extends PickType(User, [
   'name',
   'admin',
   'staff',
+  'ambassador',
   'id',
   'emailNotifsForActions',
   'pushNotifsForActions',
@@ -236,6 +241,7 @@ export class UserDto extends PickType(User, [
     this.forumDigestPreference = user.forumDigestPreference;
     this.admin = user.admin;
     this.staff = user.staff;
+    this.ambassador = user.ambassador;
     this.profileDescription = user.profileDescription;
     this.referralCode = user.referralCode;
     this.referralSource = user.referralSource;
@@ -296,6 +302,15 @@ export class UpdateProfileDto extends PartialType(
   @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()
   cityId?: number | null;
+}
+
+export class UpdateUserRolesAdminDto extends PartialType(
+  PickType(User, ['ambassador']),
+) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  ambassador?: boolean;
 }
 
 export class ReferralDto {

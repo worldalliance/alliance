@@ -5,6 +5,7 @@ import {
   BookUser,
   CalendarCheck,
   ClipboardList,
+  Handshake,
   Info,
   ListOrdered,
   Mail,
@@ -74,6 +75,13 @@ const InformationPage: React.FC = () => {
       description: "A basic guide that the office uses to design actions.",
       href: href("/action-design"),
       icon: PenTool,
+    },
+    {
+      title: "Ambassador Program",
+      description:
+        "How ambassadors help the Alliance recruit reliable new members.",
+      href: href("/ambassador-program"),
+      icon: Handshake,
     },
     {
       title: "Action updates",

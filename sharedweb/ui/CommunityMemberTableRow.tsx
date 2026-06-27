@@ -119,6 +119,8 @@ const CommunityMemberTableRow = ({
               </div>
               <UserDisplayName
                 staff={profile.staff}
+                ambassador={profile.ambassador}
+                grouplead={profile.isCommunityLeader}
                 underline={false}
                 className={cn(
                   currentAwayRange && "text-zinc-400",

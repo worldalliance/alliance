@@ -227,6 +227,10 @@ export class User {
   @ApiProperty()
   staff: boolean;
 
+  @Column({ default: false })
+  @ApiProperty()
+  ambassador: boolean;
+
   @Column({ nullable: true })
   @ApiProperty({ nullable: true })
   profilePicture: string;

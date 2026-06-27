@@ -363,33 +363,53 @@ const UserProfilePage: React.FC = () => {
                     <InfoTooltip content="Names are hidden for members who have set their account to be anonymous." />
                   </div>
                 )}
-                {profile.staff && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <div className="text-xs bg-staff text-white px-2 py-0.5 rounded-sm self-center cursor-default">
-                          Staff
-                        </div>
-                      }
-                    />
-                    <TooltipContent sideOffset={4}>
-                      Member of the office
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-                {!profile.staff && profile.isCommunityLeader && (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <div className="text-xs bg-grouplead text-white px-2 py-0.5 rounded-sm self-center cursor-default">
-                          Lead
-                        </div>
-                      }
-                    />
-                    <TooltipContent sideOffset={4}>
-                      Leads a group of members
-                    </TooltipContent>
-                  </Tooltip>
+                {(profile.staff ||
+                  profile.ambassador ||
+                  profile.isCommunityLeader) && (
+                  <div className="flex items-center gap-[3px]">
+                    {profile.staff && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <div className="text-xs bg-staff text-white px-2 py-0.5 rounded-sm self-center cursor-default">
+                              Staff
+                            </div>
+                          }
+                        />
+                        <TooltipContent sideOffset={4}>
+                          Member of the office
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {!profile.staff && profile.ambassador && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <div className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-sm self-center cursor-default">
+                              Ambassador
+                            </div>
+                          }
+                        />
+                        <TooltipContent sideOffset={4}>
+                          Consistently recruits new members
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {!profile.staff && profile.isCommunityLeader && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <div className="text-xs bg-grouplead text-white px-2 py-0.5 rounded-sm self-center cursor-default">
+                              Lead
+                            </div>
+                          }
+                        />
+                        <TooltipContent sideOffset={4}>
+                          Leads a group of members
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                 )}
                 {!profile.hasActiveContract && !profilePending && (
                   <Tooltip>

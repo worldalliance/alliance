@@ -8,6 +8,7 @@ import {
   userGetAwayRangeForUserAdmin,
   userGetTagSummariesAdmin,
   userRemoveUserFromTagAdmin,
+  userUpdateUserRolesAdmin,
   userUserDetailAdmin,
 } from "@alliance/shared/client";
 import {
@@ -20,6 +21,7 @@ import {
   UserActionRelationsResponseDto,
   UserActionSummaryDto,
   UserAwayRangeDto,
+  UserDto,
 } from "@alliance/shared/client/types.gen";
 import { cn } from "@alliance/shared/styles/util";
 import { getApiUrl } from "@alliance/sharedweb/lib/config";
@@ -102,7 +104,6 @@ export async function clientLoader({ params }: Route.LoaderArgs) {
 const UserDetailView: React.FC = () => {
   const loaderData = useLoaderData<typeof clientLoader>();
   const {
-    user,
     actionSummaries,
     actionRelations,
     awayRanges,
@@ -110,6 +111,7 @@ const UserDetailView: React.FC = () => {
     formResponses,
   } = loaderData;
 
+  const [user, setUser] = useState<UserDto>(loaderData.user);
   const [actionRelationsState, setActionRelationsState] =
     useState<UserActionRelationDetailDto[]>(actionRelations);
   const [allTags, setAllTags] = useState<TagSummaryDto[]>(loaderData.allTags);
@@ -117,7 +119,15 @@ const UserDetailView: React.FC = () => {
     () => new Set(),
   );
   const [tagMutationError, setTagMutationError] = useState<string | null>(null);
+  const [isAmbassadorPending, setIsAmbassadorPending] = useState(false);
+  const [roleMutationError, setRoleMutationError] = useState<string | null>(
+    null,
+  );
   const [expandedEmailId, setExpandedEmailId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setUser(loaderData.user);
+  }, [loaderData.user]);
 
   useEffect(() => {
     setActionRelationsState(actionRelations);
@@ -311,6 +321,28 @@ const UserDetailView: React.FC = () => {
       }
     },
     [tagKey, updateTagInState, user.id],
+  );
+
+  const handleAmbassadorToggle = useCallback(
+    async (nextChecked: boolean) => {
+      setIsAmbassadorPending(true);
+      setRoleMutationError(null);
+      try {
+        const res = await userUpdateUserRolesAdmin({
+          path: { id: user.id },
+          body: { ambassador: nextChecked },
+        });
+        if (res.data) {
+          setUser(res.data);
+        }
+      } catch (error) {
+        console.error("Failed to update user role", error);
+        setRoleMutationError("Failed to update role. Try again.");
+      } finally {
+        setIsAmbassadorPending(false);
+      }
+    },
+    [user.id],
   );
 
   return (
@@ -744,6 +776,37 @@ const UserDetailView: React.FC = () => {
 
         {/* Right Column */}
         <div className="space-y-4">
+          {/* Roles */}
+          <section className="border border-zinc-200 rounded p-3">
+            <h2 className="text-sm font-semibold text-zinc-700 mb-2">Roles</h2>
+            {roleMutationError && (
+              <p className="text-xs text-red-500 mb-2">{roleMutationError}</p>
+            )}
+            <div className="space-y-1">
+              <label
+                className={cn(
+                  "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
+                  isAmbassadorPending && "opacity-50",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={user.ambassador}
+                  disabled={isAmbassadorPending}
+                  onChange={(e) => handleAmbassadorToggle(e.target.checked)}
+                  className="rounded"
+                />
+                <span
+                  className={
+                    user.ambassador ? "text-zinc-900" : "text-zinc-500"
+                  }
+                >
+                  Ambassador
+                </span>
+              </label>
+            </div>
+          </section>
+
           {/* Tags */}
           <section className="border border-zinc-200 rounded p-3">
             <h2 className="text-sm font-semibold text-zinc-700 mb-2">

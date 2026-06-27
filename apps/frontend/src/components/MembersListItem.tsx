@@ -28,6 +28,7 @@ export default function MembersListItem({
           />
           <UserDisplayName
             staff={profile.staff}
+            ambassador={profile.ambassador}
             grouplead={profile.isCommunityLeader}
             underline={false}
           >

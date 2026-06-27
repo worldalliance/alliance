@@ -367,6 +367,18 @@ export class UserService {
     await this.userRepository.update(id, { admin });
   }
 
+  async updateRolesAdmin(
+    id: number,
+    roles: { ambassador?: boolean },
+  ): Promise<User> {
+    await this.userRepository.update(id, roles);
+    return this.findOneOrFail(id, {
+      contractEvents: true,
+      referredBy: true,
+      tags: true,
+    });
+  }
+
   async count(): Promise<number> {
     return this.userRepository.count({
       where: { isNotSignedUpPartialProfile: false },
