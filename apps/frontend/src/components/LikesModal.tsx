@@ -1,14 +1,14 @@
 import { LikeTargetType, useLikers } from "@alliance/shared/lib/useLikers";
+import { getUserListTitle } from "@alliance/shared/lib/userList";
 import { Heart } from "lucide-react";
 import UserListModal, { UserListContent } from "./UserListModal";
-
-const PAGE_SIZE = 20;
 
 export interface LikesModalProps {
   open: boolean;
   onClose: () => void;
   targetType: LikeTargetType;
   targetId: number;
+  likesCount: number;
 }
 
 const LikesModal = ({
@@ -16,18 +16,19 @@ const LikesModal = ({
   onClose,
   targetType,
   targetId,
+  likesCount,
 }: LikesModalProps) => {
   const { users, loading, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useLikers({ targetType, targetId, limit: PAGE_SIZE, enabled: open });
+    useLikers({ targetType, targetId, enabled: open });
 
   const initialLoading = loading && users.length === 0;
-  const countLabel = initialLoading
-    ? "Likes"
-    : hasNextPage
-      ? `${users.length}+ likes`
-      : users.length === 1
-        ? `${users.length} like`
-        : `${users.length} likes`;
+  const countLabel = getUserListTitle({
+    noun: "like",
+    expectedCount: likesCount,
+    loadedCount: users.length,
+    initialLoading,
+    hasNextPage,
+  });
 
   return (
     <UserListModal
@@ -39,6 +40,7 @@ const LikesModal = ({
       <UserListContent
         users={users}
         initialLoading={initialLoading}
+        expectedCount={likesCount}
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={() => fetchNextPage()}

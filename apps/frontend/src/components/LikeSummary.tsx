@@ -68,6 +68,7 @@ const LikeSummary = ({
         onClose={() => setOpen(false)}
         targetType={likeTargetType}
         targetId={likeTargetId}
+        likesCount={likesCount}
       />
     </>
   );

@@ -6,6 +6,7 @@ import {
 } from "@alliance/shared/client";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { USER_LIST_PAGE_SIZE } from "./userList";
 
 export type LikeTargetType = "post" | "comment" | "activity";
 
@@ -22,23 +23,21 @@ const LIKERS_FETCHERS: Record<LikeTargetType, LikersFetcher> = {
 };
 
 const QUERY_KEY_ROOT = "useLikers";
-const DEFAULT_LIMIT = 30;
 
 export type UseLikersProps = {
   targetType: LikeTargetType;
   targetId: number;
-  limit?: number;
   enabled?: boolean;
 };
 
 /**
  * Paginated likers for post/comment/activity. `afterId` is the last user id
- * from the previous server-ordered page.
+ * from the previous server-ordered page. Pages are `USER_LIST_PAGE_SIZE` so
+ * the loading skeleton's clamp matches the first page.
  */
 export const useLikers = ({
   targetType,
   targetId,
-  limit = DEFAULT_LIMIT,
   enabled = true,
 }: UseLikersProps) => {
   const {
@@ -48,17 +47,19 @@ export const useLikers = ({
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: [QUERY_KEY_ROOT, targetType, targetId, limit],
+    queryKey: [QUERY_KEY_ROOT, targetType, targetId],
     initialPageParam: undefined as number | undefined,
     queryFn: async ({ pageParam }) => {
       const resp = await LIKERS_FETCHERS[targetType](targetId, {
-        limit,
+        limit: USER_LIST_PAGE_SIZE,
         afterId: pageParam,
       });
       return resp.data ?? [];
     },
     getNextPageParam: (lastPage) =>
-      lastPage.length < limit ? undefined : lastPage[lastPage.length - 1]?.id,
+      lastPage.length < USER_LIST_PAGE_SIZE
+        ? undefined
+        : lastPage[lastPage.length - 1]?.id,
     enabled,
   });
 

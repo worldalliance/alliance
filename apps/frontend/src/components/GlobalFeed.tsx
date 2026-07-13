@@ -44,7 +44,8 @@ const ActivityGroupItem = ({ item, date }: ActivityGroupItemProps) => {
               actionId: item.actionId,
               activityType: item.activityType,
             }}
-            label={`${item.count} members`}
+            count={item.count}
+            noun="member"
           />
         )}
         <span className="text-zinc-500 align-middle"> {verb} </span>
@@ -119,7 +120,8 @@ const NewMembersItem = ({ item }: NewMembersItemProps) => {
             <MemberFacepileButton
               users={item.users}
               source={{ type: "newMembers" }}
-              label={`${item.count} new members`}
+              count={item.count}
+              noun="new member"
             />
             <span className="text-zinc-500 align-middle">
               {" joined the Alliance"}
@@ -162,7 +164,8 @@ const ForumCommentsItem = ({ item, date }: ForumCommentsItemProps) => {
           <MemberFacepileButton
             users={item.users}
             source={{ type: "forumComments", postId: item.postId }}
-            label={`${item.count} members`}
+            count={item.count}
+            noun="member"
           />
         )}
         <span className="text-zinc-500 align-middle"> commented on </span>

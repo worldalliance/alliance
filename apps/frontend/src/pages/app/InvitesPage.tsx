@@ -10,6 +10,7 @@ import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCo
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
+import { pluralize } from "@alliance/shared/lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -34,9 +35,6 @@ const formatDate = (value: string) =>
   });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-const pluralize = (count: number, singular: string, plural = `${singular}s`) =>
-  `${count} ${count === 1 ? singular : plural}`;
 
 const daysUntil = (date: Date, now = new Date()) =>
   Math.max(0, Math.ceil((date.getTime() - now.getTime()) / DAY_MS));
@@ -702,7 +700,9 @@ const InvitesPage = () => {
                           className="h-full bg-white rounded-full transition-[width] duration-300 ease-out"
                           style={{ width: `${currentGoalProgressPercent}%` }}
                           role="progressbar"
-                          aria-valuenow={currentGoal.stats.goalSuccessfulRecruits}
+                          aria-valuenow={
+                            currentGoal.stats.goalSuccessfulRecruits
+                          }
                           aria-valuemin={0}
                           aria-valuemax={
                             currentGoal.goal.targetSuccessfulRecruits

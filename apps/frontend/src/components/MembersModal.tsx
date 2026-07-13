@@ -2,24 +2,37 @@ import {
   FeedMemberSource,
   useFeedMembers,
 } from "@alliance/shared/lib/useFeedMembers";
+import { getUserListTitle } from "@alliance/shared/lib/userList";
 import { Users } from "lucide-react";
 import UserListModal, { UserListContent } from "./UserListModal";
-
-const PAGE_SIZE = 20;
 
 export interface MembersModalProps {
   open: boolean;
   onClose: () => void;
   source: FeedMemberSource;
-  title: string;
+  noun: string;
+  membersCount: number;
 }
 
 /** Paged member list for a global-feed item. */
-const MembersModal = ({ open, onClose, source, title }: MembersModalProps) => {
+const MembersModal = ({
+  open,
+  onClose,
+  source,
+  noun,
+  membersCount,
+}: MembersModalProps) => {
   const { users, loading, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useFeedMembers({ source, limit: PAGE_SIZE, enabled: open });
+    useFeedMembers({ source, enabled: open });
 
   const initialLoading = loading && users.length === 0;
+  const title = getUserListTitle({
+    noun,
+    expectedCount: membersCount,
+    loadedCount: users.length,
+    initialLoading,
+    hasNextPage,
+  });
 
   return (
     <UserListModal
@@ -31,6 +44,7 @@ const MembersModal = ({ open, onClose, source, title }: MembersModalProps) => {
       <UserListContent
         users={users}
         initialLoading={initialLoading}
+        expectedCount={membersCount}
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         onLoadMore={() => fetchNextPage()}

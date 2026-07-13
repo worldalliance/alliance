@@ -1,4 +1,5 @@
 import { ProfileDto } from "@alliance/shared/client";
+import { getSkeletonCount } from "@alliance/shared/lib/userList";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
@@ -99,9 +100,10 @@ export const UserListRow = ({ user, onNavigate }: UserListRowProps) => (
   </li>
 );
 
-export const SkeletonRows = ({ count = 6 }: { count?: number }) => (
+/** `count` is the expected row count; rendering is clamped to one page. */
+export const SkeletonRows = ({ count }: { count: number }) => (
   <div className="py-1">
-    {Array.from({ length: count }).map((_, i) => (
+    {Array.from({ length: getSkeletonCount(count) }).map((_, i) => (
       <div key={i} className="flex items-center gap-3 px-4 py-2.5">
         <div className="h-11 w-11 animate-pulse rounded bg-zinc-200" />
         <div className="flex-1 space-y-1.5">
@@ -116,6 +118,8 @@ export const SkeletonRows = ({ count = 6 }: { count?: number }) => (
 export interface UserListContentProps {
   users: ProfileDto[];
   initialLoading: boolean;
+  /** Expected total users, for sizing the loading skeleton. */
+  expectedCount: number;
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
@@ -128,6 +132,7 @@ export interface UserListContentProps {
 export const UserListContent = ({
   users,
   initialLoading,
+  expectedCount,
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
@@ -135,7 +140,7 @@ export const UserListContent = ({
   emptyIcon,
   emptyLabel,
 }: UserListContentProps) => {
-  if (initialLoading) return <SkeletonRows />;
+  if (initialLoading) return <SkeletonRows count={expectedCount} />;
 
   if (users.length === 0) {
     return (

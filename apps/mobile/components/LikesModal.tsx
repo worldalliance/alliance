@@ -1,5 +1,9 @@
 import { ProfileDto } from "@alliance/shared/client";
 import { LikeTargetType, useLikers } from "@alliance/shared/lib/useLikers";
+import {
+  getSkeletonCount,
+  getUserListTitle,
+} from "@alliance/shared/lib/userList";
 import { router } from "expo-router";
 import { Heart } from "lucide-react-native";
 import { FlatList, Modal, Pressable, View } from "react-native";
@@ -13,6 +17,7 @@ interface LikesModalProps {
   onClose: () => void;
   targetType: LikeTargetType;
   targetId: number;
+  likesCount: number;
 }
 
 function Row({ user, onClose }: { user: ProfileDto; onClose: () => void }) {
@@ -38,10 +43,11 @@ function Row({ user, onClose }: { user: ProfileDto; onClose: () => void }) {
   );
 }
 
-function SkeletonRows({ count = 6 }: { count?: number }) {
+/** `count` is the expected row count; rendering is clamped to one page. */
+function SkeletonRows({ count }: { count: number }) {
   return (
     <View>
-      {Array.from({ length: count }).map((_, i) => (
+      {Array.from({ length: getSkeletonCount(count) }).map((_, i) => (
         <View key={i} className="flex-row items-center gap-3 px-5 py-2.5">
           <View
             className="rounded bg-zinc-200"
@@ -62,19 +68,20 @@ export default function LikesModal({
   onClose,
   targetType,
   targetId,
+  likesCount,
 }: LikesModalProps) {
   const insets = useSafeAreaInsets();
   const { users, loading, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useLikers({ targetType, targetId, enabled: visible });
 
   const initialLoading = loading && users.length === 0;
-  const countLabel = initialLoading
-    ? "Likes"
-    : hasNextPage
-      ? `${users.length}+ likes`
-      : users.length === 1
-        ? `${users.length} like`
-        : `${users.length} likes`;
+  const countLabel = getUserListTitle({
+    noun: "like",
+    expectedCount: likesCount,
+    loadedCount: users.length,
+    initialLoading,
+    hasNextPage,
+  });
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -103,7 +110,7 @@ export default function LikesModal({
           </View>
 
           {initialLoading ? (
-            <SkeletonRows />
+            <SkeletonRows count={likesCount} />
           ) : (
             <FlatList
               data={users}
