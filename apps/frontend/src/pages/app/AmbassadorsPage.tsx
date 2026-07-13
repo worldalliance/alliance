@@ -82,9 +82,8 @@ const AmbassadorsPage: React.FC = () => {
           <span className="font-semibold">25 people per month</span>.
         </p>
         <p className="font-semibold">
-          A successful invitation is someone who makes an Alliance account,
-          signs their membership contract, and completes their first weekly
-          action.
+          A successful invitation is someone who makes an Alliance account and
+          signs their membership contract.
         </p>
 
         <h2 id="step-by-step" className={headingClassName}>

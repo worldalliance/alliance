@@ -318,6 +318,70 @@ describe('Users (e2e)', () => {
     expect(typeof suspend.text === 'string' || suspend.body).toBeTruthy();
   });
 
+  it('counts an invited user as a successful recruit after they sign the contract', async () => {
+    const ambassador = await userRepo.save(
+      userRepo.create({
+        name: 'Invite Goal Ambassador',
+        email: 'invite.goal.ambassador@example.com',
+        password: 'Password123!',
+        ambassador: true,
+      }),
+    );
+    const now = new Date();
+    const goal = await userService.createAmbassadorInviteGoal(
+      {
+        targetSuccessfulRecruits: 1,
+        startAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+        dueAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      },
+      ambassador.id,
+    );
+    const invite = await onetimeInviteRepo.save(
+      onetimeInviteRepo.create({
+        invitee: 'Invite Goal Recruit',
+        code: 'INVITE-GOAL-RECRUIT',
+        status: OnetimeInviteStatus.LINK_USED,
+        invitingUser: ambassador,
+      }),
+    );
+    const recruit = await userRepo.save(
+      userRepo.create({
+        name: 'Invite Goal Recruit',
+        email: 'invite.goal.recruit@example.com',
+        password: 'Password123!',
+        referredBy: ambassador,
+        referredByInvite: invite,
+        referralSource: ReferralSource.OnetimeInvite,
+      }),
+    );
+
+    const beforeSigning = await userService.getAmbassadorInviteDashboard(
+      ambassador.id,
+    );
+    expect(beforeSigning.stats.totalSuccessfulRecruits).toBe(0);
+    expect(
+      beforeSigning.goals.find(
+        ({ goal: resultGoal }) => resultGoal.id === goal.id,
+      )?.stats.goalSuccessfulRecruits,
+    ).toBe(0);
+
+    await contractService.signContract({
+      userId: recruit.id,
+      signedName: recruit.name,
+      contractId: ctx.defaultContractId,
+    });
+
+    const afterSigning = await userService.getAmbassadorInviteDashboard(
+      ambassador.id,
+    );
+    expect(afterSigning.stats.totalSuccessfulRecruits).toBe(1);
+    expect(
+      afterSigning.goals.find(
+        ({ goal: resultGoal }) => resultGoal.id === goal.id,
+      )?.stats.goalSuccessfulRecruits,
+    ).toBe(1);
+  });
+
   describe('signContract behavior', () => {
     it('joins community from referredByInvite when signing contract for first time', async () => {
       // Create a new user with an invite

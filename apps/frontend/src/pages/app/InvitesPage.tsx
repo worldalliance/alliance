@@ -840,8 +840,8 @@ const InvitesPage = () => {
                 )}
 
                 <p className="text-sm text-white/70 leading-snug">
-                  Successful invitations are people you invited who sign their
-                  contract and complete their first weekly action.
+                  Successful invitations are people you invited who signed their
+                  membership contract.
                 </p>
               </div>
             )}

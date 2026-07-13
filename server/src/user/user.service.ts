@@ -1,4 +1,3 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
 import { Temporal } from '@js-temporal/polyfill';
 import {
   BadRequestException,
@@ -12,7 +11,6 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ActionStatus } from 'src/actions/entities/action-event.entity';
 import { LiveActivityRegistration } from 'src/apns/entities/live-activity-registration.entity';
 import { CampaignService } from 'src/campaign/campaign.service';
 import { Campaign } from 'src/campaign/entities/campaign.entity';
@@ -79,6 +77,7 @@ import {
 import { AmbassadorInviteGoal } from './entities/ambassador-invite-goal.entity';
 import { AmbassadorProgramInteraction } from './entities/ambassador-program-interaction.entity';
 import { AmbassadorProgramMember } from './entities/ambassador-program-member.entity';
+import { ContractEventType } from './entities/contract-event.entity';
 import { Friend, FriendStatus } from './entities/friend.entity';
 import {
   OnetimeInvite,
@@ -1850,7 +1849,7 @@ export class UserService {
               WHERE invite."status" = $2
             )::int AS "totalAcceptedInvites",
             COUNT(invite."id") FILTER (
-              WHERE first_success."completedAt" IS NOT NULL
+              WHERE first_sign."signedAt" IS NOT NULL
             )::int AS "totalSuccessfulRecruits"
           FROM selected_users
           LEFT JOIN "onetime_invite" invite
@@ -1859,21 +1858,11 @@ export class UserService {
           LEFT JOIN "user" invited_user
             ON invited_user."referredByInviteId" = invite."id"
           LEFT JOIN LATERAL (
-            SELECT MIN(aa."createdAt") AS "completedAt"
-            FROM "action_activity" aa
-            INNER JOIN "action" action
-              ON action."id" = aa."actionId"
-            WHERE aa."userId" = invited_user."id"
-              AND aa."type" = $3
-              AND action."onboarding" = FALSE
-              AND EXISTS (
-                SELECT 1
-                FROM "action_event" action_event
-                WHERE action_event."actionId" = action."id"
-                  AND action_event."newStatus" = $4
-                  AND action_event."date" <= aa."createdAt"
-              )
-          ) first_success ON TRUE
+            SELECT MIN(contract_event."date") AS "signedAt"
+            FROM "contract_event" contract_event
+            WHERE contract_event."userId" = invited_user."id"
+              AND contract_event."type" = $3
+          ) first_sign ON TRUE
           GROUP BY selected_users."userId"
         ),
         share_stats AS (
@@ -1883,7 +1872,7 @@ export class UserService {
           FROM selected_users
           LEFT JOIN "share_url" share_invite
             ON share_invite."userId" = selected_users."userId"
-            AND share_invite."kind" = $5
+            AND share_invite."kind" = $4
             AND share_invite."duplicate" = TRUE
           GROUP BY selected_users."userId"
         )
@@ -1907,8 +1896,7 @@ export class UserService {
       [
         userIds,
         OnetimeInviteStatus.LINK_USED,
-        ActionActivityType.USER_COMPLETED,
-        ActionStatus.MemberAction,
+        ContractEventType.SIGNED,
         ShareUrlKind.Invite,
       ],
     )) as ({
@@ -1954,7 +1942,7 @@ export class UserService {
               WHERE invite."status" = $5
             )::int AS "totalAcceptedInvites",
             COUNT(invite."id") FILTER (
-              WHERE first_success."completedAt" IS NOT NULL
+              WHERE first_sign."signedAt" IS NOT NULL
             )::int AS "totalSuccessfulRecruits"
           FROM selected_goals
           LEFT JOIN "onetime_invite" invite
@@ -1965,21 +1953,11 @@ export class UserService {
           LEFT JOIN "user" invited_user
             ON invited_user."referredByInviteId" = invite."id"
           LEFT JOIN LATERAL (
-            SELECT MIN(aa."createdAt") AS "completedAt"
-            FROM "action_activity" aa
-            INNER JOIN "action" action
-              ON action."id" = aa."actionId"
-            WHERE aa."userId" = invited_user."id"
-              AND aa."type" = $6
-              AND action."onboarding" = FALSE
-              AND EXISTS (
-                SELECT 1
-                FROM "action_event" action_event
-                WHERE action_event."actionId" = action."id"
-                  AND action_event."newStatus" = $7
-                  AND action_event."date" <= aa."createdAt"
-              )
-          ) first_success ON TRUE
+            SELECT MIN(contract_event."date") AS "signedAt"
+            FROM "contract_event" contract_event
+            WHERE contract_event."userId" = invited_user."id"
+              AND contract_event."type" = $6
+          ) first_sign ON TRUE
           GROUP BY selected_goals."goalId"
         ),
         share_stats AS (
@@ -1989,7 +1967,7 @@ export class UserService {
           FROM selected_goals
           LEFT JOIN "share_url" share_invite
             ON share_invite."userId" = selected_goals."userId"
-            AND share_invite."kind" = $8
+            AND share_invite."kind" = $7
             AND share_invite."duplicate" = TRUE
             AND share_invite."createdAt" >= selected_goals."startAt"
             AND share_invite."createdAt" <= selected_goals."dueAt"
@@ -2019,8 +1997,7 @@ export class UserService {
         goals.map((goal) => goal.startAt),
         goals.map((goal) => goal.dueAt),
         OnetimeInviteStatus.LINK_USED,
-        ActionActivityType.USER_COMPLETED,
-        ActionStatus.MemberAction,
+        ContractEventType.SIGNED,
         ShareUrlKind.Invite,
       ],
     )) as ({
@@ -2057,7 +2034,7 @@ export class UserService {
             SELECT COUNT(*)::int
             FROM "share_url" share_invite
             WHERE share_invite."userId" = $1
-              AND share_invite."kind" = $7
+              AND share_invite."kind" = $6
               AND share_invite."duplicate" = TRUE
               AND ($4::timestamptz IS NULL OR share_invite."createdAt" >= $4::timestamptz)
               AND ($5::timestamptz IS NULL OR share_invite."createdAt" <= $5::timestamptz)
@@ -2068,14 +2045,14 @@ export class UserService {
               AND ($5::timestamptz IS NULL OR invite."createdAt" <= $5::timestamptz)
           )::int AS "totalAcceptedInvites",
           COUNT(*) FILTER (
-            WHERE first_success."completedAt" IS NOT NULL
+            WHERE first_sign."signedAt" IS NOT NULL
               AND ($4::timestamptz IS NULL OR invite."createdAt" >= $4::timestamptz)
               AND ($5::timestamptz IS NULL OR invite."createdAt" <= $5::timestamptz)
           )::int AS "totalSuccessfulRecruits",
           COUNT(*) FILTER (
             WHERE $4::timestamptz IS NOT NULL
               AND $5::timestamptz IS NOT NULL
-              AND first_success."completedAt" IS NOT NULL
+              AND first_sign."signedAt" IS NOT NULL
               AND invite."createdAt" >= $4::timestamptz
               AND invite."createdAt" <= $5::timestamptz
           )::int AS "goalSuccessfulRecruits"
@@ -2083,31 +2060,20 @@ export class UserService {
         LEFT JOIN "user" invited_user
           ON invited_user."referredByInviteId" = invite."id"
         LEFT JOIN LATERAL (
-          SELECT MIN(aa."createdAt") AS "completedAt"
-          FROM "action_activity" aa
-          INNER JOIN "action" action
-            ON action."id" = aa."actionId"
-          WHERE aa."userId" = invited_user."id"
-            AND aa."type" = $3
-            AND action."onboarding" = FALSE
-            AND EXISTS (
-              SELECT 1
-              FROM "action_event" action_event
-              WHERE action_event."actionId" = action."id"
-                AND action_event."newStatus" = $6
-                AND action_event."date" <= aa."createdAt"
-            )
-        ) first_success ON TRUE
+          SELECT MIN(contract_event."date") AS "signedAt"
+          FROM "contract_event" contract_event
+          WHERE contract_event."userId" = invited_user."id"
+            AND contract_event."type" = $3
+        ) first_sign ON TRUE
         WHERE invite."invitingUserId" = $1
           AND invite."deletedAt" IS NULL
       `,
       [
         userId,
         OnetimeInviteStatus.LINK_USED,
-        ActionActivityType.USER_COMPLETED,
+        ContractEventType.SIGNED,
         goalStartAt,
         goalDueAt,
-        ActionStatus.MemberAction,
         ShareUrlKind.Invite,
       ],
     )) as [
