@@ -1,4 +1,3 @@
-import { describe, expect, it } from "bun:test";
 import { getUserListTitle } from "./userList";
 
 const LIKE = "like";
