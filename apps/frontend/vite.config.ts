@@ -12,12 +12,13 @@ const isStorybook =
 const monorepoRoot = path.resolve(__dirname, "..", "..");
 const sharedPkg = path.resolve(monorepoRoot, "shared");
 const sharedWebPkg = path.resolve(monorepoRoot, "sharedweb");
+const commonPkg = path.resolve(monorepoRoot, "common");
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [!isStorybook && reactRouter(), tailwindcss()],
   optimizeDeps: {
-    exclude: ["@alliance/shared", "@alliance/sharedweb"],
+    exclude: ["@alliance/shared", "@alliance/sharedweb", "@alliance/common"],
   },
   build: {
     sourcemap: "hidden",
@@ -44,6 +45,7 @@ export default defineConfig({
       "posthog-js/react",
       "@alliance/shared",
       "@alliance/sharedweb",
+      "@alliance/common",
     ],
   },
   resolve: {
@@ -51,9 +53,8 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
     alias: {
       "@alliance/shared": sharedPkg,
-      "@alliance/shared/*": path.join(sharedPkg, "/*"),
       "@alliance/sharedweb": sharedWebPkg,
-      "@alliance/sharedweb/*": path.join(sharedWebPkg, "/*"),
+      "@alliance/common": path.join(commonPkg, "src"),
     },
   },
 });
