@@ -4,13 +4,14 @@ import {
   type DisplayKind,
 } from "@alliance/common/forms/display-blocks";
 import {
+  fieldHasOptions,
   isQuestionField,
   type AnyField,
   type FieldKind,
   type FormSchema,
   type ListField,
   type ListSubField,
-  type MultiSelectField,
+  type OptionField,
   type Page,
 } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
@@ -205,8 +206,8 @@ const buildValueCounts = (values: string[]) => {
 };
 
 const findSingleOptionValueChange = (
-  previousOptions: MultiSelectField["options"] | undefined,
-  nextOptions: MultiSelectField["options"] | undefined,
+  previousOptions: OptionField["options"] | undefined,
+  nextOptions: OptionField["options"] | undefined,
 ): {
   previousValue: string;
   nextValue: string;
@@ -2180,13 +2181,11 @@ export function FormBuilder({
   const renderField = (field: AnyField | DisplayBlock, index: number) => {
     const updateField = (updates: Partial<AnyField | DisplayBlock>) => {
       const optionValueChange =
-        (field as AnyField).kind === "multiselect" &&
+        isQuestionField(field) &&
+        fieldHasOptions(field) &&
         "options" in updates &&
         updates.options
-          ? findSingleOptionValueChange(
-              (field as MultiSelectField).options,
-              updates.options as MultiSelectField["options"],
-            )
+          ? findSingleOptionValueChange(field.options, updates.options)
           : null;
 
       const nextPages = schema.pages.map((page, pageIndex) => {

@@ -1,6 +1,9 @@
 /* eslint-disable react/prop-types */
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
-import { isQuestionField } from "@alliance/common/forms/form-schema";
+import {
+  fieldHasOptions,
+  isQuestionField,
+} from "@alliance/common/forms/form-schema";
 import type { FormDto, TagDto } from "@alliance/shared/client";
 import { actionsFindOneAdmin, tasksGetForm } from "@alliance/shared/client";
 import type {
@@ -179,12 +182,28 @@ const FormFieldEditor: React.FC<{
     };
   }, [value.formId]);
 
+  const selectedField = sourceFields.find((f) => f.id === value.fieldId);
+  // TODO: multiselect is excluded because the server matches responseEqualTo
+  // via String(answer) on the array, so only single-selection answers match.
+  // Drop the exclusion once that matching is sorted out.
+  const fieldOptions =
+    selectedField &&
+    fieldHasOptions(selectedField) &&
+    selectedField.kind !== "multiselect"
+      ? selectedField.options
+      : null;
+
   return (
     <div className="space-y-2">
       <select
         value={value.formId || ""}
         onChange={(e) =>
-          onChange({ ...value, formId: parseInt(e.target.value), fieldId: "" })
+          onChange({
+            ...value,
+            formId: parseInt(e.target.value) || 0,
+            fieldId: "",
+            responseEqualTo: undefined,
+          })
         }
         className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
       >
@@ -193,36 +212,69 @@ const FormFieldEditor: React.FC<{
           .sort((a, b) => b.id - a.id)
           .map((f) => (
             <option key={f.id} value={f.id}>
-              {f.title ?? `Form #${f.id}`}
+              {f.title ?? "Untitled"} (#{f.id})
             </option>
           ))}
       </select>
       <select
         value={value.fieldId}
-        onChange={(e) => onChange({ ...value, fieldId: e.target.value })}
+        onChange={(e) =>
+          onChange({
+            ...value,
+            fieldId: e.target.value,
+            responseEqualTo: undefined,
+          })
+        }
         className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
         disabled={!value.formId}
       >
         <option value="">Select field...</option>
         {sourceFields.map((f) => (
           <option key={f.id} value={f.id}>
-            {f.label} ({f.kind})
+            {f.label} ({f.kind}) — {f.id}
           </option>
         ))}
       </select>
       {!value.responseAny ? (
-        <input
-          type="text"
-          placeholder="Response equals (optional)"
-          value={value.responseEqualTo ?? ""}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              responseEqualTo: e.target.value || undefined,
-            })
-          }
-          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-        />
+        fieldOptions ? (
+          <select
+            value={value.responseEqualTo ?? ""}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                responseEqualTo: e.target.value || undefined,
+              })
+            }
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">Response equals (optional)...</option>
+            {value.responseEqualTo &&
+              !fieldOptions.some((o) => o.value === value.responseEqualTo) && (
+                <option value={value.responseEqualTo}>
+                  {value.responseEqualTo} (not in options)
+                </option>
+              )}
+            {fieldOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+                {o.value !== o.label ? ` (${o.value})` : ""}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            type="text"
+            placeholder="Response equals (optional)"
+            value={value.responseEqualTo ?? ""}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                responseEqualTo: e.target.value || undefined,
+              })
+            }
+            className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+          />
+        )
       ) : null}
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -684,8 +736,8 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
       {!value ? (
         <div className="space-y-2">
           <p className="text-sm text-gray-500">
-            No cohort set — no users will participate. Add a condition to
-            target users.
+            No cohort set — no users will participate. Add a condition to target
+            users.
           </p>
           <div className="flex gap-2 flex-wrap">
             <button

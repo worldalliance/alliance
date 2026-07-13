@@ -1,4 +1,7 @@
-import { isQuestionField } from "@alliance/common/forms/form-schema";
+import {
+  fieldHasOptions,
+  isQuestionField,
+} from "@alliance/common/forms/form-schema";
 import type { ActionSuiteDto } from "@alliance/shared/client";
 import {
   ActionDto,
@@ -878,7 +881,7 @@ const ActionDashboard: React.FC = () => {
           if (isQuestionField(field)) formWords += countWords(field.label);
           if ("description" in field)
             formWords += countWords(field.description as string);
-          if ("options" in field && Array.isArray(field.options)) {
+          if (isQuestionField(field) && fieldHasOptions(field)) {
             for (const option of field.options) {
               formWords += countWords(option.label);
             }

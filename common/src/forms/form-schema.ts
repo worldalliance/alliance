@@ -384,6 +384,21 @@ export function isQuestionField(
   return field.type === "input";
 }
 
+const OPTION_FIELD_KINDS = {
+  radio: true,
+  select: true,
+  multiselect: true,
+} as const satisfies Partial<Record<FieldKind, true>>;
+
+export type OptionField = Extract<
+  AnyField,
+  { kind: keyof typeof OPTION_FIELD_KINDS }
+>;
+
+export function fieldHasOptions(field: AnyField): field is OptionField {
+  return Object.hasOwn(OPTION_FIELD_KINDS, field.kind);
+}
+
 /** Scan a form schema for all sourceFormIds referenced in visibility conditions. */
 export function collectSourceFormIds(schema: FormSchema): number[] {
   const ids = new Set<number>();
