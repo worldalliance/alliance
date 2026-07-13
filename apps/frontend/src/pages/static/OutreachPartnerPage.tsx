@@ -326,8 +326,8 @@ function OutreachPartnerPage() {
                     What we ask
                   </h2>
                   <p className="mt-2 text-base text-zinc-700">
-                    Share the Alliance through a newsletter, website, meeting,
-                    event, social channel, or similar place.
+                    Help your audience or staff team learn about the Alliance
+                    and potentially join us as members.
                   </p>
                 </article>
               </div>
@@ -464,9 +464,8 @@ function OutreachPartnerPage() {
 
               <fieldset className="flex flex-col gap-3">
                 <legend className="text-sm font-semibold text-zinc-900">
-                  How could your organization get the word out about the
-                  Alliance in return?{" "}
-                  <span className="text-green-bg-card">*</span>
+                  How could your organization help others learn about the
+                  Alliance? <span className="text-green-bg-card">*</span>
                 </legend>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {OUTREACH_CHANNELS.map((channel) => (
