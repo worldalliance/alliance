@@ -32,19 +32,19 @@ const OUTREACH_CHANNELS = [
 const PARTNER_OFFERS = [
   {
     title: "Educate our members on your cause",
-    body: "Help people who already want to do good understand the issue you work on and why it matters.",
+    body: "Help people who already want to make a difference understand the issue you work on and why it matters.",
   },
   {
     title: "Get thoughtful feedback",
     body: "Invite members to review your website, actions, product, campaigns, messages, or other materials.",
   },
   {
-    title: "Engage or invite engagement",
-    body: "Ask members to follow, comment, share, test, attend, or invite others when there is a concrete way to help.",
+    title: "Invite engagement",
+    body: "Ask members to follow, comment, share, test, or attend something you are planning or doing.",
   },
   {
     title: "Help with data collection",
-    body: "Members can send surveys, fill out surveys, or help collect small pieces of information when the task is clear.",
+    body: "Members can fill out surveys, participate in studies, and collect other kinds of information.",
   },
 ] as const;
 
@@ -57,14 +57,14 @@ const PAST_PARTNERS = [
 const outreachPartnerExampleAction = {
   ...exampleMemberTaskAction,
   id: 2,
-  name: "Review a reforestation nonprofit's website",
-  body: "Learn about a local reforestation project, then give the partner nonprofit focused feedback on whether their website makes the work clear and compelling.",
+  name: "Learn about and assist a Colombian reforestation project",
+  body: "Learn about deforestation in Colombia, then help a local nonprofit that works to restore the forest.",
   category: "environment",
   timeEstimate: 15,
   usersJoined: 186,
   usersCompleted: 139,
   shortDescription:
-    "Learn about a local reforestation project, then answer a few questions about the nonprofit's website design.",
+    "Members will help a reforestation organization prepare for an upcoming project launch.",
 };
 
 const outreachPartnerExampleFormSchema = {
@@ -96,20 +96,9 @@ const outreachPartnerExampleFormSchema = {
           id: "field-first-attention",
           type: "input",
           kind: "textarea",
-          label: "When the site loads, where is your eye drawn first?",
+          label: "When the website loads, where is your eye drawn first?",
           placeholder:
             "For example: the headline, a photo, a donate button, a statistic, or something else.",
-          rows: 2,
-          required: true,
-        },
-        {
-          id: "field-phrase-meaning",
-          type: "input",
-          kind: "textarea",
-          label:
-            'What do you think they mean by "Rebuild canopy where climate risk and local stewardship overlap"?',
-          placeholder:
-            "Write what you think the organization is trying to communicate.",
           rows: 2,
           required: true,
         },
@@ -117,12 +106,11 @@ const outreachPartnerExampleFormSchema = {
           id: "field-main-point",
           type: "input",
           kind: "radio",
-          label:
-            "After one minute on the page, what seems like the main point?",
+          label: "What did you most take away from the site?",
           required: true,
           options: [
             {
-              label: "They plant trees in specific local areas",
+              label: "They plant trees in strategic areas",
               value: "local-reforestation",
             },
             {
@@ -130,11 +118,25 @@ const outreachPartnerExampleFormSchema = {
               value: "support-needed",
             },
             {
-              label: "They are explaining a broader environmental problem",
+              label: "Reforestation is important",
               value: "environmental-problem",
             },
-            { label: "I am not sure", value: "not-sure" },
+            { label: "Other", value: "not-sure" },
           ],
+        },
+        {
+          id: "field-discuss-founder-label",
+          type: "display",
+          kind: "label",
+          text: "Share any hesitations, questions, or other feedback with the organization's founder.",
+        },
+        {
+          id: "field-discuss-founder",
+          type: "display",
+          kind: "biglink",
+          text: "Discuss the organization and its upcoming launch with the founder.",
+          url: "https://worldalliance.org/forum/posts/89",
+          icon: "messages-square",
         },
       ],
     },
@@ -265,13 +267,13 @@ function OutreachPartnerPage() {
       <PrelaunchNavbar transparent={false} absolute={false} />
       <main className="bg-white">
         <section>
-          <div className="mx-auto grid w-full max-w-[74rem] grid-cols-1 gap-8 px-5 pt-12 pb-10 sm:px-8 md:pt-16 md:pb-14 lg:grid-cols-[minmax(0,0.95fr)_minmax(460px,1.05fr)] lg:items-center lg:gap-12 xl:gap-14">
+          <div className="mx-auto grid w-full max-w-[90rem] grid-cols-1 gap-8 px-5 pb-10 sm:px-8 md:pb-14 lg:grid-cols-[minmax(0,0.95fr)_minmax(460px,1.05fr)] lg:items-center lg:gap-12 xl:gap-14">
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-5">
                 <h1 className="font-serif text-4xl font-semibold leading-tight text-zinc-950 sm:text-5xl lg:text-5xl">
-                  Mobilize a reliable online community that cares
+                  Mobilize an online community that cares
                 </h1>
-                <p className="text-lg leading-relaxed text-zinc-700">
+                <p className="text-lg text-zinc-700">
                   At the Alliance, our{" "}
                   <span className="font-semibold text-zinc-900">
                     {memberCount ? memberCount.toLocaleString() : ""}
@@ -280,15 +282,14 @@ function OutreachPartnerPage() {
                   each spend 15 minutes a week taking actions on our online
                   platform.
                 </p>
-                <p className="text-lg leading-relaxed text-zinc-700">
+                <p className="text-lg text-zinc-700">
                   For organizations working to address our priorities, we can
                   design a focused task within our weekly action program in
-                  which members learn about your work, give feedback, support a
-                  campaign, or help with another clear request.
+                  which members help your organization.
                 </p>
               </div>
 
-              <p className="text-lg leading-relaxed text-zinc-700">
+              <p className="text-lg text-zinc-700">
                 We have previously worked with organizations like{" "}
                 {PAST_PARTNERS.map((partner, index) => (
                   <React.Fragment key={partner.name}>
@@ -315,7 +316,7 @@ function OutreachPartnerPage() {
                   <h2 className="font-serif text-2xl font-semibold text-green-bg">
                     What we can do
                   </h2>
-                  <p className="mt-2 text-base leading-relaxed text-zinc-700">
+                  <p className="mt-2 text-base text-zinc-700">
                     Run a focused action where members help with a clear, useful
                     task.
                   </p>
@@ -324,7 +325,7 @@ function OutreachPartnerPage() {
                   <h2 className="font-serif text-2xl font-semibold text-green-bg">
                     What we ask
                   </h2>
-                  <p className="mt-2 text-base leading-relaxed text-zinc-700">
+                  <p className="mt-2 text-base text-zinc-700">
                     Share the Alliance through a newsletter, website, meeting,
                     event, social channel, or similar place.
                   </p>
@@ -332,46 +333,33 @@ function OutreachPartnerPage() {
               </div>
             </div>
 
-            <aside className="min-w-0 rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3 sm:px-6 sm:py-5">
-              <div className="mb-4">
-                <h2 className="font-serif text-2xl font-semibold text-green-bg">
-                  Example member action
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-700 sm:text-base">
-                  A reforestation nonprofit could have Alliance members learn
-                  about its work and answer some questions about its website.
-                </p>
-              </div>
-              <div className="mx-auto max-w-xl overflow-hidden rounded-md [zoom:1] sm:[zoom:0.9] lg:[zoom:0.78] xl:[zoom:0.84]">
-                <LargeActionCard
-                  action={outreachPartnerExampleAction}
-                  staticTaskFormSchema={outreachPartnerExampleFormSchema}
-                  staticTaskInitialPageIndex={1}
-                  userRelation="none"
-                  onUpdateActionState={() => {}}
-                  onCompleteAction={() => {}}
-                  showDetails={false}
-                  className="pointer-events-none border border-zinc-200 bg-white p-3 shadow-sm sm:p-4 [&_.my-4]:my-2 [&_.pt-6]:pt-3 [&_.text-title]:text-xl!"
-                />
-              </div>
-              <p className="mt-3 text-center text-sm text-zinc-500 sm:mt-5">
-                Sample action a member would see on the platform
+            <aside className="min-w-0 rounded-mdpx-4 py-3 sm:px-6 sm:py-5">
+              <LargeActionCard
+                action={outreachPartnerExampleAction}
+                staticTaskFormSchema={outreachPartnerExampleFormSchema}
+                staticTaskInitialPageIndex={1}
+                userRelation="none"
+                onUpdateActionState={() => {}}
+                onCompleteAction={() => {}}
+                showDetails={false}
+                className="pointer-events-none transform-[scale(0.9)] bg-white drop-shadow-xl drop-shadow-zinc-100"
+              />
+              <p className="text-center text-zinc-500 text-base">
+                Example of a task members might see on the platform
               </p>
             </aside>
           </div>
         </section>
 
         <section className="bg-grey-0">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-12 sm:px-8 md:py-16">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-12 sm:px-8 md:py-16">
             <div>
               <h2 className="font-serif text-3xl font-semibold text-zinc-950 sm:text-4xl">
                 How we can help
               </h2>
-              <p className="mt-3 text-lg leading-relaxed text-zinc-700">
-                Alliance members care about the world. Because they are
-                coordinated and used to taking structured actions, they make a
-                strong audience for thoughtful feedback, quick research, and
-                other practical help.
+              <p className="mt-3 text-lg text-zinc-700">
+                We can run any kind of action that helps your organization.
+                These are a few common examples.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -383,9 +371,7 @@ function OutreachPartnerPage() {
                   <h3 className="font-serif text-2xl font-semibold text-green-bg">
                     {offer.title}
                   </h3>
-                  <p className="mt-2 text-base leading-relaxed text-zinc-700">
-                    {offer.body}
-                  </p>
+                  <p className="mt-2 text-base text-zinc-700">{offer.body}</p>
                 </article>
               ))}
             </div>
@@ -393,15 +379,14 @@ function OutreachPartnerPage() {
         </section>
 
         <section id="outreach-partner-form">
-          <div className="mx-auto grid w-full max-w-[68rem] grid-cols-1 gap-10 px-5 py-12 sm:px-8 md:py-16 lg:grid-cols-[0.66fr_1.1fr]">
+          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-5 py-12 sm:px-8 md:py-16 lg:grid-cols-[0.66fr_1.1fr]">
             <div className="flex flex-col gap-4">
               <h2 className="font-serif text-3xl font-semibold text-zinc-950 sm:text-4xl">
                 Sign up as a potential outreach partner
               </h2>
-              <p className="text-lg leading-relaxed text-zinc-700">
-                Tell us what you are working on, what kind of action might help,
-                and how your organization could share the Alliance with people
-                who might want to join.
+              <p className="text-lg text-zinc-700">
+                Tell us what you are working on, what kind of action would help
+                you, and how you could help people discover the Alliance.
               </p>
             </div>
 
