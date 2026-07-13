@@ -31,7 +31,7 @@ const OUTREACH_CHANNELS = [
 
 const PARTNER_OFFERS = [
   {
-    title: "Educate our members on your cause",
+    title: "Tell members about your cause",
     body: "Help people who already want to make a difference understand the issue you work on and why it matters.",
   },
   {
@@ -333,7 +333,7 @@ function OutreachPartnerPage() {
               </div>
             </div>
 
-            <aside className="min-w-0 rounded-mdpx-4 py-3 sm:px-6 sm:py-5">
+            <aside className="min-w-0 rounded-md px-4 py-3 sm:px-6 sm:py-5">
               <LargeActionCard
                 action={outreachPartnerExampleAction}
                 staticTaskFormSchema={outreachPartnerExampleFormSchema}

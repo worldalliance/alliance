@@ -184,8 +184,8 @@ const PeoplePage: React.FC = () => {
             <div className="flex flex-col gap-4 text-center mb-6">
               <p className={SECTION_TITLE_CLASS}>Office</p>
               <p className={SUBTITLE_CLASS}>
-                Alliance staff members plan actions, create infrastructure, and
-                manage the Alliance.
+                Our staff team plans actions, creates infrastructure, and
+                manages the Alliance.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-x-16 gap-y-8 sm:grid-cols-2">
