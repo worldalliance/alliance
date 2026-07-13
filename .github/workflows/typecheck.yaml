@@ -1,0 +1,37 @@
+name: Typecheck
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: "Workspace directory to typecheck (e.g. server, apps/frontend)"
+        required: true
+        type: string
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate React Router Types
+        working-directory: ${{ inputs.package }}
+        run: |
+          if ls react-router.config.* >/dev/null 2>&1; then
+            bunx react-router typegen
+          else
+            echo "No react-router config in ${{ inputs.package }} — skipping typegen."
+          fi
+
+      - name: Typecheck
+        run: bun typecheck
+        working-directory: ${{ inputs.package }}

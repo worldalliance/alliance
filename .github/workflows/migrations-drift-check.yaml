@@ -1,0 +1,60 @@
+name: Migrations Drift Check
+
+on:
+  workflow_call:
+
+jobs:
+  migrations-drift-check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - run: PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+        working-directory: ./server
+
+      - run: |
+          echo "DB_HOST=localhost" >> $GITHUB_ENV
+          echo "DB_PORT=5432" >> $GITHUB_ENV
+          echo "DB_USERNAME=postgres" >> $GITHUB_ENV
+          echo "DB_PASSWORD=postgres" >> $GITHUB_ENV
+          echo "DB_NAME=postgres" >> $GITHUB_ENV
+          echo "NODE_ENV=test" >> $GITHUB_ENV
+
+      - name: Run migrations on blank DB
+        run: bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run
+        working-directory: ./server
+
+      - name: Schema drift check
+        run: |
+          set -e
+
+          OUT="$(bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts schema:log || true)"
+          echo "$OUT"
+
+          if echo "$OUT" | grep -Eiq '^\s*(ALTER|CREATE|DROP|COMMENT|RENAME|TRUNCATE|INSERT INTO|UPDATE |DELETE FROM)\b'; then
+            echo "Schema drift detected (entities != schema after migrations)."
+            exit 1
+          else
+            echo "No drift"
+          fi
+        working-directory: ./server
