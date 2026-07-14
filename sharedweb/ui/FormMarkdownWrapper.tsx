@@ -2,6 +2,7 @@ import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import ActionLink, { getActionIdFromHref } from "./ActionLink";
+import ExternalLinkPreview from "./ExternalLinkPreview";
 
 interface FormMarkdownWrapper {
   markdownContent: string;
@@ -63,18 +64,25 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
         li: ({ ...props }) => (
           <li className={cn(textClass, "my-1")} {...props} />
         ),
+        // The ! on text-white is load-bearing: the link components apply
+        // `text-link`, a raw unlayered CSS class (apps' index.css) that
+        // outranks every layered Tailwind utility in the cascade — only an
+        // !important utility reliably overrides its green.
         a: ({ node: _node, ...props }) =>
           getActionIdFromHref(props.href) != null ? (
             <ActionLink
-              className={cn(inlineClass)}
+              className={cn(
+                inverted ? "!text-white underline" : undefined,
+                inlineClass,
+              )}
               {...props}
               target="_blank"
               rel="noreferrer"
             />
           ) : (
-            <a
+            <ExternalLinkPreview
               className={cn(
-                inverted ? "text-white underline" : "text-link",
+                inverted ? "!text-white underline" : "text-link",
                 inlineClass,
               )}
               {...props}

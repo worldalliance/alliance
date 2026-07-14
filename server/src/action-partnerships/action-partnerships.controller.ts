@@ -11,10 +11,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AdminGuard } from 'src/auth/guards/admin.guard';
 import { Public } from 'src/auth/public.decorator';
 import { ACTION_PARTNERSHIP_RESPONSE_THROTTLE } from 'src/auth/signup-throttle.config';
+import { OnlyThrottle } from 'src/utils/throttle';
 import { ActionPartnershipsService } from './action-partnerships.service';
 import {
   ActionPartnershipNoteDto,
@@ -33,7 +34,7 @@ export class ActionPartnershipsController {
   @Post('responses')
   @Public()
   @UseGuards(ThrottlerGuard)
-  @Throttle(ACTION_PARTNERSHIP_RESPONSE_THROTTLE)
+  @OnlyThrottle(ACTION_PARTNERSHIP_RESPONSE_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: CreateActionPartnershipResponseResultDto })
   async createResponse(
@@ -49,7 +50,9 @@ export class ActionPartnershipsController {
   async findAllResponsesAdmin(): Promise<ActionPartnershipResponseDto[]> {
     const responses =
       await this.actionPartnershipsService.findAllResponsesAdmin();
-    return responses.map((response) => new ActionPartnershipResponseDto(response));
+    return responses.map(
+      (response) => new ActionPartnershipResponseDto(response),
+    );
   }
 
   @Post('responses/:id/notes')

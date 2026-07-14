@@ -16,8 +16,9 @@ import React, {
   useState,
 } from "react";
 
-import posthog from "posthog-js";
+import { ViewerAuthenticationProvider } from "@alliance/sharedweb/ui/ViewerAuthenticationProvider";
 import type { QueryClient } from "@tanstack/react-query";
+import posthog from "posthog-js";
 import { testAuthUser } from "../stories/testData";
 
 interface AuthContextType {
@@ -36,7 +37,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<
   React.PropsWithChildren<{ queryClient: QueryClient }>
 > = memo(
-  ({ children, queryClient }: React.PropsWithChildren<{ queryClient: QueryClient }>) => {
+  ({
+    children,
+    queryClient,
+  }: React.PropsWithChildren<{ queryClient: QueryClient }>) => {
     const [user, setUser] = useState<UserDto | undefined>();
     const [isImpersonation, setIsImpersonation] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -152,13 +156,17 @@ export const AuthProvider: React.FC<
         logout,
         loading,
       }),
-      [user, isImpersonation, loading, login, logout, onLogin, refreshUser]
+      [user, isImpersonation, loading, login, logout, onLogin, refreshUser],
     );
 
     return (
-      <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+      <AuthContext.Provider value={value}>
+        <ViewerAuthenticationProvider isAuthenticated={value.isAuthenticated}>
+          {children}
+        </ViewerAuthenticationProvider>
+      </AuthContext.Provider>
     );
-  }
+  },
 );
 
 AuthProvider.displayName = "AuthProvider";

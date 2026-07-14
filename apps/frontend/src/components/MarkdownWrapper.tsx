@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import React from "react";
 import ReactMarkdown from "react-markdown";
 
@@ -56,7 +57,7 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
             />
           ),
           li: ({ ...props }) => <li className="first:!mt-0 !mt-2" {...props} />,
-          a: ({ ...props }) => <a className="text-link" {...props} />,
+          a: ({ ...props }) => <ExternalLinkPreview {...props} />,
         }}
       >
         {markdownContent}

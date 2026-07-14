@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
@@ -47,7 +48,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 "px-3 py-1 text-xs font-medium",
                 viewMode === "edit"
                   ? "bg-cyan-600 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
+                  : "bg-white text-gray-600 hover:bg-gray-50",
               )}
             >
               Edit
@@ -59,7 +60,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 "px-3 py-1 text-xs font-medium",
                 viewMode === "split"
                   ? "bg-cyan-600 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
+                  : "bg-white text-gray-600 hover:bg-gray-50",
               )}
             >
               Split
@@ -71,7 +72,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
                 "px-3 py-1 text-xs font-medium",
                 viewMode === "preview"
                   ? "bg-cyan-600 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
+                  : "bg-white text-gray-600 hover:bg-gray-50",
               )}
             >
               Preview
@@ -156,7 +157,9 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             )}
             <div className="border border-gray-300 rounded-md p-4 min-h-[200px] bg-white prose prose-stone max-w-none overflow-auto">
               {value ? (
-                <ReactMarkdown>{value}</ReactMarkdown>
+                <ReactMarkdown components={{ a: ExternalLinkPreview }}>
+                  {value}
+                </ReactMarkdown>
               ) : (
                 <p className="text-gray-400 italic">
                   Preview will appear here...

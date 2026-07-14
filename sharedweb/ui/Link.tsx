@@ -1,3 +1,4 @@
+import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 
 type LinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
@@ -5,9 +6,19 @@ type LinkProps = React.AnchorHTMLAttributes<HTMLAnchorElement> & {
   node?: unknown;
 };
 
-export default function Link({ node: _node, children, ...rest }: LinkProps) {
+export default function Link({
+  node: _node,
+  children,
+  className,
+  ...rest
+}: LinkProps) {
   return (
-    <a className="text-link" target="_blank" rel="noreferrer" {...rest}>
+    <a
+      className={cn("text-link", className)}
+      target="_blank"
+      rel="noreferrer"
+      {...rest}
+    >
       {children}
     </a>
   );

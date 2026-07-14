@@ -8,17 +8,13 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import multer from 'multer';
-import { ActionsModule } from './actions/actions.module';
 import { ActionPartnershipsModule } from './action-partnerships/action-partnerships.module';
+import { ActionsModule } from './actions/actions.module';
 import { AdminViewerModule } from './admin-viewer/admin-viewer.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ApnsModule } from './apns/apns.module';
 import { AppController } from './app.controller';
 import { AuthModule } from './auth/auth.module';
-import {
-  ACTION_PARTNERSHIP_RESPONSE_THROTTLERS,
-  SIGNUP_THROTTLERS,
-} from './auth/signup-throttle.config';
 import { CampaignModule } from './campaign/campaign.module';
 import { ClusterModule } from './cluster/cluster.module';
 import { CommunityModule } from './community/community.module';
@@ -29,6 +25,7 @@ import { ForumModule } from './forum/forum.module';
 import { GeoModule } from './geo/geo.module';
 import { ImagesModule } from './images/images.module';
 import { LikesModule } from './likes/likes.module';
+import { LinkPreviewModule } from './link-preview/link-preview.module';
 import { MailModule } from './mail/mail.module';
 import { MessagingModule } from './messaging/messaging.module';
 import { MmsModule } from './mms/mms.module';
@@ -42,6 +39,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { ReferralSource } from './user/entities/user.entity';
 import { UserModule } from './user/user.module';
 import { UserService } from './user/user.service';
+import { ALL_THROTTLERS } from './utils/throttle';
 import { VideosModule } from './videos/videos.module';
 
 @Module({
@@ -72,10 +70,7 @@ import { VideosModule } from './videos/videos.module';
       storage: multer.memoryStorage(),
     }),
     EventEmitterModule.forRoot(),
-    ThrottlerModule.forRoot([
-      ...SIGNUP_THROTTLERS,
-      ...ACTION_PARTNERSHIP_RESPONSE_THROTTLERS,
-    ]),
+    ThrottlerModule.forRoot(ALL_THROTTLERS),
     PosthogModule,
     AuthModule,
     UserModule,
@@ -90,6 +85,7 @@ import { VideosModule } from './videos/videos.module';
     VideosModule,
     ForumModule,
     LikesModule,
+    LinkPreviewModule,
     NotifsModule,
     GeoModule,
     MailModule,

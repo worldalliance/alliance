@@ -49,6 +49,11 @@ For querying the local Postgres database, see `.claude/skills/LOCAL_DB.md`.
 
 Prefer the `Result<T, E>` type in `common/` for operations that can fail in expected ways (parsing, validation, fallible I/O you want callers to handle explicitly) instead of throwing or returning `null`/`undefined`. `Result<T, E>` is the type and `R` is the helper namespace — import them separately: `import { R, type Result } from "@alliance/common/result"`. Use the helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling `{ ok, ... }` objects or re-implementing this pattern. Don't reach for it where throwing is already idiomatic (e.g. NestJS controllers that rely on exception filters) — it's for making expected failure explicit, not replacing every `throw`.
 
+Two smells that mean a `Result` is being dodged, even deep inside server code where throwing otherwise feels idiomatic:
+
+- Defining a custom `Error` subclass so a caller can `instanceof`-check it — that's a caller handling an expected failure explicitly, routed through the wrong channel. Return `Result` with the failure as a typed value instead.
+- Returning `null` where distinct failure causes collapse into one value and a caller (even just a debug log) would want the reason. Plain `null` is fine only when absence has a single meaning and no consumer needs to know why.
+
 The full source:
 
 @common/src/result.ts

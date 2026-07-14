@@ -2978,6 +2978,14 @@ export type DeleteVideoResponseDto = {
     deleted: boolean;
 };
 
+export type LinkPreviewDto = {
+    url: string;
+    title?: string;
+    description?: string;
+    siteName?: string;
+    faviconDataUri?: string;
+};
+
 export type CitySearchDto = {
     id: number;
     name: string;
@@ -10930,6 +10938,30 @@ export type LikesGetActivityUsersResponses = {
 };
 
 export type LikesGetActivityUsersResponse = LikesGetActivityUsersResponses[keyof LikesGetActivityUsersResponses];
+
+export type LinkPreviewGetPreviewData = {
+    body?: never;
+    path?: never;
+    query: {
+        url: string;
+    };
+    url: '/link-preview';
+};
+
+export type LinkPreviewGetPreviewErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type LinkPreviewGetPreviewError = LinkPreviewGetPreviewErrors[keyof LinkPreviewGetPreviewErrors];
+
+export type LinkPreviewGetPreviewResponses = {
+    200: LinkPreviewDto;
+};
+
+export type LinkPreviewGetPreviewResponse = LinkPreviewGetPreviewResponses[keyof LinkPreviewGetPreviewResponses];
 
 export type GeoSearchCityData = {
     body?: never;

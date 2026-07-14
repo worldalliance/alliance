@@ -6,6 +6,7 @@ import {
   authRefreshTokens,
   UserDto,
 } from "@alliance/shared/client";
+import { ViewerAuthenticationProvider } from "@alliance/sharedweb/ui/ViewerAuthenticationProvider";
 import React, {
   createContext,
   memo,
@@ -102,10 +103,16 @@ export const AuthProvider = memo(({ children }: React.PropsWithChildren) => {
       logout,
       loading,
     }),
-    [user, loading, login, logout]
+    [user, loading, login, logout],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      <ViewerAuthenticationProvider isAuthenticated={value.isAuthenticated}>
+        {children}
+      </ViewerAuthenticationProvider>
+    </AuthContext.Provider>
+  );
 });
 
 AuthProvider.displayName = "AuthProvider";

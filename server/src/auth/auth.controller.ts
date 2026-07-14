@@ -22,10 +22,11 @@ import {
   ApiResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { IsEnum, IsOptional } from 'class-validator';
 import type { Request as ExpressRequest, Response } from 'express';
 import { PosthogService } from 'src/posthog/posthog.service';
+import { OnlyThrottle } from 'src/utils/throttle';
 import { AuthService } from './auth.service';
 import {
   AuthMeResponseDto,
@@ -140,7 +141,7 @@ export class AuthController {
 
   @Public()
   @UseGuards(ThrottlerGuard)
-  @Throttle(SIGNUP_THROTTLE)
+  @OnlyThrottle(SIGNUP_THROTTLE)
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiResponse({

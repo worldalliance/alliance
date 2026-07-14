@@ -11,6 +11,7 @@ export const queryKeys = {
   communityOnetimeInvites: (communityId: number) =>
     ["userGetOnetimeInvitesByCommunity", communityId] as const,
   publicCommunities: () => ["communityGetPublicCommunities"] as const,
+  linkPreview: (url: string) => ["linkPreviewGetPreview", url] as const,
 
   // Admin
   tagsAdmin: () => ["userGetTagsAdmin"] as const,

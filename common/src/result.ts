@@ -10,8 +10,6 @@ export type Failure<E> = {
 
 export type Result<T, E = Error> = Success<T> | Failure<E>;
 
-export type AsyncResult<T, E = Error> = Promise<Result<T, E>>;
-
 function success<T>(value: T): Success<T> {
   return { ok: true, value };
 }
@@ -105,15 +103,15 @@ function fromThrowable<T, E>(
   }
 }
 
-function fromPromise<T>(promise: Promise<T>): AsyncResult<T, Error>;
+function fromPromise<T>(promise: Promise<T>): Promise<Result<T, Error>>;
 function fromPromise<T, E>(
   promise: Promise<T>,
   mapRejected: (error: unknown) => E,
-): AsyncResult<T, E>;
+): Promise<Result<T, E>>;
 async function fromPromise<T, E>(
   promise: Promise<T>,
   mapRejected?: (error: unknown) => E,
-): AsyncResult<T, E | Error> {
+): Promise<Result<T, E | Error>> {
   try {
     return success(await promise);
   } catch (error) {
@@ -121,15 +119,15 @@ async function fromPromise<T, E>(
   }
 }
 
-function fromPromiseFn<T>(fn: () => Promise<T>): AsyncResult<T, Error>;
+function fromPromiseFn<T>(fn: () => Promise<T>): Promise<Result<T, Error>>;
 function fromPromiseFn<T, E>(
   fn: () => Promise<T>,
   mapRejected: (error: unknown) => E,
-): AsyncResult<T, E>;
+): Promise<Result<T, E>>;
 async function fromPromiseFn<T, E>(
   fn: () => Promise<T>,
   mapRejected?: (error: unknown) => E,
-): AsyncResult<T, E | Error> {
+): Promise<Result<T, E | Error>> {
   try {
     return success(await fn());
   } catch (error) {

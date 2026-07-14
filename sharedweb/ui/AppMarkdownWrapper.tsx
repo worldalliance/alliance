@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getApiUrl } from "../lib/config";
 import ActionLink, { getActionIdFromHref } from "./ActionLink";
-import Link from "./Link";
+import ExternalLinkPreview from "./ExternalLinkPreview";
 
 // TOOD add heading, body color enums
 
@@ -72,7 +72,9 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
             getActionIdFromHref(props.href) != null ? (
               <ActionLink {...props} />
             ) : (
-              <Link {...props} />
+              // Falls back to a plain Link for non-http(s) hrefs; external
+              // links get a hover card previewing the target page.
+              <ExternalLinkPreview {...props} />
             ),
           blockquote: ({ ...props }) => (
             <blockquote

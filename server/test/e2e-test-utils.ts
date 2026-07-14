@@ -17,12 +17,12 @@ import { Form } from 'src/tasks/entities/form.entity';
 import { FormSnapshot } from 'src/tasks/entities/formsnapshot.entity';
 import { FormSnapshotService } from 'src/tasks/formsnapshot.service';
 import { Tag } from 'src/user/entities/tag.entity';
+import { ALL_THROTTLERS } from 'src/utils/throttle';
 import supertest from 'supertest';
 import TestAgent from 'supertest/lib/agent';
 import { DataSource } from 'typeorm';
 import { ActionsModule } from '../src/actions/actions.module';
 import { AuthModule } from '../src/auth/auth.module';
-import { SIGNUP_THROTTLERS } from '../src/auth/signup-throttle.config';
 import { ContractModule } from '../src/contract/contract.module';
 import { ReferralSource, User } from '../src/user/entities/user.entity';
 import { UserModule } from '../src/user/user.module';
@@ -57,7 +57,7 @@ export async function createTestApp(
         template: {},
       }),
       EventEmitterModule.forRoot(),
-      ThrottlerModule.forRoot(SIGNUP_THROTTLERS),
+      ThrottlerModule.forRoot(ALL_THROTTLERS),
       TypeOrmModule.forRoot(testConnectionOptions()),
       PosthogModule,
       AuthModule,

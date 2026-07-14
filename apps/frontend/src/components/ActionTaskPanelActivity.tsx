@@ -1,11 +1,12 @@
 import { ActionDto } from "@alliance/shared/client";
+import { guestReferral } from "@alliance/shared/lib/copy";
+import { CardStyle } from "@alliance/shared/styles/card";
 import Button from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import ConfettiWrapper from "@alliance/sharedweb/ui/ConfettiWrapper";
-import { CardStyle } from "@alliance/shared/styles/card";
+import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router";
-import { guestReferral } from "@alliance/shared/lib/copy";
 
 interface ActionTaskPanelActivityProps {
   action: ActionDto;
@@ -28,7 +29,9 @@ const ActionTaskPanelActivity = ({
         </p>
         <div className="">
           <p className="text-lg font-semibold">Steps</p>
-          <ReactMarkdown>{action.taskContents}</ReactMarkdown>
+          <ReactMarkdown components={{ a: ExternalLinkPreview }}>
+            {action.taskContents}
+          </ReactMarkdown>
         </div>
         <div className="flex justify-end">
           {createAccountHref && !disabled ? (
@@ -44,7 +47,12 @@ const ActionTaskPanelActivity = ({
               onTrigger={onCompleteAction}
               burstPlacement="local"
             >
-              {({ disabled: confettiDisabled, onClick, onKeyDown, onPointerDown }) => (
+              {({
+                disabled: confettiDisabled,
+                onClick,
+                onKeyDown,
+                onPointerDown,
+              }) => (
                 <Button
                   onClick={onClick}
                   onKeyDown={onKeyDown}
