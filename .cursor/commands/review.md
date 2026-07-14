@@ -31,6 +31,7 @@ Provide a high-signal review of the proposed change that improves long-term code
 3. Maintainability & architecture (anti-tech-debt pass)
 
 - Duplication: is similar functionality already present? Should we reuse/shared-utility it?
+- Reinvention: does the change hand-roll something a well-maintained npm package already solves (parsing, sanitization, date handling, retries, etc.)? Prefer adopting the established package over maintaining our own version.
 - Abstraction level: is the code in the right layer/module? Are responsibilities clear?
 - Complexity: can anything be simplified without changing behavior?
 - Extensibility: does this design have a clear evolution path, or does it paint us into a corner?
