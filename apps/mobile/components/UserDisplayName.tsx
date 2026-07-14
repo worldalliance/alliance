@@ -51,11 +51,11 @@ const UserDisplayName: React.FC<UserDisplayNameProps> = ({
       {!staff && hasRoleBadges && (
         <View className="flex-row items-center gap-x-1">
           {ambassador && (
-            <View className="bg-red-500 rounded-xs px-1.5 py-0.5">
-              <Text className="text-white text-xs" weight={FontWeight.Medium}>
-                {roleBadges.ambassador.label}
-              </Text>
-            </View>
+            <UserCircle
+              size={iconSize}
+              color={colors.ambassador}
+              strokeWidth={2}
+            />
           )}
           {grouplead && (
             <UserCircle

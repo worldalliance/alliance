@@ -53,9 +53,11 @@ const UserDisplayName: React.FC<UserDisplayNameProps> = ({
         <span className="ml-1.5 inline-flex items-center gap-0.5 align-baseline">
           {ambassador && (
             <HoverBadge title={roleBadges.ambassador.tooltip}>
-              <span className="text-xs !bg-ambassador text-white rounded-xs px-1.5">
-                {roleBadges.ambassador.label}
-              </span>
+              <UserCircle
+                size={16}
+                className="text-ambassador inline -mt-px"
+                strokeWidth={2}
+              />
             </HoverBadge>
           )}
           {grouplead && (
