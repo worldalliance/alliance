@@ -1,4 +1,3 @@
-import type { WithdrawalOption } from "@alliance/common/actionActivity";
 import { useCallback, useState } from "react";
 import {
   ActionDto,
@@ -24,16 +23,6 @@ export type ActionWithdrawal = {
   reason: string;
   partialFormData: SubmitFormDto;
 };
-
-/** Options offered in the withdrawal UI, in display order. */
-export const WITHDRAWAL_OPTION_LABELS = {
-  out_of_time: "Took more than 15 minutes",
-  moral: "Moral objection",
-  other: "Other reason",
-} as const satisfies Record<WithdrawalOption, string>;
-export const WITHDRAWAL_OPTIONS = Object.keys(
-  WITHDRAWAL_OPTION_LABELS,
-) as WithdrawalOption[];
 
 export const useTaskFormHandlers = ({
   action,

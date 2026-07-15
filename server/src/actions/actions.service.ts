@@ -1,7 +1,9 @@
 import {
   ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
   ActionActivityType,
+  WITHDRAWAL_OPTION_LABELS,
   withdrawalHasRequiredReason,
+  withdrawalOptionFromFlags,
 } from '@alliance/common/actionActivity';
 import type { FormSchema } from '@alliance/common/forms/form-schema';
 import { LIKE_FACEPILE_LIMIT, likeOrderRank } from '@alliance/common/likeOrder';
@@ -187,6 +189,13 @@ const GLOBAL_FEED_FACEPILE_LIMIT = 8;
 
 /** Feed/member-list rolling window. */
 const GLOBAL_FEED_WINDOW_DAYS = 8;
+
+/**
+ * Withdrawal reasons longer than this are truncated in the opt-out event-log
+ * message to keep the Slack copy readable; the full reason is still stored on
+ * the activity row and in the event's blob.
+ */
+const OPT_OUT_REASON_PREVIEW_LENGTH = 300;
 
 type FeedMemberPageRow = {
   userId: number | string;
@@ -1271,17 +1280,6 @@ export class ActionsService {
 
     const user = await this.userService.findOneOrFail(userId);
 
-    if (type === ActionActivityType.USER_WONT_COMPLETE) {
-      this.eventLogService.sendMessage({
-        type: EventType.ActionOptOut,
-        message: `${user.name} opted out of action ${action.name}`,
-        blob: {
-          actionId,
-          userId,
-        },
-      });
-    }
-
     if (!ALLOW_DUPLICATE[type]) {
       const existingActivity = await this.actionActivityRepository.findOne({
         where: { actionId, userId, type },
@@ -1306,6 +1304,37 @@ export class ActionsService {
         : ActivitySource.USER,
     });
     const savedActivity = await this.actionActivityRepository.save(activity);
+
+    if (type === ActionActivityType.USER_WONT_COMPLETE) {
+      const option = withdrawalOptionFromFlags({
+        outOfTime: isOutOfTime ?? false,
+        isMoral: isMoral ?? false,
+      });
+      const trimmedReason = declineReason?.trim();
+      // Spread to code points so truncation can't split a surrogate pair
+      // (e.g. an emoji) at the boundary.
+      const reasonChars = trimmedReason ? [...trimmedReason] : [];
+      const reason =
+        reasonChars.length > OPT_OUT_REASON_PREVIEW_LENGTH
+          ? `${reasonChars.slice(0, OPT_OUT_REASON_PREVIEW_LENGTH).join('')}...`
+          : trimmedReason;
+      const label = adminCreated
+        ? 'admin-created'
+        : WITHDRAWAL_OPTION_LABELS[option];
+      const detail = reason ? `${label}: ${reason}` : label;
+      this.eventLogService.sendMessage({
+        type: EventType.ActionOptOut,
+        message: `${user.name} opted out of action ${action.name} (${detail})`,
+        userId,
+        blob: {
+          actionId,
+          declineReason,
+          outOfTime: isOutOfTime,
+          isMoral,
+          adminCreated: adminCreated ?? false,
+        },
+      });
+    }
 
     this.eventEmitter.emit('action.activity', {
       actionId,

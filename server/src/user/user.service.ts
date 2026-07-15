@@ -1,3 +1,4 @@
+import type { Result } from '@alliance/common/result';
 import { Temporal } from '@js-temporal/polyfill';
 import {
   BadRequestException,
@@ -2652,8 +2653,10 @@ export class UserService {
     }
   }
 
-  async requestAccountDeletion(userId: number): Promise<void> {
-    await this.eventLogService.sendMessage({
+  // The event log is the system of record for deletion requests — the failure
+  // is returned to the controller instead of treated as best-effort.
+  async requestAccountDeletion(userId: number): Promise<Result<void, Error>> {
+    return this.eventLogService.sendMessage({
       type: EventType.AccountDeletionRequested,
       message: `User ${userId} requested account deletion`,
       userId: userId,

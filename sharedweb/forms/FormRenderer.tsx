@@ -1,5 +1,7 @@
 import {
   canSubmitWithdrawal,
+  WITHDRAWAL_OPTION_LABELS,
+  WITHDRAWAL_OPTIONS,
   withdrawalFlagsFromOption,
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
@@ -48,11 +50,7 @@ import {
   schemaHasUserHasCityCondition,
   validateFieldValue as validateFieldValueShared,
 } from "@alliance/shared/formrenderer";
-import {
-  WITHDRAWAL_OPTION_LABELS,
-  WITHDRAWAL_OPTIONS,
-  type ActionWithdrawal,
-} from "@alliance/shared/lib/actionTaskPanel";
+import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   guestReferral,
   outputFieldPublicToggle,

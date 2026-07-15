@@ -1,4 +1,5 @@
 import { AnalyticsEvent } from '@alliance/common/analytics';
+import { R } from '@alliance/common/result';
 import {
   Body,
   Controller,
@@ -48,13 +49,13 @@ import {
   AmbassadorInviteGoalDto,
   AmbassadorProgramDashboardDto,
   AmbassadorProgramMemberDto,
-  CreateAmbassadorProgramInteractionDto,
   CreateAmbassadorInviteGoalDto,
+  CreateAmbassadorProgramInteractionDto,
   CreateOnetimeInviteDto,
   OnetimeInviteDto,
   RequestOnetimeInviteDto,
-  UpdateAmbassadorProgramMemberDto,
   UpdateAmbassadorInviteGoalDto,
+  UpdateAmbassadorProgramMemberDto,
   UpsertAmbassadorProgramMemberDto,
 } from './dto/invite.dto';
 import {
@@ -928,6 +929,6 @@ export class UserController {
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async requestAccountDeletion(@Request() req: JwtRequest): Promise<void> {
-    await this.userService.requestAccountDeletion(req.user.sub);
+    R.unwrap(await this.userService.requestAccountDeletion(req.user.sub));
   }
 }

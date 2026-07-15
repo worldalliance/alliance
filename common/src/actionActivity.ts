@@ -58,11 +58,21 @@ export const actionActivityCommentable = {
 } as const satisfies Record<ActionActivityType, boolean>;
 
 /**
- * Options offered in the withdrawal (`USER_WONT_COMPLETE`) UI. Display labels
- * live in `WITHDRAWAL_OPTION_LABELS`; on the wire the option is encoded as
- * the `outOfTime`/`isMoral` boolean pair (see `withdrawalOptionFromFlags`).
+ * Display labels for withdrawal options — shown in the withdrawal UI and in
+ * the opt-out event log. Key order determines the display order of the options
+ * in the withdrawal UI.
  */
-export type WithdrawalOption = "out_of_time" | "moral" | "other";
+export const WITHDRAWAL_OPTION_LABELS = {
+  out_of_time: "Took more than 15 minutes",
+  moral: "Moral objection",
+  other: "Other reason",
+} as const;
+
+export type WithdrawalOption = keyof typeof WITHDRAWAL_OPTION_LABELS;
+
+export const WITHDRAWAL_OPTIONS = Object.keys(
+  WITHDRAWAL_OPTION_LABELS,
+) as WithdrawalOption[];
 
 /** Options that require the user to type a reason before withdrawing. */
 const WITHDRAWAL_OPTION_REQUIRES_REASON = {

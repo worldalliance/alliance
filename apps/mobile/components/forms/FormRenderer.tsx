@@ -1,5 +1,7 @@
 import {
   canSubmitWithdrawal,
+  WITHDRAWAL_OPTION_LABELS,
+  WITHDRAWAL_OPTIONS,
   withdrawalFlagsFromOption,
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
@@ -50,11 +52,7 @@ import {
   validateFieldValue as validateFieldValueShared,
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
-import {
-  WITHDRAWAL_OPTION_LABELS,
-  WITHDRAWAL_OPTIONS,
-  type ActionWithdrawal,
-} from "@alliance/shared/lib/actionTaskPanel";
+import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { outputFieldPublicToggle } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import AsyncStorage from "@react-native-async-storage/async-storage";
