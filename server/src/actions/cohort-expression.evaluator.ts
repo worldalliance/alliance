@@ -129,6 +129,56 @@ export async function evaluateCohortExpression(
   }
 }
 
+/**
+ * Collect the "dependency" references in an expression: actions the cohort
+ * keys off directly (CompletedAction/InProgressAction) and forms whose
+ * responses gate membership (FormFieldValue). Used to offer those actions'
+ * deadlines as reminder timing anchors.
+ */
+export function collectCohortDependencies(
+  expr: CohortExpression | null | undefined,
+): { actionIds: Set<number>; formIds: Set<number> } {
+  const actionIds = new Set<number>();
+  const formIds = new Set<number>();
+
+  const walk = (node: CohortExpression): void => {
+    if (isLeafCondition(node)) {
+      switch (node.type) {
+        case 'CompletedAction':
+        case 'InProgressAction':
+          actionIds.add(node.actionId);
+          break;
+        case 'FormFieldValue':
+          formIds.add(node.formId);
+          break;
+        case 'Tag':
+        case 'Manual':
+        case 'GroupLead':
+          break;
+        default:
+          node satisfies never;
+          break;
+      }
+      return;
+    }
+    switch (node.op) {
+      case 'AND':
+      case 'OR':
+        node.children.forEach(walk);
+        break;
+      case 'NOT':
+        walk(node.child);
+        break;
+      default:
+        node satisfies never;
+        break;
+    }
+  };
+
+  if (expr) walk(expr);
+  return { actionIds, formIds };
+}
+
 // --- Single-user scoping ---
 
 /**

@@ -1,26 +1,32 @@
 import { Temporal } from '@js-temporal/polyfill';
-import { DataSource, type Repository } from 'typeorm';
-import { ActionEventNotifWorker } from './action-event-notif.worker';
-import { NotificationPlan } from './dto/notification-plan.dto';
-import { MailService } from 'src/mail/mail.service';
-import { MmsService } from 'src/mms/mms.service';
 import { ActionsService } from 'src/actions/actions.service';
-import { ActionEventNotif } from './entities/action-event-notif.entity';
+import { ActionDto } from 'src/actions/dto/action.dto';
+import {
+  ActionEvent,
+  ActionStatus,
+} from 'src/actions/entities/action-event.entity';
+import { Action } from 'src/actions/entities/action.entity';
 import {
   ReminderCohortType,
   ReminderGroup,
   ReminderGroupTimingMode,
   getGroupSendTimeForUser,
 } from 'src/actions/entities/reminder-group.entity';
-import {
-  ActionEvent,
-  ActionStatus,
-} from 'src/actions/entities/action-event.entity';
-import { Action } from 'src/actions/entities/action.entity';
-import { User } from 'src/user/entities/user.entity';
-import { ActionEventReminderService } from './action-event-reminder.service';
-import { ActionDto } from 'src/actions/dto/action.dto';
+import { MailService } from 'src/mail/mail.service';
+import { MmsService } from 'src/mms/mms.service';
 import { PushService } from 'src/push/push.service';
+import { User } from 'src/user/entities/user.entity';
+import { DataSource, type Repository } from 'typeorm';
+import { ActionEventNotifWorker } from './action-event-notif.worker';
+import {
+  ActionEventReminderService,
+  assertExcludePreviouslyNotifiedAllowed,
+  comparePlansForDispatch,
+  dropPlansPreemptedInSameCycle,
+  tasksNotYetNotified,
+} from './action-event-reminder.service';
+import { NotificationPlan } from './dto/notification-plan.dto';
+import { ActionEventNotif } from './entities/action-event-notif.entity';
 
 describe('ActionEventNotifWorker.processCustomReminderText', () => {
   let worker: ActionEventNotifWorker;
@@ -54,9 +60,9 @@ describe('ActionEventNotifWorker.processCustomReminderText', () => {
 
   it('replaces all reminder keywords when a deadline event is present', async () => {
     const uncompletedTasks = [
-      { name: 'Task 1', timeEstimate: 15 },
-      { name: 'Task 2', timeEstimate: 30 },
-      { name: 'Task 3', timeEstimate: 45 },
+      { id: 1, name: 'Task 1', timeEstimate: 15 },
+      { id: 2, name: 'Task 2', timeEstimate: 30 },
+      { id: 3, name: 'Task 3', timeEstimate: 45 },
     ];
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2024-01-01T00:00:00Z'));
@@ -114,7 +120,7 @@ describe('ActionEventNotifWorker.processCustomReminderText', () => {
   });
 
   it('falls back gracefully when user has a single name and no deadline event', async () => {
-    const uncompletedTasks = [{ name: 'Task 1', timeEstimate: 15 }];
+    const uncompletedTasks = [{ id: 1, name: 'Task 1', timeEstimate: 15 }];
     const consoleErrorSpy = jest
       .spyOn(console, 'error')
       .mockImplementation(() => undefined);
@@ -346,7 +352,414 @@ describe('getGroupSendTimeForUser (relative range)', () => {
         }),
       ),
     ).toThrow(
-      'Deadline event is required for within_relative_range timing mode',
+      'Deadline or anchor event is required for within_relative_range timing mode',
     );
+  });
+
+  it('anchors the relative window to timingAnchorEvent when set', () => {
+    const deadlineEvent = {
+      id: 2002,
+      action,
+      date: new Date('2024-04-15T18:00:00Z'),
+      newStatus: ActionStatus.Completed,
+    } as ActionEvent;
+    const timingAnchorEvent = {
+      id: 3000,
+      date: new Date('2024-04-10T18:00:00Z'),
+      newStatus: ActionStatus.Completed,
+    } as ActionEvent;
+    const user = {
+      id: 45,
+      name: 'Anchored User',
+      preferredReminderTime: Temporal.PlainTime.from('10:00:00'),
+      timeZone: 'UTC',
+    } as User;
+
+    const sendTime = getGroupSendTimeForUser(
+      user,
+      buildGroup({
+        deadlineEvent,
+        timingAnchorEvent,
+        relative_range_start_seconds_from_deadline: 3 * 24 * 60 * 60,
+        relative_range_end_seconds_from_deadline: 1 * 24 * 60 * 60,
+      }),
+    );
+
+    // window is computed from the anchor (Apr 10), not the deadline (Apr 15)
+    expect(sendTime?.toISOString()).toBe('2024-04-08T10:00:00.000Z');
+  });
+});
+
+describe('getGroupSendTimeForUser (from deadline)', () => {
+  const action = {
+    id: 998,
+    name: 'From Deadline Action',
+  } as Action;
+  const memberActionEvent = {
+    id: 1001,
+    action,
+    date: new Date('2024-04-01T12:00:00Z'),
+    newStatus: ActionStatus.MemberAction,
+  } as ActionEvent;
+  const user = {
+    id: 46,
+    name: 'From Deadline User',
+    timeZone: 'UTC',
+  } as User;
+
+  const buildGroup = (overrides: Partial<ReminderGroup>): ReminderGroup =>
+    ({
+      id: 501,
+      name: 'From Deadline Reminder',
+      emailMessage: '',
+      emailSubject: '',
+      textMessage: '',
+      cohortType: ReminderCohortType.AllUncompleted,
+      timingMode: ReminderGroupTimingMode.FromDeadline,
+      memberActionEvent,
+      sendAtSecondsFromDeadline: 0,
+      ...overrides,
+    }) as ReminderGroup;
+
+  const deadlineEvent = {
+    id: 2003,
+    action,
+    date: new Date('2024-04-15T18:00:00Z'),
+    newStatus: ActionStatus.Completed,
+  } as ActionEvent;
+
+  it('offsets from timingAnchorEvent when set', () => {
+    const timingAnchorEvent = {
+      id: 3001,
+      date: new Date('2024-04-10T18:00:00Z'),
+      newStatus: ActionStatus.Completed,
+    } as ActionEvent;
+
+    const sendTime = getGroupSendTimeForUser(
+      user,
+      buildGroup({
+        deadlineEvent,
+        timingAnchorEvent,
+        sendAtSecondsFromDeadline: 3600,
+      }),
+    );
+
+    expect(sendTime?.toISOString()).toBe('2024-04-10T17:00:00.000Z');
+  });
+
+  it('falls back to deadlineEvent when timingAnchorEvent is unset', () => {
+    const sendTime = getGroupSendTimeForUser(
+      user,
+      buildGroup({ deadlineEvent, sendAtSecondsFromDeadline: 3600 }),
+    );
+
+    expect(sendTime?.toISOString()).toBe('2024-04-15T17:00:00.000Z');
+  });
+
+  it('throws when neither deadline nor anchor event is available', () => {
+    expect(() =>
+      getGroupSendTimeForUser(
+        user,
+        buildGroup({ deadlineEvent: undefined, timingAnchorEvent: undefined }),
+      ),
+    ).toThrow(
+      'Deadline or anchor event is required for from_deadline timing mode',
+    );
+  });
+});
+
+describe('dropPlansPreemptedInSameCycle', () => {
+  let nextGroupId = 1;
+  const makePlan = ({
+    userId,
+    eventId,
+    excludePreviouslyNotified,
+    scheduledFor,
+    cohortType = ReminderCohortType.AllUncompleted,
+  }: {
+    userId: number;
+    eventId: number;
+    excludePreviouslyNotified: boolean;
+    scheduledFor: Date;
+    cohortType?: ReminderCohortType;
+  }): NotificationPlan => ({
+    user: { id: userId } as User,
+    group: {
+      id: nextGroupId++,
+      memberActionEvent: { id: eventId } as ActionEvent,
+      excludePreviouslyNotified,
+      cohortType,
+    } as ReminderGroup,
+    scheduledFor,
+  });
+
+  const t0 = new Date('2024-04-01T10:00:00Z');
+  const t1 = new Date('2024-04-01T10:01:00Z');
+
+  it('drops a catch-up plan preempted by an earlier plan for the same user and event', () => {
+    const sibling = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: false,
+      scheduledFor: t0,
+    });
+    const catchUp = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: true,
+      scheduledFor: t1,
+    });
+
+    expect(dropPlansPreemptedInSameCycle([sibling, catchUp])).toEqual([
+      sibling,
+    ]);
+  });
+
+  it('keeps a catch-up plan when the earlier plan targets a different event', () => {
+    const otherEvent = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: false,
+      scheduledFor: t0,
+    });
+    const catchUp = makePlan({
+      userId: 1,
+      eventId: 11,
+      excludePreviouslyNotified: true,
+      scheduledFor: t1,
+    });
+
+    expect(dropPlansPreemptedInSameCycle([otherEvent, catchUp])).toEqual([
+      otherEvent,
+      catchUp,
+    ]);
+  });
+
+  it('keeps a catch-up plan when the earlier plan targets a different user', () => {
+    const otherUser = makePlan({
+      userId: 2,
+      eventId: 10,
+      excludePreviouslyNotified: false,
+      scheduledFor: t0,
+    });
+    const catchUp = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: true,
+      scheduledFor: t1,
+    });
+
+    expect(dropPlansPreemptedInSameCycle([otherUser, catchUp])).toEqual([
+      otherUser,
+      catchUp,
+    ]);
+  });
+
+  it('keeps both plans when the later group does not exclude previously notified users', () => {
+    const first = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: false,
+      scheduledFor: t0,
+    });
+    const second = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: false,
+      scheduledFor: t1,
+    });
+
+    expect(dropPlansPreemptedInSameCycle([first, second])).toEqual([
+      first,
+      second,
+    ]);
+  });
+
+  it('does not let a group-leads plan preempt a catch-up plan', () => {
+    const groupLeadsNudge = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: false,
+      scheduledFor: t0,
+      cohortType: ReminderCohortType.GroupLeadsWithUncompleted,
+    });
+    const catchUp = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: true,
+      scheduledFor: t1,
+    });
+
+    expect(dropPlansPreemptedInSameCycle([groupLeadsNudge, catchUp])).toEqual([
+      groupLeadsNudge,
+      catchUp,
+    ]);
+  });
+
+  it('does not drop an earlier catch-up plan because of a later sibling plan', () => {
+    const catchUp = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: true,
+      scheduledFor: t0,
+    });
+    const sibling = makePlan({
+      userId: 1,
+      eventId: 10,
+      excludePreviouslyNotified: false,
+      scheduledFor: t1,
+    });
+
+    expect(dropPlansPreemptedInSameCycle([catchUp, sibling])).toEqual([
+      catchUp,
+      sibling,
+    ]);
+  });
+});
+
+describe('comparePlansForDispatch', () => {
+  const makePlan = ({
+    groupId,
+    excludePreviouslyNotified,
+    scheduledFor,
+  }: {
+    groupId: number;
+    excludePreviouslyNotified: boolean;
+    scheduledFor: Date;
+  }): NotificationPlan => ({
+    user: { id: 1 } as User,
+    group: {
+      id: groupId,
+      memberActionEvent: { id: 10 } as ActionEvent,
+      excludePreviouslyNotified,
+      cohortType: ReminderCohortType.AllUncompleted,
+    } as ReminderGroup,
+    scheduledFor,
+  });
+
+  const t0 = new Date('2024-04-01T10:00:00Z');
+  const t1 = new Date('2024-04-01T10:01:00Z');
+
+  it('orders by send time first', () => {
+    const later = makePlan({
+      groupId: 1,
+      excludePreviouslyNotified: true,
+      scheduledFor: t1,
+    });
+    const earlier = makePlan({
+      groupId: 2,
+      excludePreviouslyNotified: false,
+      scheduledFor: t0,
+    });
+
+    expect([later, earlier].sort(comparePlansForDispatch)).toEqual([
+      earlier,
+      later,
+    ]);
+  });
+
+  it('dispatches the sibling before the catch-up on equal send times, regardless of incoming order', () => {
+    const catchUp = makePlan({
+      groupId: 1,
+      excludePreviouslyNotified: true,
+      scheduledFor: t0,
+    });
+    const sibling = makePlan({
+      groupId: 2,
+      excludePreviouslyNotified: false,
+      scheduledFor: t0,
+    });
+
+    expect([catchUp, sibling].sort(comparePlansForDispatch)).toEqual([
+      sibling,
+      catchUp,
+    ]);
+    expect([sibling, catchUp].sort(comparePlansForDispatch)).toEqual([
+      sibling,
+      catchUp,
+    ]);
+  });
+
+  it('breaks remaining ties by group id so dispatch order is deterministic', () => {
+    const groupB = makePlan({
+      groupId: 2,
+      excludePreviouslyNotified: false,
+      scheduledFor: t0,
+    });
+    const groupA = makePlan({
+      groupId: 1,
+      excludePreviouslyNotified: false,
+      scheduledFor: t0,
+    });
+
+    expect([groupB, groupA].sort(comparePlansForDispatch)).toEqual([
+      groupA,
+      groupB,
+    ]);
+  });
+});
+
+describe('tasksNotYetNotified', () => {
+  const tasks = [
+    { id: 1, name: 'a' },
+    { id: 2, name: 'b' },
+    { id: 3, name: 'c' },
+  ];
+
+  it('returns all tasks when the user has no prior coverage', () => {
+    expect(tasksNotYetNotified(tasks, [])).toEqual(tasks);
+  });
+
+  it('drops tasks covered by prior notifs, across multiple notifs', () => {
+    expect(tasksNotYetNotified(tasks, [[1], [2]])).toEqual([
+      { id: 3, name: 'c' },
+    ]);
+  });
+
+  it('returns nothing when every task was covered', () => {
+    expect(tasksNotYetNotified(tasks, [[1, 2, 3]])).toEqual([]);
+  });
+
+  it('treats a legacy null coverage entry as having covered everything', () => {
+    expect(tasksNotYetNotified(tasks, [[1], null])).toEqual([]);
+  });
+
+  it('ignores covered actions that are no longer among the tasks', () => {
+    expect(tasksNotYetNotified(tasks, [[99]])).toEqual(tasks);
+  });
+});
+
+describe('assertExcludePreviouslyNotifiedAllowed', () => {
+  it('rejects excludePreviouslyNotified on a group-leads cohort', () => {
+    expect(() =>
+      assertExcludePreviouslyNotifiedAllowed({
+        cohortType: ReminderCohortType.GroupLeadsWithUncompleted,
+        excludePreviouslyNotified: true,
+      }),
+    ).toThrow(
+      'excludePreviouslyNotified is not supported for group-leads cohorts',
+    );
+  });
+
+  it('allows a group-leads cohort without the flag', () => {
+    expect(() =>
+      assertExcludePreviouslyNotifiedAllowed({
+        cohortType: ReminderCohortType.GroupLeadsWithUncompleted,
+        excludePreviouslyNotified: false,
+      }),
+    ).not.toThrow();
+  });
+
+  it.each([
+    ReminderCohortType.AllUncompleted,
+    ReminderCohortType.Tag,
+    ReminderCohortType.Custom,
+  ])('allows the flag on the personally-notifying %s cohort', (cohortType) => {
+    expect(() =>
+      assertExcludePreviouslyNotifiedAllowed({
+        cohortType,
+        excludePreviouslyNotified: true,
+      }),
+    ).not.toThrow();
   });
 });

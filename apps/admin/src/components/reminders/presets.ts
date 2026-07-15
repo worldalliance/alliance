@@ -6,18 +6,19 @@ import {
   defaultAnnouncementTextMessage,
   defaultEmailContents,
   defaultEmailSubject,
+  defaultGroupLeadsEmailContents,
+  defaultGroupLeadsEmailSubject,
+  defaultGroupLeadsTextMessage,
   defaultMissedDeadlineEmailContents,
   defaultMissedDeadlineEmailSubject,
   defaultMissedDeadlineTextMessage,
   defaultPushMessage,
   defaultTextMessage,
-  defaultGroupLeadsEmailContents,
-  defaultGroupLeadsEmailSubject,
-  defaultGroupLeadsTextMessage,
 } from "./defaultReminderContents";
 
 export const presetNames = [
   "Announcement",
+  "Catch-up late joiners",
   "Two Day Range",
   "One Day Range",
   "Three Hour",
@@ -28,10 +29,16 @@ export const presetNames = [
 
 export type ReminderPresetName = (typeof presetNames)[number];
 
-export const reminderPresets: Record<
-  ReminderPresetName,
-  Omit<CreateReminderGroupDto, "suiteId">
-> = {
+/**
+ * `anchorToDependencyDeadline` is a UI-only marker: the reminders tab resolves
+ * it to a concrete `timingAnchorEventId` (the next upcoming dependency
+ * deadline event) before the preset reaches the form/API.
+ */
+export type ReminderPreset = Omit<CreateReminderGroupDto, "suiteId"> & {
+  anchorToDependencyDeadline?: boolean;
+};
+
+export const reminderPresets: Record<ReminderPresetName, ReminderPreset> = {
   Announcement: {
     timingMode: "event_launch",
     cohortType: "all_uncompleted",
@@ -42,6 +49,21 @@ export const reminderPresets: Record<
     pushMessage: defaultAnnouncementPushMessage,
     useSuiteTaskCount: true,
     excludeOptionalActions: false,
+    excludePreviouslyNotified: false,
+  },
+  "Catch-up late joiners": {
+    timingMode: "from_deadline",
+    sendAtSecondsFromDeadline: 0,
+    anchorToDependencyDeadline: true,
+    cohortType: "all_uncompleted",
+    textMessage: defaultAnnouncementTextMessage,
+    name: "Catch-up announcement for late cohort joiners",
+    emailMessage: defaultAnnouncementEmailContents,
+    emailSubject: defaultAnnouncementEmailSubject,
+    pushMessage: defaultAnnouncementPushMessage,
+    useSuiteTaskCount: true,
+    excludeOptionalActions: false,
+    excludePreviouslyNotified: true,
   },
   "Two Day Range": {
     timingMode: "within_relative_range",
@@ -55,6 +77,7 @@ export const reminderPresets: Record<
     pushMessage: defaultPushMessage,
     useSuiteTaskCount: true,
     excludeOptionalActions: false,
+    excludePreviouslyNotified: false,
   },
   "One Day Range": {
     timingMode: "within_relative_range",
@@ -68,6 +91,7 @@ export const reminderPresets: Record<
     pushMessage: defaultPushMessage,
     useSuiteTaskCount: true,
     excludeOptionalActions: false,
+    excludePreviouslyNotified: false,
   },
   "Three Hour": {
     timingMode: "from_deadline",
@@ -80,6 +104,7 @@ export const reminderPresets: Record<
     pushMessage: defaultPushMessage,
     useSuiteTaskCount: true,
     excludeOptionalActions: false,
+    excludePreviouslyNotified: false,
   },
   "Missed Deadline": {
     timingMode: "from_deadline",
@@ -92,6 +117,7 @@ export const reminderPresets: Record<
     pushMessage: defaultMissedDeadlineTextMessage,
     useSuiteTaskCount: true,
     excludeOptionalActions: true,
+    excludePreviouslyNotified: false,
   },
   "Group Leads 3 days": {
     timingMode: "within_relative_range",
@@ -105,6 +131,7 @@ export const reminderPresets: Record<
     pushMessage: defaultGroupLeadsTextMessage,
     useSuiteTaskCount: true,
     excludeOptionalActions: true,
+    excludePreviouslyNotified: false,
   },
   "Group Leads 2 days": {
     timingMode: "within_relative_range",
@@ -118,5 +145,6 @@ export const reminderPresets: Record<
     pushMessage: defaultGroupLeadsTextMessage,
     useSuiteTaskCount: true,
     excludeOptionalActions: true,
+    excludePreviouslyNotified: false,
   },
 };

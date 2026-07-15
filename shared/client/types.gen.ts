@@ -304,6 +304,8 @@ export type ActionEventNotif = {
     mms: Mms | null;
     pushes?: Array<Push>;
     reminderGroup?: ReminderGroup;
+    memberActionEvent?: ActionEvent;
+    notifiedActionIds: Array<number> | null;
     /**
      * Indicates whether the notification has been sent
      */
@@ -333,9 +335,11 @@ export type ReminderGroup = {
     relative_range_start_seconds_from_deadline?: number;
     relative_range_end_seconds_from_deadline?: number;
     deadlineEvent?: ActionEvent;
+    timingAnchorEvent?: ActionEvent;
     useSuiteTaskCount: boolean;
     allSent: boolean;
     excludeOptionalActions: boolean;
+    excludePreviouslyNotified: boolean;
 };
 
 export type ActionSuite = {
@@ -2417,9 +2421,11 @@ export type CreateReminderGroupDto = {
     relative_range_end_seconds_from_deadline?: number;
     useSuiteTaskCount: boolean;
     excludeOptionalActions: boolean;
+    excludePreviouslyNotified: boolean;
     userIds?: Array<number>;
     userTagId?: string;
     suiteId?: number;
+    timingAnchorEventId?: number;
 };
 
 export type ReminderGroupDto = {
@@ -2442,9 +2448,11 @@ export type ReminderGroupDto = {
     relative_range_start_seconds_from_deadline?: number;
     relative_range_end_seconds_from_deadline?: number;
     deadlineEvent?: ActionEvent;
+    timingAnchorEvent?: ActionEvent;
     useSuiteTaskCount: boolean;
     allSent: boolean;
     excludeOptionalActions: boolean;
+    excludePreviouslyNotified: boolean;
 };
 
 export type NotificationChannel = 'text' | 'email' | 'push';
@@ -2484,6 +2492,13 @@ export type CreateActionActivityDto = {
     type: ActionActivityType;
     actionId: number;
     userId: number;
+};
+
+export type ReminderAnchorCandidateDto = {
+    actionId: number;
+    actionName: string;
+    deadlineEventId: number;
+    deadlineEventDate: string;
 };
 
 export type CreateActionUpdateDto = {
@@ -9361,6 +9376,30 @@ export type ActionsReminderGroupsForEventAdminResponses = {
 };
 
 export type ActionsReminderGroupsForEventAdminResponse = ActionsReminderGroupsForEventAdminResponses[keyof ActionsReminderGroupsForEventAdminResponses];
+
+export type ActionsReminderAnchorCandidatesAdminData = {
+    body?: never;
+    path: {
+        eventId: number;
+    };
+    query?: never;
+    url: '/actions/reminderAnchorCandidates/{eventId}';
+};
+
+export type ActionsReminderAnchorCandidatesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionsReminderAnchorCandidatesAdminError = ActionsReminderAnchorCandidatesAdminErrors[keyof ActionsReminderAnchorCandidatesAdminErrors];
+
+export type ActionsReminderAnchorCandidatesAdminResponses = {
+    200: Array<ReminderAnchorCandidateDto>;
+};
+
+export type ActionsReminderAnchorCandidatesAdminResponse = ActionsReminderAnchorCandidatesAdminResponses[keyof ActionsReminderAnchorCandidatesAdminResponses];
 
 export type ActionsCreateUpdateAdminData = {
     body: CreateActionUpdateDto;

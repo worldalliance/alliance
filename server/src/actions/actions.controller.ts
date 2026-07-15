@@ -77,6 +77,7 @@ import {
   PreviewEmailHtmlResponseDto,
   PreviewTextDto,
   PreviewTextMessageResponseDto,
+  ReminderAnchorCandidateDto,
   ReminderGroupDto,
   ScheduledPlansOverviewDto,
   SetPriorityDto,
@@ -1130,6 +1131,19 @@ export class ActionsController {
     const groups =
       await this.actionEventReminderService.getReminderGroupsForEvent(id);
     return groups.map((group) => new ReminderGroupDto(group));
+  }
+
+  @Get('reminderAnchorCandidates/:eventId')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ReminderAnchorCandidateDto, isArray: true })
+  async reminderAnchorCandidatesAdmin(
+    @Param('eventId', ParseIntPipe) eventId: number,
+  ): Promise<ReminderAnchorCandidateDto[]> {
+    const candidates =
+      await this.actionsService.findReminderAnchorCandidates(eventId);
+    return candidates.map(
+      (candidate) => new ReminderAnchorCandidateDto(candidate),
+    );
   }
 
   @Post('createUpdate/:id')

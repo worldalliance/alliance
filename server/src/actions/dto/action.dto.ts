@@ -60,6 +60,7 @@ export class CreateReminderGroupDto extends PickType(ReminderGroup, [
   'relative_range_end_seconds_from_deadline',
   'useSuiteTaskCount',
   'excludeOptionalActions',
+  'excludePreviouslyNotified',
 ]) {
   @ApiPropertyOptional({ type: Number, isArray: true })
   @IsOptional()
@@ -72,6 +73,11 @@ export class CreateReminderGroupDto extends PickType(ReminderGroup, [
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   suiteId?: number;
+
+  @ApiPropertyOptional({ type: Number })
+  @IsOptional()
+  @IsNumber()
+  timingAnchorEventId?: number;
 }
 
 export class PreviewEmailHtmlDto extends PickType(CreateReminderGroupDto, [
@@ -706,9 +712,11 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
   'relative_range_start_seconds_from_deadline',
   'relative_range_end_seconds_from_deadline',
   'deadlineEvent',
+  'timingAnchorEvent',
   'useSuiteTaskCount',
   'allSent',
   'excludeOptionalActions',
+  'excludePreviouslyNotified',
 ]) {
   constructor(group: ReminderGroup) {
     super();
@@ -733,9 +741,45 @@ export class ReminderGroupDto extends PickType(ReminderGroup, [
     this.relative_range_end_seconds_from_deadline =
       group.relative_range_end_seconds_from_deadline;
     this.deadlineEvent = group.deadlineEvent;
+    this.timingAnchorEvent = group.timingAnchorEvent;
     this.useSuiteTaskCount = group.useSuiteTaskCount;
     this.allSent = group.allSent;
     this.excludeOptionalActions = group.excludeOptionalActions;
+    this.excludePreviouslyNotified = group.excludePreviouslyNotified;
+  }
+}
+
+/**
+ * A dependency action's deadline event, offered as a reminder-group timing
+ * anchor (`ReminderGroup.timingAnchorEvent`). Dependencies are derived from
+ * the action's cohort expression (form-response and completed/in-progress
+ * action conditions).
+ */
+export type ReminderAnchorCandidate = {
+  actionId: number;
+  actionName: string;
+  deadlineEventId: number;
+  deadlineEventDate: Date;
+};
+
+export class ReminderAnchorCandidateDto {
+  @ApiProperty()
+  actionId: number;
+
+  @ApiProperty()
+  actionName: string;
+
+  @ApiProperty()
+  deadlineEventId: number;
+
+  @ApiProperty({ type: Date })
+  deadlineEventDate: Date;
+
+  constructor(input: ReminderAnchorCandidate) {
+    this.actionId = input.actionId;
+    this.actionName = input.actionName;
+    this.deadlineEventId = input.deadlineEventId;
+    this.deadlineEventDate = input.deadlineEventDate;
   }
 }
 

@@ -4,11 +4,13 @@ import {
   actionsCreateReminderGroupAdmin,
   actionsDeleteReminderGroupAdmin,
   actionsPlansForGroupAdmin,
+  actionsReminderAnchorCandidatesAdmin,
   actionsReminderGroupsForEventAdmin,
   actionsSentNotifsForGroupAdmin,
   ActionSuiteDto,
   actionsUpdateReminderGroupAdmin,
   PreviewNotificationPlanDto,
+  ReminderAnchorCandidateDto,
   ReminderGroupDto,
   userListAdmin,
 } from "@alliance/shared/client";
@@ -34,9 +36,15 @@ import React, {
 } from "react";
 import ActionReminderCard from "./ActionReminderCard";
 import ActionReminderGroupForm, {
+  ActionReminderGroupFormInitialValues,
   ActionReminderGroupFormSubmitPayload,
 } from "./ActionReminderGroupForm";
-import { presetNames, ReminderPresetName, reminderPresets } from "./presets";
+import {
+  presetNames,
+  ReminderPreset,
+  ReminderPresetName,
+  reminderPresets,
+} from "./presets";
 
 interface ActionRemindersTabProps {
   suite: ActionSuiteDto;
@@ -103,6 +111,49 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [reminderGroups, setReminderGroups] = useState<ReminderGroupDto[]>([]);
+  const [anchorCandidates, setAnchorCandidates] = useState<
+    ReminderAnchorCandidateDto[]
+  >([]);
+  const [anchorCandidatesError, setAnchorCandidatesError] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (!selectedEventId) {
+      setAnchorCandidates([]);
+      setAnchorCandidatesError(null);
+      return;
+    }
+    let cancelled = false;
+    actionsReminderAnchorCandidatesAdmin({
+      path: { eventId: selectedEventId },
+    })
+      .then((response) => {
+        if (cancelled) return;
+        // an empty candidate list changes what the form offers (and shows a
+        // set anchor as stale), so a failed fetch must be surfaced instead of
+        // being treated as "no dependency deadlines"
+        if (response.error) {
+          setAnchorCandidates([]);
+          setAnchorCandidatesError(
+            "Failed to load dependency deadlines for timing anchors.",
+          );
+          return;
+        }
+        setAnchorCandidates(response.data ?? []);
+        setAnchorCandidatesError(null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAnchorCandidates([]);
+        setAnchorCandidatesError(
+          "Failed to load dependency deadlines for timing anchors.",
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEventId]);
 
   const [reminderPlansByGroup, setReminderPlansByGroup] = useState<
     Partial<Record<number, PreviewNotificationPlanDto[]>>
@@ -330,6 +381,28 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     const end = group.send_range_end ?? null;
     return { start: parseDate(start), end: parseDate(end) };
   };
+
+  // The event a deadline-relative group's send time is computed from: the
+  // timing anchor (a dependency action's deadline) when set, else the group's
+  // own deadline event.
+  const findGroupTimingReferenceEvent = useCallback(
+    (group: ReminderGroupDto) =>
+      group.timingAnchorEvent ??
+      group.deadlineEvent ??
+      findGroupDeadlineEvent(group),
+    [findGroupDeadlineEvent],
+  );
+
+  const describeAnchor = (group: ReminderGroupDto): string | null => {
+    if (!group.timingAnchorEvent) {
+      return null;
+    }
+    const anchorActionName = anchorCandidates.find(
+      (candidate) => candidate.deadlineEventId === group.timingAnchorEvent?.id,
+    )?.actionName;
+    return `${anchorActionName ?? "dependency action"} deadline`;
+  };
+
   const describeGroupSchedule = (
     group: ReminderGroupDto,
   ): GroupScheduleLabels => {
@@ -345,18 +418,21 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
     }
 
     if (group.timingMode === "from_deadline") {
-      const deadlineEvent =
-        group.deadlineEvent ?? findGroupDeadlineEvent(group);
-      const deadlineDate = parseDate(deadlineEvent?.date);
+      const referenceEvent = findGroupTimingReferenceEvent(group);
+      const anchorLabel = describeAnchor(group);
+      const deadlineDate = parseDate(referenceEvent?.date);
       const seconds = group.sendAtSecondsFromDeadline ?? 0;
       if (deadlineDate) {
         const sendDate = subSeconds(deadlineDate, seconds);
         const referenceTitle =
-          deadlineEvent?.title?.trim() ||
-          `deadline on ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`;
+          anchorLabel ??
+          (referenceEvent?.title?.trim() ||
+            `deadline on ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`);
         if (seconds === 0) {
           return {
-            primary: `Sends when ${referenceTitle} begins`,
+            primary: anchorLabel
+              ? `Sends at ${referenceTitle}`
+              : `Sends when ${referenceTitle} begins`,
             secondary: `${format(
               sendDate,
               DISPLAY_DATETIME_FORMAT,
@@ -412,9 +488,9 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       const startSeconds =
         group.relative_range_start_seconds_from_deadline ?? null;
       const endSeconds = group.relative_range_end_seconds_from_deadline ?? null;
-      const deadlineEvent =
-        group.deadlineEvent ?? findGroupDeadlineEvent(group);
-      const deadlineDate = parseDate(deadlineEvent?.date);
+      const referenceEvent = findGroupTimingReferenceEvent(group);
+      const anchorLabel = describeAnchor(group);
+      const deadlineDate = parseDate(referenceEvent?.date);
       if (startSeconds === null || endSeconds === null || !deadlineDate) {
         return {
           primary: "Relative personalized window",
@@ -438,8 +514,9 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
       const startLabel = describeOffset(startSeconds);
       const endLabel = describeOffset(endSeconds);
       const referenceTitle =
-        deadlineEvent?.title?.trim() ||
-        `deadline on ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`;
+        anchorLabel ??
+        (referenceEvent?.title?.trim() ||
+          `deadline on ${format(deadlineDate, DISPLAY_DATETIME_FORMAT)}`);
       const startDate = subSeconds(deadlineDate, startSeconds);
       const endDate = subSeconds(deadlineDate, endSeconds);
       const deadlineLabel = format(deadlineDate, DISPLAY_DATETIME_FORMAT);
@@ -741,6 +818,32 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   const [selectedPreset, setSelectedPreset] =
     useState<ReminderPresetName | null>(null);
 
+  // Anchor-requiring presets need an upcoming dependency deadline: a past one
+  // would schedule a send time already behind the worker's lookback window
+  // (the group would never fire), and no candidates at all would silently turn
+  // the preset into a plain own-deadline reminder — so those presets are
+  // disabled in the picker instead of degrading.
+  const upcomingAnchorCandidate = anchorCandidates.find(
+    (candidate) => new Date(candidate.deadlineEventDate).getTime() > Date.now(),
+  );
+
+  // Resolve the UI-only anchorToDependencyDeadline marker to a concrete
+  // timingAnchorEventId — the next upcoming dependency deadline (candidates
+  // arrive sorted by date). Unreachable without one: the picker disables
+  // anchor-requiring presets then.
+  const resolvePreset = (
+    preset: ReminderPreset,
+  ): ActionReminderGroupFormInitialValues["reminderGroup"] => {
+    const { anchorToDependencyDeadline, ...rest } = preset;
+    if (!anchorToDependencyDeadline) {
+      return rest;
+    }
+    return {
+      ...rest,
+      timingAnchorEventId: upcomingAnchorCandidate?.deadlineEventId,
+    };
+  };
+
   const sortedReminderGroups = useMemo(() => {
     return reminderGroups
       .map((group) => {
@@ -748,9 +851,8 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         if (group.timingMode === "absolute") {
           sendStartDate = parseDate(group.sendAtAbsolute);
         } else if (group.timingMode === "from_deadline") {
-          const deadlineEvent =
-            group.deadlineEvent ?? findGroupDeadlineEvent(group);
-          const deadlineDate = parseDate(deadlineEvent?.date);
+          const referenceEvent = findGroupTimingReferenceEvent(group);
+          const deadlineDate = parseDate(referenceEvent?.date);
           if (deadlineDate) {
             const seconds = group.sendAtSecondsFromDeadline ?? 0;
             sendStartDate = subSeconds(deadlineDate, seconds);
@@ -760,9 +862,8 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
           const end = parseDate(group.send_range_end);
           sendStartDate = start ?? end ?? null;
         } else if (group.timingMode === "within_relative_range") {
-          const deadlineEvent =
-            group.deadlineEvent ?? findGroupDeadlineEvent(group);
-          const deadlineDate = parseDate(deadlineEvent?.date);
+          const referenceEvent = findGroupTimingReferenceEvent(group);
+          const deadlineDate = parseDate(referenceEvent?.date);
           const startSeconds =
             group.relative_range_start_seconds_from_deadline ?? null;
           if (deadlineDate && startSeconds !== null) {
@@ -795,7 +896,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
         }
         return timeA - timeB;
       });
-  }, [findGroupDeadlineEvent, parseDate, reminderGroups]);
+  }, [findGroupTimingReferenceEvent, parseDate, reminderGroups]);
 
   if (!memberEvents.length) {
     return (
@@ -811,6 +912,9 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
   return (
     <div className="space-y-4 mb-5">
       {loadError && <p className="text-sm text-red-600 mb-2">{loadError}</p>}
+      {anchorCandidatesError && (
+        <p className="text-sm text-red-600 mb-2">{anchorCandidatesError}</p>
+      )}
       <Card style={CardStyle.White}>
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -828,20 +932,32 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                   </Button>
                   {selectingPreset && (
                     <div className="absolute top-full right-0 p-2 bg-white shadow-md rounded-md">
-                      {presetNames.map((preset) => (
-                        <Button
-                          key={preset}
-                          type="button"
-                          color={ButtonColor.Light}
-                          onClick={() => {
-                            setSelectedPreset(preset);
-                            setSelectingPreset(false);
-                          }}
-                          className="w-full rounded-none bg-transparent! hover:bg-zinc-200/60! text-nowrap justify-start"
-                        >
-                          {preset}
-                        </Button>
-                      ))}
+                      {presetNames.map((preset) => {
+                        const needsAnchor =
+                          !!reminderPresets[preset].anchorToDependencyDeadline;
+                        const anchorUnavailable =
+                          needsAnchor && !upcomingAnchorCandidate;
+                        return (
+                          <Button
+                            key={preset}
+                            type="button"
+                            color={ButtonColor.Light}
+                            disabled={anchorUnavailable}
+                            title={
+                              anchorUnavailable
+                                ? "Needs an upcoming dependency deadline to anchor to; this action's cohort has none"
+                                : undefined
+                            }
+                            onClick={() => {
+                              setSelectedPreset(preset);
+                              setSelectingPreset(false);
+                            }}
+                            className="w-full rounded-none bg-transparent! hover:bg-zinc-200/60! text-nowrap justify-start"
+                          >
+                            {preset}
+                          </Button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -876,6 +992,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             <>
               <ActionReminderGroupForm
                 memberEvents={memberEvents}
+                anchorCandidates={anchorCandidates}
                 users={users}
                 loadingUsers={loadingUsers}
                 userTags={userTags}
@@ -884,7 +1001,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
                 initialValues={{
                   memberActionEventId: selectedEventId,
                   reminderGroup: selectedPreset
-                    ? reminderPresets[selectedPreset]
+                    ? resolvePreset(reminderPresets[selectedPreset])
                     : null,
                   users: [],
                 }}
@@ -915,6 +1032,7 @@ const ActionRemindersTab: React.FC<ActionRemindersTabProps> = ({
             handleDeleteGroup={handleDeleteGroup}
             selectedEventId={selectedEventId}
             memberEvents={memberEvents}
+            anchorCandidates={anchorCandidates}
             users={users}
             loadingUsers={loadingUsers}
             userTags={userTags}

@@ -8,6 +8,7 @@ import {
   type ActionEventDto,
   type CreateReminderGroupDto,
   type PreviewNotificationPlanDto,
+  type ReminderAnchorCandidateDto,
   type ReminderCohortType,
   type ReminderGroupDto,
   type ReminderGroupTimingMode,
@@ -39,6 +40,7 @@ type ReminderGroupContentFields = Pick<
   | "pushMessage"
   | "useSuiteTaskCount"
   | "excludeOptionalActions"
+  | "excludePreviouslyNotified"
 >;
 
 type ReminderGroupScheduleFields = Pick<
@@ -53,7 +55,7 @@ type ReminderGroupScheduleFields = Pick<
 
 type ReminderGroupUserFields = Pick<
   CreateReminderGroupDto,
-  "userIds" | "userTagId"
+  "userIds" | "userTagId" | "timingAnchorEventId"
 >;
 
 export type ActionReminderGroupFormSubmitPayload = ReminderGroupContentFields &
@@ -64,7 +66,12 @@ export type ActionReminderGroupFormSubmitPayload = ReminderGroupContentFields &
 
 export type ActionReminderGroupFormInitialValues = {
   memberActionEventId: number;
-  reminderGroup: (CreateReminderGroupDto & { userTag?: Tag }) | null;
+  reminderGroup:
+    | (CreateReminderGroupDto & {
+        userTag?: Tag;
+        timingAnchorEvent?: { id: number };
+      })
+    | null;
   users: User[];
 };
 
@@ -113,6 +120,7 @@ const COHORT_OPTIONS = Object.entries(COHORT_OPTION_OBJ).map(
 
 interface ActionReminderFormProps {
   memberEvents: ActionEventDto[];
+  anchorCandidates: ReminderAnchorCandidateDto[];
   users: UserSelectUser[];
   loadingUsers: boolean;
   userTags: TagDto[];
@@ -134,6 +142,7 @@ interface ActionReminderFormProps {
 
 const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   memberEvents,
+  anchorCandidates,
   users,
   loadingUsers,
   userTags,
@@ -201,6 +210,28 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     initialValues.reminderGroup?.excludeOptionalActions ?? false,
   );
 
+  const [excludePreviouslyNotified, setExcludePreviouslyNotified] =
+    useState<boolean>(
+      initialValues.reminderGroup?.excludePreviouslyNotified ?? false,
+    );
+
+  const initialTimingAnchorEventId =
+    initialGroup?.timingAnchorEvent?.id ??
+    initialGroup?.timingAnchorEventId ??
+    null;
+  const [timingAnchorEventId, setTimingAnchorEventId] = useState<number | null>(
+    initialTimingAnchorEventId,
+  );
+
+  const anchorSelectableModes: ReminderGroupTimingMode[] = [
+    "from_deadline",
+    "within_relative_range",
+  ];
+  const anchorApplies = anchorSelectableModes.includes(timingMode);
+  const effectiveTimingAnchorEventId = anchorApplies
+    ? (timingAnchorEventId ?? undefined)
+    : undefined;
+
   useEffect(() => {
     if (timingMode === "within_relative_range") {
       if (relativeRangeStartHours < relativeRangeEndHours) {
@@ -234,6 +265,14 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
   const [selectedTagId, setSelectedTagId] = useState<string | null>(
     initialValues.reminderGroup?.userTag?.id ?? null,
   );
+
+  // Group-leads nudges are about *other* users' tasks, so "already notified
+  // for this event" doesn't apply to them (the server rejects the combination).
+  const excludePreviouslyNotifiedApplies =
+    cohortType !== "group_leads_with_uncompleted";
+  const effectiveExcludePreviouslyNotified =
+    excludePreviouslyNotifiedApplies && excludePreviouslyNotified;
+
   const [localError, setLocalError] = useState<string | null>(null);
   const initialSnapshotRef = useRef<string>("");
 
@@ -283,6 +322,11 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           reminder?.relative_range_start_seconds_from_deadline ?? null,
         relativeRangeEndSecondsFromDeadline:
           reminder?.relative_range_end_seconds_from_deadline ?? null,
+        timingAnchorEventId:
+          reminder?.timingAnchorEvent?.id ??
+          reminder?.timingAnchorEventId ??
+          null,
+        excludePreviouslyNotified: reminder?.excludePreviouslyNotified ?? null,
       },
       selectedUsers: userIds,
     });
@@ -344,6 +388,8 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
             ? relativeRangeEndSeconds
             : undefined,
         excludeOptionalActions,
+        excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
+        timingAnchorEventId: effectiveTimingAnchorEventId,
       },
     }).then((response) => {
       if (response.error) {
@@ -369,6 +415,8 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     pushMessage,
     timingMode,
     excludeOptionalActions,
+    effectiveExcludePreviouslyNotified,
+    effectiveTimingAnchorEventId,
     sendAtAbsolute,
     sendAtHoursFromDeadline,
     sendRangeStart,
@@ -578,6 +626,14 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     setExcludeOptionalActions(
       initialValues.reminderGroup?.excludeOptionalActions ?? false,
     );
+    setExcludePreviouslyNotified(
+      initialValues.reminderGroup?.excludePreviouslyNotified ?? false,
+    );
+    setTimingAnchorEventId(
+      nextGroup?.timingAnchorEvent?.id ??
+        nextGroup?.timingAnchorEventId ??
+        null,
+    );
     setLocalError(null);
   }, [
     computedInitialSnapshot,
@@ -717,6 +773,8 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           : undefined,
       useSuiteTaskCount,
       excludeOptionalActions,
+      excludePreviouslyNotified: effectiveExcludePreviouslyNotified,
+      timingAnchorEventId: effectiveTimingAnchorEventId,
     } satisfies ActionReminderGroupFormSubmitPayload;
 
     console.log(payload);
@@ -767,6 +825,55 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
     setPreviewingPush2Task(!previewingPush2Task);
     setPreviewingPushTask(false);
   };
+
+  // A set anchor that is no longer among the candidates (the dependency was
+  // removed from the cohort expression, or the fetch failed) would otherwise
+  // be submitted invisibly and rejected by the server with no way to clear
+  // it — always show the selector then, with an explicit stale option.
+  const anchorIsStale =
+    timingAnchorEventId !== null &&
+    !anchorCandidates.some(
+      (candidate) => candidate.deadlineEventId === timingAnchorEventId,
+    );
+  const anchorSelector = anchorApplies &&
+    (anchorCandidates.length > 0 || timingAnchorEventId !== null) && (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Relative to
+        </label>
+        <select
+          value={timingAnchorEventId ?? ""}
+          onChange={(event) =>
+            setTimingAnchorEventId(
+              event.target.value ? Number(event.target.value) : null,
+            )
+          }
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+        >
+          <option value="">This action&apos;s deadline</option>
+          {anchorIsStale && (
+            <option value={timingAnchorEventId}>
+              Current anchor (no longer a dependency deadline)
+            </option>
+          )}
+          {anchorCandidates.map((candidate) => (
+            <option
+              key={candidate.deadlineEventId}
+              value={candidate.deadlineEventId}
+            >
+              {candidate.actionName} deadline —{" "}
+              {new Date(candidate.deadlineEventDate).toLocaleString()}
+            </option>
+          ))}
+        </select>
+        {anchorIsStale && (
+          <p className="text-xs text-amber-600 mt-1">
+            The current anchor is no longer a dependency deadline of this
+            action; saving with it will fail. Pick another option.
+          </p>
+        )}
+      </div>
+    );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 w-full">
@@ -845,20 +952,23 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
       )}
 
       {timingMode === "from_deadline" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            hours to deadline
-          </label>
-          <input
-            type="number"
-            value={sendAtHoursFromDeadline}
-            onChange={(event) => {
-              const value = event.target.value;
-              setSendAtHoursFromDeadline(value === "" ? NaN : Number(value));
-            }}
-            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-          />
-        </div>
+        <>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              hours to deadline
+            </label>
+            <input
+              type="number"
+              value={sendAtHoursFromDeadline}
+              onChange={(event) => {
+                const value = event.target.value;
+                setSendAtHoursFromDeadline(value === "" ? NaN : Number(value));
+              }}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            />
+          </div>
+          {anchorSelector}
+        </>
       )}
 
       {timingMode === "within_range" && (
@@ -890,6 +1000,9 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
 
       {timingMode === "within_relative_range" && (
         <div className="grid gap-4 md:grid-cols-2">
+          {anchorSelector && (
+            <div className="md:col-span-2">{anchorSelector}</div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Window starts (hours before deadline)
@@ -1155,6 +1268,13 @@ const ActionReminderGroupForm: React.FC<ActionReminderFormProps> = ({
           checked={excludeOptionalActions}
           onChange={(checked) => setExcludeOptionalActions(checked)}
         />
+        {excludePreviouslyNotifiedApplies && (
+          <LargeCheckbox
+            label="Only notify about tasks not yet notified (skip users with nothing new)"
+            checked={excludePreviouslyNotified}
+            onChange={(checked) => setExcludePreviouslyNotified(checked)}
+          />
+        )}
       </div>
 
       <div

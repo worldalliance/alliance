@@ -4,6 +4,7 @@ import {
   actionsPreviewEmailHtmlAdmin,
   actionsPreviewTextMessageAdmin,
   PreviewNotificationPlanDto,
+  ReminderAnchorCandidateDto,
   ReminderGroupDto,
   TagDto,
 } from "@alliance/shared/client";
@@ -37,6 +38,7 @@ interface ActionReminderCardProps {
   handleEditGroupStart: (groupId: number) => void;
   selectedEventId: number | null;
   memberEvents: ActionEventDto[];
+  anchorCandidates: ReminderAnchorCandidateDto[];
   users: UserSelectUser[];
   loadingUsers: boolean;
   userTags: TagDto[];
@@ -64,6 +66,7 @@ const ActionReminderCard = ({
   handleDeleteGroup,
   selectedEventId,
   memberEvents,
+  anchorCandidates,
   users,
   loadingUsers,
   userTags,
@@ -232,6 +235,22 @@ const ActionReminderCard = ({
             {groupSchedule.secondary && (
               <p className="text-xs text-gray-500">{groupSchedule.secondary}</p>
             )}
+            {group.timingAnchorEvent && (
+              <p className="text-xs text-gray-500">
+                Anchored to:{" "}
+                {anchorCandidates.find(
+                  (candidate) =>
+                    candidate.deadlineEventId === group.timingAnchorEvent?.id,
+                )?.actionName ?? "dependency action"}{" "}
+                deadline
+              </p>
+            )}
+            {group.excludePreviouslyNotified && (
+              <p className="text-xs text-gray-500">
+                Only covers tasks the user hasn&apos;t been notified about;
+                skips users with nothing new
+              </p>
+            )}
             {group.allSent && (
               <p className="text-green">All reminders processed</p>
             )}
@@ -275,6 +294,7 @@ const ActionReminderCard = ({
           {editing && selectedEventId !== null ? (
             <ActionReminderGroupForm
               memberEvents={memberEvents}
+              anchorCandidates={anchorCandidates}
               users={users}
               loadingUsers={loadingUsers}
               userTags={userTags}

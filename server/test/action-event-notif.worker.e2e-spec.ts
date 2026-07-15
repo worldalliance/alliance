@@ -1,10 +1,13 @@
 import { ActionActivityType } from '@alliance/common/actionActivity';
 import { Temporal } from '@js-temporal/polyfill';
+import { ActionsService } from 'src/actions/actions.service';
+import { CreateReminderGroupDto } from 'src/actions/dto/action.dto';
 import { ActionActivity } from 'src/actions/entities/action-activity.entity';
 import {
   ActionEvent,
   ActionStatus,
 } from 'src/actions/entities/action-event.entity';
+import { ActionFormVariant } from 'src/actions/entities/action-form-variant.entity';
 import { ActionSuite } from 'src/actions/entities/action-suite.entity';
 import { Action, ActionTaskType } from 'src/actions/entities/action.entity';
 import {
@@ -14,6 +17,7 @@ import {
 } from 'src/actions/entities/reminder-group.entity';
 import { Community } from 'src/community/entities/community.entity';
 import { ActionEventNotifWorker } from 'src/notifs/action-event-notif.worker';
+import { ActionEventReminderService } from 'src/notifs/action-event-reminder.service';
 import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
 import { Form } from 'src/tasks/entities/form.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
@@ -983,6 +987,1019 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs).toHaveLength(1);
     expect(notifs[0].user.id).toBe(user.id);
     expect(notifs[0].mms).toBeTruthy();
+  });
+
+  it('sends at a dependency action deadline when timingAnchorEvent is set, even with the own deadline far away', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(
+      user.id,
+      new Date(now - 5 * 24 * 60 * 60 * 1000),
+    );
+
+    // dependency action A whose deadline just passed
+    const { action: dependencyAction } = await createActionWithMemberEvent({
+      name: uniqueName('dependency-action'),
+      eventDate: new Date(now - 3 * 24 * 60 * 60 * 1000),
+    });
+    const dependencyDeadline = await eventRepo.save(
+      eventRepo.create({
+        title: 'Dependency deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now - 5 * 60 * 1000),
+        action: dependencyAction,
+      }),
+    );
+
+    // action B with its own deadline far outside the send window
+    const { action, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('anchored-action'),
+      eventDate: new Date(now - 2 * 60 * 60 * 1000),
+    });
+    const ownDeadline = await eventRepo.save(
+      eventRepo.create({
+        title: 'Own deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 10 * 24 * 60 * 60 * 1000),
+        action,
+      }),
+    );
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.FromDeadline,
+      ReminderCohortType.AllUncompleted,
+      {
+        deadlineEvent: ownDeadline,
+        timingAnchorEvent: dependencyDeadline,
+        sendAtSecondsFromDeadline: 0,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(user.id);
+  });
+
+  it('anchors relative range windows to timingAnchorEvent when set', async () => {
+    const now = Date.now();
+    const sendTime = new Date(now - 5 * 60 * 1000);
+
+    const user = await getPrimaryUser();
+    const preferredTime = Temporal.Instant.from(sendTime.toISOString())
+      .toZonedDateTimeISO('UTC')
+      .toPlainTime();
+
+    await setUserContractSigned(
+      user.id,
+      new Date(now - 7 * 24 * 60 * 60 * 1000),
+    );
+    await userRepo.update(user.id, {
+      timeZone: 'UTC',
+      preferredReminderTime: preferredTime,
+    });
+
+    const { action: dependencyAction } = await createActionWithMemberEvent({
+      name: uniqueName('anchor-range-dependency'),
+      eventDate: new Date(now - 3 * 24 * 60 * 60 * 1000),
+    });
+
+    const offsetSeconds = 2 * 60 * 60;
+    const anchorEvent = await eventRepo.save(
+      eventRepo.create({
+        title: 'Anchor deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(sendTime.getTime() + offsetSeconds * 1000),
+        action: dependencyAction,
+      }),
+    );
+
+    const { action, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('anchor-range-action'),
+      eventDate: new Date(now - 6 * 60 * 60 * 1000),
+    });
+    const ownDeadline = await eventRepo.save(
+      eventRepo.create({
+        title: 'Own faraway deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 10 * 24 * 60 * 60 * 1000),
+        action,
+      }),
+    );
+
+    const reminderGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.WithinRelativeRange,
+      ReminderCohortType.AllUncompleted,
+      {
+        deadlineEvent: ownDeadline,
+        timingAnchorEvent: anchorEvent,
+        relative_range_start_seconds_from_deadline: offsetSeconds,
+        relative_range_end_seconds_from_deadline: offsetSeconds,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(reminderGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(user.id);
+  });
+
+  it('skips users already notified via any sibling group when excludePreviouslyNotified is set', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('exclude-notified-action'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+
+    // sibling group that already notified the user (outside the send window)
+    const siblingGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        allSent: true,
+      },
+    );
+    await notifRepo.save(
+      notifRepo.create({
+        user,
+        reminderGroup: siblingGroup,
+        memberActionEvent: memberEvent,
+        sent: true,
+        idempotency_key: `reminder:${siblingGroup.id}:${user.id}`,
+      }),
+    );
+
+    const catchUpGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        excludePreviouslyNotified: true,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(catchUpGroup);
+    expect(notifs).toHaveLength(0);
+  });
+
+  it('still skips previously notified users after the notifying group is deleted', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('deleted-group-action'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+
+    const siblingGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        allSent: true,
+      },
+    );
+    await notifRepo.save(
+      notifRepo.create({
+        user,
+        reminderGroup: siblingGroup,
+        memberActionEvent: memberEvent,
+        sent: true,
+        idempotency_key: `reminder:${siblingGroup.id}:${user.id}`,
+      }),
+    );
+    // deleting the group orphans the notif's reminderGroup FK (SET NULL); the
+    // denormalized memberActionEvent must keep the user excluded
+    await reminderGroupRepo.delete(siblingGroup.id);
+
+    const catchUpGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        excludePreviouslyNotified: true,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(catchUpGroup);
+    expect(notifs).toHaveLength(0);
+  });
+
+  it('skips the catch-up when a sibling group sends in the same dispatch cycle', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('same-cycle-action'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+
+    // both groups fall due in the same dispatch window; no notif exists yet
+    const siblingGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      { sendAtAbsolute: new Date(now - 10 * 60 * 1000) },
+    );
+    const catchUpGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        excludePreviouslyNotified: true,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const siblingNotifs = await fetchNotifsForGroup(siblingGroup);
+    expect(siblingNotifs).toHaveLength(1);
+    expect(siblingNotifs[0].user.id).toBe(user.id);
+    const catchUpNotifs = await fetchNotifsForGroup(catchUpGroup);
+    expect(catchUpNotifs).toHaveLength(0);
+  });
+
+  it('dispatches the sibling before the catch-up when both are due at the same instant', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('same-instant-action'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+
+    // identical send times, catch-up created first (lower id) so that without
+    // the deterministic tie-break it would be dispatched first and double-send
+    const sendAt = new Date(now - 5 * 60 * 1000);
+    const catchUpGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: sendAt,
+        excludePreviouslyNotified: true,
+      },
+    );
+    const siblingGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      { sendAtAbsolute: sendAt },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const siblingNotifs = await fetchNotifsForGroup(siblingGroup);
+    expect(siblingNotifs).toHaveLength(1);
+    expect(siblingNotifs[0].user.id).toBe(user.id);
+    const catchUpNotifs = await fetchNotifsForGroup(catchUpGroup);
+    expect(catchUpNotifs).toHaveLength(0);
+  });
+
+  it('still sends the catch-up when the sibling plan in the same cycle never actually sent', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('failed-sibling-action'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+
+    // sibling is due in the same window, but a previous attempt already
+    // created its notif row without sending (sent = false); its idempotency
+    // key makes every retry skip, so it must not suppress the catch-up
+    const siblingGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      { sendAtAbsolute: new Date(now - 10 * 60 * 1000) },
+    );
+    await notifRepo.save(
+      notifRepo.create({
+        user,
+        reminderGroup: siblingGroup,
+        memberActionEvent: memberEvent,
+        sent: false,
+        idempotency_key: `reminder:${siblingGroup.id}:${user.id}`,
+      }),
+    );
+
+    const catchUpGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        excludePreviouslyNotified: true,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const catchUpNotifs = await fetchNotifsForGroup(catchUpGroup);
+    expect(catchUpNotifs).toHaveLength(1);
+    expect(catchUpNotifs[0].user.id).toBe(user.id);
+  });
+
+  it('does not count a group-leads nudge as personally notifying the leader', async () => {
+    const now = Date.now();
+
+    const createSignedUser = async (
+      label: string,
+      phoneSuffix: string,
+      overrides: Partial<User> = {},
+    ) =>
+      userRepo.save(
+        userRepo.create({
+          email: `${uniqueName(
+            `catchup-${label.toLowerCase().replace(/\s+/g, '-')}`,
+          )}@example.com`,
+          password: 'pass',
+          name: label,
+          tags: [ctx.defaultTag],
+          contractEvents: [
+            {
+              type: ContractEventType.SIGNED,
+              date: new Date(now - 7 * 24 * 60 * 60 * 1000),
+              automatic: false,
+              contractId: ctx.defaultContractId,
+            } as ContractEvent,
+          ],
+          textNotifsForActions: true,
+          phoneNumber: `+1555555${phoneSuffix}`,
+          phoneNumberValidated: true,
+          emailNotifsForActions: false,
+          turnedOffAllNotifs: false,
+          ...overrides,
+        }),
+      );
+
+    const leader = await createSignedUser('Leader Also Member', '6301', {
+      remindAboutUncompletedGroupMembers: true,
+    });
+    const member = await createSignedUser('Member Behind', '6302', {
+      textNotifsForActions: false,
+    });
+    const community = await communityRepo.save(
+      communityRepo.create({
+        name: uniqueName('community-catch-up'),
+        description: 'Community for catch-up exclusion',
+        leaders: [leader],
+        users: [leader, member],
+      }),
+    );
+
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('group-leads-catch-up-action'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+
+    const groupLeadsGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.GroupLeadsWithUncompleted,
+      { sendAtAbsolute: new Date(now - 10 * 60 * 1000) },
+    );
+    const catchUpGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        excludePreviouslyNotified: true,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    // the leader got the nudge, but it carries no event stamp...
+    const nudgeNotif = await notifRepo.findOneOrFail({
+      where: { reminderGroup: { id: groupLeadsGroup.id } },
+      relations: { user: true, memberActionEvent: true },
+    });
+    expect(nudgeNotif.user.id).toBe(leader.id);
+    expect(nudgeNotif.memberActionEvent ?? null).toBeNull();
+
+    // ...so the leader still gets their own catch-up notification
+    const catchUpNotifs = await fetchNotifsForGroup(catchUpGroup);
+    expect(catchUpNotifs.map((notif) => notif.user.id)).toContain(leader.id);
+
+    await userRepo.delete([leader.id, member.id]);
+    await communityRepo.delete([community.id]);
+  });
+
+  it('still sends when the prior sent notif belongs to a different event and excludePreviouslyNotified is set', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { memberEvent: otherEvent } = await createActionWithMemberEvent({
+      name: uniqueName('other-event-action'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+    const otherGroup = await createReminderGroup(
+      otherEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        allSent: true,
+      },
+    );
+    await notifRepo.save(
+      notifRepo.create({
+        user,
+        reminderGroup: otherGroup,
+        memberActionEvent: otherEvent,
+        sent: true,
+        idempotency_key: `reminder:${otherGroup.id}:${user.id}`,
+      }),
+    );
+
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('unrelated-notified-action'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+    const catchUpGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        excludePreviouslyNotified: true,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(catchUpGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(user.id);
+  });
+
+  it('does not skip sibling-group-notified users when excludePreviouslyNotified is false', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const { memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('flag-off-action'),
+      eventDate: new Date(now - 60 * 60 * 1000),
+    });
+
+    const siblingGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        allSent: true,
+      },
+    );
+    await notifRepo.save(
+      notifRepo.create({
+        user,
+        reminderGroup: siblingGroup,
+        memberActionEvent: memberEvent,
+        sent: true,
+        idempotency_key: `reminder:${siblingGroup.id}:${user.id}`,
+      }),
+    );
+
+    const secondGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        excludePreviouslyNotified: false,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const notifs = await fetchNotifsForGroup(secondGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(user.id);
+  });
+
+  it('derives reminder anchor candidates from form-response and completed-action cohort conditions', async () => {
+    const now = Date.now();
+    const actionsService = ctx.app.get(ActionsService);
+
+    // dependency A: owns the form (taskFormId) and has a deadline
+    const { form } = await createFormWithSnapshot(ctx.dataSource, {
+      title: uniqueName('dependency-form'),
+      schema: { fields: [] },
+    });
+    const { action: formAction } = await createActionWithMemberEvent({
+      name: uniqueName('form-owner-action'),
+      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+    });
+    await actionRepo.update(formAction.id, { taskFormId: form.id });
+    const formActionDeadline = await eventRepo.save(
+      eventRepo.create({
+        title: 'Form action deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 24 * 60 * 60 * 1000),
+        action: formAction,
+      }),
+    );
+
+    // dependency B: referenced via CompletedAction, has a deadline
+    const { action: completedDep } = await createActionWithMemberEvent({
+      name: uniqueName('completed-dependency'),
+      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+    });
+    const completedDepDeadline = await eventRepo.save(
+      eventRepo.create({
+        title: 'Completed dependency deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 2 * 24 * 60 * 60 * 1000),
+        action: completedDep,
+      }),
+    );
+
+    // dependency C: referenced but has no deadline event → dropped
+    const { action: noDeadlineDep } = await createActionWithMemberEvent({
+      name: uniqueName('no-deadline-dependency'),
+      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+    });
+
+    // dependency D: owns its form via an action_form_variant, has a deadline
+    const { form: variantForm } = await createFormWithSnapshot(ctx.dataSource, {
+      title: uniqueName('variant-form'),
+      schema: { fields: [] },
+    });
+    const { action: variantAction } = await createActionWithMemberEvent({
+      name: uniqueName('variant-owner-action'),
+      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+    });
+    const variantRepo = ctx.dataSource.getRepository(ActionFormVariant);
+    await variantRepo.save(
+      variantRepo.create({
+        actionId: variantAction.id,
+        formId: variantForm.id,
+        name: 'Variant A',
+        splitValue: 0.5,
+      }),
+    );
+    const variantActionDeadline = await eventRepo.save(
+      eventRepo.create({
+        title: 'Variant action deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 3 * 24 * 60 * 60 * 1000),
+        action: variantAction,
+      }),
+    );
+
+    const { action: dependentAction, memberEvent } =
+      await createActionWithMemberEvent({
+        name: uniqueName('dependent-action'),
+        eventDate: new Date(now - 60 * 60 * 1000),
+      });
+    await actionRepo.update(dependentAction.id, {
+      cohortExpression: {
+        op: 'AND',
+        children: [
+          { type: 'FormFieldValue', formId: form.id, fieldId: 'q1' },
+          { type: 'FormFieldValue', formId: variantForm.id, fieldId: 'q1' },
+          { type: 'CompletedAction', actionId: completedDep.id },
+          { type: 'CompletedAction', actionId: noDeadlineDep.id },
+        ],
+      },
+    });
+
+    const candidates = await actionsService.findReminderAnchorCandidates(
+      memberEvent.id,
+    );
+
+    const byActionId = new Map(candidates.map((c) => [c.actionId, c]));
+    expect(byActionId.size).toBe(3);
+    expect(byActionId.get(formAction.id)?.deadlineEventId).toBe(
+      formActionDeadline.id,
+    );
+    expect(byActionId.get(variantAction.id)?.deadlineEventId).toBe(
+      variantActionDeadline.id,
+    );
+    expect(byActionId.get(completedDep.id)?.deadlineEventId).toBe(
+      completedDepDeadline.id,
+    );
+    expect(byActionId.has(noDeadlineDep.id)).toBe(false);
+    expect(byActionId.has(dependentAction.id)).toBe(false);
+  });
+
+  it('only accepts a timing anchor that is a dependency deadline of the action', async () => {
+    const now = Date.now();
+    const reminderService = ctx.app.get(ActionEventReminderService);
+
+    const { action: dependencyAction } = await createActionWithMemberEvent({
+      name: uniqueName('anchor-validate-dependency'),
+      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+    });
+    const dependencyDeadline = await eventRepo.save(
+      eventRepo.create({
+        title: 'Dependency deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 24 * 60 * 60 * 1000),
+        action: dependencyAction,
+      }),
+    );
+
+    // real deadline event, but of an action the cohort doesn't depend on
+    const { action: unrelatedAction } = await createActionWithMemberEvent({
+      name: uniqueName('anchor-validate-unrelated'),
+      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+    });
+    const unrelatedDeadline = await eventRepo.save(
+      eventRepo.create({
+        title: 'Unrelated deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 24 * 60 * 60 * 1000),
+        action: unrelatedAction,
+      }),
+    );
+
+    const { action: dependentAction, memberEvent } =
+      await createActionWithMemberEvent({
+        name: uniqueName('anchor-validate-action'),
+        eventDate: new Date(now - 60 * 60 * 1000),
+      });
+    await actionRepo.update(dependentAction.id, {
+      cohortExpression: {
+        type: 'CompletedAction',
+        actionId: dependencyAction.id,
+      },
+    });
+
+    const baseDto = {
+      name: 'Anchor validation group',
+      timingMode: ReminderGroupTimingMode.FromDeadline,
+      cohortType: ReminderCohortType.AllUncompleted,
+      sendAtSecondsFromDeadline: 0,
+      emailMessage: 'msg',
+      emailSubject: 'subject',
+      textMessage: 'text',
+      pushMessage: 'push',
+      useSuiteTaskCount: false,
+      excludeOptionalActions: false,
+      excludePreviouslyNotified: true,
+    };
+
+    await expect(
+      reminderService.createReminderGroup(memberEvent.id, {
+        ...baseDto,
+        timingAnchorEventId: unrelatedDeadline.id,
+      } as CreateReminderGroupDto),
+    ).rejects.toThrow(
+      'Timing anchor event must be the deadline of a cohort dependency of the action or its suite',
+    );
+
+    const created = await reminderService.createReminderGroup(memberEvent.id, {
+      ...baseDto,
+      timingAnchorEventId: dependencyDeadline.id,
+    } as CreateReminderGroupDto);
+    expect(created.timingAnchorEvent?.id).toBe(dependencyDeadline.id);
+
+    // updating without timingAnchorEventId clears the anchor in the database
+    await reminderService.updateReminderGroup(created.id, {
+      ...baseDto,
+    } as CreateReminderGroupDto);
+    const reloaded = await reminderGroupRepo.findOneOrFail({
+      where: { id: created.id },
+      relations: { timingAnchorEvent: true },
+    });
+    expect(reloaded.timingAnchorEvent).toBeNull();
+  });
+
+  it('only notifies about the suite tasks the user has not been notified about yet', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const suite = await actionSuiteRepo.save(
+      actionSuiteRepo.create({ name: uniqueName('catch-up-suite') }),
+    );
+    const eventDate = new Date(now - 60 * 60 * 1000);
+    const { action: actionA, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('catch-up-task-a'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+    const { action: actionB } = await createActionWithMemberEvent({
+      name: uniqueName('catch-up-task-b'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+    const { action: actionC } = await createActionWithMemberEvent({
+      name: uniqueName('catch-up-task-c'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+    const suiteWithActions = await actionSuiteRepo.findOneOrFail({
+      where: { id: suite.id },
+      relations: { actions: true },
+    });
+
+    // the launch announcement covered tasks a and b only (the user joined
+    // c's cohort after it went out)
+    const launchGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        allSent: true,
+        actionSuite: suiteWithActions,
+      },
+    );
+    await notifRepo.save(
+      notifRepo.create({
+        user,
+        reminderGroup: launchGroup,
+        memberActionEvent: memberEvent,
+        notifiedActionIds: [actionA.id, actionB.id],
+        sent: true,
+        idempotency_key: `reminder:${launchGroup.id}:${user.id}`,
+      }),
+    );
+
+    const catchUpGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        actionSuite: suiteWithActions,
+        useSuiteTaskCount: true,
+        excludePreviouslyNotified: true,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    // the user is notified (c is news to them), but the message only covers c
+    const notifs = await fetchNotifsForGroup(catchUpGroup);
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].user.id).toBe(user.id);
+    expect(notifs[0].notifiedActionIds).toEqual([actionC.id]);
+  });
+
+  it('previews a suite catch-up with the full suite scope, not just the member action', async () => {
+    const now = Date.now();
+    const actionsService = ctx.app.get(ActionsService);
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const suite = await actionSuiteRepo.save(
+      actionSuiteRepo.create({ name: uniqueName('preview-scope-suite') }),
+    );
+    const eventDate = new Date(now - 60 * 60 * 1000);
+    const { action: actionA, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('preview-scope-task-a'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+    const { action: actionB } = await createActionWithMemberEvent({
+      name: uniqueName('preview-scope-task-b'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+
+    // launch covered the member action only; b is still news to the user, so
+    // a suite-scoped catch-up preview must list them (a member-action-only
+    // scope would treat them as fully notified and show no recipients)
+    const launchGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 24 * 60 * 60 * 1000),
+        allSent: true,
+      },
+    );
+    const launchNotif = await notifRepo.save(
+      notifRepo.create({
+        user,
+        reminderGroup: launchGroup,
+        memberActionEvent: memberEvent,
+        notifiedActionIds: [actionA.id],
+        sent: true,
+        idempotency_key: `reminder:${launchGroup.id}:${user.id}`,
+      }),
+    );
+
+    const catchUpDto = {
+      name: 'Tentative suite catch-up',
+      timingMode: ReminderGroupTimingMode.Absolute,
+      sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+      cohortType: ReminderCohortType.AllUncompleted,
+      emailMessage: 'msg',
+      emailSubject: 'subject',
+      textMessage: 'text',
+      pushMessage: 'push',
+      suiteId: suite.id,
+      useSuiteTaskCount: true,
+      excludeOptionalActions: false,
+      excludePreviouslyNotified: true,
+    } as CreateReminderGroupDto;
+
+    const plans = await actionsService.tentativePlansForGroup(
+      memberEvent.id,
+      catchUpDto,
+    );
+    expect(plans.map((plan) => plan.user.id)).toContain(user.id);
+
+    // once the whole suite scope is covered, the same preview excludes them
+    await notifRepo.update(launchNotif.id, {
+      notifiedActionIds: [actionA.id, actionB.id],
+    });
+    const plansAfterFullCoverage = await actionsService.tentativePlansForGroup(
+      memberEvent.id,
+      catchUpDto,
+    );
+    expect(plansAfterFullCoverage.map((plan) => plan.user.id)).not.toContain(
+      user.id,
+    );
+  });
+
+  it('records only in-scope tasks, so a targeted reminder does not suppress a later catch-up', async () => {
+    const now = Date.now();
+    const user = await getPrimaryUser();
+    await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
+
+    const suite = await actionSuiteRepo.save(
+      actionSuiteRepo.create({ name: uniqueName('scope-suite') }),
+    );
+    const eventDate = new Date(now - 60 * 60 * 1000);
+    const { action: actionA, memberEvent } = await createActionWithMemberEvent({
+      name: uniqueName('scope-task-a'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+    const { action: actionB } = await createActionWithMemberEvent({
+      name: uniqueName('scope-task-b'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+    // uncompleted task outside the suite: it is on the user's global task
+    // list, but never in scope for groups on this event
+    await createActionWithMemberEvent({
+      name: uniqueName('scope-unrelated'),
+      eventDate,
+    });
+    const suiteWithActions = await actionSuiteRepo.findOneOrFail({
+      where: { id: suite.id },
+      relations: { actions: true },
+    });
+
+    // targeted reminder about this action only: without the suite task count
+    // its task list is the user's global one (a, b, and the unrelated task),
+    // but its covered-task record must stay within its single-action scope
+    const targetedGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 10 * 60 * 1000),
+        useSuiteTaskCount: false,
+      },
+    );
+    const catchUpGroup = await createReminderGroup(
+      memberEvent,
+      ReminderGroupTimingMode.Absolute,
+      ReminderCohortType.AllUncompleted,
+      {
+        sendAtAbsolute: new Date(now - 5 * 60 * 1000),
+        actionSuite: suiteWithActions,
+        useSuiteTaskCount: true,
+        excludePreviouslyNotified: true,
+      },
+    );
+
+    await worker.dispatchDueNotifs();
+
+    const targetedNotifs = await fetchNotifsForGroup(targetedGroup);
+    expect(targetedNotifs).toHaveLength(1);
+    expect(targetedNotifs[0].notifiedActionIds).toEqual([actionA.id]);
+
+    // b was never mentioned by the targeted reminder, so the catch-up in the
+    // same cycle still fires for it (and covers only b)
+    const catchUpNotifs = await fetchNotifsForGroup(catchUpGroup);
+    expect(catchUpNotifs).toHaveLength(1);
+    expect(catchUpNotifs[0].user.id).toBe(user.id);
+    expect(catchUpNotifs[0].notifiedActionIds).toEqual([actionB.id]);
+  });
+
+  it('derives anchor candidates from every suite action and never from actions inside the suite', async () => {
+    const now = Date.now();
+    const actionsService = ctx.app.get(ActionsService);
+
+    // external dependency with a deadline
+    const { action: externalDep } = await createActionWithMemberEvent({
+      name: uniqueName('suite-external-dep'),
+      eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
+    });
+    const externalDepDeadline = await eventRepo.save(
+      eventRepo.create({
+        title: 'External dependency deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 24 * 60 * 60 * 1000),
+        action: externalDep,
+      }),
+    );
+
+    const suite = await actionSuiteRepo.save(
+      actionSuiteRepo.create({ name: uniqueName('anchor-suite') }),
+    );
+    const eventDate = new Date(now - 60 * 60 * 1000);
+    const { action: firstAction, memberEvent } =
+      await createActionWithMemberEvent({
+        name: uniqueName('anchor-suite-first'),
+        eventDate,
+        suite,
+        suiteManaged: true,
+      });
+    const { action: secondAction } = await createActionWithMemberEvent({
+      name: uniqueName('anchor-suite-second'),
+      eventDate,
+      suite,
+      suiteManaged: true,
+    });
+    // give the in-suite dependency a deadline so its exclusion is meaningful
+    await eventRepo.save(
+      eventRepo.create({
+        title: 'First action deadline',
+        description: 'desc',
+        newStatus: ActionStatus.Resolution,
+        date: new Date(now + 24 * 60 * 60 * 1000),
+        action: firstAction,
+      }),
+    );
+    // only the *sibling* suite action references the dependencies; the tab's
+    // own action keeps its plain tag cohort
+    await actionRepo.update(secondAction.id, {
+      cohortExpression: {
+        op: 'AND',
+        children: [
+          { type: 'CompletedAction', actionId: externalDep.id },
+          { type: 'CompletedAction', actionId: firstAction.id },
+        ],
+      },
+    });
+
+    const candidates = await actionsService.findReminderAnchorCandidates(
+      memberEvent.id,
+    );
+
+    const candidateActionIds = candidates.map(
+      (candidate) => candidate.actionId,
+    );
+    expect(candidateActionIds).toContain(externalDep.id);
+    expect(candidateActionIds).not.toContain(firstAction.id);
+    expect(candidateActionIds).not.toContain(secondAction.id);
+    expect(
+      candidates.find((candidate) => candidate.actionId === externalDep.id)
+        ?.deadlineEventId,
+    ).toBe(externalDepDeadline.id);
   });
 
   it('sends suite reminders to users missing any suite actions', async () => {

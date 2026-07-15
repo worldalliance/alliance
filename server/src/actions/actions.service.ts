@@ -34,6 +34,7 @@ import { ForumService } from 'src/forum/forum.service';
 import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
 import {
   ActionEventReminderService,
+  assertExcludePreviouslyNotifiedAllowed,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
 } from 'src/notifs/action-event-reminder.service';
 import { PreviewNotificationPlanDto } from 'src/notifs/dto/notification-plan.dto';
@@ -123,6 +124,7 @@ import {
   HomeFeedItem,
   HomeFeedItemDto,
   HomeFeedItemType,
+  ReminderAnchorCandidate,
   SetPriorityDto,
   SuspensionPlan,
   TimelineFeedItemDto,
@@ -2714,6 +2716,7 @@ export class ActionsService {
     eventId: number,
     body: CreateReminderGroupDto,
   ): Promise<PreviewNotificationPlanDto[]> {
+    assertExcludePreviouslyNotifiedAllowed(body);
     const event = await this.actionEventRepository.findOneOrFail({
       where: { id: eventId },
       relations: {
@@ -2735,8 +2738,28 @@ export class ActionsService {
       users = await this.userService.findByIds(body.userIds);
     }
 
+    // Loaded with actions so the tentative group previews with the real suite
+    // scope: cohort selection and the excludePreviouslyNotified coverage check
+    // (groupTaskScopeActionIds) otherwise fall back to the single member
+    // action and over-exclude — showing no recipients for a suite catch-up
+    // group whose real send would notify.
+    let actionSuite: ActionSuite | undefined = undefined;
+    if (body.suiteId) {
+      actionSuite = await this.actionSuiteRepository.findOneOrFail({
+        where: { id: body.suiteId },
+        relations: { actions: true },
+      });
+    }
+
+    const timingAnchorEvent =
+      await this.actionEventReminderService.resolveTimingAnchorEvent(
+        body,
+        event,
+      );
+
+    const { timingAnchorEventId: _timingAnchorEventId, ...bodyRest } = body;
     const fakeGroup = {
-      ...body,
+      ...bodyRest,
       id: 0,
       name: 'Tentative Reminder Group',
       memberActionEvent: event,
@@ -2744,6 +2767,8 @@ export class ActionsService {
       users,
       userTag: tag,
       allSent: false,
+      actionSuite,
+      timingAnchorEvent,
     } satisfies ReminderGroup;
 
     const withDeadlineEvent =
@@ -2753,9 +2778,12 @@ export class ActionsService {
       fakeGroup.timingMode === ReminderGroupTimingMode.FromDeadline ||
       fakeGroup.timingMode === ReminderGroupTimingMode.WithinRelativeRange
     ) {
-      if (!withDeadlineEvent.deadlineEvent) {
+      if (
+        !withDeadlineEvent.deadlineEvent &&
+        !withDeadlineEvent.timingAnchorEvent
+      ) {
         throw new BadRequestException(
-          'Deadline event is required for relative timing modes',
+          'Deadline or anchor event is required for relative timing modes',
         );
       }
     }
@@ -2788,6 +2816,14 @@ export class ActionsService {
         channels.push(NotificationChannel.Email);
       return new PreviewNotificationPlanDto(plan, channels);
     });
+  }
+
+  async findReminderAnchorCandidates(
+    eventId: number,
+  ): Promise<ReminderAnchorCandidate[]> {
+    return this.actionEventReminderService.findReminderAnchorCandidates(
+      eventId,
+    );
   }
 
   async findUncompletedTasks(

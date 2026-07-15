@@ -3,9 +3,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ActionsService } from 'src/actions/actions.service';
+import {
+  cohortNotifiesRecipientPersonally,
+  ReminderCohortType,
+} from 'src/actions/entities/reminder-group.entity';
 import { EmailStatus } from 'src/mail/mail.entity';
 import { MailService, processKeywordReplacements } from 'src/mail/mail.service';
 import { MmsService } from 'src/mms/mms.service';
+import { PushService } from 'src/push/push.service';
 import { DataSource, QueryFailedError, type Repository } from 'typeorm';
 import {
   userActionNotifsEnabled_email,
@@ -14,20 +19,24 @@ import {
 } from '../notifs/notifs.service';
 import {
   ActionEventReminderService,
+  groupTaskScopeActionIds,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
+  tasksNotYetNotified,
 } from './action-event-reminder.service';
 import { NotificationPlan } from './dto/notification-plan.dto';
 import {
   ActionEventNotif,
   ActionEventNotifType,
 } from './entities/action-event-notif.entity';
-import { withPgAdvisoryLock } from './lock-utils';
 import { LOCK_KEYS } from './lock-keys';
+import { withPgAdvisoryLock } from './lock-utils';
 import { generateCIDForNotif } from './notif-utils';
-import { PushService } from 'src/push/push.service';
-import { ReminderCohortType } from 'src/actions/entities/reminder-group.entity';
 
-export type UncompletedTaskSummary = { name: string; timeEstimate?: number };
+export type UncompletedTaskSummary = {
+  id: number;
+  name: string;
+  timeEstimate?: number;
+};
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.actionEventNotif;
@@ -132,7 +141,27 @@ export class ActionEventNotifWorker {
   private async processOne(plan: NotificationPlan) {
     const cid = generateCIDForNotif();
 
-    const uncompletedTasks = await this.findUncompletedTasksForPlan(plan);
+    let uncompletedTasks = await this.findUncompletedTasksForPlan(plan);
+
+    if (plan.group.excludePreviouslyNotified) {
+      // Re-derived at send time (not plan time) so a sibling group's send
+      // earlier in this same dispatch cycle — invisible to the plan-time
+      // snapshot — counts too. The user is skipped when their prior notifs
+      // already cover the group's whole task scope, and otherwise the message
+      // only enumerates the tasks they haven't been notified about.
+      const coverage = await this.reminderService.findSentNotifCoverage(
+        plan.user.id,
+        plan.group.memberActionEvent.id,
+      );
+      const scopeNotYetNotified = tasksNotYetNotified(
+        groupTaskScopeActionIds(plan.group).map((id) => ({ id })),
+        coverage,
+      );
+      uncompletedTasks = tasksNotYetNotified(uncompletedTasks, coverage);
+      if (scopeNotYetNotified.length === 0 || uncompletedTasks.length === 0) {
+        return;
+      }
+    }
 
     if (
       uncompletedTasks.length === 0 &&
@@ -143,9 +172,26 @@ export class ActionEventNotifWorker {
 
     const idempotency_key = `reminder:${plan.group.id}:${plan.user.id}`;
 
+    // Group-leads nudges are about *other* users' tasks, so they don't get
+    // the event stamp or covered-task record and never count toward
+    // excludePreviouslyNotified.
+    const personal = cohortNotifiesRecipientPersonally(plan.group.cohortType);
+    // Record only tasks within the group's own scope: without the suite task
+    // count, `uncompletedTasks` spans every suite the user participates in,
+    // and recording those extra ids would make a later catch-up on this event
+    // treat tasks as already-notified that this message may never have
+    // mentioned. Matches the granularity coverage checks consult and the
+    // migration backfill.
+    const scopeActionIds = new Set(groupTaskScopeActionIds(plan.group));
     const plannedNotif = this.actionEventNotifsRepository.create({
       user: plan.user,
       reminderGroup: plan.group,
+      memberActionEvent: personal ? plan.group.memberActionEvent : undefined,
+      notifiedActionIds: personal
+        ? uncompletedTasks
+            .filter((task) => scopeActionIds.has(task.id))
+            .map((task) => task.id)
+        : null,
       sent: false,
       type: ActionEventNotifType.Reminder,
       idempotency_key,

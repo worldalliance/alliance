@@ -3,9 +3,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { Allow, IsDefined, IsOptional } from 'class-validator';
 import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
-import type { Relation } from 'src/utils/Repository';
 import { Tag } from 'src/user/entities/tag.entity';
 import { DEFAULT_TIME_ZONE, User } from 'src/user/entities/user.entity';
+import type { Relation } from 'src/utils/Repository';
 import {
   Check,
   Column,
@@ -32,6 +32,27 @@ export enum ReminderCohortType {
   GroupLeadsWithUncompleted = 'group_leads_with_uncompleted',
   Tag = 'tag',
   Custom = 'custom',
+}
+
+/**
+ * Whether notifs from this cohort personally notify recipients about their own
+ * task on the event, as opposed to nudging them about *other* users (group
+ * leads). Only personal notifs count as "this user was notified about this
+ * event" for `excludePreviouslyNotified`.
+ */
+export function cohortNotifiesRecipientPersonally(
+  cohortType: ReminderCohortType,
+): boolean {
+  switch (cohortType) {
+    case ReminderCohortType.AllUncompleted:
+    case ReminderCohortType.Tag:
+    case ReminderCohortType.Custom:
+      return true;
+    case ReminderCohortType.GroupLeadsWithUncompleted:
+      return false;
+    default:
+      throw new Error(`unknown cohort type: ${cohortType satisfies never}`);
+  }
 }
 
 @Entity()
@@ -179,6 +200,19 @@ export class ReminderGroup {
   @IsOptional()
   deadlineEvent?: Relation<ActionEvent>;
 
+  /**
+   * Overrides `deadlineEvent` as the reference date for the FromDeadline and
+   * WithinRelativeRange timing modes — e.g. to send at a *dependency* action's
+   * deadline, catching users who joined this action's cohort late via a form
+   * response. Read only by send-time computation; `deadlineEvent` keeps its
+   * assignment-window and message-keyword semantics.
+   */
+  @ManyToOne(() => ActionEvent, { nullable: true, onDelete: 'SET NULL' })
+  @ApiPropertyOptional({ type: () => ActionEvent })
+  @Type(() => ActionEvent)
+  @IsOptional()
+  timingAnchorEvent?: Relation<ActionEvent> | null;
+
   @ApiProperty()
   @Column({ type: 'boolean', default: true })
   @IsDefined()
@@ -196,6 +230,18 @@ export class ReminderGroup {
   @IsDefined()
   @Allow()
   excludeOptionalActions: boolean;
+
+  /**
+   * Only tell users about tasks they haven't already been notified about by
+   * a sent notification from any reminder group on the same member-action
+   * event: the message's task list/count is narrowed to the not-yet-notified
+   * tasks, and users with no such tasks are skipped entirely.
+   */
+  @ApiProperty()
+  @Column({ type: 'boolean', default: false })
+  @IsDefined()
+  @Allow()
+  excludePreviouslyNotified: boolean;
 }
 
 export function firstOccurrenceInRange(
@@ -234,18 +280,18 @@ export function getGroupSendTimeForUser(
   user: User,
   group: ReminderGroup,
 ): Date | null {
-  const deadlineEvent = group.deadlineEvent;
+  const referenceEvent = group.timingAnchorEvent ?? group.deadlineEvent;
   switch (group.timingMode) {
     case ReminderGroupTimingMode.Absolute:
       return group.sendAtAbsolute ?? new Date();
     case ReminderGroupTimingMode.FromDeadline:
-      if (!deadlineEvent) {
+      if (!referenceEvent) {
         throw new Error(
-          'Deadline event is required for from_deadline timing mode',
+          'Deadline or anchor event is required for from_deadline timing mode',
         );
       }
       return offsetTimeFromSeconds(
-        deadlineEvent.date,
+        referenceEvent.date,
         group.sendAtSecondsFromDeadline!,
       );
     case ReminderGroupTimingMode.WithinRange:
@@ -258,17 +304,17 @@ export function getGroupSendTimeForUser(
         Temporal.Instant.fromEpochMilliseconds(group.send_range_end!.getTime()),
       );
     case ReminderGroupTimingMode.WithinRelativeRange:
-      if (!deadlineEvent) {
+      if (!referenceEvent) {
         throw new Error(
-          'Deadline event is required for within_relative_range timing mode',
+          'Deadline or anchor event is required for within_relative_range timing mode',
         );
       }
       const start = offsetTimeFromSeconds(
-        deadlineEvent.date,
+        referenceEvent.date,
         group.relative_range_start_seconds_from_deadline!,
       );
       const end = offsetTimeFromSeconds(
-        deadlineEvent.date,
+        referenceEvent.date,
         group.relative_range_end_seconds_from_deadline!,
       );
       return firstOccurrenceInRange(
