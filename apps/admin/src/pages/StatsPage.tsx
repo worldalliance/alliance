@@ -346,6 +346,8 @@ const StatsPage: React.FC = () => {
   const [missedActions, setMissedActions] = useState<unknown>(null);
   const [missedActionsLoading, setMissedActionsLoading] =
     useState<boolean>(false);
+  const [missedActionsRequested, setMissedActionsRequested] =
+    useState<boolean>(false);
   const [dailyStatsTableOpen, setDailyStatsTableOpen] = useState(false);
   const [actionStatsTableOpen, setActionStatsTableOpen] = useState(false);
   const [weekRange, setWeekRange] = useState({ min: 0, max: 20 });
@@ -541,10 +543,6 @@ const StatsPage: React.FC = () => {
     void loadPlatformTenureCohort(weeks);
   }, [loadPlatformTenureCohort, platformTenureWeeksInput]);
 
-  useEffect(() => {
-    void loadPlatformTenureCohort(4);
-  }, [loadPlatformTenureCohort]);
-
   const loadMemberReliabilityWindow = useCallback(async (weeks: number) => {
     setMemberReliabilityLoading(true);
     setMemberReliabilityError(null);
@@ -570,10 +568,6 @@ const StatsPage: React.FC = () => {
     void loadMemberReliabilityWindow(weeks);
   }, [loadMemberReliabilityWindow, memberReliabilityWeeksInput]);
 
-  useEffect(() => {
-    void loadMemberReliabilityWindow(5);
-  }, [loadMemberReliabilityWindow]);
-
   const loadMissedActions = useCallback(async () => {
     setMissedActionsLoading(true);
     try {
@@ -587,7 +581,8 @@ const StatsPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
+  const handleLoadMissedActions = useCallback(() => {
+    setMissedActionsRequested(true);
     void loadMissedActions();
   }, [loadMissedActions]);
 
@@ -1646,15 +1641,28 @@ const StatsPage: React.FC = () => {
       ) : null}
 
       <div className="relative overflow-hidden rounded-xl border border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-4 py-3">
-          <h3 className="font-semibold text-gray-900">Recent missed actions</h3>
-          <p className="text-xs text-gray-500">
-            Active members whose most recent completed non-optional action was
-            missed.
-          </p>
+        <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h3 className="font-semibold text-gray-900">
+              Recent missed actions
+            </h3>
+            <p className="text-xs text-gray-500">
+              Active members whose most recent completed non-optional action was
+              missed.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleLoadMissedActions}
+            disabled={missedActionsLoading}
+            className="rounded-md bg-green px-4 py-2 text-sm text-white shadow hover:bg-green-2 disabled:opacity-50"
+          >
+            {missedActionsLoading ? "Loading..." : "View actions"}
+          </button>
         </div>
         <div className="grid gap-4 p-4 md:grid-cols-2">
-          {missedActionsLoading && !missedActions ? (
+          {!missedActionsRequested ? null : missedActionsLoading &&
+            !missedActions ? (
             <p className="text-sm text-gray-600">Loading missed actions...</p>
           ) : missedActionGroups ? (
             missedActionGroups.map(({ title, members }) => (
@@ -1737,7 +1745,7 @@ const StatsPage: React.FC = () => {
             <button
               type="submit"
               disabled={platformTenureCohortLoading}
-              className="rounded-md bg-green px-4 py-2 text-sm text-white shadow hover:bg-green-500 disabled:opacity-50"
+              className="rounded-md bg-green px-4 py-2 text-sm text-white shadow hover:bg-green-2 disabled:opacity-50"
             >
               {platformTenureCohortLoading ? "Loading..." : "View cohort"}
             </button>
@@ -1887,7 +1895,7 @@ const StatsPage: React.FC = () => {
             <button
               type="submit"
               disabled={memberReliabilityLoading}
-              className="rounded-md bg-green px-4 py-2 text-sm text-white shadow hover:bg-green-500 disabled:opacity-50"
+              className="rounded-md bg-green px-4 py-2 text-sm text-white shadow hover:bg-green-2 disabled:opacity-50"
             >
               {memberReliabilityLoading ? "Loading..." : "View reliability"}
             </button>
@@ -2340,7 +2348,7 @@ const StatsPage: React.FC = () => {
             </label>
             <button
               onClick={handleApplyRange}
-              className="px-4 py-2 rounded-md text-sm bg-green text-white shadow hover:bg-green-500"
+              className="px-4 py-2 rounded-md text-sm bg-green text-white shadow hover:bg-green-2"
             >
               Update
             </button>
@@ -2380,7 +2388,7 @@ const StatsPage: React.FC = () => {
           <button
             onClick={handleRecalculateActionStats}
             disabled={actionStatsLoading}
-            className="px-4 py-2 rounded-md text-sm bg-green text-white shadow hover:bg-green-500 disabled:opacity-50"
+            className="px-4 py-2 rounded-md text-sm bg-green text-white shadow hover:bg-green-2 disabled:opacity-50"
           >
             {actionStatsLoading ? "Calculating..." : "Recalculate"}
           </button>
