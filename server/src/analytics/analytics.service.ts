@@ -944,57 +944,78 @@ ORDER BY pp.total_session_duration_seconds DESC
 
   async getReminderGroupClickRates(): Promise<ReminderGroupClickRatePoint[]> {
     // Every reminder group attached to a member_action event, with the owning
-    // action for labelling.
+    // action for labelling. The explicit select keeps the groups' message-text
+    // columns out of the result.
     const groups = await this.reminderGroupRepository.find({
+      select: {
+        id: true,
+        name: true,
+        sendAtAbsolute: true,
+        memberActionEvent: {
+          id: true,
+          date: true,
+          action: { id: true, name: true },
+        },
+      },
       where: { memberActionEvent: { newStatus: ActionStatus.MemberAction } },
       relations: { memberActionEvent: { action: true } },
     });
 
+    // Aggregate in SQL: hydrating every sent notif (with mail.renderedHtml and
+    // the group text blobs joined onto each row) just to count clicks stalls
+    // the whole event loop once the notif table is large.
     const groupIds = groups.map((group) => group.id);
-    const sentNotifs = groupIds.length
-      ? await this.actionEventNotifRepository.find({
-          where: { reminderGroup: { id: In(groupIds) }, sent: true },
-          relations: { mail: true, mms: true, reminderGroup: true },
-        })
+    const aggregateRows: Array<{
+      reminderGroupId: number;
+      emailSentCount: number;
+      emailClickedCount: number;
+      textSentCount: number;
+      textClickedCount: number;
+      firstSentAt: Date | null;
+    }> = groupIds.length
+      ? await this.actionEventNotifRepository.query(
+          `
+            SELECT
+              notif."reminderGroupId" AS "reminderGroupId",
+              COUNT(mail."id")::int AS "emailSentCount",
+              COUNT(mail."id") FILTER (WHERE mail."clickedLink")::int
+                AS "emailClickedCount",
+              COUNT(mms."id")::int AS "textSentCount",
+              COUNT(mms."id") FILTER (WHERE mms."clickedLink")::int
+                AS "textClickedCount",
+              MIN(notif."createdAt") FILTER (
+                WHERE mail."id" IS NOT NULL OR mms."id" IS NOT NULL
+              ) AS "firstSentAt"
+            FROM "action_event_notif" notif
+            LEFT JOIN "mail" mail ON mail."id" = notif."mailId"
+            LEFT JOIN "mms" mms ON mms."id" = notif."mmsId"
+            WHERE notif."sent" AND notif."reminderGroupId" = ANY($1::int[])
+            GROUP BY notif."reminderGroupId"
+          `,
+          [groupIds],
+        )
       : [];
 
-    const notifsByGroupId = new Map<number, ActionEventNotif[]>();
-    for (const notif of sentNotifs) {
-      const groupId = notif.reminderGroup?.id;
-      if (groupId === undefined) continue;
-      const existing = notifsByGroupId.get(groupId);
-      if (existing) {
-        existing.push(notif);
-      } else {
-        notifsByGroupId.set(groupId, [notif]);
-      }
-    }
+    const aggregatesByGroupId = new Map(
+      aggregateRows.map((row) => [row.reminderGroupId, row]),
+    );
 
     const points: ReminderGroupClickRatePoint[] = [];
     for (const group of groups) {
-      const notifs = notifsByGroupId.get(group.id) ?? [];
-      const emailNotifs = notifs.filter((notif) => !!notif.mail);
-      const textNotifs = notifs.filter((notif) => !!notif.mms);
-
-      if (emailNotifs.length === 0 && textNotifs.length === 0) {
+      const aggregate = aggregatesByGroupId.get(group.id);
+      if (
+        !aggregate ||
+        (aggregate.emailSentCount === 0 && aggregate.textSentCount === 0)
+      ) {
         continue;
       }
 
-      const emailClickedCount = emailNotifs.filter(
-        (notif) => notif.mail?.clickedLink,
-      ).length;
-      const textClickedCount = textNotifs.filter(
-        (notif) => notif.mms?.clickedLink,
-      ).length;
-
-      const sentTimestamps = [...emailNotifs, ...textNotifs].map((notif) =>
-        notif.createdAt.getTime(),
-      );
       // Plot each reminder-group at its first sent notification time, falling
       // back to its configured absolute send time or the member_action date.
-      const pointDate = sentTimestamps.length
-        ? new Date(Math.min(...sentTimestamps))
-        : (group.sendAtAbsolute ?? group.memberActionEvent.date);
+      const pointDate =
+        aggregate.firstSentAt ??
+        group.sendAtAbsolute ??
+        group.memberActionEvent.date;
 
       points.push({
         date: pointDate,
@@ -1003,13 +1024,17 @@ ORDER BY pp.total_session_duration_seconds DESC
         actionId: group.memberActionEvent.action.id,
         actionName: group.memberActionEvent.action.name,
         emailClickRate:
-          emailNotifs.length > 0 ? emailClickedCount / emailNotifs.length : 0,
+          aggregate.emailSentCount > 0
+            ? aggregate.emailClickedCount / aggregate.emailSentCount
+            : 0,
         textClickRate:
-          textNotifs.length > 0 ? textClickedCount / textNotifs.length : 0,
-        emailSentCount: emailNotifs.length,
-        emailClickedCount,
-        textSentCount: textNotifs.length,
-        textClickedCount,
+          aggregate.textSentCount > 0
+            ? aggregate.textClickedCount / aggregate.textSentCount
+            : 0,
+        emailSentCount: aggregate.emailSentCount,
+        emailClickedCount: aggregate.emailClickedCount,
+        textSentCount: aggregate.textSentCount,
+        textClickedCount: aggregate.textClickedCount,
       });
     }
 

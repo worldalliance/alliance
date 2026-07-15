@@ -59,6 +59,7 @@ export class ActionEventNotif {
   @OneToMany(() => Push, (push) => push.actionEventNotif)
   pushes?: Relation<Push>[];
 
+  @Index()
   @ManyToOne(
     () => ReminderGroup,
     (reminderGroup) => reminderGroup.notifications,
