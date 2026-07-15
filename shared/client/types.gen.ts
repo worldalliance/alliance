@@ -891,6 +891,7 @@ export type UserAdminInvitedByDto = {
     userId?: number | null;
     campaignId?: number | null;
     referralSource?: ReferralSource;
+    inviteLinkLabel?: string | null;
 };
 
 export type UserAdminDetailDto = {

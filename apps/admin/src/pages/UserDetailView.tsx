@@ -28,6 +28,7 @@ import {
   UserActionRelationsResponseDto,
   UserActionSummaryDto,
   UserAdminDetailDto,
+  UserAdminInvitedByDto,
   UserAwayRangeDto,
   UserAwayRangeReason,
 } from "@alliance/shared/client/types.gen";
@@ -1666,9 +1667,7 @@ function formatInvitedBy(user: UserAdminDetailDto) {
     return "No invite attribution";
   }
 
-  const source = invitedBy.referralSource
-    ? ` via ${humanize(invitedBy.referralSource)}`
-    : "";
+  const source = formatInviteSource(invitedBy);
 
   switch (invitedBy.kind) {
     case "user":
@@ -1704,6 +1703,29 @@ function formatInvitedBy(user: UserAdminDetailDto) {
     default:
       throw new Error(
         `unknown invited by kind: ${invitedBy.kind satisfies never}`,
+      );
+  }
+}
+
+function formatInviteSource(invitedBy: UserAdminInvitedByDto) {
+  switch (invitedBy.referralSource) {
+    case "onetime_invite":
+      return " via individual single-use invite link";
+    case "invite_share_link":
+      return ` via group invite link${
+        invitedBy.inviteLinkLabel ? ` “${invitedBy.inviteLinkLabel}”` : ""
+      }`;
+    case "referral_link":
+    case "action_share_link":
+    case "external_share_link":
+    case "campaign":
+    case "none":
+      return ` via ${humanize(invitedBy.referralSource)}`;
+    case undefined:
+      return "";
+    default:
+      throw new Error(
+        `unknown referral source: ${invitedBy.referralSource satisfies never}`,
       );
   }
 }

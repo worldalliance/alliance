@@ -28,6 +28,7 @@ import { Mail } from 'src/mail/mail.entity';
 import { Participant } from 'src/messaging/entities/participant.entity';
 import { Mms } from 'src/mms/mms.entity';
 import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
+import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
 import { findLeast } from 'src/utils/filter';
 import type { Relation } from 'src/utils/Repository';
 import {
@@ -360,6 +361,10 @@ export class User {
   @JoinColumn()
   @Type(() => OnetimeInvite)
   referredByInvite: Relation<OnetimeInvite> | null;
+
+  @ManyToOne(() => ShareUrl, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'referredByShareUrlId' })
+  referredByShareUrl?: Relation<ShareUrl> | null;
 
   @Column({
     type: 'enum',

@@ -18,6 +18,7 @@ import { ClusterSummaryDto } from '../../cluster/dto/cluster.dto';
 import { Cluster } from '../../cluster/entities/cluster.entity';
 import { Campaign } from '../../campaign/entities/campaign.entity';
 import { City } from '../../geo/city.entity';
+import { ShareUrl } from '../../share-urls/entities/share-url.entity';
 import {
   compareContractEventsNewestFirst,
   ContractEvent,
@@ -274,7 +275,12 @@ export class UserDto extends PickType(User, [
 }
 
 export type UserAdminInvitedBy =
-  | { kind: 'user'; user: User; referralSource: ReferralSource }
+  | {
+      kind: 'user';
+      user: User;
+      referralSource: ReferralSource;
+      shareUrl?: ShareUrl | null;
+    }
   | { kind: 'campaign'; campaign: Campaign }
   | { kind: 'unknown'; referralSource: ReferralSource };
 
@@ -297,6 +303,9 @@ export class UserAdminInvitedByDto {
   @ApiPropertyOptional({ enum: ReferralSource, enumName: 'ReferralSource' })
   referralSource?: ReferralSource;
 
+  @ApiPropertyOptional({ type: String, nullable: true })
+  inviteLinkLabel?: string | null;
+
   constructor(input: UserAdminInvitedBy) {
     switch (input.kind) {
       case 'user':
@@ -304,6 +313,7 @@ export class UserAdminInvitedByDto {
         this.label = input.user.name;
         this.userId = input.user.id;
         this.referralSource = input.referralSource;
+        this.inviteLinkLabel = input.shareUrl?.label ?? null;
         break;
       case 'campaign':
         this.kind = 'campaign';
@@ -352,6 +362,7 @@ export type UserAdminDetail = User & {
   referredBy?: User | null;
   referredByCampaign?: Campaign | null;
   referredByInvite?: (OnetimeInvite & { invitingUser?: User | null }) | null;
+  referredByShareUrl?: ShareUrl | null;
 };
 
 export class UserAdminDetailDto extends UserDto {
@@ -377,6 +388,7 @@ function userAdminInvitedBy(user: UserAdminDetail) {
       kind: 'user',
       user: user.referredBy,
       referralSource: user.referralSource,
+      shareUrl: user.referredByShareUrl,
     });
   }
   if (user.referredByCampaign) {

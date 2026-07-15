@@ -407,6 +407,7 @@ export class UserController {
       referredBy: true,
       referredByCampaign: true,
       referredByInvite: { invitingUser: true },
+      referredByShareUrl: true,
       city: true,
       tags: true,
     });

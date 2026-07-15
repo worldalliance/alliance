@@ -33,7 +33,10 @@ import { PaymentUserDataToken } from 'src/payments/entities/payment-token.entity
 import { Push } from 'src/push/push.entity';
 import { PushService } from 'src/push/push.service';
 import { groupUrl, profileUrl } from 'src/search/approutes';
-import { ShareUrlKind } from 'src/share-urls/entities/share-url.entity';
+import {
+  ShareUrl,
+  ShareUrlKind,
+} from 'src/share-urls/entities/share-url.entity';
 import { ShareUrlsService } from 'src/share-urls/share-urls.service';
 import { PaginationQueryDto } from 'src/utils/pagination.dto';
 import type { Relations } from 'src/utils/Repository';
@@ -160,6 +163,7 @@ export type ReferralResolution =
   | {
       kind: 'user';
       user: User;
+      shareUrl: ShareUrl | null;
       referralSource:
         | ReferralSource.ActionShareLink
         | ReferralSource.ExternalShareLink
@@ -384,6 +388,7 @@ export class UserService {
       return {
         kind: 'user',
         user: shareUrl.user,
+        shareUrl,
         referralSource: REFERRAL_SOURCE_BY_SHARE_KIND[shareUrl.kind],
       };
     }
@@ -396,6 +401,7 @@ export class UserService {
       return {
         kind: 'user',
         user,
+        shareUrl: null,
         referralSource: ReferralSource.ReferralLink,
       };
     }
@@ -443,6 +449,7 @@ export class UserService {
       referredBy: true,
       referredByCampaign: true,
       referredByInvite: { invitingUser: true },
+      referredByShareUrl: true,
       city: true,
       tags: true,
     });
