@@ -189,7 +189,14 @@ const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
  * their max width. Keep bubbles sized to their content.
  */
 const CHAT_BUBBLE_MARKDOWN_STYLE = {
-  paragraph: { width: "auto" as const },
+  // flexWrap:'wrap' (the library default) disables flexShrink in Yoga, which
+  // breaks text wrapping in shrink-to-fit bubbles; a paragraph is a single
+  // textgroup, so nowrap loses nothing.
+  paragraph: {
+    width: "auto" as const,
+    flexWrap: "nowrap" as const,
+    flexShrink: 1,
+  },
   textgroup: { flexShrink: 1 },
 };
 
