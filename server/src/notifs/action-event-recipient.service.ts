@@ -17,6 +17,7 @@ import { Community } from 'src/community/entities/community.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
 import { Tag } from 'src/user/entities/tag.entity';
 import { computeIsAssignedAndPresent } from 'src/utils/action-user';
+import { yieldToEventLoop } from 'src/utils/event-loop';
 import { In, type Repository } from 'typeorm';
 import { ActionActivity } from '../actions/entities/action-activity.entity';
 import {
@@ -26,6 +27,10 @@ import {
 import { Action } from '../actions/entities/action.entity';
 import { User } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
+import {
+  CohortResolutionSession,
+  type FormResponseAnswerRow,
+} from './cohort-resolution-session';
 import { ActionEventNotifType } from './entities/action-event-notif.entity';
 
 @Injectable()
@@ -48,86 +53,162 @@ export class ActionEventRecipientService {
   /**
    * Resolve a cohort expression to a set of matching user IDs using batch
    * set-based queries (one query per leaf type, not per user).
+   *
+   * Pass the same `session` across related resolutions (all expressions of
+   * one request/batch) so the active-user load and per-leaf queries are
+   * shared instead of re-run per expression. `resolvingActionIds` is the
+   * chain of InProgressAction ids currently being resolved above this call;
+   * a leaf that re-enters an id already on the chain resolves to the empty
+   * set, so cyclic expressions terminate.
    */
   async resolveCohortMemberIds(
     expression: CohortExpression | null | undefined,
+    session: CohortResolutionSession = new CohortResolutionSession(),
+    resolvingActionIds: ReadonlySet<number> = new Set(),
   ): Promise<Set<number>> {
     if (!expression) return new Set();
-    const ctx: CohortEvaluationContext = {
-      getUserIdsForTag: async (tagId: string) => {
-        if (!tagId) return new Set();
-        const tag = await this.tagRepository.findOne({
-          where: { id: tagId },
-          relations: { users: true },
-        });
-        return new Set((tag?.users ?? []).map((u) => u.id));
+    // Memo key includes the chain: a sub-resolution reached through an
+    // InProgressAction leaf must not await a pending ancestor resolution of
+    // the same expression (self-deadlock on cycles).
+    const chainKey = [...resolvingActionIds].sort((a, b) => a - b).join(',');
+    const key = `${chainKey}|${JSON.stringify(expression)}`;
+    let pending = session.expressionMemberIds.get(key);
+    if (!pending) {
+      pending = evaluateCohortExpression(
+        expression,
+        this.buildCohortContext(session, resolvingActionIds, chainKey),
+      );
+      session.expressionMemberIds.set(key, pending);
+    }
+    return pending;
+  }
+
+  private buildCohortContext(
+    session: CohortResolutionSession,
+    resolvingActionIds: ReadonlySet<number>,
+    chainKey: string,
+  ): CohortEvaluationContext {
+    return {
+      getUserIdsForTag: (tagId: string) => {
+        if (!tagId) return Promise.resolve(new Set());
+        let pending = session.tagUserIds.get(tagId);
+        if (!pending) {
+          pending = this.tagRepository
+            .createQueryBuilder('tag')
+            .innerJoin('tag.users', 'user')
+            .select('user.id', 'userId')
+            .where('tag.id = :tagId', { tagId })
+            .getRawMany<{ userId: number }>()
+            .then((rows) => new Set(rows.map((row) => Number(row.userId))));
+          session.tagUserIds.set(tagId, pending);
+        }
+        return pending;
       },
-      getUserIdsCompletedAction: async (actionId: number) => {
-        if (!actionId) return new Set();
-        const activities = await this.actionActivityRepository.find({
-          where: { actionId, type: ActionActivityType.USER_COMPLETED },
-        });
-        return new Set(activities.map((a) => a.userId));
+      getUserIdsCompletedAction: (actionId: number) => {
+        if (!actionId) return Promise.resolve(new Set());
+        let pending = session.completedActionUserIds.get(actionId);
+        if (!pending) {
+          pending = this.actionActivityRepository
+            .find({
+              where: { actionId, type: ActionActivityType.USER_COMPLETED },
+              select: { userId: true },
+            })
+            .then((activities) => new Set(activities.map((a) => a.userId)));
+          session.completedActionUserIds.set(actionId, pending);
+        }
+        return pending;
       },
-      getUserIdsInProgressAction: async (actionId: number) => {
-        if (!actionId) return new Set();
-        const action = await this.actionRepository.findOneOrFail({
-          where: { id: actionId },
-          relations: { events: true },
-        });
-        const event = action.events.find(
-          (e) => e.newStatus === ActionStatus.MemberAction,
-        );
-        if (!event) return new Set();
-        const baseUsers = await this.findBaseUsersForEvent({
-          action,
-          eventId: event.id,
-        });
-        if (action.status !== ActionStatus.MemberAction) return new Set();
-        const terminal = await this.actionActivityRepository.find({
-          where: [
-            { actionId, type: ActionActivityType.USER_COMPLETED },
-            { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
-          ],
-        });
-        const terminalIds = new Set(terminal.map((a) => a.userId));
-        return new Set(
-          baseUsers.map((u) => u.id).filter((id) => !terminalIds.has(id)),
-        );
+      getUserIdsInProgressAction: (actionId: number) => {
+        if (!actionId) return Promise.resolve(new Set());
+        // Cycle cut: this action's roster is already being resolved higher
+        // up the chain, so its membership contributes nothing new.
+        if (resolvingActionIds.has(actionId)) {
+          return Promise.resolve(new Set());
+        }
+        const key = `${chainKey}|${actionId}`;
+        let pending = session.inProgressActionUserIds.get(key);
+        if (!pending) {
+          pending = this.loadInProgressActionUserIds(
+            actionId,
+            session,
+            new Set([...resolvingActionIds, actionId]),
+          );
+          session.inProgressActionUserIds.set(key, pending);
+        }
+        return pending;
       },
       getUserIdsForFormField: async (params) => {
         if (!params.formId) return new Set();
-        const responses = await this.formResponseRepository.find({
-          where: { formId: params.formId },
-          relations: { user: true },
-        });
-        const matching = responses.filter((r) =>
-          answerMatchesFormField(r.answers as Record<string, unknown>, params),
+        let rows = session.formResponsesByFormId.get(params.formId);
+        if (!rows) {
+          rows = this.formResponseRepository
+            .createQueryBuilder('response')
+            .leftJoin('response.user', 'user')
+            .select('response.answers', 'answers')
+            .addSelect('user.id', 'userId')
+            .where('response.formId = :formId', { formId: params.formId })
+            .getRawMany<FormResponseAnswerRow>();
+          session.formResponsesByFormId.set(params.formId, rows);
+        }
+        const matching = (await rows).filter((row) =>
+          answerMatchesFormField(row.answers ?? undefined, params),
         );
         return new Set(
           matching
-            .map((r) => r.user?.id)
+            .map((row) => row.userId)
             .filter((id): id is number => typeof id === 'number'),
         );
       },
-      getGroupLeadUserIds: async () => {
-        const communities = await this.communityRepository.find({
-          relations: { leaders: true },
-        });
-        const ids = new Set<number>();
-        for (const c of communities) {
-          for (const leader of c.leaders ?? []) {
-            ids.add(leader.id);
-          }
-        }
-        return ids;
-      },
-      getAllCandidateUserIds: async () => {
-        const users = await this.userService.findActiveUsersWithTags();
-        return new Set(users.map((u) => u.id));
-      },
+      getGroupLeadUserIds: () =>
+        (session.groupLeadUserIds ??= this.communityRepository
+          .createQueryBuilder('community')
+          .innerJoin('community.leaders', 'leader')
+          .select('leader.id', 'userId')
+          .getRawMany<{ userId: number }>()
+          .then((rows) => new Set(rows.map((row) => Number(row.userId))))),
+      getAllCandidateUserIds: () =>
+        (session.candidateUserIds ??= session.activeUsers
+          ? session.activeUsers.then((users) => new Set(users.map((u) => u.id)))
+          : this.userService.findActiveUserIds().then((ids) => new Set(ids))),
     };
-    return evaluateCohortExpression(expression, ctx);
+  }
+
+  private async loadInProgressActionUserIds(
+    actionId: number,
+    session: CohortResolutionSession,
+    resolvingActionIds: ReadonlySet<number>,
+  ): Promise<Set<number>> {
+    const action = await this.actionRepository.findOneOrFail({
+      where: { id: actionId },
+      relations: { events: true },
+    });
+    if (action.status !== ActionStatus.MemberAction) return new Set();
+    const event = action.events.find(
+      (e) => e.newStatus === ActionStatus.MemberAction,
+    );
+    if (!event) return new Set();
+    const baseUsers = await this.findBaseUsersForEvent({
+      action,
+      eventId: event.id,
+      session,
+      resolvingActionIds,
+    });
+    const terminal = await this.actionActivityRepository.find({
+      where: [
+        { actionId, type: ActionActivityType.USER_COMPLETED },
+        { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
+      ],
+      select: { userId: true },
+    });
+    const terminalIds = new Set(terminal.map((a) => a.userId));
+    return new Set(
+      baseUsers.map((u) => u.id).filter((id) => !terminalIds.has(id)),
+    );
+  }
+
+  /** The session's shared active-user load (started on first use). */
+  getActiveUsers(session: CohortResolutionSession): Promise<User[]> {
+    return (session.activeUsers ??= this.userService.findActiveUsersWithTags());
   }
 
   /**
@@ -139,14 +220,19 @@ export class ActionEventRecipientService {
     entries: Array<{ action: Action; eventId: number }>;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
+    /** Share loads across calls within one request; see resolveCohortMemberIds. */
+    session?: CohortResolutionSession;
+    resolvingActionIds?: ReadonlySet<number>;
   }): Promise<Map<number, User[]>> {
     const { entries, includeSuspended, includeDismissed } = params;
     if (entries.length === 0) return new Map();
+    const session = params.session ?? new CohortResolutionSession();
+    const resolvingActionIds = params.resolvingActionIds ?? new Set<number>();
 
     const actionIds = entries.map((e) => e.action.id);
 
-    // 1. One query: all active users
-    const allUsers = await this.userService.findActiveUsersWithTags();
+    // 1. One query: all active users (shared through the session)
+    const allUsers = await this.getActiveUsers(session);
 
     // 2. One query: all dismissed activities for these actions
     const allDismissed = await this.actionActivityRepository.find({
@@ -154,6 +240,7 @@ export class ActionEventRecipientService {
         actionId: In(actionIds),
         type: ActionActivityType.USER_DISMISSED,
       },
+      select: { actionId: true, userId: true },
     });
     const dismissedByAction = new Map<number, Set<number>>();
     for (const act of allDismissed) {
@@ -163,27 +250,29 @@ export class ActionEventRecipientService {
       dismissedByAction.get(act.actionId)!.add(act.userId);
     }
 
-    // 3. Deduplicated cohort resolution
-    const cohortCache = new Map<string, Promise<Set<number>>>();
+    // 3. Cohort resolution — the session memoizes whole expressions and
+    // individual leaves, so duplicates across entries resolve once.
     const cohortByAction = new Map<number, Promise<Set<number>>>();
     for (const { action } of entries) {
-      const key = action.cohortExpression
-        ? JSON.stringify(action.cohortExpression)
-        : '';
-      if (!cohortCache.has(key)) {
-        cohortCache.set(
-          key,
-          this.resolveCohortMemberIds(action.cohortExpression),
-        );
-      }
-      cohortByAction.set(action.id, cohortCache.get(key)!);
+      cohortByAction.set(
+        action.id,
+        this.resolveCohortMemberIds(
+          action.cohortExpression,
+          session,
+          resolvingActionIds,
+        ),
+      );
     }
-    // Await all unique cohort resolutions in parallel
-    await Promise.all(cohortCache.values());
+    // Await all cohort resolutions in parallel
+    await Promise.all(cohortByAction.values());
 
     // 4. Per-action filtering
     const result = new Map<number, User[]>();
     for (const { action, eventId } of entries) {
+      // Analytics passes hundreds of entries, each filtering every active
+      // user — CPU-bound work that would otherwise block the event loop for
+      // the whole batch.
+      await yieldToEventLoop();
       const events = action.events;
       const event = events.find((e) => e.id === eventId);
       if (!event) {
@@ -219,8 +308,17 @@ export class ActionEventRecipientService {
     eventId: number;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
+    session?: CohortResolutionSession;
+    resolvingActionIds?: ReadonlySet<number>;
   }): Promise<User[]> {
-    const { action, eventId, includeSuspended, includeDismissed } = params;
+    const {
+      action,
+      eventId,
+      includeSuspended,
+      includeDismissed,
+      session,
+      resolvingActionIds,
+    } = params;
 
     if (!action.events.some((event) => event.id === eventId)) {
       throw new Error(`Event not found: ${eventId}`);
@@ -230,6 +328,8 @@ export class ActionEventRecipientService {
       entries: [{ action, eventId }],
       includeSuspended,
       includeDismissed,
+      session,
+      resolvingActionIds,
     });
     return result.get(action.id) ?? [];
   }
@@ -246,6 +346,7 @@ export class ActionEventRecipientService {
       ? pre_actions.filter((action) => !action.optional)
       : pre_actions;
 
+    const session = new CohortResolutionSession();
     const [
       usersWithTags,
       usersDismissed,
@@ -265,11 +366,14 @@ export class ActionEventRecipientService {
           },
         })
         .then((acts) => new Set(acts.map((a) => a.userId))),
-      this.resolveCohortMemberIds(event.action.cohortExpression),
+      this.resolveCohortMemberIds(event.action.cohortExpression, session),
       Promise.all(
         actions.map(async (action) => ({
           actionId: action.id,
-          memberIds: await this.resolveCohortMemberIds(action.cohortExpression),
+          memberIds: await this.resolveCohortMemberIds(
+            action.cohortExpression,
+            session,
+          ),
         })),
       ),
       this.actionActivityRepository.find({

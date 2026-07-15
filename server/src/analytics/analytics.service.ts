@@ -10,6 +10,7 @@ import {
 import { Action } from 'src/actions/entities/action.entity';
 import { ReminderGroup } from 'src/actions/entities/reminder-group.entity';
 import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
+import { CohortResolutionSession } from 'src/notifs/cohort-resolution-session';
 import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
 import {
@@ -22,6 +23,7 @@ import {
 } from 'src/user/entities/onetime-invite.entity';
 import { User } from 'src/user/entities/user.entity';
 import { UserService } from 'src/user/user.service';
+import { yieldToEventLoop } from 'src/utils/event-loop';
 import { Between, In, IsNull, type Repository } from 'typeorm';
 import { ActionCompletionCurve } from './action-completion-curve.dto';
 import { ActionStatsWithOnboarding } from './actionstats-with-onboarding.dto';
@@ -790,6 +792,8 @@ ORDER BY pp.total_session_duration_seconds DESC
       });
 
     for (const [actionIndex, group] of actionGroups.entries()) {
+      // Long CPU-bound accumulation; let queued requests run between groups.
+      await yieldToEventLoop();
       for (const entry of group.entries) {
         const { action } = entry;
         const baseUsers = baseUsersByAction.get(action.id) ?? [];
@@ -1159,9 +1163,12 @@ ORDER BY pp.total_session_duration_seconds DESC
     const msPerWeek = 7 * 24 * 60 * 60 * 1000;
     const now = new Date();
 
-    const users = await this.userRepository.find({
-      relations: { contractEvents: true },
-    });
+    // Cohort membership needs a first SIGNED contract event, which partial
+    // profiles can't have, so the active-user set covers everyone relevant —
+    // and the session shares this load with findBaseUsersForEvents below.
+    const session = new CohortResolutionSession();
+    const users =
+      await this.actionEventRecipientService.getActiveUsers(session);
 
     const cohortUserIds = new Set<number>();
     let activeCount = 0;
@@ -1254,6 +1261,7 @@ ORDER BY pp.total_session_duration_seconds DESC
           eventId: e.memberActionEvent.id,
         })),
         includeSuspended: true,
+        session,
       });
 
     for (const {
@@ -1261,6 +1269,8 @@ ORDER BY pp.total_session_duration_seconds DESC
       memberActionEvent,
       memberActionEndEvent,
     } of eligible) {
+      // Long CPU-bound accumulation; let queued requests run between actions.
+      await yieldToEventLoop();
       const baseUsers = baseUsersByAction.get(action.id) ?? [];
 
       const assignedCohortUsers = baseUsers.filter(

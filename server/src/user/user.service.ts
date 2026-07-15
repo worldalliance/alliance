@@ -38,6 +38,7 @@ import type { Relations } from 'src/utils/Repository';
 import {
   Brackets,
   DeepPartial,
+  type FindOptionsWhere,
   ILike,
   In,
   IsNull,
@@ -160,6 +161,16 @@ export type ReferralResolution =
         | ReferralSource.InviteShareLink
         | ReferralSource.ReferralLink;
     };
+
+/**
+ * The "active user" population: every fully signed-up profile. Shared by the
+ * user-listing methods and by cohort resolution's NOT-universe
+ * (`findActiveUserIds`), which must never diverge from the base-user set
+ * (`findActiveUsersWithTags`).
+ */
+const ACTIVE_USER_WHERE: FindOptionsWhere<User> = {
+  isNotSignedUpPartialProfile: false,
+};
 
 @Injectable()
 export class UserService {
@@ -991,20 +1002,28 @@ export class UserService {
 
   async findAllUsers(): Promise<User[]> {
     return this.userRepository.find({
-      where: {
-        isNotSignedUpPartialProfile: false,
-      },
+      where: ACTIVE_USER_WHERE,
     });
   }
 
   async findActiveUsersWithTags(): Promise<User[]> {
     return this.userRepository.find({
-      where: {
-        isNotSignedUpPartialProfile: false,
-      },
+      where: ACTIVE_USER_WHERE,
       relations: { tags: true, awayRanges: true, contractEvents: true },
       relationLoadStrategy: 'query',
     });
+  }
+
+  /**
+   * Ids of the same population as {@link findActiveUsersWithTags}, without
+   * hydrating entities — for callers that only need membership checks.
+   */
+  async findActiveUserIds(): Promise<number[]> {
+    const users = await this.userRepository.find({
+      select: { id: true },
+      where: ACTIVE_USER_WHERE,
+    });
+    return users.map((user) => user.id);
   }
 
   async createPartialProfile(

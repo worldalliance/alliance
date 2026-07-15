@@ -37,6 +37,7 @@ import {
   assertExcludePreviouslyNotifiedAllowed,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
 } from 'src/notifs/action-event-reminder.service';
+import { CohortResolutionSession } from 'src/notifs/cohort-resolution-session';
 import { PreviewNotificationPlanDto } from 'src/notifs/dto/notification-plan.dto';
 import { LikeNotificationService } from 'src/notifs/like-notification.service';
 import { NotificationChannel } from 'src/notifs/notif-utils';
@@ -3424,7 +3425,11 @@ export class ActionsService {
       }),
     ]);
 
-    const activeUsers = await this.userService.findActiveUsersWithTags();
+    // Share the active-user load and per-leaf cohort queries across every
+    // action in the batch (see CohortResolutionSession).
+    const session = new CohortResolutionSession();
+    const activeUsers =
+      await this.actionEventRecipientService.getActiveUsers(session);
     const activeUsersById = new Map(activeUsers.map((user) => [user.id, user]));
 
     const dismissedByAction = new Map<number, Set<number>>();
@@ -3443,6 +3448,21 @@ export class ActionsService {
       completedByAction.get(activity.actionId)!.add(activity.userId);
     }
 
+    const cohortByAction = new Map<number, Promise<Set<number>>>();
+    for (const suite of suitesToProcess) {
+      for (const action of suite.actions) {
+        if (!memberActionEventByActionId.has(action.id)) continue;
+        cohortByAction.set(
+          action.id,
+          this.actionEventRecipientService.resolveCohortMemberIds(
+            action.cohortExpression,
+            session,
+          ),
+        );
+      }
+    }
+    await Promise.all(cohortByAction.values());
+
     const baseUsersByAction = new Map<number, User[]>();
     for (const suite of suitesToProcess) {
       for (const action of suite.actions) {
@@ -3455,10 +3475,7 @@ export class ActionsService {
 
         const baseCandidates = activeUsers;
 
-        const cohortMemberIds =
-          await this.actionEventRecipientService.resolveCohortMemberIds(
-            action.cohortExpression,
-          );
+        const cohortMemberIds = await cohortByAction.get(action.id)!;
 
         const baseUsers = baseCandidates.filter((user) =>
           computeIsAssignedAndPresent({
