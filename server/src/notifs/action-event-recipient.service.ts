@@ -166,10 +166,12 @@ export class ActionEventRecipientService {
           .select('leader.id', 'userId')
           .getRawMany<{ userId: number }>()
           .then((rows) => new Set(rows.map((row) => Number(row.userId))))),
+      // getActiveUsers primes candidateUserIds from its snapshot, so this
+      // lean load only runs for sessions that never hydrate full users.
       getAllCandidateUserIds: () =>
-        (session.candidateUserIds ??= session.activeUsers
-          ? session.activeUsers.then((users) => new Set(users.map((u) => u.id)))
-          : this.userService.findActiveUserIds().then((ids) => new Set(ids))),
+        (session.candidateUserIds ??= this.userService
+          .findActiveUserIds()
+          .then((ids) => new Set(ids))),
     };
   }
 
@@ -206,9 +208,18 @@ export class ActionEventRecipientService {
     );
   }
 
-  /** The session's shared active-user load (started on first use). */
+  /**
+   * The session's shared active-user load (started on first use). Also claims
+   * the session's NOT-universe so cohort resolution and base-user filtering
+   * see one snapshot regardless of which starts first.
+   */
   getActiveUsers(session: CohortResolutionSession): Promise<User[]> {
-    return (session.activeUsers ??= this.userService.findActiveUsersWithTags());
+    const users = (session.activeUsers ??=
+      this.userService.findActiveUsersWithTags());
+    session.candidateUserIds ??= users.then(
+      (us) => new Set(us.map((u) => u.id)),
+    );
+    return users;
   }
 
   /**
