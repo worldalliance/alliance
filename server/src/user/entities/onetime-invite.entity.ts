@@ -1,6 +1,14 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { Allow, IsOptional } from 'class-validator';
+import { Community } from 'src/community/entities/community.entity';
+import { CreateDateColumnTz } from 'src/datasources/basecolumns';
+import { Notification } from 'src/notifs/entities/notification.entity';
+import type { Relation } from 'src/utils/Repository';
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -9,13 +17,6 @@ import {
   RelationId,
 } from 'typeorm';
 import { User } from './user.entity';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsOptional } from 'class-validator';
-import { CreateDateColumnTz } from 'src/datasources/basecolumns';
-import { Community } from 'src/community/entities/community.entity';
-import type { Relation } from 'src/utils/Repository';
-import { Notification } from 'src/notifs/entities/notification.entity';
 
 export enum OnetimeInviteStatus {
   REQUEST_PENDING = 'request_pending',
@@ -24,6 +25,7 @@ export enum OnetimeInviteStatus {
   LINK_USED = 'link_used',
 }
 
+@Index(['createdAt', 'id'])
 @Entity()
 export class OnetimeInvite {
   // Fields

@@ -1,11 +1,10 @@
 import { eventLogFindAllAdmin } from "@alliance/shared/client";
-import type {
-  EventLogDto,
-  EventLogListDto,
-  EventType,
-} from "@alliance/shared/client/types.gen";
+import type { EventLogDto, EventType } from "@alliance/shared/client/types.gen";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
 import { cn } from "@alliance/shared/styles/util";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import Pagination from "@alliance/sharedweb/ui/Pagination";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import {
   useEventLogWebSocket,
@@ -52,10 +51,9 @@ function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+const EVENTS_PER_PAGE = 50;
+
 const EventLogPage: React.FC = () => {
-  const [data, setData] = useState<EventLogListDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
   const [eventTypeFilter, setEventTypeFilter] = useState<EventType | "">("");
   const [liveEvents, setLiveEvents] = useState<EventLogWsEvent[]>([]);
   const [expandedBlobs, setExpandedBlobs] = useState<Set<string>>(new Set());
@@ -63,24 +61,27 @@ const EventLogPage: React.FC = () => {
 
   const { setOnNewEvent } = useEventLogWebSocket();
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    const response = await eventLogFindAllAdmin({
-      query: {
-        page,
-        limit: 50,
-        ...(eventTypeFilter ? { eventType: eventTypeFilter } : {}),
-      },
-    });
-    if (response.data) {
-      setData(response.data);
-    }
-    setLoading(false);
-  }, [page, eventTypeFilter]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const {
+    data,
+    page,
+    setPage,
+    isLoading,
+    isError,
+    isPlaceholderData,
+    refetch,
+  } = usePaginatedQuery({
+    queryKey: (page) =>
+      queryKeys.eventLogAdmin(page, EVENTS_PER_PAGE, eventTypeFilter),
+    queryFn: (page) =>
+      eventLogFindAllAdmin({
+        query: {
+          page,
+          limit: EVENTS_PER_PAGE,
+          ...(eventTypeFilter ? { eventType: eventTypeFilter } : {}),
+        },
+        throwOnError: true,
+      }).then((response) => response.data),
+  });
 
   // Track timeout refs for highlight cleanup
   const highlightTimeoutsRef = useRef<
@@ -125,8 +126,11 @@ const EventLogPage: React.FC = () => {
     });
   };
 
+  // Background refetches (e.g. window refocus) return events already received
+  // over the websocket, so drop live events the fetched page now contains.
+  const fetchedIds = new Set((data?.items ?? []).map((event) => event.id));
   const allEvents: (EventLogDto | EventLogWsEvent)[] = [
-    ...liveEvents,
+    ...liveEvents.filter((event) => !fetchedIds.has(event.id)),
     ...(data?.items ?? []),
   ];
 
@@ -165,13 +169,30 @@ const EventLogPage: React.FC = () => {
         </div>
       </div>
 
-      {loading && !data ? (
+      {isError && (
+        <p className="text-sm text-red-600">
+          Failed to load events.{" "}
+          <button
+            type="button"
+            className="underline hover:text-red-700"
+            onClick={() => refetch()}
+          >
+            Retry
+          </button>
+        </p>
+      )}
+      {isError && !data ? null : isLoading ? (
         <p className="text-sm text-zinc-500">Loading events...</p>
       ) : allEvents.length === 0 ? (
         <p className="text-sm text-zinc-500">No events found.</p>
       ) : (
         <>
-          <div className="overflow-x-auto">
+          <div
+            className={cn(
+              "overflow-x-auto transition-opacity",
+              isPlaceholderData && "opacity-60",
+            )}
+          >
             <table className="w-full text-sm text-left">
               <thead className="text-black border-b border-zinc-200">
                 <tr>
@@ -260,27 +281,12 @@ const EventLogPage: React.FC = () => {
 
           {data && data.totalPages > 1 && (
             <div className="flex items-center justify-between">
-              <p className="text-sm text-zinc-500">
-                Page {data.page} of {data.totalPages} ({data.totalCount} total)
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                  className="text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={page >= data.totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                  className="text-sm border border-gray-2 text-black bg-white hover:bg-zinc-50 px-3 rounded-sm py-2 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
+              <p className="text-sm text-zinc-500">{data.totalCount} total</p>
+              <Pagination
+                page={page}
+                totalPages={data.totalPages}
+                onPageChange={setPage}
+              />
             </div>
           )}
         </>

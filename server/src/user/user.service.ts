@@ -35,6 +35,7 @@ import { PushService } from 'src/push/push.service';
 import { groupUrl, profileUrl } from 'src/search/approutes';
 import { ShareUrlKind } from 'src/share-urls/entities/share-url.entity';
 import { ShareUrlsService } from 'src/share-urls/share-urls.service';
+import { PaginationQueryDto } from 'src/utils/pagination.dto';
 import type { Relations } from 'src/utils/Repository';
 import {
   Brackets,
@@ -64,6 +65,9 @@ import {
   CreateAmbassadorInviteGoalDto,
   CreateAmbassadorProgramInteractionDto,
   CreateOnetimeInviteDto,
+  type OnetimeInviteEdge,
+  type OnetimeInviteList,
+  type OnetimeInviteMemberStats,
   RequestOnetimeInviteDto,
   UpdateAmbassadorInviteGoalDto,
   UpdateAmbassadorProgramMemberDto,
@@ -2322,11 +2326,81 @@ export class UserService {
     });
   }
 
-  async findAllOnetimeInvites(): Promise<OnetimeInvite[]> {
-    return this.onetimeInviteRepository.find({
-      where: { deletedAt: IsNull() },
-      relations: { invitingUser: true, community: true },
-    });
+  async findAllOnetimeInvites(
+    query: PaginationQueryDto,
+  ): Promise<OnetimeInviteList> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 50;
+
+    const [items, totalCount] = await this.onetimeInviteRepository.findAndCount(
+      {
+        where: { deletedAt: IsNull() },
+        relations: { invitingUser: true, community: true },
+        // id tiebreaker keeps offset pagination stable when createdAt ties
+        order: { createdAt: 'DESC', id: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      },
+    );
+
+    return {
+      items,
+      totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit),
+    };
+  }
+
+  async getOnetimeInviteMemberStats(): Promise<OnetimeInviteMemberStats[]> {
+    const rows = await this.onetimeInviteRepository
+      .createQueryBuilder('invite')
+      .leftJoin('invite.invitedUser', 'invitedUser')
+      .select('invite.invitingUserId', 'userId')
+      .addSelect('COUNT(*)', 'sent')
+      .addSelect(
+        'COUNT(*) FILTER (WHERE invite.status = :linkUsed OR invitedUser.id IS NOT NULL)',
+        'accepted',
+      )
+      .where('invite.deletedAt IS NULL')
+      .andWhere('invite.invitingUserId IS NOT NULL')
+      .setParameter('linkUsed', OnetimeInviteStatus.LINK_USED)
+      .groupBy('invite.invitingUserId')
+      // COUNT comes back as a bigint string from pg
+      .getRawMany<{ userId: number; sent: string; accepted: string }>();
+
+    const users = rows.length
+      ? await this.userRepository.find({
+          where: { id: In(rows.map((row) => row.userId)) },
+        })
+      : [];
+    const userById = new Map(users.map((user) => [user.id, user]));
+
+    return rows
+      .flatMap((row) => {
+        const invitingUser = userById.get(row.userId);
+        if (!invitingUser) return [];
+        return {
+          invitingUser,
+          sent: Number(row.sent),
+          accepted: Number(row.accepted),
+        };
+      })
+      .sort((a, b) => b.sent - a.sent);
+  }
+
+  async findOnetimeInviteEdges(): Promise<OnetimeInviteEdge[]> {
+    return this.onetimeInviteRepository
+      .createQueryBuilder('invite')
+      .innerJoin('invite.invitedUser', 'invitedUser')
+      .select('invite.invitingUserId', 'invitingUserId')
+      .addSelect('invitedUser.id', 'invitedUserId')
+      .where('invite.deletedAt IS NULL')
+      .andWhere('invite.status = :status', {
+        status: OnetimeInviteStatus.LINK_USED,
+      })
+      .andWhere('invite.invitingUserId IS NOT NULL')
+      .getRawMany<OnetimeInviteEdge>();
   }
 
   async findOnetimeInvites(communityId: number): Promise<OnetimeInvite[]> {

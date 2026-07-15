@@ -14,10 +14,13 @@ import {
 } from 'class-validator';
 import { CommunityDto } from 'src/community/dto/community.dto';
 import { CommunityInvite } from 'src/community/entities/community-invite.entity';
+import { getImageSource } from 'src/images/images.service';
+import { type PaginatedList, PaginatedListDto } from 'src/utils/pagination.dto';
 import { AmbassadorInviteGoal } from '../entities/ambassador-invite-goal.entity';
 import { AmbassadorProgramInteraction } from '../entities/ambassador-program-interaction.entity';
 import { AmbassadorProgramMember } from '../entities/ambassador-program-member.entity';
 import { OnetimeInvite } from '../entities/onetime-invite.entity';
+import { User } from '../entities/user.entity';
 import { ProfileDto, UserDto } from './user.dto';
 
 export class CreateOnetimeInviteDto extends PickType(OnetimeInvite, [
@@ -127,6 +130,76 @@ export class OnetimeInviteDto extends PickType(OnetimeInvite, [
     this.invitedUser = onetimeInvite.invitedUser
       ? new ProfileDto(onetimeInvite.invitedUser)
       : undefined;
+  }
+}
+
+export type OnetimeInviteList = PaginatedList<OnetimeInvite>;
+
+export class OnetimeInviteListDto extends PaginatedListDto(OnetimeInviteDto) {}
+
+export type OnetimeInviteMemberStats = {
+  invitingUser: User;
+  sent: number;
+  accepted: number;
+};
+
+/**
+ * Slim user shape for invite member stats. Not `ProfileDto`: the stats query
+ * loads users without the relations its computed fields
+ * (`hasActiveContract`, `isCommunityLeader`) depend on, so those would
+ * silently serialize as `false`.
+ */
+export class OnetimeInviteMemberUserDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  displayName: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  profilePicture: string | null;
+
+  constructor(input: User) {
+    this.id = input.id;
+    this.displayName = input.anonymous ? 'Someone' : input.name;
+    this.profilePicture = input.profilePicture
+      ? getImageSource(input.profilePicture)
+      : null;
+  }
+}
+
+export class OnetimeInviteMemberStatsDto {
+  @ApiProperty({ type: () => OnetimeInviteMemberUserDto })
+  invitingUser: OnetimeInviteMemberUserDto;
+
+  @ApiProperty()
+  sent: number;
+
+  @ApiProperty()
+  accepted: number;
+
+  constructor(input: OnetimeInviteMemberStats) {
+    this.invitingUser = new OnetimeInviteMemberUserDto(input.invitingUser);
+    this.sent = input.sent;
+    this.accepted = input.accepted;
+  }
+}
+
+export type OnetimeInviteEdge = {
+  invitingUserId: number;
+  invitedUserId: number;
+};
+
+export class OnetimeInviteEdgeDto {
+  @ApiProperty()
+  invitingUserId: number;
+
+  @ApiProperty()
+  invitedUserId: number;
+
+  constructor(input: OnetimeInviteEdge) {
+    this.invitingUserId = input.invitingUserId;
+    this.invitedUserId = input.invitedUserId;
   }
 }
 
@@ -418,10 +491,9 @@ export class AmbassadorProgramInviteStatsDto {
   }
 }
 
-export type AmbassadorProgramMemberWithInviteStats =
-  AmbassadorProgramMember & {
-    inviteStats?: AmbassadorProgramInviteStats;
-  };
+export type AmbassadorProgramMemberWithInviteStats = AmbassadorProgramMember & {
+  inviteStats?: AmbassadorProgramInviteStats;
+};
 
 export class AmbassadorProgramMemberDto extends PickType(
   AmbassadorProgramMember,

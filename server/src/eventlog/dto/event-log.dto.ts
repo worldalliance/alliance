@@ -1,6 +1,10 @@
 import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, Min } from 'class-validator';
+import { IsEnum, IsOptional } from 'class-validator';
+import {
+  type PaginatedList,
+  PaginatedListDto,
+  PaginationQueryDto,
+} from 'src/utils/pagination.dto';
 import { User } from '../../user/entities/user.entity';
 import { EventLog, EventType } from '../event-log.entity';
 
@@ -40,54 +44,11 @@ export class EventLogDto extends PickType(EventLog, [
   }
 }
 
-export type EventLogList = {
-  items: EventLog[];
-  totalCount: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-};
+export type EventLogList = PaginatedList<EventLog>;
 
-export class EventLogListDto {
-  @ApiProperty({ type: EventLogDto, isArray: true })
-  items: EventLogDto[];
+export class EventLogListDto extends PaginatedListDto(EventLogDto) {}
 
-  @ApiProperty()
-  totalCount: number;
-
-  @ApiProperty()
-  page: number;
-
-  @ApiProperty()
-  limit: number;
-
-  @ApiProperty()
-  totalPages: number;
-
-  constructor(input: EventLogList) {
-    this.items = input.items.map((item) => new EventLogDto(item));
-    this.totalCount = input.totalCount;
-    this.page = input.page;
-    this.limit = input.limit;
-    this.totalPages = input.totalPages;
-  }
-}
-
-export class EventLogQueryDto {
-  @ApiPropertyOptional({ default: 1 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number = 1;
-
-  @ApiPropertyOptional({ default: 50 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  limit?: number = 50;
-
+export class EventLogQueryDto extends PaginationQueryDto {
   @ApiPropertyOptional({ enum: EventType, enumName: 'EventType' })
   @IsOptional()
   @IsEnum(EventType)

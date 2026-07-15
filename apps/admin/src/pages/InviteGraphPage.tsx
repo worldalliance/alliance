@@ -1,7 +1,7 @@
 import {
-  OnetimeInviteDto,
+  OnetimeInviteEdgeDto,
   UserDto,
-  userGetOnetimeInvitesAdmin,
+  userGetOnetimeInviteGraphEdgesAdmin,
   userListForGraphAdmin,
 } from "@alliance/shared/client";
 import type { Selection, SimulationLinkDatum, SimulationNodeDatum } from "d3";
@@ -50,7 +50,7 @@ const InviteGraphPage = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const graphRef = useRef<GraphRefs | null>(null);
   const [users, setUsers] = useState<UserDto[]>([]);
-  const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
+  const [inviteEdges, setInviteEdges] = useState<OnetimeInviteEdgeDto[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -62,13 +62,14 @@ const InviteGraphPage = () => {
   const [isolateSubgraph, setIsolateSubgraph] = useState(false);
 
   useEffect(() => {
-    Promise.all([userListForGraphAdmin(), userGetOnetimeInvitesAdmin()]).then(
-      ([usersRes, invitesRes]) => {
-        setUsers(usersRes.data ?? []);
-        setInvites(invitesRes.data ?? []);
-        setLoading(false);
-      },
-    );
+    Promise.all([
+      userListForGraphAdmin(),
+      userGetOnetimeInviteGraphEdgesAdmin(),
+    ]).then(([usersRes, edgesRes]) => {
+      setUsers(usersRes.data ?? []);
+      setInviteEdges(edgesRes.data ?? []);
+      setLoading(false);
+    });
   }, []);
 
   // Derive available communities and tags for dropdowns
@@ -143,11 +144,6 @@ const InviteGraphPage = () => {
     const width = svgRef.current.clientWidth;
     const height = svgRef.current.clientHeight;
 
-    // Build the graph data
-    const usedInvites = invites.filter(
-      (inv) => inv.status === "link_used" && inv.invitedUserId,
-    );
-
     // Users 7 and 10 are treated as the root node
     const ROOT_USER_IDS = new Set([7, 10]);
     const resolveNodeId = (userId: number) =>
@@ -188,12 +184,10 @@ const InviteGraphPage = () => {
     };
 
     // Links from OnetimeInvite data
-    for (const inv of usedInvites) {
-      if (inv.invitingUser && inv.invitedUserId) {
-        const src = resolveNodeId(inv.invitingUser.id);
-        const tgt = resolveNodeId(inv.invitedUserId);
-        if (src !== tgt) addLink(src, tgt);
-      }
+    for (const edge of inviteEdges) {
+      const src = resolveNodeId(edge.invitingUserId);
+      const tgt = resolveNodeId(edge.invitedUserId);
+      if (src !== tgt) addLink(src, tgt);
     }
 
     // Links from referredBy relation
@@ -506,7 +500,7 @@ const InviteGraphPage = () => {
       simulation.stop();
       graphRef.current = null;
     };
-  }, [loading, users, invites]);
+  }, [loading, users, inviteEdges]);
 
   // Effect 2: Apply filter visuals (runs on filter changes without rebuilding graph)
   useEffect(() => {
@@ -635,8 +629,7 @@ const InviteGraphPage = () => {
       <div className="p-4 border-b border-gray-200 shrink-0">
         <h2 className="text-lg font-bold">Invite Graph</h2>
         <p className="text-sm text-gray-500">
-          {users.length} users,{" "}
-          {invites.filter((i) => i.status === "link_used").length} used invites
+          {users.length} users, {inviteEdges.length} used invites
           {matchCount !== null && ` \u2014 ${matchCount} matching filters`}
         </p>
       </div>

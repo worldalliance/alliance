@@ -30,6 +30,7 @@ import type { JwtRequest } from 'src/auth/guards/jwtreq';
 import { MaybeUserLocationDto } from 'src/geo/city.dto';
 import { PosthogService } from 'src/posthog/posthog.service';
 import { PushDto } from 'src/push/dto/push.dto';
+import { PaginationQueryDto } from 'src/utils/pagination.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Public } from '../auth/public.decorator';
 import {
@@ -53,6 +54,9 @@ import {
   CreateAmbassadorProgramInteractionDto,
   CreateOnetimeInviteDto,
   OnetimeInviteDto,
+  OnetimeInviteEdgeDto,
+  OnetimeInviteListDto,
+  OnetimeInviteMemberStatsDto,
   RequestOnetimeInviteDto,
   UpdateAmbassadorInviteGoalDto,
   UpdateAmbassadorProgramMemberDto,
@@ -805,10 +809,32 @@ export class UserController {
 
   @Get('onetimeInvites')
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: [OnetimeInviteDto] })
-  async getOnetimeInvitesAdmin(): Promise<OnetimeInviteDto[]> {
-    return (await this.userService.findAllOnetimeInvites()).map(
-      (invite) => new OnetimeInviteDto(invite),
+  @ApiOkResponse({ type: OnetimeInviteListDto })
+  async getOnetimeInvitesAdmin(
+    @Query() query: PaginationQueryDto,
+  ): Promise<OnetimeInviteListDto> {
+    return new OnetimeInviteListDto(
+      await this.userService.findAllOnetimeInvites(query),
+    );
+  }
+
+  @Get('onetimeInvites/memberStats')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [OnetimeInviteMemberStatsDto] })
+  async getOnetimeInviteMemberStatsAdmin(): Promise<
+    OnetimeInviteMemberStatsDto[]
+  > {
+    return (await this.userService.getOnetimeInviteMemberStats()).map(
+      (stats) => new OnetimeInviteMemberStatsDto(stats),
+    );
+  }
+
+  @Get('onetimeInvites/graphEdges')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [OnetimeInviteEdgeDto] })
+  async getOnetimeInviteGraphEdgesAdmin(): Promise<OnetimeInviteEdgeDto[]> {
+    return (await this.userService.findOnetimeInviteEdges()).map(
+      (edge) => new OnetimeInviteEdgeDto(edge),
     );
   }
 

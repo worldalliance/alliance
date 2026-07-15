@@ -1,30 +1,53 @@
 import {
   CreateOnetimeInviteDto,
-  OnetimeInviteDto,
   userCreateOnetimeInvite,
+  userGetOnetimeInviteMemberStatsAdmin,
   userGetOnetimeInvitesAdmin,
   userListAdmin,
 } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { usePaginatedQuery } from "@alliance/shared/lib/usePaginatedQuery";
+import { cn } from "@alliance/shared/styles/util";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CopyIcon from "@alliance/sharedweb/ui/icons/CopyIcon";
 import List from "@alliance/sharedweb/ui/List";
+import Pagination from "@alliance/sharedweb/ui/Pagination";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
-import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 
+const INVITES_PER_PAGE = 50;
+
 const InvitesPage = () => {
-  const [invites, setInvites] = useState<OnetimeInviteDto[]>([]);
+  const queryClient = useQueryClient();
+
+  const {
+    data,
+    page,
+    setPage,
+    isLoading,
+    isError,
+    isPlaceholderData,
+    refetch,
+  } = usePaginatedQuery({
+    queryKey: (page) => queryKeys.onetimeInvitesAdmin(page, INVITES_PER_PAGE),
+    queryFn: (page) =>
+      userGetOnetimeInvitesAdmin({
+        query: { page, limit: INVITES_PER_PAGE },
+        throwOnError: true,
+      }).then((response) => response.data),
+  });
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!selectedUser) {
       return;
     }
-    event.preventDefault();
     const formData = new FormData(event.target as HTMLFormElement);
-    console.log(formData.get("invitee"));
     const body = {
       invitingUserId: selectedUser,
       invitee: formData.get("invitee")?.toString() ?? "",
@@ -33,8 +56,14 @@ const InvitesPage = () => {
       body,
     });
     if (response.data) {
-      setInvites([response.data, ...invites]);
       setSelectedUser(null);
+      setPage(1);
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.onetimeInvitesAdminAll(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.onetimeInviteMemberStatsAdmin(),
+      });
     }
   };
 
@@ -46,42 +75,17 @@ const InvitesPage = () => {
     });
   }, []);
 
-  useEffect(() => {
-    userGetOnetimeInvitesAdmin().then((response) => {
-      if (response.data) {
-        setInvites(
-          response.data.sort(
-            (a, b) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-          ),
-        );
-      }
-    });
-  }, []);
-
-  const invitesPerMember = useMemo(() => {
-    const map = new Map<
-      number,
-      { name: string; pfp: string | null; sent: number; accepted: number }
-    >();
-    for (const invite of invites) {
-      const user = invite.invitingUser;
-      if (!user) continue;
-      const id = user.id;
-      const entry = map.get(id) ?? {
-        name: user.displayName ?? "Unknown",
-        pfp: user.profilePicture ?? null,
-        sent: 0,
-        accepted: 0,
-      };
-      entry.sent++;
-      if (invite.status === "link_used" || invite.invitedUserId) {
-        entry.accepted++;
-      }
-      map.set(id, entry);
-    }
-    return [...map.values()].sort((a, b) => b.sent - a.sent);
-  }, [invites]);
+  const {
+    data: invitesPerMember = [],
+    isError: isStatsError,
+    refetch: refetchStats,
+  } = useQuery({
+    queryKey: queryKeys.onetimeInviteMemberStatsAdmin(),
+    queryFn: () =>
+      userGetOnetimeInviteMemberStatsAdmin({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
+  });
 
   const copyToClipboard = (text: string) => {
     const baseUrl = getBaseUrl();
@@ -125,6 +129,18 @@ const InvitesPage = () => {
             </div>
           </form>
         </Card>
+        {isStatsError && (
+          <p className="mt-5 text-sm text-red-600">
+            Failed to load invite stats.{" "}
+            <button
+              type="button"
+              className="underline hover:text-red-700"
+              onClick={() => refetchStats()}
+            >
+              Retry
+            </button>
+          </p>
+        )}
         {invitesPerMember.length > 0 && (
           <details className="mt-5 rounded-lg border border-gray-200 bg-white">
             <summary className="cursor-pointer select-none px-5 py-4 font-semibold">
@@ -142,13 +158,16 @@ const InvitesPage = () => {
                 <tbody>
                   {invitesPerMember.map((member) => (
                     <tr
-                      key={member.name}
+                      key={member.invitingUser.id}
                       className="border-b border-gray-100 last:border-b-0"
                     >
                       <td className="py-2">
                         <div className="flex flex-row gap-2 items-center">
-                          <AvatarProfile size="small" pfp={member.pfp} />
-                          <span>{member.name}</span>
+                          <AvatarProfile
+                            size="small"
+                            pfp={member.invitingUser.profilePicture}
+                          />
+                          <span>{member.invitingUser.displayName}</span>
                         </div>
                       </td>
                       <td className="py-2 text-right">{member.sent}</td>
@@ -169,61 +188,96 @@ const InvitesPage = () => {
             View Invite Graph
           </Link>
         </div>
-        <List>
-          {invites.map((invite) => (
-            <div key={invite.id} className="p-4">
-              <div className="flex flex-row gap-2 justify-between items-center">
-                <div className="flex flex-row gap-2">
-                  <AvatarProfile
-                    size="small"
-                    pfp={invite.invitingUser?.profilePicture ?? null}
-                  />
-                  <p>
-                    {invite.invitingUser?.displayName}{" "}
-                    <span className="text-gray-500"> inviting </span>{" "}
-                    {invite.invitedUserId ? (
-                      <a
-                        href={getBaseUrl() + `/member/${invite.invitedUserId}`}
-                        className="underline"
-                      >
-                        {" "}
-                        {invite.invitee}{" "}
-                      </a>
+        {isError && (
+          <p className="text-sm text-red-600">
+            Failed to load invites.{" "}
+            <button
+              type="button"
+              className="underline hover:text-red-700"
+              onClick={() => refetch()}
+            >
+              Retry
+            </button>
+          </p>
+        )}
+        {isError && !data ? null : isLoading ? (
+          <p className="text-sm text-zinc-500">Loading invites...</p>
+        ) : (
+          <List
+            className={cn(
+              "transition-opacity",
+              isPlaceholderData && "opacity-60",
+            )}
+          >
+            {(data?.items ?? []).map((invite) => (
+              <div key={invite.id} className="p-4">
+                <div className="flex flex-row gap-2 justify-between items-center">
+                  <div className="flex flex-row gap-2">
+                    <AvatarProfile
+                      size="small"
+                      pfp={invite.invitingUser?.profilePicture ?? null}
+                    />
+                    <p>
+                      {invite.invitingUser?.displayName}{" "}
+                      <span className="text-gray-500"> inviting </span>{" "}
+                      {invite.invitedUserId ? (
+                        <a
+                          href={
+                            getBaseUrl() + `/member/${invite.invitedUserId}`
+                          }
+                          className="underline"
+                        >
+                          {" "}
+                          {invite.invitee}{" "}
+                        </a>
+                      ) : (
+                        invite.invitee
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex flex-row gap-3 items-center">
+                    <p className="text-gray-500">{invite.code}</p>
+                    {invite.status === "link_unused" ? (
+                      <p className="text-green">Active</p>
                     ) : (
-                      invite.invitee
+                      <p className="text-gray-500">used</p>
                     )}
-                  </p>
-                </div>
-                <div className="flex flex-row gap-3 items-center">
-                  <p className="text-gray-500">{invite.code}</p>
-                  {invite.status === "link_unused" ? (
-                    <p className="text-green">Active</p>
-                  ) : (
-                    <p className="text-gray-500">used</p>
-                  )}
-                  <div
-                    className="cursor-pointer active:scale-85 transition-all duration-100"
-                    onClick={() => copyToClipboard(invite.code)}
-                  >
-                    <CopyIcon size="medium" fill="gray" />
+                    <div
+                      className="cursor-pointer active:scale-85 transition-all duration-100"
+                      onClick={() => copyToClipboard(invite.code)}
+                    >
+                      <CopyIcon size="medium" fill="gray" />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex flex-row gap-2 items-center justify-between mt-1">
-                <div>
-                  {invite.info && (
-                    <p className="text-zinc-800 pt-4 text-sm">{invite.info}</p>
+                <div className="flex flex-row gap-2 items-center justify-between mt-1">
+                  <div>
+                    {invite.info && (
+                      <p className="text-zinc-800 pt-4 text-sm">
+                        {invite.info}
+                      </p>
+                    )}
+                  </div>
+                  {invite.createdAt && (
+                    <p className="text-zinc-500 text-sm min-w-24">
+                      {new Date(invite.createdAt).toLocaleString()}
+                    </p>
                   )}
                 </div>
-                {invite.createdAt && (
-                  <p className="text-zinc-500 text-sm min-w-24">
-                    {new Date(invite.createdAt).toLocaleString()}
-                  </p>
-                )}
               </div>
-            </div>
-          ))}
-        </List>
+            ))}
+          </List>
+        )}
+        {data && data.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-sm text-zinc-500">{data.totalCount} total</p>
+            <Pagination
+              page={page}
+              totalPages={data.totalPages}
+              onPageChange={setPage}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1144,6 +1144,31 @@ export type UpdateAmbassadorInviteGoalDto = {
     dueAt?: string;
 };
 
+export type OnetimeInviteListDto = {
+    items: Array<OnetimeInviteDto>;
+    totalCount: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+};
+
+export type OnetimeInviteMemberUserDto = {
+    id: number;
+    displayName: string;
+    profilePicture: string | null;
+};
+
+export type OnetimeInviteMemberStatsDto = {
+    invitingUser: OnetimeInviteMemberUserDto;
+    sent: number;
+    accepted: number;
+};
+
+export type OnetimeInviteEdgeDto = {
+    invitingUserId: number;
+    invitedUserId: number;
+};
+
 export type SingleGroupAssignmentDto = {
     userId: number;
     communityId: number;
@@ -5251,7 +5276,10 @@ export type UserDeleteOnetimeInviteResponse = UserDeleteOnetimeInviteResponses[k
 export type UserGetOnetimeInvitesAdminData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        page?: number;
+        limit?: number;
+    };
     url: '/user/onetimeInvites';
 };
 
@@ -5265,10 +5293,54 @@ export type UserGetOnetimeInvitesAdminErrors = {
 export type UserGetOnetimeInvitesAdminError = UserGetOnetimeInvitesAdminErrors[keyof UserGetOnetimeInvitesAdminErrors];
 
 export type UserGetOnetimeInvitesAdminResponses = {
-    200: Array<OnetimeInviteDto>;
+    200: OnetimeInviteListDto;
 };
 
 export type UserGetOnetimeInvitesAdminResponse = UserGetOnetimeInvitesAdminResponses[keyof UserGetOnetimeInvitesAdminResponses];
+
+export type UserGetOnetimeInviteMemberStatsAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvites/memberStats';
+};
+
+export type UserGetOnetimeInviteMemberStatsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGetOnetimeInviteMemberStatsAdminError = UserGetOnetimeInviteMemberStatsAdminErrors[keyof UserGetOnetimeInviteMemberStatsAdminErrors];
+
+export type UserGetOnetimeInviteMemberStatsAdminResponses = {
+    200: Array<OnetimeInviteMemberStatsDto>;
+};
+
+export type UserGetOnetimeInviteMemberStatsAdminResponse = UserGetOnetimeInviteMemberStatsAdminResponses[keyof UserGetOnetimeInviteMemberStatsAdminResponses];
+
+export type UserGetOnetimeInviteGraphEdgesAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/onetimeInvites/graphEdges';
+};
+
+export type UserGetOnetimeInviteGraphEdgesAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserGetOnetimeInviteGraphEdgesAdminError = UserGetOnetimeInviteGraphEdgesAdminErrors[keyof UserGetOnetimeInviteGraphEdgesAdminErrors];
+
+export type UserGetOnetimeInviteGraphEdgesAdminResponses = {
+    200: Array<OnetimeInviteEdgeDto>;
+};
+
+export type UserGetOnetimeInviteGraphEdgesAdminResponse = UserGetOnetimeInviteGraphEdgesAdminResponses[keyof UserGetOnetimeInviteGraphEdgesAdminResponses];
 
 export type UserGetOnetimeInvitesOverviewData = {
     body?: never;

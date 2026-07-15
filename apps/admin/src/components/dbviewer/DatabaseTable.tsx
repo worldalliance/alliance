@@ -1,14 +1,15 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ColumnMetadataDto,
   TableDataDto,
 } from "@alliance/shared/client/types.gen";
+import { cn } from "@alliance/shared/styles/util";
+import Pagination from "@alliance/sharedweb/ui/Pagination";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type {
+  ColumnFilterState,
   SelectedRowState,
   TableDataQueryState,
-  ColumnFilterState,
 } from "./DatabaseViewer.hooks";
-import { cn } from "@alliance/shared/styles/util";
 
 interface DatabaseTableProps {
   tableData: TableDataDto;
@@ -29,17 +30,17 @@ interface DatabaseTableProps {
     value: unknown,
     column: ColumnMetadataDto,
     rowIndex: number,
-    columnIndex: number
+    columnIndex: number,
   ) => React.ReactNode;
   handleCellClick: (
     rowIndex: number,
     columnIndex: number,
     cellValue: unknown,
-    column: ColumnMetadataDto
+    column: ColumnMetadataDto,
   ) => void;
   getRowPrimaryKey: (
     row: unknown[],
-    columns: ColumnMetadataDto[]
+    columns: ColumnMetadataDto[],
   ) => string | number | null;
 }
 
@@ -141,7 +142,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
         return columnIndex;
       });
     },
-    [columnFilter, tableData.columns]
+    [columnFilter, tableData.columns],
   );
 
   const handleSortOption = useCallback(
@@ -153,7 +154,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
       }
       setOpenColumnIndex(null);
     },
-    [onSortAscending, onSortDescending]
+    [onSortAscending, onSortDescending],
   );
 
   const handleApplyFilterAction = useCallback(
@@ -161,7 +162,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
       onApplyFilter(columnName, value);
       setOpenColumnIndex(null);
     },
-    [onApplyFilter]
+    [onApplyFilter],
   );
 
   const handleClearFilterAction = useCallback(() => {
@@ -186,7 +187,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
                       !tableData.rows.every((row) => {
                         const primaryKeyValue = getRowPrimaryKey(
                           row,
-                          tableData.columns
+                          tableData.columns,
                         );
                         return (
                           primaryKeyValue !== null &&
@@ -215,7 +216,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
                     key={`${column.name}-${columnIndex}`}
                     className={cn(
                       "px-6 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer",
-                      isMenuOpen ? "bg-gray-100" : "hover:bg-gray-100"
+                      isMenuOpen ? "bg-gray-100" : "hover:bg-gray-100",
                     )}
                     onClick={() => handleColumnMenuToggle(columnIndex)}
                   >
@@ -306,7 +307,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
                                   event.preventDefault();
                                   handleApplyFilterAction(
                                     column.name,
-                                    filterDraft
+                                    filterDraft,
                                   );
                                 }
                               }}
@@ -320,7 +321,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
                                 onClick={() =>
                                   handleApplyFilterAction(
                                     column.name,
-                                    filterDraft
+                                    filterDraft,
                                   )
                                 }
                                 disabled={!canApplyFilter}
@@ -328,7 +329,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
                                   "px-3 py-1 text-sm font-medium text-white rounded",
                                   canApplyFilter
                                     ? "bg-blue-600 hover:bg-blue-700"
-                                    : "bg-blue-200 cursor-not-allowed"
+                                    : "bg-blue-200 cursor-not-allowed",
                                 )}
                               >
                                 Apply
@@ -372,10 +373,10 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
               const rowClassName = isNewRow
                 ? "new-row-fade border-l-4 border-l-green-500"
                 : isSelectedRow
-                ? "bg-yellow-50 border-l-4 border-l-yellow-400 hover:bg-yellow-100"
-                : rowPrimaryKey !== null && selectedRows.has(rowPrimaryKey)
-                ? "bg-blue-50 border-blue-200"
-                : "hover:bg-gray-50";
+                  ? "bg-yellow-50 border-l-4 border-l-yellow-400 hover:bg-yellow-100"
+                  : rowPrimaryKey !== null && selectedRows.has(rowPrimaryKey)
+                    ? "bg-blue-50 border-blue-200"
+                    : "hover:bg-gray-50";
 
               return (
                 <tr key={uniqueKey} className={rowClassName}>
@@ -401,7 +402,7 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
                         key={cellIndex}
                         className={cn(
                           "whitespace-nowrap text-sm text-gray-900 max-w-[300px] overflow-x-clip border border-gray-200 px-5 py-3",
-                          isEditable && "hover:bg-gray-50"
+                          isEditable && "hover:bg-gray-50",
                         )}
                         onClick={() =>
                           isEditable
@@ -426,47 +427,11 @@ const DatabaseTable: React.FC<DatabaseTableProps> = ({
             <div className="text-sm text-gray-700">
               Showing page {tableData.page} of {tableData.totalPages}
             </div>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => onPageChange(tableData.page - 1)}
-                disabled={tableData.page <= 1}
-                className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-
-              <div className="flex space-x-1">
-                {Array.from(
-                  { length: Math.min(5, tableData.totalPages) },
-                  (_, index) => {
-                    const page = Math.max(1, tableData.page - 2) + index;
-                    if (page > tableData.totalPages) return null;
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => onPageChange(page)}
-                        className={cn(
-                          "px-3 py-1 text-sm border rounded-md",
-                          page === tableData.page
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white border-gray-300 hover:bg-gray-50"
-                        )}
-                      >
-                        {page}
-                      </button>
-                    );
-                  }
-                )}
-              </div>
-
-              <button
-                onClick={() => onPageChange(tableData.page + 1)}
-                disabled={tableData.page >= tableData.totalPages}
-                className="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </div>
+            <Pagination
+              page={tableData.page}
+              totalPages={tableData.totalPages}
+              onPageChange={onPageChange}
+            />
           </div>
         </div>
       )}
