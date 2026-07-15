@@ -114,7 +114,7 @@ export function RenderLabel({
     <View className="mb-1">
       {!field.required && !isOutputView && <OptionalLabelPrefix />}
       {field.label !== null && (
-        <View className="shrink flex-1">
+        <View>
           <InlineLabelMarkdownWrapper>{field.label}</InlineLabelMarkdownWrapper>
         </View>
       )}
