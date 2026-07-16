@@ -1,26 +1,26 @@
 import {
+  authForgotPassword,
+  authMe,
   City,
   CitySearchDto,
   PublicFormResponseDefault,
+  UpdateProfileDto,
   userMyLocation,
   userUpdate,
-  authForgotPassword,
-  authMe,
-  UpdateProfileDto,
 } from "@alliance/shared/client";
+import { CardStyle } from "@alliance/shared/styles/card";
+import TimeZoneSelect from "@alliance/sharedweb/forms/TimeZoneSelect";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
+import FormInput from "@alliance/sharedweb/ui/FormInput";
+import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
+import YesNoToggle from "@alliance/sharedweb/ui/YesNoToggle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, useNavigate } from "react-router";
-import CityAutosuggest from "../../components/CityAutosuggest";
-import FormInput from "@alliance/sharedweb/ui/FormInput";
-import YesNoToggle from "@alliance/sharedweb/ui/YesNoToggle";
-import { useAuth } from "../../lib/AuthContext";
 import AwayRangesSection from "../../components/AwayRangesSection";
-import TimeZoneSelect from "@alliance/sharedweb/forms/TimeZoneSelect";
-import { CardStyle } from "@alliance/shared/styles/card";
-import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
-import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
+import CityAutosuggest from "../../components/CityAutosuggest";
+import { useAuth } from "../../lib/AuthContext";
 
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
@@ -302,49 +302,10 @@ const SettingsPage: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="flex flex-col divide-y divide-zinc-200 mt-4 border-t border-zinc-200">
-            <div className="flex flex-row gap-x-4 items-center justify-between py-3">
-              <div>
-                <label className="block font-medium mb-0">
-                  Show my name to other members
-                </label>
-                <p className="text-zinc-500 text-sm mt-0.5">
-                  When off, other members will not be able to see your name
-                  (anonymous).
-                </p>
-              </div>
-              <YesNoToggle
-                value={!editableUser.anonymous}
-                onChange={(next) => updateEditableUser({ anonymous: !next })}
-                ariaLabel="Show my name to other members"
-                yesLabel="On"
-                noLabel="Off"
-                yesColor={ButtonColor.Green}
-              />
-            </div>
-            <div className="flex flex-row gap-x-4 items-center justify-between py-3">
-              <div>
-                <label className="block font-medium mb-0">
-                  Share information publicly
-                </label>
-                <p className="text-zinc-500 text-sm mt-0.5">
-                  Allow your name, profile photo, and bio to be listed in a
-                  public member directory.
-                </p>
-              </div>
-              <YesNoToggle
-                value={editableUser.shareInfoPublicly}
-                onChange={(next) =>
-                  updateEditableUser({ shareInfoPublicly: next })
-                }
-                ariaLabel="Share information publicly"
-                disabled={editableUser.anonymous}
-                yesLabel="On"
-                noLabel="Off"
-                yesColor={ButtonColor.Green}
-              />
-            </div>
-          </div>
+        </Card>
+
+        <Card style={CardStyle.White} className="p-6">
+          <AwayRangesSection />
         </Card>
 
         <Card style={CardStyle.White} className="p-6">
@@ -549,7 +510,9 @@ const SettingsPage: React.FC = () => {
           <Card style={CardStyle.White} className="p-6">
             <div>
               <h2 className="!font-semibold !text-2xl mb-4">Groups</h2>
-              <p className="mb-2">Contact info shared with your group lead:</p>
+              <p className="mb-2">
+                Set which information is shared with your group lead.
+              </p>
               <div className="flex flex-col divide-y divide-zinc-200 mt-2 border-t border-zinc-200">
                 <div className="flex flex-row items-center justify-between gap-x-4 py-3">
                   <span className="font-medium">Email</span>
@@ -587,11 +550,50 @@ const SettingsPage: React.FC = () => {
         )}
 
         <Card style={CardStyle.White} className="p-6">
-          <AwayRangesSection />
-        </Card>
-
-        <Card style={CardStyle.White} className="p-6">
           <h2 className="!font-semibold text-2xl mb-4 ">Privacy</h2>
+          <div className="flex flex-col divide-y divide-zinc-200 mb-4">
+            <div className="flex flex-row gap-x-4 items-center justify-between py-3">
+              <div>
+                <label className="block font-medium mb-0">
+                  Show my name to other members
+                </label>
+                <p className="text-zinc-500 text-sm mt-0.5">
+                  When off, other members will not be able to see your name
+                  (anonymous).
+                </p>
+              </div>
+              <YesNoToggle
+                value={!editableUser.anonymous}
+                onChange={(next) => updateEditableUser({ anonymous: !next })}
+                ariaLabel="Show my name to other members"
+                yesLabel="On"
+                noLabel="Off"
+                yesColor={ButtonColor.Green}
+              />
+            </div>
+            <div className="flex flex-row gap-x-4 items-center justify-between py-3">
+              <div>
+                <label className="block font-medium mb-0">
+                  Share information publicly
+                </label>
+                <p className="text-zinc-500 text-sm mt-0.5">
+                  Allow your name, profile photo, and bio to be listed in a
+                  public member directory.
+                </p>
+              </div>
+              <YesNoToggle
+                value={editableUser.shareInfoPublicly}
+                onChange={(next) =>
+                  updateEditableUser({ shareInfoPublicly: next })
+                }
+                ariaLabel="Share information publicly"
+                disabled={editableUser.anonymous}
+                yesLabel="On"
+                noLabel="Off"
+                yesColor={ButtonColor.Green}
+              />
+            </div>
+          </div>
           <div className="flex flex-col gap-y-2">
             <p className="mb-0">
               Some parts of your completed tasks can be visible to other
