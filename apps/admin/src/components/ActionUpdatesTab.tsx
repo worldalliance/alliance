@@ -123,50 +123,83 @@ const ActionUpdatesTab = ({
 
   return (
     <div className="space-y-2 flex flex-col">
+      <p className="rounded-md bg-blue-50 p-3 text-sm text-blue-950">
+        Before writing an update, review the{" "}
+        <a
+          href="https://docs.google.com/document/d/1vxeA31milcWRhpkGjGWHp1RQbpDFRjS541E9SzdKkFc/edit?tab=t.0#heading=h.l5nuu7lwqdm8"
+          target="_blank"
+          rel="noreferrer"
+          className="font-bold underline"
+        >
+          Update copy guidelines
+        </a>
+        .
+      </p>
       <div className="flex justify-between items-center">
         <p className="font-bold">Add a status update...</p>
-        <div className="flex items-center gap-2">
-          <label className="text-sm">Preview?</label>
+        <label className="flex items-center gap-2">
+          <span className="flex flex-col">
+            <span className="text-sm font-bold">Preview</span>
+            <span className="text-xs text-zinc-600">
+              See how this update will appear.
+            </span>
+          </span>
           <input
             type="checkbox"
             checked={preview}
             onChange={(e) => setPreview(e.target.checked)}
           />
-        </div>
+        </label>
       </div>
       {preview ? (
         <ActionUpdateCard update={{ ...newUpdate, id: 0, actionId }} />
       ) : (
         <Card className="space-y-2">
-          <div className="p-2 bg-zinc-100 rounded-md">
-            <input
-              type="text"
-              placeholder="Title..."
-              className="w-full p-2 bg-zinc-100 rounded-md font-bold"
-              value={newUpdate.title}
-              onChange={(e) => {
-                setNewUpdate({ ...newUpdate, title: e.target.value });
-              }}
-              required
-            />
-            <EditableContentForm
-              value={newUpdate.content}
-              draftKey={`action-update-${actionId}`}
-              clearDraftSignal={clearDraftSignal}
-              placeholder="Action update body..."
-              onChange={(content) => {
-                setNewUpdate({
-                  ...newUpdate,
-                  content,
-                });
-              }}
-            />
+          <div className="p-3 bg-zinc-100 rounded-md space-y-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-bold">Title</span>
+              <span className="text-xs text-zinc-600">
+                Give the update a short, descriptive heading.
+              </span>
+              <input
+                type="text"
+                placeholder="Title..."
+                className="w-full p-2 bg-white rounded-md font-bold"
+                value={newUpdate.title}
+                onChange={(e) => {
+                  setNewUpdate({ ...newUpdate, title: e.target.value });
+                }}
+                required
+              />
+            </label>
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-bold">Update body</span>
+              <span className="text-xs text-zinc-600">
+                Share the full update and add any relevant attachments.
+              </span>
+              <EditableContentForm
+                value={newUpdate.content}
+                draftKey={`action-update-${actionId}`}
+                clearDraftSignal={clearDraftSignal}
+                placeholder="Action update body..."
+                onChange={(content) => {
+                  setNewUpdate({
+                    ...newUpdate,
+                    content,
+                  });
+                }}
+              />
+            </div>
             <label className="flex flex-col text-sm gap-1">
-              <span>Short notification text</span>
+              <span className="font-bold">Short notification text</span>
+              <span className="text-xs text-zinc-600">
+                An automatic &quot;Update: &quot; prefix will be added to this
+                text.
+              </span>
               <input
                 type="text"
                 className="p-2 rounded-md bg-white text-base"
-                placeholder="shows in notification message"
+                placeholder="Notification message"
                 value={newUpdate.shortNotifString}
                 onChange={(e) =>
                   setNewUpdate({
@@ -176,14 +209,13 @@ const ActionUpdatesTab = ({
                 }
                 required
               />
-              <span className="text-xs text-zinc-600">
-                Push notifications will automatically be prefixed with
-                &quot;Update: &quot;.
-              </span>
             </label>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 mt-3">
               <label className="flex flex-col text-sm gap-1">
-                <span>Notification audience</span>
+                <span className="font-bold">Notification audience</span>
+                <span className="text-xs text-zinc-600">
+                  Choose who should receive a push notification.
+                </span>
                 <select
                   className="p-2 rounded-md bg-white text-base"
                   value={newUpdate.notifyType}
@@ -209,7 +241,10 @@ const ActionUpdatesTab = ({
                 </select>
               </label>
               <label className="flex flex-col text-sm gap-1">
-                <span>Date</span>
+                <span className="font-bold">Date</span>
+                <span className="text-xs text-zinc-600">
+                  Set the date and time displayed for this update.
+                </span>
                 <DateTimePicker
                   value={newUpdate.date}
                   className="bg-white border-none"
@@ -220,7 +255,10 @@ const ActionUpdatesTab = ({
               </label>
               {newUpdate.notifyType === "tag" && (
                 <label className="flex flex-col text-sm gap-1 md:col-span-2">
-                  <span>Target tag</span>
+                  <span className="font-bold">Target tag</span>
+                  <span className="text-xs text-zinc-600">
+                    Notify only members assigned to this tag.
+                  </span>
                   <select
                     className="p-2 rounded-md bg-white text-base"
                     value={newUpdate.tagId ? String(newUpdate.tagId) : ""}
@@ -242,7 +280,10 @@ const ActionUpdatesTab = ({
               )}
               {events.length > 0 && (
                 <label className="flex flex-col text-sm gap-1 md:col-span-2">
-                  <span>Associated event (optional)</span>
+                  <span className="font-bold">Associated event (optional)</span>
+                  <span className="text-xs text-zinc-600">
+                    Link this update to a related action event.
+                  </span>
                   <select
                     className="p-2 rounded-md bg-white text-base"
                     value={
