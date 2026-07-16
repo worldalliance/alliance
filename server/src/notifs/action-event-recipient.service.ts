@@ -194,6 +194,12 @@ export class ActionEventRecipientService {
       eventId: event.id,
       session,
       resolvingActionIds,
+      // Dismissal is a view-only "mark as seen" overlay (see
+      // ActionActivityType.USER_DISMISSED) — it hides the card and mutes
+      // reminders but doesn't end participation, so it must not drop the
+      // user out of a cohort leaf's member set (matching the single-user
+      // predicates, which never consider dismissal).
+      includeDismissed: true,
     });
     const terminal = await this.actionActivityRepository.find({
       where: [
