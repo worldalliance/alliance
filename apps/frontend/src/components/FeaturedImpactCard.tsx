@@ -1,15 +1,27 @@
+import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import { Link, href } from "react-router";
 import type { FeaturedImpactAction } from "../content/featuredImpactActions";
-import { cn } from "@alliance/shared/styles/util";
 
 const FeaturedImpactCard: React.FC<
   FeaturedImpactAction & { bgColor?: "grey" | "white" }
-> = ({ actionId, emphasis, rest, bgColor = "grey", imageSrc, imageAlt }) => {
+> = ({
+  actionId,
+  emphasis,
+  rest,
+  bgColor = "grey",
+  imageSrc,
+  imageAlt,
+  customLink,
+}) => {
   const cardStyle = bgColor === "grey" ? "bg-grey-0" : "bg-white";
   return (
     <Link
-      to={href("/actions/:id", { id: actionId.toString() })}
+      to={
+        customLink
+          ? customLink
+          : href("/actions/:id", { id: actionId.toString() })
+      }
       className={cn(
         "flex flex-col overflow-hidden rounded-md group hover:border-grey-3",
         cardStyle,
