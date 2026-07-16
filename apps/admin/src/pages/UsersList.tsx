@@ -9,19 +9,19 @@ import {
   CommunityMemberContactInfoDto,
   ProfileDto,
   TagDto,
-  TimeSpentForUserDto,
   UserActionRelationDetailDto,
-  UserActionRelationsResponseDto,
-  UserActionSummaryDto,
-  UserDto,
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
+import { pluralize } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
+import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
+import { useQuery } from "@tanstack/react-query";
 import { LayoutGrid, List, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
@@ -29,27 +29,55 @@ import UserCard from "../components/UserCard";
 
 type ViewMode = "cards" | "rows";
 
+const MEMBERS_PER_PAGE = 50;
+
 const normalizePhoneSearch = (value: string | undefined): string =>
   value?.replace(/\D/g, "") ?? "";
 
 const UsersList: React.FC = () => {
-  const [users, setUsers] = useState<UserDto[]>([]);
-  const [timeSpentPerUserLast7, setTimeSpentPerUserLast7] = useState<
-    TimeSpentForUserDto[]
-  >([]);
-  const [timeSpentPerUserTotal, setTimeSpentPerUserTotal] = useState<
-    TimeSpentForUserDto[]
-  >([]);
+  const { data: users = [] } = useQuery({
+    queryKey: queryKeys.usersAdmin(),
+    queryFn: () =>
+      userListAdmin({ throwOnError: true }).then((response) => response.data),
+  });
+  const { data: timeSpentPerUserLast7 = [] } = useQuery({
+    queryKey: queryKeys.timeSpentPerUserAdmin(),
+    queryFn: () =>
+      analyticsGetTimeSpentPerUserAdmin({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
+  });
+  const { data: timeSpentPerUserTotal = [] } = useQuery({
+    queryKey: queryKeys.timeSpentPerUserTotalAdmin(),
+    queryFn: () =>
+      analyticsGetTimeSpentPerUserTotalAdmin({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
+  });
   const { tags, addUserToTag, removeUserFromTag } = useTagsAdmin();
-  const [actionSummaries, setActionSummaries] = useState<
-    UserActionSummaryDto[]
-  >([]);
-  const [activeActions, setActiveActions] = useState<UserActionSummaryDto[]>(
-    [],
+  const { data: relationsResponse } = useQuery({
+    queryKey: queryKeys.actionRelationsAdmin(),
+    queryFn: () =>
+      actionsActionRelationsAdmin({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
+  });
+  // latest on the right
+  const actionSummaries = useMemo(
+    () => (relationsResponse?.actions ?? []).slice().reverse(),
+    [relationsResponse],
   );
-  const [userActionRelations, setUserActionRelations] = useState<
-    Record<number, UserActionRelationDetailDto[]>
-  >({});
+  const activeActions = useMemo(
+    () => actionSummaries.filter((action) => action.status === "member_action"),
+    [actionSummaries],
+  );
+  const userActionRelations = useMemo(() => {
+    const relationMap: Record<number, UserActionRelationDetailDto[]> = {};
+    for (const entry of relationsResponse?.users ?? []) {
+      relationMap[entry.userId] = entry.relations ?? [];
+    }
+    return relationMap;
+  }, [relationsResponse]);
   const maxActionsPerWeek = useMaxActionsPerWeek({
     actionSummaries,
     userActionRelations,
@@ -67,45 +95,6 @@ const UsersList: React.FC = () => {
   const viewMode = (params.get("viewMode") as ViewMode | undefined) ?? "rows";
 
   const [shuffledIds, setShuffledIds] = useState<number[] | null>(null);
-
-  useEffect(() => {
-    analyticsGetTimeSpentPerUserAdmin().then((res) => {
-      if (res.data) {
-        setTimeSpentPerUserLast7(res.data);
-      }
-    });
-    analyticsGetTimeSpentPerUserTotalAdmin().then((res) => {
-      if (res.data) {
-        setTimeSpentPerUserTotal(res.data);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    userListAdmin().then((res) => setUsers(res.data || []));
-  }, []);
-
-  useEffect(() => {
-    actionsActionRelationsAdmin().then((res) => {
-      const data: UserActionRelationsResponseDto | undefined = res.data;
-      if (!data) {
-        return;
-      }
-
-      // latest on the right
-      data.actions.reverse();
-
-      setActionSummaries(data.actions);
-      setActiveActions(
-        data.actions.filter((action) => action.status === "member_action"),
-      );
-      const relationMap: Record<number, UserActionRelationDetailDto[]> = {};
-      for (const entry of data.users ?? []) {
-        relationMap[entry.userId] = entry.relations ?? [];
-      }
-      setUserActionRelations(relationMap);
-    });
-  }, []);
 
   const userToTimeSpent = useMemo(() => {
     return timeSpentPerUserLast7.reduce(
@@ -207,10 +196,10 @@ const UsersList: React.FC = () => {
     if (!selectedTagIds.length) {
       return "All tags";
     }
-    if (selectedTagIds.length === 1) {
-      return selectedTagNames[0] ?? "1 tag";
-    }
-    return `${selectedTagIds.length} tags`;
+    return (
+      (selectedTagIds.length === 1 && selectedTagNames[0]) ||
+      pluralize(selectedTagIds.length, "tag")
+    );
   }, [selectedTagIds, selectedTagNames]);
 
   const toggleTagSelection = (tagId: string) => {
@@ -236,7 +225,7 @@ const UsersList: React.FC = () => {
 
   const usersAsProfiles = useMemo((): ProfileDto[] => {
     return filteredBySearch.map((user) => {
-      const lastEvent = user.contractEvents?.sort(
+      const lastEvent = [...(user.contractEvents ?? [])].sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       )[0];
       return {
@@ -286,6 +275,29 @@ const UsersList: React.FC = () => {
     return filteredBySearch;
   }, [filteredBySearch, shuffledIds]);
 
+  const [cardPage, setCardPage] = useState(1);
+  // New search/filter/shuffle → back to the first page. Keyed on the filter
+  // inputs, not the derived array: a background refetch that only changes
+  // user fields must not yank the viewer back to the first page.
+  useEffect(() => {
+    setCardPage(1);
+  }, [searchQuery, selectedTagIds, shuffledIds]);
+
+  const cardTotalPages = Math.max(
+    1,
+    Math.ceil(displayedUsers.length / MEMBERS_PER_PAGE),
+  );
+  const currentCardPage = Math.min(cardPage, cardTotalPages);
+
+  const visibleCardUsers = useMemo(
+    () =>
+      displayedUsers.slice(
+        (currentCardPage - 1) * MEMBERS_PER_PAGE,
+        currentCardPage * MEMBERS_PER_PAGE,
+      ),
+    [displayedUsers, currentCardPage],
+  );
+
   const displayedProfiles = useMemo((): ProfileDto[] => {
     const list = usersAsProfiles;
     if (
@@ -299,25 +311,24 @@ const UsersList: React.FC = () => {
     return list;
   }, [usersAsProfiles, shuffledIds]);
 
-  const [memberContactInfo, setMemberContactInfo] = useState<
-    Record<number, CommunityMemberContactInfoDto>
-  >({});
-
-  useEffect(() => {
-    communityGetAllMemberContactInfoAdmin().then((resp) => {
-      if (resp.data) {
-        setMemberContactInfo(
-          resp.data.reduce(
-            (acc, contactInfo) => {
-              acc[contactInfo.id] = contactInfo;
-              return acc;
-            },
-            {} as Record<number, CommunityMemberContactInfoDto>,
-          ),
-        );
-      }
-    });
-  }, []);
+  const { data: contactInfoList } = useQuery({
+    queryKey: queryKeys.memberContactInfoAdmin(),
+    queryFn: () =>
+      communityGetAllMemberContactInfoAdmin({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
+  });
+  const memberContactInfo = useMemo(
+    () =>
+      (contactInfoList ?? []).reduce(
+        (acc, contactInfo) => {
+          acc[contactInfo.id] = contactInfo;
+          return acc;
+        },
+        {} as Record<number, CommunityMemberContactInfoDto>,
+      ),
+    [contactInfoList],
+  );
 
   const handleUserTagToggle = useCallback(
     async (userId: number, tagId: string, nextChecked: boolean) => {
@@ -471,24 +482,40 @@ const UsersList: React.FC = () => {
         </div>
       )}
       {viewMode === "cards" ? (
-        <div className="grid gap-3 w-full [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
-          {displayedUsers.map((user) => (
-            <UserCard
-              key={user.id}
-              user={user}
-              timeSpent={userToTimeSpent[user.id]}
-              timeSpentTotal={userToTimeSpentTotal[user.id]}
-              tags={userTagsMap[user.id] || []}
-              allTags={tags}
-              onToggleTag={(tagId, nextChecked) =>
-                handleUserTagToggle(user.id, tagId, nextChecked)
-              }
-              isTagPending={(tagId) => pendingTagOps.has(`${user.id}-${tagId}`)}
-              actions={actionSummaries}
-              maxActionsPerWeek={maxActionsPerWeek}
-              actionRelations={userActionRelations[user.id] || []}
-            />
-          ))}
+        <div className="w-full flex flex-col gap-y-4">
+          <div className="grid gap-3 w-full [grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
+            {visibleCardUsers.map((user) => (
+              <UserCard
+                key={user.id}
+                user={user}
+                timeSpent={userToTimeSpent[user.id]}
+                timeSpentTotal={userToTimeSpentTotal[user.id]}
+                tags={userTagsMap[user.id] || []}
+                allTags={tags}
+                onToggleTag={(tagId, nextChecked) =>
+                  handleUserTagToggle(user.id, tagId, nextChecked)
+                }
+                isTagPending={(tagId) =>
+                  pendingTagOps.has(`${user.id}-${tagId}`)
+                }
+                actions={actionSummaries}
+                maxActionsPerWeek={maxActionsPerWeek}
+                actionRelations={userActionRelations[user.id] || []}
+              />
+            ))}
+          </div>
+          {cardTotalPages > 1 && (
+            <div className="flex flex-row items-center justify-between">
+              <p className="text-sm text-zinc-500">
+                {pluralize(displayedUsers.length, "member")}
+              </p>
+              <Pagination
+                page={currentCardPage}
+                totalPages={cardTotalPages}
+                onPageChange={setCardPage}
+              />
+            </div>
+          )}
         </div>
       ) : (
         <div className="w-full">
@@ -507,6 +534,7 @@ const UsersList: React.FC = () => {
             showInfoTooltip
             showContractFilter
             disableSort={shuffledIds != null}
+            pageSize={MEMBERS_PER_PAGE}
           />
         </div>
       )}

@@ -9,9 +9,11 @@ import {
   sortMembersByNextTaskDue,
 } from "@alliance/shared/lib/communityMemberActions";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
-import { useCallback, useMemo, useState } from "react";
+import { pluralize } from "@alliance/shared/lib/utils";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import CommunityMemberTableRow from "./CommunityMemberTableRow";
 import DropdownSelect from "./DropdownSelect";
+import Pagination from "./Pagination";
 
 export enum CompletionFilterMode {
   All = "Any status",
@@ -40,6 +42,8 @@ type CommunityMembersTableProps = {
   showInfoTooltip?: boolean;
   showContractFilter?: boolean;
   disableSort?: boolean;
+  /** Members per page. Omit to render every row at once. */
+  pageSize?: number;
   memberHref: (memberId: number) => string;
 };
 
@@ -57,6 +61,7 @@ const CommunityMembersTable = ({
   showInfoTooltip = false,
   showContractFilter = false,
   disableSort = false,
+  pageSize,
   memberHref,
 }: CommunityMembersTableProps) => {
   const [completionFilter, setCompletionFilter] =
@@ -144,6 +149,34 @@ const CommunityMembersTable = ({
     deadlineTimestampByUserId,
   ]);
 
+  const [page, setPage] = useState(1);
+  // Key on the ids, not array identity: a background refetch that only
+  // changes member fields must not yank the viewer back to the first page.
+  const memberIdsKey = useMemo(
+    () => members.map((member) => member.id).join(","),
+    [members],
+  );
+  // New search results / member list → back to the first page
+  useEffect(() => {
+    setPage(1);
+  }, [memberIdsKey]);
+
+  const totalPages =
+    pageSize == null
+      ? 1
+      : Math.max(1, Math.ceil(filteredSortedMembers.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+
+  const visibleMembers = useMemo(() => {
+    if (pageSize == null) {
+      return filteredSortedMembers;
+    }
+    return filteredSortedMembers.slice(
+      (currentPage - 1) * pageSize,
+      currentPage * pageSize,
+    );
+  }, [filteredSortedMembers, pageSize, currentPage]);
+
   const hasActiveFilters =
     completionFilter !== CompletionFilterMode.All ||
     (showContractFilter && contractFilter !== ContractFilterMode.SIGNED);
@@ -153,6 +186,7 @@ const CommunityMembersTable = ({
     setContractFilter(
       showContractFilter ? ContractFilterMode.SIGNED : ContractFilterMode.ALL,
     );
+    setPage(1);
   };
 
   return (
@@ -240,7 +274,10 @@ const CommunityMembersTable = ({
                           membersByContract[mode].length.toString()
                         }
                         value={contractFilter}
-                        onChange={([, mode]) => setContractFilter(mode)}
+                        onChange={([, mode]) => {
+                          setContractFilter(mode);
+                          setPage(1);
+                        }}
                       />
                     )}
                     <DropdownSelect
@@ -249,7 +286,10 @@ const CommunityMembersTable = ({
                         membersByCompletion[mode].length.toString()
                       }
                       value={completionFilter}
-                      onChange={([, mode]) => setCompletionFilter(mode)}
+                      onChange={([, mode]) => {
+                        setCompletionFilter(mode);
+                        setPage(1);
+                      }}
                     />
                     {hasActiveFilters && (
                       <button
@@ -286,7 +326,7 @@ const CommunityMembersTable = ({
             </tr>
           </thead>
           <tbody className="border-y md:border border-zinc-200">
-            {filteredSortedMembers.map((user) => (
+            {visibleMembers.map((user) => (
               <CommunityMemberTableRow
                 key={user.id}
                 profile={user}
@@ -307,6 +347,18 @@ const CommunityMembersTable = ({
           </tbody>
         </table>
       </div>
+      {pageSize != null && totalPages > 1 && (
+        <div className="flex flex-row items-center justify-between mt-4 px-5 md:px-0">
+          <p className="text-sm text-zinc-500">
+            {pluralize(filteredSortedMembers.length, "member")}
+          </p>
+          <Pagination
+            page={currentPage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
     </div>
   );
 };

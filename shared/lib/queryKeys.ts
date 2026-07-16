@@ -29,5 +29,15 @@ export const queryKeys = {
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
   reminderGroupClickRatesAdmin: () =>
     ["analyticsGetReminderGroupClickRatesAdmin"] as const,
+  actionsAllAdmin: () => ["actionsFindAllWithDraftsAdmin"] as const,
+  outreachPartnershipResponsesAdmin: () =>
+    ["actionPartnershipsFindAllResponsesAdmin"] as const,
+  usersAdmin: () => ["userListAdmin"] as const,
+  actionRelationsAdmin: () => ["actionsActionRelationsAdmin"] as const,
+  timeSpentPerUserAdmin: () => ["analyticsGetTimeSpentPerUserAdmin"] as const,
+  timeSpentPerUserTotalAdmin: () =>
+    ["analyticsGetTimeSpentPerUserTotalAdmin"] as const,
+  memberContactInfoAdmin: () =>
+    ["communityGetAllMemberContactInfoAdmin"] as const,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } as const satisfies Record<string, (...args: any[]) => readonly unknown[]>;

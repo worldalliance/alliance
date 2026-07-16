@@ -4,12 +4,14 @@ import {
   actionsFindAllWithDraftsAdmin,
   actionsPasteJsonAdmin,
 } from "@alliance/shared/client";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { cn } from "@alliance/shared/styles/util";
 import { isProduction } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Dropdown from "@alliance/sharedweb/ui/Dropdown";
 import SidebarIcon from "@alliance/sharedweb/ui/icons/SidebarIcon";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart2,
   Calendar,
@@ -39,6 +41,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useState,
 } from "react";
 import { Link, Outlet, useNavigate } from "react-router";
@@ -46,10 +49,28 @@ import { useAuth } from "./lib/AuthContext";
 import { useGroupAssignment } from "./lib/GroupAssignmentContext";
 
 const Sidebar: React.FC = () => {
-  const [actions, setActions] = useState<ActionDto[]>([]);
-  const [actionsLoading, setActionsLoading] = useState<boolean>(true);
-  const [pendingOutreachPartnershipCount, setPendingOutreachPartnershipCount] =
-    useState<number>(0);
+  const queryClient = useQueryClient();
+  const { data: actions = [], isLoading: actionsLoading } = useQuery({
+    queryKey: queryKeys.actionsAllAdmin(),
+    queryFn: () =>
+      actionsFindAllWithDraftsAdmin({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
+  });
+  const { data: partnershipResponses = [] } = useQuery({
+    queryKey: queryKeys.outreachPartnershipResponsesAdmin(),
+    queryFn: () =>
+      actionPartnershipsFindAllResponsesAdmin({ throwOnError: true }).then(
+        (response) => response.data,
+      ),
+  });
+  const pendingOutreachPartnershipCount = useMemo(
+    () =>
+      partnershipResponses.filter(
+        (partnershipResponse) => partnershipResponse.notesHistory.length === 0,
+      ).length,
+    [partnershipResponses],
+  );
   const navigate = useNavigate();
 
   const { logout, user, loading: authLoading } = useAuth();
@@ -64,56 +85,27 @@ const Sidebar: React.FC = () => {
     }
   }, [authLoading, user, logout]);
 
-  const loadActions = useCallback(async () => {
-    try {
-      const response = await actionsFindAllWithDraftsAdmin();
-      if (response.data) {
-        setActions(response.data);
-      }
-      setActionsLoading(false);
-    } catch (err) {
-      setActionsLoading(false);
-      console.error(err);
-    }
-  }, []);
-
-  const loadPendingOutreachPartnerships = useCallback(async () => {
-    try {
-      const response = await actionPartnershipsFindAllResponsesAdmin();
-      if (response.data) {
-        setPendingOutreachPartnershipCount(
-          response.data.filter(
-            (partnershipResponse) =>
-              partnershipResponse.notesHistory.length === 0,
-          ).length,
-        );
-      }
-    } catch (err) {
-      console.error("Failed to load outreach partnership responses", err);
-    }
-  }, []);
-
   const currentActionId = window.location.pathname.includes("/actions/")
     ? parseInt(window.location.pathname.split("/actions/")[1])
     : null;
 
   useEffect(() => {
-    loadActions();
-    void loadPendingOutreachPartnerships();
-  }, [loadActions, loadPendingOutreachPartnerships]);
-
-  useEffect(() => {
+    const refetchPartnerships = () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.outreachPartnershipResponsesAdmin(),
+      });
+    };
     window.addEventListener(
       "outreach-partnerships-updated",
-      loadPendingOutreachPartnerships,
+      refetchPartnerships,
     );
     return () => {
       window.removeEventListener(
         "outreach-partnerships-updated",
-        loadPendingOutreachPartnerships,
+        refetchPartnerships,
       );
     };
-  }, [loadPendingOutreachPartnerships]);
+  }, [queryClient]);
 
   const handleEditAction = useCallback(
     (id: number) => {
@@ -157,6 +149,9 @@ const Sidebar: React.FC = () => {
 
     const response = await actionsPasteJsonAdmin({ body: { body: json } });
     if (response.data) {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.actionsAllAdmin(),
+      });
       navigate(`/actions/${response.data.id}`);
       setCreateActionDropdownOpen(false);
       success("Action pasted successfully");
@@ -164,7 +159,7 @@ const Sidebar: React.FC = () => {
       error("Could not paste action");
     }
     setPasteJsonLoading(false);
-  }, [navigate, error, success]);
+  }, [navigate, error, success, queryClient]);
 
   const groups: {
     name: string;

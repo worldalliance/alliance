@@ -214,8 +214,22 @@ export class ActionEventRecipientService {
    * see one snapshot regardless of which starts first.
    */
   getActiveUsers(session: CohortResolutionSession): Promise<User[]> {
-    const users = (session.activeUsers ??=
-      this.userService.findActiveUsersWithTags());
+    return this.primeActiveUsers(session, () =>
+      this.userService.findActiveUsersWithTags(),
+    );
+  }
+
+  /**
+   * Claim the session's active-user snapshot with a caller-chosen load —
+   * e.g. `findActiveUsersForRoster` when the request only runs assignment
+   * predicates. No-op if already claimed. The caller must make sure the
+   * projection satisfies every consumer that will share this session.
+   */
+  primeActiveUsers(
+    session: CohortResolutionSession,
+    load: () => Promise<User[]>,
+  ): Promise<User[]> {
+    const users = (session.activeUsers ??= load());
     session.candidateUserIds ??= users.then(
       (us) => new Set(us.map((u) => u.id)),
     );

@@ -86,7 +86,10 @@ import {
 import { AmbassadorInviteGoal } from './entities/ambassador-invite-goal.entity';
 import { AmbassadorProgramInteraction } from './entities/ambassador-program-interaction.entity';
 import { AmbassadorProgramMember } from './entities/ambassador-program-member.entity';
-import { ContractEventType } from './entities/contract-event.entity';
+import {
+  ContractEvent,
+  ContractEventType,
+} from './entities/contract-event.entity';
 import { Friend, FriendStatus } from './entities/friend.entity';
 import {
   OnetimeInvite,
@@ -206,6 +209,8 @@ export class UserService {
     private readonly ambassadorProgramInteractionRepository: Repository<AmbassadorProgramInteraction>,
     @InjectRepository(UserAwayRange)
     private readonly userAwayRangeRepository: Repository<UserAwayRange>,
+    @InjectRepository(ContractEvent)
+    private readonly contractEventRepository: Repository<ContractEvent>,
     @InjectRepository(UserDevice)
     private readonly userDeviceRepository: Repository<UserDevice>,
     @InjectRepository(LiveActivityRegistration)
@@ -296,9 +301,43 @@ export class UserService {
   }
 
   findAll(relations?: Relations<User>): Promise<User[]> {
+    // Callers pass arbitrary relations, so this must keep the default join
+    // strategy: relationLoadStrategy 'query' generates a broken self-join
+    // (same alias twice) for the self-referencing `referredBy` relation.
     return this.userRepository.find({
       relations,
     });
+  }
+
+  /**
+   * Users for the admin list view: `contractEvents` holds only each user's
+   * latest event. The list views only read the latest (full history lives on
+   * the per-user detail endpoint), and shipping every event for every user
+   * bloats the payload and the join.
+   */
+  async findAllForAdminList(): Promise<User[]> {
+    const [users, latestEvents] = await Promise.all([
+      this.userRepository.find({ relations: { referredBy: true } }),
+      this.contractEventRepository
+        .createQueryBuilder('event')
+        .addSelect('event."userId"', 'event_user_id')
+        .distinctOn(['event."userId"'])
+        .orderBy('event."userId"')
+        .addOrderBy('event.date', 'DESC')
+        .getRawAndEntities(),
+    ]);
+
+    const latestEventByUserId = new Map<number, ContractEvent>();
+    latestEvents.entities.forEach((event, index) => {
+      const userId = Number(latestEvents.raw[index].event_user_id);
+      latestEventByUserId.set(userId, event);
+    });
+
+    for (const user of users) {
+      const latest = latestEventByUserId.get(user.id);
+      user.contractEvents = latest ? [latest] : [];
+    }
+    return users;
   }
 
   async findAcceptedFriendIdsByUserId(): Promise<Map<number, number[]>> {
@@ -1022,6 +1061,23 @@ export class UserService {
     return this.userRepository.find({
       where: ACTIVE_USER_WHERE,
       relations: { tags: true, awayRanges: true, contractEvents: true },
+      relationLoadStrategy: 'query',
+    });
+  }
+
+  /**
+   * Same population as {@link findActiveUsersWithTags}, but hydrating only
+   * what the assignment predicates (`computeIsAssignedAndPresent`,
+   * `computeIsAwayDuringWindow`) read: `id`, `contractEvents`, and
+   * `awayRanges`. Every other scalar column is left unselected — hydrating
+   * ~50 columns for every user is the dominant cost of the full load, and
+   * it's pure event-loop CPU. Only use where the consumers are known.
+   */
+  async findActiveUsersForRoster(): Promise<User[]> {
+    return this.userRepository.find({
+      select: { id: true },
+      where: ACTIVE_USER_WHERE,
+      relations: { awayRanges: true, contractEvents: true },
       relationLoadStrategy: 'query',
     });
   }

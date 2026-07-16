@@ -4,19 +4,19 @@ import {
   UserActionSummaryDto,
   UserDto,
 } from "@alliance/shared/client/types.gen";
-import Card from "@alliance/sharedweb/ui/Card";
+import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
+import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Badge from "@alliance/sharedweb/ui/Badge";
-import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
-import { useMemo, useState } from "react";
-import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
+import Card from "@alliance/sharedweb/ui/Card";
 import DatabaseIcon from "@alliance/sharedweb/ui/icons/DatabaseIcon";
-import { Link } from "react-router";
+import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
 import UserProgressPills, {
   PILL_STATUS_DATA,
 } from "@alliance/sharedweb/ui/UserProgressPills";
-import { CardStyle } from "@alliance/shared/styles/card";
-import { cn } from "@alliance/shared/styles/util";
+import { useMemo, useState } from "react";
+import { Link } from "react-router";
 
 export interface UserCardProps {
   user: UserDto;
@@ -46,10 +46,13 @@ const UserCard = ({
   const dropdownRef = useOutsideClick(() => setIsDropdownOpen(false));
 
   const relationByActionId = useMemo(() => {
-    return actionRelations.reduce((acc, relation) => {
-      acc[relation.actionId] = relation;
-      return acc;
-    }, {} as Record<number, UserActionRelationDetailDto>);
+    return actionRelations.reduce(
+      (acc, relation) => {
+        acc[relation.actionId] = relation;
+        return acc;
+      },
+      {} as Record<number, UserActionRelationDetailDto>,
+    );
   }, [actionRelations]);
 
   const humanize = (value?: string) => {
@@ -69,8 +72,8 @@ const UserCard = ({
   const tagIds = useMemo(() => new Set(tags.map((tag) => tag.id)), [tags]);
 
   const latestEvent = user.contractEvents?.length
-    ? user.contractEvents.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    ? [...user.contractEvents].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       )[0]
     : null;
 
@@ -78,15 +81,15 @@ const UserCard = ({
     latestEvent === null
       ? "text-zinc-500"
       : latestEvent.type === "signed"
-      ? "text-green"
-      : "text-red-500";
+        ? "text-green"
+        : "text-red-500";
 
   const contractStatus =
     latestEvent === null
       ? "Not signed"
       : latestEvent.type === "signed"
-      ? "Signed"
-      : "Suspended";
+        ? "Signed"
+        : "Suspended";
 
   return (
     <Card style={CardStyle.White} className="flex-1 text-sm">
@@ -141,7 +144,7 @@ const UserCard = ({
                             "flex items-center gap-2",
                             "px-3 py-2",
                             "text-sm hover:bg-zinc-50",
-                            pending && "opacity-60"
+                            pending && "opacity-60",
                           )}
                           onClick={(event) => event.stopPropagation()}
                         >
@@ -223,7 +226,7 @@ const UserCard = ({
                       <span
                         className={cn(
                           "font-semibold text-nowrap",
-                          pillTextStyle
+                          pillTextStyle,
                         )}
                       >
                         {pillLabel}

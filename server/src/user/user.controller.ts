@@ -368,9 +368,9 @@ export class UserController {
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: UserDto, isArray: true })
   async listAdmin(): Promise<UserDto[]> {
-    return (
-      await this.userService.findAll({ contractEvents: true, referredBy: true })
-    ).map((user) => new UserDto(user));
+    return (await this.userService.findAllForAdminList()).map(
+      (user) => new UserDto(user),
+    );
   }
 
   @Get('list-graph')

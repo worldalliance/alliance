@@ -77,6 +77,7 @@ import {
   computeMemberActionAwayStatus,
 } from 'src/utils/action-user';
 import { CachedFilter } from 'src/utils/cached-filter';
+import { yieldToEventLoop } from 'src/utils/event-loop';
 import { startDatePriorityComparator } from 'src/utils/general-update';
 import type { IsRelation, Relations } from 'src/utils/Repository';
 import {
@@ -495,6 +496,7 @@ export class ActionsService {
    */
   async findParticipantIdsForActions(
     actions: Action[],
+    session: CohortResolutionSession = new CohortResolutionSession(),
   ): Promise<Map<number, number[]>> {
     // Build entries for actions that have a MemberAction event
     const entries: Array<{ action: Action; event: ActionEvent }> = [];
@@ -521,6 +523,7 @@ export class ActionsService {
           eventId: e.event.id,
         })),
         includeDismissed: true,
+        session,
       });
 
     // 2. One query: all completion + withdrawal activities for these actions
@@ -3013,6 +3016,7 @@ export class ActionsService {
   async findActionRelationsForUsers(
     usersP: Promise<User[]>,
     actionLimit: number = 8,
+    session: CohortResolutionSession = new CohortResolutionSession(),
   ): Promise<UserActionRelations> {
     const actionsP: Promise<Action[]> = run(async () => {
       const actions = await this.findAllSorted(
@@ -3032,7 +3036,10 @@ export class ActionsService {
 
     const joinedUsersP: Promise<Record<number, number[]>> = run(async () => {
       const actions = await actionsP;
-      const joinedUsersMap = await this.findParticipantIdsForActions(actions);
+      const joinedUsersMap = await this.findParticipantIdsForActions(
+        actions,
+        session,
+      );
 
       const userIdsSet = await userIdsSetP;
       const joinedUsers: Record<number, number[]> = {};
@@ -3069,7 +3076,8 @@ export class ActionsService {
     // --- end of promise defs ---
 
     const now = new Date();
-    const userCachedFilter = new CachedFilter(await usersP);
+    const users = await usersP;
+    const userById = new Map(users.map((user) => [user.id, user]));
     const actions = await actionsP;
 
     const allMembersTagId = await allMembersTagIdP;
@@ -3126,22 +3134,31 @@ export class ActionsService {
 
     // Status is resolved in one pass below, not in this gather loop.
     const actionById = new Map(actions.map((action) => [action.id, action]));
+    const joinedUsers = await joinedUsersP;
+    const userIds = await userIdsP;
     for (const action of actions) {
-      for (const userId of (await joinedUsersP)[action.id]) {
+      // This users × actions pass is pure CPU; yield so concurrent requests
+      // aren't starved for the whole matrix.
+      await yieldToEventLoop();
+      for (const userId of joinedUsers[action.id]) {
         getDetail({ userId, actionId: action.id }).isJoined = true;
       }
-      for (const userId of await userIdsP) {
+      // Set-based membership from the shared session (already resolved for
+      // this expression by findParticipantIdsForActions) instead of the
+      // per-user expression walk, whose action leaves each hit the DB.
+      const cohortMemberIds =
+        await this.actionEventRecipientService.resolveCohortMemberIds(
+          action.cohortExpression,
+          session,
+        );
+      for (const userId of userIds) {
         const detail = getDetail({ userId, actionId: action.id });
-        const theUser = userCachedFilter.filtered({ id: userId })[0]!;
         if (
+          cohortMemberIds.has(userId) &&
           computeIsAwayDuringWindow({
-            user: theUser,
+            user: userById.get(userId)!,
             action,
-          }) &&
-          (await this.computeIsInCohortExpression({
-            user: theUser,
-            cohortExpression: action.cohortExpression,
-          }))
+          })
         ) {
           detail.isAway = true;
         }
@@ -3256,12 +3273,16 @@ export class ActionsService {
   }
 
   async findUserActionRelations(): Promise<UserActionRelations> {
-    const usersPromise = this.userService.findAll({
-      awayRanges: true,
-      contractEvents: true,
-      tags: true,
-    });
-    return this.findActionRelationsForUsers(usersPromise);
+    // One user load for the whole request: the roster projection claims the
+    // session's active-user snapshot, so the base-user resolution inside
+    // findParticipantIdsForActions reuses it instead of re-hydrating every
+    // user. The relations matrix only reads what the projection carries.
+    const session = new CohortResolutionSession();
+    const usersPromise = this.actionEventRecipientService.primeActiveUsers(
+      session,
+      () => this.userService.findActiveUsersForRoster(),
+    );
+    return this.findActionRelationsForUsers(usersPromise, undefined, session);
   }
 
   async findUserActionRelationsForUser(
