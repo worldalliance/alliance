@@ -14,6 +14,8 @@ import { Injectable } from '@nestjs/common';
 import { NotifsService } from 'src/notifs/notifs.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 
+const actionUpdatePushBody = (message: string) => `Update: ${message}`;
+
 @Injectable()
 export class NotifPushDispatcherWorker {
   constructor(
@@ -131,7 +133,10 @@ export class NotifPushDispatcherWorker {
           notif.user.id,
           {
             userId: notif.user.id,
-            body: notif.message,
+            body:
+              notif.category === NotificationCategory.ActionUpdate
+                ? actionUpdatePushBody(notif.message)
+                : notif.message,
             screen: notif.mobileAppLocation || notif.webAppLocation,
             notification: notif,
             idempotencyKey: `${notif.id}-${notif.updatedAt.getTime()}`,
@@ -202,7 +207,10 @@ export class NotifPushDispatcherWorker {
           unreadContent.user.id,
           {
             userId: unreadContent.user.id,
-            body: dto.message,
+            body:
+              unreadContent.contentType === UnreadContentType.ActionUpdate
+                ? actionUpdatePushBody(dto.message)
+                : dto.message,
             screen: dto.mobileAppLocation ?? dto.webAppLocation ?? undefined,
             unreadContent,
             idempotencyKey: `uc-${unreadContent.id}`,

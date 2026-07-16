@@ -176,6 +176,10 @@ const ActionUpdatesTab = ({
                 }
                 required
               />
+              <span className="text-xs text-zinc-600">
+                Push notifications will automatically be prefixed with
+                &quot;Update: &quot;.
+              </span>
             </label>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 mt-3">
               <label className="flex flex-col text-sm gap-1">
