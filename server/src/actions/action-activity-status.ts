@@ -1,8 +1,25 @@
 import { ActionActivityType } from '@alliance/common/actionActivity';
 import { CachedFilter } from '../utils/cached-filter';
 import { findLeast } from '../utils/filter';
-import { UserActionRelation } from './dto/action.dto';
 import type { ActionActivity } from './entities/action-activity.entity';
+
+/**
+ * The viewer's collapsed relation to an action, as exposed on the legacy
+ * `ActionDto.userRelation` wire field. Lives here (not in `action.dto.ts`)
+ * so status modules can import it without a dto↔module import cycle;
+ * `action.dto.ts` re-exports it.
+ *
+ * NOTE: `Dismissed` is not a real relation — dismissal is a view-only
+ * "mark as seen" overlay (see `ActionActivityType.USER_DISMISSED`). The
+ * `viewer` object models it as a separate boolean; this enum keeps it only
+ * for wire compatibility.
+ */
+export enum UserActionRelation {
+  Completed = 'completed',
+  None = 'none',
+  Declined = 'declined',
+  Dismissed = 'dismissed',
+}
 
 /**
  * A "terminal" activity determines a user's status on an action: an explicit

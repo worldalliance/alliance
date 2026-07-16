@@ -69,7 +69,6 @@ import {
   User,
 } from 'src/user/entities/user.entity';
 import {
-  computeContractSignedAfterOnboardingStart,
   computeIsAssignedAndPresent,
   computeIsAssignedToAction,
   computeIsAwayDuringWindow,
@@ -176,6 +175,10 @@ import {
   ReminderGroupTimingMode,
 } from './entities/reminder-group.entity';
 import { resolveUserActionPillStatus } from './user-action-pill-status';
+import {
+  computeCanCompleteAction,
+  resolveUserActionStatus,
+} from './user-action-status';
 
 type SuspendPlanContext = {
   orderedSuites: Array<{ suiteId: number; pastDate: Date | null }>;
@@ -704,28 +707,26 @@ export class ActionsService {
   }
 
   /**
-   * Viewer's `ActionDto.shouldParticipate` for one action. Only runs the
-   * (potentially DB-hitting) cohort-expression evaluation when the cheap
-   * gates pass; `dismissed` is passed in so callers can batch that lookup.
+   * Cohort-expression result for the viewer on one action — the single
+   * evaluation feeding `canParticipate`/`viewer.canComplete`,
+   * `shouldParticipate`, and `viewer`. No member-action-phase gate: the
+   * completion rule (unlike assignment) applies to actions whose phase isn't
+   * scheduled yet, and gating here made `viewer.canComplete` disagree with
+   * `isCompletionAllowed` (which the complete mutation enforces). Dismissal
+   * deliberately does not skip it either: `viewer.assigned` treats dismissal
+   * as an overlay, so it needs the real cohort result.
    */
-  private async computeViewerShouldParticipate(params: {
+  private async computeViewerInCohort(params: {
     action: Action;
     user: User | null;
-    dismissed: boolean;
   }): Promise<boolean> {
-    const { action, user, dismissed } = params;
-    const inCohort =
-      !!user &&
-      !dismissed &&
-      action.events.some(
-        (event) => event.newStatus === ActionStatus.MemberAction,
-      )
-        ? await this.computeIsInCohortExpression({
-            user,
-            cohortExpression: action.cohortExpression,
-          })
-        : false;
-    return computeIsAssignedToAction({ action, user, inCohort, dismissed });
+    const { action, user } = params;
+    return user
+      ? await this.computeIsInCohortExpression({
+          user,
+          cohortExpression: action.cohortExpression,
+        })
+      : false;
   }
 
   async findMemberPublic(
@@ -779,9 +780,11 @@ export class ActionsService {
 
     return await Promise.all(
       filtered.map(async (action) => {
-        const shouldParticipate = await this.computeViewerShouldParticipate({
+        const inCohort = await this.computeViewerInCohort({ action, user });
+        const shouldParticipate = computeIsAssignedToAction({
           action,
           user,
+          inCohort,
           dismissed: actionsDismissed.has(action.id),
         });
 
@@ -794,7 +797,7 @@ export class ActionsService {
 
         return new ActionDto(action, {
           canParticipate: user
-            ? await this.isCompletionAllowed(action, user)
+            ? computeCanCompleteAction({ action, user, inCohort })
             : false,
           shouldParticipate,
           userRelation:
@@ -808,6 +811,19 @@ export class ActionsService {
           awayStatus: user
             ? computeMemberActionAwayStatus({ action, user, now })
             : undefined,
+          viewer:
+            user && userActivities
+              ? resolveUserActionStatus({
+                  action,
+                  user,
+                  inCohort,
+                  activities: userActivities.filtered({
+                    userId: user.id,
+                    actionId: action.id,
+                  }),
+                  now,
+                })
+              : undefined,
           reqAuthenticated: !!user,
         });
       }),
@@ -929,30 +945,39 @@ export class ActionsService {
       await this.applyAssignedFormIds([action], userId);
     }
 
-    const dismissed = user
-      ? (await this.actionActivityRepository.count({
-          where: {
-            user: { id: user.id },
-            type: ActionActivityType.USER_DISMISSED,
-            action: { id: action.id },
-          },
-        })) > 0
-      : false;
+    const activities = user
+      ? await this.actionActivityRepository.find({
+          where: { action: { id: action.id }, user: { id: user.id } },
+        })
+      : [];
+    const dismissed = activities.some(
+      (activity) => activity.type === ActionActivityType.USER_DISMISSED,
+    );
+    const inCohort = await this.computeViewerInCohort({ action, user });
+    const now = new Date();
 
     return new ActionDto(action, {
       canParticipate: user
-        ? await this.isCompletionAllowed(action, user)
+        ? computeCanCompleteAction({ action, user, inCohort })
         : false,
-      shouldParticipate: await this.computeViewerShouldParticipate({
+      shouldParticipate: computeIsAssignedToAction({
         action,
         user,
+        inCohort,
         dismissed,
       }),
       userRelation: user
-        ? await this.getActionRelation(action.id, user.id)
+        ? resolveUserActionRelation({
+            activities: new CachedFilter(activities),
+            userId: user.id,
+            actionId: action.id,
+          })
         : undefined,
       awayStatus: user
-        ? computeMemberActionAwayStatus({ action, user, now: new Date() })
+        ? computeMemberActionAwayStatus({ action, user, now })
+        : undefined,
+      viewer: user
+        ? resolveUserActionStatus({ action, user, inCohort, activities, now })
         : undefined,
       reqAuthenticated: !!user,
     });
@@ -1934,6 +1959,8 @@ export class ActionsService {
   }
 
   async isCompletionAllowed(action: Action, user: User): Promise<boolean> {
+    // preventCompletion short-circuits before the DB-hitting cohort
+    // evaluation; the rule itself lives in computeCanCompleteAction.
     if (action.preventCompletion) {
       return false;
     }
@@ -1943,21 +1970,7 @@ export class ActionsService {
       cohortExpression: action.cohortExpression,
     });
 
-    if (!inCohort) {
-      return false;
-    }
-
-    if (
-      action.onboarding &&
-      !computeContractSignedAfterOnboardingStart({
-        user,
-        memberActionPhaseStart: action.memberActionPhase.event?.date ?? null,
-      })
-    ) {
-      return false;
-    }
-
-    return inCohort;
+    return computeCanCompleteAction({ action, user, inCohort });
   }
 
   async ensureCompletionAllowed(action: Action, userId: number) {

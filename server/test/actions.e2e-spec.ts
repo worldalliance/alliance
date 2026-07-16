@@ -550,6 +550,21 @@ describe('Actions (e2e)', () => {
       expect(nonCohortRes.body.shouldParticipate).toBe(false);
       expect(nonCohortRes.body.canParticipate).toBe(false);
       expect(nonCohortRes.body.awayStatus).toBe('not_away');
+
+      expect(cohortRes.body.viewer).toMatchObject({
+        assigned: true,
+        canComplete: true,
+        relation: 'none',
+        dismissed: false,
+        away: 'not_away',
+        deadlinePassed: false,
+        display: 'todo',
+      });
+      expect(nonCohortRes.body.viewer).toMatchObject({
+        assigned: false,
+        canComplete: false,
+        display: 'not_required',
+      });
       // Away is an overlay, not part of assignment: the away member is still
       // assigned, and their away range must surface as away_currently (this
       // fails if the user fetch drops the awayRanges relation).
@@ -561,6 +576,67 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(cohortMember.id);
       await userRepo.delete(nonCohortUser.id);
       await userRepo.delete(awayMember.id);
+    });
+
+    it('keeps canParticipate and viewer.canComplete consistent before the member-action phase is scheduled', async () => {
+      const cohortMember = await userService.create({
+        email: `phaseless-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Phaseless Cohort Member',
+      });
+
+      const plannedAction = await actionRepo.save(
+        actionRepo.create({
+          name: `Phaseless Action ${Date.now()}`,
+          category: 'Test',
+          body: 'Phaseless body',
+          shortDescription: 'Phaseless short description',
+          taskContents: 'Phaseless task',
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          onboarding: false,
+          type: ActionTaskType.Activity,
+          cohortExpression: {
+            type: 'Manual',
+            userIds: [cohortMember.id],
+          },
+        }),
+      );
+
+      const plannedEvent = await eventRepo.save(
+        eventRepo.create({
+          title: 'Planned',
+          description: 'Member action not scheduled yet',
+          newStatus: ActionStatus.Planned,
+          date: new Date(Date.now() - 1000),
+          action: plannedAction,
+        }),
+      );
+
+      const token = ctx.jwtService.sign(
+        {
+          sub: cohortMember.id,
+          email: cohortMember.email,
+          name: cohortMember.name,
+        },
+        { secret: process.env.JWT_SECRET },
+      );
+
+      const res = await request(ctx.app.getHttpServer())
+        .get(`/actions/slug/${plannedAction.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+
+      // The completion rule has no phase gate; the legacy field and the
+      // viewer field must agree even before the member-action phase exists.
+      expect(res.body.canParticipate).toBe(true);
+      expect(res.body.viewer.canComplete).toBe(true);
+      expect(res.body.viewer.assigned).toBe(false);
+      expect(res.body.shouldParticipate).toBe(false);
+
+      await eventRepo.delete(plannedEvent.id);
+      await actionRepo.delete(plannedAction.id);
+      await userRepo.delete(cohortMember.id);
     });
 
     it('evaluates CompletedAction cohort expression against real activity data', async () => {

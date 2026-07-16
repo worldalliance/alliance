@@ -1,4 +1,8 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
+import {
+  ActionActivityType,
+  WITHDRAWAL_OPTIONS,
+  type WithdrawalOption,
+} from '@alliance/common/actionActivity';
 import { byLikeOrder, LIKE_FACEPILE_LIMIT } from '@alliance/common/likeOrder';
 import {
   ApiProperty,
@@ -28,9 +32,11 @@ import { getImageSource } from 'src/images/images.service';
 import { Form } from 'src/tasks/entities/form.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
 import { SubmitFormDto } from 'src/tasks/form.dto';
+import { UserActionRelationPillStatus } from 'src/user/dto/user-action-relations.dto';
 import { ProfileDto } from 'src/user/dto/user.dto';
 import { User } from 'src/user/entities/user.entity';
 import { TaskAwayStatus } from 'src/utils/action-user';
+import { UserActionRelation } from '../action-activity-status';
 import type { CohortExpression } from '../cohort-expression.types';
 import { ActionActivity } from '../entities/action-activity.entity';
 import { ActionEvent, ActionStatus } from '../entities/action-event.entity';
@@ -42,6 +48,11 @@ import {
   ReminderCohortType,
   ReminderGroup,
 } from '../entities/reminder-group.entity';
+import {
+  ViewerActionRelation,
+  type UserActionStatus,
+  type UserActionWithdrawal,
+} from '../user-action-status';
 import { GeneralUpdateDto } from './general-update.dto';
 
 export class CreateReminderGroupDto extends PickType(ReminderGroup, [
@@ -212,11 +223,74 @@ export class CreateActionEventDto extends OmitType(ActionEventDto, [
 
 export class UpdateActionEventDto extends PartialType(CreateActionEventDto) {}
 
-export enum UserActionRelation {
-  Completed = 'completed',
-  None = 'none',
-  Declined = 'declined',
-  Dismissed = 'dismissed',
+export { UserActionRelation } from '../action-activity-status';
+
+export class UserActionWithdrawalDto {
+  @ApiProperty({ enum: WITHDRAWAL_OPTIONS, enumName: 'WithdrawalOption' })
+  reason: WithdrawalOption;
+
+  @ApiProperty({ type: String, nullable: true })
+  note: string | null;
+
+  constructor(input: UserActionWithdrawal) {
+    this.reason = input.reason;
+    this.note = input.note;
+  }
+}
+
+/**
+ * The viewer's full status on this action — see {@link UserActionStatus} for
+ * field semantics. Replaces the flat `canParticipate` / `shouldParticipate` /
+ * `userRelation` / `awayStatus` fields, which remain populated with their
+ * legacy semantics until all apps migrate.
+ */
+export class UserActionStatusDto {
+  @ApiProperty()
+  assigned: boolean;
+
+  @ApiProperty()
+  canComplete: boolean;
+
+  @ApiProperty({
+    enum: ViewerActionRelation,
+    enumName: 'ViewerActionRelation',
+  })
+  relation: ViewerActionRelation;
+
+  @ApiPropertyOptional({ type: () => UserActionWithdrawalDto })
+  withdrawal?: UserActionWithdrawalDto;
+
+  @ApiProperty()
+  dismissed: boolean;
+
+  @ApiProperty({ enum: TaskAwayStatus, enumName: 'TaskAwayStatus' })
+  away: TaskAwayStatus;
+
+  @ApiProperty({ type: Date, nullable: true })
+  deadlineAt: Date | null;
+
+  @ApiProperty()
+  deadlinePassed: boolean;
+
+  @ApiProperty({
+    enum: UserActionRelationPillStatus,
+    enumName: 'UserActionRelationPillStatus',
+  })
+  display: UserActionRelationPillStatus;
+
+  constructor(input: UserActionStatus) {
+    this.assigned = input.assigned;
+    this.canComplete = input.canComplete;
+    this.relation = input.relation;
+    this.withdrawal = input.withdrawal
+      ? new UserActionWithdrawalDto(input.withdrawal)
+      : undefined;
+    this.dismissed = input.dismissed;
+    this.away = input.away;
+    this.deadlineAt = input.deadlineAt;
+    this.deadlinePassed = input.deadlinePassed;
+    this.display = input.display;
+  }
 }
 
 export class ActionDto extends PickType(Action, [
@@ -285,6 +359,10 @@ export class ActionDto extends PickType(Action, [
   @ApiPropertyOptional({ enum: TaskAwayStatus, enumName: 'TaskAwayStatus' })
   awayStatus?: TaskAwayStatus;
 
+  @ApiPropertyOptional({ type: () => UserActionStatusDto })
+  @Type(() => UserActionStatusDto)
+  viewer?: UserActionStatusDto;
+
   @ApiPropertyOptional()
   reqAuthenticated?: boolean;
 
@@ -299,6 +377,7 @@ export class ActionDto extends PickType(Action, [
       shouldParticipate?: boolean;
       userRelation?: UserActionRelation;
       awayStatus?: TaskAwayStatus;
+      viewer?: UserActionStatus;
       reqAuthenticated?: boolean;
     },
   ) {
@@ -353,6 +432,9 @@ export class ActionDto extends PickType(Action, [
     this.shouldParticipate = extra?.shouldParticipate;
     this.userRelation = extra?.userRelation;
     this.awayStatus = extra?.awayStatus;
+    this.viewer = extra?.viewer
+      ? new UserActionStatusDto(extra.viewer)
+      : undefined;
     this.reqAuthenticated = extra?.reqAuthenticated;
     this.authors =
       action.authors?.map((author) => new ProfileDto(author)) || [];

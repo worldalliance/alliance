@@ -1785,6 +1785,29 @@ export type ActionUpdateDto = {
 
 export type TaskAwayStatus = 'away_previously' | 'away_currently' | 'away_later' | 'not_away';
 
+export type ViewerActionRelation = 'completed' | 'withdrawn' | 'none';
+
+export type WithdrawalOption = 'out_of_time' | 'moral' | 'other';
+
+export type UserActionWithdrawalDto = {
+    reason: WithdrawalOption;
+    note: string | null;
+};
+
+export type UserActionRelationPillStatus = 'away' | 'completed' | 'missed_deadline' | 'not_required' | 'optional_task' | 'todo' | 'wont_complete';
+
+export type UserActionStatusDto = {
+    assigned: boolean;
+    canComplete: boolean;
+    relation: ViewerActionRelation;
+    withdrawal?: UserActionWithdrawalDto;
+    dismissed: boolean;
+    away: TaskAwayStatus;
+    deadlineAt: string | null;
+    deadlinePassed: boolean;
+    display: UserActionRelationPillStatus;
+};
+
 export type ActionDto = {
     /**
      * Unique identifier for the action
@@ -1910,6 +1933,7 @@ export type ActionDto = {
     shouldParticipate?: boolean;
     userRelation?: UserActionRelation;
     awayStatus?: TaskAwayStatus;
+    viewer?: UserActionStatusDto;
     reqAuthenticated?: boolean;
     authors?: Array<ProfileDto>;
 };
@@ -2782,8 +2806,6 @@ export type ActionSuiteSummaryDto = {
     id: number;
     name: string;
 };
-
-export type UserActionRelationPillStatus = 'away' | 'completed' | 'missed_deadline' | 'not_required' | 'optional_task' | 'todo' | 'wont_complete';
 
 export type UserActionRelationDetailDto = {
     actionId: number;
