@@ -9,6 +9,10 @@ import {
 import type { Form } from 'src/tasks/entities/form.entity';
 import type { FormResponse } from 'src/tasks/entities/formresponse.entity';
 import { ContractEventType } from 'src/user/entities/contract-event.entity';
+import {
+  UserAwayRange,
+  UserAwayRangeReason,
+} from 'src/user/entities/user-away-range.entity';
 import { UserService } from 'src/user/user.service';
 import request from 'supertest';
 import type { Repository } from 'typeorm';
@@ -464,6 +468,99 @@ describe('Actions (e2e)', () => {
       await actionRepo.delete(manualAction.id);
       await userRepo.delete(cohortMember.id);
       await userRepo.delete(nonCohortUser.id);
+    });
+
+    it('populates shouldParticipate and awayStatus on the single-action endpoint', async () => {
+      const cohortMember = await userService.create({
+        email: `single-cohort-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Single Cohort Member',
+      });
+
+      const nonCohortUser = await userService.create({
+        email: `single-noncohort-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Single Non Cohort User',
+      });
+
+      const awayMember = await userService.create({
+        email: `single-away-${Date.now()}@example.com`,
+        password: 'Password123!',
+        name: 'Single Away Member',
+      });
+      await ctx.dataSource.getRepository(UserAwayRange).save({
+        userId: awayMember.id,
+        startDate: new Date(Date.now() - 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 60 * 60 * 1000),
+        reason: UserAwayRangeReason.VACATION,
+      });
+
+      const manualAction = await actionRepo.save(
+        actionRepo.create({
+          name: `Single Manual Cohort Action ${Date.now()}`,
+          category: 'Test',
+          body: 'Manual cohort body',
+          shortDescription: 'Manual cohort short description',
+          taskContents: 'Manual cohort task',
+          visibilityMode: VisibilityMode.Public,
+          preventCompletion: false,
+          onboarding: true,
+          type: ActionTaskType.Activity,
+          cohortExpression: {
+            type: 'Manual',
+            userIds: [cohortMember.id, awayMember.id],
+          },
+        }),
+      );
+
+      const manualActionEvent = await eventRepo.save(
+        eventRepo.create({
+          title: 'Manual cohort launch',
+          description: 'Manual cohort action live',
+          newStatus: ActionStatus.MemberAction,
+          date: new Date(Date.now() - 1000),
+          action: manualAction,
+        }),
+      );
+
+      const signToken = (user: { id: number; email: string; name: string }) =>
+        ctx.jwtService.sign(
+          { sub: user.id, email: user.email, name: user.name },
+          { secret: process.env.JWT_SECRET },
+        );
+
+      const [cohortRes, nonCohortRes, awayRes] = await Promise.all([
+        request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${manualAction.id}`)
+          .set('Authorization', `Bearer ${signToken(cohortMember)}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${manualAction.id}`)
+          .set('Authorization', `Bearer ${signToken(nonCohortUser)}`)
+          .expect(200),
+        request(ctx.app.getHttpServer())
+          .get(`/actions/slug/${manualAction.id}`)
+          .set('Authorization', `Bearer ${signToken(awayMember)}`)
+          .expect(200),
+      ]);
+
+      expect(cohortRes.body.shouldParticipate).toBe(true);
+      expect(cohortRes.body.canParticipate).toBe(true);
+      expect(cohortRes.body.awayStatus).toBe('not_away');
+      expect(nonCohortRes.body.shouldParticipate).toBe(false);
+      expect(nonCohortRes.body.canParticipate).toBe(false);
+      expect(nonCohortRes.body.awayStatus).toBe('not_away');
+      // Away is an overlay, not part of assignment: the away member is still
+      // assigned, and their away range must surface as away_currently (this
+      // fails if the user fetch drops the awayRanges relation).
+      expect(awayRes.body.shouldParticipate).toBe(true);
+      expect(awayRes.body.awayStatus).toBe('away_currently');
+
+      await eventRepo.delete(manualActionEvent.id);
+      await actionRepo.delete(manualAction.id);
+      await userRepo.delete(cohortMember.id);
+      await userRepo.delete(nonCohortUser.id);
+      await userRepo.delete(awayMember.id);
     });
 
     it('evaluates CompletedAction cohort expression against real activity data', async () => {

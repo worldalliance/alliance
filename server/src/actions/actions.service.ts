@@ -703,6 +703,31 @@ export class ActionsService {
     });
   }
 
+  /**
+   * Viewer's `ActionDto.shouldParticipate` for one action. Only runs the
+   * (potentially DB-hitting) cohort-expression evaluation when the cheap
+   * gates pass; `dismissed` is passed in so callers can batch that lookup.
+   */
+  private async computeViewerShouldParticipate(params: {
+    action: Action;
+    user: User | null;
+    dismissed: boolean;
+  }): Promise<boolean> {
+    const { action, user, dismissed } = params;
+    const inCohort =
+      !!user &&
+      !dismissed &&
+      action.events.some(
+        (event) => event.newStatus === ActionStatus.MemberAction,
+      )
+        ? await this.computeIsInCohortExpression({
+            user,
+            cohortExpression: action.cohortExpression,
+          })
+        : false;
+    return computeIsAssignedToAction({ action, user, inCohort, dismissed });
+  }
+
   async findMemberPublic(
     userId?: number,
     sorted?: boolean,
@@ -754,25 +779,10 @@ export class ActionsService {
 
     return await Promise.all(
       filtered.map(async (action) => {
-        const dismissed = actionsDismissed.has(action.id);
-        // Preserve the original short-circuit: only run the (potentially
-        // DB-hitting) cohort-expression evaluation when the cheap gates pass.
-        const inCohort =
-          !!user &&
-          !dismissed &&
-          action.events.some(
-            (event) => event.newStatus === ActionStatus.MemberAction,
-          )
-            ? await this.computeIsInCohortExpression({
-                user,
-                cohortExpression: action.cohortExpression,
-              })
-            : false;
-        const shouldParticipate = computeIsAssignedToAction({
+        const shouldParticipate = await this.computeViewerShouldParticipate({
           action,
           user,
-          inCohort,
-          dismissed,
+          dismissed: actionsDismissed.has(action.id),
         });
 
         if (user && action.followUpForms) {
@@ -906,6 +916,7 @@ export class ActionsService {
       ? await this.userService.findOne(userId, {
           tags: true,
           contractEvents: true,
+          awayRanges: true,
         })
       : null;
     if (user && action.followUpForms) {
@@ -917,12 +928,31 @@ export class ActionsService {
     if (userId) {
       await this.applyAssignedFormIds([action], userId);
     }
+
+    const dismissed = user
+      ? (await this.actionActivityRepository.count({
+          where: {
+            user: { id: user.id },
+            type: ActionActivityType.USER_DISMISSED,
+            action: { id: action.id },
+          },
+        })) > 0
+      : false;
+
     return new ActionDto(action, {
       canParticipate: user
         ? await this.isCompletionAllowed(action, user)
         : false,
+      shouldParticipate: await this.computeViewerShouldParticipate({
+        action,
+        user,
+        dismissed,
+      }),
       userRelation: user
         ? await this.getActionRelation(action.id, user.id)
+        : undefined,
+      awayStatus: user
+        ? computeMemberActionAwayStatus({ action, user, now: new Date() })
         : undefined,
       reqAuthenticated: !!user,
     });
