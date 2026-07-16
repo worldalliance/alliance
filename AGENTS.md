@@ -43,7 +43,7 @@ Apply this to any branch keyed on a closed set (enum, string-literal union, tagg
 
 ## Local database
 
-For querying the local Postgres database, see `.claude/skills/LOCAL_DB.md`.
+For querying the local Postgres database, see `.claude/skills/local-db/SKILL.md`.
 
 ## Result type
 

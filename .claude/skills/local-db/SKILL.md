@@ -1,3 +1,8 @@
+---
+name: local-db
+description: Query the local Postgres database — credentials via server/.env, psql one-liners, TypeORM table/column naming, dev vs test DB.
+---
+
 # Local Database Access
 
 Local Postgres credentials in `server/.env`. **Do not read the entire file.**

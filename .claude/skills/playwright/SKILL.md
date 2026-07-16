@@ -1,4 +1,9 @@
-# Verify: driving the running apps locally
+---
+name: playwright
+description: Verify changes against the locally running apps — curl the API, drive the admin/frontend GUIs with Playwright
+---
+
+# Playwright: verify driving the running apps locally
 
 ## What's usually already running (check, don't start)
 
@@ -10,7 +15,7 @@
 
 ## Authenticating as admin
 
-Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed with `JWT_SECRET` from `server/.env`. Payload: `{ sub: <userId>, email, tokenType: "access" }` (see `server/src/auth/guards/jwtreq.ts`). Find an admin user id via the local DB (`.claude/skills/LOCAL_DB.md`): `SELECT id, email FROM "user" WHERE admin = true LIMIT 1;`
+Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed with `JWT_SECRET` from `server/.env`. Payload: `{ sub: <userId>, email, tokenType: "access" }` (see `server/src/auth/guards/jwtreq.ts`). Find an admin user id via the local DB (`.claude/skills/local-db/SKILL.md`): `SELECT id, email FROM "user" WHERE admin = true LIMIT 1;`
 
 Mint a token with a bun script using `jsonwebtoken` from the repo root `node_modules` — read `JWT_SECRET` from `server/.env` in the script; never print it.
 

@@ -1,3 +1,8 @@
+---
+name: migrations
+description: Generate and review TypeORM database migrations in server/ — migration:generate vs migration:create, and the column-rename DROP+ADD pitfall. Read before generating or writing any db migration.
+---
+
 # Migrations
 
 ## Generate

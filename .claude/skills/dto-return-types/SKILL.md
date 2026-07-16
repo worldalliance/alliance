@@ -1,3 +1,8 @@
+---
+name: dto-return-types
+description: NestJS endpoint return-type and DTO rules — explicit DTO return types, @ApiOkResponse matching, wrapper DTOs, constructor patterns, and the post-edit `bun run gen-api` step. Read before editing any *.dto.ts or *.controller.ts in server/.
+---
+
 # Endpoint Return Types
 
 Controller methods must declare an **explicit** return type — a single DTO class, or `Promise<void>` for no-content endpoints. No primitives, no `T | null`, no inferred returns.

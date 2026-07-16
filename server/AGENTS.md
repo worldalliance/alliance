@@ -1,6 +1,6 @@
 ## Endpoints
 
-Before editing any `*.dto.ts` or `*.controller.ts`, read `../.claude/skills/DTO_RETURN_TYPES.md` — it covers constructor patterns, return-type rules, and the post-edit `bun run gen-api` step (run from the repo root with the dev server on port 3005, since `shared/client/` is consumed by frontend/admin/mobile).
+Before editing any `*.dto.ts` or `*.controller.ts`, read `../.claude/skills/dto-return-types/SKILL.md` — it covers constructor patterns, return-type rules, and the post-edit `bun run gen-api` step (run from the repo root with the dev server on port 3005, since `shared/client/` is consumed by frontend/admin/mobile).
 
 Every controller endpoint needs `@ApiOkResponse({ type: })` (or `@ApiResponse`) matching its return type (omit `type` for void).
 
@@ -22,4 +22,4 @@ Existing methods often don't follow this. Don't refactor just to fix shape, but 
 
 ## Migrations
 
-**Before generating or writing a db migration, read `../.claude/skills/MIGRATIONS.md`.**
+**Before generating or writing a db migration, read `../.claude/skills/migrations/SKILL.md`.**
