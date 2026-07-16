@@ -1260,6 +1260,7 @@ export function FormBuilder({
           sourceFormId: 0,
           sourceFieldId: "",
           title: "",
+          showLabel: true,
         };
         break;
       case "userLocation":

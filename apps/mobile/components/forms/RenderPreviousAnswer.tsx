@@ -1,4 +1,3 @@
-import { View } from "react-native";
 import type { PreviousAnswerBlock } from "@alliance/common/forms/display-blocks";
 import type {
   FormSchema,
@@ -12,8 +11,9 @@ import {
   getVisiblePreviousAnswerSubFields,
   isPreviousAnswerValueEmpty,
 } from "@alliance/shared/lib/previousAnswers";
-import { RenderField } from "./RenderField";
+import { View } from "react-native";
 import Text, { FontWeight } from "../system/Text";
+import { RenderField } from "./RenderField";
 
 function EmptyPlaceholder({ block }: { block: PreviousAnswerBlock }) {
   return (
@@ -81,7 +81,13 @@ export default function RenderPreviousAnswer({
           {block.title}
         </Text>
       ) : null}
-      <RenderField field={field} value={value} disabled user={user} />
+      <RenderField
+        field={field}
+        value={value}
+        disabled
+        user={user}
+        hideLabel={block.showLabel === false}
+      />
     </View>
   );
 }
@@ -126,6 +132,7 @@ function RenderPreviousAnswerList({
                 value={item[subField.id]}
                 disabled
                 user={user}
+                hideLabel={block.showLabel === false}
               />
             ))}
           </View>

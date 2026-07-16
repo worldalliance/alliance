@@ -97,6 +97,7 @@ const previousAnswerContentSchema = z.strictObject({
   title: z.string().optional(),
   visibleSubFieldIds: z.array(z.string()).optional(),
   emptyText: z.string().optional(),
+  showLabel: z.boolean().default(true),
 });
 
 const userLocationContentSchema = z.strictObject({

@@ -177,6 +177,17 @@ export function EditablePreviousAnswerBlock({
             </div>
           )}
 
+          {/* Field label visibility */}
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={activeBlock.showLabel ?? true}
+              onChange={(e) => handleUpdate({ showLabel: e.target.checked })}
+              className="h-4 w-4"
+            />
+            Show field label when rendering
+          </label>
+
           {/* Sub-field visibility (list fields only) */}
           {isListField && listSubFields.length > 0 && (
             <div>

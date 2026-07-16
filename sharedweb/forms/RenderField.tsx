@@ -1,6 +1,3 @@
-import { useEffect, useId, useMemo, useState, useRef, type ReactNode } from "react";
-import type { UserDto } from "@alliance/shared/client";
-import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import type {
   AnyField,
   CityField,
@@ -11,24 +8,34 @@ import type {
   RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
+import type { UserDto } from "@alliance/shared/client";
 import { isOutputValueMissing } from "@alliance/shared/outputrenderer";
-import { shuffleWithSeed } from "./randomutils";
-import { formatTimeForDisplay, parseTimeInput } from "./timeUtils";
-import DropdownIcon from "../ui/icons/DropdownIcon";
-import { getCustomComponentById } from "./components";
-import { getApiUrl } from "../lib/config";
-import TimeZoneSelect from "./TimeZoneSelect";
-import CityAutosuggest from "./CityAutosuggest";
-import ImageLightbox from "../ui/ImageLightbox";
-import TextareaAutosize from "react-textarea-autosize";
-import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
-import Card from "../ui/Card";
 import { CardStyle } from "@alliance/shared/styles/card";
-import YesNoToggle from "../ui/YesNoToggle";
 import { cn } from "@alliance/shared/styles/util";
 import { Plus, X } from "lucide-react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import TextareaAutosize from "react-textarea-autosize";
+import { getApiUrl } from "../lib/config";
+import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
+import Card from "../ui/Card";
+import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
+import DropdownIcon from "../ui/icons/DropdownIcon";
+import ImageLightbox from "../ui/ImageLightbox";
 import NewButton, { ButtonColor, ButtonSize } from "../ui/NewButton";
+import YesNoToggle from "../ui/YesNoToggle";
+import CityAutosuggest from "./CityAutosuggest";
+import { getCustomComponentById } from "./components";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
+import { shuffleWithSeed } from "./randomutils";
+import { formatTimeForDisplay, parseTimeInput } from "./timeUtils";
+import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {
   field: AnyField;
@@ -52,6 +59,7 @@ export type RenderFieldProps = {
   fieldErrors?: Record<string, string | null>;
   responseHiddenFromOthers?: boolean;
   isOutputView?: boolean;
+  hideLabel?: boolean;
 };
 
 const sharedInputClasses =
@@ -96,12 +104,15 @@ export function RenderLabel({
   error,
   labelRightAddon,
   isOutputView,
+  hideLabel,
 }: {
   field: AnyField;
   error?: string | null;
   labelRightAddon?: ReactNode;
   isOutputView?: boolean;
+  hideLabel?: boolean;
 }) {
+  if (hideLabel) return null;
   const hasError = Boolean(error);
   return (
     <>
@@ -144,6 +155,7 @@ export function RenderField({
   fieldErrors,
   responseHiddenFromOthers,
   isOutputView,
+  hideLabel,
 }: RenderFieldProps) {
   const instanceId = useId();
   const fieldName = `${field.id}-${instanceId}`;
@@ -198,6 +210,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <input
             type="text"
@@ -226,6 +239,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <TextareaAutosize
             minRows={disabled ? 1 : field.rows || 3}
@@ -258,6 +272,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <input
             type="email"
@@ -281,6 +296,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <input
             type="tel"
@@ -317,6 +333,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <input
             type="number"
@@ -374,6 +391,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <div className="flex items-center justify-between text-xs text-zinc-500 py-1">
             <span className="text-black">{field.startLabel}</span>
@@ -496,6 +514,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <div
             className={cn(
@@ -548,6 +567,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <select
             value={(value as string) ?? ""}
@@ -595,6 +615,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <div
             className={cn(
@@ -672,6 +693,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <input
             type="date"
@@ -696,6 +718,7 @@ export function RenderField({
           baseError={errorMessage}
           labelRightAddon={labelRightAddon}
           isOutputView={isOutputView}
+          hideLabel={hideLabel}
         />
       );
 
@@ -707,6 +730,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <TimeZoneSelect
             value={(value as string) ?? "America/Los_Angeles"}
@@ -729,7 +753,12 @@ export function RenderField({
             : "";
       return (
         <div className="space-y-1">
-          <RenderLabel field={field as CityField} error={errorMessage} isOutputView={isOutputView} />
+          <RenderLabel
+            field={field as CityField}
+            error={errorMessage}
+            isOutputView={isOutputView}
+            hideLabel={hideLabel}
+          />
           <CityAutosuggest
             key={`city-${cityValue?.id ?? field.id}`}
             value={displayValue}
@@ -765,6 +794,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           {imageUrl && (
             <div className="mb-2">
@@ -898,6 +928,7 @@ export function RenderField({
             error={errorMessage}
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
+            hideLabel={hideLabel}
           />
           <div className="space-y-3">
             {cards.map((card, cardIndex) => (
@@ -1019,6 +1050,7 @@ export function RenderField({
               error={errorMessage}
               labelRightAddon={labelRightAddon}
               isOutputView={isOutputView}
+              hideLabel={hideLabel}
             />
             <p className="text-sm text-red-700">
               Unable to render this field because the selected custom component
@@ -1058,6 +1090,7 @@ type TimeInputFieldProps = {
   baseError: string | null;
   labelRightAddon?: ReactNode;
   isOutputView?: boolean;
+  hideLabel?: boolean;
 };
 
 export function TimeInputField({
@@ -1068,6 +1101,7 @@ export function TimeInputField({
   baseError,
   labelRightAddon,
   isOutputView,
+  hideLabel,
 }: TimeInputFieldProps) {
   const normalizedValue = typeof value === "string" && value ? value : "";
   const [inputValue, setInputValue] = useState<string>(() =>
@@ -1148,6 +1182,7 @@ export function TimeInputField({
         error={effectiveError}
         labelRightAddon={labelRightAddon}
         isOutputView={isOutputView}
+        hideLabel={hideLabel}
       />
       <div className="relative">
         <input

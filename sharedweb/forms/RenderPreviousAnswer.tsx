@@ -66,7 +66,12 @@ export default function RenderPreviousAnswer({
           {block.title}
         </h3>
       )}
-      <RenderField field={field} value={value} disabled={true} />
+      <RenderField
+        field={field}
+        value={value}
+        disabled={true}
+        hideLabel={block.showLabel === false}
+      />
     </div>
   );
 }
@@ -105,6 +110,7 @@ function RenderPreviousAnswerList({
                 field={subField}
                 value={item[subField.id]}
                 disabled={true}
+                hideLabel={block.showLabel === false}
               />
             ))}
           </div>
