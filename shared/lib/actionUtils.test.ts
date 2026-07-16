@@ -67,6 +67,22 @@ describe("calculateCompletionData", () => {
     expect(result.nCompleted).toBe(0);
   });
 
+  it("does not count a missed deadline as outstanding work", () => {
+    const result = calculateCompletionData({
+      filteredActionIds: [10, 11],
+      userActionRelations: {
+        // missed the deadline on 11 but completed 10 → still caught up
+        1: [rel(10, "completed"), rel(11, "missed_deadline")],
+        // only a missed deadline → nothing outstanding, omitted entirely
+        2: [rel(11, "missed_deadline")],
+      },
+    });
+
+    expect(result.completedAllCurrentActions).toEqual({ 1: true });
+    expect(result.nTotal).toBe(1);
+    expect(result.nCompleted).toBe(1);
+  });
+
   it("omits users with only no-op statuses", () => {
     const result = calculateCompletionData({
       filteredActionIds: [10],

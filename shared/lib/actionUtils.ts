@@ -196,7 +196,7 @@ const STATUS_TO_COMPLETION: Record<
 > = {
   away: "none",
   completed: "complete",
-  missed_deadline: "incomplete",
+  missed_deadline: "none",
   not_required: "none",
   optional_task: "none",
   todo: "incomplete",

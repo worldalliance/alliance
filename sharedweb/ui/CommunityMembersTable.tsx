@@ -17,8 +17,8 @@ import Pagination from "./Pagination";
 
 export enum CompletionFilterMode {
   All = "Any status",
-  Completed = "Completed",
-  NotYetCompleted = "Not yet completed",
+  Completed = "Caught up",
+  NotYetCompleted = "Not caught up",
 }
 
 export enum ContractFilterMode {

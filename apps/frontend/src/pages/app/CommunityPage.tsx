@@ -694,8 +694,8 @@ const CommunityPage = () => {
                   )}
                 >
                   <p className="text-sm">
-                    {completionData.nCompleted} / {completionData.nTotal} have
-                    completed {actionDisplay}
+                    {completionData.nCompleted} / {completionData.nTotal} are
+                    caught up on {actionDisplay}
                   </p>
                   <CompletedBar
                     percentage={
