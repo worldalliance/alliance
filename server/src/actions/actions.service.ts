@@ -895,6 +895,7 @@ export class ActionsService {
       ? await this.userService.findOne(userId, {
           tags: true,
           contractEvents: true,
+          awayRanges: true,
         })
       : null;
     const action = await this.actionRepository.findOne({
@@ -1977,6 +1978,7 @@ export class ActionsService {
     const user = await this.userService.findOneOrFail(userId, {
       tags: true,
       contractEvents: true,
+      awayRanges: true,
     });
     if (!(await this.isCompletionAllowed(action, user))) {
       throw new ForbiddenException('This action is not available to you');
@@ -4467,6 +4469,65 @@ export class ActionsService {
           ],
         });
         return !terminal;
+      },
+      missedActionDeadline: async (actionId: number) => {
+        if (visitedActionIds.has(actionId)) return false;
+        const action = await this.actionRepository.findOne({
+          where: { id: actionId },
+          relations: { events: true },
+        });
+        if (!action) return false;
+
+        // Mirror the missed_deadline pill: optional actions show
+        // optional_task and away users show away, so neither can miss a
+        // deadline. The batch path gets both via `loadMissedActionDeadlineUserIds`
+        // and the roster's `computeIsAssignedAndPresent` filter.
+        if (action.optional) return false;
+        if (computeIsAwayDuringWindow({ action, user })) return false;
+
+        const deadline = action.memberActionPhase.deadlineEvent?.date ?? null;
+        if (!deadline || deadline >= new Date()) return false;
+
+        // A completion or withdrawal means the deadline wasn't missed.
+        // Dismissal deliberately does NOT disqualify: it's a view-only
+        // "mark as seen" overlay (see ActionActivityType.USER_DISMISSED)
+        // offered on past-deadline cards, so dismissed users are still in
+        // this set.
+        const terminal = await this.actionActivityRepository.findOne({
+          where: [
+            {
+              userId: user.id,
+              actionId,
+              type: ActionActivityType.USER_COMPLETED,
+            },
+            {
+              userId: user.id,
+              actionId,
+              type: ActionActivityType.USER_WONT_COMPLETE,
+            },
+          ],
+        });
+        if (terminal) return false;
+
+        const inCohort = await this.computeIsInCohortExpression({
+          user,
+          cohortExpression: action.cohortExpression,
+          visitedActionIds: new Set(visitedActionIds).add(actionId),
+        });
+        // Shared assignment rule (cohort membership + contract requirement),
+        // so this agrees with the batch roster. `user` must have
+        // `contractEvents` and `awayRanges` loaded — both degrade silently
+        // to wrong answers when absent (hasActiveContractInFullRange -> false,
+        // isAwayAtAnyPointInRange -> false), so every
+        // computeIsInCohortExpression caller has to load them. `dismissed:
+        // false` because dismissal is an overlay, not an assignment input
+        // (same as resolveUserActionStatus).
+        return computeIsAssignedToAction({
+          action,
+          user,
+          inCohort,
+          dismissed: false,
+        });
       },
       matchesFormField: async (fieldParams: {
         formId: number;

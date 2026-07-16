@@ -821,7 +821,11 @@ export class TasksService {
     const inCohort =
       !!followUpForm.cohortExpression &&
       (await this.actionsService.computeIsInCohortExpression({
-        user: await this.userService.findOneOrFail(userId, { tags: true }),
+        user: await this.userService.findOneOrFail(userId, {
+          tags: true,
+          contractEvents: true,
+          awayRanges: true,
+        }),
         cohortExpression: followUpForm.cohortExpression,
       }));
     if (!inCohort) {

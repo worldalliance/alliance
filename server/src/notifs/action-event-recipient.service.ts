@@ -57,8 +57,9 @@ export class ActionEventRecipientService {
    * Pass the same `session` across related resolutions (all expressions of
    * one request/batch) so the active-user load and per-leaf queries are
    * shared instead of re-run per expression. `resolvingActionIds` is the
-   * chain of InProgressAction ids currently being resolved above this call;
-   * a leaf that re-enters an id already on the chain resolves to the empty
+   * chain of action ids currently being resolved above this call through
+   * action-referencing leaves (InProgressAction, MissedActionDeadline); a
+   * leaf that re-enters an id already on the chain resolves to the empty
    * set, so cyclic expressions terminate.
    */
   async resolveCohortMemberIds(
@@ -68,8 +69,8 @@ export class ActionEventRecipientService {
   ): Promise<Set<number>> {
     if (!expression) return new Set();
     // Memo key includes the chain: a sub-resolution reached through an
-    // InProgressAction leaf must not await a pending ancestor resolution of
-    // the same expression (self-deadlock on cycles).
+    // action-referencing leaf must not await a pending ancestor resolution
+    // of the same expression (self-deadlock on cycles).
     const chainKey = [...resolvingActionIds].sort((a, b) => a - b).join(',');
     const key = `${chainKey}|${JSON.stringify(expression)}`;
     let pending = session.expressionMemberIds.get(key);
@@ -137,6 +138,25 @@ export class ActionEventRecipientService {
         }
         return pending;
       },
+      getUserIdsMissedActionDeadline: (actionId: number) => {
+        if (!actionId) return Promise.resolve(new Set());
+        // Same cycle cut as InProgressAction: resolving this action's roster
+        // recurses into its cohort expression.
+        if (resolvingActionIds.has(actionId)) {
+          return Promise.resolve(new Set());
+        }
+        const key = `${chainKey}|${actionId}`;
+        let pending = session.missedActionDeadlineUserIds.get(key);
+        if (!pending) {
+          pending = this.loadMissedActionDeadlineUserIds(
+            actionId,
+            session,
+            new Set([...resolvingActionIds, actionId]),
+          );
+          session.missedActionDeadlineUserIds.set(key, pending);
+        }
+        return pending;
+      },
       getUserIdsForFormField: async (params) => {
         if (!params.formId) return new Set();
         let rows = session.formResponsesByFormId.get(params.formId);
@@ -185,6 +205,45 @@ export class ActionEventRecipientService {
       relations: { events: true },
     });
     if (action.status !== ActionStatus.MemberAction) return new Set();
+    return this.loadUncompletedRosterUserIds(
+      action,
+      session,
+      resolvingActionIds,
+    );
+  }
+
+  private async loadMissedActionDeadlineUserIds(
+    actionId: number,
+    session: CohortResolutionSession,
+    resolvingActionIds: ReadonlySet<number>,
+  ): Promise<Set<number>> {
+    const action = await this.actionRepository.findOneOrFail({
+      where: { id: actionId },
+      relations: { events: true },
+    });
+    // Optional actions never yield missed_deadline (the pill shows
+    // optional_task instead), so nobody can "miss" their deadline.
+    if (action.optional) return new Set();
+    const deadline = action.memberActionPhase.deadlineEvent?.date ?? null;
+    if (!deadline || deadline >= new Date()) return new Set();
+    return this.loadUncompletedRosterUserIds(
+      action,
+      session,
+      resolvingActionIds,
+    );
+  }
+
+  /**
+   * The action's member-action roster minus users with a terminal activity
+   * (completed or withdrawn). Shared core of InProgressAction (gated on the
+   * action still being in member action) and MissedActionDeadline (gated on
+   * the deadline having passed).
+   */
+  private async loadUncompletedRosterUserIds(
+    action: Action,
+    session: CohortResolutionSession,
+    resolvingActionIds: ReadonlySet<number>,
+  ): Promise<Set<number>> {
     const event = action.events.find(
       (e) => e.newStatus === ActionStatus.MemberAction,
     );
@@ -203,8 +262,8 @@ export class ActionEventRecipientService {
     });
     const terminal = await this.actionActivityRepository.find({
       where: [
-        { actionId, type: ActionActivityType.USER_COMPLETED },
-        { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
+        { actionId: action.id, type: ActionActivityType.USER_COMPLETED },
+        { actionId: action.id, type: ActionActivityType.USER_WONT_COMPLETE },
       ],
       select: { userId: true },
     });

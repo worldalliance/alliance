@@ -15,8 +15,9 @@ export type FormResponseAnswerRow = {
  * Scope one session to a single request/batch: it never invalidates, so a
  * longer-lived session would serve stale membership.
  *
- * The in-progress and expression memos are keyed by the chain of
- * InProgressAction ids currently being resolved (see
+ * The action-roster and expression memos are keyed by the chain of
+ * action-referencing leaf ids (InProgressAction, MissedActionDeadline)
+ * currently being resolved (see
  * `ActionEventRecipientService.resolveCohortMemberIds`), so a cyclic
  * expression terminates instead of deadlocking on its own pending promise.
  */
@@ -28,6 +29,10 @@ export class CohortResolutionSession {
   readonly tagUserIds = new Map<string, Promise<Set<number>>>();
   readonly completedActionUserIds = new Map<number, Promise<Set<number>>>();
   readonly inProgressActionUserIds = new Map<string, Promise<Set<number>>>();
+  readonly missedActionDeadlineUserIds = new Map<
+    string,
+    Promise<Set<number>>
+  >();
   readonly formResponsesByFormId = new Map<
     number,
     Promise<FormResponseAnswerRow[]>

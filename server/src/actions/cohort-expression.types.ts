@@ -28,6 +28,21 @@ export interface InProgressActionCondition {
   actionId: number;
 }
 
+/**
+ * Users who failed to complete the referenced action: assigned to it, its
+ * member-action deadline has passed, and they neither completed nor withdrew.
+ * Matches the missed_deadline pill, so optional actions yield no members and
+ * users away during the member-action window are excluded (they show
+ * optional_task / away instead of missed_deadline). Dismissing the card does
+ * NOT exclude (dismissal is a view-only overlay, and the dismiss button is
+ * offered on past-deadline cards). Dynamic — a late completion drops the
+ * user out of this set.
+ */
+export interface MissedActionDeadlineCondition {
+  type: 'MissedActionDeadline';
+  actionId: number;
+}
+
 export interface FormFieldValueCondition {
   type: 'FormFieldValue';
   formId: number;
@@ -45,6 +60,7 @@ export type LeafCondition =
   | ManualCondition
   | CompletedActionCondition
   | InProgressActionCondition
+  | MissedActionDeadlineCondition
   | FormFieldValueCondition
   | GroupLeadCondition;
 
@@ -73,9 +89,7 @@ export type CohortExpression = LeafCondition | BooleanOperator;
 
 // --- Type guards ---
 
-export function isLeafCondition(
-  expr: CohortExpression,
-): expr is LeafCondition {
+export function isLeafCondition(expr: CohortExpression): expr is LeafCondition {
   return 'type' in expr;
 }
 

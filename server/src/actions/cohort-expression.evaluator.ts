@@ -10,6 +10,7 @@ export type CohortEvaluationContext = {
   getUserIdsForTag(tagId: string): Promise<Set<number>>;
   getUserIdsCompletedAction(actionId: number): Promise<Set<number>>;
   getUserIdsInProgressAction(actionId: number): Promise<Set<number>>;
+  getUserIdsMissedActionDeadline(actionId: number): Promise<Set<number>>;
   getUserIdsForFormField(params: {
     formId: number;
     fieldId: string;
@@ -58,6 +59,14 @@ export async function evaluateCohortExpression(
           return new Set();
         }
         return ctx.getUserIdsInProgressAction(expr.actionId);
+      }
+      case 'MissedActionDeadline': {
+        // Resolving the referenced action's roster recurses into its cohort
+        // expression, so it needs the same cycle guard as InProgressAction.
+        if (visitedActionIds.has(expr.actionId)) {
+          return new Set();
+        }
+        return ctx.getUserIdsMissedActionDeadline(expr.actionId);
       }
       case 'FormFieldValue':
         return ctx.getUserIdsForFormField({
@@ -146,6 +155,7 @@ export function collectCohortDependencies(
       switch (node.type) {
         case 'CompletedAction':
         case 'InProgressAction':
+        case 'MissedActionDeadline':
           actionIds.add(node.actionId);
           break;
         case 'FormFieldValue':
@@ -192,6 +202,7 @@ export type SingleUserCohortPredicates = {
   hasTag(tagId: string): boolean;
   completedAction(actionId: number): Promise<boolean>;
   inProgressAction(actionId: number): Promise<boolean>;
+  missedActionDeadline(actionId: number): Promise<boolean>;
   matchesFormField(params: {
     formId: number;
     fieldId: string;
@@ -229,6 +240,8 @@ export function singleUserCohortContext(
       justAsync(p.completedAction(actionId)),
     getUserIdsInProgressAction: (actionId) =>
       justAsync(p.inProgressAction(actionId)),
+    getUserIdsMissedActionDeadline: (actionId) =>
+      justAsync(p.missedActionDeadline(actionId)),
     getUserIdsForFormField: (params) => justAsync(p.matchesFormField(params)),
     getGroupLeadUserIds: () => justAsync(p.isGroupLead()),
     getAllCandidateUserIds: async () => just(p.isCandidate),

@@ -21,6 +21,9 @@ function mockBatchContext(
     getUserIdsForTag: jest.fn().mockResolvedValue(new Set<number>()),
     getUserIdsCompletedAction: jest.fn().mockResolvedValue(new Set<number>()),
     getUserIdsInProgressAction: jest.fn().mockResolvedValue(new Set<number>()),
+    getUserIdsMissedActionDeadline: jest
+      .fn()
+      .mockResolvedValue(new Set<number>()),
     getUserIdsForFormField: jest.fn().mockResolvedValue(new Set<number>()),
     getGroupLeadUserIds: jest.fn().mockResolvedValue(new Set<number>()),
     getAllCandidateUserIds: jest.fn().mockResolvedValue(new Set<number>()),
@@ -42,6 +45,7 @@ function scopedContext(
     hasTag: () => false,
     completedAction: async () => false,
     inProgressAction: async () => false,
+    missedActionDeadline: async () => false,
     matchesFormField: async () => false,
     isGroupLead: async () => false,
     ...overrides,
@@ -73,6 +77,9 @@ describe('type guards', () => {
       true,
     );
     expect(isLeafCondition({ type: 'InProgressAction', actionId: 1 })).toBe(
+      true,
+    );
+    expect(isLeafCondition({ type: 'MissedActionDeadline', actionId: 1 })).toBe(
       true,
     );
     expect(
@@ -258,6 +265,20 @@ describe('evaluateCohortExpression', () => {
       );
       expect(result).toEqual(new Set([7, 8, 9]));
       expect(ctx.getUserIdsInProgressAction).toHaveBeenCalledWith(99);
+    });
+
+    it('evaluates MissedActionDeadline condition', async () => {
+      const ctx = mockBatchContext({
+        getUserIdsMissedActionDeadline: jest
+          .fn()
+          .mockResolvedValue(new Set([4, 5])),
+      });
+      const result = await evaluateCohortExpression(
+        { type: 'MissedActionDeadline', actionId: 77 },
+        ctx,
+      );
+      expect(result).toEqual(new Set([4, 5]));
+      expect(ctx.getUserIdsMissedActionDeadline).toHaveBeenCalledWith(77);
     });
 
     it('evaluates FormFieldValue condition', async () => {
@@ -580,6 +601,21 @@ describe('evaluateCohortExpression', () => {
       expect(result).toEqual(new Set([1, 2]));
       expect(ctx.getUserIdsInProgressAction).toHaveBeenCalledWith(42);
     });
+
+    it('returns empty set for MissedActionDeadline when actionId is in visited set', async () => {
+      const ctx = mockBatchContext({
+        getUserIdsMissedActionDeadline: jest
+          .fn()
+          .mockResolvedValue(new Set([1, 2])),
+      });
+      const result = await evaluateCohortExpression(
+        { type: 'MissedActionDeadline', actionId: 42 },
+        ctx,
+        new Set([42]),
+      );
+      expect(result).toEqual(new Set());
+      expect(ctx.getUserIdsMissedActionDeadline).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -652,6 +688,17 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       );
       expect(result).toBe(true);
       expect(inProgressAction).toHaveBeenCalledWith(99);
+    });
+
+    it('evaluates MissedActionDeadline condition', async () => {
+      const missedActionDeadline = jest.fn().mockResolvedValue(true);
+      const result = await userInCohort(
+        1,
+        { type: 'MissedActionDeadline', actionId: 77 },
+        { missedActionDeadline },
+      );
+      expect(result).toBe(true);
+      expect(missedActionDeadline).toHaveBeenCalledWith(77);
     });
 
     it('evaluates FormFieldValue condition', async () => {

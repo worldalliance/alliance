@@ -15,6 +15,7 @@ import type {
   InProgressActionCondition,
   LeafCondition,
   ManualCondition,
+  MissedActionDeadlineCondition,
   OrOperator,
   TagCondition,
 } from "@alliance/shared/cohort-expression.types";
@@ -60,6 +61,7 @@ const LEAF_TYPES = [
   { value: "Manual", label: "Manual Users" },
   { value: "CompletedAction", label: "Completed Action" },
   { value: "InProgressAction", label: "In-Progress Action" },
+  { value: "MissedActionDeadline", label: "Missed Action Deadline" },
   { value: "FormFieldValue", label: "Form Field Value" },
   { value: "GroupLead", label: "Group Lead" },
 ] as const;
@@ -84,6 +86,8 @@ function createDefaultLeaf(type: LeafCondition["type"]): LeafCondition {
       return { type: "CompletedAction", actionId: 0 };
     case "InProgressAction":
       return { type: "InProgressAction", actionId: 0 };
+    case "MissedActionDeadline":
+      return { type: "MissedActionDeadline", actionId: 0 };
     case "FormFieldValue":
       return { type: "FormFieldValue", formId: 0, fieldId: "" };
     case "GroupLead":
@@ -127,9 +131,14 @@ const ManualEditor: React.FC<{
   />
 );
 
+type ActionSelectCondition =
+  | CompletedActionCondition
+  | InProgressActionCondition
+  | MissedActionDeadlineCondition;
+
 const ActionSelectEditor: React.FC<{
-  value: CompletedActionCondition | InProgressActionCondition;
-  onChange: (v: CompletedActionCondition | InProgressActionCondition) => void;
+  value: ActionSelectCondition;
+  onChange: (v: ActionSelectCondition) => void;
   availableActions: { id: number; name: string }[];
 }> = ({ value, onChange, availableActions }) => (
   <select
@@ -451,6 +460,7 @@ const LeafConditionEditor: React.FC<{
       );
     case "CompletedAction":
     case "InProgressAction":
+    case "MissedActionDeadline":
       return (
         <ActionSelectEditor
           value={expr}

@@ -8,27 +8,42 @@
 // --- Leaf Conditions ---
 
 export interface TagCondition {
-  type: 'Tag';
+  type: "Tag";
   tagId: string;
 }
 
 export interface ManualCondition {
-  type: 'Manual';
+  type: "Manual";
   userIds: number[];
 }
 
 export interface CompletedActionCondition {
-  type: 'CompletedAction';
+  type: "CompletedAction";
   actionId: number;
 }
 
 export interface InProgressActionCondition {
-  type: 'InProgressAction';
+  type: "InProgressAction";
+  actionId: number;
+}
+
+/**
+ * Users who failed to complete the referenced action: assigned to it, its
+ * member-action deadline has passed, and they neither completed nor withdrew.
+ * Matches the missed_deadline pill, so optional actions yield no members and
+ * users away during the member-action window are excluded (they show
+ * optional_task / away instead of missed_deadline). Dismissing the card does
+ * NOT exclude (dismissal is a view-only overlay, and the dismiss button is
+ * offered on past-deadline cards). Dynamic — a late completion drops the
+ * user out of this set.
+ */
+export interface MissedActionDeadlineCondition {
+  type: "MissedActionDeadline";
   actionId: number;
 }
 
 export interface FormFieldValueCondition {
-  type: 'FormFieldValue';
+  type: "FormFieldValue";
   formId: number;
   fieldId: string;
   responseEqualTo?: string;
@@ -36,7 +51,7 @@ export interface FormFieldValueCondition {
 }
 
 export interface GroupLeadCondition {
-  type: 'GroupLead';
+  type: "GroupLead";
 }
 
 export type LeafCondition =
@@ -44,23 +59,24 @@ export type LeafCondition =
   | ManualCondition
   | CompletedActionCondition
   | InProgressActionCondition
+  | MissedActionDeadlineCondition
   | FormFieldValueCondition
   | GroupLeadCondition;
 
 // --- Boolean Operators ---
 
 export interface AndOperator {
-  op: 'AND';
+  op: "AND";
   children: CohortExpression[];
 }
 
 export interface OrOperator {
-  op: 'OR';
+  op: "OR";
   children: CohortExpression[];
 }
 
 export interface NotOperator {
-  op: 'NOT';
+  op: "NOT";
   child: CohortExpression;
 }
 
@@ -72,16 +88,14 @@ export type CohortExpression = LeafCondition | BooleanOperator;
 
 // --- Type guards ---
 
-export function isLeafCondition(
-  expr: CohortExpression,
-): expr is LeafCondition {
-  return 'type' in expr;
+export function isLeafCondition(expr: CohortExpression): expr is LeafCondition {
+  return "type" in expr;
 }
 
 export function isBooleanOperator(
   expr: CohortExpression,
 ): expr is BooleanOperator {
-  return 'op' in expr;
+  return "op" in expr;
 }
 
 /**
@@ -94,10 +108,10 @@ export function expressionReferencesTag(
   if (!expr) return false;
 
   if (isLeafCondition(expr)) {
-    return expr.type === 'Tag' && expr.tagId === tagId;
+    return expr.type === "Tag" && expr.tagId === tagId;
   }
 
-  if (expr.op === 'NOT') {
+  if (expr.op === "NOT") {
     return expressionReferencesTag(expr.child, tagId);
   }
 
