@@ -752,7 +752,7 @@ export default function InvitesScreen() {
 
                   <Text className="text-sm text-zinc-500 leading-snug">
                     Successful recruits are counted when someone you invited
-                    completes their first assigned action.
+                    signs their membership contract.
                   </Text>
                 </>
               )}

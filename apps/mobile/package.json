@@ -43,7 +43,7 @@
     "expo-blur": "~55.0.9",
     "expo-clipboard": "^55.0.9",
     "expo-constants": "~55.0.7",
-    "expo-dev-client": "~55.0.16",
+    "expo-dev-client": "~55.0.24",
     "expo-device": "~55.0.9",
     "expo-file-system": "~55.0.10",
     "expo-font": "~55.0.4",
