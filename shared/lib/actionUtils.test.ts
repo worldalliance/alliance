@@ -2,7 +2,6 @@ import type {
   ActionStatus,
   UserActionRelationDetailDto,
   UserActionRelationPillStatus,
-  UserActionStatusDto,
   UserActionSummaryDto,
 } from "../client/types.gen";
 import {
@@ -15,8 +14,8 @@ import {
   showActionInSidebarList,
   withOptimisticDismissal,
   withOptimisticRelation,
-  type ActionWithAwayStatus,
 } from "./actionUtils";
+import { makeAction, makeLegacyAction, makeViewer } from "./testFixtures";
 
 function rel(
   actionId: number,
@@ -38,80 +37,6 @@ function summary(
     allMembersParticipating: false,
     memberActionDeadline,
   };
-}
-
-function makeViewer(
-  overrides: Partial<UserActionStatusDto> = {},
-): UserActionStatusDto {
-  return {
-    assigned: true,
-    canComplete: true,
-    relation: "none",
-    dismissed: false,
-    away: "not_away",
-    memberActionStarted: true,
-    deadlineAt: null,
-    deadlinePassed: false,
-    display: "todo",
-    ...overrides,
-  };
-}
-
-function makeAction(
-  overrides: Partial<ActionWithAwayStatus> = {},
-): ActionWithAwayStatus {
-  return {
-    id: 1,
-    name: "Test action",
-    category: "test",
-    body: "",
-    shortDescription: "",
-    type: "Activity",
-    createdAt: new Date(0).toISOString(),
-    updatedAt: new Date(0).toISOString(),
-    isContractSigningAction: false,
-    visibilityMode: "all_members",
-    usersJoined: 0,
-    usersCompleted: 0,
-    priority: 0,
-    optional: false,
-    preventCompletion: false,
-    isForumParticipationAction: false,
-    archived: false,
-    followUpForms: [],
-    updates: [],
-    status: "member_action",
-    publicOnly: false,
-    onboarding: false,
-    shouldCompleteAfterDeadline: false,
-    awayStatus: "not_away",
-    events: [],
-    viewer: makeViewer(),
-    ...overrides,
-  };
-}
-
-/** The same action expressed through the legacy flat fields, no `viewer`. */
-function makeLegacyAction(
-  overrides: Partial<ActionWithAwayStatus> = {},
-): ActionWithAwayStatus {
-  return makeAction({
-    viewer: undefined,
-    canParticipate: true,
-    shouldParticipate: true,
-    userRelation: "none",
-    events: [
-      {
-        id: 1,
-        title: "Member action opens",
-        description: "",
-        date: new Date(Date.now() - 1000).toISOString(),
-        newStatus: "member_action",
-        suiteManaged: false,
-      },
-    ],
-    ...overrides,
-  });
 }
 
 describe("viewer-based action predicates", () => {

@@ -1,66 +1,14 @@
-import type {
-  ActionDto,
-  ActionEventDto,
-  UserActionStatusDto,
-} from "../client/types.gen";
+import type { ActionDto } from "../client/types.gen";
 import {
   ActionPageTaskPanelState,
   getActionPageTaskPanelState,
 } from "./actionPageTaskPanel";
-
-function makeViewer(
-  overrides: Partial<UserActionStatusDto> = {},
-): UserActionStatusDto {
-  return {
-    assigned: true,
-    canComplete: true,
-    relation: "none",
-    dismissed: false,
-    away: "not_away",
-    memberActionStarted: true,
-    deadlineAt: null,
-    deadlinePassed: false,
-    display: "todo",
-    ...overrides,
-  };
-}
-
-function makeAction(overrides: Partial<ActionDto> = {}): ActionDto {
-  return {
-    status: "member_action",
-    publicOnly: false,
-    reqAuthenticated: true,
-    canParticipate: true,
-    preventCompletion: false,
-    onboarding: false,
-    isContractSigningAction: false,
-    optional: false,
-    events: [],
-    viewer: makeViewer(),
-    ...overrides,
-  } satisfies Partial<ActionDto> as ActionDto;
-}
-
-function makeEvent(overrides: Partial<ActionEventDto> = {}): ActionEventDto {
-  return {
-    id: 1,
-    title: "",
-    description: "",
-    newStatus: "member_action",
-    date: new Date(Date.now() - 1000).toISOString(),
-    suiteManaged: false,
-    ...overrides,
-  };
-}
-
-/** The same action expressed through the legacy flat fields, no `viewer`. */
-function makeLegacyAction(overrides: Partial<ActionDto> = {}): ActionDto {
-  return makeAction({
-    viewer: undefined,
-    userRelation: "none",
-    ...overrides,
-  });
-}
+import {
+  makeAction,
+  makeEvent,
+  makeLegacyAction,
+  makeViewer,
+} from "./testFixtures";
 
 type StateParams = Parameters<typeof getActionPageTaskPanelState>[0];
 

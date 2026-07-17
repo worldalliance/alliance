@@ -28,11 +28,22 @@ export function getTaskDismissInfo(
 ): { header: string; message: string } | undefined {
   if (action.onboarding) return undefined;
 
-  if (action.awayStatus !== "not_away") {
-    return {
-      header: taskHeaders.homePage.away.title,
-      message: AWAY_STATUS_MESSAGES[action.awayStatus],
-    };
+  // Viewer-first with the legacy flat-field fallback (see the note in
+  // actionUtils.ts). Both carry the same 4-valued TaskAwayStatus.
+  const away = action.viewer ? action.viewer.away : action.awayStatus;
+  switch (away) {
+    case "away_currently":
+    case "away_later":
+    case "away_previously":
+      return {
+        header: taskHeaders.homePage.away.title,
+        message: AWAY_STATUS_MESSAGES[away],
+      };
+    case "not_away":
+      break;
+    default:
+      away satisfies never;
+      return undefined;
   }
 
   if (deadlineHasPassed(action)) {
