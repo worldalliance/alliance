@@ -155,7 +155,6 @@ const ActionPageTaskPanel = () => {
 
   const state = getActionPageTaskPanelState({
     action,
-    userRelation,
     contractSigned: user?.hasActiveContract ?? false,
     isAuthenticated,
     hasRefCode: !!refCode,

@@ -1,7 +1,4 @@
-import {
-  ActionDto,
-  UserActionRelation,
-} from "@alliance/shared/client/types.gen";
+import { ActionDto } from "@alliance/shared/client/types.gen";
 import {
   ActionPageTaskPanelState,
   cardStylesForState,
@@ -33,7 +30,6 @@ import Text, { FontWeight } from "./system/Text";
 
 export interface ActionPageTaskPanelProps {
   action: ActionDto;
-  userRelation: UserActionRelation | null;
   onCompleteAction: () => void;
   onOptOutAction: () => void;
   scrollPageTo: (y: number, animated?: boolean) => void;
@@ -104,7 +100,6 @@ const taskPanelTopByState: Partial<
 
 const ActionPageTaskPanel = ({
   action,
-  userRelation,
   onCompleteAction,
   onOptOutAction,
   scrollPageTo,
@@ -115,7 +110,6 @@ const ActionPageTaskPanel = ({
 
   const state = getActionPageTaskPanelState({
     action,
-    userRelation,
     contractSigned: user?.hasActiveContract ?? false,
     isAuthenticated,
     hasRefCode: false,

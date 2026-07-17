@@ -145,7 +145,6 @@ export function getDeadlineTimestamp(
 // not: guest payloads (`viewer` is only sent to authenticated users),
 // fixtures, and responses from servers predating `viewer`. Delete the
 // fallbacks once `viewer` is non-optional on the wire.
-
 export function canCompleteAction(action: ActionDto): boolean {
   const { viewer } = action;
   if (viewer) {

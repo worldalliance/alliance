@@ -1,4 +1,4 @@
-import { ActionDto, UserActionRelation } from "../client/types.gen";
+import { ActionDto } from "../client/types.gen";
 import { CardStyle } from "../styles/card";
 import { deadlineHasPassed } from "./actionUtils";
 
@@ -109,9 +109,15 @@ export function mustSignContractFirst(
   );
 }
 
+/**
+ * The auth/guest branches at the top are genuinely client-side; everything
+ * after them reads server-computed status — `viewer` when present, the
+ * legacy flat fields otherwise (see the fallback note in `actionUtils.ts`).
+ * Dismissal deliberately has no branch: it only hides the home-page card,
+ * the action page renders as if it never happened.
+ */
 export function getActionPageTaskPanelState(params: {
   action: ActionDto;
-  userRelation: UserActionRelation | null;
   contractSigned: boolean;
   isAuthenticated: boolean;
   hasRefCode: boolean;
@@ -119,7 +125,6 @@ export function getActionPageTaskPanelState(params: {
 }): ActionPageTaskPanelState {
   const {
     action,
-    userRelation,
     contractSigned,
     isAuthenticated,
     hasRefCode,
@@ -142,24 +147,40 @@ export function getActionPageTaskPanelState(params: {
       : ActionPageTaskPanelState.NotAuthenticated;
   }
 
-  if (!action.canParticipate && !action.preventCompletion)
+  const canComplete = action.viewer
+    ? action.viewer.canComplete
+    : !!action.canParticipate;
+
+  if (!canComplete && !action.preventCompletion)
     return ActionPageTaskPanelState.NotAssigned;
 
   if (mustSignContractFirst(action, contractSigned)) {
     return ActionPageTaskPanelState.OnboardingSignContractFirst;
   }
 
-  if (!userRelation) {
+  const relation = action.viewer ? action.viewer.relation : action.userRelation;
+  if (!relation) {
     return ActionPageTaskPanelState.MissingDataOrNotActive;
   }
 
-  if (userRelation === "completed") {
-    return ActionPageTaskPanelState.Completed;
-  } else if (userRelation === "declined") {
-    return ActionPageTaskPanelState.Declined;
+  switch (relation) {
+    case "completed":
+      return ActionPageTaskPanelState.Completed;
+    case "withdrawn":
+    case "declined":
+      return ActionPageTaskPanelState.Declined;
+    case "dismissed":
+    case "none":
+      break;
+    default:
+      // Unknown variant from a newer server: degrade instead of crashing.
+      relation satisfies never;
+      return ActionPageTaskPanelState.MissingDataOrNotActive;
   }
 
-  if (!action.canParticipate) {
+  // Only reachable with preventCompletion (the NotAssigned check above
+  // caught every other cannot-complete case).
+  if (!canComplete) {
     return ActionPageTaskPanelState.MemberActionClosed;
   }
 

@@ -1,6 +1,5 @@
 import {
   ActionActivityDto,
-  UserActionRelation,
   actionsGetActionActivities,
   actionsLikeActivity,
   actionsUnlikeActivity,
@@ -244,7 +243,6 @@ export default function ActionDetailScreen() {
     scrollViewRef.current?.scrollToEnd({ animated });
   };
 
-  const userRelation = action.userRelation as UserActionRelation | undefined;
   const nextEvent = getNextEvent(action);
 
   const renderTabContent = () => {
@@ -274,7 +272,6 @@ export default function ActionDetailScreen() {
                   scrollPageTo={scrollPageTo}
                   scrollToEnd={scrollToEnd}
                   action={action}
-                  userRelation={userRelation ?? null}
                   onCompleteAction={onCompleteAction}
                   onOptOutAction={onOptOutAction}
                 />
