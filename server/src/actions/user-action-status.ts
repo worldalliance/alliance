@@ -9,6 +9,7 @@ import {
   computeIsAssignedToAction,
   computeIsAwayDuringWindow,
   computeMemberActionAwayStatus,
+  hasMemberActionStarted,
   TaskAwayStatus,
 } from 'src/utils/action-user';
 import { UserActionRelationPillStatus } from '../user/dto/user-action-relations.dto';
@@ -63,6 +64,12 @@ export type UserActionStatus = {
   dismissed: boolean;
   /** Now-relative away phase over the member-action window. */
   away: TaskAwayStatus;
+  /**
+   * Has a member-action phase opened (some member-action event is in the
+   * past)? Distinguishes "not started yet" from "mid-window" — `deadline*`
+   * alone can't. The client-side gate for showing/enabling the task form.
+   */
+  memberActionStarted: boolean;
   /** End of the member-action window, if one exists. */
   deadlineAt: Date | null;
   deadlinePassed: boolean;
@@ -210,7 +217,7 @@ export function resolveUserActionStatus(params: {
       relation !== ViewerActionRelation.Withdrawn);
 
   const deadlineAt = action.memberActionPhase.deadlineEvent?.date ?? null;
-  const deadlinePassed = !!deadlineAt && deadlineAt < now;
+  const deadlinePassed = !!deadlineAt && deadlineAt <= now;
 
   return {
     assigned,
@@ -219,6 +226,7 @@ export function resolveUserActionStatus(params: {
     withdrawal,
     dismissed,
     away: computeMemberActionAwayStatus({ action, user, now }),
+    memberActionStarted: hasMemberActionStarted(action.events, now),
     deadlineAt,
     deadlinePassed,
     display: resolveUserActionPillStatus({

@@ -6,7 +6,10 @@ import {
   actionsUnreadGeneralUpdates,
 } from "@alliance/shared/client";
 import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
-import { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
+import {
+  ActionWithAwayStatus,
+  withOptimisticDismissal,
+} from "@alliance/shared/lib/actionUtils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 
@@ -69,9 +72,7 @@ export function useTaskActionsData(options?: {
 
       queryClient.setQueryData<ActionDto[] | undefined>(["actions"], (prev) =>
         prev?.map((action) =>
-          action.id === actionId
-            ? { ...action, shouldParticipate: false }
-            : action,
+          action.id === actionId ? withOptimisticDismissal(action) : action,
         ),
       );
     },

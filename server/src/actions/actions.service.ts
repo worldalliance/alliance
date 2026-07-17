@@ -3253,7 +3253,7 @@ export class ActionsService {
           optional: action.optional,
           deadlinePassed:
             !!action.memberActionPhase?.deadlineEvent?.date &&
-            action.memberActionPhase.deadlineEvent.date < now,
+            action.memberActionPhase.deadlineEvent.date <= now,
           activityStatus,
         });
       }
@@ -3370,13 +3370,6 @@ export class ActionsService {
     });
 
     return this.findActionRelationsForUsers(usersPromise);
-  }
-
-  isActionPast(action: Action, now: Date): boolean {
-    return action.events.some(
-      (event) =>
-        event.newStatus === ActionStatus.MemberAction && event.date < now,
-    );
   }
 
   private async buildSuspendPlanContext(

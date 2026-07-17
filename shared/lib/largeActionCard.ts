@@ -35,7 +35,7 @@ export function getTaskDismissInfo(
     };
   }
 
-  if (deadlineHasPassed(action, new Date())) {
+  if (deadlineHasPassed(action)) {
     return {
       header: taskHeaders.homePage.deadline.title,
       message: taskHeaders.homePage.deadline.description,

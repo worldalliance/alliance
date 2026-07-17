@@ -1803,6 +1803,7 @@ export type UserActionStatusDto = {
     withdrawal?: UserActionWithdrawalDto;
     dismissed: boolean;
     away: TaskAwayStatus;
+    memberActionStarted: boolean;
     deadlineAt: string | null;
     deadlinePassed: boolean;
     display: UserActionRelationPillStatus;

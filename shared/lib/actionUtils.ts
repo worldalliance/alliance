@@ -140,54 +140,136 @@ export function getDeadlineTimestamp(
   return new Date(nextEvent.date).getTime();
 }
 
-export function canCompleteAction(action: ActionDto) {
+// Each predicate below reads the server-computed `action.viewer` status when
+// present and falls back to the legacy flat fields + events date math when
+// not: guest payloads (`viewer` is only sent to authenticated users),
+// fixtures, and responses from servers predating `viewer`. Delete the
+// fallbacks once `viewer` is non-optional on the wire.
+
+export function canCompleteAction(action: ActionDto): boolean {
+  const { viewer } = action;
+  if (viewer) {
+    // A dismissed action stays completable: dismissal is a view-only
+    // overlay, so it never reaches `relation`.
+    return (
+      viewer.memberActionStarted &&
+      viewer.relation === "none" &&
+      (viewer.canComplete || action.publicOnly)
+    );
+  }
   return (
     action.events
       .filter((event) => new Date(event.date) <= new Date())
       .some((event) => event.newStatus === "member_action") &&
     action.userRelation !== "completed" &&
     action.userRelation !== "declined" &&
-    (action.canParticipate || action.publicOnly)
+    !!(action.canParticipate || action.publicOnly)
   );
 }
 
-export function shouldCompleteAction(action: ActionDto) {
-  return (
-    canCompleteAction(action) &&
-    action.shouldParticipate &&
-    (action.status === "member_action" ||
-      (action.shouldCompleteAfterDeadline &&
-        deadlineHasPassed(action, new Date()))) &&
-    !action.publicOnly
-  );
-}
-
-export function isCurrentlyCompletedAction(action: ActionDto) {
-  return (
-    action.shouldParticipate &&
-    action.status === "member_action" &&
-    !action.onboarding &&
-    action.userRelation === "completed"
-  );
-}
-
-export function showActionInSidebarList(action: ActionWithAwayStatus) {
-  return (
-    shouldCompleteAction(action) &&
-    action.awayStatus === "not_away" &&
-    !deadlineHasPassed(action, new Date()) &&
-    action.userRelation !== "dismissed"
-  );
-}
-
-export function deadlineHasPassed(action: ActionDto, date: Date): boolean {
-  return (
-    action.status !== "member_action" &&
-    action.events.some(
-      (event) =>
-        new Date(event.date) < date && event.newStatus === "member_action",
+export function shouldCompleteAction(action: ActionDto): boolean {
+  if (
+    !canCompleteAction(action) ||
+    action.publicOnly ||
+    !(
+      action.status === "member_action" ||
+      (action.shouldCompleteAfterDeadline && deadlineHasPassed(action))
     )
+  ) {
+    return false;
+  }
+  const { viewer } = action;
+  // Legacy `shouldParticipate` folds dismissal into assignment; `viewer`
+  // models dismissal as a separate overlay.
+  return viewer
+    ? viewer.assigned && !viewer.dismissed
+    : !!action.shouldParticipate;
+}
+
+export function isCurrentlyCompletedAction(action: ActionDto): boolean {
+  if (action.status !== "member_action" || action.onboarding) {
+    return false;
+  }
+  const { viewer } = action;
+  if (viewer) {
+    return (
+      viewer.assigned && !viewer.dismissed && viewer.relation === "completed"
+    );
+  }
+  return !!action.shouldParticipate && action.userRelation === "completed";
+}
+
+export function showActionInSidebarList(action: ActionWithAwayStatus): boolean {
+  if (!shouldCompleteAction(action) || deadlineHasPassed(action)) {
+    return false;
+  }
+  const { viewer } = action;
+  if (viewer) {
+    return viewer.away === "not_away" && !viewer.dismissed;
+  }
+  return (
+    action.awayStatus === "not_away" && action.userRelation !== "dismissed"
   );
+}
+
+/**
+ * Snapshot-based in both branches: `viewer` is server-computed at fetch time,
+ * and the legacy branch's `action.status` short-circuit is a fetch-time value
+ * too — so this deliberately takes no `date` parameter. Surfaces that care
+ * about a deadline crossing mid-session refetch via `useOnNextDeadline`.
+ */
+export function deadlineHasPassed(action: ActionDto): boolean {
+  if (action.status === "member_action") {
+    return false;
+  }
+  const { viewer } = action;
+  if (viewer) {
+    return viewer.memberActionStarted;
+  }
+  const now = new Date();
+  return action.events.some(
+    (event) =>
+      new Date(event.date) <= now && event.newStatus === "member_action",
+  );
+}
+
+/**
+ * Optimistic cache patch for a completion/opt-out. Terminal relations are
+ * read from `viewer.relation` when `viewer` is present and from the legacy
+ * `userRelation` otherwise, so the patch must write both for the predicates
+ * above to see it. `display` is patched too: terminal activity wins the
+ * pill precedence server-side, so this keeps the optimistic object
+ * indistinguishable from the next real payload. (`viewer.withdrawal` is left
+ * as-is — nothing renders it optimistically.)
+ */
+export function withOptimisticRelation<T extends ActionDto>(
+  action: T,
+  relation: "completed" | "declined",
+): T {
+  const completed = relation === "completed";
+  return {
+    ...action,
+    userRelation: relation,
+    viewer: action.viewer && {
+      ...action.viewer,
+      relation: completed ? "completed" : "withdrawn",
+      display: completed ? "completed" : "wont_complete",
+    },
+  };
+}
+
+/**
+ * Optimistic cache patch for a dismissal — the view-only "mark as seen"
+ * overlay that hides the card from home lists. Legacy servers fold dismissal
+ * into `shouldParticipate`; `viewer` models it as a separate flag. Patch both
+ * so the card disappears on either predicate path.
+ */
+export function withOptimisticDismissal<T extends ActionDto>(action: T): T {
+  return {
+    ...action,
+    shouldParticipate: false,
+    viewer: action.viewer && { ...action.viewer, dismissed: true },
+  };
 }
 
 const STATUS_TO_COMPLETION: Record<

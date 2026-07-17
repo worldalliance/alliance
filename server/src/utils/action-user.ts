@@ -1,6 +1,9 @@
 /** @fileoverview Utils for relationships between actions and users */
 import type { ActionActivity } from 'src/actions/entities/action-activity.entity';
-import { ActionStatus } from 'src/actions/entities/action-event.entity';
+import {
+  ActionStatus,
+  type ActionEvent,
+} from 'src/actions/entities/action-event.entity';
 import { Action } from 'src/actions/entities/action.entity';
 import type { Community } from 'src/community/entities/community.entity';
 import type { FormResponse } from 'src/tasks/entities/formresponse.entity';
@@ -187,6 +190,29 @@ function findActionEventWindowAt(
   return { startDate: event?.date ?? null, endDate: nextEvent?.date ?? null };
 }
 
+/**
+ * The first loaded member-action event that has already opened
+ * (`date <= now`), or undefined when no member-action phase has started. Any
+ * past member-action event counts (not just the latest phase's), so a
+ * re-scheduled action whose earlier phase already ran still reads started.
+ */
+export function findStartedMemberActionEvent<
+  E extends Pick<ActionEvent, 'date' | 'newStatus'>,
+>(events: E[], now: Date): E | undefined {
+  return events.find(
+    (event) =>
+      event.date <= now && event.newStatus === ActionStatus.MemberAction,
+  );
+}
+
+/** Has a member-action phase opened? See {@link findStartedMemberActionEvent}. */
+export function hasMemberActionStarted(
+  events: Pick<ActionEvent, 'date' | 'newStatus'>[],
+  now: Date,
+): boolean {
+  return findStartedMemberActionEvent(events, now) !== undefined;
+}
+
 export function computeMemberActionAwayStatus(params: {
   action: Pick<Action, 'events'>;
   user: Pick<User, 'awayRanges'>;
@@ -194,10 +220,7 @@ export function computeMemberActionAwayStatus(params: {
 }): TaskAwayStatus {
   const { action, user, now } = params;
 
-  const memberActionEvent = action.events.find(
-    (event) =>
-      event.date <= now && event.newStatus === ActionStatus.MemberAction,
-  );
+  const memberActionEvent = findStartedMemberActionEvent(action.events, now);
   if (!memberActionEvent) {
     return TaskAwayStatus.NotAway;
   }

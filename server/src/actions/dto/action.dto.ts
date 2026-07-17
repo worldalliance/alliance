@@ -266,6 +266,9 @@ export class UserActionStatusDto {
   @ApiProperty({ enum: TaskAwayStatus, enumName: 'TaskAwayStatus' })
   away: TaskAwayStatus;
 
+  @ApiProperty()
+  memberActionStarted: boolean;
+
   @ApiProperty({ type: Date, nullable: true })
   deadlineAt: Date | null;
 
@@ -287,6 +290,7 @@ export class UserActionStatusDto {
       : undefined;
     this.dismissed = input.dismissed;
     this.away = input.away;
+    this.memberActionStarted = input.memberActionStarted;
     this.deadlineAt = input.deadlineAt;
     this.deadlinePassed = input.deadlinePassed;
     this.display = input.display;

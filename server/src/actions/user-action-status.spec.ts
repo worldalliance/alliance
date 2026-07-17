@@ -93,6 +93,7 @@ describe('resolveUserActionStatus', () => {
       withdrawal: null,
       dismissed: false,
       away: TaskAwayStatus.NotAway,
+      memberActionStarted: true,
       deadlineAt: DEADLINE,
       deadlinePassed: false,
       display: UserActionRelationPillStatus.Todo,
@@ -258,9 +259,24 @@ describe('resolveUserActionStatus', () => {
     // The completion rule has no phase gate (matching isCompletionAllowed,
     // which the complete mutation enforces).
     expect(status.canComplete).toBe(true);
+    expect(status.memberActionStarted).toBe(false);
     expect(status.deadlineAt).toBeNull();
     expect(status.deadlinePassed).toBe(false);
     expect(status.display).toBe(UserActionRelationPillStatus.NotRequired);
+  });
+
+  it('marks an upcoming phase as not started while assignment already applies', () => {
+    const status = resolve({
+      action: makeAction({
+        events: makeEvents({
+          start: new Date(NOW.getTime() + DAY_MS),
+          deadline: null,
+        }),
+      }),
+    });
+    expect(status.memberActionStarted).toBe(false);
+    expect(status.assigned).toBe(true);
+    expect(status.canComplete).toBe(true);
   });
 });
 

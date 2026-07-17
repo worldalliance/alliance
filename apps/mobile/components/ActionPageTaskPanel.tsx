@@ -120,7 +120,6 @@ const ActionPageTaskPanel = ({
     isAuthenticated,
     hasRefCode: false,
     hasGuestResponse: false,
-    now: new Date(),
   });
   const formResponse = useCompletedTaskForm(
     action,

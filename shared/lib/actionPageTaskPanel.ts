@@ -116,7 +116,6 @@ export function getActionPageTaskPanelState(params: {
   isAuthenticated: boolean;
   hasRefCode: boolean;
   hasGuestResponse: boolean;
-  now: Date;
 }): ActionPageTaskPanelState {
   const {
     action,
@@ -125,7 +124,6 @@ export function getActionPageTaskPanelState(params: {
     isAuthenticated,
     hasRefCode,
     hasGuestResponse,
-    now,
   } = params;
 
   if (!isAuthenticated && hasGuestResponse) {
@@ -165,7 +163,7 @@ export function getActionPageTaskPanelState(params: {
     return ActionPageTaskPanelState.MemberActionClosed;
   }
 
-  if (deadlineHasPassed(action, now)) {
+  if (deadlineHasPassed(action)) {
     return ActionPageTaskPanelState.ShowTaskWithMissedDeadline;
   }
 

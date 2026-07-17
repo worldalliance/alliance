@@ -4,6 +4,7 @@ import {
   ActionWithAwayStatus,
   homePagePriorityComparator,
   showActionInSidebarList,
+  withOptimisticRelation,
 } from "@alliance/shared/lib/actionUtils";
 import {
   noTasksContractSuspended,
@@ -459,7 +460,7 @@ const HomePage = () => {
                   (prev) =>
                     prev?.map((action) =>
                       action.id === selectedTaskNavigatorItem.action.id
-                        ? { ...action, userRelation: "completed" as const }
+                        ? withOptimisticRelation(action, "completed")
                         : action,
                     ),
                 );

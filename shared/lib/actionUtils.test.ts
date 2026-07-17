@@ -2,11 +2,20 @@ import type {
   ActionStatus,
   UserActionRelationDetailDto,
   UserActionRelationPillStatus,
+  UserActionStatusDto,
   UserActionSummaryDto,
 } from "../client/types.gen";
 import {
   calculateAllCompletionData,
   calculateCompletionData,
+  canCompleteAction,
+  deadlineHasPassed,
+  isCurrentlyCompletedAction,
+  shouldCompleteAction,
+  showActionInSidebarList,
+  withOptimisticDismissal,
+  withOptimisticRelation,
+  type ActionWithAwayStatus,
 } from "./actionUtils";
 
 function rel(
@@ -30,6 +39,220 @@ function summary(
     memberActionDeadline,
   };
 }
+
+function makeViewer(
+  overrides: Partial<UserActionStatusDto> = {},
+): UserActionStatusDto {
+  return {
+    assigned: true,
+    canComplete: true,
+    relation: "none",
+    dismissed: false,
+    away: "not_away",
+    memberActionStarted: true,
+    deadlineAt: null,
+    deadlinePassed: false,
+    display: "todo",
+    ...overrides,
+  };
+}
+
+function makeAction(
+  overrides: Partial<ActionWithAwayStatus> = {},
+): ActionWithAwayStatus {
+  return {
+    id: 1,
+    name: "Test action",
+    category: "test",
+    body: "",
+    shortDescription: "",
+    type: "Activity",
+    createdAt: new Date(0).toISOString(),
+    updatedAt: new Date(0).toISOString(),
+    isContractSigningAction: false,
+    visibilityMode: "all_members",
+    usersJoined: 0,
+    usersCompleted: 0,
+    priority: 0,
+    optional: false,
+    preventCompletion: false,
+    isForumParticipationAction: false,
+    archived: false,
+    followUpForms: [],
+    updates: [],
+    status: "member_action",
+    publicOnly: false,
+    onboarding: false,
+    shouldCompleteAfterDeadline: false,
+    awayStatus: "not_away",
+    events: [],
+    viewer: makeViewer(),
+    ...overrides,
+  };
+}
+
+/** The same action expressed through the legacy flat fields, no `viewer`. */
+function makeLegacyAction(
+  overrides: Partial<ActionWithAwayStatus> = {},
+): ActionWithAwayStatus {
+  return makeAction({
+    viewer: undefined,
+    canParticipate: true,
+    shouldParticipate: true,
+    userRelation: "none",
+    events: [
+      {
+        id: 1,
+        title: "Member action opens",
+        description: "",
+        date: new Date(Date.now() - 1000).toISOString(),
+        newStatus: "member_action",
+        suiteManaged: false,
+      },
+    ],
+    ...overrides,
+  });
+}
+
+describe("viewer-based action predicates", () => {
+  it("resolves the plain assigned-todo case on both paths", () => {
+    for (const action of [makeAction(), makeLegacyAction()]) {
+      expect(canCompleteAction(action)).toBe(true);
+      expect(shouldCompleteAction(action)).toBe(true);
+      expect(showActionInSidebarList(action)).toBe(true);
+      expect(isCurrentlyCompletedAction(action)).toBe(false);
+    }
+  });
+
+  it("keeps a dismissed action completable but out of home lists", () => {
+    const action = makeAction({
+      viewer: makeViewer({ dismissed: true }),
+    });
+    expect(canCompleteAction(action)).toBe(true);
+    expect(shouldCompleteAction(action)).toBe(false);
+    expect(showActionInSidebarList(action)).toBe(false);
+  });
+
+  it("blocks completion once the viewer has a terminal relation", () => {
+    expect(
+      canCompleteAction(
+        makeAction({ viewer: makeViewer({ relation: "withdrawn" }) }),
+      ),
+    ).toBe(false);
+    expect(
+      canCompleteAction(
+        makeAction({ viewer: makeViewer({ relation: "completed" }) }),
+      ),
+    ).toBe(false);
+  });
+
+  it("gates completion on the member-action phase having started", () => {
+    const action = makeAction({
+      status: "planned",
+      viewer: makeViewer({ memberActionStarted: false }),
+    });
+    expect(canCompleteAction(action)).toBe(false);
+  });
+
+  it("lets an unassigned member complete without listing the task", () => {
+    const action = makeAction({ viewer: makeViewer({ assigned: false }) });
+    expect(canCompleteAction(action)).toBe(true);
+    expect(shouldCompleteAction(action)).toBe(false);
+  });
+
+  it("keeps away members' tasks out of the sidebar", () => {
+    const action = makeAction({
+      viewer: makeViewer({ away: "away_currently" }),
+    });
+    expect(shouldCompleteAction(action)).toBe(true);
+    expect(showActionInSidebarList(action)).toBe(false);
+  });
+
+  it("marks a completed member-action as currently completed", () => {
+    const action = makeAction({
+      viewer: makeViewer({ relation: "completed", display: "completed" }),
+    });
+    expect(isCurrentlyCompletedAction(action)).toBe(true);
+  });
+
+  it("derives deadlineHasPassed from viewer.memberActionStarted", () => {
+    expect(
+      deadlineHasPassed(
+        makeAction({ status: "resolution", viewer: makeViewer() }),
+      ),
+    ).toBe(true);
+    expect(
+      deadlineHasPassed(
+        makeAction({
+          status: "planned",
+          viewer: makeViewer({ memberActionStarted: false }),
+        }),
+      ),
+    ).toBe(false);
+    expect(deadlineHasPassed(makeAction())).toBe(false);
+  });
+
+  it("supports shouldCompleteAfterDeadline past the deadline", () => {
+    const action = makeAction({
+      status: "resolution",
+      shouldCompleteAfterDeadline: true,
+    });
+    expect(shouldCompleteAction(action)).toBe(true);
+    // ...but the sidebar still drops it once the deadline passed.
+    expect(showActionInSidebarList(action)).toBe(false);
+  });
+
+  it("matches the legacy fallback on dismissal semantics", () => {
+    const action = makeLegacyAction({
+      userRelation: "dismissed",
+      // Legacy servers force shouldParticipate=false on dismissal.
+      shouldParticipate: false,
+    });
+    expect(canCompleteAction(action)).toBe(true);
+    expect(shouldCompleteAction(action)).toBe(false);
+    expect(showActionInSidebarList(action)).toBe(false);
+  });
+});
+
+// The optimistic patches must flip the predicates the same way the next real
+// server payload would — on both the viewer and legacy paths.
+describe("optimistic cache patches", () => {
+  it("makes an optimistic completion read as completed on both paths", () => {
+    for (const base of [makeAction(), makeLegacyAction()]) {
+      const action = withOptimisticRelation(base, "completed");
+      expect(canCompleteAction(action)).toBe(false);
+      expect(shouldCompleteAction(action)).toBe(false);
+      expect(isCurrentlyCompletedAction(action)).toBe(true);
+    }
+  });
+
+  it("makes an optimistic opt-out read as withdrawn on both paths", () => {
+    for (const base of [makeAction(), makeLegacyAction()]) {
+      const action = withOptimisticRelation(base, "declined");
+      expect(canCompleteAction(action)).toBe(false);
+      expect(shouldCompleteAction(action)).toBe(false);
+      expect(isCurrentlyCompletedAction(action)).toBe(false);
+    }
+  });
+
+  it("mirrors the terminal relation into viewer.display", () => {
+    expect(
+      withOptimisticRelation(makeAction(), "completed").viewer?.display,
+    ).toBe("completed");
+    expect(
+      withOptimisticRelation(makeAction(), "declined").viewer?.display,
+    ).toBe("wont_complete");
+  });
+
+  it("hides an optimistic dismissal from home lists but keeps it completable", () => {
+    for (const base of [makeAction(), makeLegacyAction()]) {
+      const action = withOptimisticDismissal(base);
+      expect(canCompleteAction(action)).toBe(true);
+      expect(shouldCompleteAction(action)).toBe(false);
+      expect(showActionInSidebarList(action)).toBe(false);
+    }
+  });
+});
 
 describe("calculateCompletionData", () => {
   it("buckets users by completion, restricted to the filtered actions", () => {

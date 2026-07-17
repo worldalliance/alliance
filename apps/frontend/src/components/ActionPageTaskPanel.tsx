@@ -160,7 +160,6 @@ const ActionPageTaskPanel = () => {
     isAuthenticated,
     hasRefCode: !!refCode,
     hasGuestResponse,
-    now: new Date(),
   });
   const resolvedUserRelation = userRelation ?? "none";
   const guestCompleted = state === ActionPageTaskPanelState.GuestCompleted;
