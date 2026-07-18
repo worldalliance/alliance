@@ -3386,6 +3386,13 @@ export type MigrateResponseSnapshotsResultDto = {
     updatedCount: number;
 };
 
+export type UpdateFormResponseAnswersDto = {
+    answers: {
+        [key: string]: unknown;
+    };
+    deviceType?: string;
+};
+
 export type GuestFormResponseDto = {
     response?: FormResponseDto;
 };
@@ -11572,6 +11579,30 @@ export type TasksMigrateResponseSnapshotsAdminResponses = {
 };
 
 export type TasksMigrateResponseSnapshotsAdminResponse = TasksMigrateResponseSnapshotsAdminResponses[keyof TasksMigrateResponseSnapshotsAdminResponses];
+
+export type TasksEditFormResponseData = {
+    body: UpdateFormResponseAnswersDto;
+    path: {
+        formId: number;
+    };
+    query?: never;
+    url: '/tasks/editForm/{formId}';
+};
+
+export type TasksEditFormResponseErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksEditFormResponseError = TasksEditFormResponseErrors[keyof TasksEditFormResponseErrors];
+
+export type TasksEditFormResponseResponses = {
+    200: FormResponseDto;
+};
+
+export type TasksEditFormResponseResponse = TasksEditFormResponseResponses[keyof TasksEditFormResponseResponses];
 
 export type TasksGetMyFormResponseData = {
     body?: never;

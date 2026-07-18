@@ -79,6 +79,7 @@ import {
 } from './entities/customvalidator.entity';
 import { Form } from './entities/form.entity';
 import { FormResponse } from './entities/formresponse.entity';
+import { FormResponseRevision } from './entities/formresponserevision.entity';
 import { FormSnapshot } from './entities/formsnapshot.entity';
 import {
   CreateFormDto,
@@ -117,7 +118,7 @@ export class TasksService {
     private aiDetectionQueryService: AiDetectionQueryService,
     private formSnapshotService: FormSnapshotService,
     private actionFormVariantService: ActionFormVariantService,
-  ) {}
+  ) { }
 
   /** Returns true if value satisfies required validation for the field. Used for both top-level and list sub-field validation. */
   private hasRequiredValue(field: AnyField, value: unknown): boolean {
@@ -467,11 +468,11 @@ export class TasksService {
               rawList,
             )
               ? (rawList as unknown[]).filter(
-                  (item): item is Record<string, FormValue> =>
-                    item !== null &&
-                    typeof item === 'object' &&
-                    !Array.isArray(item),
-                )
+                (item): item is Record<string, FormValue> =>
+                  item !== null &&
+                  typeof item === 'object' &&
+                  !Array.isArray(item),
+              )
               : [];
             const minCards = Math.max(
               0,
@@ -999,9 +1000,9 @@ export class TasksService {
       return dto.formSnapshotId === form.formSnapshotId && form.formSnapshot
         ? form.formSnapshot
         : this.formSnapshotService.findHistoricalOrThrow(
-            form.id,
-            dto.formSnapshotId,
-          );
+          form.id,
+          dto.formSnapshotId,
+        );
     }
     if (!dto.schemaSnapshot) {
       throw new BadRequestException(
@@ -1163,6 +1164,49 @@ export class TasksService {
           aiDetectionResults: aiDetectionByResponseId.get(response.id),
         }),
     );
+  }
+
+  async updateFormResponseAnswers(
+    formId: number,
+    userId: number,
+    newAnswers: Record<string, unknown>,
+    deviceType?: DeviceVisibilityTarget
+  ): Promise<FormResponse> {
+    return this.formResponseRepository.manager.transaction(async (manager) => {
+      const response = await manager.findOne(FormResponse, {
+        where: { formId, user: { id: userId } },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!response) throw new NotFoundException('No response to edit');
+
+      const formSnapshot = await manager.findOneOrFail(FormSnapshot, {
+        where: { id: response.formSnapshotId },
+      });
+      const schema = formSnapshot.schema as unknown as FormSchema;
+      const { validatorResults, effectiveAnswers } =
+        await this.validateFormSubmission({
+          schema,
+          submitFormDto: { answers: newAnswers, deviceType } as SubmitFormDto,
+          userId,
+        });
+
+      await manager.insert(FormResponseRevision, {
+        formResponseId: response.id,
+        answers: response.answers,
+        formSnapshotId: response.formSnapshotId,
+      });
+
+      response.answers = effectiveAnswers;
+      response.visibilityValidatorResults = validatorResults;
+      if (deviceType !== undefined) {
+        response.deviceType = deviceType;
+      }
+      const saved = await manager.save(response);
+      saved.formSnapshot = formSnapshot;
+      return saved;
+    });
+
+
   }
 
   async getResponseSnapshotMigration(

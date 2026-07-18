@@ -16,6 +16,7 @@ import { UserModule } from 'src/user/user.module';
 import { CustomValidator } from './entities/customvalidator.entity';
 import { Form } from './entities/form.entity';
 import { FormResponse } from './entities/formresponse.entity';
+import { FormResponseRevision } from './entities/formresponserevision.entity';
 import { FormSnapshotModule } from './formsnapshot.module';
 import { TasksController } from './tasks.controller';
 import { TasksService } from './tasks.service';
@@ -25,6 +26,7 @@ import { TasksService } from './tasks.service';
     TypeOrmModule.forFeature([
       Form,
       FormResponse,
+      FormResponseRevision,
       Action,
       CustomValidator,
       User,
@@ -45,4 +47,4 @@ import { TasksService } from './tasks.service';
   controllers: [TasksController],
   providers: [TasksService],
 })
-export class TasksModule {}
+export class TasksModule { }

@@ -49,6 +49,7 @@ import {
   SubmitFollowUpFormDto,
   SubmitFormDto,
   UpdateFormDto,
+  UpdateFormResponseAnswersDto,
 } from './form.dto';
 import { TasksService } from './tasks.service';
 
@@ -59,7 +60,7 @@ export class TasksController {
   constructor(
     private readonly tasksService: TasksService,
     private readonly authService: AuthService,
-  ) {}
+  ) { }
 
   @Post('submitForm/:id')
   @UseGuards(AuthGuard)
@@ -179,6 +180,25 @@ export class TasksController {
         body.targetSnapshotId,
       ),
     );
+  }
+
+
+  @Patch('editForm/:formId')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: FormResponseDto })
+  async editFormResponse(
+    @Request() req: JwtRequest,
+    @Param('formId', ParseIntPipe) formId: number,
+    @Body() body: UpdateFormResponseAnswersDto,
+  ): Promise<FormResponseDto> {
+    return new FormResponseDto({
+      response: await this.tasksService.updateFormResponseAnswers(
+        formId,
+        req.user.sub,
+        body.answers,
+        body.deviceType,
+      ),
+    });
   }
 
   @Get('myResponse/:id')

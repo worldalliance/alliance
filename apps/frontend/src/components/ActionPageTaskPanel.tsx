@@ -26,13 +26,16 @@ import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import Card from "@alliance/sharedweb/ui/Card";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
-import { ArrowRight, Link2 } from "lucide-react";
+import { ArrowRight, Link2, Pencil } from "lucide-react";
 import { useEffect, useState } from "react";
 import { isRouteErrorResponse, Link, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import { useAuth } from "../lib/AuthContext";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
 import ActionTaskPanel from "./ActionTaskPanel";
+
+import { useQueryClient } from "@tanstack/react-query";
+import EditableFormResponse from "./EditableFormResponse";
 import ShareButton from "./ShareButton";
 import StackedCard from "./system/StackedCard";
 
@@ -188,6 +191,14 @@ const ActionPageTaskPanel = () => {
     currentSchema: taskForm?.schema as Record<string, unknown> | undefined,
   });
 
+  const queryClient = useQueryClient();
+  const [isEditingResponse, setIsEditingResponse] = useState(false);
+
+  const handleResponseSaved = (updated: FormResponseDto) => {
+    queryClient.setQueryData(["taskFormResponse", action.taskFormId], updated);
+    setIsEditingResponse(false);
+  };
+
   const handleShareCopy = async () => {
     const url = await buildActionShareUrl({
       actionId: action.id,
@@ -209,15 +220,25 @@ const ActionPageTaskPanel = () => {
         <p>{taskHeaders.actionPage.completed}</p>
       </div>
       {isAuthenticated && (
-        <ShareButton
-          onClick={handleShareCopy}
-          icon={Link2}
-          label={clipboardCopy.share}
-          copiedLabel={clipboardCopy.copiedToClipboard}
-          className="text-zinc-500 hover:text-zinc-700"
-          iconClassName="w-3.5 h-3.5 shrink-0"
-          labelClassName="text-sm order-first"
-        />
+        <>
+          <ShareButton
+            onClick={handleShareCopy}
+            icon={Link2}
+            label={clipboardCopy.share}
+            copiedLabel={clipboardCopy.copiedToClipboard}
+            className="text-zinc-500 hover:text-zinc-700"
+            iconClassName="w-3.5 h-3.5 shrink-0"
+            labelClassName="text-sm order-first"
+          />
+          <button
+            type="button"
+            onClick={() => setIsEditingResponse(true)}
+            className="flex items-center gap-x-1 text-sm text-zinc-500 hover:text-zinc-700"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
+          </button>
+        </>
       )}
     </div>
   );
@@ -267,11 +288,10 @@ const ActionPageTaskPanel = () => {
               signupHref && (
                 <div className="-mx-4 -mt-4 mb-4 overflow-hidden sm:-mx-6 sm:-mt-6">
                   <div
-                    className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-6 sm:py-5 ${
-                      !guestCompleted && animateReferralPanel
-                        ? "referral-panel-slide-in"
-                        : ""
-                    }`}
+                    className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-6 sm:py-5 ${!guestCompleted && animateReferralPanel
+                      ? "referral-panel-slide-in"
+                      : ""
+                      }`}
                   >
                     {guestCompleted ? (
                       <>
@@ -287,7 +307,7 @@ const ActionPageTaskPanel = () => {
                         <p className="text-lg font-semibold leading-8 text-zinc-900">
                           {guestReferral.inviteToTryTask(
                             sharePreviewFirstName ??
-                              guestReferral.defaultReferrerName,
+                            guestReferral.defaultReferrerName,
                           )}
                         </p>
                         <p className="mt-3 text-base leading-7 text-zinc-700">
@@ -315,7 +335,6 @@ const ActionPageTaskPanel = () => {
 
   switch (state) {
     case ActionPageTaskPanelState.Declined:
-    case ActionPageTaskPanelState.Completed:
     case ActionPageTaskPanelState.GuestCompleted:
     case ActionPageTaskPanelState.PublicOnlyAuthenticated:
     case ActionPageTaskPanelState.NotAssigned:
@@ -339,7 +358,7 @@ const ActionPageTaskPanel = () => {
           action={action}
           {...panelHandlers}
           onCompleteAction={
-            guestMode ? () => {} : panelHandlers.onCompleteAction
+            guestMode ? () => { } : panelHandlers.onCompleteAction
           }
           disabled={formDisabledByState}
           formResponse={effectiveFormResponse}
@@ -373,6 +392,25 @@ const ActionPageTaskPanel = () => {
           userRelation={resolvedUserRelation}
           {...panelHandlers}
         />,
+      );
+    case ActionPageTaskPanelState.Completed:
+      return renderStackedCard(
+        isEditingResponse && effectiveFormResponse ? (
+          <EditableFormResponse
+            formResponse={effectiveFormResponse}
+            actionId={action.id}
+            onSaved={handleResponseSaved}
+            onCancel={() => setIsEditingResponse(false)}
+          />
+        ) : (
+          <ActionTaskPanel
+            userRelation="none"
+            action={action}
+            {...panelHandlers}
+            disabled
+            formResponse={effectiveFormResponse}
+          />
+        )
       );
     default:
       throw new Error(

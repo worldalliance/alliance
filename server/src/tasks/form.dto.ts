@@ -97,7 +97,7 @@ export class SubmitFormDto extends PickType(FormResponse, [
 
 export class SubmitFollowUpFormDto extends OmitType(SubmitFormDto, [
   'actionId',
-]) {}
+]) { }
 
 export class FormDto extends PickType(Form, ['id', 'title', 'formSnapshotId']) {
   @ApiProperty()
@@ -298,6 +298,10 @@ export class MigrateResponseSnapshotsDto {
   @IsInt()
   targetSnapshotId: number;
 }
+
+export class UpdateFormResponseAnswersDto extends PickType(FormResponse, [
+  'answers', 'deviceType'
+]) { }
 
 export class MigrateResponseSnapshotsResultDto {
   @ApiProperty()
