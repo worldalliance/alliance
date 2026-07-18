@@ -38,9 +38,9 @@ export const defaultMissedDeadlineEmailContents = `Hi #{firstname},
 
 The deadline for the current task has passed and you have not completed it. If you did complete it, please contact us — we may have made a mistake.
 
-The Alliance counts on every member. We plan precise actions based on the commitments of our members, and each missed task affects what others can count on.
+The Alliance counts on every member. We plan precise actions based on the number of people we expect to participate.
 
-To learn more about the Alliance and why reliability matters, you can watch <a href="https://www.youtube.com/watch?v=VS6aFXXxtmY&t=125s">this video</a>.
+To learn more about our model, you can watch <a href="https://www.youtube.com/watch?v=VS6aFXXxtmY&t=125s">this video</a>.
 
 Please know that if you miss several actions in a row, we will suspend your contract and no longer assign you tasks.
 
@@ -49,7 +49,7 @@ The Alliance Team`;
 
 export const defaultMissedDeadlineTextMessage = `The deadline for the current task has passed and you have not completed it. If you did complete it, please contact us — we may have made a mistake. 
 
-The Alliance is built on reliability, and each missed task affects what other members can count on. If you miss several actions in a row, we will suspend your contract and no longer assign you tasks.`;
+We plan precise actions based on the number of people we expect to participate. If you miss several actions in a row, we will suspend your contract and no longer assign you tasks.`;
 
 // group leads reminder
 
