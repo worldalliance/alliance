@@ -51,6 +51,7 @@ import {
   Not,
   type Repository,
 } from 'typeorm';
+import { getAmbassadorGoalHalfwayNotificationTime } from './ambassador-invite-goal-notification.utils';
 import { CreateAwayRangeDto, UpdateAwayRangeDto } from './dto/away-range.dto';
 import {
   RegisterDeviceDto,
@@ -108,7 +109,7 @@ import {
   User,
 } from './entities/user.entity';
 import { type FriendsAcceptedPayload, UserEvents } from './user.events';
-import { getAmbassadorGoalHalfwayNotificationTime } from './ambassador-invite-goal-notification.utils';
+import { referralLabel } from './user.utils';
 
 export interface PWResetJwtPayload {
   sub: number;
@@ -234,7 +235,9 @@ export class UserService {
     );
     await this.eventLogService.sendMessage({
       type: EventType.AccountCreated,
-      message: `${user.name} created an account.`,
+      message: [user.name, referralLabel(user), 'created an account.']
+        .filter(Boolean)
+        .join(' '),
       userId: user.id,
     });
     return user;

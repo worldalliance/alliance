@@ -43,12 +43,7 @@ import { CohortResolutionSession } from 'src/notifs/cohort-resolution-session';
 import { PreviewNotificationPlanDto } from 'src/notifs/dto/notification-plan.dto';
 import { LikeNotificationService } from 'src/notifs/like-notification.service';
 import { NotificationChannel } from 'src/notifs/notif-utils';
-import {
-  NotifsService,
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from 'src/notifs/notifs.service';
+import { NotifsService } from 'src/notifs/notifs.service';
 import { actionActivityUrl } from 'src/search/approutes';
 import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
 import { ShareUrlsService } from 'src/share-urls/share-urls.service';
@@ -68,6 +63,11 @@ import {
   sqlUserHasActiveContractAt,
   User,
 } from 'src/user/entities/user.entity';
+import {
+  userActionNotifsEnabled_email,
+  userActionNotifsEnabled_push,
+  userActionNotifsEnabled_text,
+} from 'src/user/user.utils';
 import {
   computeIsAssignedAndPresent,
   computeIsAssignedToAction,

@@ -1,20 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { ActionsService } from 'src/actions/actions.service';
+import { ContractService } from 'src/contract/contract.service';
+import { EventType } from 'src/eventlog/event-log.entity';
+import { EventLogService } from 'src/eventlog/eventlog.service';
 import { MailService } from 'src/mail/mail.service';
 import { MmsService } from 'src/mms/mms.service';
 import { generateCIDForNotif } from 'src/notifs/notif-utils';
+import { suspensionMessage } from 'src/notifs/textnotifcontents';
 import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
-} from 'src/notifs/notifs.service';
-import { suspensionMessage } from 'src/notifs/textnotifcontents';
-import { ContractService } from 'src/contract/contract.service';
+} from 'src/user/user.utils';
 import { DataSource } from 'typeorm';
-import { withPgAdvisoryLock } from '../notifs/lock-utils';
 import { LOCK_KEYS } from '../notifs/lock-keys';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { Cron } from '@nestjs/schedule';
+import { withPgAdvisoryLock } from '../notifs/lock-utils';
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.contractSuspender;
