@@ -19,6 +19,8 @@ import { FormSnapshot } from './formsnapshot.entity';
 // immediately before the live FormResponse row is overwritten, capturing
 // the answers (and the schema they were valid against) as they existed
 // right before the edit.
+// Note, if an admin runs a snapshot migration on this response while the
+// user has the edit form open, there's nothing today that catches it. 
 @Entity()
 @Index(['formResponseId'])
 export class FormResponseRevision {
