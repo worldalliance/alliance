@@ -152,12 +152,18 @@ function LinkPreviewBody({
   }
 
   if (!preview) {
-    // loading / not-yet-fetched skeleton
     return (
-      <div className="w-72 animate-pulse p-3" aria-hidden>
-        <div className="mb-2 h-3.5 w-3/4 rounded bg-zinc-200" />
-        <div className="mb-1.5 h-2.5 w-full rounded bg-zinc-100" />
-        <div className="h-2.5 w-5/6 rounded bg-zinc-100" />
+      <div className="flex w-72 flex-col gap-y-1 p-3 text-left">
+        <div className="animate-pulse" aria-hidden>
+          <div className="mb-1.5 h-3.5 w-3/4 rounded bg-zinc-200" />
+          <div className="mb-1.5 h-2.5 w-full rounded bg-zinc-100" />
+          <div className="h-2.5 w-5/6 rounded bg-zinc-100" />
+        </div>
+        <div className="flex items-center gap-x-1.5">
+          <p className="truncate text-[11px] font-medium text-zinc-500">
+            {hostname}
+          </p>
+        </div>
       </div>
     );
   }
