@@ -108,6 +108,7 @@ import {
   User,
 } from './entities/user.entity';
 import { type FriendsAcceptedPayload, UserEvents } from './user.events';
+import { getAmbassadorGoalHalfwayNotificationTime } from './ambassador-invite-goal-notification.utils';
 
 export interface PWResetJwtPayload {
   sub: number;
@@ -1771,7 +1772,7 @@ export class UserService {
     const lookbackAt = new Date(
       now.getTime() - AMBASSADOR_GOAL_NOTIFICATION_LOOKBACK_MS,
     );
-    const [halfwayRows, endedRows] = await Promise.all([
+    const [halfwayCandidateRows, endedRows] = await Promise.all([
       this.ambassadorInviteGoalRepository.query(
         `
           SELECT goal."id"
@@ -1779,9 +1780,16 @@ export class UserService {
           WHERE goal."startAt" <= $1::timestamptz
             AND goal."dueAt" > $1::timestamptz
             AND (goal."startAt" + ((goal."dueAt" - goal."startAt") / 2)) <= $1::timestamptz
-            AND (goal."startAt" + ((goal."dueAt" - goal."startAt") / 2)) > $2::timestamptz
+            AND NOT EXISTS (
+              SELECT 1
+              FROM "notification" notif
+              WHERE notif."userId" = goal."ambassadorId"
+                AND notif."groupingKey" = CONCAT(
+                  'ambassador-invite-goal:', goal."id", ':halfway'
+                )
+            )
         `,
-        [now, lookbackAt],
+        [now],
       ) as Promise<{ id: number }[]>,
       this.ambassadorInviteGoalRepository.query(
         `
@@ -1796,7 +1804,7 @@ export class UserService {
 
     const goalIds = [
       ...new Set([
-        ...halfwayRows.map((goal) => goal.id),
+        ...halfwayCandidateRows.map((goal) => goal.id),
         ...endedRows.map((goal) => goal.id),
       ]),
     ];
@@ -1810,13 +1818,23 @@ export class UserService {
     });
     const goalById = new Map(goals.map((goal) => [goal.id, goal]));
 
+    const halfwayGoalsDue = halfwayCandidateRows.flatMap(({ id }) => {
+      const goal = goalById.get(id);
+      if (!goal) {
+        return [];
+      }
+      const sendTime = getAmbassadorGoalHalfwayNotificationTime(
+        goal,
+        goal.ambassador,
+      );
+      return sendTime > lookbackAt && sendTime <= now
+        ? [{ goal, sendTime }]
+        : [];
+    });
+
     await Promise.all([
-      ...halfwayRows.map(async ({ id }) => {
-        const goal = goalById.get(id);
-        if (!goal) {
-          return;
-        }
-        await this.sendAmbassadorInviteGoalHalfwayNotif(goal);
+      ...halfwayGoalsDue.map(async ({ goal, sendTime }) => {
+        await this.sendAmbassadorInviteGoalHalfwayNotif(goal, sendTime);
       }),
       ...endedRows.map(async ({ id }) => {
         const goal = goalById.get(id);
@@ -1830,6 +1848,7 @@ export class UserService {
 
   private async sendAmbassadorInviteGoalHalfwayNotif(
     goal: AmbassadorInviteGoal,
+    sendTime: Date,
   ): Promise<void> {
     const groupingKey = ambassadorGoalHalfwayGroupingKey(goal.id);
     const alreadySent = await this.notifsService.hasNotifWithGroupingKey(
@@ -1849,7 +1868,7 @@ export class UserService {
       mobileAppLocation: AMBASSADOR_INVITES_URL,
       associatedUsers: [],
       groupingKey,
-      sendTime: new Date(),
+      sendTime,
       shouldPush: true,
     });
   }
