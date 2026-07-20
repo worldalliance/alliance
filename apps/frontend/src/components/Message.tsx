@@ -4,10 +4,10 @@ import { cn } from "@alliance/shared/styles/util";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { ImageThumbnailGrid } from "@alliance/sharedweb/ui/ImageLightbox";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import { Reply, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Reply } from "lucide-react";
+import { useCallback } from "react";
 import { Link, href } from "react-router";
 
 const Message = ({
@@ -30,32 +30,6 @@ const Message = ({
   ref: React.RefObject<HTMLDivElement | null> | null;
 }) => {
   const attachments = message.attachments ?? [];
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const lightboxSrc =
-    lightboxIndex !== null ? attachments[lightboxIndex] : null;
-
-  useEffect(() => {
-    if (lightboxIndex === null) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setLightboxIndex(null);
-      } else if (e.key === "ArrowRight" && attachments.length > 1) {
-        setLightboxIndex((idx) =>
-          idx === null
-            ? 0
-            : (idx + 1 + attachments.length) % attachments.length,
-        );
-      } else if (e.key === "ArrowLeft" && attachments.length > 1) {
-        setLightboxIndex((idx) =>
-          idx === null
-            ? 0
-            : (idx - 1 + attachments.length) % attachments.length,
-        );
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [attachments.length, lightboxIndex]);
 
   const handleReplyTo = useCallback(() => {
     setReplyingTo(message.id);
@@ -130,16 +104,11 @@ const Message = ({
               <AppMarkdownWrapper markdownContent={message.body} />
             )}
             {attachments.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {attachments.map((attachment, idx) => (
-                  <img
-                    key={`${message.id}-attachment-${idx}`}
-                    src={attachment}
-                    onClick={() => setLightboxIndex(idx)}
-                    className="w-28 h-28 object-cover rounded border border-zinc-200 cursor-zoom-in"
-                  />
-                ))}
-              </div>
+              <ImageThumbnailGrid
+                images={attachments}
+                className="mt-2"
+                imageClassName="border border-zinc-200"
+              />
             )}
           </div>
         </div>
@@ -154,34 +123,6 @@ const Message = ({
           </Button>
         </div>
       </div>
-
-      {lightboxSrc && (
-        <div
-          className={cn(
-            zIndex.modal,
-            "fixed inset-0 bg-black/70 flex items-center justify-center px-4",
-          )}
-          onClick={() => setLightboxIndex(null)}
-        >
-          <div
-            className="relative max-h-[90vh] max-w-[90vw]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Button
-              color={ButtonColor.Transparent}
-              onClick={() => setLightboxIndex(null)}
-              className="absolute -top-1 -right-9 text-white"
-              aria-label="Close"
-            >
-              <X size={20} />
-            </Button>
-            <img
-              src={lightboxSrc}
-              className="max-h-[90vh] max-w-[90vw] object-contain"
-            />
-          </div>
-        </div>
-      )}
     </>
   );
 };

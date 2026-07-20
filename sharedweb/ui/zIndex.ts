@@ -12,24 +12,41 @@
  * Popovers/tooltips/dropdowns are routinely opened from inside a modal and
  * portal to `<body>`; at the modal's tier or below they'd render behind it (or
  * get clipped by its `overflow`). `toast` sits above everything.
+ *
+ * Numeric values behind the `zIndex` classes, for the rare consumer that needs
+ * a raw number (e.g. a library that takes a z-index prop) instead of a
+ * Tailwind class.
  */
-export const zIndex = {
+export const zIndexValues = {
   /** Normal in-flow content. */
-  base: "z-0",
+  base: 0,
   /** Overlapping siblings, raised/sticky-in-flow cards. */
-  raised: "z-10",
+  raised: 10,
   /** Sticky headers, top nav, fixed app chrome. */
-  nav: "z-20",
+  nav: 20,
   /** Side drawers / slide-overs. */
-  drawer: "z-30",
+  drawer: 30,
   /** Dialogs, modals, lightboxes, and their backdrops. */
-  modal: "z-40",
+  modal: 40,
   /** Below popovers. */
-  popoverBackdrop: "z-50",
+  popoverBackdrop: 50,
   /** Dropdowns, selects, hover cards, tooltips, context menus. */
-  popover: "z-60",
+  popover: 60,
   /** Toasts / notifications — always on top. */
+  toast: 70,
+} as const satisfies Record<string, number>;
+
+export const zIndex = {
+  base: "z-0",
+  raised: "z-10",
+  nav: "z-20",
+  drawer: "z-30",
+  modal: "z-40",
+  popoverBackdrop: "z-50",
+  popover: "z-60",
   toast: "z-70",
-} as const;
+} as const satisfies {
+  [K in keyof typeof zIndexValues]: `z-${(typeof zIndexValues)[K]}`;
+};
 
 export type ZIndexTier = keyof typeof zIndex;

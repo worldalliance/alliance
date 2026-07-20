@@ -1,4 +1,5 @@
-import { useMemo, type ReactNode } from "react";
+import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
+import type { FormSchema, FormValue } from "@alliance/common/forms/form-schema";
 import type {
   FormResponseDto,
   FormResponseOutputDto,
@@ -8,15 +9,14 @@ import {
   resolveOutputView,
   type ResolvedOutputFieldItem,
 } from "@alliance/shared/outputrenderer";
-import { getApiUrl } from "../lib/config";
-import Card from "../ui/Card";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
-import ImageLightbox from "../ui/ImageLightbox";
+import { useMemo, type ReactNode } from "react";
+import { getApiUrl } from "../lib/config";
+import Card from "../ui/Card";
+import { ImageThumbnailGrid } from "../ui/ImageLightbox";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
-import type { FormSchema, FormValue } from "@alliance/common/forms/form-schema";
-import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 
 type OutputRendererProps = {
   schema?: FormSchema;
@@ -44,29 +44,7 @@ const renderOutputFieldValue = (item: ResolvedOutputFieldItem): ReactNode => {
     const imageUrls = item.fileValues.map(
       (entry) => `${getApiUrl()}/images/${entry}`,
     );
-    return (
-      <ImageLightbox
-        images={imageUrls}
-        renderPreview={(openLightbox) => (
-          <div className="flex flex-wrap gap-2">
-            {imageUrls.map((src, idx) => (
-              <button
-                type="button"
-                key={idx}
-                className="focus:outline-none"
-                onClick={(e) => openLightbox(idx, e)}
-              >
-                <img
-                  src={src}
-                  alt="Uploaded file"
-                  className="w-28 h-28 object-cover rounded"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-      />
-    );
+    return <ImageThumbnailGrid images={imageUrls} alt="Uploaded file" />;
   }
   if (!item.formattedValue) {
     return <span className="text-sm text-gray-400">No response</span>;

@@ -1,8 +1,8 @@
 import { EditableContentDto } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import AppMarkdownWrapper from "./AppMarkdownWrapper";
-import ImageLightbox from "./ImageLightbox";
 import React from "react";
+import AppMarkdownWrapper from "./AppMarkdownWrapper";
+import { ImageThumbnailGrid } from "./ImageLightbox";
 
 interface EditableContentRendererProps {
   content: EditableContentDto;
@@ -20,7 +20,7 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
   truncated = false,
 }) => {
   const attachments = (content.attachments ?? []).filter((src): src is string =>
-    Boolean(src)
+    Boolean(src),
   );
   const sharedClasses = "mb-1 whitespace-pre-wrap";
 
@@ -38,29 +38,16 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
         <div
           className={cn(
             collapsed && "line-clamp-1",
-            truncated && !collapsed && "line-clamp-3"
+            truncated && !collapsed && "line-clamp-3",
           )}
         >
           <AppMarkdownWrapper markdownContent={content.body} />
         </div>
       )}
       {attachments.length > 0 && !collapsed && (
-        <ImageLightbox
+        <ImageThumbnailGrid
           images={attachments}
-          renderPreview={(openLightbox) => (
-            <div className={cn("flex flex-wrap gap-2", content.body && "mt-2")}>
-              {attachments.map((key, idx) => (
-                <button
-                  type="button"
-                  key={idx}
-                  className="focus:outline-none"
-                  onClick={(e) => openLightbox(idx, e)}
-                >
-                  <img src={key} className="w-28 h-28 object-cover rounded" />
-                </button>
-              ))}
-            </div>
-          )}
+          className={content.body ? "mt-2" : undefined}
         />
       )}
     </div>
