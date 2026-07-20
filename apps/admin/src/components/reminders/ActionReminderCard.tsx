@@ -11,7 +11,6 @@ import {
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import DatabaseIcon from "@alliance/sharedweb/ui/icons/DatabaseIcon";
 import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
 import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { formatDate, formatDistanceToNow } from "date-fns";
@@ -217,12 +216,6 @@ const ActionReminderCard = ({
               <p className={cn("font-semibold", isFinished && "text-gray-500")}>
                 {group.name}
               </p>
-              <Link
-                to={`/database?table=reminder_group&id=${group.id}`}
-                target="_blank"
-              >
-                <DatabaseIcon size="small" fill="#111" />
-              </Link>
               {isFinished ? (
                 <p className="text-green font-semibold">
                   Sent {sentReminders?.length} reminders{" "}
@@ -443,12 +436,6 @@ const ActionReminderCard = ({
                     <p className="text-sm text-zinc-500">
                       {formatDate(notif.createdAt, "MM/dd/yyyy hh:mm a")}
                     </p>
-                    <Link
-                      to={`/database?table=action_event_notif&id=${notif.id}`}
-                      target="_blank"
-                    >
-                      <DatabaseIcon size="small" fill="gray" />
-                    </Link>
                   </div>
                   <p
                     className={cn(

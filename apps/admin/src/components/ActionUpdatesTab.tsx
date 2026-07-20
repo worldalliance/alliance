@@ -332,7 +332,6 @@ const ActionUpdatesTab = ({
             update={update}
             onDelete={() => handleDelete(update.id)}
             onEdit={handleEdit}
-            admin
           />
         ))}
       </div>

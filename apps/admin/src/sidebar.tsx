@@ -18,7 +18,6 @@ import {
   ChevronDown,
   ChevronRight,
   CirclePile,
-  Database,
   FileText,
   Film,
   Handshake,
@@ -239,11 +238,6 @@ const Sidebar: React.FC = () => {
                 icon: <Newspaper size={16} />,
               },
               { to: "/members", label: "Members", icon: <Users size={16} /> },
-              {
-                to: "/database",
-                label: "Database Viewer →",
-                icon: <Database size={16} />,
-              },
               {
                 to: "/invites",
                 label: "User Invites",

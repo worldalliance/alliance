@@ -46,7 +46,6 @@ export default [
       route("/priority", "pages/PriorityPage.tsx"),
       route("/member-map", "pages/MemberMapPage.tsx"),
     ]),
-    route("/database", "pages/DatabaseViewer.tsx"),
   ]),
   layout("loggedoutonly.tsx", [route("/login", "pages/LoginPage.tsx")]),
 ] satisfies RouteConfig;

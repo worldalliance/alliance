@@ -1,17 +1,16 @@
-import { Link } from "react-router";
 import {
   ActionUpdateDto,
   CreateEditableContentDto,
 } from "@alliance/shared/client";
+import { useOptionalNotifications } from "@alliance/shared/lib/useNotifications";
+import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { formatTime } from "@alliance/shared/lib/utils";
+import { cn } from "@alliance/shared/styles/util";
+import { useState } from "react";
+import { Link } from "react-router";
 import Button, { ButtonColor } from "./Button";
 import EditableContentForm from "./EditableContentForm";
 import EditableContentRenderer from "./EditableContentRenderer";
-import DatabaseIcon from "./icons/DatabaseIcon";
-import { useState } from "react";
-import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
-import { useOptionalNotifications } from "@alliance/shared/lib/useNotifications";
-import { cn } from "@alliance/shared/styles/util";
 
 export interface ActionUpdateCardProps {
   update: ActionUpdateDto;
@@ -21,7 +20,6 @@ export interface ActionUpdateCardProps {
     title: string,
     content: CreateEditableContentDto,
   ) => Promise<void>;
-  admin?: boolean;
   onActionPageTimeline?: boolean;
   border?: boolean;
 }
@@ -30,7 +28,6 @@ const ActionUpdateCard = ({
   update,
   onDelete,
   onEdit,
-  admin = false,
   onActionPageTimeline = true, // if not on action page timeline, need to have action title and link
   border = false,
 }: ActionUpdateCardProps) => {
@@ -121,12 +118,6 @@ const ActionUpdateCard = ({
 
               {update.title}
             </p>
-
-            {admin && (
-              <Link to={`/database?table=action_update&id=${update.id}`}>
-                <DatabaseIcon size="small" />
-              </Link>
-            )}
 
             <p className="text-zinc-500 whitespace-nowrap">
               {formatTime(new Date(update.date), {

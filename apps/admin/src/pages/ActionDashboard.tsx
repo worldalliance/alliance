@@ -44,7 +44,6 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import Dropdown from "@alliance/sharedweb/ui/Dropdown";
 import CopyIcon from "@alliance/sharedweb/ui/icons/CopyIcon";
-import DatabaseIcon from "@alliance/sharedweb/ui/icons/DatabaseIcon";
 import LargeCheckbox from "@alliance/sharedweb/ui/LargeCheckbox";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
@@ -1044,19 +1043,6 @@ const ActionDashboard: React.FC = () => {
                       Open Suite
                     </Button>
                   )}
-                  <Button
-                    onClick={() =>
-                      window.open(
-                        `/database?table=action&id=${action.id}`,
-                        "_blank",
-                      )
-                    }
-                    color={ButtonColor.White}
-                    className="!px-3 !text-sm gap-x-1"
-                  >
-                    <DatabaseIcon size="large" />
-                    Edit in Database
-                  </Button>
                   <Button
                     onClick={() => handleDuplicate()}
                     color={ButtonColor.White}

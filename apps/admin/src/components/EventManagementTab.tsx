@@ -1,13 +1,11 @@
 import { ActionDto } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import Card from "@alliance/sharedweb/ui/Card";
 import { CardStyle } from "@alliance/shared/styles/card";
-import DatabaseIcon from "@alliance/sharedweb/ui/icons/DatabaseIcon";
+import { cn } from "@alliance/shared/styles/util";
+import Card from "@alliance/sharedweb/ui/Card";
 import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
 import { useState } from "react";
 import { formatStatus, getStatusColor } from "../pages/ActionDashboard";
 import CreateEventForm from "./CreateEventForm";
-import { cn } from "@alliance/shared/styles/util";
 
 // Status options for event creation
 
@@ -93,22 +91,6 @@ const EventManagementTab = ({ action, setAction }: EventManagementTabProps) => {
                       timeZoneName: "short",
                     })}
                   </div>
-                </div>
-
-                <div className="pt-2 mt-2 flex flex-row gap-x-2">
-                  <Button
-                    onClick={() =>
-                      window.open(
-                        `/database?table=action_event&id=${event.id}`,
-                        "_blank",
-                      )
-                    }
-                    color={ButtonColor.White}
-                    className="!px-3 !text-xs gap-x-1"
-                  >
-                    <DatabaseIcon />
-                    Edit in Database
-                  </Button>
                 </div>
               </div>
             ))
