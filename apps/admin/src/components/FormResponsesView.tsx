@@ -4,11 +4,12 @@ import type {
   FormSchema,
   Page,
 } from "@alliance/common/forms/form-schema";
-import type {
-  ActionWithdrawalDto,
-  FormDto,
-  FormResponseDto,
-  ProfileDto,
+import {
+  tasksGetFormResponseHistoryAdmin,
+  type ActionWithdrawalDto,
+  type FormDto,
+  type FormResponseDto,
+  type ProfileDto,
 } from "@alliance/shared/client";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -20,7 +21,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@alliance/sharedweb/ui/HoverCard";
-import { CirclePlay } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CirclePlay, History } from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -284,6 +286,12 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
+  // Add ability to toggle history on and off.
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    setHistoryOpen(false);
+  }, [page]);
 
   const [params, setParams] = useSearchParams();
 
@@ -454,6 +462,20 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   const filteredTotal = filteredResponses.length;
   const totalPages = Math.max(1, filteredTotal);
   const currentResponse = filteredResponses[page - 1];
+
+  // Lazily fetch the response history. 
+  const {
+    data: currentResponseHistory,
+    isLoading: historyLoading,
+    error: historyError,
+  } = useQuery({
+    queryKey: ["formResponseHistory", currentResponse?.id],
+    queryFn: () =>
+      tasksGetFormResponseHistoryAdmin({
+        path: { formResponseId: currentResponse!.id },
+      }).then((res) => res.data ?? []),
+    enabled: historyOpen && currentResponse?.id != null,
+  });
 
   const currentResponseAiInlineLabels = useMemo<
     Record<string, React.ReactNode>
@@ -699,7 +721,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     ? (currentResponse.user?.name ??
       (sidsToUserMap[currentResponse.sid ?? ""]
         ? "anonymous invited by " +
-          sidsToUserMap[currentResponse.sid ?? ""]?.displayName
+        sidsToUserMap[currentResponse.sid ?? ""]?.displayName
         : "anonymous"))
     : "";
 
@@ -714,7 +736,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
         response.user?.name ??
         (sidsToUserMap[response.sid ?? ""]
           ? "anonymous invited by " +
-            sidsToUserMap[response.sid ?? ""]?.displayName
+          sidsToUserMap[response.sid ?? ""]?.displayName
           : "anonymous")
       );
     },
@@ -992,11 +1014,11 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                       onClick={() =>
                         window.open(
                           "https://us.posthog.com/project/188181/replay/home?sessionRecordingId=" +
-                            currentResponse.sessionReplayUrl!.substring(
-                              currentResponse.sessionReplayUrl!.lastIndexOf(
-                                "/",
-                              ) + 1,
-                            ),
+                          currentResponse.sessionReplayUrl!.substring(
+                            currentResponse.sessionReplayUrl!.lastIndexOf(
+                              "/",
+                            ) + 1,
+                          ),
                           "_blank",
                         )
                       }
@@ -1005,6 +1027,14 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                       Replay
                     </Button>
                   )}
+                  <Button
+                    size="small"
+                    color={historyOpen ? ButtonColor.Black : ButtonColor.White}
+                    onClick={() => setHistoryOpen((open) => !open)}
+                  >
+                    <History size={14} className="mr-1.5" />
+                    History
+                  </Button>
                 </div>
               )}
             </div>
@@ -1066,6 +1096,52 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                       </div>
                     );
                   })()}
+                </div>
+              )}
+              {historyOpen && currentResponse && (
+                <div className="max-w-[600px] mx-auto mt-4">
+                  {historyLoading ? (
+                    <Card style={CardStyle.White}>
+                      <p className="text-gray-500 text-sm">Loading history...</p>
+                    </Card>
+                  ) : historyError ? (
+                    <Card style={CardStyle.White}>
+                      <p className="text-red-500 text-sm">Failed to load history.</p>
+                    </Card>
+                  ) : !currentResponseHistory || currentResponseHistory.length === 0 ? (
+                    <Card style={CardStyle.White}>
+                      <p className="text-gray-500 text-sm">
+                        No edits — this is the original submission.
+                      </p>
+                    </Card>
+                  ) : (
+                    <div className="space-y-4">
+                      {currentResponseHistory.map((revision) => (
+                        <div key={revision.id}>
+                          <p className="text-xs font-semibold tracking-wide text-gray-500 uppercase mb-2">
+                            Edited {new Date(revision.supersededAt).toLocaleString()}
+                          </p>
+                          <div className="bg-white p-6 border border-gray-200 rounded-lg opacity-90">
+                            <FormRenderer
+                              id={revision.formResponseId}
+                              formSnapshotId={revision.formSnapshotId}
+                              actionId={0}
+                              form={revision.schemaSnapshot as unknown as FormSchema}
+                              completedFormResponse={{
+                                ...currentResponse,
+                                answers: revision.answers,
+                                formSnapshotId: revision.formSnapshotId,
+                                schemaSnapshot: revision.schemaSnapshot,
+                              }}
+                              renderFormAsCompleted
+                              onSubmit={null}
+                              disableOptionRandomization
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -1141,19 +1217,18 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                     const variantName = getResponseVariantName(response);
                     const aiDetection =
                       selectedQuestionField &&
-                      AI_SCORE_FIELD_KINDS.has(selectedQuestionField.kind)
+                        AI_SCORE_FIELD_KINDS.has(selectedQuestionField.kind)
                         ? (response.aiDetectionResults ?? []).find(
-                            (d) =>
-                              d.fieldPath ===
-                              `answers.${selectedQuestionFieldId}`,
-                          )
+                          (d) =>
+                            d.fieldPath ===
+                            `answers.${selectedQuestionFieldId}`,
+                        )
                         : null;
                     return (
                       <div
                         key={
                           response.id ??
-                          `${response.sid ?? "anonymous"}-${
-                            response.createdAt
+                          `${response.sid ?? "anonymous"}-${response.createdAt
                           }-${index}`
                         }
                         className={cn(
@@ -1198,7 +1273,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                                   "text-sm font-semibold",
                                   aiDetection &&
                                     typeof aiDetection.aiProbability ===
-                                      "number" &&
+                                    "number" &&
                                     aiDetection.aiProbability > 0
                                     ? "text-red-600"
                                     : "text-gray-400",

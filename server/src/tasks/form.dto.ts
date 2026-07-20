@@ -28,6 +28,7 @@ import { AiDetectionResult } from 'src/ai-detection/entities/ai-detection-result
 import { UserDto } from 'src/user/dto/user.dto';
 import { Form } from './entities/form.entity';
 import { FormResponse } from './entities/formresponse.entity';
+import { FormResponseRevision } from './entities/formresponserevision.entity';
 import { FormSnapshot } from './entities/formsnapshot.entity';
 import type { Ty } from './entities/type';
 
@@ -181,6 +182,34 @@ export class FormResponseDto extends PickType(FormResponse, [
     this.aiDetectionResults = aiDetectionResults?.map(
       (result) => new AiDetectionResultDto(result),
     );
+  }
+}
+
+export type FormResponseRevisionDtoArgs = {
+  revision: FormResponseRevision;
+};
+
+export class FormResponseRevisionDto extends PickType(FormResponseRevision, [
+  'id',
+  'formResponseId',
+  'answers',
+  'formSnapshotId',
+  'supersededAt',
+]) {
+  @ApiProperty()
+  @IsDefined()
+  @Type(() => Object)
+  schemaSnapshot: Record<string, unknown>;
+
+  constructor(input: FormResponseRevisionDtoArgs) {
+    super();
+    const { revision } = input;
+    this.id = revision.id;
+    this.formResponseId = revision.formResponseId;
+    this.answers = revision.answers;
+    this.formSnapshotId = revision.formSnapshotId;
+    this.schemaSnapshot = revision.formSnapshot.schema;
+    this.supersededAt = revision.supersededAt;
   }
 }
 

@@ -89,7 +89,7 @@ import {
   type SnapshotResponseGroup,
   SubmitFollowUpFormDto,
   SubmitFormDto,
-  UpdateFormDto,
+  UpdateFormDto
 } from './form.dto';
 import { FormSnapshotService } from './formsnapshot.service';
 
@@ -1135,6 +1135,16 @@ export class TasksService {
 
   async getFormResponses(formId: number): Promise<FormResponseDto[]> {
     return this.getFormResponsesForForms([formId]);
+  }
+
+  async getFormResponseHistory(
+    formResponseId: number,
+  ): Promise<FormResponseRevision[]> {
+    return await this.formResponseRepository.manager.find(FormResponseRevision, {
+      where: { formResponseId },
+      relations: { formSnapshot: true },
+      order: { supersededAt: 'DESC', id: 'DESC' },
+    });
   }
 
   async getFormResponsesForForms(
