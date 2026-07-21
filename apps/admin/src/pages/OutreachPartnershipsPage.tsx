@@ -1,3 +1,4 @@
+import { ensureHttpProtocol } from "@alliance/common/url";
 import {
   actionPartnershipsCreateNoteAdmin,
   actionPartnershipsDeleteResponseAdmin,
@@ -8,20 +9,19 @@ import type {
   ActionPartnershipResponseDto,
 } from "@alliance/shared/client/types.gen";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 const formatDateTime = (value: string): string =>
   new Date(value).toLocaleString(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
   });
-
-const getWebsiteHref = (website: string): string => {
-  if (/^https?:\/\//i.test(website)) {
-    return website;
-  }
-  return `https://${website}`;
-};
 
 const getDefaultNoteDate = (): string => {
   const now = new Date();
@@ -158,9 +158,7 @@ const OutreachPartnershipsPage: React.FC = () => {
         console.error("Failed to delete outreach partnership response", err);
         setError("Failed to delete response.");
       } finally {
-        const nextDeletingResponseIds = new Set(
-          deletingResponseIdsRef.current,
-        );
+        const nextDeletingResponseIds = new Set(deletingResponseIdsRef.current);
         nextDeletingResponseIds.delete(response.id);
         deletingResponseIdsRef.current = nextDeletingResponseIds;
         setDeletingResponseIds(nextDeletingResponseIds);
@@ -248,7 +246,7 @@ function ResponseCard({
               </h2>
               {response.organizationWebsite.trim() ? (
                 <a
-                  href={getWebsiteHref(response.organizationWebsite)}
+                  href={ensureHttpProtocol(response.organizationWebsite)}
                   target="_blank"
                   rel="noreferrer"
                   className="text-sm text-link"
@@ -267,7 +265,9 @@ function ResponseCard({
               {response.contact}
             </a>
           </div>
-          <p className="text-sm text-zinc-700">Contact: {response.personName}</p>
+          <p className="text-sm text-zinc-700">
+            Contact: {response.personName}
+          </p>
           <Button
             color={ButtonColor.Red}
             className="self-start text-white"

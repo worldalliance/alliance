@@ -1,11 +1,18 @@
+import { HTTP_URL_VALIDATOR_OPTIONS } from '@alliance/common/url';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import {
   Allow,
+  ArrayMaxSize,
   IsArray,
   IsDefined,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  ValidateNested,
 } from 'class-validator';
 import {
   CreateDateColumnTz,
@@ -51,6 +58,46 @@ export enum VisibilityMode {
   Public = 'public',
   AllMembers = 'all_members',
   ParticipatingGroups = 'participating_groups',
+}
+
+export enum ActionReviewerIcon {
+  LinkedIn = 'linkedin',
+}
+
+const REVIEWER_NAME_MAX_LENGTH = 200;
+// Longer URLs exist in the wild, but browsers and CDNs commonly cap around
+// here, and the value is stored in an unbounded jsonb column.
+const REVIEWER_URL_MAX_LENGTH = 2048;
+export const ACTION_REVIEWERS_MAX = 50;
+
+/** A non-user credited with reviewing an action (name + optional link). */
+export class ActionReviewer {
+  @ApiProperty({
+    description: 'Display name of the reviewer',
+    maxLength: REVIEWER_NAME_MAX_LENGTH,
+  })
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(REVIEWER_NAME_MAX_LENGTH)
+  name: string;
+
+  @ApiPropertyOptional({
+    description: "Link to the reviewer's website, LinkedIn, etc.",
+    maxLength: REVIEWER_URL_MAX_LENGTH,
+  })
+  @IsOptional()
+  @IsUrl(HTTP_URL_VALIDATOR_OPTIONS)
+  @MaxLength(REVIEWER_URL_MAX_LENGTH)
+  url?: string;
+
+  @ApiPropertyOptional({
+    enum: ActionReviewerIcon,
+    enumName: 'ActionReviewerIcon',
+    description: 'Icon shown next to the reviewer name',
+  })
+  @IsOptional()
+  @IsEnum(ActionReviewerIcon)
+  icon?: ActionReviewerIcon;
 }
 
 const MS_IN_WEEK = 7 * 24 * 60 * 60 * 1000;
@@ -355,6 +402,19 @@ export class Action {
   @Type(() => User)
   @IsOptional()
   authors?: Relation<User>[];
+
+  @Column({ type: 'jsonb', default: [] })
+  @ApiProperty({
+    type: () => ActionReviewer,
+    isArray: true,
+    description: 'Non-user reviewers credited on the action',
+    maxItems: ACTION_REVIEWERS_MAX,
+  })
+  @Type(() => ActionReviewer)
+  @IsArray()
+  @ArrayMaxSize(ACTION_REVIEWERS_MAX)
+  @ValidateNested({ each: true })
+  reviewers: ActionReviewer[];
 
   // Methods
 

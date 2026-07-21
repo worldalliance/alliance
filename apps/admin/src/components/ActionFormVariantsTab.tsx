@@ -18,6 +18,7 @@ import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
+import { makeTempId } from "../lib/tempId";
 
 export interface ActionFormVariantsTabProps {
   action: ActionDto;
@@ -32,13 +33,6 @@ interface StagedVariant {
   tempId: string;
   name: string;
   splitValue: number;
-}
-
-function makeTempId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `tmp-${Date.now()}-${Math.random()}`;
 }
 
 function formatPct(value: number): string {

@@ -2,6 +2,7 @@ import {
   fieldHasOptions,
   isQuestionField,
 } from "@alliance/common/forms/form-schema";
+import { ensureHttpProtocol } from "@alliance/common/url";
 import type { ActionSuiteDto } from "@alliance/shared/client";
 import {
   ActionDto,
@@ -64,7 +65,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import ActionCompletionCurveChart from "../components/ActionCompletionCurveChart";
 import ActionFollowUpFormsTab from "../components/ActionFollowUpFormsTab";
-import ActionForm from "../components/ActionForm";
+import ActionForm, { type ReviewerRow } from "../components/ActionForm";
 import ActionFormVariantsTab from "../components/ActionFormVariantsTab";
 import ActionMergedResponsesTab from "../components/ActionMergedResponsesTab";
 import ActionUpdatesTab from "../components/ActionUpdatesTab";
@@ -75,6 +76,7 @@ import type {
   FormResponseFilter,
   FormWithSchema,
 } from "../components/FormResponsesView";
+import { makeTempId } from "../lib/tempId";
 
 // Status color mapping
 export const getStatusColor = (status: ActionDto["status"]) => {
@@ -305,6 +307,7 @@ const ActionDashboard: React.FC = () => {
     onboarding: false,
     followUpForms: [],
   });
+  const [reviewerRows, setReviewerRows] = useState<ReviewerRow[]>([]);
 
   // Reset form when switching to new action mode
   useEffect(() => {
@@ -332,6 +335,7 @@ const ActionDashboard: React.FC = () => {
         onboarding: false,
         followUpForms: [],
       });
+      setReviewerRows([]);
       setImageKey(null);
       setImagePreview(null);
       setError(null);
@@ -375,6 +379,7 @@ const ActionDashboard: React.FC = () => {
           events: _events,
           updates: _updates,
           suite,
+          reviewers,
           ...formData
         } = actionData;
 
@@ -387,6 +392,7 @@ const ActionDashboard: React.FC = () => {
           suiteId: suite?.id,
           authorIds,
         });
+        setReviewerRows(reviewers.map((r) => ({ ...r, key: makeTempId() })));
 
         setCohortExpression(
           actionData.cohortExpression as unknown as CohortExpression | null,
@@ -675,6 +681,16 @@ const ActionDashboard: React.FC = () => {
         cohortExpression: (cohortExpression ?? undefined) as
           | Record<string, unknown>
           | undefined,
+        reviewers: reviewerRows
+          .map((r) => {
+            const url = r.url?.trim();
+            return {
+              name: r.name.trim(),
+              url: url ? ensureHttpProtocol(url) : undefined,
+              icon: r.icon,
+            };
+          })
+          .filter((r) => r.name),
       };
 
       if (isNew) {
@@ -991,6 +1007,8 @@ const ActionDashboard: React.FC = () => {
             onCohortExpressionChange={handleCohortExpressionChange}
             authorIds={form.authorIds ?? []}
             onAuthorsChange={handleAuthorsChange}
+            reviewers={reviewerRows}
+            onReviewersChange={setReviewerRows}
             allActions={allActions}
             allActionsLoading={allActionsLoading}
           />
@@ -1539,6 +1557,8 @@ const ActionDashboard: React.FC = () => {
                   onCohortExpressionChange={handleCohortExpressionChange}
                   authorIds={form.authorIds ?? []}
                   onAuthorsChange={handleAuthorsChange}
+                  reviewers={reviewerRows}
+                  onReviewersChange={setReviewerRows}
                   allActions={allActions}
                   allActionsLoading={allActionsLoading}
                 />

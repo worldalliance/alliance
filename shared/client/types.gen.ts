@@ -353,6 +353,26 @@ export type ActionSuite = {
     events: Array<ActionEvent>;
 };
 
+/**
+ * Icon shown next to the reviewer name
+ */
+export type ActionReviewerIcon = 'linkedin';
+
+export type ActionReviewer = {
+    /**
+     * Display name of the reviewer
+     */
+    name: string;
+    /**
+     * Link to the reviewer's website, LinkedIn, etc.
+     */
+    url?: string;
+    /**
+     * Icon shown next to the reviewer name
+     */
+    icon?: ActionReviewerIcon;
+};
+
 export type Action = {
     /**
      * Unique identifier for the action
@@ -482,6 +502,10 @@ export type Action = {
     formVariants: Array<ActionFormVariant>;
     suite?: ActionSuite;
     authors?: Array<User>;
+    /**
+     * Non-user reviewers credited on the action
+     */
+    reviewers: Array<ActionReviewer>;
     status: ActionStatus;
 };
 
@@ -1926,6 +1950,10 @@ export type ActionDto = {
     customStatGoal?: number;
     followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
+    /**
+     * Non-user reviewers credited on the action
+     */
+    reviewers: Array<ActionReviewer>;
     usersCompleted: number;
     events: Array<ActionEventDto>;
     status: ActionStatus;
@@ -2332,6 +2360,7 @@ export type CreateActionDto = {
     customStatGoal?: number;
     followUpForms: Array<FollowUpForm>;
     suiteId?: number | null;
+    reviewers?: Array<ActionReviewer>;
     authorIds?: Array<number>;
 };
 
@@ -2430,6 +2459,7 @@ export type UpdateActionDto = {
     customStatGoal?: number;
     followUpForms?: Array<FollowUpForm>;
     suiteId?: number | null;
+    reviewers?: Array<ActionReviewer>;
     authorIds?: Array<number>;
 };
 
@@ -2742,6 +2772,10 @@ export type ExportActionDto = {
     followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
     authors?: Array<User>;
+    /**
+     * Non-user reviewers credited on the action
+     */
+    reviewers: Array<ActionReviewer>;
     taskForm?: Form;
     reminderGroups?: Array<ReminderGroup>;
 };

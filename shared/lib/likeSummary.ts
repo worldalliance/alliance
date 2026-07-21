@@ -1,4 +1,5 @@
 import { type ProfileDto } from "@alliance/shared/client";
+import { joinNames } from "./nameList";
 
 const firstName = (u: ProfileDto) =>
   u.displayName.split(" ")[0] ?? u.displayName;
@@ -39,12 +40,7 @@ export function getLikeSummaryParts({
   if (remaining > 0) {
     parts.push(`${remaining} ${remaining === 1 ? "other" : "others"}`);
   }
-  const subject =
-    parts.length <= 1
-      ? (parts[0] ?? "")
-      : parts.length === 2
-        ? `${parts[0]} and ${parts[1]}`
-        : `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+  const subject = joinNames(parts);
   const verb = likesCount === 1 && !liked ? "likes this" : "like this";
 
   return {
