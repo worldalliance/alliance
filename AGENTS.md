@@ -41,6 +41,10 @@ Don't switch on an enum (or union discriminator) with a ternary or an open `if`/
 
 Apply this to any branch keyed on a closed set (enum, string-literal union, tagged union `kind`), even when there are only two variants today.
 
+## Type casts
+
+Avoid `as` casts where possible — prefer fixing the types at the source, runtime validation (e.g. zod) at trust boundaries, or `satisfies`. If a cast is unavoidable, keep it narrow and comment why it's safe. `as const` is fine. Never `as any` or `x as unknown as T`.
+
 ## Local database
 
 For querying the local Postgres database, see `.claude/skills/local-db/SKILL.md`.
