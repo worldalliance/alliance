@@ -43,7 +43,8 @@ const EditableFormResponse = ({
                 id={formResponse.formId}
                 formSnapshotId={formResponse.formSnapshotId}
                 actionId={actionId}
-                completedFormResponse={formResponse}
+                draftFormResponse={formResponse}
+                // completedFormResponse={formResponse}
                 onSubmit={handleSubmit}
                 renderFormAsCompleted={false}
             />
