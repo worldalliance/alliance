@@ -16,13 +16,13 @@ import { MmsService } from 'src/mms/mms.service';
 import { UnreadContentType } from 'src/notifs/entities/unread-content.entity';
 import { LikeNotificationService } from 'src/notifs/like-notification.service';
 import { generateCIDForNotif } from 'src/notifs/notif-utils';
-import {
-  NotifsService,
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_text,
-} from 'src/notifs/notifs.service';
+import { NotifsService } from 'src/notifs/notifs.service';
 import { commentUrl, postUrl, withCid } from 'src/search/approutes';
 import { ProfileDto } from 'src/user/dto/user.dto';
+import {
+  userActionNotifsEnabled_email,
+  userActionNotifsEnabled_text,
+} from 'src/user/user.utils';
 import {
   ILike,
   In,

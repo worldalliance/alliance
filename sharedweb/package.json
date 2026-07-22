@@ -22,12 +22,14 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "es-toolkit": "^1.49.0",
     "hls.js": "^1.6.15",
     "lucide-react": "^0.563.0",
     "react-router": "7.13.2",
     "react-textarea-autosize": "^8.5.9",
     "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "yet-another-react-lightbox": "^3.32.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14"

@@ -25,6 +25,11 @@ import { EmailType } from 'src/mail/mail.entity';
 import { MailService, processKeywordReplacements } from 'src/mail/mail.service';
 import { Tag } from 'src/user/entities/tag.entity';
 import { UserService } from 'src/user/user.service';
+import {
+  userActionNotifsEnabled_email,
+  userActionNotifsEnabled_push,
+  userActionNotifsEnabled_text,
+} from 'src/user/user.utils';
 import { Brackets, In, type Repository } from 'typeorm';
 import {
   ActionEvent,
@@ -43,11 +48,6 @@ import {
   ActionEventNotifType,
 } from './entities/action-event-notif.entity';
 import { generateCIDForNotif, NotificationChannel } from './notif-utils';
-import {
-  userActionNotifsEnabled_email,
-  userActionNotifsEnabled_push,
-  userActionNotifsEnabled_text,
-} from './notifs.service';
 import { testUser } from './test-users';
 
 export interface MissedDeadlineCandidate {

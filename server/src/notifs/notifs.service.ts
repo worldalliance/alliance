@@ -48,29 +48,6 @@ export type CreateUnreadContentParams = Required<
 > &
   DeepPartial<UnreadContent>;
 
-export function userActionNotifsEnabled_email(user: User) {
-  return (
-    user.emailNotifsForActions &&
-    !user.turnedOffAllNotifs &&
-    user.hasActiveContract
-  );
-}
-
-export function userActionNotifsEnabled_text(user: User) {
-  return (
-    user.textNotifsForActions &&
-    !user.turnedOffAllNotifs &&
-    user.phoneNumber &&
-    user.hasActiveContract &&
-    user.phoneNumberValidated &&
-    !user.phoneNumberUnsubscribed
-  );
-}
-
-export function userActionNotifsEnabled_push(user: User) {
-  return !user.turnedOffAllNotifs && user.pushNotifsForActions;
-}
-
 function getPreviewText(body: string) {
   const tree = remark().parse(body);
   const plainText = mdastToString(tree).replace(/\s+/g, ' ').trim();

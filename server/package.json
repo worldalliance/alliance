@@ -52,6 +52,7 @@
     "class-validator": "^0.14.1",
     "cookie-parser": "^1.4.7",
     "date-fns": "^4.1.0",
+    "es-toolkit": "^1.49.0",
     "expo-server-sdk": "^4.0.0",
     "heic-convert": "^2.1.0",
     "html-encoding-sniffer": "^4.0.0",

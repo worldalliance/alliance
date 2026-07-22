@@ -52,4 +52,5 @@ export const exampleMemberTaskAction: ActionWithAwayStatus = {
     },
   ],
   followUpForms: [],
+  reviewers: [],
 };

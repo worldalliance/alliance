@@ -1,11 +1,15 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import { tasksGetForm } from "@alliance/shared/client";
-import type { ProfileDto } from "@alliance/shared/client/types.gen";
+import type {
+  ActionReviewerIcon,
+  ProfileDto,
+} from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import { useCompletedTaskForm } from "@alliance/shared/lib/actionTaskPanelCompleted";
 import { isFollowUpFormActive } from "@alliance/shared/lib/actionUtils";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
+import { nameListSeparator } from "@alliance/shared/lib/nameList";
 import {
   buildActionShareUrl,
   buildShareText,
@@ -16,9 +20,11 @@ import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
+import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
+import LinkedInIcon from "@alliance/sharedweb/ui/icons/LinkedInIcon";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLinkIcon } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo, type ReactNode } from "react";
 import {
   Link,
   Outlet,
@@ -36,6 +42,35 @@ import { TaskPanelContext } from "./ActionPageTaskPanel";
 import Comments from "./Comments";
 import FollowUpFormPanel from "./FollowUpFormPanel";
 import ShareButton from "./ShareButton";
+
+const ReviewerIcon = ({ icon }: { icon: ActionReviewerIcon }) => {
+  switch (icon) {
+    case "linkedin":
+      return (
+        <span className="inline-block align-[-2px] mr-1">
+          <LinkedInIcon size="medium" />
+        </span>
+      );
+    default:
+      icon satisfies never;
+      return null;
+  }
+};
+
+/** Credit line under the action title, e.g. "By A and B", "Reviewed by A, B, and C". */
+const NameList = ({ label, items }: { label: string; items: ReactNode[] }) => (
+  <div className="mt-1">
+    <div className="flex flex-row gap-x-1 text-zinc-500 text-base md:text-lg">
+      <p>{label}</p>
+      {items.map((item, i) => (
+        <span key={i} className="text-nowrap">
+          {item}
+          {nameListSeparator(i, items.length)}
+        </span>
+      ))}
+    </div>
+  </div>
+);
 
 const ActionContents = () => {
   const context = useOutletContext<TaskPanelContext>();
@@ -164,27 +199,46 @@ const ActionContents = () => {
                   {action.shortDescription}
                 </p>
                 {!!action.authors?.length && (
-                  <div className="mt-1">
-                    <div className="flex flex-row gap-x-1 text-zinc-500 text-base md:text-lg">
-                      <p>By</p>
-                      {shuffledAuthors.map((author: ProfileDto, i: number) => (
-                        <span key={author.id} className="text-nowrap">
-                          <Link
-                            key={author.id}
-                            to={href("/member/:id", {
-                              id: author.id.toString(),
-                            })}
-                            className="underline"
-                          >
-                            {author.displayName}
-                          </Link>
-                          {i < action.authors!.length - 2 && ", "}
-                          {i === action.authors!.length - 2 &&
-                            `${action.authors!.length > 2 ? "," : ""} and `}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  <NameList
+                    label="By"
+                    items={shuffledAuthors.map((author: ProfileDto) => (
+                      <Link
+                        key={author.id}
+                        to={href("/member/:id", {
+                          id: author.id.toString(),
+                        })}
+                        className="underline"
+                      >
+                        {author.displayName}
+                      </Link>
+                    ))}
+                  />
+                )}
+                {!!action.reviewers?.length && (
+                  <NameList
+                    label="Reviewed by"
+                    items={action.reviewers.map((reviewer, i) =>
+                      reviewer.url ? (
+                        <ExternalLinkPreview
+                          key={i}
+                          href={reviewer.url}
+                          className="underline text-inherit"
+                        >
+                          {reviewer.icon && (
+                            <ReviewerIcon icon={reviewer.icon} />
+                          )}
+                          {reviewer.name}
+                        </ExternalLinkPreview>
+                      ) : (
+                        <Fragment key={i}>
+                          {reviewer.icon && (
+                            <ReviewerIcon icon={reviewer.icon} />
+                          )}
+                          {reviewer.name}
+                        </Fragment>
+                      ),
+                    )}
+                  />
                 )}
               </div>
             ) : (

@@ -11,12 +11,12 @@ import { EmailStatus } from 'src/mail/mail.entity';
 import { MailService, processKeywordReplacements } from 'src/mail/mail.service';
 import { MmsService } from 'src/mms/mms.service';
 import { PushService } from 'src/push/push.service';
-import { DataSource, QueryFailedError, type Repository } from 'typeorm';
 import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_push,
   userActionNotifsEnabled_text,
-} from '../notifs/notifs.service';
+} from 'src/user/user.utils';
+import { DataSource, QueryFailedError, type Repository } from 'typeorm';
 import {
   ActionEventReminderService,
   groupTaskScopeActionIds,

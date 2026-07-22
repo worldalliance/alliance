@@ -10,11 +10,11 @@ import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Badge from "@alliance/sharedweb/ui/Badge";
 import Card from "@alliance/sharedweb/ui/Card";
-import DatabaseIcon from "@alliance/sharedweb/ui/icons/DatabaseIcon";
 import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
 import UserProgressPills, {
   PILL_STATUS_DATA,
 } from "@alliance/sharedweb/ui/UserProgressPills";
+import { keyBy } from "es-toolkit";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
@@ -45,15 +45,10 @@ const UserCard = ({
   const [isActionDetailsOpen, setIsActionDetailsOpen] = useState(false);
   const dropdownRef = useOutsideClick(() => setIsDropdownOpen(false));
 
-  const relationByActionId = useMemo(() => {
-    return actionRelations.reduce(
-      (acc, relation) => {
-        acc[relation.actionId] = relation;
-        return acc;
-      },
-      {} as Record<number, UserActionRelationDetailDto>,
-    );
-  }, [actionRelations]);
+  const relationByActionId = useMemo(
+    () => keyBy(actionRelations, (relation) => relation.actionId),
+    [actionRelations],
+  );
 
   const humanize = (value?: string) => {
     if (!value) {
@@ -93,16 +88,13 @@ const UserCard = ({
 
   return (
     <Card style={CardStyle.White} className="flex-1 text-sm">
-      <div className="flex flex-row items-center justify-between gap-x-3 border-b pb-2 mb-2 border-zinc-200">
+      <div className="flex flex-row items-center gap-x-3 border-b pb-2 mb-2 border-zinc-200">
         <div className="flex flex-row items-center gap-x-3">
           <AvatarProfile pfp={user.profilePicture} size="large" />
           <Link to={`/member/${user.id}`} className="text-base">
             {user.name}
           </Link>
         </div>
-        <Link to={`/database/?table=user&id=${user.id}`}>
-          <DatabaseIcon size="small" />
-        </Link>
       </div>
       <div className="flex flex-row items-center border-b pb-2 mb-2 border-zinc-200">
         <p>

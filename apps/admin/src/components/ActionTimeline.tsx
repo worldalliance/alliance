@@ -5,6 +5,7 @@ import {
   ReminderGroupDto,
   ReminderGroupTimingMode,
 } from "@alliance/shared/client";
+import { cn } from "@alliance/shared/styles/util";
 import React, {
   useCallback,
   useEffect,
@@ -12,9 +13,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import ActionTimelineBar from "./ActionTimelineBar";
 import { Link } from "react-router";
-import { cn } from "@alliance/shared/styles/util";
+import ActionTimelineBar from "./ActionTimelineBar";
 
 interface ActionTimelineProps {
   actions: ActionDto[];
@@ -469,31 +469,8 @@ const ActionTimeline: React.FC<ActionTimelineProps> = ({
                   >
                     {action.name}
                   </Link>
-                  <div className="flex items-center justify-between text-xs text-zinc-500">
+                  <div className="text-xs text-zinc-500">
                     <span>{action.status}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(
-                          `/database?table=action&id=${action.id}`,
-                          "_blank",
-                        );
-                      }}
-                      className="flex-shrink-0 ml-2 hover:bg-zinc-200 rounded p-1 cursor-pointer"
-                      title="Edit in Database"
-                    >
-                      <svg
-                        className="w-3 h-3 text-zinc-500"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                      >
-                        <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-                        <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"></path>
-                        <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"></path>
-                      </svg>
-                    </button>
                   </div>
                 </div>
               ))}

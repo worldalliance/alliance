@@ -353,6 +353,26 @@ export type ActionSuite = {
     events: Array<ActionEvent>;
 };
 
+/**
+ * Icon shown next to the reviewer name
+ */
+export type ActionReviewerIcon = 'linkedin';
+
+export type ActionReviewer = {
+    /**
+     * Display name of the reviewer
+     */
+    name: string;
+    /**
+     * Link to the reviewer's website, LinkedIn, etc.
+     */
+    url?: string;
+    /**
+     * Icon shown next to the reviewer name
+     */
+    icon?: ActionReviewerIcon;
+};
+
 export type Action = {
     /**
      * Unique identifier for the action
@@ -482,6 +502,10 @@ export type Action = {
     formVariants: Array<ActionFormVariant>;
     suite?: ActionSuite;
     authors?: Array<User>;
+    /**
+     * Non-user reviewers credited on the action
+     */
+    reviewers: Array<ActionReviewer>;
     status: ActionStatus;
 };
 
@@ -1926,6 +1950,10 @@ export type ActionDto = {
     customStatGoal?: number;
     followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
+    /**
+     * Non-user reviewers credited on the action
+     */
+    reviewers: Array<ActionReviewer>;
     usersCompleted: number;
     events: Array<ActionEventDto>;
     status: ActionStatus;
@@ -2332,6 +2360,7 @@ export type CreateActionDto = {
     customStatGoal?: number;
     followUpForms: Array<FollowUpForm>;
     suiteId?: number | null;
+    reviewers?: Array<ActionReviewer>;
     authorIds?: Array<number>;
 };
 
@@ -2430,6 +2459,7 @@ export type UpdateActionDto = {
     customStatGoal?: number;
     followUpForms?: Array<FollowUpForm>;
     suiteId?: number | null;
+    reviewers?: Array<ActionReviewer>;
     authorIds?: Array<number>;
 };
 
@@ -2742,6 +2772,10 @@ export type ExportActionDto = {
     followUpForms: Array<FollowUpForm>;
     suite?: ActionSuite;
     authors?: Array<User>;
+    /**
+     * Non-user reviewers credited on the action
+     */
+    reviewers: Array<ActionReviewer>;
     taskForm?: Form;
     reminderGroups?: Array<ReminderGroup>;
 };
@@ -3056,182 +3090,6 @@ export type CitySearchDto = {
     admin1: string;
     countryCode: string;
     countryName: string;
-};
-
-export type TableMetadataDto = {
-    name: string;
-    entityName: string;
-    recordCount: number;
-    primaryKey: string;
-};
-
-export type TableListDto = {
-    tables: Array<TableMetadataDto>;
-};
-
-/**
- * Semantic data type of the column
- */
-export type ColumnDataType = 'string' | 'number' | 'boolean' | 'date' | 'datetime' | 'json' | 'uuid' | 'enum' | 'relation' | 'unknown';
-
-export type ColumnMetadataDto = {
-    /**
-     * Column name in the database
-     */
-    name: string;
-    /**
-     * Semantic data type of the column
-     */
-    dataType: ColumnDataType;
-    /**
-     * Raw TypeORM column type
-     */
-    rawType: string;
-    /**
-     * Whether this is a primary key column
-     */
-    isPrimary: boolean;
-    /**
-     * Whether this column can contain null values
-     */
-    isNullable: boolean;
-    /**
-     * Whether this column has a database default (explicit default, generated, or create/update/version column). When true, omitting the column on create lets the database fill it in.
-     */
-    hasDefault: boolean;
-    /**
-     * Target table name for relation columns
-     */
-    relationTarget?: string;
-    /**
-     * Type of relation if this is a relation column
-     */
-    relationType?: 'one-to-one' | 'one-to-many' | 'many-to-one' | 'many-to-many';
-    /**
-     * Semantic data type of the related table primary key, for relation columns
-     */
-    relationTargetPkType?: ColumnDataType;
-    /**
-     * Possible values for enum columns
-     */
-    enumValues?: Array<string>;
-};
-
-export type TableDataDto = {
-    /**
-     * Column metadata for the table
-     */
-    columns: Array<ColumnMetadataDto>;
-    /**
-     * Table rows data - each row is an array of values corresponding to columns
-     */
-    rows: Array<Array<string | number | boolean | {
-        [key: string]: unknown;
-    } | unknown>>;
-    /**
-     * Total number of records in the table (before pagination)
-     */
-    totalCount: number;
-    /**
-     * Current page number
-     */
-    page: number;
-    /**
-     * Number of records per page
-     */
-    limit: number;
-    /**
-     * Total number of pages
-     */
-    totalPages: number;
-};
-
-export type CreateRecordDto = {
-    /**
-     * Object containing column names and their values for the new record
-     */
-    record: {
-        [key: string]: unknown;
-    };
-};
-
-export type CreateRecordResponseDto = {
-    /**
-     * Whether the insert was successful
-     */
-    success: boolean;
-    /**
-     * Success or error message
-     */
-    message: string;
-    /**
-     * The created record data
-     */
-    createdRecord?: {
-        [key: string]: unknown;
-    };
-};
-
-export type UpdateRecordDto = {
-    /**
-     * The primary key value of the record to update
-     */
-    primaryKeyValue: {
-        [key: string]: unknown;
-    };
-    /**
-     * Object containing column names and their new values
-     */
-    updates: {
-        [key: string]: unknown;
-    };
-};
-
-export type UpdateRecordResponseDto = {
-    /**
-     * Whether the update was successful
-     */
-    success: boolean;
-    /**
-     * Success or error message
-     */
-    message: string;
-    /**
-     * The updated record data
-     */
-    updatedRecord?: {
-        [key: string]: unknown;
-    };
-};
-
-export type DeleteRecordsDto = {
-    /**
-     * Array of primary key values for records to delete
-     */
-    primaryKeyValues: Array<string>;
-};
-
-export type DeleteRecordsResponseDto = {
-    /**
-     * Whether the deletion was successful
-     */
-    success: boolean;
-    /**
-     * Descriptive message about the operation
-     */
-    message: string;
-    /**
-     * Number of records deleted
-     */
-    deletedCount: number;
-    /**
-     * Array of primary key values that were successfully deleted
-     */
-    deletedIds: Array<string>;
-    /**
-     * Array of primary key values that failed to delete
-     */
-    failedIds?: Array<string>;
 };
 
 export type SearchItemType = 'user' | 'action' | 'post' | 'recent' | 'page' | 'other';
@@ -11167,173 +11025,6 @@ export type GeoLoadCountryDataResponses = {
 };
 
 export type GeoLoadCountryDataResponse = GeoLoadCountryDataResponses[keyof GeoLoadCountryDataResponses];
-
-export type AdminViewerGetTablesAdminData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/admin-viewer/tables';
-};
-
-export type AdminViewerGetTablesAdminErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type AdminViewerGetTablesAdminError = AdminViewerGetTablesAdminErrors[keyof AdminViewerGetTablesAdminErrors];
-
-export type AdminViewerGetTablesAdminResponses = {
-    200: TableListDto;
-};
-
-export type AdminViewerGetTablesAdminResponse = AdminViewerGetTablesAdminResponses[keyof AdminViewerGetTablesAdminResponses];
-
-export type AdminViewerGetTableDataAdminData = {
-    body?: never;
-    path: {
-        /**
-         * Name of the database table
-         */
-        tableName: string;
-    };
-    query?: {
-        /**
-         * Page number for pagination
-         */
-        page?: number;
-        /**
-         * Number of records per page
-         */
-        limit?: number;
-        /**
-         * Column name to sort by
-         */
-        sortBy?: string;
-        /**
-         * Sort order
-         */
-        sortOrder?: 'ASC' | 'DESC';
-        /**
-         * Search term to filter results
-         */
-        search?: string;
-    };
-    url: '/admin-viewer/tables/{tableName}/data';
-};
-
-export type AdminViewerGetTableDataAdminErrors = {
-    /**
-     * Invalid query parameters
-     */
-    400: HeyApiError;
-    /**
-     * Table not found
-     */
-    404: HeyApiError;
-};
-
-export type AdminViewerGetTableDataAdminError = AdminViewerGetTableDataAdminErrors[keyof AdminViewerGetTableDataAdminErrors];
-
-export type AdminViewerGetTableDataAdminResponses = {
-    200: TableDataDto;
-};
-
-export type AdminViewerGetTableDataAdminResponse = AdminViewerGetTableDataAdminResponses[keyof AdminViewerGetTableDataAdminResponses];
-
-export type AdminViewerDeleteRecordsAdminData = {
-    body: DeleteRecordsDto;
-    path: {
-        /**
-         * Name of the database table
-         */
-        tableName: string;
-    };
-    query?: never;
-    url: '/admin-viewer/tables/{tableName}/records';
-};
-
-export type AdminViewerDeleteRecordsAdminErrors = {
-    /**
-     * Invalid delete data or validation failed
-     */
-    400: HeyApiError;
-    /**
-     * Table not found
-     */
-    404: HeyApiError;
-};
-
-export type AdminViewerDeleteRecordsAdminError = AdminViewerDeleteRecordsAdminErrors[keyof AdminViewerDeleteRecordsAdminErrors];
-
-export type AdminViewerDeleteRecordsAdminResponses = {
-    200: DeleteRecordsResponseDto;
-};
-
-export type AdminViewerDeleteRecordsAdminResponse = AdminViewerDeleteRecordsAdminResponses[keyof AdminViewerDeleteRecordsAdminResponses];
-
-export type AdminViewerCreateRecordAdminData = {
-    body: CreateRecordDto;
-    path: {
-        /**
-         * Name of the database table
-         */
-        tableName: string;
-    };
-    query?: never;
-    url: '/admin-viewer/tables/{tableName}/records';
-};
-
-export type AdminViewerCreateRecordAdminErrors = {
-    /**
-     * Invalid create data or validation failed
-     */
-    400: HeyApiError;
-    /**
-     * Table not found
-     */
-    404: HeyApiError;
-};
-
-export type AdminViewerCreateRecordAdminError = AdminViewerCreateRecordAdminErrors[keyof AdminViewerCreateRecordAdminErrors];
-
-export type AdminViewerCreateRecordAdminResponses = {
-    200: CreateRecordResponseDto;
-};
-
-export type AdminViewerCreateRecordAdminResponse = AdminViewerCreateRecordAdminResponses[keyof AdminViewerCreateRecordAdminResponses];
-
-export type AdminViewerUpdateRecordAdminData = {
-    body: UpdateRecordDto;
-    path: {
-        /**
-         * Name of the database table
-         */
-        tableName: string;
-    };
-    query?: never;
-    url: '/admin-viewer/tables/{tableName}/records';
-};
-
-export type AdminViewerUpdateRecordAdminErrors = {
-    /**
-     * Invalid update data or validation failed
-     */
-    400: HeyApiError;
-    /**
-     * Table or record not found
-     */
-    404: HeyApiError;
-};
-
-export type AdminViewerUpdateRecordAdminError = AdminViewerUpdateRecordAdminErrors[keyof AdminViewerUpdateRecordAdminErrors];
-
-export type AdminViewerUpdateRecordAdminResponses = {
-    200: UpdateRecordResponseDto;
-};
-
-export type AdminViewerUpdateRecordAdminResponse = AdminViewerUpdateRecordAdminResponses[keyof AdminViewerUpdateRecordAdminResponses];
 
 export type SearchAllData = {
     body?: never;

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getApiUrl } from "../lib/config";
 import ActionLink, { getActionIdFromHref } from "./ActionLink";
 import ExternalLinkPreview from "./ExternalLinkPreview";
+import { ImageLightboxModal } from "./ImageLightbox";
 
 // TOOD add heading, body color enums
 
@@ -24,6 +25,18 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   className,
   distinguishActionLinks = true,
 }) => {
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  const openLightbox = (src: string | undefined, e: React.MouseEvent) => {
+    if (!src) return;
+    // Images wrapped in a link keep their navigation; the lightbox only
+    // claims clicks on plain images.
+    if ((e.target as HTMLElement).closest("a")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setLightboxSrc(src);
+  };
+
   return (
     <div className={className}>
       <ReactMarkdown
@@ -48,7 +61,13 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
             />
           ),
           p: ({ ...props }) => <p className="first:mt-0 mt-4" {...props} />,
-          img: ({ ...props }) => <img className="rounded" {...props} />,
+          img: ({ node: _node, ...props }) => (
+            <img
+              className="rounded cursor-zoom-in [a_&]:cursor-pointer"
+              {...props}
+              onClick={(e) => openLightbox(props.src, e)}
+            />
+          ),
           strong: ({ ...props }) => (
             <strong className="!font-semibold" {...props} />
           ),
@@ -90,13 +109,15 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
               const [imgLine, ...captionLines] = value.split("\n");
               const img = imgLine.trim();
               const caption = captionLines.join("\n").trim();
+              const src = `${getApiUrl()}/images/${img}`;
 
               return (
                 <div className="text-center my-6">
                   <img
-                    src={`${getApiUrl()}/images/${img}`}
+                    src={src}
                     alt={caption || "Image"}
-                    className="mx-auto max-h-96"
+                    className="mx-auto max-h-96 cursor-zoom-in"
+                    onClick={(e) => openLightbox(src, e)}
                   />
                   {caption && (
                     <p className="text-sm text-gray-500 mt-2">{caption}</p>
@@ -122,6 +143,10 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
       >
         {markdownContent}
       </ReactMarkdown>
+      <ImageLightboxModal
+        src={lightboxSrc}
+        onClose={() => setLightboxSrc(null)}
+      />
     </div>
   );
 };

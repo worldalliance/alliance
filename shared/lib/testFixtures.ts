@@ -46,6 +46,7 @@ export function makeAction(
     isForumParticipationAction: false,
     archived: false,
     followUpForms: [],
+    reviewers: [],
     updates: [],
     status: "member_action",
     publicOnly: false,

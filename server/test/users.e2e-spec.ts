@@ -3,6 +3,7 @@ import {
   Notification,
   NotificationCategory,
 } from 'src/notifs/entities/notification.entity';
+import { ShareUrlsService } from 'src/share-urls/share-urls.service';
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
@@ -25,6 +26,7 @@ describe('Users (e2e)', () => {
   let onetimeInviteRepo: Repository<OnetimeInvite>;
   let userService: UserService;
   let contractService: ContractService;
+  let shareUrlsService: ShareUrlsService;
 
   let userAId: number;
   let userAToken: string;
@@ -43,6 +45,7 @@ describe('Users (e2e)', () => {
     onetimeInviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
     userService = ctx.app.get(UserService);
     contractService = ctx.app.get(ContractService);
+    shareUrlsService = ctx.app.get(ShareUrlsService);
     const userA = userRepo.create({
       name: 'Friend A',
       email: 'frienda@example.com',
@@ -318,7 +321,7 @@ describe('Users (e2e)', () => {
     expect(typeof suspend.text === 'string' || suspend.body).toBeTruthy();
   });
 
-  it('counts an invited user as a successful recruit after they sign the contract', async () => {
+  it('counts one-time and reusable invite recruits after they sign the contract', async () => {
     const ambassador = await userRepo.save(
       userRepo.create({
         name: 'Invite Goal Ambassador',
@@ -326,15 +329,6 @@ describe('Users (e2e)', () => {
         password: 'Password123!',
         ambassador: true,
       }),
-    );
-    const now = new Date();
-    const goal = await userService.createAmbassadorInviteGoal(
-      {
-        targetSuccessfulRecruits: 1,
-        startAt: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
-        dueAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-      },
-      ambassador.id,
     );
     const invite = await onetimeInviteRepo.save(
       onetimeInviteRepo.create({
@@ -354,6 +348,29 @@ describe('Users (e2e)', () => {
         referralSource: ReferralSource.OnetimeInvite,
       }),
     );
+    const reusableInvite = await shareUrlsService.getOrCreateForInvite({
+      type: 'user',
+      userId: ambassador.id,
+    });
+    const reusableInviteRecruit = await userRepo.save(
+      userRepo.create({
+        name: 'Reusable Invite Goal Recruit',
+        email: 'reusable.invite.goal.recruit@example.com',
+        password: 'Password123!',
+        referredBy: ambassador,
+        referredByShareUrl: reusableInvite,
+        referralSource: ReferralSource.InviteShareLink,
+      }),
+    );
+    const now = new Date();
+    const goal = await userService.createAmbassadorInviteGoal(
+      {
+        targetSuccessfulRecruits: 2,
+        startAt: now.toISOString(),
+        dueAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+      },
+      ambassador.id,
+    );
 
     const beforeSigning = await userService.getAmbassadorInviteDashboard(
       ambassador.id,
@@ -370,16 +387,21 @@ describe('Users (e2e)', () => {
       signedName: recruit.name,
       contractId: ctx.defaultContractId,
     });
+    await contractService.signContract({
+      userId: reusableInviteRecruit.id,
+      signedName: reusableInviteRecruit.name,
+      contractId: ctx.defaultContractId,
+    });
 
     const afterSigning = await userService.getAmbassadorInviteDashboard(
       ambassador.id,
     );
-    expect(afterSigning.stats.totalSuccessfulRecruits).toBe(1);
+    expect(afterSigning.stats.totalSuccessfulRecruits).toBe(2);
     expect(
       afterSigning.goals.find(
         ({ goal: resultGoal }) => resultGoal.id === goal.id,
       )?.stats.goalSuccessfulRecruits,
-    ).toBe(1);
+    ).toBe(2);
   });
 
   describe('signContract behavior', () => {

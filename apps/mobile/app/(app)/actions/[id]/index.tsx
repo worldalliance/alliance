@@ -1,5 +1,6 @@
 import {
   ActionActivityDto,
+  ActionReviewerIcon,
   actionsGetActionActivities,
   actionsLikeActivity,
   actionsUnlikeActivity,
@@ -7,6 +8,7 @@ import {
 import { actionActivityDtoIsVisibleInFeed } from "@alliance/shared/lib/actionActivity";
 import { useActionHandlers } from "@alliance/shared/lib/actionPage";
 import { getNextEvent } from "@alliance/shared/lib/largeActionCard";
+import { nameListSeparator } from "@alliance/shared/lib/nameList";
 import { cn } from "@alliance/shared/styles/util";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
@@ -15,6 +17,7 @@ import {
   ActivityIndicator,
   Image,
   Keyboard,
+  Linking,
   Pressable,
   RefreshControl,
   TouchableOpacity,
@@ -28,6 +31,7 @@ import Comments from "../../../../components/Comments";
 import KeyboardAwareScrollView from "../../../../components/KeyboardAwareScrollView";
 import BackButton from "../../../../components/system/BackButton";
 import Button, { ButtonColor } from "../../../../components/system/Button";
+import LinkedInIcon from "../../../../components/system/LinkedInIcon";
 import Text, {
   FontFamily,
   FontWeight,
@@ -35,6 +39,26 @@ import Text, {
 import TaskTimeInfo from "../../../../components/TaskTimeInfo";
 import UserActivityCard from "../../../../components/UserActivityCard";
 import { colors } from "../../../../lib/style/colors";
+
+const ReviewerIcon = ({ icon }: { icon: ActionReviewerIcon }) => {
+  switch (icon) {
+    case "linkedin":
+      return (
+        <View className="mr-1">
+          <LinkedInIcon size={14} />
+        </View>
+      );
+    default:
+      icon satisfies never;
+      return null;
+  }
+};
+
+const openReviewerLink = (url: string) => {
+  Linking.openURL(url).catch((err) => {
+    console.error("Failed to open reviewer link", err);
+  });
+};
 
 type TabId = "task" | "activity" | "description" | "comments";
 
@@ -338,29 +362,70 @@ export default function ActionDetailScreen() {
               {action.shortDescription}
             </Text>
           )}
-          {action.authors && action.authors.length > 0 && (
-            <View className="mb-6 flex-row flex-wrap items-center">
-              <Text className="text-zinc-500 text-sm">By </Text>
-              {action.authors.map((author, i) => (
-                <View key={author.id} className="flex-row items-center">
-                  <Pressable
-                    onPress={() => router.push(`/member/${author.id}`)}
-                  >
-                    <Text className="text-zinc-500 underline text-sm">
-                      {author.displayName}
-                    </Text>
-                  </Pressable>
-                  {i < action.authors!.length - 2 && (
-                    <Text className="text-zinc-500 text-sm">{", "}</Text>
-                  )}
-                  {i === action.authors!.length - 2 && (
-                    <Text className="text-zinc-500 text-sm">
-                      {action.authors!.length > 2 ? "," : ""}
-                      {" and "}
-                    </Text>
-                  )}
+          {(!!action.authors?.length || action.reviewers.length > 0) && (
+            <View className="mb-6">
+              {action.authors && action.authors.length > 0 && (
+                <View className="flex-row flex-wrap items-center">
+                  <Text className="text-zinc-500 text-sm">By </Text>
+                  {action.authors.map((author, i) => (
+                    <View key={author.id} className="flex-row items-center">
+                      <Pressable
+                        onPress={() => router.push(`/member/${author.id}`)}
+                      >
+                        <Text className="text-zinc-500 underline text-sm">
+                          {author.displayName}
+                        </Text>
+                      </Pressable>
+                      {i < action.authors!.length - 1 && (
+                        <Text className="text-zinc-500 text-sm">
+                          {nameListSeparator(i, action.authors!.length)}
+                        </Text>
+                      )}
+                    </View>
+                  ))}
                 </View>
-              ))}
+              )}
+              {action.reviewers.length > 0 && (
+                <View
+                  className={cn(
+                    "flex-row flex-wrap items-center",
+                    !!action.authors?.length && "mt-1",
+                  )}
+                >
+                  <Text className="text-zinc-500 text-sm">Reviewed by </Text>
+                  {action.reviewers.map((reviewer, i) => (
+                    <View key={i} className="flex-row items-center">
+                      {reviewer.url ? (
+                        <Pressable
+                          className="flex-row items-center"
+                          onPress={() => openReviewerLink(reviewer.url!)}
+                        >
+                          {reviewer.icon && (
+                            <ReviewerIcon icon={reviewer.icon} />
+                          )}
+                          <Text className="text-zinc-500 underline text-sm">
+                            {reviewer.name}
+                          </Text>
+                        </Pressable>
+                      ) : (
+                        <>
+                          {reviewer.icon && (
+                            <ReviewerIcon icon={reviewer.icon} />
+                          )}
+                          <Text className="text-zinc-500 text-sm">
+                            {reviewer.name}
+                          </Text>
+                        </>
+                      )}
+                      {i < action.reviewers.length - 1 && (
+                        <Text className="text-zinc-500 text-sm">
+                          {nameListSeparator(i, action.reviewers.length)}
+                        </Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           )}
           {action.events && action.events.length > 0 && (

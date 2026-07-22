@@ -25,6 +25,7 @@ import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { LegendList } from "@legendapp/list";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keyBy } from "es-toolkit";
 import { launchImageLibraryAsync } from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import { ChevronDown, Settings, X } from "lucide-react-native";
@@ -501,13 +502,7 @@ function GroupMembersTab({
 
   const memberContactInfoByUserId = useMemo(() => {
     if (!memberContactInfoList?.length) return undefined;
-    return memberContactInfoList.reduce(
-      (acc, info) => {
-        acc[info.id] = info;
-        return acc;
-      },
-      {} as Record<number, CommunityMemberContactInfoDto>,
-    );
+    return keyBy(memberContactInfoList, (info) => info.id);
   }, [memberContactInfoList]);
 
   const memberInfoUserIds = useMemo(

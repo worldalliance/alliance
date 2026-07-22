@@ -18,6 +18,7 @@ import {
 } from 'src/user/entities/contract-event.entity';
 import { User } from 'src/user/entities/user.entity';
 import { UserService } from 'src/user/user.service';
+import { referralLabel } from 'src/user/user.utils';
 import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from 'typeorm';
 import {
   REFERRAL_COMMUNITY_SELECTORS,
@@ -27,16 +28,6 @@ import {
 } from './contract.utils';
 import { CreateContractDto, UpdateContractDto } from './dto/contract.dto';
 import { Contract } from './entities/contract.entity';
-
-function referralLabel(user: User): string {
-  if (user.referredBy) {
-    return `(invited by ${user.referredBy.name}) `;
-  }
-  if (user.referredByCampaign) {
-    return `(via campaign ${user.referredByCampaign.name}) `;
-  }
-  return '';
-}
 
 @Injectable()
 export class ContractService {
@@ -232,7 +223,9 @@ export class ContractService {
       this.notifsService.sendNotifs(notifs),
       this.eventLogService.sendMessage({
         type: EventType.ContractSigned,
-        message: `${user.name} ${referralLabel(user)}signed their contract :)`,
+        message: [user.name, referralLabel(user), 'signed their contract :)']
+          .filter(Boolean)
+          .join(' '),
         userId: user.id,
       }),
       ...promises,

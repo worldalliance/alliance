@@ -37,18 +37,17 @@ import { getApiUrl } from "@alliance/sharedweb/lib/config";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
-import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@alliance/sharedweb/ui/HoverCard";
-import DatabaseIcon from "@alliance/sharedweb/ui/icons/DatabaseIcon";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { PILL_STATUS_DATA } from "@alliance/sharedweb/ui/UserProgressPills";
+import { keyBy } from "es-toolkit";
 import {
   ChevronDown,
   ChevronRight,
-  Database,
   Globe,
   Mail,
   MapPin,
@@ -225,15 +224,10 @@ const UserDetailView: React.FC = () => {
     return allTags.filter((tag) => userTagIds.has(tag.id));
   }, [allTags, userTagIds]);
 
-  const relationByActionId = useMemo(() => {
-    return actionRelationsState.reduce(
-      (acc, relation) => {
-        acc[relation.actionId] = relation;
-        return acc;
-      },
-      {} as Record<number, UserActionRelationDetailDto>,
-    );
-  }, [actionRelationsState]);
+  const relationByActionId = useMemo(
+    () => keyBy(actionRelationsState, (relation) => relation.actionId),
+    [actionRelationsState],
+  );
 
   const { emailNotifs, textNotifs, pushNotifs } = useMemo(() => {
     // Categorize each channel independently
@@ -588,14 +582,7 @@ const UserDetailView: React.FC = () => {
         setIsAwayMutationPending(false);
       }
     },
-    [
-      cancelAwayEdit,
-      confirm,
-      editingAwayRangeId,
-      success,
-      user.id,
-      user.name,
-    ],
+    [cancelAwayEdit, confirm, editingAwayRangeId, success, user.id, user.name],
   );
 
   return (
@@ -614,12 +601,6 @@ const UserDetailView: React.FC = () => {
                 Away
               </span>
             )}
-            <Link
-              to={`/database/?table=user&id=${user.id}`}
-              className="text-zinc-400 hover:text-zinc-600"
-            >
-              <DatabaseIcon size="large" />
-            </Link>
             <Button
               color={ButtonColor.Stone}
               onClick={() => {
@@ -830,13 +811,6 @@ const UserDetailView: React.FC = () => {
                           key={keyForNotif(notif)}
                           className="px-3 py-2 text-xs hover:bg-zinc-50 flex flex-row items-center w-full"
                         >
-                          <Link
-                            to={`/database/?table=mms&id=${mms?.id}`}
-                            target="_blank"
-                            className="p-1 shrink-0 pr-3 text-zinc-600 hover:text-black"
-                          >
-                            <Database size={12} />
-                          </Link>
                           <div>
                             <div className="flex items-center justify-between gap-2">
                               <span
@@ -986,13 +960,6 @@ const UserDetailView: React.FC = () => {
                           key={push.id}
                           className="px-3 py-2 text-xs hover:bg-zinc-50 flex flex-row items-center w-full"
                         >
-                          <Link
-                            to={`/database/?table=push&id=${push.id}`}
-                            target="_blank"
-                            className="p-1 shrink-0 pr-3 text-zinc-600 hover:text-black"
-                          >
-                            <Database size={12} />
-                          </Link>
                           <div>
                             <div className="flex items-center justify-between gap-2">
                               <span
@@ -1668,6 +1635,7 @@ function formatInvitedBy(user: UserAdminDetailDto) {
   }
 
   const source = formatInviteSource(invitedBy);
+  const labelWithSource = `${invitedBy.label}${source}`;
 
   switch (invitedBy.kind) {
     case "user":
@@ -1682,22 +1650,10 @@ function formatInvitedBy(user: UserAdminDetailDto) {
           {source}
         </>
       ) : (
-        `${invitedBy.label}${source}`
+        labelWithSource
       );
     case "campaign":
-      return invitedBy.campaignId ? (
-        <>
-          <Link
-            to={`/database/?table=campaign&id=${invitedBy.campaignId}`}
-            className="text-blue-600 hover:underline"
-          >
-            {invitedBy.label}
-          </Link>
-          {source}
-        </>
-      ) : (
-        `${invitedBy.label}${source}`
-      );
+      return labelWithSource;
     case "unknown":
       return invitedBy.label;
     default:

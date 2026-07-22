@@ -8,7 +8,6 @@ import {
 import {
   CommunityMemberContactInfoDto,
   ProfileDto,
-  TagDto,
   UserActionRelationDetailDto,
 } from "@alliance/shared/client/types.gen";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
@@ -22,6 +21,7 @@ import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable"
 import Pagination from "@alliance/sharedweb/ui/Pagination";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import { useQuery } from "@tanstack/react-query";
+import { groupBy, mapValues } from "es-toolkit";
 import { LayoutGrid, List, Shuffle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
@@ -96,25 +96,21 @@ const UsersList: React.FC = () => {
 
   const [shuffledIds, setShuffledIds] = useState<number[] | null>(null);
 
-  const userToTimeSpent = useMemo(() => {
-    return timeSpentPerUserLast7.reduce(
-      (acc, time) => {
-        acc[time.userId] = time.timeSpent;
-        return acc;
-      },
-      {} as Record<number, number>,
-    );
-  }, [timeSpentPerUserLast7]);
+  const userToTimeSpent = useMemo(
+    () =>
+      Object.fromEntries(
+        timeSpentPerUserLast7.map((time) => [time.userId, time.timeSpent]),
+      ),
+    [timeSpentPerUserLast7],
+  );
 
-  const userToTimeSpentTotal = useMemo(() => {
-    return timeSpentPerUserTotal.reduce(
-      (acc, time) => {
-        acc[time.userId] = time.timeSpent;
-        return acc;
-      },
-      {} as Record<number, number>,
-    );
-  }, [timeSpentPerUserTotal]);
+  const userToTimeSpentTotal = useMemo(
+    () =>
+      Object.fromEntries(
+        timeSpentPerUserTotal.map((time) => [time.userId, time.timeSpent]),
+      ),
+    [timeSpentPerUserTotal],
+  );
 
   const sortedUsers = useMemo(() => {
     return [...users].sort((a, b) => {
@@ -125,17 +121,12 @@ const UsersList: React.FC = () => {
   }, [users, userToTimeSpentTotal]);
 
   const userTagsMap = useMemo(() => {
-    return tags.reduce(
-      (acc, tag) => {
-        tag.users.forEach((profile) => {
-          if (!acc[profile.id]) {
-            acc[profile.id] = [];
-          }
-          acc[profile.id].push(tag);
-        });
-        return acc;
-      },
-      {} as Record<number, TagDto[]>,
+    const userTags = tags.flatMap((tag) =>
+      tag.users.map((profile) => ({ userId: profile.id, tag })),
+    );
+    return mapValues(
+      groupBy(userTags, (entry) => entry.userId),
+      (entries) => entries.map((entry) => entry.tag),
     );
   }, [tags]);
 

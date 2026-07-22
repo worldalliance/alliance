@@ -12,6 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
+import { countBy } from 'es-toolkit';
 import { LiveActivityRegistration } from 'src/apns/entities/live-activity-registration.entity';
 import { CampaignService } from 'src/campaign/campaign.service';
 import { Campaign } from 'src/campaign/entities/campaign.entity';
@@ -51,6 +52,7 @@ import {
   Not,
   type Repository,
 } from 'typeorm';
+import { getAmbassadorGoalHalfwayNotificationTime } from './ambassador-invite-goal-notification.utils';
 import { CreateAwayRangeDto, UpdateAwayRangeDto } from './dto/away-range.dto';
 import {
   RegisterDeviceDto,
@@ -108,6 +110,7 @@ import {
   User,
 } from './entities/user.entity';
 import { type FriendsAcceptedPayload, UserEvents } from './user.events';
+import { referralLabel } from './user.utils';
 
 export interface PWResetJwtPayload {
   sub: number;
@@ -233,7 +236,9 @@ export class UserService {
     );
     await this.eventLogService.sendMessage({
       type: EventType.AccountCreated,
-      message: `${user.name} created an account.`,
+      message: [user.name, referralLabel(user), 'created an account.']
+        .filter(Boolean)
+        .join(' '),
       userId: user.id,
     });
     return user;
@@ -980,20 +985,11 @@ export class UserService {
     });
     const users = allUsers.filter((user) => user.hasActiveContract);
 
-    let nullCityCount = 0;
-
-    const cityCounts = users.reduce(
-      (acc, user) => {
-        const cityId = user.city?.id ?? null;
-        if (cityId) {
-          acc[cityId] = (acc[cityId] ?? 0) + 1;
-        } else {
-          nullCityCount++;
-        }
-        return acc;
-      },
-      {} as Record<number, number>,
-    );
+    const cityIds = users
+      .map((user) => user.city?.id)
+      .filter((id) => id != null);
+    const nullCityCount = users.length - cityIds.length;
+    const cityCounts = countBy(cityIds, (id) => id);
 
     const cities = await this.cityRepository.find({
       where: { id: In(Object.keys(cityCounts)) },
@@ -1771,7 +1767,7 @@ export class UserService {
     const lookbackAt = new Date(
       now.getTime() - AMBASSADOR_GOAL_NOTIFICATION_LOOKBACK_MS,
     );
-    const [halfwayRows, endedRows] = await Promise.all([
+    const [halfwayCandidateRows, endedRows] = await Promise.all([
       this.ambassadorInviteGoalRepository.query(
         `
           SELECT goal."id"
@@ -1779,9 +1775,16 @@ export class UserService {
           WHERE goal."startAt" <= $1::timestamptz
             AND goal."dueAt" > $1::timestamptz
             AND (goal."startAt" + ((goal."dueAt" - goal."startAt") / 2)) <= $1::timestamptz
-            AND (goal."startAt" + ((goal."dueAt" - goal."startAt") / 2)) > $2::timestamptz
+            AND NOT EXISTS (
+              SELECT 1
+              FROM "notification" notif
+              WHERE notif."userId" = goal."ambassadorId"
+                AND notif."groupingKey" = CONCAT(
+                  'ambassador-invite-goal:', goal."id", ':halfway'
+                )
+            )
         `,
-        [now, lookbackAt],
+        [now],
       ) as Promise<{ id: number }[]>,
       this.ambassadorInviteGoalRepository.query(
         `
@@ -1796,7 +1799,7 @@ export class UserService {
 
     const goalIds = [
       ...new Set([
-        ...halfwayRows.map((goal) => goal.id),
+        ...halfwayCandidateRows.map((goal) => goal.id),
         ...endedRows.map((goal) => goal.id),
       ]),
     ];
@@ -1810,13 +1813,23 @@ export class UserService {
     });
     const goalById = new Map(goals.map((goal) => [goal.id, goal]));
 
+    const halfwayGoalsDue = halfwayCandidateRows.flatMap(({ id }) => {
+      const goal = goalById.get(id);
+      if (!goal) {
+        return [];
+      }
+      const sendTime = getAmbassadorGoalHalfwayNotificationTime(
+        goal,
+        goal.ambassador,
+      );
+      return sendTime > lookbackAt && sendTime <= now
+        ? [{ goal, sendTime }]
+        : [];
+    });
+
     await Promise.all([
-      ...halfwayRows.map(async ({ id }) => {
-        const goal = goalById.get(id);
-        if (!goal) {
-          return;
-        }
-        await this.sendAmbassadorInviteGoalHalfwayNotif(goal);
+      ...halfwayGoalsDue.map(async ({ goal, sendTime }) => {
+        await this.sendAmbassadorInviteGoalHalfwayNotif(goal, sendTime);
       }),
       ...endedRows.map(async ({ id }) => {
         const goal = goalById.get(id);
@@ -1830,6 +1843,7 @@ export class UserService {
 
   private async sendAmbassadorInviteGoalHalfwayNotif(
     goal: AmbassadorInviteGoal,
+    sendTime: Date,
   ): Promise<void> {
     const groupingKey = ambassadorGoalHalfwayGroupingKey(goal.id);
     const alreadySent = await this.notifsService.hasNotifWithGroupingKey(
@@ -1849,7 +1863,7 @@ export class UserService {
       mobileAppLocation: AMBASSADOR_INVITES_URL,
       associatedUsers: [],
       groupingKey,
-      sendTime: new Date(),
+      sendTime,
       shouldPush: true,
     });
   }
@@ -1934,21 +1948,28 @@ export class UserService {
             COUNT(invite."id")::int AS "totalInvitesSent",
             COUNT(invite."id") FILTER (
               WHERE invite."status" = $2
-            )::int AS "totalAcceptedInvites",
-            COUNT(invite."id") FILTER (
-              WHERE first_sign."signedAt" IS NOT NULL
-            )::int AS "totalSuccessfulRecruits"
+            )::int AS "totalAcceptedInvites"
           FROM selected_users
           LEFT JOIN "onetime_invite" invite
             ON invite."invitingUserId" = selected_users."userId"
             AND invite."deletedAt" IS NULL
+          GROUP BY selected_users."userId"
+        ),
+        successful_stats AS (
+          SELECT
+            selected_users."userId",
+            COUNT(invited_user."id") FILTER (
+              WHERE first_sign."signedAt" IS NOT NULL
+            )::int AS "totalSuccessfulRecruits"
+          FROM selected_users
           LEFT JOIN "user" invited_user
-            ON invited_user."referredByInviteId" = invite."id"
+            ON invited_user."referredById" = selected_users."userId"
+            AND invited_user."referralSource" IN ($3, $4)
           LEFT JOIN LATERAL (
             SELECT MIN(contract_event."date") AS "signedAt"
             FROM "contract_event" contract_event
             WHERE contract_event."userId" = invited_user."id"
-              AND contract_event."type" = $3
+              AND contract_event."type" = $5
           ) first_sign ON TRUE
           GROUP BY selected_users."userId"
         ),
@@ -1959,7 +1980,7 @@ export class UserService {
           FROM selected_users
           LEFT JOIN "share_url" share_invite
             ON share_invite."userId" = selected_users."userId"
-            AND share_invite."kind" = $4
+            AND share_invite."kind" = $6
             AND share_invite."duplicate" = TRUE
           GROUP BY selected_users."userId"
         )
@@ -1971,18 +1992,22 @@ export class UserService {
           )::int AS "totalInvitesSent",
           COALESCE(invite_stats."totalAcceptedInvites", 0)::int
             AS "totalAcceptedInvites",
-          COALESCE(invite_stats."totalSuccessfulRecruits", 0)::int
+          COALESCE(successful_stats."totalSuccessfulRecruits", 0)::int
             AS "totalSuccessfulRecruits",
           0::int AS "goalSuccessfulRecruits"
         FROM selected_users
         LEFT JOIN invite_stats
           ON invite_stats."userId" = selected_users."userId"
+        LEFT JOIN successful_stats
+          ON successful_stats."userId" = selected_users."userId"
         LEFT JOIN share_stats
           ON share_stats."userId" = selected_users."userId"
       `,
       [
         userIds,
         OnetimeInviteStatus.LINK_USED,
+        ReferralSource.OnetimeInvite,
+        ReferralSource.InviteShareLink,
         ContractEventType.SIGNED,
         ShareUrlKind.Invite,
       ],
@@ -2027,23 +2052,31 @@ export class UserService {
             COUNT(invite."id")::int AS "totalInvitesSent",
             COUNT(invite."id") FILTER (
               WHERE invite."status" = $5
-            )::int AS "totalAcceptedInvites",
-            COUNT(invite."id") FILTER (
-              WHERE first_sign."signedAt" IS NOT NULL
-            )::int AS "totalSuccessfulRecruits"
+            )::int AS "totalAcceptedInvites"
           FROM selected_goals
           LEFT JOIN "onetime_invite" invite
             ON invite."invitingUserId" = selected_goals."userId"
             AND invite."deletedAt" IS NULL
             AND invite."createdAt" >= selected_goals."startAt"
             AND invite."createdAt" <= selected_goals."dueAt"
+          GROUP BY selected_goals."goalId"
+        ),
+        successful_stats AS (
+          SELECT
+            selected_goals."goalId",
+            COUNT(invited_user."id") FILTER (
+              WHERE first_sign."signedAt" >= selected_goals."startAt"
+                AND first_sign."signedAt" <= selected_goals."dueAt"
+            )::int AS "totalSuccessfulRecruits"
+          FROM selected_goals
           LEFT JOIN "user" invited_user
-            ON invited_user."referredByInviteId" = invite."id"
+            ON invited_user."referredById" = selected_goals."userId"
+            AND invited_user."referralSource" IN ($6, $7)
           LEFT JOIN LATERAL (
             SELECT MIN(contract_event."date") AS "signedAt"
             FROM "contract_event" contract_event
             WHERE contract_event."userId" = invited_user."id"
-              AND contract_event."type" = $6
+              AND contract_event."type" = $8
           ) first_sign ON TRUE
           GROUP BY selected_goals."goalId"
         ),
@@ -2054,7 +2087,7 @@ export class UserService {
           FROM selected_goals
           LEFT JOIN "share_url" share_invite
             ON share_invite."userId" = selected_goals."userId"
-            AND share_invite."kind" = $7
+            AND share_invite."kind" = $9
             AND share_invite."duplicate" = TRUE
             AND share_invite."createdAt" >= selected_goals."startAt"
             AND share_invite."createdAt" <= selected_goals."dueAt"
@@ -2068,13 +2101,15 @@ export class UserService {
           )::int AS "totalInvitesSent",
           COALESCE(invite_stats."totalAcceptedInvites", 0)::int
             AS "totalAcceptedInvites",
-          COALESCE(invite_stats."totalSuccessfulRecruits", 0)::int
+          COALESCE(successful_stats."totalSuccessfulRecruits", 0)::int
             AS "totalSuccessfulRecruits",
-          COALESCE(invite_stats."totalSuccessfulRecruits", 0)::int
+          COALESCE(successful_stats."totalSuccessfulRecruits", 0)::int
             AS "goalSuccessfulRecruits"
         FROM selected_goals
         LEFT JOIN invite_stats
           ON invite_stats."goalId" = selected_goals."goalId"
+        LEFT JOIN successful_stats
+          ON successful_stats."goalId" = selected_goals."goalId"
         LEFT JOIN share_stats
           ON share_stats."goalId" = selected_goals."goalId"
       `,
@@ -2084,6 +2119,8 @@ export class UserService {
         goals.map((goal) => goal.startAt),
         goals.map((goal) => goal.dueAt),
         OnetimeInviteStatus.LINK_USED,
+        ReferralSource.OnetimeInvite,
+        ReferralSource.InviteShareLink,
         ContractEventType.SIGNED,
         ShareUrlKind.Invite,
       ],
@@ -2115,60 +2152,56 @@ export class UserService {
       `
         SELECT
           COUNT(*) FILTER (
-            WHERE ($4::timestamptz IS NULL OR invite."createdAt" >= $4::timestamptz)
-              AND ($5::timestamptz IS NULL OR invite."createdAt" <= $5::timestamptz)
+            WHERE ($5::timestamptz IS NULL OR invite."createdAt" >= $5::timestamptz)
+              AND ($6::timestamptz IS NULL OR invite."createdAt" <= $6::timestamptz)
           )::int + (
             SELECT COUNT(*)::int
             FROM "share_url" share_invite
             WHERE share_invite."userId" = $1
-              AND share_invite."kind" = $6
+              AND share_invite."kind" = $7
               AND share_invite."duplicate" = TRUE
-              AND ($4::timestamptz IS NULL OR share_invite."createdAt" >= $4::timestamptz)
-              AND ($5::timestamptz IS NULL OR share_invite."createdAt" <= $5::timestamptz)
+              AND ($5::timestamptz IS NULL OR share_invite."createdAt" >= $5::timestamptz)
+              AND ($6::timestamptz IS NULL OR share_invite."createdAt" <= $6::timestamptz)
           ) AS "totalInvitesSent",
           COUNT(*) FILTER (
             WHERE invite."status" = $2
-              AND ($4::timestamptz IS NULL OR invite."createdAt" >= $4::timestamptz)
-              AND ($5::timestamptz IS NULL OR invite."createdAt" <= $5::timestamptz)
+              AND ($5::timestamptz IS NULL OR invite."createdAt" >= $5::timestamptz)
+              AND ($6::timestamptz IS NULL OR invite."createdAt" <= $6::timestamptz)
           )::int AS "totalAcceptedInvites",
-          COUNT(*) FILTER (
-            WHERE first_sign."signedAt" IS NOT NULL
-              AND ($4::timestamptz IS NULL OR invite."createdAt" >= $4::timestamptz)
-              AND ($5::timestamptz IS NULL OR invite."createdAt" <= $5::timestamptz)
-          )::int AS "totalSuccessfulRecruits",
-          COUNT(*) FILTER (
-            WHERE $4::timestamptz IS NOT NULL
-              AND $5::timestamptz IS NOT NULL
+          (
+            SELECT COUNT(*)::int
+            FROM "user" invited_user
+            LEFT JOIN LATERAL (
+              SELECT MIN(contract_event."date") AS "signedAt"
+              FROM "contract_event" contract_event
+              WHERE contract_event."userId" = invited_user."id"
+                AND contract_event."type" = $8
+            ) first_sign ON TRUE
+            WHERE invited_user."referredById" = $1
+              AND invited_user."referralSource" IN ($3, $4)
               AND first_sign."signedAt" IS NOT NULL
-              AND invite."createdAt" >= $4::timestamptz
-              AND invite."createdAt" <= $5::timestamptz
-          )::int AS "goalSuccessfulRecruits"
+              AND ($5::timestamptz IS NULL OR first_sign."signedAt" >= $5::timestamptz)
+              AND ($6::timestamptz IS NULL OR first_sign."signedAt" <= $6::timestamptz)
+          ) AS "totalSuccessfulRecruits"
         FROM "onetime_invite" invite
-        LEFT JOIN "user" invited_user
-          ON invited_user."referredByInviteId" = invite."id"
-        LEFT JOIN LATERAL (
-          SELECT MIN(contract_event."date") AS "signedAt"
-          FROM "contract_event" contract_event
-          WHERE contract_event."userId" = invited_user."id"
-            AND contract_event."type" = $3
-        ) first_sign ON TRUE
         WHERE invite."invitingUserId" = $1
           AND invite."deletedAt" IS NULL
       `,
       [
         userId,
         OnetimeInviteStatus.LINK_USED,
-        ContractEventType.SIGNED,
+        ReferralSource.OnetimeInvite,
+        ReferralSource.InviteShareLink,
         goalStartAt,
         goalDueAt,
         ShareUrlKind.Invite,
+        ContractEventType.SIGNED,
       ],
     )) as [
       {
         totalInvitesSent: number;
         totalAcceptedInvites: number;
         totalSuccessfulRecruits: number;
-        goalSuccessfulRecruits: number;
       },
     ];
 
@@ -2176,7 +2209,7 @@ export class UserService {
       totalInvitesSent: row.totalInvitesSent,
       totalAcceptedInvites: row.totalAcceptedInvites,
       totalSuccessfulRecruits: row.totalSuccessfulRecruits,
-      goalSuccessfulRecruits: row.goalSuccessfulRecruits,
+      goalSuccessfulRecruits: goal ? row.totalSuccessfulRecruits : 0,
     };
   }
 

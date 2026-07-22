@@ -14,6 +14,7 @@ import {
 import { Type } from 'class-transformer';
 import {
   Allow,
+  ArrayMaxSize,
   IsArray,
   IsBoolean,
   IsDefined,
@@ -21,6 +22,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  ValidateNested,
 } from 'class-validator';
 import { CommentDto } from 'src/forum/dto/comment.dto';
 import {
@@ -42,7 +44,11 @@ import { ActionActivity } from '../entities/action-activity.entity';
 import { ActionEvent, ActionStatus } from '../entities/action-event.entity';
 import { ActionSuite } from '../entities/action-suite.entity';
 import { ActionUpdate } from '../entities/action-update.entity';
-import { Action } from '../entities/action.entity';
+import {
+  Action,
+  ACTION_REVIEWERS_MAX,
+  ActionReviewer,
+} from '../entities/action.entity';
 import { GeneralUpdate } from '../entities/general-update.entity';
 import {
   ReminderCohortType,
@@ -333,6 +339,7 @@ export class ActionDto extends PickType(Action, [
   'customStatValue',
   'customStatGoal',
   'followUpForms',
+  'reviewers',
   'suite',
 ]) {
   @ApiProperty()
@@ -426,6 +433,7 @@ export class ActionDto extends PickType(Action, [
     this.customStatValue = action.customStatValue;
     this.customStatGoal = action.customStatGoal;
     this.followUpForms = action.followUpForms;
+    this.reviewers = action.reviewers ?? [];
     this.suite = action.suite;
     this.status = (action.events && action.status) ?? ActionStatus.Draft;
     this.events =
@@ -481,6 +489,18 @@ export class CreateActionDto extends PickType(ActionDto, [
   })
   @IsOptional()
   suiteId?: number | null;
+
+  @ApiPropertyOptional({
+    type: () => ActionReviewer,
+    isArray: true,
+    maxItems: ACTION_REVIEWERS_MAX,
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(ACTION_REVIEWERS_MAX)
+  @ValidateNested({ each: true })
+  @Type(() => ActionReviewer)
+  reviewers?: ActionReviewer[];
 
   @ApiPropertyOptional({
     type: Number,

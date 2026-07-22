@@ -10,7 +10,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import multer from 'multer';
 import { ActionPartnershipsModule } from './action-partnerships/action-partnerships.module';
 import { ActionsModule } from './actions/actions.module';
-import { AdminViewerModule } from './admin-viewer/admin-viewer.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ApnsModule } from './apns/apns.module';
 import { AppController } from './app.controller';
@@ -89,7 +88,6 @@ import { VideosModule } from './videos/videos.module';
     NotifsModule,
     GeoModule,
     MailModule,
-    AdminViewerModule,
     SearchModule,
     ShareUrlsModule,
     CampaignModule,
