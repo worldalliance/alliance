@@ -131,10 +131,9 @@ ORDER BY pp.total_session_duration_seconds DESC
   ): Promise<TimeSpentForUser[]> {
     const users = await this.userService.findAllUsers();
 
-    const emailToUserId = users.reduce((acc, user) => {
-      acc[user.email] = user.id;
-      return acc;
-    }, {});
+    const emailToUserId: Record<string, number> = Object.fromEntries(
+      users.map((user) => [user.email, user.id]),
+    );
 
     const body = {
       query: {

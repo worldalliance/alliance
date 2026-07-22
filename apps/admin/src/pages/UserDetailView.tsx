@@ -44,6 +44,7 @@ import {
 } from "@alliance/sharedweb/ui/HoverCard";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { PILL_STATUS_DATA } from "@alliance/sharedweb/ui/UserProgressPills";
+import { keyBy } from "es-toolkit";
 import {
   ChevronDown,
   ChevronRight,
@@ -223,15 +224,10 @@ const UserDetailView: React.FC = () => {
     return allTags.filter((tag) => userTagIds.has(tag.id));
   }, [allTags, userTagIds]);
 
-  const relationByActionId = useMemo(() => {
-    return actionRelationsState.reduce(
-      (acc, relation) => {
-        acc[relation.actionId] = relation;
-        return acc;
-      },
-      {} as Record<number, UserActionRelationDetailDto>,
-    );
-  }, [actionRelationsState]);
+  const relationByActionId = useMemo(
+    () => keyBy(actionRelationsState, (relation) => relation.actionId),
+    [actionRelationsState],
+  );
 
   const { emailNotifs, textNotifs, pushNotifs } = useMemo(() => {
     // Categorize each channel independently

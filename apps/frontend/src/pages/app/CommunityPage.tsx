@@ -30,6 +30,7 @@ import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable"
 import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keyBy } from "es-toolkit";
 import { MessageSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useSearchParams } from "react-router";
@@ -239,13 +240,7 @@ const CommunityPage = () => {
       }).then((resp) => {
         if (resp.data) {
           setMemberContactInfo(
-            resp.data.reduce(
-              (acc, contactInfo) => {
-                acc[contactInfo.id] = contactInfo;
-                return acc;
-              },
-              {} as Record<number, CommunityMemberContactInfoDto>,
-            ),
+            keyBy(resp.data, (contactInfo) => contactInfo.id),
           );
         }
       });

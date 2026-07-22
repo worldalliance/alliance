@@ -33,6 +33,7 @@
     "compression": "^1.8.0",
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
+    "es-toolkit": "^1.49.0",
     "express": "^5.1.0",
     "install": "^0.13.0",
     "isbot": "^5",

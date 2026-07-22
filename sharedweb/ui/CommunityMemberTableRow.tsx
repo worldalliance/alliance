@@ -12,6 +12,7 @@ import {
 import { formatNextTaskDue } from "@alliance/shared/lib/formatNextTaskDue";
 import { useAwayRanges } from "@alliance/shared/lib/useAwayRanges";
 import { cn } from "@alliance/shared/styles/util";
+import { keyBy } from "es-toolkit";
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { AvatarProfile } from "./Avatar";
@@ -51,15 +52,10 @@ const CommunityMemberTableRow = ({
   showInfoTooltip?: boolean;
   memberHref: (memberId: number) => string;
 }) => {
-  const relationByActionId = useMemo(() => {
-    return actionRelations.reduce(
-      (acc, relation) => {
-        acc[relation.actionId] = relation;
-        return acc;
-      },
-      {} as Record<number, UserActionRelationDetailDto>,
-    );
-  }, [actionRelations]);
+  const relationByActionId = useMemo(
+    () => keyBy(actionRelations, (relation) => relation.actionId),
+    [actionRelations],
+  );
 
   const [expanded, setExpanded] = useState(false);
   const { currentAwayRange, upcomingOrCurrentAwayRanges } = useAwayRanges(

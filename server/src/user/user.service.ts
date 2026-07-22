@@ -12,6 +12,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
+import { countBy } from 'es-toolkit';
 import { LiveActivityRegistration } from 'src/apns/entities/live-activity-registration.entity';
 import { CampaignService } from 'src/campaign/campaign.service';
 import { Campaign } from 'src/campaign/entities/campaign.entity';
@@ -984,20 +985,11 @@ export class UserService {
     });
     const users = allUsers.filter((user) => user.hasActiveContract);
 
-    let nullCityCount = 0;
-
-    const cityCounts = users.reduce(
-      (acc, user) => {
-        const cityId = user.city?.id ?? null;
-        if (cityId) {
-          acc[cityId] = (acc[cityId] ?? 0) + 1;
-        } else {
-          nullCityCount++;
-        }
-        return acc;
-      },
-      {} as Record<number, number>,
-    );
+    const cityIds = users
+      .map((user) => user.city?.id)
+      .filter((id) => id != null);
+    const nullCityCount = users.length - cityIds.length;
+    const cityCounts = countBy(cityIds, (id) => id);
 
     const cities = await this.cityRepository.find({
       where: { id: In(Object.keys(cityCounts)) },

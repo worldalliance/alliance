@@ -5,6 +5,7 @@ import {
 } from "@alliance/shared/client";
 import { formatDateTime } from "@alliance/shared/lib/dateFormatters";
 import { cn } from "@alliance/shared/styles/util";
+import { countBy, groupBy, mapValues } from "es-toolkit";
 import {
   Fragment,
   JSX,
@@ -92,18 +93,12 @@ export function useMaxActionsPerWeek(params: {
 
     const maxActionsPerWeek: Record<number, number> = {};
     for (const relations of Object.values(userActionRelations)) {
-      const counts = relations.reduce(
-        (acc, relation) => {
-          if (PILL_STATUS_DATA[relation.status].pillStyle) {
-            const weekNumber = weekNumberByActionId.get(relation.actionId);
-            if (weekNumber === null || weekNumber === undefined) {
-              return acc;
-            }
-            acc[weekNumber] = (acc[weekNumber] ?? 0) + 1;
-          }
-          return acc;
-        },
-        {} as Record<number, number>,
+      const counts = countBy(
+        relations
+          .filter((relation) => PILL_STATUS_DATA[relation.status].pillStyle)
+          .map((relation) => weekNumberByActionId.get(relation.actionId))
+          .filter((weekNumber) => weekNumber != null),
+        (weekNumber) => weekNumber,
       );
 
       for (const [weekNumberKey, count] of Object.entries(counts)) {
@@ -242,29 +237,28 @@ const UserProgressPills = ({
       });
     }
 
-    const actionMap = actions.reduce((acc, action) => {
-      acc.set(action.id, action);
-      return acc;
-    }, new Map<number, UserActionSummaryDto>());
+    const actionMap = new Map(actions.map((action) => [action.id, action]));
 
-    const weekNumbers = Object.keys(maxActionsPerWeek).map(Number).sort();
-    const relationsPerWeek = actions.reduce((acc, action) => {
-      if (action.weekNumber) {
-        const relation = relationByActionId[action.id];
-        if (relation) {
-          acc.set(action.weekNumber, [
-            ...(acc.get(action.weekNumber) ?? []),
-            relation,
-          ]);
-        }
-      }
-      return acc;
-    }, new Map<number, UserActionRelationDetailDto[]>());
+    const weekNumbers = Object.keys(maxActionsPerWeek)
+      .map(Number)
+      .sort((a, b) => a - b);
+    const relationsPerWeek = mapValues(
+      groupBy(
+        actions.flatMap((action) => {
+          const relation = relationByActionId[action.id];
+          return action.weekNumber && relation
+            ? [{ weekNumber: action.weekNumber, relation }]
+            : [];
+        }),
+        (entry) => entry.weekNumber,
+      ),
+      (entries) => entries.map((entry) => entry.relation),
+    );
 
     const pills: JSX.Element[] = [];
     for (const weekNumber of weekNumbers) {
       const pillsForWeek: JSX.Element[] = [];
-      const relations = relationsPerWeek.get(weekNumber);
+      const relations = relationsPerWeek[weekNumber];
       if (relations) {
         for (const relation of relations) {
           const action = actionMap.get(relation.actionId);

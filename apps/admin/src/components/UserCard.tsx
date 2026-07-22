@@ -14,6 +14,7 @@ import DropdownIcon from "@alliance/sharedweb/ui/icons/DropdownIcon";
 import UserProgressPills, {
   PILL_STATUS_DATA,
 } from "@alliance/sharedweb/ui/UserProgressPills";
+import { keyBy } from "es-toolkit";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 
@@ -44,15 +45,10 @@ const UserCard = ({
   const [isActionDetailsOpen, setIsActionDetailsOpen] = useState(false);
   const dropdownRef = useOutsideClick(() => setIsDropdownOpen(false));
 
-  const relationByActionId = useMemo(() => {
-    return actionRelations.reduce(
-      (acc, relation) => {
-        acc[relation.actionId] = relation;
-        return acc;
-      },
-      {} as Record<number, UserActionRelationDetailDto>,
-    );
-  }, [actionRelations]);
+  const relationByActionId = useMemo(
+    () => keyBy(actionRelations, (relation) => relation.actionId),
+    [actionRelations],
+  );
 
   const humanize = (value?: string) => {
     if (!value) {

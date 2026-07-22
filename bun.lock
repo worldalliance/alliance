@@ -42,6 +42,7 @@
         "compression": "^1.8.0",
         "d3": "^7.9.0",
         "date-fns": "^4.1.0",
+        "es-toolkit": "^1.49.0",
         "express": "^5.1.0",
         "install": "^0.13.0",
         "isbot": "^5",
@@ -125,6 +126,7 @@
         "compression": "^1.8.0",
         "d3": "^7.9.0",
         "date-fns": "^4.1.0",
+        "es-toolkit": "^1.49.0",
         "express": "^5.1.0",
         "gray-matter": "^4.0.3",
         "hls.js": "^1.6.15",
@@ -208,6 +210,7 @@
         "@react-navigation/native": "^7.1.6",
         "@react-navigation/native-stack": "^7.3.10",
         "@tanstack/react-query": "^5.90.20",
+        "es-toolkit": "^1.49.0",
         "expo": "^55.0.6",
         "expo-application": "~55.0.9",
         "expo-blur": "~55.0.9",
@@ -325,6 +328,7 @@
         "class-validator": "^0.14.1",
         "cookie-parser": "^1.4.7",
         "date-fns": "^4.1.0",
+        "es-toolkit": "^1.49.0",
         "expo-server-sdk": "^4.0.0",
         "heic-convert": "^2.1.0",
         "html-encoding-sniffer": "^4.0.0",
@@ -388,6 +392,7 @@
         "@alliance/common": "workspace:*",
         "@hey-api/client-fetch": "^0.10.0",
         "clsx": "^2.1.1",
+        "es-toolkit": "^1.49.0",
         "lucide-react": "^0.563.0",
         "react-router": "7.13.2",
         "socket.io-client": "^4.8.1",
@@ -417,6 +422,7 @@
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "date-fns": "^4.1.0",
+        "es-toolkit": "^1.49.0",
         "hls.js": "^1.6.15",
         "lucide-react": "^0.563.0",
         "react-router": "7.13.2",
@@ -2751,6 +2757,8 @@
     "es-shim-unscopables": ["es-shim-unscopables@1.1.0", "", { "dependencies": { "hasown": "^2.0.2" } }, "sha512-d9T8ucsEhh8Bi1woXCf+TIKDIROLG5WCkxg8geBCbvk22kzwC5G2OnXVMO6FUsvQlgUUXQ2itephWDLqDzbeCw=="],
 
     "es-to-primitive": ["es-to-primitive@1.3.0", "", { "dependencies": { "is-callable": "^1.2.7", "is-date-object": "^1.0.5", "is-symbol": "^1.0.4" } }, "sha512-w+5mJ3GuFL+NjVtJlvydShqE1eN3h3PbI7/5LAsYJP/2qtuMXjfL2LpHSRqo4b4eSF5K/DH1JXKUAHSB2UW50g=="],
+
+    "es-toolkit": ["es-toolkit@1.49.0", "", {}, "sha512-G5iZ6Pc/FNRY/soKZHC+TxGDD83rHUDXxzaWhGCX44vAv/tMs56WMusnm/KMNK+luUPsgA9U28cGr4RDlSzL2g=="],
 
     "esbuild": ["esbuild@0.25.12", "", { "optionalDependencies": { "@esbuild/aix-ppc64": "0.25.12", "@esbuild/android-arm": "0.25.12", "@esbuild/android-arm64": "0.25.12", "@esbuild/android-x64": "0.25.12", "@esbuild/darwin-arm64": "0.25.12", "@esbuild/darwin-x64": "0.25.12", "@esbuild/freebsd-arm64": "0.25.12", "@esbuild/freebsd-x64": "0.25.12", "@esbuild/linux-arm": "0.25.12", "@esbuild/linux-arm64": "0.25.12", "@esbuild/linux-ia32": "0.25.12", "@esbuild/linux-loong64": "0.25.12", "@esbuild/linux-mips64el": "0.25.12", "@esbuild/linux-ppc64": "0.25.12", "@esbuild/linux-riscv64": "0.25.12", "@esbuild/linux-s390x": "0.25.12", "@esbuild/linux-x64": "0.25.12", "@esbuild/netbsd-arm64": "0.25.12", "@esbuild/netbsd-x64": "0.25.12", "@esbuild/openbsd-arm64": "0.25.12", "@esbuild/openbsd-x64": "0.25.12", "@esbuild/openharmony-arm64": "0.25.12", "@esbuild/sunos-x64": "0.25.12", "@esbuild/win32-arm64": "0.25.12", "@esbuild/win32-ia32": "0.25.12", "@esbuild/win32-x64": "0.25.12" }, "bin": { "esbuild": "bin/esbuild" } }, "sha512-bbPBYYrtZbkt6Os6FiTLCTFxvq4tt3JKall1vRwshA3fdVztsLAatFaZobhkBC8/BrPetoa0oksYoKXoG4ryJg=="],
 

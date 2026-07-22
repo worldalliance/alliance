@@ -29,6 +29,7 @@ import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable"
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useMaxActionsPerWeek } from "@alliance/sharedweb/ui/UserProgressPills";
 import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
+import { keyBy } from "es-toolkit";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { href, Link, useNavigate, useParams } from "react-router";
 
@@ -135,12 +136,8 @@ const CommunityDetailPage: React.FC = () => {
             ),
           );
           const relationMap: Record<number, UserActionRelationDetailDto[]> =
-            resp.data.users.reduce(
-              (acc, user) => {
-                acc[user.userId] = user.relations;
-                return acc;
-              },
-              {} as Record<number, UserActionRelationDetailDto[]>,
+            Object.fromEntries(
+              resp.data.users.map((user) => [user.userId, user.relations]),
             );
           setUserActionRelations(relationMap);
         }
@@ -150,13 +147,7 @@ const CommunityDetailPage: React.FC = () => {
       (resp) => {
         if (resp.data) {
           setMemberContactInfo(
-            resp.data.reduce(
-              (acc, contactInfo) => {
-                acc[contactInfo.id] = contactInfo;
-                return acc;
-              },
-              {} as Record<number, CommunityMemberContactInfoDto>,
-            ),
+            keyBy(resp.data, (contactInfo) => contactInfo.id),
           );
         }
       },

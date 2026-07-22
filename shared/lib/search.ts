@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
 import {
   searchAll,
   SearchItemDto,
   SearchItemType,
 } from "@alliance/shared/client";
+import { groupBy } from "es-toolkit";
+import { useEffect, useState } from "react";
 
 export const SEARCH_CATEGORIES: SearchItemType[] = [
   "recent",
@@ -36,10 +37,10 @@ export const createEmptySearchCategories = (): Record<
 });
 
 export const groupSearchItems = (items: SearchItemDto[]) => {
-  const grouped = createEmptySearchCategories();
-  for (const item of items) {
-    grouped[item.type] = [...grouped[item.type], item];
-  }
+  const grouped = {
+    ...createEmptySearchCategories(),
+    ...groupBy(items, (item) => item.type),
+  };
 
   const ordered = [
     ...grouped.recent,
@@ -54,11 +55,11 @@ export const groupSearchItems = (items: SearchItemDto[]) => {
 };
 
 export const getSearchCategoriesWithItems = (
-  grouped: Record<SearchItemType, SearchItemDto[]>
+  grouped: Record<SearchItemType, SearchItemDto[]>,
 ) => SEARCH_CATEGORIES.filter((category) => grouped[category]?.length > 0);
 
 export const getSearchSecondaryText = (
-  secondaryData?: SearchItemDto["secondaryData"]
+  secondaryData?: SearchItemDto["secondaryData"],
 ) => {
   if (!secondaryData || secondaryData.length === 0) return "";
   const flattened = Array.isArray(secondaryData[0])
@@ -83,13 +84,13 @@ type UseSearchResultsOptions = {
 
 export const useSearchResults = (
   query: string,
-  options?: UseSearchResultsOptions
+  options?: UseSearchResultsOptions,
 ) => {
   const debounceMs = options?.debounceMs ?? 50;
   const autoselectFirst = options?.autoselectFirst ?? true;
   const [items, setItems] = useState<SearchItemDto[]>([]);
   const [itemsByCategory, setItemsByCategory] = useState(
-    createEmptySearchCategories
+    createEmptySearchCategories,
   );
   const [selectedItem, setSelectedItem] = useState<SearchItemDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -116,7 +117,7 @@ export const useSearchResults = (
 
           setItems(ordered);
           setItemsByCategory(grouped);
-          setSelectedItem(autoselectFirst ? ordered[0] ?? null : null);
+          setSelectedItem(autoselectFirst ? (ordered[0] ?? null) : null);
         })
         .catch((err) => {
           if (cancelled) return;
