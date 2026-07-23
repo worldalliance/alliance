@@ -1182,23 +1182,32 @@ export class TasksService {
     newAnswers: Record<string, unknown>,
     deviceType?: DeviceVisibilityTarget
   ): Promise<FormResponse> {
+    // First, read and validate the response (no lock)
+    const existing = await this.formResponseRepository.findOne({
+      where: { formId, user: { id: userId } },
+    });
+    if (!existing) throw new NotFoundException('No response to edit');
+
+    const formSnapshot = await this.formResponseRepository.manager.findOneOrFail(
+      FormSnapshot,
+      { where: { id: existing.formSnapshotId } },
+    );
+    const schema = formSnapshot.schema as unknown as FormSchema;
+
+    const { validatorResults, effectiveAnswers } =
+      await this.validateFormSubmission({
+        schema,
+        submitFormDto: { answers: newAnswers, deviceType } as SubmitFormDto,
+        userId,
+      });
+
+    // Only after validation, find the form response and lock for the write
     return this.formResponseRepository.manager.transaction(async (manager) => {
       const response = await manager.findOne(FormResponse, {
         where: { formId, user: { id: userId } },
         lock: { mode: 'pessimistic_write' },
       });
       if (!response) throw new NotFoundException('No response to edit');
-
-      const formSnapshot = await manager.findOneOrFail(FormSnapshot, {
-        where: { id: response.formSnapshotId },
-      });
-      const schema = formSnapshot.schema as unknown as FormSchema;
-      const { validatorResults, effectiveAnswers } =
-        await this.validateFormSubmission({
-          schema,
-          submitFormDto: { answers: newAnswers, deviceType } as SubmitFormDto,
-          userId,
-        });
 
       await manager.insert(FormResponseRevision, {
         formResponseId: response.id,
@@ -1215,8 +1224,6 @@ export class TasksService {
       saved.formSnapshot = formSnapshot;
       return saved;
     });
-
-
   }
 
   async getResponseSnapshotMigration(
