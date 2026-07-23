@@ -208,7 +208,7 @@ export type FollowUpForm = {
     instructions?: string | null;
     cohortExpression?: {
         [key: string]: unknown;
-    };
+    } | null;
     actionId: number;
     formId: number;
 };
@@ -439,7 +439,7 @@ export type Action = {
      */
     cohortExpression?: {
         [key: string]: unknown;
-    };
+    } | null;
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
@@ -1899,7 +1899,7 @@ export type ActionDto = {
      */
     cohortExpression?: {
         [key: string]: unknown;
-    };
+    } | null;
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
@@ -2167,7 +2167,7 @@ export type FollowUpFormDto = {
     instructions?: string | null;
     cohortExpression?: {
         [key: string]: unknown;
-    };
+    } | null;
     actionId: number;
     formId: number;
     form?: Form;
@@ -2180,7 +2180,7 @@ export type CreateFollowUpFormDto = {
     instructions?: string | null;
     cohortExpression?: {
         [key: string]: unknown;
-    };
+    } | null;
     actionId: number;
     formId: number;
 };
@@ -2192,7 +2192,7 @@ export type UpdateFollowUpFormDto = {
     instructions?: string | null;
     cohortExpression?: {
         [key: string]: unknown;
-    };
+    } | null;
     formId?: number;
 };
 
@@ -2315,7 +2315,7 @@ export type CreateActionDto = {
      */
     cohortExpression?: {
         [key: string]: unknown;
-    };
+    } | null;
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
@@ -2414,7 +2414,7 @@ export type UpdateActionDto = {
      */
     cohortExpression?: {
         [key: string]: unknown;
-    };
+    } | null;
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */
@@ -2715,7 +2715,7 @@ export type ExportActionDto = {
      */
     cohortExpression?: {
         [key: string]: unknown;
-    };
+    } | null;
     /**
      * special case for contract signing (prevent doing other onboarding actions)
      */

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { urlMatchesDomain } from "@alliance/common/url";
 import {
   ActionReviewer,
@@ -9,7 +10,6 @@ import {
   TagDto,
   VisibilityMode,
 } from "@alliance/shared/client";
-import type { CohortExpression } from "@alliance/shared/cohort-expression.types";
 import { cn } from "@alliance/shared/styles/util";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import UserSelect from "@alliance/sharedweb/ui/UserSelect";
@@ -28,6 +28,7 @@ interface ActionFormProps {
   onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSubmit: (e: React.FormEvent) => void;
   saving: boolean;
+  saveDisabled?: boolean;
   imagePreview: string | null;
   isNew: boolean;
   onCancel?: () => void;
@@ -115,6 +116,7 @@ const ActionForm: React.FC<ActionFormProps> = ({
   onImageChange,
   onSubmit,
   saving,
+  saveDisabled = false,
   imagePreview,
   isNew,
   onCancel,
@@ -802,8 +804,8 @@ const ActionForm: React.FC<ActionFormProps> = ({
         )} */}
         <button
           type="submit"
-          className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium"
-          disabled={saving}
+          className="px-4 py-2 mr-3 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green focus:ring-offset-2 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
+          disabled={saving || saveDisabled}
         >
           {saving
             ? isNew

@@ -1,24 +1,21 @@
+import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { FormSchema } from "@alliance/common/forms/form-schema";
-import {
-  ActionDto,
-  actionsCreateFollowUpFormAdmin,
-  actionsDeleteFollowUpFormAdmin,
-  actionsFindOneAdmin,
-  actionsUpdateFollowUpFormAdmin,
-  tasksCreateFormAdmin,
-} from "@alliance/shared/client";
+import { R } from "@alliance/common/result";
+import { ActionDto, tasksCreateFormAdmin } from "@alliance/shared/client";
 import type {
   FollowUpFormDto,
   FormDto,
   TagDto,
 } from "@alliance/shared/client/types.gen";
-import type { CohortExpression } from "@alliance/shared/cohort-expression.types";
+import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
+import { parseFollowUpFormDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import BaseButton, {
   BaseButtonVariant,
 } from "@alliance/sharedweb/ui/BaseButton";
 import Card from "@alliance/sharedweb/ui/Card";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
@@ -27,7 +24,6 @@ import { FormBuilder } from "./FormBuilder";
 
 export interface ActionFollowUpFormsTabProps {
   action: ActionDto;
-  setAction: (action: ActionDto) => void;
   availableTags: TagDto[];
   availableActions: { id: number; name: string }[];
   availableForms: FormDto[];
@@ -50,7 +46,6 @@ function followUpFormLabel(fuf: FollowUpFormDto): string {
 
 export default function ActionFollowUpFormsTab({
   action,
-  setAction,
   availableTags,
   availableActions,
   availableForms,
@@ -60,9 +55,15 @@ export default function ActionFollowUpFormsTab({
     () => action.followUpForms ?? [],
     [action.followUpForms],
   );
+  const {
+    createFollowUpForm,
+    updateFollowUpForm,
+    deleteFollowUpForm,
+    savingFollowUpFormIds,
+    deletingFollowUpFormIds,
+  } = useActionAdmin(action.id, { enabled: false });
+  const { error: pushError } = useToast();
   const [creating, setCreating] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [savingFields, setSavingFields] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(
     followUpForms.length > 0 ? followUpForms[0].id : null,
   );
@@ -82,38 +83,31 @@ export default function ActionFollowUpFormsTab({
     }
   }, [followUpForms, selectedId]);
 
-  const refetchAction = useCallback(async () => {
-    const res = await actionsFindOneAdmin({ path: { id: action.id } });
-    if (res.data) setAction(res.data);
-  }, [action.id, setAction]);
-
   const handleCreateFollowUpForm = useCallback(async () => {
     setCreating(true);
-    try {
+    const result = await R.fromPromiseFn(async () => {
       const formRes = await tasksCreateFormAdmin({
         body: {
           title: `${action.name} - follow-up`,
-          schema: emptyFormSchema as unknown as Record<string, unknown>,
+          schema: emptyFormSchema,
         },
       });
       if (!formRes.data?.id) {
         throw new Error("Failed to create form");
       }
-      const createRes = await actionsCreateFollowUpFormAdmin({
-        path: { id: action.id },
-        body: {
-          actionId: action.id,
-          formId: formRes.data.id,
-        },
+      return createFollowUpForm({
+        actionId: action.id,
+        formId: formRes.data.id,
       });
-      if (createRes.data) {
-        await refetchAction();
-        setSelectedId(createRes.data.id);
-      }
-    } finally {
-      setCreating(false);
+    });
+    setCreating(false);
+    if (!result.ok) {
+      console.error("Failed to create follow-up form", result.error);
+      pushError("Failed to create follow-up form");
+      return;
     }
-  }, [action.id, action.name, refetchAction]);
+    setSelectedId(result.value.id);
+  }, [action.id, action.name, createFollowUpForm, pushError]);
 
   const handleSaveFields = useCallback(
     async (
@@ -126,45 +120,43 @@ export default function ActionFollowUpFormsTab({
         cohortExpression: CohortExpression | null;
       },
     ) => {
-      setSavingFields(followUpFormId);
-      try {
-        const startIso = fields.startDate
-          ? new Date(fields.startDate).toISOString()
-          : undefined;
-        const endIso = fields.endDate
-          ? new Date(fields.endDate).toISOString()
-          : undefined;
-        const res = await actionsUpdateFollowUpFormAdmin({
-          path: { followUpFormId },
+      const startIso = fields.startDate
+        ? new Date(fields.startDate).toISOString()
+        : undefined;
+      const endIso = fields.endDate
+        ? new Date(fields.endDate).toISOString()
+        : undefined;
+      const result = await R.fromPromise(
+        updateFollowUpForm({
+          followUpFormId,
           body: {
             name: fields.name?.trim() || null,
             startDate: startIso || null,
             endDate: endIso || null,
             instructions: fields.instructions?.trim() || null,
-            cohortExpression:
-              (fields.cohortExpression as Record<string, unknown> | null) ??
-              undefined,
+            cohortExpression: fields.cohortExpression,
           },
-        });
-        if (res.data) {
-          await refetchAction();
-        }
-      } finally {
-        setSavingFields(null);
+        }),
+      );
+      if (!result.ok) {
+        console.error("Failed to save follow-up form fields", result.error);
+        pushError("Failed to save follow-up form fields");
       }
     },
-    [refetchAction],
+    [updateFollowUpForm, pushError],
   );
 
   const handleSetFormId = useCallback(
     async (followUpFormId: number, formId: number) => {
-      await actionsUpdateFollowUpFormAdmin({
-        path: { followUpFormId },
-        body: { formId },
-      });
-      await refetchAction();
+      const result = await R.fromPromise(
+        updateFollowUpForm({ followUpFormId, body: { formId } }),
+      );
+      if (!result.ok) {
+        console.error("Failed to set follow-up form's form", result.error);
+        pushError("Failed to set follow-up form's form");
+      }
     },
-    [refetchAction],
+    [updateFollowUpForm, pushError],
   );
 
   const handleDeleteFollowUpForm = useCallback(
@@ -176,20 +168,15 @@ export default function ActionFollowUpFormsTab({
       ) {
         return;
       }
-      setDeletingId(followUpFormId);
-      try {
-        const res = await actionsDeleteFollowUpFormAdmin({
-          path: { followUpFormId },
-        });
-        if (res.response.ok) {
-          await refetchAction();
-          setSelectedId(null);
-        }
-      } finally {
-        setDeletingId(null);
+      const result = await R.fromPromise(deleteFollowUpForm(followUpFormId));
+      if (!result.ok) {
+        console.error("Failed to delete follow-up form", result.error);
+        pushError("Failed to delete follow-up form");
+        return;
       }
+      setSelectedId(null);
     },
-    [refetchAction],
+    [deleteFollowUpForm, pushError],
   );
 
   return (
@@ -255,8 +242,8 @@ export default function ActionFollowUpFormsTab({
           onSaveFields={handleSaveFields}
           onSetFormId={handleSetFormId}
           onDelete={handleDeleteFollowUpForm}
-          savingFields={savingFields === selectedForm.id}
-          deleting={deletingId === selectedForm.id}
+          savingFields={savingFollowUpFormIds.has(selectedForm.id)}
+          deleting={deletingFollowUpFormIds.has(selectedForm.id)}
           availableTags={availableTags}
           availableActions={availableActions}
           availableForms={availableForms}
@@ -311,12 +298,20 @@ function FollowUpFormCard({
   const [instructions, setInstructions] = useState<string>(
     followUpForm.instructions ?? "",
   );
+  // parseFollowUpFormDto degrades a stored expression this bundle can't parse
+  // (bad legacy row, newer server) to a warning instead of crashing the tab.
+  const { followUpForm: parsedForm, cohortExpressionError } = useMemo(
+    () => parseFollowUpFormDto(followUpForm),
+    [followUpForm],
+  );
   const [cohortExpr, setCohortExpr] = useState<CohortExpression | null>(
-    (followUpForm.cohortExpression as unknown as CohortExpression | null) ??
-      null,
+    parsedForm.cohortExpression ?? null,
   );
 
   const handleSaveFields = () => {
+    // Saving would overwrite the stored (unparseable) cohort expression with
+    // the empty editor state
+    if (cohortExpressionError) return;
     onSaveFields(followUpForm.id, {
       name: name.trim() === "" ? null : name.trim(),
       startDate: startDate || null,
@@ -364,6 +359,14 @@ function FollowUpFormCard({
             see and be able to submit this follow-up form. Leave empty and no
             one will see this form; set a cohort to target completers.
           </p>
+          {cohortExpressionError && (
+            <p className="text-xs text-red-600 mb-2">
+              The stored cohort expression could not be parsed and is not shown
+              below (details in the console). Saving is disabled so it
+              isn&apos;t accidentally deleted — fix the stored data, then
+              refresh the page.
+            </p>
+          )}
           <CohortExpressionBuilder
             value={cohortExpr}
             onChange={setCohortExpr}
@@ -401,7 +404,7 @@ function FollowUpFormCard({
           <BaseButton
             variant={BaseButtonVariant.Black}
             onClick={handleSaveFields}
-            disabled={savingFields}
+            disabled={savingFields || cohortExpressionError != null}
           >
             {savingFields ? "Saving…" : "Save fields"}
           </BaseButton>

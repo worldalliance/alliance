@@ -240,6 +240,106 @@ describe('Actions (e2e)', () => {
       expect(res.status).toBe(400);
     });
 
+    it('action creation with malformed cohortExpression rejected', async () => {
+      const base: CreateActionDto = {
+        name: 'Bad Cohort Action',
+        body: 'Body',
+        category: 'category',
+        image: '',
+        timeEstimate: 5,
+        shortDescription: 'Short',
+        visibilityMode: VisibilityMode.Public,
+        type: ActionTaskType.Activity,
+        isContractSigningAction: false,
+        shouldCompleteAfterDeadline: false,
+        isForumParticipationAction: false,
+        optional: false,
+        preventCompletion: false,
+        publicOnly: false,
+        onboarding: false,
+        followUpForms: [],
+      };
+
+      const malformedExpressions = [
+        // Tag condition missing its tagId
+        { type: 'Tag' },
+        // unknown discriminator
+        { type: 'NotARealCondition', tagId: 'x' },
+        // operator with malformed child
+        {
+          type: 'AND',
+          children: [{ type: 'Manual', userIds: ['not-a-number'] }],
+        },
+        // responseAny would shadow responseEqualTo
+        {
+          type: 'FormFieldValue',
+          formId: 1,
+          fieldId: 'f1',
+          responseEqualTo: 'yes',
+          responseAny: true,
+        },
+      ];
+
+      for (const cohortExpression of malformedExpressions) {
+        const res = await request(ctx.app.getHttpServer())
+          .post('/actions/create')
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send({ ...base, cohortExpression });
+
+        expect(res.status).toBe(400);
+      }
+    });
+
+    it('explicit null cohortExpression clears a stored one', async () => {
+      const createRes = await request(ctx.app.getHttpServer())
+        .post('/actions/create')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          name: 'Clearable Cohort Action',
+          body: 'Body',
+          category: 'category',
+          image: '',
+          timeEstimate: 5,
+          shortDescription: 'Short',
+          visibilityMode: VisibilityMode.Public,
+          type: ActionTaskType.Activity,
+          isContractSigningAction: false,
+          shouldCompleteAfterDeadline: false,
+          isForumParticipationAction: false,
+          optional: false,
+          preventCompletion: false,
+          publicOnly: false,
+          onboarding: false,
+          followUpForms: [],
+          cohortExpression: { type: 'Manual', userIds: [1] },
+        } satisfies CreateActionDto & { cohortExpression: unknown });
+      expect(createRes.status).toBe(201);
+      const actionId = createRes.body.id as number;
+
+      const updateRes = await request(ctx.app.getHttpServer())
+        .patch(`/actions/${actionId}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ cohortExpression: null });
+      expect(updateRes.status).toBe(200);
+
+      const cleared = await actionRepo.findOneByOrFail({ id: actionId });
+      expect(cleared.cohortExpression).toBeNull();
+
+      // Omitting the field must leave the stored expression untouched.
+      const restoreRes = await request(ctx.app.getHttpServer())
+        .patch(`/actions/${actionId}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ cohortExpression: { type: 'GroupLead' } });
+      expect(restoreRes.status).toBe(200);
+      const untouchedRes = await request(ctx.app.getHttpServer())
+        .patch(`/actions/${actionId}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: 'Clearable Cohort Action (renamed)' });
+      expect(untouchedRes.status).toBe(200);
+      const untouched = await actionRepo.findOneByOrFail({ id: actionId });
+      expect(untouched.cohortExpression).toEqual({ type: 'GroupLead' });
+    });
+
     it('user is shown their own relation to an action', async () => {
       const action = await actionRepo.findOneBy({
         name: 'Test Action',
@@ -1246,7 +1346,7 @@ describe('Actions (e2e)', () => {
           onboarding: true,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            op: 'AND',
+            type: 'AND',
             children: [
               { type: 'GroupLead' },
               { type: 'CompletedAction', actionId: prerequisiteAction.id },

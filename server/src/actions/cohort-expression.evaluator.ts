@@ -2,7 +2,7 @@
  * Cohort Expression Evaluator
  */
 
-import { CohortExpression, isLeafCondition } from './cohort-expression.types';
+import { CohortExpression } from '@alliance/common/cohort-expression';
 
 // --- Evaluation Context ---
 
@@ -46,42 +46,36 @@ export async function evaluateCohortExpression(
   ctx: CohortEvaluationContext,
   visitedActionIds: Set<number> = new Set(),
 ): Promise<Set<number>> {
-  if (isLeafCondition(expr)) {
-    switch (expr.type) {
-      case 'Tag':
-        return ctx.getUserIdsForTag(expr.tagId);
-      case 'Manual':
-        return new Set(expr.userIds);
-      case 'CompletedAction':
-        return ctx.getUserIdsCompletedAction(expr.actionId);
-      case 'InProgressAction': {
-        if (visitedActionIds.has(expr.actionId)) {
-          return new Set();
-        }
-        return ctx.getUserIdsInProgressAction(expr.actionId);
+  switch (expr.type) {
+    case 'Tag':
+      return ctx.getUserIdsForTag(expr.tagId);
+    case 'Manual':
+      return new Set(expr.userIds);
+    case 'CompletedAction':
+      return ctx.getUserIdsCompletedAction(expr.actionId);
+    case 'InProgressAction': {
+      if (visitedActionIds.has(expr.actionId)) {
+        return new Set();
       }
-      case 'MissedActionDeadline': {
-        // Resolving the referenced action's roster recurses into its cohort
-        // expression, so it needs the same cycle guard as InProgressAction.
-        if (visitedActionIds.has(expr.actionId)) {
-          return new Set();
-        }
-        return ctx.getUserIdsMissedActionDeadline(expr.actionId);
-      }
-      case 'FormFieldValue':
-        return ctx.getUserIdsForFormField({
-          formId: expr.formId,
-          fieldId: expr.fieldId,
-          responseEqualTo: expr.responseEqualTo,
-          responseAny: expr.responseAny,
-        });
-      case 'GroupLead':
-        return ctx.getGroupLeadUserIds();
+      return ctx.getUserIdsInProgressAction(expr.actionId);
     }
-  }
-
-  // Boolean operators
-  switch (expr.op) {
+    case 'MissedActionDeadline': {
+      // Resolving the referenced action's roster recurses into its cohort
+      // expression, so it needs the same cycle guard as InProgressAction.
+      if (visitedActionIds.has(expr.actionId)) {
+        return new Set();
+      }
+      return ctx.getUserIdsMissedActionDeadline(expr.actionId);
+    }
+    case 'FormFieldValue':
+      return ctx.getUserIdsForFormField({
+        formId: expr.formId,
+        fieldId: expr.fieldId,
+        responseEqualTo: expr.responseEqualTo,
+        responseAny: expr.responseAny,
+      });
+    case 'GroupLead':
+      return ctx.getGroupLeadUserIds();
     case 'AND': {
       if (expr.children.length === 0) return new Set();
       const { targetUserId } = ctx;
@@ -135,6 +129,10 @@ export async function evaluateCohortExpression(
       );
       return difference(universe, excluded);
     }
+    default:
+      throw new Error(
+        `unknown cohort expression: ${JSON.stringify(expr satisfies never)}`,
+      );
   }
 }
 
@@ -151,27 +149,19 @@ export function collectCohortDependencies(
   const formIds = new Set<number>();
 
   const walk = (node: CohortExpression): void => {
-    if (isLeafCondition(node)) {
-      switch (node.type) {
-        case 'CompletedAction':
-        case 'InProgressAction':
-        case 'MissedActionDeadline':
-          actionIds.add(node.actionId);
-          break;
-        case 'FormFieldValue':
-          formIds.add(node.formId);
-          break;
-        case 'Tag':
-        case 'Manual':
-        case 'GroupLead':
-          break;
-        default:
-          node satisfies never;
-          break;
-      }
-      return;
-    }
-    switch (node.op) {
+    switch (node.type) {
+      case 'CompletedAction':
+      case 'InProgressAction':
+      case 'MissedActionDeadline':
+        actionIds.add(node.actionId);
+        break;
+      case 'FormFieldValue':
+        formIds.add(node.formId);
+        break;
+      case 'Tag':
+      case 'Manual':
+      case 'GroupLead':
+        break;
       case 'AND':
       case 'OR':
         node.children.forEach(walk);

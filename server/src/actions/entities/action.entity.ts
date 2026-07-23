@@ -1,3 +1,7 @@
+import {
+  cohortExpressionSchema,
+  type CohortExpression,
+} from '@alliance/common/cohort-expression';
 import { HTTP_URL_VALIDATOR_OPTIONS } from '@alliance/common/url';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
@@ -31,7 +35,6 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
-import type { CohortExpression } from '../cohort-expression.types';
 import {
   memberActionPhase,
   type MemberActionPhase,
@@ -203,10 +206,11 @@ export class Action {
   @Column({ type: 'jsonb', nullable: true })
   @ApiPropertyOptional({
     description: 'Cohort expression tree defining who participates',
+    nullable: true,
   })
   @IsOptional()
   @Type(() => Object)
-  cohortExpression?: CohortExpression | null;
+  cohortExpression?: unknown;
 
   @Column({ default: false })
   @ApiProperty({
@@ -459,4 +463,24 @@ export class Action {
       return Math.floor(deadline.getTime() / MS_IN_WEEK);
     }
   }
+}
+
+/**
+ * An Action whose jsonb columns have been parsed. Produce with {@link
+ * parseAction} immediately after pulling an Action from the db (or any other
+ * untyped source), so the parse happens exactly once and everything downstream
+ * works with a typed expression.
+ */
+export type ParsedAction = Action & {
+  cohortExpression: CohortExpression | null;
+};
+
+export function parseAction(action: Action): ParsedAction {
+  action.cohortExpression =
+    action.cohortExpression == null
+      ? null
+      : cohortExpressionSchema.parse(action.cohortExpression);
+  // Mutate-and-cast (rather than spread) to keep the entity's getters; the
+  // assignment above just validated the only field the cast narrows.
+  return action as ParsedAction;
 }

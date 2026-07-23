@@ -1,22 +1,18 @@
+import type { CohortExpression } from "@alliance/common/cohort-expression";
 import {
   fieldHasOptions,
   isQuestionField,
 } from "@alliance/common/forms/form-schema";
+import { R } from "@alliance/common/result";
 import { ensureHttpProtocol } from "@alliance/common/url";
 import type { ActionSuiteDto } from "@alliance/shared/client";
 import {
   ActionDto,
-  actionsArchiveAdmin,
-  actionsCreateAdmin,
   actionsExportActionAdmin,
   actionsFindAllWithDraftsAdmin,
-  actionsFindOneAdmin,
   actionsGetIncompleteUsersAdmin,
-  actionsRemoveAdmin,
   actionsShareUrlStatsAdmin,
   actionsSuitesAdmin,
-  actionsUnarchiveAdmin,
-  actionsUpdateAdmin,
   analyticsGetActionStatsByIdAdmin,
   CreateActionDto,
   FormDto,
@@ -34,8 +30,8 @@ import type {
   ProfileDto,
   ShareUrlStatsDto,
 } from "@alliance/shared/client/types.gen";
-import type { CohortExpression } from "@alliance/shared/cohort-expression.types";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
+import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -131,10 +127,37 @@ const ActionDashboard: React.FC = () => {
   const navigate = useNavigate();
   const isNew = actionIdParam === "new";
   const actionId = isNew ? null : parseInt(actionIdParam!);
-  const [action, setAction] = useState<ActionDto | null>(null);
-  const [loading, setLoading] = useState<boolean>(!isNew);
-  const [saving, setSaving] = useState<boolean>(false);
+  const {
+    action,
+    cohortExpressionError,
+    isPending: actionPending,
+    isFetching: actionFetching,
+    isError: actionLoadFailed,
+    setActionFromDto,
+    createAction,
+    isCreating,
+    updateAction,
+    isUpdating,
+    removeAction,
+    isRemoving,
+    archiveAction,
+    unarchiveAction,
+  } = useActionAdmin(actionId);
+  const cohortParseFailed = cohortExpressionError != null;
+  // Which action id the draft state was last seeded from (see the seeding
+  // effect below); null means the next loaded action should (re)seed. Kept as
+  // state (not a ref) so `loading` covers the cached-data window where the
+  // seed is still waiting out a background refetch.
+  const [seededActionId, setSeededActionId] = useState<number | null>(null);
+  const loading =
+    (!isNew &&
+      !actionLoadFailed &&
+      (actionPending || seededActionId !== actionId)) ||
+    isRemoving;
+  const saving = isCreating || isUpdating;
   const [error, setError] = useState<string | null>(null);
+  const errorMessage =
+    error ?? (actionLoadFailed ? "Failed to load action" : null);
   const [imageKey, setImageKey] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [availableForms, setAvailableForms] = useState<FormDto[]>([]);
@@ -340,77 +363,58 @@ const ActionDashboard: React.FC = () => {
       setImagePreview(null);
       setError(null);
       setCohortExpression(null);
+      setSeededActionId(null);
     }
   }, [isNew, searchParams]);
 
   const setTaskFormId = async (formId: number) => {
     setForm((prev) => ({ ...prev, taskFormId: formId }));
     if (actionId) {
-      const response = await actionsUpdateAdmin({
-        path: { id: actionId },
-        body: { taskFormId: formId },
-      });
-      if (response.data) {
-        setAction(response.data);
-      } else {
+      const result = await R.fromPromise(updateAction({ taskFormId: formId }));
+      if (!result.ok) {
         setError("Failed to update action form");
+        console.error(result.error);
       }
     }
   };
 
+  // Seed the editable draft state (form fields, reviewers, cohort expression,
+  // image) once per action; background refetches and cache writes must not
+  // stomp in-progress edits. Wait out in-flight fetches so the seed comes
+  // from fresh data, not a stale cache entry.
   useEffect(() => {
-    if (isNew || !actionId) {
+    const parsedAction = action;
+    if (!parsedAction || actionFetching || seededActionId === parsedAction.id) {
       return;
     }
+    setSeededActionId(parsedAction.id);
 
-    const loadAction = async () => {
-      try {
-        const response = await actionsFindOneAdmin({
-          path: { id: actionId },
-        });
-        const actionData = response.data;
-        if (!actionData) {
-          throw new Error("Action not found");
-        }
-        setAction(actionData);
-        const {
-          usersCompleted: _usersCompleted,
-          usersJoined: _usersJoined,
-          events: _events,
-          updates: _updates,
-          suite,
-          reviewers,
-          ...formData
-        } = actionData;
+    const {
+      usersCompleted: _usersCompleted,
+      usersJoined: _usersJoined,
+      events: _events,
+      updates: _updates,
+      suite,
+      reviewers,
+      ...formData
+    } = parsedAction;
 
-        const authors = actionData.authors ?? [];
-        const authorIds = authors.map((user) => user.id);
+    const authors = parsedAction.authors ?? [];
+    const authorIds = authors.map((user) => user.id);
 
-        setForm({
-          ...formData,
-          taskFormId: actionData.taskFormId,
-          suiteId: suite?.id,
-          authorIds,
-        });
-        setReviewerRows(reviewers.map((r) => ({ ...r, key: makeTempId() })));
+    setForm({
+      ...formData,
+      taskFormId: parsedAction.taskFormId,
+      suiteId: suite?.id,
+      authorIds,
+    });
+    setReviewerRows(reviewers.map((r) => ({ ...r, key: makeTempId() })));
 
-        setCohortExpression(
-          actionData.cohortExpression as unknown as CohortExpression | null,
-        );
+    setCohortExpression(parsedAction.cohortExpression ?? null);
 
-        setImageKey(actionData.image ?? null);
-        setImagePreview(actionData.image ?? null);
-
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to load action");
-        setLoading(false);
-        console.error(err);
-      }
-    };
-
-    loadAction();
-  }, [actionId, isNew, availableUsers]);
+    setImageKey(parsedAction.image ?? null);
+    setImagePreview(parsedAction.image ?? null);
+  }, [action, actionFetching, seededActionId]);
 
   // Load share URL stats for publicOnly actions
   useEffect(() => {
@@ -545,16 +549,14 @@ const ActionDashboard: React.FC = () => {
       name: `${form.name} (Copy)`,
       taskFormId,
     };
-    const response = await actionsCreateAdmin({
-      body: duplicateForm,
-    });
-    const newAction = response.data;
-    if (!newAction) {
+    const result = await R.fromPromise(createAction(duplicateForm));
+    if (!result.ok) {
       setError("Failed to duplicate action");
+      console.error(result.error);
       return;
     }
-    window.location.href = `/actions/${newAction.id}`;
-  }, [form]);
+    handleActionCreated(result.value);
+  }, [form, createAction, handleActionCreated]);
 
   const handleActionDeleted = useCallback(() => {
     navigate("/actions");
@@ -621,18 +623,16 @@ const ActionDashboard: React.FC = () => {
         message: "Are you sure you want to archive this action?",
       }));
     if (confirmed && actionId) {
-      if (action?.archived) {
-        await actionsUnarchiveAdmin({
-          path: { id: actionId },
-        });
-      } else {
-        await actionsArchiveAdmin({
-          path: { id: actionId },
-        });
+      const archived = action?.archived;
+      const result = await R.fromPromise(
+        archived ? unarchiveAction() : archiveAction(),
+      );
+      if (!result.ok) {
+        setError(`Failed to ${archived ? "unarchive" : "archive"} action`);
+        console.error(result.error);
       }
-      window.location.reload();
     }
-  }, [actionId, action?.archived, confirm]);
+  }, [actionId, action?.archived, confirm, archiveAction, unarchiveAction]);
 
   const handleCohortExpressionChange = useCallback(
     (expr: CohortExpression | null) => {
@@ -671,60 +671,49 @@ const ActionDashboard: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setError(null);
 
-    try {
-      const formData = {
-        ...form,
-        image: imageKey ?? undefined,
-        cohortExpression: (cohortExpression ?? undefined) as
-          | Record<string, unknown>
-          | undefined,
-        reviewers: reviewerRows
-          .map((r) => {
-            const url = r.url?.trim();
-            return {
-              name: r.name.trim(),
-              url: url ? ensureHttpProtocol(url) : undefined,
-              icon: r.icon,
-            };
-          })
-          .filter((r) => r.name),
-      };
+    // Saving would overwrite the stored (unparseable) cohort expression with
+    // the empty editor state
+    if (cohortParseFailed) {
+      setError(
+        "Saving is disabled: the stored cohort expression could not be parsed.",
+      );
+      return;
+    }
 
-      if (isNew) {
-        const response = await actionsCreateAdmin({
-          body: formData,
-        });
-        const newAction = response.data;
-        if (!newAction) {
-          throw new Error("Failed to create action");
-        }
+    const formData = {
+      ...form,
+      image: imageKey ?? undefined,
+      cohortExpression,
+      reviewers: reviewerRows
+        .map((r) => {
+          const url = r.url?.trim();
+          return {
+            name: r.name.trim(),
+            url: url ? ensureHttpProtocol(url) : undefined,
+            icon: r.icon,
+          };
+        })
+        .filter((r) => r.name),
+    };
 
-        handleActionCreated(newAction);
-      } else if (actionId) {
-        const response = await actionsUpdateAdmin({
-          path: { id: actionId },
-          body: formData,
-        });
-        const updatedAction = response.data;
-        if (!updatedAction) {
-          throw new Error("Failed to update action");
-        }
-        // Reload the action to get updated data
-        const reloadResponse = await actionsFindOneAdmin({
-          path: { id: actionId },
-        });
-        if (reloadResponse.data) {
-          setAction(reloadResponse.data);
-        }
+    if (isNew) {
+      const result = await R.fromPromise(createAction(formData));
+      if (!result.ok) {
+        setError("Failed to save action");
+        console.error(result.error);
+        return;
       }
-      setSaving(false);
-    } catch (err) {
-      setError("Failed to save action");
-      setSaving(false);
-      console.error(err);
+      handleActionCreated(result.value);
+    } else if (actionId) {
+      // The mutation invalidates the action query, so fresh data is
+      // refetched before this resolves.
+      const result = await R.fromPromise(updateAction(formData));
+      if (!result.ok) {
+        setError("Failed to save action");
+        console.error(result.error);
+      }
     }
   };
 
@@ -769,20 +758,13 @@ const ActionDashboard: React.FC = () => {
         "Are you sure you want to delete this action? This cannot be undone.",
       )
     ) {
-      try {
-        setLoading(true);
-        const response = await actionsRemoveAdmin({
-          path: { id: actionId },
-        });
-        if (response.error) {
-          throw new Error("Failed to delete action");
-        }
-        handleActionDeleted();
-      } catch (err) {
+      const result = await R.fromPromise(removeAction());
+      if (!result.ok) {
         setError("Failed to delete action");
-        setLoading(false);
-        console.error(err);
+        console.error(result.error);
+        return;
       }
+      handleActionDeleted();
     }
   };
 
@@ -975,9 +957,9 @@ const ActionDashboard: React.FC = () => {
           Action public preparation guide
         </a>
       </p>
-      {error && (
+      {errorMessage && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+          {errorMessage}
         </div>
       )}
 
@@ -1532,12 +1514,21 @@ const ActionDashboard: React.FC = () => {
                     )}
                   </Card>
                 )}
+                {cohortParseFailed && (
+                  <p className="text-xs text-red-600 mb-2">
+                    The stored cohort expression could not be parsed and is not
+                    shown in the cohort editor (details in the console). Saving
+                    is disabled so it isn&apos;t accidentally deleted — fix the
+                    stored data, then refresh the page.
+                  </p>
+                )}
                 <ActionForm
                   form={form}
                   onInputChange={handleInputChange}
                   onImageChange={handleImageChange}
                   onSubmit={handleSubmit}
                   saving={saving}
+                  saveDisabled={cohortParseFailed}
                   imagePreview={imagePreview}
                   isNew={false}
                   actionId={action?.id}
@@ -1577,14 +1568,19 @@ const ActionDashboard: React.FC = () => {
             )}
 
             {activeTab === "events" && action && (
-              <EventManagementTab action={action} setAction={setAction} />
+              <EventManagementTab
+                action={action}
+                setAction={setActionFromDto}
+              />
             )}
 
             {activeTab === "updates" && action && (
               <ActionUpdatesTab
                 actionId={action.id}
                 updates={action.updates ?? []}
-                setUpdates={(updates) => setAction({ ...action, updates })}
+                setUpdates={(updates) =>
+                  setActionFromDto({ ...action, updates })
+                }
                 events={action.events ?? []}
                 availableTags={availableTags}
               />
@@ -1592,7 +1588,6 @@ const ActionDashboard: React.FC = () => {
             {activeTab === "follow-up-forms" && action && (
               <ActionFollowUpFormsTab
                 action={action}
-                setAction={setAction}
                 availableTags={availableTags}
                 availableActions={allActions}
                 availableForms={availableForms}

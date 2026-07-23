@@ -1,16 +1,17 @@
 import {
+  CohortExpression,
+  cohortExpressionSchema,
+  expressionReferencesTag,
+  isBooleanOperator,
+  isLeafCondition,
+} from '@alliance/common/cohort-expression';
+import {
   answerMatchesFormField,
   CohortEvaluationContext,
   evaluateCohortExpression,
   singleUserCohortContext,
   SingleUserCohortPredicates,
 } from './cohort-expression.evaluator';
-import {
-  CohortExpression,
-  expressionReferencesTag,
-  isBooleanOperator,
-  isLeafCondition,
-} from './cohort-expression.types';
 
 // --- Helpers ---
 
@@ -93,23 +94,75 @@ describe('type guards', () => {
   });
 
   it('isLeafCondition returns false for operators', () => {
-    expect(isLeafCondition({ op: 'AND', children: [] })).toBe(false);
-    expect(isLeafCondition({ op: 'OR', children: [] })).toBe(false);
-    expect(isLeafCondition({ op: 'NOT', child: { type: 'GroupLead' } })).toBe(
+    expect(isLeafCondition({ type: 'AND', children: [] })).toBe(false);
+    expect(isLeafCondition({ type: 'OR', children: [] })).toBe(false);
+    expect(isLeafCondition({ type: 'NOT', child: { type: 'GroupLead' } })).toBe(
       false,
     );
   });
 
   it('isBooleanOperator returns true for operators', () => {
-    expect(isBooleanOperator({ op: 'AND', children: [] })).toBe(true);
-    expect(isBooleanOperator({ op: 'OR', children: [] })).toBe(true);
-    expect(isBooleanOperator({ op: 'NOT', child: { type: 'GroupLead' } })).toBe(
-      true,
-    );
+    expect(isBooleanOperator({ type: 'AND', children: [] })).toBe(true);
+    expect(isBooleanOperator({ type: 'OR', children: [] })).toBe(true);
+    expect(
+      isBooleanOperator({ type: 'NOT', child: { type: 'GroupLead' } }),
+    ).toBe(true);
   });
 
   it('isBooleanOperator returns false for leaf nodes', () => {
     expect(isBooleanOperator({ type: 'Tag', tagId: 'abc' })).toBe(false);
+  });
+});
+
+// --- FormFieldValue schema refinement ---
+
+describe('formFieldValueConditionSchema refinement', () => {
+  const base = { type: 'FormFieldValue', formId: 1, fieldId: 'f1' };
+
+  it('accepts neither responseEqualTo nor responseAny (presence check)', () => {
+    expect(cohortExpressionSchema.safeParse(base).success).toBe(true);
+  });
+
+  it('accepts responseEqualTo alone', () => {
+    expect(
+      cohortExpressionSchema.safeParse({ ...base, responseEqualTo: 'yes' })
+        .success,
+    ).toBe(true);
+  });
+
+  it('accepts responseAny alone', () => {
+    expect(
+      cohortExpressionSchema.safeParse({ ...base, responseAny: true }).success,
+    ).toBe(true);
+  });
+
+  it('accepts responseEqualTo with responseAny explicitly false', () => {
+    expect(
+      cohortExpressionSchema.safeParse({
+        ...base,
+        responseEqualTo: 'yes',
+        responseAny: false,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects responseAny true shadowing responseEqualTo', () => {
+    expect(
+      cohortExpressionSchema.safeParse({
+        ...base,
+        responseEqualTo: 'yes',
+        responseAny: true,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects the shadowing combination nested in an operator', () => {
+    expect(
+      cohortExpressionSchema.safeParse({
+        type: 'AND',
+        children: [{ ...base, responseEqualTo: 'yes', responseAny: true }],
+      }).success,
+    ).toBe(false);
   });
 });
 
@@ -144,7 +197,7 @@ describe('expressionReferencesTag', () => {
     expect(
       expressionReferencesTag(
         {
-          op: 'AND',
+          type: 'AND',
           children: [
             { type: 'Manual', userIds: [1] },
             { type: 'Tag', tagId: 'tag1' },
@@ -159,7 +212,7 @@ describe('expressionReferencesTag', () => {
     expect(
       expressionReferencesTag(
         {
-          op: 'OR',
+          type: 'OR',
           children: [
             { type: 'Tag', tagId: 'tag1' },
             { type: 'Tag', tagId: 'tag2' },
@@ -173,7 +226,7 @@ describe('expressionReferencesTag', () => {
   it('finds tag inside NOT operator', () => {
     expect(
       expressionReferencesTag(
-        { op: 'NOT', child: { type: 'Tag', tagId: 'tag1' } },
+        { type: 'NOT', child: { type: 'Tag', tagId: 'tag1' } },
         'tag1',
       ),
     ).toBe(true);
@@ -181,15 +234,15 @@ describe('expressionReferencesTag', () => {
 
   it('finds tag in deeply nested expression', () => {
     const expr: CohortExpression = {
-      op: 'AND',
+      type: 'AND',
       children: [
         { type: 'GroupLead' },
         {
-          op: 'OR',
+          type: 'OR',
           children: [
             { type: 'Manual', userIds: [1] },
             {
-              op: 'NOT',
+              type: 'NOT',
               child: { type: 'Tag', tagId: 'deep-tag' },
             },
           ],
@@ -201,7 +254,7 @@ describe('expressionReferencesTag', () => {
   });
 
   it('returns false when empty AND has no children', () => {
-    expect(expressionReferencesTag({ op: 'AND', children: [] }, 'tag1')).toBe(
+    expect(expressionReferencesTag({ type: 'AND', children: [] }, 'tag1')).toBe(
       false,
     );
   });
@@ -337,7 +390,7 @@ describe('evaluateCohortExpression', () => {
     it('returns empty set for empty children', async () => {
       const ctx = mockBatchContext();
       const result = await evaluateCohortExpression(
-        { op: 'AND', children: [] },
+        { type: 'AND', children: [] },
         ctx,
       );
       expect(result).toEqual(new Set());
@@ -352,7 +405,7 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'AND',
+          type: 'AND',
           children: [
             { type: 'Tag', tagId: 'a' },
             { type: 'Tag', tagId: 'b' },
@@ -373,7 +426,7 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'AND',
+          type: 'AND',
           children: [
             { type: 'Tag', tagId: 'a' },
             { type: 'Tag', tagId: 'b' },
@@ -394,7 +447,7 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'AND',
+          type: 'AND',
           children: [
             { type: 'Tag', tagId: 'a' },
             { type: 'Tag', tagId: 'b' },
@@ -411,7 +464,7 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'AND',
+          type: 'AND',
           children: [{ type: 'Tag', tagId: 'a' }],
         },
         ctx,
@@ -424,7 +477,7 @@ describe('evaluateCohortExpression', () => {
     it('returns empty set for empty children', async () => {
       const ctx = mockBatchContext();
       const result = await evaluateCohortExpression(
-        { op: 'OR', children: [] },
+        { type: 'OR', children: [] },
         ctx,
       );
       expect(result).toEqual(new Set());
@@ -439,7 +492,7 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'OR',
+          type: 'OR',
           children: [
             { type: 'Tag', tagId: 'a' },
             { type: 'Tag', tagId: 'b' },
@@ -459,7 +512,7 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'OR',
+          type: 'OR',
           children: [
             { type: 'Tag', tagId: 'a' },
             { type: 'Tag', tagId: 'b' },
@@ -481,7 +534,7 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'NOT',
+          type: 'NOT',
           child: { type: 'Tag', tagId: 'exclude-tag' },
         },
         ctx,
@@ -496,7 +549,7 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'NOT',
+          type: 'NOT',
           child: { type: 'Tag', tagId: 'empty-tag' },
         },
         ctx,
@@ -511,7 +564,7 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'NOT',
+          type: 'NOT',
           child: { type: 'Tag', tagId: 'all-tag' },
         },
         ctx,
@@ -531,11 +584,11 @@ describe('evaluateCohortExpression', () => {
       // AND(tag=a, NOT(Manual[2,4]))
       const result = await evaluateCohortExpression(
         {
-          op: 'AND',
+          type: 'AND',
           children: [
             { type: 'Tag', tagId: 'a' },
             {
-              op: 'NOT',
+              type: 'NOT',
               child: { type: 'Manual', userIds: [2, 4] },
             },
           ],
@@ -554,10 +607,10 @@ describe('evaluateCohortExpression', () => {
       });
       const result = await evaluateCohortExpression(
         {
-          op: 'OR',
+          type: 'OR',
           children: [
             {
-              op: 'AND',
+              type: 'AND',
               children: [{ type: 'Tag', tagId: 'a' }, { type: 'GroupLead' }],
             },
             { type: 'Manual', userIds: [10] },
@@ -736,7 +789,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
 
   describe('AND operator', () => {
     it('returns false for empty children', async () => {
-      const result = await userInCohort(1, { op: 'AND', children: [] });
+      const result = await userInCohort(1, { type: 'AND', children: [] });
       expect(result).toBe(false);
     });
 
@@ -744,7 +797,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'AND',
+          type: 'AND',
           children: [{ type: 'Tag', tagId: 'a' }, { type: 'GroupLead' }],
         },
         { hasTag: () => true, isGroupLead: async () => true },
@@ -756,7 +809,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'AND',
+          type: 'AND',
           children: [{ type: 'Tag', tagId: 'a' }, { type: 'GroupLead' }],
         },
         { hasTag: () => true, isGroupLead: async () => false },
@@ -769,7 +822,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'AND',
+          type: 'AND',
           children: [{ type: 'Tag', tagId: 'a' }, { type: 'GroupLead' }],
         },
         { hasTag: () => false, isGroupLead },
@@ -782,7 +835,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
 
   describe('OR operator', () => {
     it('returns false for empty children', async () => {
-      const result = await userInCohort(1, { op: 'OR', children: [] });
+      const result = await userInCohort(1, { type: 'OR', children: [] });
       expect(result).toBe(false);
     });
 
@@ -790,7 +843,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'OR',
+          type: 'OR',
           children: [{ type: 'Tag', tagId: 'a' }, { type: 'GroupLead' }],
         },
         { hasTag: () => false, isGroupLead: async () => true },
@@ -802,7 +855,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'OR',
+          type: 'OR',
           children: [{ type: 'Tag', tagId: 'a' }, { type: 'GroupLead' }],
         },
         { hasTag: () => false, isGroupLead: async () => false },
@@ -815,7 +868,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'OR',
+          type: 'OR',
           children: [{ type: 'Tag', tagId: 'a' }, { type: 'GroupLead' }],
         },
         { hasTag: () => true, isGroupLead },
@@ -831,7 +884,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'NOT',
+          type: 'NOT',
           child: { type: 'Tag', tagId: 'a' },
         },
         { hasTag: () => true },
@@ -843,7 +896,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'NOT',
+          type: 'NOT',
           child: { type: 'Tag', tagId: 'a' },
         },
         { hasTag: () => false, isCandidate: true },
@@ -855,7 +908,7 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'NOT',
+          type: 'NOT',
           child: { type: 'Tag', tagId: 'a' },
         },
         { hasTag: () => false, isCandidate: false },
@@ -870,10 +923,10 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         1,
         {
-          op: 'AND',
+          type: 'AND',
           children: [
             { type: 'Tag', tagId: 'a' },
-            { op: 'NOT', child: { type: 'Manual', userIds: [2, 4] } },
+            { type: 'NOT', child: { type: 'Manual', userIds: [2, 4] } },
           ],
         },
         { hasTag: () => true },
@@ -886,10 +939,10 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         2,
         {
-          op: 'AND',
+          type: 'AND',
           children: [
             { type: 'Tag', tagId: 'a' },
-            { op: 'NOT', child: { type: 'Manual', userIds: [2, 4] } },
+            { type: 'NOT', child: { type: 'Manual', userIds: [2, 4] } },
           ],
         },
         { hasTag: () => true },
@@ -902,10 +955,10 @@ describe('single-user scoping (singleUserCohortContext)', () => {
       const result = await userInCohort(
         10,
         {
-          op: 'OR',
+          type: 'OR',
           children: [
             {
-              op: 'AND',
+              type: 'AND',
               children: [{ type: 'Tag', tagId: 'a' }, { type: 'GroupLead' }],
             },
             { type: 'CompletedAction', actionId: 5 },
@@ -976,7 +1029,7 @@ describe('population and single-user agreement', () => {
     const tagUsers = new Set([1, 2, 3, 4]);
     const manualUsers = [2, 3, 5];
     const expr: CohortExpression = {
-      op: 'AND',
+      type: 'AND',
       children: [
         { type: 'Tag', tagId: 'a' },
         { type: 'Manual', userIds: manualUsers },
@@ -1006,7 +1059,7 @@ describe('population and single-user agreement', () => {
     const candidates = new Set([1, 2, 3, 4]);
     const tagUsers = new Set([2, 4]);
     const expr: CohortExpression = {
-      op: 'NOT',
+      type: 'NOT',
       child: { type: 'Tag', tagId: 'a' },
     };
 

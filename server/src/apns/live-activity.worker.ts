@@ -4,7 +4,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ActionsService } from 'src/actions/actions.service';
 import { ActionActivity } from 'src/actions/entities/action-activity.entity';
 import { ActionStatus } from 'src/actions/entities/action-event.entity';
-import { Action } from 'src/actions/entities/action.entity';
+import {
+  Action,
+  parseAction,
+  type ParsedAction,
+} from 'src/actions/entities/action.entity';
 import { LOCK_KEYS } from 'src/notifs/lock-keys';
 import { withPgAdvisoryLock } from 'src/notifs/lock-utils';
 import { UserDevice } from 'src/user/entities/user-device.entity';
@@ -54,12 +58,14 @@ export class LiveActivityWorker {
     const eightHoursFromNow = new Date(now.getTime() + EIGHT_HOURS_MS);
 
     // Find actions in MemberAction status with a deadline within 8 hours
-    const actions = await this.actionRepository.find({
-      relations: { events: true },
-    });
+    const actions = await this.actionRepository
+      .find({
+        relations: { events: true },
+      })
+      .then((rows) => rows.map(parseAction));
 
     // Only start if deadline is within 8 hours and hasn't passed
-    const eligible: { action: Action; deadline: Date }[] = [];
+    const eligible: { action: ParsedAction; deadline: Date }[] = [];
     for (const action of actions) {
       if (action.status !== ActionStatus.MemberAction) continue;
       const deadline = action.memberActionPhase?.deadlineEvent?.date;

@@ -1,5 +1,5 @@
+import type { CohortExpression } from "@alliance/common/cohort-expression";
 import { actionsEvaluateCohortAdmin } from "@alliance/shared/client";
-import type { CohortExpression } from "@alliance/shared/cohort-expression.types";
 import { cn } from "@alliance/shared/styles/util";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { Search } from "lucide-react";
@@ -44,7 +44,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
     let cancelled = false;
     setLoading(true);
     actionsEvaluateCohortAdmin({
-      body: { expression: expression as unknown as Record<string, unknown> },
+      body: { expression },
     })
       .then((res) => {
         if (!cancelled && res.data) {
@@ -70,9 +70,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
     }
     let cancelled = false;
     actionsEvaluateCohortAdmin({
-      body: {
-        expression: selectedSubExpression as unknown as Record<string, unknown>,
-      },
+      body: { expression: selectedSubExpression },
     })
       .then((res) => {
         if (!cancelled && res.data) {
@@ -95,9 +93,7 @@ const CohortVisualization: React.FC<CohortVisualizationProps> = ({
     }
     let cancelled = false;
     actionsEvaluateCohortAdmin({
-      body: {
-        expression: compareExpression as unknown as Record<string, unknown>,
-      },
+      body: { expression: compareExpression },
     })
       .then((res) => {
         if (!cancelled && res.data) {

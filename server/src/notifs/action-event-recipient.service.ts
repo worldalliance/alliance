@@ -1,4 +1,5 @@
 import { ActionActivityType } from '@alliance/common/actionActivity';
+import type { CohortExpression } from '@alliance/common/cohort-expression';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -6,7 +7,6 @@ import {
   evaluateCohortExpression,
   type CohortEvaluationContext,
 } from 'src/actions/cohort-expression.evaluator';
-import type { CohortExpression } from 'src/actions/cohort-expression.types';
 import { ActionSuite } from 'src/actions/entities/action-suite.entity';
 import {
   ReminderCohortType,
@@ -24,7 +24,11 @@ import {
   ActionEvent,
   ActionStatus,
 } from '../actions/entities/action-event.entity';
-import { Action } from '../actions/entities/action.entity';
+import {
+  Action,
+  parseAction,
+  type ParsedAction,
+} from '../actions/entities/action.entity';
 import { User } from '../user/entities/user.entity';
 import { UserService } from '../user/user.service';
 import {
@@ -200,10 +204,12 @@ export class ActionEventRecipientService {
     session: CohortResolutionSession,
     resolvingActionIds: ReadonlySet<number>,
   ): Promise<Set<number>> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id: actionId },
-      relations: { events: true },
-    });
+    const action = parseAction(
+      await this.actionRepository.findOneOrFail({
+        where: { id: actionId },
+        relations: { events: true },
+      }),
+    );
     if (action.status !== ActionStatus.MemberAction) return new Set();
     return this.loadUncompletedRosterUserIds(
       action,
@@ -217,10 +223,12 @@ export class ActionEventRecipientService {
     session: CohortResolutionSession,
     resolvingActionIds: ReadonlySet<number>,
   ): Promise<Set<number>> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id: actionId },
-      relations: { events: true },
-    });
+    const action = parseAction(
+      await this.actionRepository.findOneOrFail({
+        where: { id: actionId },
+        relations: { events: true },
+      }),
+    );
     // Optional actions never yield missed_deadline (the pill shows
     // optional_task instead), so nobody can "miss" their deadline.
     if (action.optional) return new Set();
@@ -240,7 +248,7 @@ export class ActionEventRecipientService {
    * the deadline having passed).
    */
   private async loadUncompletedRosterUserIds(
-    action: Action,
+    action: ParsedAction,
     session: CohortResolutionSession,
     resolvingActionIds: ReadonlySet<number>,
   ): Promise<Set<number>> {
@@ -307,7 +315,7 @@ export class ActionEventRecipientService {
    * per action. Returns a map from actionId -> eligible users.
    */
   public async findBaseUsersForEvents(params: {
-    entries: Array<{ action: Action; eventId: number }>;
+    entries: Array<{ action: ParsedAction; eventId: number }>;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
     /** Share loads across calls within one request; see resolveCohortMemberIds. */
@@ -394,7 +402,7 @@ export class ActionEventRecipientService {
   }
 
   public async findBaseUsersForEvent(params: {
-    action: Action;
+    action: ParsedAction;
     eventId: number;
     includeSuspended?: boolean;
     includeDismissed?: boolean;
@@ -431,7 +439,12 @@ export class ActionEventRecipientService {
     actionSuite?: ActionSuite,
     excludeOptionalActions?: boolean,
   ): Promise<User[]> {
-    const pre_actions = actionSuite ? actionSuite.actions : [event.action];
+    // The event/suite relations carry raw db entities, so parse their
+    // cohortExpressions here, at first use.
+    const eventAction = parseAction(event.action);
+    const pre_actions = actionSuite
+      ? actionSuite.actions.map(parseAction)
+      : [eventAction];
     const actions = excludeOptionalActions
       ? pre_actions.filter((action) => !action.optional)
       : pre_actions;
@@ -456,7 +469,7 @@ export class ActionEventRecipientService {
           },
         })
         .then((acts) => new Set(acts.map((a) => a.userId))),
-      this.resolveCohortMemberIds(event.action.cohortExpression, session),
+      this.resolveCohortMemberIds(eventAction.cohortExpression, session),
       Promise.all(
         actions.map(async (action) => ({
           actionId: action.id,
@@ -556,7 +569,8 @@ export class ActionEventRecipientService {
     const users = suite
       ? await this.userService.findActiveUsersWithTags()
       : await this.findBaseUsersForEvent({
-          action: event.action,
+          // The event relation carries a raw db entity; parse at first use.
+          action: parseAction(event.action),
           eventId: event.id,
         });
     return type === ActionEventNotifType.Announcement

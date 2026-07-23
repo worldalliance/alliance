@@ -27,7 +27,11 @@ import { ActionsService } from './actions.service';
 import { ForumAutocompletePlan } from './dto/action.dto';
 import { ActionActivity } from './entities/action-activity.entity';
 import { ActionEvent } from './entities/action-event.entity';
-import { Action } from './entities/action.entity';
+import {
+  Action,
+  parseAction,
+  type ParsedAction,
+} from './entities/action.entity';
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.forumActionCompleter;
@@ -68,13 +72,15 @@ export class ForumActionCompleterWorker {
         const windowStartMs = targetDeadlineMs - AUTOCOMPLETE_WINDOW_MS;
         const windowEndMs = targetDeadlineMs + AUTOCOMPLETE_WINDOW_MS;
 
-        const actions = await this.actionRepository.find({
-          where: {
-            isForumParticipationAction: true,
-            computedAutocompleteAt: IsNull(),
-          },
-          relations: { events: true },
-        });
+        const actions = await this.actionRepository
+          .find({
+            where: {
+              isForumParticipationAction: true,
+              computedAutocompleteAt: IsNull(),
+            },
+            relations: { events: true },
+          })
+          .then((rows) => rows.map(parseAction));
 
         for (const action of actions) {
           const { event: memberActionEvent, deadlineEvent } =
@@ -111,7 +117,7 @@ export class ForumActionCompleterWorker {
   }
 
   async processAction(params: {
-    action: Action;
+    action: ParsedAction;
     memberActionEvent: ActionEvent;
     runAt: Date;
     dryRun?: boolean;
@@ -320,13 +326,15 @@ export class ForumActionCompleterWorker {
     rangeStart: Date,
     rangeEnd: Date,
   ): Promise<ForumAutocompletePlan[]> {
-    const actions = await this.actionRepository.find({
-      where: {
-        isForumParticipationAction: true,
-        computedAutocompleteAt: IsNull(),
-      },
-      relations: { events: true },
-    });
+    const actions = await this.actionRepository
+      .find({
+        where: {
+          isForumParticipationAction: true,
+          computedAutocompleteAt: IsNull(),
+        },
+        relations: { events: true },
+      })
+      .then((rows) => rows.map(parseAction));
 
     const plans: ForumAutocompletePlan[] = [];
 

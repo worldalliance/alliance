@@ -7,7 +7,11 @@ import {
   ActionEvent,
   ActionStatus,
 } from 'src/actions/entities/action-event.entity';
-import { Action } from 'src/actions/entities/action.entity';
+import {
+  Action,
+  parseAction,
+  type ParsedAction,
+} from 'src/actions/entities/action.entity';
 import { ReminderGroup } from 'src/actions/entities/reminder-group.entity';
 import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
 import { CohortResolutionSession } from 'src/notifs/cohort-resolution-session';
@@ -301,9 +305,11 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const now = new Date();
 
-    const actions = await this.actionRepository.find({
-      relations: { events: true },
-    });
+    const actions = await this.actionRepository
+      .find({
+        relations: { events: true },
+      })
+      .then((rows) => rows.map(parseAction));
 
     const actionIds = actions.map((action) => action.id);
     const withdrawalByActionId = new Map<number, number>();
@@ -680,13 +686,15 @@ ORDER BY pp.total_session_duration_seconds DESC
     };
 
     const cohortWeekTotals = new Map<number, Map<number, CohortWeekBucket>>();
-    const actions = await this.actionRepository.find({
-      relations: { events: true },
-    });
+    const actions = await this.actionRepository
+      .find({
+        relations: { events: true },
+      })
+      .then((rows) => rows.map(parseAction));
     const now = new Date();
 
     const eligibleActions: {
-      action: Action;
+      action: ParsedAction;
       memberActionEvent: ActionEvent;
       startDate: Date;
     }[] = [];
@@ -1050,9 +1058,11 @@ ORDER BY pp.total_session_duration_seconds DESC
 
   async getMissedActions(): Promise<MissedActions> {
     const now = new Date();
-    const actions = await this.actionRepository.find({
-      relations: { events: true },
-    });
+    const actions = await this.actionRepository
+      .find({
+        relations: { events: true },
+      })
+      .then((rows) => rows.map(parseAction));
     const completedActions = actions
       .filter(
         (action) =>
@@ -1219,14 +1229,16 @@ ORDER BY pp.total_session_duration_seconds DESC
       completedLookup.add(`${activity.userId}:${activity.actionId}`);
     }
 
-    const actions = await this.actionRepository.find({
-      relations: { events: true },
-    });
+    const actions = await this.actionRepository
+      .find({
+        relations: { events: true },
+      })
+      .then((rows) => rows.map(parseAction));
 
     const actionStats: PlatformTenureCohortStats['actions'] = [];
 
     const eligible: {
-      action: Action;
+      action: ParsedAction;
       memberActionEvent: ActionEvent;
       memberActionEndEvent: ActionEvent | undefined;
     }[] = [];

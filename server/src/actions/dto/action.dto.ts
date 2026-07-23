@@ -39,7 +39,6 @@ import { ProfileDto } from 'src/user/dto/user.dto';
 import { User } from 'src/user/entities/user.entity';
 import { TaskAwayStatus } from 'src/utils/action-user';
 import { UserActionRelation } from '../action-activity-status';
-import type { CohortExpression } from '../cohort-expression.types';
 import { ActionActivity } from '../entities/action-activity.entity';
 import { ActionEvent, ActionStatus } from '../entities/action-event.entity';
 import { ActionSuite } from '../entities/action-suite.entity';
@@ -1365,10 +1364,10 @@ export class HomeFeedItemDto {
 }
 
 export class EvaluateCohortExpressionDto {
-  // eslint-disable-next-line @darraghor/nestjs-typed/validated-non-primitive-property-needs-type-decorator
+  // eslint-disable-next-line @darraghor/nestjs-typed/all-properties-have-explicit-defined
   @ApiProperty({ description: 'Cohort expression to evaluate' })
   @IsDefined()
-  expression: CohortExpression;
+  expression: unknown;
 }
 
 export class EvaluateCohortExpressionResponseDto {

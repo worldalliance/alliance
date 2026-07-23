@@ -12,7 +12,7 @@ import {
 import { NotificationScheduleEntryDto } from 'src/actions/dto/notification-schedule.dto';
 import { ActionFormVariant } from 'src/actions/entities/action-form-variant.entity';
 import { ActionSuite } from 'src/actions/entities/action-suite.entity';
-import { Action } from 'src/actions/entities/action.entity';
+import { Action, parseAction } from 'src/actions/entities/action.entity';
 import { FollowUpForm } from 'src/actions/entities/follow-up-form.entity';
 import {
   cohortNotifiesRecipientPersonally,
@@ -439,7 +439,10 @@ export class ActionEventReminderService {
       where: { id: action.id },
       relations: { suite: { actions: true } },
     });
-    const scopeActions = suite?.actions?.length ? suite.actions : [action];
+    // Parse the jsonb cohortExpressions right at the fetch.
+    const scopeActions = (
+      suite?.actions?.length ? suite.actions : [action]
+    ).map(parseAction);
 
     const actionIds = new Set<number>();
     const formIds = new Set<number>();

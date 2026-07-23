@@ -1,24 +1,26 @@
 /* eslint-disable react/prop-types */
+import {
+  cohortExpressionSchema,
+  isBooleanOperator,
+  isLeafCondition,
+  type BooleanOperator,
+  type CohortExpression,
+  type CompletedActionCondition,
+  type FormFieldValueCondition,
+  type InProgressActionCondition,
+  type LeafCondition,
+  type ManualCondition,
+  type MissedActionDeadlineCondition,
+  type TagCondition,
+} from "@alliance/common/cohort-expression";
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import {
   fieldHasOptions,
   isQuestionField,
 } from "@alliance/common/forms/form-schema";
 import type { FormDto, TagDto } from "@alliance/shared/client";
-import { actionsFindOneAdmin, tasksGetForm } from "@alliance/shared/client";
-import type {
-  AndOperator,
-  BooleanOperator,
-  CohortExpression,
-  CompletedActionCondition,
-  FormFieldValueCondition,
-  InProgressActionCondition,
-  LeafCondition,
-  ManualCondition,
-  MissedActionDeadlineCondition,
-  OrOperator,
-  TagCondition,
-} from "@alliance/shared/cohort-expression.types";
+import { tasksGetForm } from "@alliance/shared/client";
+import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
@@ -39,8 +41,6 @@ import React, {
   useState,
 } from "react";
 import CohortVisualization from "./CohortVisualization";
-
-export type { CohortExpression } from "@alliance/shared/cohort-expression.types";
 
 interface CohortExpressionBuilderProps {
   value: CohortExpression | null | undefined;
@@ -72,8 +72,18 @@ const OPERATOR_TYPES = [
   { value: "NOT", label: "NOT" },
 ] as const;
 
-function isLeaf(expr: CohortExpression): expr is LeafCondition {
-  return "type" in expr;
+function operatorChildren(expr: BooleanOperator): CohortExpression[] {
+  switch (expr.type) {
+    case "AND":
+    case "OR":
+      return expr.children;
+    case "NOT":
+      return [expr.child];
+    default:
+      throw new Error(
+        `unknown operator: ${JSON.stringify(expr satisfies never)}`,
+      );
+  }
 }
 
 function createDefaultLeaf(type: LeafCondition["type"]): LeafCondition {
@@ -290,7 +300,13 @@ const FormFieldEditor: React.FC<{
           type="checkbox"
           checked={value.responseAny ?? false}
           onChange={(e) =>
-            onChange({ ...value, responseAny: e.target.checked || undefined })
+            onChange({
+              ...value,
+              responseAny: e.target.checked || undefined,
+              responseEqualTo: e.target.checked
+                ? undefined
+                : value.responseEqualTo,
+            })
           }
           className="h-4 w-4 rounded border-gray-300"
         />
@@ -311,30 +327,30 @@ const ExpressionNodeEditor: React.FC<{
   depth: number;
   props: CohortExpressionBuilderProps;
 }> = ({ expr, onChange, onRemove, onSelect, isSelected, depth, props }) => {
-  const currentType = isLeaf(expr) ? expr.type : expr.op;
-
   const handleTypeChange = (newType: string) => {
     const leafTypes = LEAF_TYPES.map((t) => t.value as string);
     if (leafTypes.includes(newType)) {
       onChange(createDefaultLeaf(newType as LeafCondition["type"]));
     } else {
-      const op = newType as BooleanOperator["op"];
+      const op = newType as BooleanOperator["type"];
       // Preserve children when switching between operator types
-      const existingChildren: CohortExpression[] = !isLeaf(expr)
-        ? expr.op === "NOT"
-          ? [expr.child]
-          : expr.children
-        : [];
+      const existingChildren: CohortExpression[] = isLeafCondition(expr)
+        ? []
+        : operatorChildren(expr);
 
-      if (op === "NOT") {
-        onChange({
-          op: "NOT",
-          child: existingChildren[0] ?? createDefaultLeaf("Tag"),
-        });
-      } else {
-        onChange({ op, children: existingChildren } as
-          | AndOperator
-          | OrOperator);
+      switch (op) {
+        case "NOT":
+          onChange({
+            type: "NOT",
+            child: existingChildren[0] ?? createDefaultLeaf("Tag"),
+          });
+          break;
+        case "AND":
+        case "OR":
+          onChange({ type: op, children: existingChildren });
+          break;
+        default:
+          throw new Error(`unknown operator: ${op satisfies never}`);
       }
     }
   };
@@ -370,7 +386,7 @@ const ExpressionNodeEditor: React.FC<{
         }}
       >
         <select
-          value={currentType}
+          value={expr.type}
           onChange={(e) => handleTypeChange(e.target.value)}
           className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 bg-white"
         >
@@ -389,7 +405,7 @@ const ExpressionNodeEditor: React.FC<{
             ))}
           </optgroup>
         </select>
-        {isLeaf(expr) && !bigEditors.includes(expr.type) && (
+        {isLeafCondition(expr) && !bigEditors.includes(expr.type) && (
           <LeafConditionEditor
             expr={expr}
             onChange={onChange as (v: LeafCondition) => void}
@@ -410,7 +426,7 @@ const ExpressionNodeEditor: React.FC<{
         )}
       </div>
 
-      {isLeaf(expr) && bigEditors.includes(expr.type) && (
+      {isLeafCondition(expr) && bigEditors.includes(expr.type) && (
         <div className="p-3">
           <LeafConditionEditor
             expr={expr}
@@ -419,7 +435,7 @@ const ExpressionNodeEditor: React.FC<{
           />
         </div>
       )}
-      {!isLeaf(expr) && (
+      {!isLeafCondition(expr) && (
         <div className="p-3">
           <BooleanOperatorEditor
             expr={expr}
@@ -493,20 +509,28 @@ const BooleanOperatorEditor: React.FC<{
   depth: number;
   props: CohortExpressionBuilderProps;
 }> = ({ expr, onChange, onSelect, selectedExpr, depth, props }) => {
-  if (expr.op === "NOT") {
-    return (
-      <div>
-        <p className="text-xs text-gray-500 mb-2">Exclude users matching:</p>
-        <ExpressionNodeEditor
-          expr={expr.child}
-          onChange={(child) => onChange({ ...expr, child })}
-          onSelect={onSelect}
-          isSelected={selectedExpr === expr.child}
-          depth={depth + 1}
-          props={props}
-        />
-      </div>
-    );
+  switch (expr.type) {
+    case "NOT":
+      return (
+        <div>
+          <p className="text-xs text-gray-500 mb-2">Exclude users matching:</p>
+          <ExpressionNodeEditor
+            expr={expr.child}
+            onChange={(child) => onChange({ ...expr, child })}
+            onSelect={onSelect}
+            isSelected={selectedExpr === expr.child}
+            depth={depth + 1}
+            props={props}
+          />
+        </div>
+      );
+    case "AND":
+    case "OR":
+      break;
+    default:
+      throw new Error(
+        `unknown operator: ${JSON.stringify(expr satisfies never)}`,
+      );
   }
 
   const children = expr.children;
@@ -515,20 +539,20 @@ const BooleanOperatorEditor: React.FC<{
     onChange({
       ...expr,
       children: [...children, createDefaultLeaf("Tag")],
-    } as AndOperator | OrOperator);
+    });
   };
 
   const removeChild = (index: number) => {
     onChange({
       ...expr,
       children: children.filter((_, i) => i !== index),
-    } as AndOperator | OrOperator);
+    });
   };
 
   const updateChild = (index: number, child: CohortExpression) => {
     const newChildren = [...children];
     newChildren[index] = child;
-    onChange({ ...expr, children: newChildren } as AndOperator | OrOperator);
+    onChange({ ...expr, children: newChildren });
   };
 
   return (
@@ -541,7 +565,7 @@ const BooleanOperatorEditor: React.FC<{
           {i > 0 && (
             <div className="flex items-center justify-center pb-2">
               <span className="text-xs font-medium text-zinc-500">
-                {expr.op}
+                {expr.type}
               </span>
             </div>
           )}
@@ -586,8 +610,12 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
     useState<CohortExpression | null>(null);
   const [compareEnabled, setCompareEnabled] = useState(false);
   const [compareActionId, setCompareActionId] = useState<number | null>(null);
-  const [compareExpression, setCompareExpression] =
-    useState<CohortExpression | null>(null);
+  const {
+    action: compareAction,
+    cohortExpressionError: compareParseError,
+    isError: compareLoadFailed,
+  } = useActionAdmin(compareEnabled ? compareActionId : null);
+  const compareExpression = compareAction?.cohortExpression ?? null;
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -613,7 +641,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
 
   const handleCopyComplement = useCallback(() => {
     if (value) {
-      const complement = { op: "NOT", child: value };
+      const complement = { type: "NOT", child: value };
       navigator.clipboard.writeText(JSON.stringify(complement, null, 2));
     }
     setMenuOpen(false);
@@ -622,14 +650,9 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
   const handlePasteExpression = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText();
-      const parsed = JSON.parse(text);
-      // Basic shape validation: must be a leaf (has "type") or operator (has "op")
-      if (
-        typeof parsed === "object" &&
-        parsed !== null &&
-        ("type" in parsed || "op" in parsed)
-      ) {
-        onChange(parsed as CohortExpression);
+      const parsed = cohortExpressionSchema.safeParse(JSON.parse(text));
+      if (parsed.success) {
+        onChange(parsed.data);
       } else {
         pushError("Clipboard does not contain a valid cohort expression");
       }
@@ -639,28 +662,16 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
     setMenuOpen(false);
   }, [onChange, pushError]);
 
-  // Fetch compare action's cohort expression when selected
+  const toastedCompareActionId = useRef<number | null>(null);
   useEffect(() => {
-    if (!compareEnabled || !compareActionId) {
-      setCompareExpression(null);
+    if (!compareLoadFailed && !compareParseError) {
+      toastedCompareActionId.current = null;
       return;
     }
-    let cancelled = false;
-    actionsFindOneAdmin({ path: { id: compareActionId } })
-      .then((res) => {
-        if (!cancelled && res.data) {
-          setCompareExpression(
-            (res.data.cohortExpression as unknown as CohortExpression) ?? null,
-          );
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setCompareExpression(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [compareEnabled, compareActionId]);
+    if (toastedCompareActionId.current === compareActionId) return;
+    toastedCompareActionId.current = compareActionId;
+    pushError("Failed to load the compare action's cohort expression");
+  }, [compareLoadFailed, compareParseError, compareActionId, pushError]);
 
   const handleSetExpression = useCallback(
     (expr: CohortExpression) => {
@@ -683,21 +694,34 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
   const handleAddTagPreset = () => {
     if (!value) {
       onChange({ type: "Tag", tagId: "" });
-    } else if ("op" in value && value.op === "OR") {
-      onChange({
-        ...value,
-        children: [...value.children, { type: "Tag", tagId: "" }],
-      });
-    } else {
-      onChange({
-        op: "OR",
-        children: [value, { type: "Tag", tagId: "" }],
-      });
+      return;
+    }
+    const wrapInOr = () =>
+      onChange({ type: "OR", children: [value, { type: "Tag", tagId: "" }] });
+    if (isLeafCondition(value)) {
+      wrapInOr();
+      return;
+    }
+    switch (value.type) {
+      case "OR":
+        onChange({
+          ...value,
+          children: [...value.children, { type: "Tag", tagId: "" }],
+        });
+        break;
+      case "AND":
+      case "NOT":
+        wrapInOr();
+        break;
+      default:
+        throw new Error(
+          `unknown operator: ${JSON.stringify(value satisfies never)}`,
+        );
     }
   };
 
   // Determine if we should show select hint (only for compound expressions)
-  const isCompound = value && "op" in value;
+  const isCompound = value && isBooleanOperator(value);
 
   // Thread selectedExpr through props for nested components
   const propsWithSelection = { ...props, _selectedExpr: selectedSubExpr };
@@ -786,7 +810,7 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
           expression={value}
           selectedSubExpression={selectedSubExpr}
           users={visualizationUsers}
-          compareExpression={compareEnabled ? compareExpression : null}
+          compareExpression={compareExpression}
         />
       </div>
       <div className="space-y-2">
@@ -798,7 +822,6 @@ const CohortExpressionBuilder: React.FC<CohortExpressionBuilderProps> = (
               setCompareEnabled(e.target.checked);
               if (!e.target.checked) {
                 setCompareActionId(null);
-                setCompareExpression(null);
               }
             }}
             className="h-4 w-4 rounded border-gray-300"

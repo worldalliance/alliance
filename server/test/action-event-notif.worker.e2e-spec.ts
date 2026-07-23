@@ -1588,7 +1588,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
       });
     await actionRepo.update(dependentAction.id, {
       cohortExpression: {
-        op: 'AND',
+        type: 'AND',
         children: [
           { type: 'FormFieldValue', formId: form.id, fieldId: 'q1' },
           { type: 'FormFieldValue', formId: variantForm.id, fieldId: 'q1' },
@@ -1978,7 +1978,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // own action keeps its plain tag cohort
     await actionRepo.update(secondAction.id, {
       cohortExpression: {
-        op: 'AND',
+        type: 'AND',
         children: [
           { type: 'CompletedAction', actionId: externalDep.id },
           { type: 'CompletedAction', actionId: firstAction.id },

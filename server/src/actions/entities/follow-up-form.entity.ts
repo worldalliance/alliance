@@ -1,6 +1,12 @@
+import {
+  cohortExpressionSchema,
+  type CohortExpression,
+} from '@alliance/common/cohort-expression';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { Allow, IsOptional } from 'class-validator';
+import { Form } from 'src/tasks/entities/form.entity';
+import type { Relation } from 'src/utils/Repository';
 import {
   Column,
   Entity,
@@ -9,9 +15,6 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Action } from './action.entity';
-import { Form } from 'src/tasks/entities/form.entity';
-import type { Relation } from 'src/utils/Repository';
-import type { CohortExpression } from '../cohort-expression.types';
 
 @Entity()
 export class FollowUpForm {
@@ -61,10 +64,10 @@ export class FollowUpForm {
   instructions?: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @Type(() => Object)
-  cohortExpression?: CohortExpression | null;
+  cohortExpression?: unknown;
 
   // Relations
 
@@ -91,4 +94,24 @@ export class FollowUpForm {
   @Type(() => Form)
   @Allow()
   form: Relation<Form>;
+}
+
+/**
+ * A FollowUpForm whose jsonb columns have been parsed. Produce with {@link
+ * parseFollowUpForm} immediately after pulling one from the db (or any other
+ * untyped source), so the parse happens exactly once and everything downstream
+ * works with a typed expression.
+ */
+export type ParsedFollowUpForm = FollowUpForm & {
+  cohortExpression: CohortExpression | null;
+};
+
+export function parseFollowUpForm(form: FollowUpForm): ParsedFollowUpForm {
+  form.cohortExpression =
+    form.cohortExpression == null
+      ? null
+      : cohortExpressionSchema.parse(form.cohortExpression);
+  // Mutate-and-cast (rather than spread) to keep the entity's prototype; the
+  // assignment above just validated the only field the cast narrows.
+  return form as ParsedFollowUpForm;
 }

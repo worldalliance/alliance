@@ -1,22 +1,25 @@
-import 'reflect-metadata';
+import { ActionActivityType } from '@alliance/common/actionActivity';
 import { NestFactory } from '@nestjs/core';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import { AppModule } from '../src/app.module';
-import { ActionEventRecipientService } from '../src/notifs/action-event-recipient.service';
+import 'reflect-metadata';
+import type { Repository } from 'typeorm';
 import { ActionActivity } from '../src/actions/entities/action-activity.entity';
-import { ActionEvent, ActionStatus } from '../src/actions/entities/action-event.entity';
-import { Action } from '../src/actions/entities/action.entity';
+import {
+  ActionEvent,
+  ActionStatus,
+} from '../src/actions/entities/action-event.entity';
 import { ActionFormAssignment } from '../src/actions/entities/action-form-assignment.entity';
 import { ActionFormVariant } from '../src/actions/entities/action-form-variant.entity';
+import { Action, parseAction } from '../src/actions/entities/action.entity';
+import { AppModule } from '../src/app.module';
+import { ActionEventRecipientService } from '../src/notifs/action-event-recipient.service';
 import { FormResponse } from '../src/tasks/entities/formresponse.entity';
+import { ContractEventType } from '../src/user/entities/contract-event.entity';
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
 } from '../src/user/entities/onetime-invite.entity';
-import { ContractEventType } from '../src/user/entities/contract-event.entity';
 import { User } from '../src/user/entities/user.entity';
-import type { Repository } from 'typeorm';
 
 const ACTION_132_ID = 132;
 const ACTION_133_ID = 133;
@@ -72,7 +75,9 @@ type FormRoster = ActionRoster & {
 };
 
 type LatestTerminal = {
-  type: ActionActivityType.USER_COMPLETED | ActionActivityType.USER_WONT_COMPLETE;
+  type:
+    | ActionActivityType.USER_COMPLETED
+    | ActionActivityType.USER_WONT_COMPLETE;
   createdAt: Date;
 };
 
@@ -309,8 +314,14 @@ function printPairStats(stats: PairStats): void {
   ]);
   printIds('overlap member IDs', stats.overlapUserIds);
   printIds('completed both', stats.completedBoth);
-  printIds(`${stats.labelA} completed / ${stats.labelB} incomplete`, stats.aCompletedBIncomplete);
-  printIds(`${stats.labelA} incomplete / ${stats.labelB} completed`, stats.aIncompleteBCompleted);
+  printIds(
+    `${stats.labelA} completed / ${stats.labelB} incomplete`,
+    stats.aCompletedBIncomplete,
+  );
+  printIds(
+    `${stats.labelA} incomplete / ${stats.labelB} completed`,
+    stats.aIncompleteBCompleted,
+  );
   printIds('incomplete both', stats.incompleteBoth);
 }
 
@@ -472,7 +483,8 @@ function getManualOverride(params: {
     }
     return (
       override.invitingUserName !== undefined &&
-      normalizeName(override.invitingUserName) === normalizeName(params.userName)
+      normalizeName(override.invitingUserName) ===
+        normalizeName(params.userName)
     );
   });
 }
@@ -495,7 +507,10 @@ function assertValidOverride(override: ManualInviteFramingOverride): void {
   }
 }
 
-function makeFramingBucket(formId: number, framing: InviteFraming): FramingBucket {
+function makeFramingBucket(
+  formId: number,
+  framing: InviteFraming,
+): FramingBucket {
   return {
     formId,
     framing,
@@ -601,7 +616,10 @@ function printInviteFramingStats(params: {
   const bucketsByKey = new Map<string, FramingBucket>();
   for (const formId of ACTION_133_FORM_IDS) {
     for (const framing of ['group', 'individual'] as const) {
-      bucketsByKey.set(`${formId}:${framing}`, makeFramingBucket(formId, framing));
+      bucketsByKey.set(
+        `${formId}:${framing}`,
+        makeFramingBucket(formId, framing),
+      );
     }
   }
 
@@ -671,7 +689,9 @@ function printInviteFramingStats(params: {
   console.log('\nPer-form raw totals');
   console.table(
     ACTION_133_FORM_IDS.map((formId) => {
-      const rows = params.inviterStats.filter((stats) => stats.formId === formId);
+      const rows = params.inviterStats.filter(
+        (stats) => stats.formId === formId,
+      );
       const selfReportedRawInvites = rows.reduce(
         (sum, stats) => sum + stats.rawInvitesSent,
         0,
@@ -776,7 +796,9 @@ function printInviteSuccessStats(stats: InviteSuccessStats): void {
   console.log(`eligible non-staff inviters: ${stats.inviterIds.length}`);
   console.log(`invites created: ${stats.created}`);
   console.log(`joined via invite: ${stats.joined}`);
-  console.log(`account-created conversion rate: ${pct(stats.joined, stats.created)}`);
+  console.log(
+    `account-created conversion rate: ${pct(stats.joined, stats.created)}`,
+  );
   console.log(`signed contracts: ${stats.signedContracts}`);
   console.log(
     `contract-signed conversion rate: ${pct(stats.signedContracts, stats.created)}`,
@@ -795,8 +817,9 @@ function selfReportedVsActualInvitesStats(params: {
   actualInvites: OnetimeInvite[];
 }): SelfReportedVsActualInvitesStats {
   const assignedUserIdSet = new Set(params.assignedUserIds);
-  const selfReportedEntries = [...params.selfReportedInvitesByUser.entries()]
-    .filter(([userId]) => assignedUserIdSet.has(userId));
+  const selfReportedEntries = [
+    ...params.selfReportedInvitesByUser.entries(),
+  ].filter(([userId]) => assignedUserIdSet.has(userId));
   const selfReportedInvites = selfReportedEntries.reduce(
     (sum, [, count]) => sum + count,
     0,
@@ -821,7 +844,9 @@ function printSelfReportedVsActualInvitesStats(
 ): void {
   console.log(`\n${stats.label}`);
   console.log(`assigned non-staff users: ${stats.assignedUserCount}`);
-  console.log(`users with numeric self-report invite counts: ${stats.selfReportedUsers}`);
+  console.log(
+    `users with numeric self-report invite counts: ${stats.selfReportedUsers}`,
+  );
   console.log(`self-reported invites: ${stats.selfReportedInvites}`);
   console.log(`actual invite rows created: ${stats.actualInviteRows}`);
   console.log(
@@ -839,8 +864,9 @@ function growthActionSegmentStats(params: {
   actualInvites: OnetimeInvite[];
 }): GrowthActionSegmentStats {
   const userIdSet = new Set(params.userIds);
-  const selfReportedEntries = [...params.selfReportedInvitesByUser.entries()]
-    .filter(([userId]) => userIdSet.has(userId));
+  const selfReportedEntries = [
+    ...params.selfReportedInvitesByUser.entries(),
+  ].filter(([userId]) => userIdSet.has(userId));
   return {
     label: params.label,
     userIds: [...userIdSet].sort((a, b) => a - b),
@@ -858,7 +884,9 @@ function growthActionSegmentStats(params: {
 function printGrowthActionSegmentStats(stats: GrowthActionSegmentStats): void {
   console.log(`\n${stats.label}`);
   console.log(`assigned users: ${stats.userIds.length}`);
-  console.log(`users with numeric self-report invite counts: ${stats.selfReportedUsers}`);
+  console.log(
+    `users with numeric self-report invite counts: ${stats.selfReportedUsers}`,
+  );
   console.log(`self-reported invites: ${stats.selfReportedInvites}`);
   console.log(
     `self-reported invites/person across assigned users: ${(
@@ -898,10 +926,12 @@ async function main(): Promise<void> {
     const userRepo = app.get<Repository<User>>(getRepositoryToken(User));
     const recipientService = app.get(ActionEventRecipientService);
 
-    const actions = await actionRepo.find({
-      where: ACTION_IDS.map((id) => ({ id })),
-      relations: { events: true },
-    });
+    const actions = await actionRepo
+      .find({
+        where: ACTION_IDS.map((id) => ({ id })),
+        relations: { events: true },
+      })
+      .then((rows) => rows.map(parseAction));
     const actionById = new Map(actions.map((action) => [action.id, action]));
     for (const actionId of ACTION_IDS) {
       if (!actionById.has(actionId)) {
@@ -940,23 +970,30 @@ async function main(): Promise<void> {
     });
     const latestTerminalByUserAction = new Map<string, LatestTerminal>();
     for (const activity of activities) {
-      latestTerminalByUserAction.set(`${activity.userId}:${activity.actionId}`, {
-        type: activity.type as LatestTerminal['type'],
-        createdAt: activity.createdAt,
-      });
+      latestTerminalByUserAction.set(
+        `${activity.userId}:${activity.actionId}`,
+        {
+          type: activity.type as LatestTerminal['type'],
+          createdAt: activity.createdAt,
+        },
+      );
     }
 
     const action133 = actionById.get(ACTION_133_ID)!;
     const action133WindowStart = action133.memberActionPhase.event?.date;
     const action133WindowEnd = action133.memberActionPhase.deadlineEvent?.date;
     if (!action133WindowStart || !action133WindowEnd) {
-      throw new Error(`Action ${ACTION_133_ID} does not have a complete member-action window`);
+      throw new Error(
+        `Action ${ACTION_133_ID} does not have a complete member-action window`,
+      );
     }
     const action74 = actionById.get(ACTION_74_ID)!;
     const action74WindowStart = action74.memberActionPhase.event?.date;
     const action74WindowEnd = action74.memberActionPhase.deadlineEvent?.date;
     if (!action74WindowStart || !action74WindowEnd) {
-      throw new Error(`Action ${ACTION_74_ID} does not have a complete member-action window`);
+      throw new Error(
+        `Action ${ACTION_74_ID} does not have a complete member-action window`,
+      );
     }
     const variants = await variantRepo.find({
       where: { actionId: ACTION_133_ID },
@@ -1048,9 +1085,10 @@ async function main(): Promise<void> {
     const action133InvitesByForm = new Map<number, Map<number, number>>(
       ACTION_133_FORM_IDS.map((formId) => [formId, new Map<number, number>()]),
     );
-    const action133IndividualInvitesByForm = new Map<number, Map<number, number>>(
-      ACTION_133_FORM_IDS.map((formId) => [formId, new Map<number, number>()]),
-    );
+    const action133IndividualInvitesByForm = new Map<
+      number,
+      Map<number, number>
+    >(ACTION_133_FORM_IDS.map((formId) => [formId, new Map<number, number>()]));
     for (const row of inviteComparisonRows) {
       const userId = Number(row.userId);
       const formId = Number(row.formId);
@@ -1064,7 +1102,11 @@ async function main(): Promise<void> {
         }
         continue;
       }
-      if (ACTION_133_FORM_IDS.includes(formId as (typeof ACTION_133_FORM_IDS)[number])) {
+      if (
+        ACTION_133_FORM_IDS.includes(
+          formId as (typeof ACTION_133_FORM_IDS)[number],
+        )
+      ) {
         const invites = optionalNumberAnswer(
           row.answers,
           INVITES_SENT_ANSWER_FIELD_ID,
@@ -1190,7 +1232,11 @@ async function main(): Promise<void> {
     const inviteStatsByUser = new Map<number, InviterInviteStats>();
     for (const [userId, rawInvitesSent] of selfReportedInvitesByUser) {
       const formId = assignedFormIdByUser.get(userId);
-      if (!formId || rawInvitesSent <= 0 || !action133Roster.userIds.has(userId)) {
+      if (
+        !formId ||
+        rawInvitesSent <= 0 ||
+        !action133Roster.userIds.has(userId)
+      ) {
         continue;
       }
       inviteStatsByUser.set(userId, {
@@ -1260,21 +1306,25 @@ async function main(): Promise<void> {
       }
     }
 
-    const assignedNonStaffNonManualUserIds = action133UserIds.filter((userId) => {
-      const userName = userNameById.get(userId) ?? `(user ${userId})`;
-      const user = action133Users.find((candidate) => candidate.id === userId);
-      const formId = assignedFormIdByUser.get(userId);
-      if (!user || user.staff || !formId) {
-        return false;
-      }
-      return (
-        getManualOverride({
-          formId,
-          userId,
-          userName,
-        }) === undefined
-      );
-    });
+    const assignedNonStaffNonManualUserIds = action133UserIds.filter(
+      (userId) => {
+        const userName = userNameById.get(userId) ?? `(user ${userId})`;
+        const user = action133Users.find(
+          (candidate) => candidate.id === userId,
+        );
+        const formId = assignedFormIdByUser.get(userId);
+        if (!user || user.staff || !formId) {
+          return false;
+        }
+        return (
+          getManualOverride({
+            formId,
+            userId,
+            userName,
+          }) === undefined
+        );
+      },
+    );
 
     console.log('Action rosters');
     for (const actionId of ACTION_IDS) {
@@ -1284,15 +1334,22 @@ async function main(): Promise<void> {
       );
     }
     for (const roster of formRosters) {
-      console.log(`${roster.label}: ${roster.userIds.size} eligible assigned members`);
+      console.log(
+        `${roster.label}: ${roster.userIds.size} eligible assigned members`,
+      );
     }
-    printIds('action 133 eligible members with no form assignment/response', unassignedAction133UserIds);
+    printIds(
+      'action 133 eligible members with no form assignment/response',
+      unassignedAction133UserIds,
+    );
     printInviteFramingStats({
       actionWindowStart: action133WindowStart,
       actionWindowEnd: ACTION_133_INVITE_SUCCESS_END,
       inviterStats,
     });
-    console.log('\n=== Action 133 invite success, non-staff assigned members ===');
+    console.log(
+      '\n=== Action 133 invite success, non-staff assigned members ===',
+    );
     console.log(
       `invite window: ${action133WindowStart.toISOString()} to ${ACTION_133_INVITE_SUCCESS_END.toISOString()}`,
     );
@@ -1301,7 +1358,8 @@ async function main(): Promise<void> {
     );
     printInviteSuccessStats(
       inviteSuccessStats({
-        label: 'all action 133 assigned non-staff members, excluding massive group-invite overrides',
+        label:
+          'all action 133 assigned non-staff members, excluding massive group-invite overrides',
         inviterIds: assignedNonStaffNonManualUserIds,
         invites: action133SuccessInvites,
         conversionEnd: ACTION_133_INVITE_SUCCESS_END,
@@ -1376,7 +1434,9 @@ async function main(): Promise<void> {
     const action133OnlyUserIds = [...action133Roster.userIds]
       .filter((userId) => !roster74.userIds.has(userId))
       .sort((a, b) => a - b);
-    console.log('\n=== Action 74 to action 133 growth-action repeat vs 133-only split ===');
+    console.log(
+      '\n=== Action 74 to action 133 growth-action repeat vs 133-only split ===',
+    );
     printGrowthActionSegmentStats(
       growthActionSegmentStats({
         label: 'assigned both action 74 and action 133',
@@ -1414,7 +1474,10 @@ async function main(): Promise<void> {
           actionId: ACTION_132_ID,
         }) === 'incomplete',
     );
-    printIds('action 132 eligible but not action 133 assigned', action132OnlyUserIds);
+    printIds(
+      'action 132 eligible but not action 133 assigned',
+      action132OnlyUserIds,
+    );
     printIds(
       'action 132 eligible but not action 133 assigned, completed action 132',
       action132OnlyCompletedUserIds,

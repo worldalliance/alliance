@@ -47,7 +47,10 @@ import { ActionFormVariantService } from 'src/actions/action-form-variant.servic
 import { ActionsService } from 'src/actions/actions.service';
 import { ActionDto } from 'src/actions/dto/action.dto';
 import { Action } from 'src/actions/entities/action.entity';
-import { FollowUpForm } from 'src/actions/entities/follow-up-form.entity';
+import {
+  FollowUpForm,
+  parseFollowUpForm,
+} from 'src/actions/entities/follow-up-form.entity';
 import { AiDetectionQueryService } from 'src/ai-detection/ai-detection-query.service';
 import { AiDetectionQueueService } from 'src/ai-detection/ai-detection-queue.service';
 import { DetectableEntity } from 'src/ai-detection/entities/ai-detection-result.entity';
@@ -795,7 +798,7 @@ export class TasksService {
     userId: number,
     submitFollowUpFormDto: SubmitFollowUpFormDto,
   ): Promise<FormResponse> {
-    const followUpForm = await this.followUpFormRepository.findOne({
+    const fetchedFollowUpForm = await this.followUpFormRepository.findOne({
       where: {
         id: followUpFormId,
         action: {
@@ -809,9 +812,10 @@ export class TasksService {
         form: { formSnapshot: true },
       },
     });
-    if (!followUpForm?.form) {
+    if (!fetchedFollowUpForm?.form) {
       throw new NotFoundException('Follow-up form not found');
     }
+    const followUpForm = parseFollowUpForm(fetchedFollowUpForm);
     if (
       !followUpForm.startDate ||
       (followUpForm.endDate && followUpForm.endDate < new Date())

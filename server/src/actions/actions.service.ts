@@ -5,6 +5,11 @@ import {
   withdrawalHasRequiredReason,
   withdrawalOptionFromFlags,
 } from '@alliance/common/actionActivity';
+import {
+  cohortExpressionSchema,
+  expressionReferencesTag,
+  type CohortExpression,
+} from '@alliance/common/cohort-expression';
 import type { FormSchema } from '@alliance/common/forms/form-schema';
 import { LIKE_FACEPILE_LIMIT, likeOrderRank } from '@alliance/common/likeOrder';
 import { run } from '@alliance/common/run';
@@ -102,10 +107,6 @@ import {
   singleUserCohortContext,
 } from './cohort-expression.evaluator';
 import {
-  expressionReferencesTag,
-  type CohortExpression,
-} from './cohort-expression.types';
-import {
   ActionActivityDto,
   ActionDto,
   ActionSharePreview,
@@ -162,9 +163,15 @@ import {
 import {
   Action,
   ActionTaskType,
+  parseAction,
   VisibilityMode,
+  type ParsedAction,
 } from './entities/action.entity';
-import { FollowUpForm } from './entities/follow-up-form.entity';
+import {
+  FollowUpForm,
+  parseFollowUpForm,
+  type ParsedFollowUpForm,
+} from './entities/follow-up-form.entity';
 import {
   GeneralUpdateActivity,
   GeneralUpdateActivityType,
@@ -332,8 +339,29 @@ export class ActionsService {
     });
   }
 
+  /**
+   * The jsonb-backed cohortExpression arrives from HTTP as arbitrary JSON —
+   * class-validator can't express its recursive shape, so every handler that
+   * accepts one must parse it here before it reaches the db.
+   */
+  private parseCohortExpressionOrThrow(value: unknown): CohortExpression {
+    const parsed = cohortExpressionSchema.safeParse(value);
+    if (!parsed.success) {
+      const issues = parsed.error.issues
+        .map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
+        .join('; ');
+      throw new BadRequestException(`Invalid cohort expression: ${issues}`);
+    }
+    return parsed.data;
+  }
+
   async create(createActionDto: CreateActionDto): Promise<Action> {
     const { suiteId, authorIds, ...rest } = createActionDto;
+    if (rest.cohortExpression != null) {
+      rest.cohortExpression = this.parseCohortExpressionOrThrow(
+        rest.cohortExpression,
+      );
+    }
     if (rest.taskFormId !== undefined) {
       await this.assertFormIdNotUsedAsVariant(rest.taskFormId);
     }
@@ -358,14 +386,15 @@ export class ActionsService {
     return saved;
   }
 
-  findAll(): Promise<Action[]> {
-    return this.actionRepository.find({
+  async findAll(): Promise<ParsedAction[]> {
+    const actions = await this.actionRepository.find({
       relations: {
         events: true,
         activities: true,
         suite: true,
       },
     });
+    return actions.map(parseAction);
   }
 
   async findAllSorted(
@@ -373,7 +402,7 @@ export class ActionsService {
       | Omit<Relations<Action>, 'usersCompleted' | 'status'>
       | undefined = undefined,
     limit?: number,
-  ): Promise<Action[]> {
+  ): Promise<ParsedAction[]> {
     // Sort by:
     // 1. Soonest upcoming event (sooner first)
     // 2. Latest past member action event (later first)
@@ -416,7 +445,7 @@ export class ActionsService {
     const sortedActions = await qb.getMany();
 
     if (!relations || sortedActions.length === 0) {
-      return sortedActions;
+      return sortedActions.map(parseAction);
     }
 
     const actionIds = sortedActions.map((a) => a.id);
@@ -426,7 +455,7 @@ export class ActionsService {
     });
 
     const actionMap = new Map(actionsWithRelations.map((a) => [a.id, a]));
-    return actionIds.map((id) => actionMap.get(id)!);
+    return actionIds.map((id) => parseAction(actionMap.get(id)!));
   }
 
   async findUsersCompletedForAction(actionId: number): Promise<number> {
@@ -464,18 +493,20 @@ export class ActionsService {
   }
 
   async findParticipantIdsForActionById(actionId: number): Promise<number[]> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id: actionId },
-      relations: {
-        events: true,
-        activities: true,
-      },
-    });
+    const action = parseAction(
+      await this.actionRepository.findOneOrFail({
+        where: { id: actionId },
+        relations: {
+          events: true,
+          activities: true,
+        },
+      }),
+    );
 
     return this.findParticipantIdsForAction(action);
   }
 
-  async findParticipantIdsForAction(action: Action): Promise<number[]> {
+  async findParticipantIdsForAction(action: ParsedAction): Promise<number[]> {
     const result = await this.findParticipantIdsForActions([action]);
     return result.get(action.id) ?? [];
   }
@@ -498,11 +529,11 @@ export class ActionsService {
    * per-action. Returns a map of actionId -> participant userIds.
    */
   async findParticipantIdsForActions(
-    actions: Action[],
+    actions: ParsedAction[],
     session: CohortResolutionSession = new CohortResolutionSession(),
   ): Promise<Map<number, number[]>> {
     // Build entries for actions that have a MemberAction event
-    const entries: Array<{ action: Action; event: ActionEvent }> = [];
+    const entries: Array<{ action: ParsedAction; event: ActionEvent }> = [];
     for (const action of actions) {
       const event = action.events.find(
         (e) => e.newStatus === ActionStatus.MemberAction,
@@ -587,13 +618,15 @@ export class ActionsService {
   }
 
   async findIncompleteUsersForAction(actionId: number): Promise<User[]> {
-    const action = await this.actionRepository.findOneOrFail({
-      where: { id: actionId },
-      relations: {
-        events: true,
-        activities: true,
-      },
-    });
+    const action = parseAction(
+      await this.actionRepository.findOneOrFail({
+        where: { id: actionId },
+        relations: {
+          events: true,
+          activities: true,
+        },
+      }),
+    );
 
     const joinedUserIds = await this.findParticipantIdsForAction(action);
 
@@ -717,7 +750,7 @@ export class ActionsService {
    * as an overlay, so it needs the real cohort result.
    */
   private async computeViewerInCohort(params: {
-    action: Action;
+    action: ParsedAction;
     user: User | null;
   }): Promise<boolean> {
     const { action, user } = params;
@@ -739,9 +772,9 @@ export class ActionsService {
     };
     const actions = sorted
       ? await this.findAllSorted(relations)
-      : await this.actionRepository.find({
-          relations,
-        });
+      : await this.actionRepository
+          .find({ relations })
+          .then((rows) => rows.map(parseAction));
 
     const user = userId
       ? await this.userService.findOne(userId, {
@@ -752,7 +785,7 @@ export class ActionsService {
         })
       : null;
 
-    const filtered: Action[] = [];
+    const filtered: ParsedAction[] = [];
     for (const action of actions) {
       if ((await this.userCanSeeAction(action, user)) && !action.publicOnly) {
         filtered.push(action);
@@ -790,7 +823,7 @@ export class ActionsService {
 
         if (user && action.followUpForms) {
           action.followUpForms = await this.filterFollowUpFormsByCohort(
-            action.followUpForms,
+            action.followUpForms.map(parseFollowUpForm),
             user,
           );
         }
@@ -856,7 +889,10 @@ export class ActionsService {
     );
   }
 
-  async userCanSeeAction(action: Action, user: User | null): Promise<boolean> {
+  async userCanSeeAction(
+    action: ParsedAction,
+    user: User | null,
+  ): Promise<boolean> {
     if (user?.admin) {
       return true;
     }
@@ -888,7 +924,7 @@ export class ActionsService {
     id: number;
     userId?: number;
     serverSide?: boolean;
-  }): Promise<Action> {
+  }): Promise<ParsedAction> {
     const { id, userId, serverSide = false } = params;
 
     const user = userId
@@ -898,7 +934,7 @@ export class ActionsService {
           awayRanges: true,
         })
       : null;
-    const action = await this.actionRepository.findOne({
+    const fetched = await this.actionRepository.findOne({
       where: { id },
       relations: {
         events: true,
@@ -909,6 +945,7 @@ export class ActionsService {
         followUpForms: { form: true },
       },
     });
+    const action = fetched ? parseAction(fetched) : null;
 
     if (action?.publicOnly) {
       return action;
@@ -938,7 +975,7 @@ export class ActionsService {
       : null;
     if (user && action.followUpForms) {
       action.followUpForms = await this.filterFollowUpFormsByCohort(
-        action.followUpForms,
+        action.followUpForms.map(parseFollowUpForm),
         user,
       );
     }
@@ -1464,6 +1501,11 @@ export class ActionsService {
     const oldSuiteId = action.suite?.id;
 
     const { suiteId, authorIds, ...rest } = updateActionDto;
+    if (rest.cohortExpression != null) {
+      rest.cohortExpression = this.parseCohortExpressionOrThrow(
+        rest.cohortExpression,
+      );
+    }
 
     if (
       rest.taskFormId !== undefined &&
@@ -1567,6 +1609,11 @@ export class ActionsService {
     actionId: number,
     dto: CreateFollowUpFormDto,
   ): Promise<FollowUpForm> {
+    if (dto.cohortExpression != null) {
+      dto.cohortExpression = this.parseCohortExpressionOrThrow(
+        dto.cohortExpression,
+      );
+    }
     const action = await this.findOneOrFail({ id: actionId, serverSide: true });
     const form = await this.formRepository.findOneOrFail({
       where: { id: dto.formId },
@@ -1584,6 +1631,11 @@ export class ActionsService {
     followUpFormId: number,
     dto: UpdateFollowUpFormDto,
   ): Promise<FollowUpForm> {
+    if (dto.cohortExpression != null) {
+      dto.cohortExpression = this.parseCohortExpressionOrThrow(
+        dto.cohortExpression,
+      );
+    }
     const followUpForm = await this.followUpFormRepository.findOneOrFail({
       where: { id: followUpFormId },
       relations: { form: true, action: true },
@@ -1959,7 +2011,10 @@ export class ActionsService {
     );
   }
 
-  async isCompletionAllowed(action: Action, user: User): Promise<boolean> {
+  async isCompletionAllowed(
+    action: ParsedAction,
+    user: User,
+  ): Promise<boolean> {
     // preventCompletion short-circuits before the DB-hitting cohort
     // evaluation; the rule itself lives in computeCanCompleteAction.
     if (action.preventCompletion) {
@@ -1974,7 +2029,7 @@ export class ActionsService {
     return computeCanCompleteAction({ action, user, inCohort });
   }
 
-  async ensureCompletionAllowed(action: Action, userId: number) {
+  async ensureCompletionAllowed(action: ParsedAction, userId: number) {
     const user = await this.userService.findOneOrFail(userId, {
       tags: true,
       contractEvents: true,
@@ -3003,6 +3058,10 @@ export class ActionsService {
 
         const inserted = await actionRepo.insert({
           ...actionCols,
+          cohortExpression:
+            actionCols.cohortExpression == null
+              ? undefined
+              : this.parseCohortExpressionOrThrow(actionCols.cohortExpression),
           id: undefined,
         });
 
@@ -3063,7 +3122,7 @@ export class ActionsService {
     actionLimit: number = 8,
     session: CohortResolutionSession = new CohortResolutionSession(),
   ): Promise<UserActionRelations> {
-    const actionsP: Promise<Action[]> = run(async () => {
+    const actionsP: Promise<ParsedAction[]> = run(async () => {
       const actions = await this.findAllSorted(
         { events: true, suite: true },
         actionLimit,
@@ -3373,14 +3432,14 @@ export class ActionsService {
   }
 
   private async buildSuspendPlanContext(
-    actions: Action[],
+    actions: ParsedAction[],
     maxPastDate?: Date,
   ): Promise<SuspendPlanContext> {
     const suiteMap = new Map<
       number,
       {
         suite: ActionSuite;
-        actions: Action[];
+        actions: ParsedAction[];
         orderIndex: number;
       }
     >();
@@ -3708,7 +3767,7 @@ export class ActionsService {
     };
   }
 
-  async findUsersToSuspend(now: Date, preloadedActions?: Action[]) {
+  async findUsersToSuspend(now: Date, preloadedActions?: ParsedAction[]) {
     const actions =
       preloadedActions ??
       (await this.findAllSorted({
@@ -4372,11 +4431,10 @@ export class ActionsService {
     return feedItems.slice(0, limit);
   }
 
-  async evaluateCohortExpressionBatch(
-    expression: CohortExpression,
-  ): Promise<number[]> {
+  async evaluateCohortExpressionBatch(expression: unknown): Promise<number[]> {
+    const parsed = this.parseCohortExpressionOrThrow(expression);
     const result =
-      await this.actionEventRecipientService.resolveCohortMemberIds(expression);
+      await this.actionEventRecipientService.resolveCohortMemberIds(parsed);
     return Array.from(result);
   }
 
@@ -4386,9 +4444,9 @@ export class ActionsService {
    * filtered out (consistent with action cohort semantics).
    */
   async filterFollowUpFormsByCohort(
-    followUpForms: FollowUpForm[],
+    followUpForms: ParsedFollowUpForm[],
     user: User,
-  ): Promise<FollowUpForm[]> {
+  ): Promise<ParsedFollowUpForm[]> {
     const results = await Promise.all(
       followUpForms.map((form) =>
         this.computeIsInCohortExpression({
@@ -4433,11 +4491,12 @@ export class ActionsService {
       },
       inProgressAction: async (actionId: number) => {
         if (visitedActionIds.has(actionId)) return false;
-        const action = await this.actionRepository.findOne({
+        const fetched = await this.actionRepository.findOne({
           where: { id: actionId },
           relations: { events: true },
         });
-        if (!action) return false;
+        if (!fetched) return false;
+        const action = parseAction(fetched);
 
         const inCohort = await this.computeIsInCohortExpression({
           user,
@@ -4465,11 +4524,12 @@ export class ActionsService {
       },
       missedActionDeadline: async (actionId: number) => {
         if (visitedActionIds.has(actionId)) return false;
-        const action = await this.actionRepository.findOne({
+        const fetched = await this.actionRepository.findOne({
           where: { id: actionId },
           relations: { events: true },
         });
-        if (!action) return false;
+        if (!fetched) return false;
+        const action = parseAction(fetched);
 
         // Mirror the missed_deadline pill: optional actions show
         // optional_task and away users show away, so neither can miss a
