@@ -23,6 +23,7 @@ import { FormSnapshot } from './formsnapshot.entity';
 // user has the edit form open, there's nothing today that catches it. 
 @Entity()
 @Index(['formResponseId'])
+@Index(['formSnapshotId'])
 export class FormResponseRevision {
     @PrimaryGeneratedColumn()
     @ApiProperty()
