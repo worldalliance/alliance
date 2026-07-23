@@ -328,9 +328,15 @@ export class MigrateResponseSnapshotsDto {
   targetSnapshotId: number;
 }
 
-export class UpdateFormResponseAnswersDto extends PickType(FormResponse, [
-  'answers', 'deviceType'
-]) { }
+export class UpdateFormResponseAnswersDto extends PickType(FormResponse, ['answers', 'deviceType']) {
+  // SubmitFormDto.publicAnswers allows undefined, whereas FormResponse expects publicAnswers to be
+  // always present, defaults to {}. 
+  // Thus incoming update request doesn't have to include publicAnswers.
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  publicAnswers?: Record<string, boolean>;
+}
 
 export class MigrateResponseSnapshotsResultDto {
   @ApiProperty()

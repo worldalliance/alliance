@@ -1180,7 +1180,8 @@ export class TasksService {
     formId: number,
     userId: number,
     newAnswers: Record<string, unknown>,
-    deviceType?: DeviceVisibilityTarget
+    deviceType?: DeviceVisibilityTarget,
+    publicAnswers?: Record<string, boolean>
   ): Promise<FormResponse> {
     // First, read and validate the response (no lock)
     const existing = await this.formResponseRepository.findOne({
@@ -1197,7 +1198,7 @@ export class TasksService {
     const { validatorResults, effectiveAnswers } =
       await this.validateFormSubmission({
         schema,
-        submitFormDto: { answers: newAnswers, deviceType } as SubmitFormDto,
+        submitFormDto: { answers: newAnswers, deviceType, publicAnswers } as SubmitFormDto,
         userId,
       });
 
@@ -1219,6 +1220,9 @@ export class TasksService {
       response.visibilityValidatorResults = validatorResults;
       if (deviceType !== undefined) {
         response.deviceType = deviceType;
+      }
+      if (publicAnswers !== undefined) {
+        response.publicAnswers = publicAnswers;
       }
       const saved = await manager.save(response);
       saved.formSnapshot = formSnapshot;

@@ -26,7 +26,7 @@ const EditableFormResponse = ({
         setError(null);
         const response = await tasksEditFormResponse({
             path: { formId: formResponse.formId },
-            body: { answers: data.answers, deviceType: data.deviceType },
+            body: { answers: data.answers, deviceType: data.deviceType, publicAnswers: data.publicAnswers },
         });
         if (response.response.ok && response.data) {
             onSaved(response.data);
@@ -44,7 +44,6 @@ const EditableFormResponse = ({
                 formSnapshotId={formResponse.formSnapshotId}
                 actionId={actionId}
                 draftFormResponse={formResponse}
-                // completedFormResponse={formResponse}
                 onSubmit={handleSubmit}
                 renderFormAsCompleted={false}
             />

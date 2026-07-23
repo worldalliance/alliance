@@ -211,6 +211,7 @@ export class TasksController {
         req.user.sub,
         body.answers,
         body.deviceType,
+        body.publicAnswers
       ),
     });
   }

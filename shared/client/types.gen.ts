@@ -3262,6 +3262,9 @@ export type UpdateFormResponseAnswersDto = {
         [key: string]: unknown;
     };
     deviceType?: string;
+    publicAnswers?: {
+        [key: string]: unknown;
+    };
 };
 
 export type GuestFormResponseDto = {
