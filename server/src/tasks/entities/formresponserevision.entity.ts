@@ -22,8 +22,8 @@ import { FormSnapshot } from './formsnapshot.entity';
 // Note, if an admin runs a snapshot migration on this response while the
 // user has the edit form open, there's nothing today that catches it. 
 @Entity()
-@Index(['formResponseId'])
-@Index(['formSnapshotId'])
+@Index('IDX_form_response_revision_formResponseId', ['formResponseId'])
+@Index('IDX_form_response_revision_formSnapshotId', ['formSnapshotId'])
 export class FormResponseRevision {
     @PrimaryGeneratedColumn()
     @ApiProperty()
@@ -48,6 +48,14 @@ export class FormResponseRevision {
     @Type(() => Object)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     answers: Record<string, any>;
+
+    // The per-field visibility state (which answers were public) as it stood
+    // immediately before this edit overwrote it.
+    @Column({ type: 'jsonb', default: () => "'{}'" })
+    @ApiProperty()
+    @Allow()
+    @Type(() => Object)
+    publicAnswers: Record<string, boolean>;
 
     // The schema that was in effect for `answers` above (i.e. the
     // FormResponse's formSnapshotId at the moment of this revision).

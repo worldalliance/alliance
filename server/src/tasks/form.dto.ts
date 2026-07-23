@@ -193,6 +193,7 @@ export class FormResponseRevisionDto extends PickType(FormResponseRevision, [
   'id',
   'formResponseId',
   'answers',
+  'publicAnswers',
   'formSnapshotId',
   'supersededAt',
 ]) {
@@ -207,6 +208,7 @@ export class FormResponseRevisionDto extends PickType(FormResponseRevision, [
     this.id = revision.id;
     this.formResponseId = revision.formResponseId;
     this.answers = revision.answers;
+    this.publicAnswers = revision.publicAnswers;
     this.formSnapshotId = revision.formSnapshotId;
     this.schemaSnapshot = revision.formSnapshot.schema;
     this.supersededAt = revision.supersededAt;

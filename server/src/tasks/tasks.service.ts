@@ -1213,6 +1213,7 @@ export class TasksService {
       await manager.insert(FormResponseRevision, {
         formResponseId: response.id,
         answers: response.answers,
+        publicAnswers: response.publicAnswers,
         formSnapshotId: response.formSnapshotId,
       });
 

@@ -3214,6 +3214,9 @@ export type FormResponseRevisionDto = {
     answers: {
         [key: string]: unknown;
     };
+    publicAnswers: {
+        [key: string]: unknown;
+    };
     formSnapshotId: number;
     supersededAt: string;
     schemaSnapshot: {

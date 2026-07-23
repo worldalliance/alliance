@@ -1130,6 +1130,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                               completedFormResponse={{
                                 ...currentResponse,
                                 answers: revision.answers,
+                                publicAnswers: revision.publicAnswers,
                                 formSnapshotId: revision.formSnapshotId,
                                 schemaSnapshot: revision.schemaSnapshot,
                               }}
