@@ -1,5 +1,4 @@
 import z from "zod";
-
 import type { DisplayBlock } from "./display-blocks";
 import {
   displayBlockSchema,
@@ -63,6 +62,16 @@ const optionSchema = z.strictObject({
   label: z.string(),
   value: z.string(),
 });
+
+// An option's identity is its value (answer matching, ranking order, React
+// keys), so duplicate values would make answers ambiguous.
+const optionListSchema = z
+  .array(optionSchema)
+  .refine(
+    (options) =>
+      new Set(options.map((option) => option.value)).size === options.length,
+    "option values must be unique",
+  );
 
 const textFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
@@ -150,7 +159,7 @@ export type AutoExtractFieldKind = (typeof AUTO_EXTRACT_FIELD_KINDS)[number];
 const radioFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("radio"),
-  options: z.array(optionSchema),
+  options: optionListSchema,
   randomizeOptions: z.boolean().optional(),
 });
 export type RadioField = z.infer<typeof radioFieldSchema>;
@@ -158,7 +167,7 @@ export type RadioField = z.infer<typeof radioFieldSchema>;
 const selectFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("select"),
-  options: z.array(optionSchema),
+  options: optionListSchema,
   randomizeOptions: z.boolean().optional(),
 });
 export type SelectField = z.infer<typeof selectFieldSchema>;
@@ -166,7 +175,7 @@ export type SelectField = z.infer<typeof selectFieldSchema>;
 const multiSelectFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("multiselect"),
-  options: z.array(optionSchema),
+  options: optionListSchema,
   randomizeOptions: z.boolean().optional(),
   maxSelections: z.number().optional(),
 });
@@ -218,6 +227,20 @@ const fileFieldSchema = z.strictObject({
   kind: z.literal("file"),
 });
 export type FileField = z.infer<typeof fileFieldSchema>;
+
+const rankingFieldSchema = z
+  .strictObject({
+    ...baseFieldSchema.shape,
+    kind: z.literal("ranking"),
+    options: optionListSchema.min(1),
+    numToRank: z.int().positive().optional(),
+  })
+  .refine(
+    (data) =>
+      data.numToRank === undefined || data.options.length >= data.numToRank,
+    "numToRank must be less than or equal to the number of options",
+  );
+export type RankingField = z.infer<typeof rankingFieldSchema>;
 
 const actionShareUrlConfigSchema = z.strictObject({
   actionId: z.number().optional(),
@@ -291,6 +314,7 @@ export type ListField = z.infer<typeof listFieldSchema>;
 export const anyFieldSchema = z.discriminatedUnion("kind", [
   ...listSubFieldSchema.options,
   listFieldSchema,
+  rankingFieldSchema,
 ]);
 export type AnyField = z.infer<typeof anyFieldSchema>;
 export type FieldKind = AnyField["kind"];
@@ -388,6 +412,7 @@ const OPTION_FIELD_KINDS = {
   radio: true,
   select: true,
   multiselect: true,
+  ranking: true,
 } as const satisfies Partial<Record<FieldKind, true>>;
 
 export type OptionField = Extract<

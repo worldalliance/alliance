@@ -1,5 +1,8 @@
 import { ActionActivityType } from '@alliance/common/actionActivity';
-import type { FormSchema } from '@alliance/common/forms/form-schema';
+import type {
+  FormSchema,
+  RankingField,
+} from '@alliance/common/forms/form-schema';
 import { CreateActionDto } from 'src/actions/dto/action.dto';
 import { ActionActivity } from 'src/actions/entities/action-activity.entity';
 import {
@@ -140,6 +143,44 @@ describe('Tasks (e2e)', () => {
   afterAll(async () => {
     await ctx.app.close();
   });
+
+  /** A live (non-draft) member action; link a form via actionRepo.update(id, { taskFormId }). */
+  const createAction = async (name: string): Promise<Action> => {
+    const action = await actionRepo.save(
+      actionRepo.create({
+        name,
+        category: 'Community',
+        body: 'Body copy',
+        shortDescription: 'Short copy',
+        type: ActionTaskType.Activity,
+        isForumParticipationAction: false,
+        shouldCompleteAfterDeadline: false,
+        visibilityMode: VisibilityMode.Public,
+        preventCompletion: false,
+        optional: false,
+        publicOnly: false,
+        isContractSigningAction: false,
+        onboarding: false,
+        followUpForms: [],
+        cohortExpression: {
+          type: 'Tag',
+          tagId: ctx.defaultTag.id,
+        },
+      } satisfies CreateActionDto),
+    );
+
+    await eventRepo.save(
+      eventRepo.create({
+        title: `${name} Event`,
+        description: `${name} Event`,
+        newStatus: ActionStatus.MemberAction,
+        date: new Date(Date.now() - 1000),
+        action,
+      }),
+    );
+
+    return action;
+  };
 
   it('supports the full admin and member lifecycle for forms', async () => {
     const createResponse = await request(ctx.app.getHttpServer())
@@ -1069,43 +1110,6 @@ describe('Tasks (e2e)', () => {
   });
 
   describe('Cross-form conditional visibility', () => {
-    const createAction = async (name: string): Promise<Action> => {
-      const action = await actionRepo.save(
-        actionRepo.create({
-          name,
-          category: 'Community',
-          body: 'Body copy',
-          shortDescription: 'Short copy',
-          type: ActionTaskType.Activity,
-          isForumParticipationAction: false,
-          shouldCompleteAfterDeadline: false,
-          visibilityMode: VisibilityMode.Public,
-          preventCompletion: false,
-          optional: false,
-          publicOnly: false,
-          isContractSigningAction: false,
-          onboarding: false,
-          followUpForms: [],
-          cohortExpression: {
-            type: 'Tag',
-            tagId: ctx.defaultTag.id,
-          },
-        } satisfies CreateActionDto),
-      );
-
-      await eventRepo.save(
-        eventRepo.create({
-          title: `${name} Event`,
-          description: `${name} Event`,
-          newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
-          action,
-        }),
-      );
-
-      return action;
-    };
-
     it('hides required fields when sourceFormId condition is not met', async () => {
       const sourceSchema: FormSchema = {
         title: 'Source Form',
@@ -1432,44 +1436,147 @@ describe('Tasks (e2e)', () => {
     });
   });
 
-  describe('User field extraction from form submission', () => {
-    const createAction = async (name: string): Promise<Action> => {
-      const action = await actionRepo.save(
-        actionRepo.create({
-          name,
-          category: 'Community',
-          body: 'Body copy',
-          shortDescription: 'Short copy',
-          type: ActionTaskType.Activity,
-          isForumParticipationAction: false,
-          shouldCompleteAfterDeadline: false,
-          visibilityMode: VisibilityMode.Public,
-          preventCompletion: false,
-          optional: false,
-          publicOnly: false,
-          isContractSigningAction: false,
-          onboarding: false,
-          followUpForms: [],
-          cohortExpression: {
-            type: 'Tag',
-            tagId: ctx.defaultTag.id,
-          },
-        } satisfies CreateActionDto),
-      );
+  describe('Ranking field validation', () => {
+    const rankingOptions = [
+      { label: 'A', value: 'a' },
+      { label: 'B', value: 'b' },
+      { label: 'C', value: 'c' },
+      { label: 'D', value: 'd' },
+    ];
 
-      await eventRepo.save(
-        eventRepo.create({
-          title: `${name} Event`,
-          description: `${name} Event`,
-          newStatus: ActionStatus.MemberAction,
-          date: new Date(Date.now() - 1000),
-          action,
-        }),
-      );
-
-      return action;
+    const optionalRankingField: RankingField = {
+      id: 'rank',
+      type: 'input',
+      kind: 'ranking',
+      label: 'Rank these',
+      options: rankingOptions,
     };
 
+    const setupForm = async (
+      title: string,
+      fields: FormSchema['pages'][number]['fields'],
+    ) => {
+      const action = await createAction(`${title} Action`);
+      const formRes = await request(ctx.app.getHttpServer())
+        .post('/tasks/createForm')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title,
+          schema: {
+            title,
+            pages: [{ id: 'page-1', fields }],
+            outputViews: [],
+          } satisfies FormSchema,
+        })
+        .expect(201);
+      const formId = formRes.body.id as number;
+      await actionRepo.update(action.id, { taskFormId: formId });
+      return {
+        formId,
+        formSnapshotId: formRes.body.formSnapshotId as number,
+        actionId: action.id,
+      };
+    };
+
+    const submit = (
+      form: Awaited<ReturnType<typeof setupForm>>,
+      answers: Record<string, unknown>,
+    ) =>
+      request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers,
+          formSnapshotId: form.formSnapshotId,
+          actionId: form.actionId,
+          deviceType: 'desktop' as const,
+        });
+
+    it('rejects invalid and incomplete rankings for a required field', async () => {
+      const form = await setupForm('Required Ranking', [
+        {
+          ...optionalRankingField,
+          required: true,
+          numToRank: 2,
+        },
+      ]);
+
+      const missing = await submit(form, {}).expect(400);
+      expect(missing.body.message).toContain('is required');
+
+      const partial = await submit(form, { rank: ['a'] }).expect(400);
+      expect(partial.body.message).toContain('requires ranking 2 items');
+
+      const duplicate = await submit(form, { rank: ['a', 'a'] }).expect(400);
+      expect(duplicate.body.message).toContain('invalid ranking');
+
+      const unknown = await submit(form, { rank: ['a', 'nope'] }).expect(400);
+      expect(unknown.body.message).toContain('invalid ranking');
+
+      const overflow = await submit(form, { rank: ['a', 'b', 'c'] }).expect(
+        400,
+      );
+      expect(overflow.body.message).toContain('invalid ranking');
+
+      await submit(form, { rank: ['b', 'a'] }).expect(201);
+    });
+
+    it('accepts omitted, null, and partial answers for an optional ranking', async () => {
+      const omitted = await setupForm('Optional Ranking Omitted', [
+        optionalRankingField,
+      ]);
+      // Invalid shapes are still rejected even when the field is optional.
+      await submit(omitted, { rank: 'a' }).expect(400);
+      await submit(omitted, {}).expect(201);
+
+      const nullAnswer = await setupForm('Optional Ranking Null', [
+        optionalRankingField,
+      ]);
+      await submit(nullAnswer, { rank: null }).expect(201);
+
+      const partial = await setupForm('Optional Ranking Partial', [
+        optionalRankingField,
+      ]);
+      await submit(partial, { rank: ['c'] }).expect(201);
+    });
+
+    it('skips ranking validation when the field is hidden', async () => {
+      const form = await setupForm('Hidden Ranking', [
+        {
+          id: 'role',
+          type: 'input',
+          kind: 'radio',
+          label: 'Role',
+          required: true,
+          options: [
+            { label: 'Volunteer', value: 'volunteer' },
+            { label: 'Organizer', value: 'organizer' },
+          ],
+        },
+        {
+          ...optionalRankingField,
+          required: true,
+          visibleIfFormula: {
+            conditions: {
+              condition1: {
+                kind: 'equals',
+                when: 'role',
+                equals: 'organizer',
+              },
+            },
+            formula: 'condition1',
+          },
+        },
+      ]);
+
+      // Visible (role = organizer) and unanswered: the requirement applies.
+      await submit(form, { role: 'organizer' }).expect(400);
+      // Hidden (role = volunteer): the required ranking doesn't apply.
+      await submit(form, { role: 'volunteer' }).expect(201);
+    });
+  });
+
+  describe('User field extraction from form submission', () => {
     it('extracts and saves user fields', async () => {
       // Set up initial user state with a profileDescription
       const initialDescription =

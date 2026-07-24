@@ -11,6 +11,7 @@ import type {
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
 import { isQuestionField } from "@alliance/common/forms/form-schema";
+import { getRankingOptionLabel } from "@alliance/common/forms/ranking";
 import { isElementCurrentlyVisible } from "@alliance/common/forms/visibility";
 
 export type ResolvedOutputDisplayItem = {
@@ -142,6 +143,15 @@ export const formatOutputFieldValue = (
     }
     case "range":
       return String(value);
+    case "ranking": {
+      const values = Array.isArray(value) ? value : [];
+      return values
+        .map(
+          (entry, index) =>
+            `${index + 1}. ${getRankingOptionLabel(field, String(entry))}`,
+        )
+        .join(", ");
+    }
     case "city":
       if (isCityValue(value)) {
         return formatCity(value);

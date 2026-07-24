@@ -1128,6 +1128,10 @@ const FormRenderer = ({
               ? null
               : validateFieldValue(fieldDefinition, nextValue, next);
           applyFieldErrorUpdates({ [fieldId]: validationResult });
+        } else if (fieldDefinition.kind === "ranking") {
+          // Don't flag partial rankings while the user is still placing
+          // items; page validation on submit enforces completeness.
+          applyFieldErrorUpdates({ [fieldId]: null });
         } else {
           const requiredError = validateFieldValue(
             fieldDefinition,

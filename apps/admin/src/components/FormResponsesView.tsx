@@ -115,6 +115,7 @@ const ANSWER_FIELD_KINDS = new Set<FieldKind>([
   "radio",
   "select",
   "multiselect",
+  "ranking",
   "date",
   "time",
   "timezone",
@@ -299,7 +300,8 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   const filterFieldId = params.get(paramKey("filterField"))?.trim() ?? "";
   const filterOpParam = params.get(paramKey("filterOp"));
   const filterValueParam = params.get(paramKey("filterValue"));
-  const questionFieldParam = params.get(paramKey("questionField"))?.trim() ?? "";
+  const questionFieldParam =
+    params.get(paramKey("questionField"))?.trim() ?? "";
   const variantParam = params.get(paramKey("variant"))?.trim() ?? "";
 
   const updateParams = useCallback(
@@ -602,6 +604,18 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
             .map(
               (selection) =>
                 getOptionLabel(selectedQuestionField, selection) ?? selection,
+            )
+            .join(", ");
+        }
+        case "ranking": {
+          const ranked = getSelections(value);
+          if (ranked.length === 0) return "No response";
+          return ranked
+            .map(
+              (option, index) =>
+                `${index + 1}. ${
+                  getOptionLabel(selectedQuestionField, option) ?? option
+                }`,
             )
             .join(", ");
         }

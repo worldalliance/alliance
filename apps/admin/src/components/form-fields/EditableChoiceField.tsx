@@ -2,7 +2,12 @@ import type {
   MultiSelectField,
   SelectField,
 } from "@alliance/common/forms/form-schema";
-import { RequiredToggle } from "./CommonControls";
+import { cn } from "@alliance/shared/styles/util";
+import {
+  DuplicateOptionsWarning,
+  RequiredToggle,
+  duplicateOptionValues,
+} from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
@@ -20,6 +25,8 @@ export function EditableChoiceField({
   isDragging,
   previousFields,
 }: EditableChoiceFieldProps) {
+  const duplicates = duplicateOptionValues(field.options || []);
+
   const addOption = () => {
     const nextIndex = (field.options?.length || 0) + 1;
     const newOption = {
@@ -245,7 +252,12 @@ export function EditableChoiceField({
                 type="text"
                 value={option.value}
                 onChange={(e) => updateOption(index, { value: e.target.value })}
-                className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={cn(
+                  "w-20 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500",
+                  duplicates.has(option.value)
+                    ? "border-red-500"
+                    : "border-gray-300",
+                )}
                 placeholder="Value"
               />
               <div className="flex items-center space-x-1">
@@ -280,6 +292,7 @@ export function EditableChoiceField({
             </div>
           ))}
         </div>
+        <DuplicateOptionsWarning duplicates={duplicates} />
         {field.kind === "select" && (
           <div className="flex items-center justify-end mt-2">
             <button

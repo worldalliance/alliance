@@ -34,6 +34,7 @@ import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./components";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { shuffleWithSeed } from "./randomutils";
+import { RankingFieldInput } from "./RankingFieldInput";
 import { formatTimeForDisplay, parseTimeInput } from "./timeUtils";
 import TimeZoneSelect from "./TimeZoneSelect";
 
@@ -1074,6 +1075,28 @@ export function RenderField({
         </div>
       );
     }
+
+    case "ranking":
+      return (
+        <div className="space-y-2">
+          <RenderLabel
+            field={field}
+            error={errorMessage}
+            labelRightAddon={labelRightAddon}
+            isOutputView={isOutputView}
+            hideLabel={hideLabel}
+          />
+          <RankingFieldInput
+            field={field}
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            hasError={hasError}
+            isOutputView={isOutputView}
+          />
+          {renderValidationMessage()}
+        </div>
+      );
 
     default:
       return null;

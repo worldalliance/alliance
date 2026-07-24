@@ -10,6 +10,7 @@ import type {
   OutputFieldBlock,
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
+import { getRankingSlotCount } from "@alliance/common/forms/ranking";
 import { cn } from "@alliance/shared/styles/util";
 import OutputRenderer from "@alliance/sharedweb/forms/OutputRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -144,6 +145,11 @@ const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
         answers[field.id] = field.options
           ?.slice(0, 2)
           .map((option) => option.value) ?? [field.label];
+        break;
+      case "ranking":
+        answers[field.id] = field.options
+          .slice(0, getRankingSlotCount(field))
+          .map((option) => option.value);
         break;
       case "number":
         answers[field.id] = 42;

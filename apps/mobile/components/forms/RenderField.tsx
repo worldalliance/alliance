@@ -38,6 +38,7 @@ import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./customComponentRegistry";
 import FormModal from "./FormModal";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
+import { RankingFieldInput } from "./RankingFieldInput";
 import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {
@@ -948,6 +949,26 @@ export function RenderField({
         </View>
       );
     }
+
+    case "ranking":
+      return (
+        <View>
+          <RenderLabel
+            field={field}
+            isOutputView={isOutputView}
+            hideLabel={hideLabel}
+          />
+          <RankingFieldInput
+            field={field}
+            value={value}
+            onChange={onChange}
+            disabled={disabled}
+            hasError={hasError}
+            isOutputView={isOutputView}
+          />
+          {renderValidationMessage(errorMessage)}
+        </View>
+      );
 
     default:
       return null;

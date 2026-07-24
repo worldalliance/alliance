@@ -202,13 +202,14 @@ const FormFieldEditor: React.FC<{
   }, [value.formId]);
 
   const selectedField = sourceFields.find((f) => f.id === value.fieldId);
-  // TODO: multiselect is excluded because the server matches responseEqualTo
-  // via String(answer) on the array, so only single-selection answers match.
-  // Drop the exclusion once that matching is sorted out.
+  // TODO: multiselect and ranking are excluded because the server matches
+  // responseEqualTo via String(answer) on the array, so only single-selection
+  // answers match. Drop the exclusion once that matching is sorted out.
   const fieldOptions =
     selectedField &&
     fieldHasOptions(selectedField) &&
-    selectedField.kind !== "multiselect"
+    selectedField.kind !== "multiselect" &&
+    selectedField.kind !== "ranking"
       ? selectedField.options
       : null;
 

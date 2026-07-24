@@ -70,6 +70,7 @@ import {
   EditablePhoneField,
   EditableRadioField,
   EditableRangeField,
+  EditableRankingField,
   EditableSelectField,
   EditableTextField,
   EditableTextareaField,
@@ -97,6 +98,7 @@ const FIELD_NAMES = {
   radio: "Radio Field",
   select: "Select Field",
   multiselect: "Multi-select Field",
+  ranking: "Ranking Field",
   date: "Date Field",
   time: "Time Field",
   timezone: "Timezone Field",
@@ -1130,6 +1132,20 @@ export function FormBuilder({
           defaultNumber: 0,
           min: 0,
           required: false,
+        };
+        break;
+      case "ranking":
+        newField = {
+          id: fieldId,
+          type: "input",
+          kind: "ranking",
+          label: "Ranking Field",
+          required: false,
+          options: [
+            { label: "Option 1", value: "option1" },
+            { label: "Option 2", value: "option2" },
+            { label: "Option 3", value: "option3" },
+          ],
         };
         break;
       case "custom": {
@@ -2373,6 +2389,13 @@ export function FormBuilder({
                     return (
                       <EditableMultiSelectField
                         field={formField as any}
+                        {...commonProps}
+                      />
+                    );
+                  case "ranking":
+                    return (
+                      <EditableRankingField
+                        field={formField}
                         {...commonProps}
                       />
                     );

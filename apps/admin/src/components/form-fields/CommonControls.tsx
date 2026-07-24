@@ -137,6 +137,35 @@ export function RequiredAsterisk({
   return <span className={className}>*</span>;
 }
 
+/** Option values that appear more than once in the list (schema rejects these on save). */
+export function duplicateOptionValues(
+  options: readonly { value: string }[],
+): Set<string> {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const { value } of options) {
+    if (seen.has(value)) duplicates.add(value);
+    seen.add(value);
+  }
+  return duplicates;
+}
+
+type DuplicateOptionsWarningProps = {
+  duplicates: Set<string>;
+};
+
+export function DuplicateOptionsWarning({
+  duplicates,
+}: DuplicateOptionsWarningProps) {
+  if (duplicates.size === 0) return null;
+  return (
+    <p className="mt-1 text-[11px] text-red-500">
+      Duplicate option values ({Array.from(duplicates).join(", ")}): each option
+      needs a unique value or the form won&apos;t save.
+    </p>
+  );
+}
+
 type OutputFieldToggleProps = {
   checked?: boolean;
   onChange: (checked: boolean) => void;

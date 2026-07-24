@@ -24,6 +24,10 @@ import {
   validateFormSchema,
 } from '@alliance/common/forms/form-schema-validate';
 import {
+  getRankingSlotCount,
+  isValidRankingSelection,
+} from '@alliance/common/forms/ranking';
+import {
   type ConditionExtras,
   isElementCurrentlyVisible,
   isPageCurrentlyVisible,
@@ -451,6 +455,30 @@ export class TasksService {
             if (Array.isArray(answer) && answer.length > field.maxSelections) {
               throw new BadRequestException(
                 `Field ${field.label} allows selecting up to ${field.maxSelections} options.`,
+              );
+            }
+          }
+          if (
+            field.kind === 'ranking' &&
+            isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
+          ) {
+            const answer = effectiveAnswers[field.id];
+            if (
+              answer !== undefined &&
+              answer !== null &&
+              !isValidRankingSelection(field, answer)
+            ) {
+              throw new BadRequestException(
+                `Field ${field.label} has an invalid ranking.`,
+              );
+            }
+            const slotCount = getRankingSlotCount(field);
+            if (
+              field.required &&
+              (!Array.isArray(answer) || answer.length < slotCount)
+            ) {
+              throw new BadRequestException(
+                `Field ${field.label} requires ranking ${slotCount} item${slotCount === 1 ? '' : 's'}.`,
               );
             }
           }

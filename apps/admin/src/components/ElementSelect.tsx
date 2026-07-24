@@ -21,6 +21,7 @@ const FIELD_LABELS: Record<FieldKind, string> = {
   radio: "Radio Field",
   select: "Select Field",
   multiselect: "Multiselect Field",
+  ranking: "Ranking Field",
   date: "Date Field",
   time: "Time Field",
   timezone: "Timezone Field",

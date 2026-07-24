@@ -11,6 +11,10 @@ import {
   type RangeField,
 } from "@alliance/common/forms/form-schema";
 import {
+  getRankingSlotCount,
+  isValidRankingSelection,
+} from "@alliance/common/forms/ranking";
+import {
   type ConditionExtras,
   evaluateCondition,
   isElementCurrentlyVisible,
@@ -116,6 +120,7 @@ const KNOWN_FORM_ELEMENT_KINDS_RECORD = {
   city: true,
   contract: true,
   list: true,
+  ranking: true,
   custom: true,
   header: true,
   label: true,
@@ -281,6 +286,10 @@ export function resolveFieldDefaultValue(
       case "range":
         return field.kind === "range" &&
           isValidRangeSelection(field, rawDefault)
+          ? rawDefault
+          : undefined;
+      case "ranking":
+        return isValidRankingSelection(field, rawDefault)
           ? rawDefault
           : undefined;
       case "time":
@@ -560,6 +569,22 @@ export function validateFieldValue(
       }
       if (!isValidRangeSelection(field, valueToCheck)) {
         return "Please select a value.";
+      }
+      return null;
+    }
+    case "ranking": {
+      if (
+        valueToCheck !== undefined &&
+        valueToCheck !== null &&
+        !isValidRankingSelection(field, valueToCheck)
+      ) {
+        return "Please redo your ranking.";
+      }
+      if (!required) return null;
+      const slotCount = getRankingSlotCount(field);
+      const rankedCount = Array.isArray(valueToCheck) ? valueToCheck.length : 0;
+      if (rankedCount < slotCount) {
+        return `Rank ${slotCount} item${slotCount === 1 ? "" : "s"}.`;
       }
       return null;
     }

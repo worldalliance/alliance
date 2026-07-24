@@ -6,10 +6,16 @@
     "server"
   ],
   "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.codeActionsOnSave": {
     "source.fixAll": "explicit",
-    "source.organizeImports": "explicit",
-    "source.sortMembers": "explicit"
+    // Import sorting is handled by prettier-plugin-organize-imports (see
+    // .prettierrc), so prettier is the only thing writing formatting on save.
+    // The TS organize-imports action would rewrite import/export statements
+    // in the TS server's own style (4-space indent, no trailing comma) and
+    // fight prettier.
+    "source.organizeImports": "never",
+    "source.sortMembers": "never"
   },
   "typescript.tsdk": "node_modules/typescript/lib"
 }

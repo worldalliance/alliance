@@ -1,5 +1,10 @@
 import type { RadioField } from "@alliance/common/forms/form-schema";
-import { RequiredToggle } from "./CommonControls";
+import { cn } from "@alliance/shared/styles/util";
+import {
+  DuplicateOptionsWarning,
+  RequiredToggle,
+  duplicateOptionValues,
+} from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
@@ -13,6 +18,8 @@ export function EditableRadioField({
   isDragging,
   previousFields,
 }: BaseFieldProps<RadioField>) {
+  const duplicates = duplicateOptionValues(field.options || []);
+
   const addOption = () => {
     const newOption = {
       label: `Option ${(field.options?.length || 0) + 1}`,
@@ -120,7 +127,12 @@ export function EditableRadioField({
                 type="text"
                 value={option.value}
                 onChange={(e) => updateOption(index, { value: e.target.value })}
-                className="w-20 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={cn(
+                  "w-20 px-2 py-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500",
+                  duplicates.has(option.value)
+                    ? "border-red-500"
+                    : "border-gray-300",
+                )}
                 placeholder="Value"
               />
               <button
@@ -133,6 +145,7 @@ export function EditableRadioField({
             </div>
           ))}
         </div>
+        <DuplicateOptionsWarning duplicates={duplicates} />
         <div className="flex items-center justify-end mt-2">
           <button
             type="button"
