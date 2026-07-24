@@ -35,20 +35,27 @@ type PlacementSelection =
 
 type InviteFormProps = {
   onInviteCreated: (invite: OnetimeInviteDto) => void;
+  multipleUseInvite: boolean;
 };
 
-const InviteForm = ({ onInviteCreated }: InviteFormProps) => {
+const InviteForm = ({
+  onInviteCreated,
+  multipleUseInvite,
+}: InviteFormProps) => {
   const { user } = useAuth();
   const { error: errorToast, success: successToast } = useToast();
   const [placement, setPlacement] = useState<PlacementSelection>({
     kind: "new",
   });
-  const [multipleUseInvite, setMultipleUseInvite] = useState(false);
   const [inviteeName, setInviteeName] = useState("");
   const [creatingInvite, setCreatingInvite] = useState(false);
   const { communities, refreshCommunities } = useMyCommunities({});
   const { createInvite: createReusableInvite, isCreating: creatingReusable } =
     useReusableInvites();
+
+  useEffect(() => {
+    setInviteeName("");
+  }, [multipleUseInvite]);
 
   // Default placement to a group the user leads. Runs once so it never clobbers
   // a manual selection on a later refetch.
@@ -220,37 +227,24 @@ const InviteForm = ({ onInviteCreated }: InviteFormProps) => {
       <div className="flex flex-col gap-y-6">
         <div className="flex flex-col gap-y-4">
           <div className="flex flex-col gap-y-2">
-            <p className={inviteTitleClass}>{onetimeInviteCreation.title}</p>
-            <div className="flex flex-row flex-wrap gap-2 text-sm">
-              <button
-                type="button"
-                className={
-                  multipleUseInvite
-                    ? "rounded border border-zinc-200 bg-white px-3 py-1.5 font-medium text-zinc-600 hover:border-zinc-300 hover:text-zinc-900"
-                    : "rounded border border-green bg-green/10 px-3 py-1.5 font-semibold text-green"
-                }
-                onClick={() => setMultipleUseInvite(false)}
-              >
-                Single person
-              </button>
-              <button
-                type="button"
-                className={
-                  multipleUseInvite
-                    ? "rounded border border-green bg-green/10 px-3 py-1.5 font-semibold text-green"
-                    : "rounded border border-zinc-200 bg-white px-3 py-1.5 font-medium text-zinc-600 hover:border-zinc-300 hover:text-zinc-900"
-                }
-                onClick={() => setMultipleUseInvite(true)}
-              >
-                Many people
-              </button>
-            </div>
+            <p className={inviteTitleClass}>
+              {multipleUseInvite
+                ? "Invite a group"
+                : "Invite an individual"}
+            </p>
           </div>
-          <AppMarkdownWrapper
-            className="text-invite-form-body"
-            markdownContent={onetimeInviteCreation.explanation.join("\n\n")}
-          />
-          {user?.referralCode && (
+          {multipleUseInvite ? (
+            <p className="text-invite-form-body">
+              Create one link that can be used by many people. Give it a label
+              so you remember where you plan to share it.
+            </p>
+          ) : (
+            <AppMarkdownWrapper
+              className="text-invite-form-body"
+              markdownContent={onetimeInviteCreation.explanation.join("\n\n")}
+            />
+          )}
+          {!multipleUseInvite && user?.referralCode && (
             <Link
               to={
                 getOnetimeInviteSignupUrl(getBaseUrl(), user.referralCode) +

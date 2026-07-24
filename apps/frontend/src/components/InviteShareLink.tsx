@@ -3,11 +3,11 @@ import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
-import List from "@alliance/sharedweb/ui/List";
 import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy as CopyIcon, Pencil } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import ExpandableList from "./ExpandableList";
 
 const inviteTitleClass = "font-semibold text-xl text-zinc-900";
 
@@ -132,25 +132,37 @@ const InviteShareLink = ({ showCreateCard = true }: InviteShareLinkProps) => {
         <p className="text-red-500 text-sm">Failed to load invite links</p>
       ) : isPending ? (
         <p className="text-zinc-500 text-sm">Loading…</p>
-      ) : links.length === 0 && showCreateCard ? (
-        <p className="text-zinc-500 text-center text-base sm:text-lg">
-          Your invite links will appear here once you create them.
-        </p>
-      ) : links.length === 0 ? null : (
-        <div className="flex flex-col gap-y-4">
-          <p className="font-semibold text-2xl">Your invite links</p>
-          <List>
-            {links.map((link) => (
-              <InviteLinkRow
-                key={link.id}
-                link={link}
-                copied={copiedId === link.id}
-                onCopy={handleCopy}
-                onSaveLabel={handleSaveLabel}
-                onDelete={handleDelete}
-              />
-            ))}
-          </List>
+      ) : links.length === 0 && !showCreateCard ? null : (
+        <div
+          className={cn(
+            "flex flex-col gap-y-4",
+            !showCreateCard && "pt-5",
+          )}
+        >
+          <div className="flex flex-col gap-y-1">
+            <p className="font-semibold text-2xl">Your multi-use invites</p>
+            <p className="text-zinc-500">
+              Each link can be shared with and used by many people.
+            </p>
+          </div>
+          {links.length === 0 ? (
+            <p className="text-zinc-500 text-center text-base sm:text-lg">
+              Your multi-use invites will appear here once you create them.
+            </p>
+          ) : (
+            <ExpandableList>
+              {links.map((link) => (
+                <InviteLinkRow
+                  key={link.id}
+                  link={link}
+                  copied={copiedId === link.id}
+                  onCopy={handleCopy}
+                  onSaveLabel={handleSaveLabel}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </ExpandableList>
+          )}
         </div>
       )}
     </>

@@ -16,12 +16,12 @@ import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
-import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { MoreHorizontal, Trash2, UserCheck } from "lucide-react";
 import type { FormEvent, MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ExpandableList from "../../components/ExpandableList";
 import InviteForm from "../../components/InviteForm";
 import InviteShareLink from "../../components/InviteShareLink";
 import OnetimeInviteListItem from "../../components/OnetimeInviteListItem";
@@ -84,6 +84,7 @@ const InvitesPage = () => {
     deleteInvite,
   } = useOnetimeInvitesOverview({ enabled: Boolean(user) });
   const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
+  const [showManyPeople, setShowManyPeople] = useState(false);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [goalTarget, setGoalTarget] = useState("");
   const [goalStartDate, setGoalStartDate] = useState(todayDateInputValue);
@@ -258,6 +259,11 @@ const InvitesPage = () => {
   const acceptedInvites = useMemo(() => {
     return invites.filter((invite) => invite.status === "link_used");
   }, [invites]);
+  const hasSingleUseInvites =
+    actionable.length > 0 ||
+    unverifiableActionable.length > 0 ||
+    waitingForResponse.length > 0 ||
+    settled.length > 0;
 
   const copyToClipboard = useCallback((text: string) => {
     const baseUrl = getBaseUrl();
@@ -848,126 +854,173 @@ const InvitesPage = () => {
           </Card>
         )}
 
-        <div className="flex flex-col gap-y-12">
-          <InviteForm onInviteCreated={handleInviteCreated} />
-        </div>
-        <div className="flex flex-col gap-y-12 pt-5">
-          <InviteShareLink showCreateCard={false} />
-          {isError && (
-            <p className="text-red-500 text-sm">Failed to load invites</p>
-          )}
+        <div className="flex flex-col gap-y-6">
+          <div
+            className="grid grid-cols-2 gap-2 rounded-lg bg-zinc-100 p-1.5"
+            role="tablist"
+            aria-label="Invite type"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!showManyPeople}
+              className={
+                showManyPeople
+                  ? "rounded-md px-3 py-3 text-left text-zinc-500 hover:bg-white/60 hover:text-zinc-800"
+                  : "rounded-md bg-white px-3 py-3 text-left text-zinc-900 shadow-sm"
+              }
+              onClick={() => setShowManyPeople(false)}
+            >
+              <span className="block font-semibold">Single person</span>
+              <span className="block text-xs sm:text-sm text-zinc-500">
+                Single-use invite
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={showManyPeople}
+              className={
+                showManyPeople
+                  ? "rounded-md bg-white px-3 py-3 text-left text-zinc-900 shadow-sm"
+                  : "rounded-md px-3 py-3 text-left text-zinc-500 hover:bg-white/60 hover:text-zinc-800"
+              }
+              onClick={() => setShowManyPeople(true)}
+            >
+              <span className="block font-semibold">Many people</span>
+              <span className="block text-xs sm:text-sm text-zinc-500">
+                Multi-use invite
+              </span>
+            </button>
+          </div>
 
-          {actionable.length === 0 &&
-            unverifiableActionable.length === 0 &&
-            waitingForResponse.length === 0 &&
-            settled.length === 0 && (
-              <p className="text-zinc-500 text-center text-base sm:text-lg">
-                Your invites will appear here once you create them.
+          <InviteForm
+            onInviteCreated={handleInviteCreated}
+            multipleUseInvite={showManyPeople}
+          />
+        </div>
+
+        {showManyPeople ? (
+          <InviteShareLink showCreateCard={false} />
+        ) : hasSingleUseInvites || isError ? (
+          <div className="flex flex-col gap-y-12 pt-5">
+            <div className="flex flex-col gap-y-1">
+              <p className="font-semibold text-2xl">
+                Your single-use invites
               </p>
+              <p className="text-zinc-500">
+                Each invite is created for one specific person and can only be
+                used once.
+              </p>
+            </div>
+
+            {isError && (
+              <p className="text-red-500 text-sm">Failed to load invites</p>
             )}
 
-          {actionable.length > 0 && (
-            <div className="flex flex-col gap-y-4">
-              <p className="font-semibold text-2xl">
-                {inviteBuckets.actionable.title}
-              </p>
-              <List>
-                {actionable.map((request) => (
-                  <OnetimeInviteListItem
-                    key={request.id}
-                    invite={request}
-                    showCommunityLabel={true}
-                    communityLabel={request.community?.name}
-                    selfInvited={user.id === request.invitingUser?.id}
-                    onApprove={handleApproveInvite}
-                    onReject={handleRejectInvite}
-                  />
-                ))}
-              </List>
-            </div>
-          )}
-
-          {unverifiableActionable.length > 0 && (
-            <div className="flex flex-col gap-y-4">
-              <div className="flex flex-col gap-y-1">
+            {actionable.length > 0 && (
+              <div className="flex flex-col gap-y-4">
                 <p className="font-semibold text-2xl">
-                  {inviteBuckets.unverifiableActionable.title}
+                  {inviteBuckets.actionable.title}
                 </p>
-                <p className="text-zinc-500">
-                  {inviteBuckets.unverifiableActionable.description}
-                </p>
+                <ExpandableList>
+                  {actionable.map((request) => (
+                    <OnetimeInviteListItem
+                      key={request.id}
+                      invite={request}
+                      showCommunityLabel={true}
+                      communityLabel={request.community?.name}
+                      selfInvited={user.id === request.invitingUser?.id}
+                      onApprove={handleApproveInvite}
+                      onReject={handleRejectInvite}
+                    />
+                  ))}
+                </ExpandableList>
               </div>
-              <List>
-                {unverifiableActionable.map((invite) => (
-                  <OnetimeInviteListItem
-                    key={invite.id}
-                    invite={invite}
-                    showCommunityLabel={true}
-                    communityLabel={invite.community?.name}
-                    selfInvited={user.id === invite.invitingUser?.id}
-                    copied={copiedInviteId === invite.id}
-                    onDelete={handleDeleteInvite}
-                    onCopy={copyToClipboard}
-                    onCopied={handleCopied}
-                  />
-                ))}
-              </List>
-            </div>
-          )}
+            )}
 
-          {waitingForResponse.length > 0 && (
-            <div className="flex flex-col gap-y-4">
-              <div className="flex flex-col gap-y-1">
-                <p className="font-semibold text-2xl">
-                  {inviteBuckets.waitingForResponse.title}
-                </p>
-                <p className="text-zinc-500">
-                  {inviteBuckets.waitingForResponse.description}
-                </p>
+            {unverifiableActionable.length > 0 && (
+              <div className="flex flex-col gap-y-4">
+                <div className="flex flex-col gap-y-1">
+                  <p className="font-semibold text-2xl">
+                    {inviteBuckets.unverifiableActionable.title}
+                  </p>
+                  <p className="text-zinc-500">
+                    {inviteBuckets.unverifiableActionable.description}
+                  </p>
+                </div>
+                <ExpandableList>
+                  {unverifiableActionable.map((invite) => (
+                    <OnetimeInviteListItem
+                      key={invite.id}
+                      invite={invite}
+                      showCommunityLabel={true}
+                      communityLabel={invite.community?.name}
+                      selfInvited={user.id === invite.invitingUser?.id}
+                      copied={copiedInviteId === invite.id}
+                      onDelete={handleDeleteInvite}
+                      onCopy={copyToClipboard}
+                      onCopied={handleCopied}
+                    />
+                  ))}
+                </ExpandableList>
               </div>
-              <List>
-                {waitingForResponse.map((request) => (
-                  <OnetimeInviteListItem
-                    key={request.id}
-                    invite={request}
-                    showCommunityLabel={true}
-                    communityLabel={request.community?.name}
-                    selfInvited={user.id === request.invitingUser?.id}
-                    onDelete={(inviteId) => handleDeleteRequest(inviteId)}
-                  />
-                ))}
-              </List>
-            </div>
-          )}
+            )}
 
-          {settled.length > 0 && (
-            <div className="flex flex-col gap-y-4">
-              <div className="flex flex-col gap-y-1">
-                <p className="font-semibold text-2xl">
-                  {inviteBuckets.settled.title}
-                </p>
-                <p className="text-zinc-500">
-                  {inviteBuckets.settled.description}
-                </p>
+            {waitingForResponse.length > 0 && (
+              <div className="flex flex-col gap-y-4">
+                <div className="flex flex-col gap-y-1">
+                  <p className="font-semibold text-2xl">
+                    {inviteBuckets.waitingForResponse.title}
+                  </p>
+                  <p className="text-zinc-500">
+                    {inviteBuckets.waitingForResponse.description}
+                  </p>
+                </div>
+                <ExpandableList>
+                  {waitingForResponse.map((request) => (
+                    <OnetimeInviteListItem
+                      key={request.id}
+                      invite={request}
+                      showCommunityLabel={true}
+                      communityLabel={request.community?.name}
+                      selfInvited={user.id === request.invitingUser?.id}
+                      onDelete={(inviteId) => handleDeleteRequest(inviteId)}
+                    />
+                  ))}
+                </ExpandableList>
               </div>
-              <List>
-                {settled.map((invite) => (
-                  <OnetimeInviteListItem
-                    key={invite.id}
-                    invite={invite}
-                    showCommunityLabel={true}
-                    communityLabel={invite.community?.name}
-                    selfInvited={user.id === invite.invitingUser?.id}
-                    copied={copiedInviteId === invite.id}
-                    onDelete={handleDeleteInvite}
-                    onCopy={copyToClipboard}
-                    onCopied={handleCopied}
-                  />
-                ))}
-              </List>
-            </div>
-          )}
-        </div>
+            )}
+
+            {settled.length > 0 && (
+              <div className="flex flex-col gap-y-4">
+                <div className="flex flex-col gap-y-1">
+                  <p className="font-semibold text-2xl">
+                    {inviteBuckets.settled.title}
+                  </p>
+                  <p className="text-zinc-500">
+                    {inviteBuckets.settled.description}
+                  </p>
+                </div>
+                <ExpandableList>
+                  {settled.map((invite) => (
+                    <OnetimeInviteListItem
+                      key={invite.id}
+                      invite={invite}
+                      showCommunityLabel={true}
+                      communityLabel={invite.community?.name}
+                      selfInvited={user.id === invite.invitingUser?.id}
+                      copied={copiedInviteId === invite.id}
+                      onDelete={handleDeleteInvite}
+                      onCopy={copyToClipboard}
+                      onCopied={handleCopied}
+                    />
+                  ))}
+                </ExpandableList>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </CenterLayout>
   );

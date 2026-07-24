@@ -25,13 +25,28 @@ import { useQuery } from "@tanstack/react-query";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import { colors } from "../../lib/style/colors";
 
+const WEEKLY_COMMITMENT_CONFIRMATION =
+  "I commit to complete each task to the best of my ability.";
+
+const COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE = 10;
+
+const isConfirmationLengthCloseEnough = (confirmation: string) =>
+  Math.abs(
+    confirmation.trim().length - WEEKLY_COMMITMENT_CONFIRMATION.length,
+  ) <= COMMITMENT_CONFIRMATION_LENGTH_TOLERANCE;
+
 export default function ContractScreen() {
   const { user } = useAuth();
 
   const [editName, setEditName] = useState("");
+  const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
+    useState("");
   const [lastContractEvent, setLastContractEvent] =
     useState<ContractEventState>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const weeklyCommitmentConfirmed = isConfirmationLengthCloseEnough(
+    weeklyCommitmentConfirmation,
+  );
 
   const { data: latestContract } = useQuery({
     queryKey: ["contractGetCurrent"],
@@ -69,7 +84,7 @@ export default function ContractScreen() {
   }, []);
 
   const handleContractSign = useCallback(async () => {
-    if (isSubmitting || !latestContract) return;
+    if (isSubmitting || !latestContract || !weeklyCommitmentConfirmed) return;
     setIsSubmitting(true);
 
     try {
@@ -84,6 +99,7 @@ export default function ContractScreen() {
           automatic: false,
           contractId: latestContract.id,
         });
+        setWeeklyCommitmentConfirmation("");
         await refreshContractState();
       }
     } catch (error) {
@@ -95,7 +111,13 @@ export default function ContractScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [isSubmitting, refreshContractState, editName, latestContract]);
+  }, [
+    isSubmitting,
+    latestContract,
+    weeklyCommitmentConfirmed,
+    editName,
+    refreshContractState,
+  ]);
 
   const handleContractSuspend = useCallback(() => {
     Alert.alert("Suspend Contract", suspendContractConfirmation, [
@@ -197,26 +219,64 @@ export default function ContractScreen() {
               lastContractEvent.contractId === latestContract.id ? (
                 signedContractMessage
               ) : (
-                <View className="flex-row mt-2 items-start">
-                  <TextInput
-                    className={inputClasses}
-                    value={editName}
-                    onChangeText={setEditName}
-                    placeholder="Type your full name"
-                    placeholderTextColor="#9ca3af"
-                    multiline
-                    scrollEnabled={false}
-                    textAlignVertical="top"
-                  />
-                  <Button
-                    onPress={handleContractSign}
-                    color={ButtonColor.Black}
-                    disabled={isSubmitting || !editName}
-                    loading={isSubmitting}
-                    title="Sign"
-                    className="ml-2"
-                  />
-                </View>
+                <Card
+                  cardStyle={CardStyle.LightGreyBorder}
+                  className="gap-y-4 mt-2"
+                >
+                  <View className="gap-y-1">
+                    <Text
+                      className="text-xl text-zinc-900"
+                      weight={FontWeight.Semibold}
+                    >
+                      Confirm your commitment
+                    </Text>
+                    <Text className="text-sm text-zinc-700">
+                      Before signing, please type the statement below to confirm
+                      that you understand the weekly commitment.
+                    </Text>
+                  </View>
+
+                  <View className="gap-y-2">
+                    <View className="rounded border border-l-4 border-zinc-200 border-l-green bg-white px-4 py-3">
+                      <Text className="italic text-zinc-800">
+                        {WEEKLY_COMMITMENT_CONFIRMATION}
+                      </Text>
+                    </View>
+                    <TextInput
+                      className={`${inputClasses} min-h-20`}
+                      value={weeklyCommitmentConfirmation}
+                      onChangeText={setWeeklyCommitmentConfirmation}
+                      placeholder="Type the statement here"
+                      placeholderTextColor="#9ca3af"
+                      accessibilityLabel="Weekly commitment confirmation"
+                      multiline
+                      scrollEnabled={false}
+                      textAlignVertical="top"
+                    />
+                  </View>
+
+                  <View className="flex-row items-start">
+                    <TextInput
+                      className={inputClasses}
+                      value={editName}
+                      onChangeText={setEditName}
+                      placeholder="Type your full name"
+                      placeholderTextColor="#9ca3af"
+                    />
+                    <Button
+                      onPress={handleContractSign}
+                      color={ButtonColor.Black}
+                      disabled={
+                        isSubmitting ||
+                        !editName ||
+                        !weeklyCommitmentConfirmed
+                      }
+                      loading={isSubmitting}
+                      title="Sign"
+                      className="ml-2 min-h-12"
+                    />
+                  </View>
+                </Card>
               )}
             </View>
           )}

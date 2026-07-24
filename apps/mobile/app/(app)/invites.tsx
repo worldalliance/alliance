@@ -1,23 +1,38 @@
 import type { OnetimeInviteDto } from "@alliance/shared/client";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
-import { inviteBuckets } from "@alliance/shared/lib/copy";
+import { inviteBuckets, roleBadges } from "@alliance/shared/lib/copy";
 import { bucketOnetimeInvitesByActionability } from "@alliance/shared/lib/inviteUtils";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
-import { Trash2 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { pluralize } from "@alliance/shared/lib/utils";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  MoreHorizontal,
+  Trash2,
+} from "lucide-react-native";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Alert, RefreshControl, TouchableOpacity, View } from "react-native";
 import InviteForm from "../../components/InviteForm";
 import { InviteSection } from "../../components/InviteSection";
 import InviteShareLink from "../../components/InviteShareLink";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import ReferralQrSection from "../../components/ReferralQrSection";
+import FormModal from "../../components/forms/FormModal";
 import Button, { ButtonColor } from "../../components/system/Button";
 import Card from "../../components/system/Card";
 import Input from "../../components/system/Input";
-import ProgressBar from "../../components/system/ProgressBar";
 import { ScreenWithLoading } from "../../components/system/ScreenWithLoading";
 import { SegmentedTabs } from "../../components/system/SegmentedTabs";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
@@ -49,19 +64,17 @@ const INVITES_TABS_ORDER: InvitesTab[] = [
 
 const INVITES_EMPTY_MESSAGE = "Your invites will appear here.";
 
-const formatPercent = (numerator: number, denominator: number) => {
-  if (denominator === 0) {
-    return "0%";
-  }
-  return `${Math.round((numerator / denominator) * 100)}%`;
-};
-
-const formatDate = (value: string) =>
+const formatDate = (value: string | Date) =>
   new Date(value).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const daysUntil = (date: Date, now = new Date()) =>
+  Math.max(0, Math.ceil((date.getTime() - now.getTime()) / DAY_MS));
 
 const dateInputToEndOfDayIso = (value: string) =>
   new Date(`${value}T23:59:59`).toISOString();
@@ -95,32 +108,195 @@ const inviteGoalErrorMessage = (err: Error) => {
   return err.message;
 };
 
-const inviteStatsMetrics = (stats: {
-  totalInvitesSent: number;
-  totalAcceptedInvites: number;
-  totalSuccessfulRecruits: number;
-}) => [
-  {
-    label: "Invites",
-    value: String(stats.totalInvitesSent),
-  },
-  {
-    label: "Accepted",
-    value: String(stats.totalAcceptedInvites),
-  },
-  {
-    label: "Successful",
-    value: String(stats.totalSuccessfulRecruits),
-  },
-  {
-    label: "Accepted %",
-    value: formatPercent(stats.totalAcceptedInvites, stats.totalInvitesSent),
-  },
-  {
-    label: "Success %",
-    value: formatPercent(stats.totalSuccessfulRecruits, stats.totalInvitesSent),
-  },
-];
+const CALENDAR_WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+
+function DatePickerField({
+  label,
+  value,
+  onChange,
+  lightLabel = false,
+  disabled = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  lightLabel?: boolean;
+  disabled?: boolean;
+}) {
+  const selectedDate = new Date(`${value}T12:00:00`);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(
+    () => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
+  );
+  const firstWeekday = new Date(
+    visibleMonth.getFullYear(),
+    visibleMonth.getMonth(),
+    1,
+  ).getDay();
+  const daysInMonth = new Date(
+    visibleMonth.getFullYear(),
+    visibleMonth.getMonth() + 1,
+    0,
+  ).getDate();
+
+  const openPicker = () => {
+    setVisibleMonth(
+      new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1),
+    );
+    setPickerOpen(true);
+  };
+
+  const changeMonth = (offset: number) => {
+    setVisibleMonth(
+      (month) => new Date(month.getFullYear(), month.getMonth() + offset, 1),
+    );
+  };
+
+  const selectDate = (date: Date) => {
+    onChange(dateToInputValue(date));
+    setPickerOpen(false);
+  };
+
+  return (
+    <View>
+      <Text
+        className={
+          lightLabel
+            ? "text-xs text-white/70 mb-1"
+            : "text-sm text-zinc-700 mb-2"
+        }
+        weight={FontWeight.Semibold}
+      >
+        {label}
+      </Text>
+      <TouchableOpacity
+        className="min-h-11 rounded-lg border border-zinc-200 bg-white px-3 flex-row items-center justify-between"
+        accessibilityRole="button"
+        accessibilityLabel={`Select ${label.toLowerCase()}`}
+        disabled={disabled}
+        onPress={openPicker}
+      >
+        <Text className="text-base text-zinc-700">
+          {formatDate(selectedDate)}
+        </Text>
+        <CalendarDays size={18} color={colors.text.icon} />
+      </TouchableOpacity>
+
+      <FormModal visible={pickerOpen} onClose={() => setPickerOpen(false)}>
+        <View className="gap-4">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xl" weight={FontWeight.Semibold}>
+              Select {label.toLowerCase()}
+            </Text>
+            <TouchableOpacity
+              className="px-2 py-1"
+              accessibilityRole="button"
+              onPress={() => setPickerOpen(false)}
+            >
+              <Text style={{ color: colors.green }} weight={FontWeight.Medium}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className="flex-row items-center justify-between">
+            <TouchableOpacity
+              className="w-11 h-11 items-center justify-center rounded-full"
+              accessibilityRole="button"
+              accessibilityLabel="Previous month"
+              onPress={() => changeMonth(-1)}
+            >
+              <ChevronLeft size={22} color={colors.text.icon} />
+            </TouchableOpacity>
+            <Text className="text-lg" weight={FontWeight.Semibold}>
+              {visibleMonth.toLocaleDateString(undefined, {
+                month: "long",
+                year: "numeric",
+              })}
+            </Text>
+            <TouchableOpacity
+              className="w-11 h-11 items-center justify-center rounded-full"
+              accessibilityRole="button"
+              accessibilityLabel="Next month"
+              onPress={() => changeMonth(1)}
+            >
+              <ChevronRight size={22} color={colors.text.icon} />
+            </TouchableOpacity>
+          </View>
+
+          <View className="flex-row flex-wrap">
+            {CALENDAR_WEEKDAYS.map((weekday, index) => (
+              <View
+                key={`${weekday}-${index}`}
+                className="h-8 items-center justify-center"
+                style={{ width: "14.2857%" }}
+              >
+                <Text
+                  className="text-xs text-zinc-500"
+                  weight={FontWeight.Semibold}
+                >
+                  {weekday}
+                </Text>
+              </View>
+            ))}
+            {Array.from({ length: firstWeekday }, (_, index) => (
+              <View
+                key={`empty-${index}`}
+                className="h-11"
+                style={{ width: "14.2857%" }}
+              />
+            ))}
+            {Array.from({ length: daysInMonth }, (_, index) => {
+              const day = index + 1;
+              const date = new Date(
+                visibleMonth.getFullYear(),
+                visibleMonth.getMonth(),
+                day,
+              );
+              const dateValue = dateToInputValue(date);
+              const selected = dateValue === value;
+
+              return (
+                <View
+                  key={dateValue}
+                  className="h-11 items-center justify-center"
+                  style={{ width: "14.2857%" }}
+                >
+                  <TouchableOpacity
+                    className={
+                      selected
+                        ? "w-10 h-10 rounded-full items-center justify-center bg-green"
+                        : "w-10 h-10 rounded-full items-center justify-center"
+                    }
+                    accessibilityRole="button"
+                    accessibilityLabel={formatDate(date)}
+                    accessibilityState={{ selected }}
+                    onPress={() => selectDate(date)}
+                  >
+                    <Text
+                      className={selected ? "text-white" : "text-zinc-800"}
+                      weight={
+                        selected ? FontWeight.Semibold : FontWeight.Regular
+                      }
+                    >
+                      {day}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+
+          <Button
+            title="Today"
+            color={ButtonColor.Outline}
+            onPress={() => selectDate(new Date())}
+          />
+        </View>
+      </FormModal>
+    </View>
+  );
+}
 
 export default function InvitesScreen() {
   const { user } = useAuth();
@@ -144,13 +320,16 @@ export default function InvitesScreen() {
   const [goalDueDate, setGoalDueDate] = useState(
     oneMonthFromTodayDateInputValue,
   );
-  const [selectedGoalIndex, setSelectedGoalIndex] = useState(0);
   const [editGoalStartDate, setEditGoalStartDate] = useState("");
   const [editGoalDueDate, setEditGoalDueDate] = useState("");
+  const [editGoalTarget, setEditGoalTarget] = useState("");
   const [goalFormMessage, setGoalFormMessage] = useState<string | null>(null);
   const [goalEditMessage, setGoalEditMessage] = useState<string | null>(null);
+  const [ambassadorDashboardExpanded, setAmbassadorDashboardExpanded] =
+    useState(false);
+  const [editGoalOpen, setEditGoalOpen] = useState(false);
+  const [pastGoalsOpen, setPastGoalsOpen] = useState(false);
   const sharedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const previousGoalCountRef = useRef(0);
   const {
     data: ambassadorDashboard,
     isLoading: loadingAmbassadorDashboard,
@@ -164,31 +343,74 @@ export default function InvitesScreen() {
     refetch: refetchAmbassadorDashboard,
   } = useAmbassadorInviteDashboard({ enabled: Boolean(user?.ambassador) });
 
-  const selectedGoal = ambassadorDashboard?.goals[selectedGoalIndex];
-  const goalCount = ambassadorDashboard?.goals.length ?? 0;
+  const ambassadorGoals = useMemo(
+    () => ambassadorDashboard?.goals ?? [],
+    [ambassadorDashboard],
+  );
+  const currentGoal = useMemo(() => {
+    const now = new Date();
+    const activeGoals = ambassadorGoals.filter((goal) => {
+      const startAt = new Date(goal.goal.startAt);
+      const dueAt = new Date(goal.goal.dueAt);
+      return startAt <= now && dueAt >= now;
+    });
+    if (activeGoals.length > 0) {
+      return [...activeGoals].sort(
+        (a, b) =>
+          new Date(b.goal.startAt).getTime() -
+          new Date(a.goal.startAt).getTime(),
+      )[0];
+    }
+
+    const futureGoals = ambassadorGoals.filter(
+      (goal) => new Date(goal.goal.startAt) > now,
+    );
+    if (futureGoals.length > 0) {
+      return [...futureGoals].sort(
+        (a, b) =>
+          new Date(a.goal.startAt).getTime() -
+          new Date(b.goal.startAt).getTime(),
+      )[0];
+    }
+
+    return [...ambassadorGoals].sort(
+      (a, b) =>
+        new Date(b.goal.dueAt).getTime() - new Date(a.goal.dueAt).getTime(),
+    )[0];
+  }, [ambassadorGoals]);
+  const pastGoals = useMemo(() => {
+    const now = new Date();
+    return ambassadorGoals
+      .filter(
+        (goal) =>
+          goal.goal.id !== currentGoal?.goal.id &&
+          new Date(goal.goal.dueAt) < now,
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.goal.dueAt).getTime() - new Date(a.goal.dueAt).getTime(),
+      );
+  }, [ambassadorGoals, currentGoal]);
+  const currentGoalIsUp =
+    !currentGoal ||
+    new Date(currentGoal.goal.dueAt) < new Date() ||
+    currentGoal.stats.goalSuccessfulRecruits >=
+      currentGoal.goal.targetSuccessfulRecruits;
+  const showProminentGoalForm = !currentGoal || currentGoalIsUp;
 
   useEffect(() => {
-    const previousGoalCount = previousGoalCountRef.current;
-    if (goalCount !== previousGoalCount) {
-      previousGoalCountRef.current = goalCount;
-      setSelectedGoalIndex(Math.max(0, goalCount - 1));
-      return;
-    }
-    if (selectedGoalIndex >= goalCount) {
-      setSelectedGoalIndex(Math.max(0, goalCount - 1));
-    }
-  }, [goalCount, selectedGoalIndex]);
-
-  useEffect(() => {
-    if (!selectedGoal) {
+    if (!currentGoal) {
       setEditGoalStartDate("");
       setEditGoalDueDate("");
+      setEditGoalTarget("");
       return;
     }
-    setEditGoalStartDate(dateToInputValue(selectedGoal.goal.startAt));
-    setEditGoalDueDate(dateToInputValue(selectedGoal.goal.dueAt));
+    setEditGoalStartDate(dateToInputValue(currentGoal.goal.startAt));
+    setEditGoalDueDate(dateToInputValue(currentGoal.goal.dueAt));
+    setEditGoalTarget(String(currentGoal.goal.targetSuccessfulRecruits));
     setGoalEditMessage(null);
-  }, [selectedGoal]);
+    setEditGoalOpen(false);
+  }, [currentGoal]);
 
   const referralLink = useReferralLink(user);
 
@@ -276,36 +498,54 @@ export default function InvitesScreen() {
   );
 
   const handleDeleteGoal = useCallback(() => {
-    if (!selectedGoal) {
+    if (!currentGoal) {
       return;
     }
 
-    const goalId = selectedGoal.goal.id;
-    Alert.alert("Delete recruit goal?", "Are you sure you want to do this?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Delete goal",
-        style: "destructive",
-        onPress: () => {
-          void deleteGoal(goalId).catch(() => {
-            Alert.alert("Error", "Failed to delete goal");
-          });
+    const goalId = currentGoal.goal.id;
+    Alert.alert(
+      "Delete invitation goal?",
+      "Are you sure you want to do this?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
         },
-      },
-    ]);
-  }, [deleteGoal, selectedGoal]);
+        {
+          text: "Delete goal",
+          style: "destructive",
+          onPress: () => {
+            void deleteGoal(goalId).catch(() => {
+              Alert.alert("Error", "Failed to delete goal");
+            });
+          },
+        },
+      ],
+    );
+  }, [currentGoal, deleteGoal]);
 
   const handleSetGoal = useCallback(() => {
-    const target = Number(goalTarget);
-    if (!Number.isInteger(target) || target < 1) {
-      Alert.alert("Goal needed", "Goal must be at least 1 successful recruit.");
+    if (!showProminentGoalForm) {
+      Alert.alert(
+        "Goal already active",
+        "You can set a new goal once your current goal is up.",
+      );
       return;
     }
-    if (Number.isNaN(new Date(`${goalDueDate}T23:59:59`).getTime())) {
-      Alert.alert("Date needed", "Enter a future due date as YYYY-MM-DD.");
+
+    const target = Number(goalTarget);
+    if (!Number.isInteger(target) || target < 1) {
+      Alert.alert(
+        "Goal needed",
+        "Goal must be at least 1 successful invitation.",
+      );
+      return;
+    }
+    if (
+      Number.isNaN(new Date(`${goalStartDate}T00:00:00`).getTime()) ||
+      Number.isNaN(new Date(`${goalDueDate}T23:59:59`).getTime())
+    ) {
+      Alert.alert("Date needed", "Enter dates as YYYY-MM-DD.");
       return;
     }
 
@@ -321,19 +561,36 @@ export default function InvitesScreen() {
       .catch((err: Error) => {
         setGoalFormMessage(inviteGoalErrorMessage(err));
       });
-  }, [createGoal, goalDueDate, goalStartDate, goalTarget]);
+  }, [
+    createGoal,
+    goalDueDate,
+    goalStartDate,
+    goalTarget,
+    showProminentGoalForm,
+  ]);
 
-  const updateSelectedGoalDates = useCallback(
-    (startDate: string, dueDate: string) => {
-      if (!selectedGoal) {
+  const updateCurrentGoal = useCallback(
+    (params: {
+      targetSuccessfulRecruits?: number;
+      startDate?: string;
+      dueDate?: string;
+    }) => {
+      if (!currentGoal) {
         return;
       }
 
       void updateGoal({
-        goalId: selectedGoal.goal.id,
+        goalId: currentGoal.goal.id,
         body: {
-          startAt: dateInputToStartOfDayIso(startDate),
-          dueAt: dateInputToEndOfDayIso(dueDate),
+          ...(params.targetSuccessfulRecruits !== undefined && {
+            targetSuccessfulRecruits: params.targetSuccessfulRecruits,
+          }),
+          ...(params.startDate !== undefined && {
+            startAt: dateInputToStartOfDayIso(params.startDate),
+          }),
+          ...(params.dueDate !== undefined && {
+            dueAt: dateInputToEndOfDayIso(params.dueDate),
+          }),
         },
       })
         .then(() => {
@@ -343,35 +600,97 @@ export default function InvitesScreen() {
           setGoalEditMessage(inviteGoalErrorMessage(err));
         });
     },
-    [selectedGoal, updateGoal],
+    [currentGoal, updateGoal],
   );
 
-  const handleEditGoalStartDateChanged = useCallback(() => {
-    updateSelectedGoalDates(editGoalStartDate, editGoalDueDate);
-  }, [editGoalDueDate, editGoalStartDate, updateSelectedGoalDates]);
+  const handleEditGoalStartDateChanged = useCallback(
+    (value: string) => {
+      setEditGoalStartDate(value);
+      updateCurrentGoal({ startDate: value });
+    },
+    [updateCurrentGoal],
+  );
 
-  const handleEditGoalDueDateChanged = useCallback(() => {
-    updateSelectedGoalDates(editGoalStartDate, editGoalDueDate);
-  }, [editGoalDueDate, editGoalStartDate, updateSelectedGoalDates]);
+  const handleEditGoalDueDateChanged = useCallback(
+    (value: string) => {
+      setEditGoalDueDate(value);
+      updateCurrentGoal({ dueDate: value });
+    },
+    [updateCurrentGoal],
+  );
 
-  const selectedGoalProgressPercent = useMemo(() => {
-    if (!selectedGoal) {
+  const handleEditGoalTargetChanged = useCallback(() => {
+    const target = Number(editGoalTarget);
+    if (!Number.isInteger(target) || target < 1) {
+      setGoalEditMessage("Goal must be at least 1 successful invitation.");
+      return;
+    }
+    updateCurrentGoal({ targetSuccessfulRecruits: target });
+  }, [editGoalTarget, updateCurrentGoal]);
+
+  const currentGoalProgressPercent = useMemo(() => {
+    if (!currentGoal) {
       return 0;
     }
     return Math.min(
       100,
-      (selectedGoal.stats.goalSuccessfulRecruits /
-        selectedGoal.goal.targetSuccessfulRecruits) *
+      (currentGoal.stats.goalSuccessfulRecruits /
+        currentGoal.goal.targetSuccessfulRecruits) *
         100,
     );
-  }, [selectedGoal]);
+  }, [currentGoal]);
+  const currentGoalInvitesCreated = currentGoal?.stats.totalInvitesSent ?? 0;
 
-  const goalPositionLabel = selectedGoal
-    ? `${selectedGoalIndex + 1} of ${goalCount}`
-    : "No goals yet";
+  const currentGoalSummary = useMemo(() => {
+    if (!currentGoal) {
+      return (
+        <Text className="text-lg text-white" weight={FontWeight.Semibold}>
+          Set a goal to track successful invitations.
+        </Text>
+      );
+    }
 
-  const canShowOlderGoal = selectedGoalIndex > 0;
-  const canShowNewerGoal = selectedGoalIndex < goalCount - 1;
+    const now = new Date();
+    const startAt = new Date(currentGoal.goal.startAt);
+    const dueAt = new Date(currentGoal.goal.dueAt);
+    const remainingRecruits = Math.max(
+      0,
+      currentGoal.goal.targetSuccessfulRecruits -
+        currentGoal.stats.goalSuccessfulRecruits,
+    );
+
+    if (startAt > now) {
+      return (
+        <Text className="text-lg text-white" weight={FontWeight.Semibold}>
+          This goal starts in {pluralize(daysUntil(startAt, now), "day")}.
+        </Text>
+      );
+    }
+
+    if (remainingRecruits === 0) {
+      return (
+        <Text className="text-lg text-white" weight={FontWeight.Semibold}>
+          You have completed this invitation goal.
+        </Text>
+      );
+    }
+
+    if (dueAt < now) {
+      return (
+        <Text className="text-lg text-white" weight={FontWeight.Semibold}>
+          This goal ended with {pluralize(remainingRecruits, "member")} left to
+          successfully invite.
+        </Text>
+      );
+    }
+
+    return (
+      <Text className="text-lg text-white" weight={FontWeight.Semibold}>
+        You have {pluralize(daysUntil(dueAt, now), "day")} to successfully
+        invite {pluralize(remainingRecruits, "more member", "more members")}.
+      </Text>
+    );
+  }, [currentGoal]);
 
   const isEmptyPast =
     actionable.length === 0 &&
@@ -472,53 +791,6 @@ export default function InvitesScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.grey[0] }}>
       <SimplePageTitle title="Invites" />
-      <View className="px-4 pb-3">
-        <Text className="text-sm text-zinc-500 leading-snug">
-          Help the Alliance reach its current growth goal
-        </Text>
-        <View className="mt-1">
-          <View
-            className="w-full h-4 rounded-full overflow-hidden"
-            style={{ backgroundColor: colors.grey[2] }}
-          >
-            <View
-              className="h-full rounded-full"
-              style={{
-                width: `${allianceProgressPercent}%`,
-                backgroundColor: colors.green,
-              }}
-            />
-          </View>
-          <View className="flex-row items-center justify-between mt-1">
-            <Text className="text-sm">
-              <Text
-                className="text-sm"
-                weight={FontWeight.Semibold}
-                style={{ color: colors.green }}
-              >
-                {allianceMemberCountPending
-                  ? "…"
-                  : (allianceMemberCount ?? 0).toLocaleString()}
-              </Text>
-              <Text className="text-sm text-zinc-500">
-                {" "}
-                / {MEMBER_GOAL.toLocaleString()} members
-              </Text>
-            </Text>
-            <Text className="text-sm text-zinc-500">
-              {acceptedInvites.length} accepted
-            </Text>
-          </View>
-        </View>
-      </View>
-      <View className="px-4 pt-1 pb-2">
-        <SegmentedTabs
-          tabs={INVITES_TABS_ORDER}
-          selectedTab={selectedTab}
-          onSelect={setSelectedTab}
-          labels={INVITES_TAB_LABELS}
-        />
-      </View>
       <KeyboardAwareScrollView
         contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
         refreshControl={
@@ -526,237 +798,438 @@ export default function InvitesScreen() {
         }
       >
         <View className="px-4 pt-4 gap-4">
-          {selectedTab === InvitesTab.New && (
-            <InviteForm onInviteCreated={handleInviteCreated} />
-          )}
-          {user.ambassador && selectedTab === InvitesTab.New && (
-            <Card className="gap-4">
-              <View>
-                <Text
-                  className="text-sm"
-                  weight={FontWeight.Semibold}
-                  style={{ color: colors.green }}
+          {!user.ambassador && (
+            <View className="pb-1">
+              <Text className="text-sm text-zinc-500 leading-snug">
+                Help the Alliance reach its current growth goal
+              </Text>
+              <View className="mt-1">
+                <View
+                  className="w-full h-4 rounded-full overflow-hidden"
+                  style={{ backgroundColor: colors.grey[2] }}
                 >
-                  Ambassador
-                </Text>
-                <Text className="text-2xl" weight={FontWeight.Semibold}>
-                  Recruiting dashboard
-                </Text>
+                  <View
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${allianceProgressPercent}%`,
+                      backgroundColor: colors.green,
+                    }}
+                  />
+                </View>
+                <View className="flex-row items-center justify-between mt-1">
+                  <Text className="text-sm">
+                    <Text
+                      className="text-sm"
+                      weight={FontWeight.Semibold}
+                      style={{ color: colors.green }}
+                    >
+                      {allianceMemberCountPending
+                        ? "…"
+                        : (allianceMemberCount ?? 0).toLocaleString()}
+                    </Text>
+                    <Text className="text-sm text-zinc-500">
+                      {" "}
+                      / {MEMBER_GOAL.toLocaleString()} members
+                    </Text>
+                  </Text>
+                  <Text className="text-sm text-zinc-500">
+                    {acceptedInvites.length} accepted
+                  </Text>
+                </View>
               </View>
+            </View>
+          )}
+          {user.ambassador && (
+            <Card className="gap-5 p-5" style={{ backgroundColor: "#306028" }}>
+              <TouchableOpacity
+                className="gap-3"
+                accessibilityRole="button"
+                accessibilityState={{ expanded: ambassadorDashboardExpanded }}
+                onPress={() =>
+                  setAmbassadorDashboardExpanded((expanded) => !expanded)
+                }
+              >
+                <View className="flex-row items-center gap-3">
+                  <View className="flex-1 gap-1">
+                    <Text
+                      className="text-xs text-white self-start rounded-sm px-2 py-0.5"
+                      weight={FontWeight.Semibold}
+                      style={{ backgroundColor: colors.ambassador }}
+                    >
+                      {roleBadges.ambassador.label}
+                    </Text>
+                    <Text
+                      className="text-xl text-white leading-tight"
+                      weight={FontWeight.Semibold}
+                    >
+                      Current invitation goal
+                    </Text>
+                  </View>
+                  {ambassadorDashboardExpanded ? (
+                    <ChevronUp size={22} color="#ffffff" />
+                  ) : (
+                    <ChevronDown size={22} color="#ffffff" />
+                  )}
+                </View>
 
-              {ambassadorDashboardError ? (
-                <Text className="text-sm text-red-500">
-                  Failed to load ambassador invite stats.
-                </Text>
-              ) : loadingAmbassadorDashboard || !ambassadorDashboard ? (
-                <Text className="text-zinc-500">Loading invite stats...</Text>
-              ) : (
-                <>
-                  <View className="gap-3">
-                    <View className="gap-3">
-                      <View>
-                        <Text className="text-lg" weight={FontWeight.Semibold}>
-                          Successful recruit goal
-                        </Text>
-                        <Text className="text-sm text-zinc-500">
-                          {selectedGoal
-                            ? `${formatDate(selectedGoal.goal.startAt)} - ${formatDate(selectedGoal.goal.dueAt)}`
-                            : "Set a goal with a date range."}
-                        </Text>
-                      </View>
-                      <View className="flex-row items-center gap-2 self-start">
-                        {selectedGoal && (
-                          <TouchableOpacity
-                            className="border border-red-100 rounded w-10 h-10 items-center justify-center"
-                            disabled={isDeletingGoal}
-                            onPress={handleDeleteGoal}
-                          >
-                            <Trash2 size={16} color="#dc2626" />
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          className="border border-zinc-200 rounded w-10 h-10 items-center justify-center"
-                          disabled={!canShowOlderGoal}
-                          onPress={() =>
-                            setSelectedGoalIndex((index) =>
-                              Math.max(0, index - 1),
-                            )
-                          }
-                        >
-                          <Text
-                            className={
-                              canShowOlderGoal
-                                ? "text-zinc-800"
-                                : "text-zinc-300"
-                            }
-                          >
-                            {"<"}
-                          </Text>
-                        </TouchableOpacity>
-                        <Text className="text-xs text-zinc-500">
-                          {goalPositionLabel}
-                        </Text>
-                        <TouchableOpacity
-                          className="border border-zinc-200 rounded w-10 h-10 items-center justify-center"
-                          disabled={!canShowNewerGoal}
-                          onPress={() =>
-                            setSelectedGoalIndex((index) =>
-                              Math.min(goalCount - 1, index + 1),
-                            )
-                          }
-                        >
-                          <Text
-                            className={
-                              canShowNewerGoal
-                                ? "text-zinc-800"
-                                : "text-zinc-300"
-                            }
-                          >
-                            {">"}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-
-                    <ProgressBar percentage={selectedGoalProgressPercent} />
-                    <Text className="text-sm">
-                      <Text
-                        className="text-sm"
-                        weight={FontWeight.Semibold}
-                        style={{ color: colors.green }}
+                {!ambassadorDashboardExpanded &&
+                  (loadingAmbassadorDashboard ? (
+                    <Text className="text-sm text-white/70">
+                      Loading invitation goal...
+                    </Text>
+                  ) : currentGoal ? (
+                    <View className="gap-1">
+                      <View
+                        className="w-full h-4 rounded-full overflow-hidden"
+                        style={{
+                          backgroundColor: "rgba(255,255,255,0.20)",
+                        }}
+                        accessible
+                        accessibilityRole="progressbar"
+                        accessibilityLabel="Successful invitations toward invitation goal"
+                        accessibilityValue={{
+                          min: 0,
+                          max: currentGoal.goal.targetSuccessfulRecruits,
+                          now: currentGoal.stats.goalSuccessfulRecruits,
+                        }}
                       >
-                        {selectedGoal?.stats.goalSuccessfulRecruits ?? 0}
-                      </Text>
-                      <Text className="text-sm text-zinc-500">
-                        {" "}
-                        /{" "}
-                        {selectedGoal?.goal.targetSuccessfulRecruits ?? 0}{" "}
-                        successful recruits
-                      </Text>
-                    </Text>
-                  </View>
-
-                  {selectedGoal && (
-                    <View className="flex-row flex-wrap gap-2">
-                      {inviteStatsMetrics(selectedGoal.stats).map((metric) => (
                         <View
-                          key={metric.label}
-                          className="border border-zinc-200 rounded px-3 py-2 basis-[48%]"
-                          style={{ backgroundColor: colors.grey[1] }}
+                          className="h-full bg-white rounded-full"
+                          style={{ width: `${currentGoalProgressPercent}%` }}
+                        />
+                      </View>
+                      <Text className="text-sm text-white/70">
+                        <Text
+                          className="text-sm text-white"
+                          weight={FontWeight.Semibold}
                         >
-                          <Text className="text-sm text-zinc-500 leading-tight">
-                            {metric.label}
-                          </Text>
-                          <Text className="text-base" weight={FontWeight.Semibold}>
-                            {metric.value}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {selectedGoal && (
-                    <View className="gap-3">
-                      <Input
-                        label="Goal start"
-                        value={editGoalStartDate}
-                        onChangeText={setEditGoalStartDate}
-                        onEndEditing={handleEditGoalStartDateChanged}
-                        placeholder="YYYY-MM-DD"
-                      />
-                      <Input
-                        label="Goal end"
-                        value={editGoalDueDate}
-                        onChangeText={setEditGoalDueDate}
-                        onEndEditing={handleEditGoalDueDateChanged}
-                        placeholder="YYYY-MM-DD"
-                      />
-                      {isUpdatingGoal && !goalEditMessage && (
-                        <Text className="text-sm text-zinc-500">
-                          Saving...
-                        </Text>
-                      )}
-                      {goalEditMessage && (
-                        <Text className="text-sm text-red-500">
-                          {goalEditMessage}
-                        </Text>
-                      )}
-                    </View>
-                  )}
-
-                  <View className="gap-3 border-t border-zinc-200 pt-4">
-                    <View>
-                      <Text className="text-lg" weight={FontWeight.Semibold}>
-                        Set a new goal
-                      </Text>
-                      <Text className="text-sm text-zinc-500">
-                        New goals can start in the past, but they cannot
-                        overlap another invite goal.
+                          {currentGoal.stats.goalSuccessfulRecruits}
+                        </Text>{" "}
+                        / {currentGoal.goal.targetSuccessfulRecruits} successful
+                        invitations
                       </Text>
                     </View>
-                    <Input
-                      label="Target successful recruits"
-                      value={goalTarget}
-                      onChangeText={setGoalTarget}
-                      placeholder="10"
-                      keyboardType="number-pad"
-                    />
-                    <Input
-                      label="Start date"
-                      value={goalStartDate}
-                      onChangeText={setGoalStartDate}
-                      placeholder="YYYY-MM-DD"
-                    />
-                    <Input
-                      label="End date"
-                      value={goalDueDate}
-                      onChangeText={setGoalDueDate}
-                      placeholder="YYYY-MM-DD"
-                      helperText="Defaults to one month from today. Past ranges are allowed."
-                    />
-                    <Button
-                      title="Set goal"
-                      onPress={handleSetGoal}
-                      color={ButtonColor.Black}
-                      loading={isCreatingGoal}
-                    />
-                    {goalFormMessage && (
-                      <Text className="text-sm text-red-500">
-                        {goalFormMessage}
-                      </Text>
-                    )}
-                  </View>
-
-                  <View className="border border-zinc-200 rounded p-3 gap-2">
-                    <Text className="text-sm text-zinc-600" weight={FontWeight.Medium}>
-                      Total invite stats
+                  ) : (
+                    <Text className="text-sm text-white/70">
+                      Set a goal to track successful invitations.
                     </Text>
-                    <View className="flex-row flex-wrap gap-2">
-                      {inviteStatsMetrics(ambassadorDashboard.stats).map(
-                        (metric) => (
-                          <View key={metric.label} className="basis-[48%]">
-                            <Text className="text-sm text-zinc-500 leading-tight">
-                              {metric.label}
+                  ))}
+              </TouchableOpacity>
+
+              {ambassadorDashboardExpanded && (
+                <View className="gap-5">
+                  <Text className="text-sm text-white/70">
+                    Alliance growth goal:{" "}
+                    <Text
+                      className="text-sm text-white"
+                      weight={FontWeight.Semibold}
+                    >
+                      {allianceMemberCountPending
+                        ? "..."
+                        : (allianceMemberCount ?? 0).toLocaleString()}
+                    </Text>{" "}
+                    / {MEMBER_GOAL.toLocaleString()} members.
+                  </Text>
+
+                  {ambassadorDashboardError ? (
+                    <Text className="text-sm text-red-100">
+                      Failed to load invitation goal stats.
+                    </Text>
+                  ) : loadingAmbassadorDashboard || !ambassadorDashboard ? (
+                    <Text className="text-white/70">
+                      Loading invitation goal stats...
+                    </Text>
+                  ) : (
+                    <View className="gap-5">
+                      {currentGoal && (
+                        <View
+                          className="rounded border p-4 gap-5"
+                          style={{
+                            backgroundColor: "rgba(255,255,255,0.10)",
+                            borderColor: "rgba(255,255,255,0.15)",
+                          }}
+                        >
+                          <View className="gap-3">
+                            <View className="flex-row items-start gap-3">
+                              <View className="flex-1">
+                                {currentGoalSummary}
+                                <Text className="text-sm text-white/70">
+                                  {formatDate(currentGoal.goal.startAt)} -{" "}
+                                  {formatDate(currentGoal.goal.dueAt)}
+                                </Text>
+                              </View>
+                              <View className="flex-row gap-2">
+                                <TouchableOpacity
+                                  className="rounded w-10 h-10 items-center justify-center"
+                                  style={{
+                                    borderWidth: 1,
+                                    borderColor: "rgba(255,255,255,0.20)",
+                                  }}
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Edit invitation goal"
+                                  onPress={() =>
+                                    setEditGoalOpen((open) => !open)
+                                  }
+                                >
+                                  <MoreHorizontal size={17} color="#ffffff" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  className="rounded w-10 h-10 items-center justify-center"
+                                  style={{
+                                    borderWidth: 1,
+                                    borderColor: "rgba(254,202,202,0.70)",
+                                    backgroundColor: "rgba(239,68,68,0.10)",
+                                  }}
+                                  accessibilityRole="button"
+                                  accessibilityLabel="Delete invitation goal"
+                                  disabled={isDeletingGoal}
+                                  onPress={handleDeleteGoal}
+                                >
+                                  <Trash2 size={16} color="#fee2e2" />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+
+                            {editGoalOpen && (
+                              <View className="rounded bg-white p-4 gap-3">
+                                <Text
+                                  className="text-sm text-zinc-900"
+                                  weight={FontWeight.Semibold}
+                                >
+                                  Edit goal
+                                </Text>
+                                <Input
+                                  label="Target successful invitations"
+                                  value={editGoalTarget}
+                                  onChangeText={setEditGoalTarget}
+                                  onEndEditing={handleEditGoalTargetChanged}
+                                  placeholder="10"
+                                  keyboardType="number-pad"
+                                  editable={!isUpdatingGoal}
+                                />
+                                <DatePickerField
+                                  label="Goal start"
+                                  value={editGoalStartDate}
+                                  onChange={handleEditGoalStartDateChanged}
+                                  disabled={isUpdatingGoal}
+                                />
+                                <DatePickerField
+                                  label="Goal end"
+                                  value={editGoalDueDate}
+                                  onChange={handleEditGoalDueDateChanged}
+                                  disabled={isUpdatingGoal}
+                                />
+                                {isUpdatingGoal && !goalEditMessage && (
+                                  <Text className="text-sm text-zinc-500">
+                                    Saving...
+                                  </Text>
+                                )}
+                                {goalEditMessage && (
+                                  <Text className="text-sm text-red-500">
+                                    {goalEditMessage}
+                                  </Text>
+                                )}
+                              </View>
+                            )}
+                          </View>
+
+                          <View className="gap-1">
+                            <View
+                              className="w-full h-4 rounded-full overflow-hidden"
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.20)",
+                              }}
+                            >
+                              <View
+                                className="h-full bg-white rounded-full"
+                                style={{
+                                  width: `${currentGoalProgressPercent}%`,
+                                }}
+                              />
+                            </View>
+                            <Text className="text-sm text-white/70">
+                              <Text
+                                className="text-sm text-white"
+                                weight={FontWeight.Semibold}
+                              >
+                                {currentGoal.stats.goalSuccessfulRecruits}
+                              </Text>{" "}
+                              / {currentGoal.goal.targetSuccessfulRecruits}{" "}
+                              successful invitations
                             </Text>
+                            <View
+                              className="rounded border px-3 py-2 mt-2"
+                              style={{
+                                backgroundColor: "rgba(255,255,255,0.10)",
+                                borderColor: "rgba(255,255,255,0.15)",
+                              }}
+                            >
+                              <Text
+                                className="text-xs text-white/70"
+                                weight={FontWeight.Semibold}
+                              >
+                                Invites created
+                              </Text>
+                              <Text
+                                className="text-lg text-white"
+                                weight={FontWeight.Semibold}
+                              >
+                                {currentGoalInvitesCreated}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      )}
+
+                      {pastGoals.length > 0 && (
+                        <View
+                          className="rounded border px-4 py-3"
+                          style={{
+                            backgroundColor: "rgba(255,255,255,0.10)",
+                            borderColor: "rgba(255,255,255,0.15)",
+                          }}
+                        >
+                          <TouchableOpacity
+                            className="flex-row items-center justify-between min-h-8"
+                            accessibilityRole="button"
+                            accessibilityState={{ expanded: pastGoalsOpen }}
+                            onPress={() => setPastGoalsOpen((open) => !open)}
+                          >
                             <Text
-                              className="text-base"
+                              className="text-sm text-white/80"
+                              weight={FontWeight.Medium}
+                            >
+                              View past goals
+                            </Text>
+                            {pastGoalsOpen ? (
+                              <ChevronUp
+                                size={18}
+                                color="rgba(255,255,255,0.8)"
+                              />
+                            ) : (
+                              <ChevronDown
+                                size={18}
+                                color="rgba(255,255,255,0.8)"
+                              />
+                            )}
+                          </TouchableOpacity>
+                          {pastGoalsOpen && (
+                            <View className="mt-2">
+                              {pastGoals.map((goal, index) => (
+                                <View
+                                  key={goal.goal.id}
+                                  className={
+                                    index === 0
+                                      ? "py-3 gap-1"
+                                      : "py-3 gap-1 border-t border-white/15"
+                                  }
+                                >
+                                  <Text className="text-sm text-white/70">
+                                    {formatDate(goal.goal.startAt)} -{" "}
+                                    {formatDate(goal.goal.dueAt)}
+                                  </Text>
+                                  <Text className="text-sm text-white/70">
+                                    <Text
+                                      className="text-sm text-white"
+                                      weight={FontWeight.Semibold}
+                                    >
+                                      {goal.stats.goalSuccessfulRecruits}
+                                    </Text>{" "}
+                                    / {goal.goal.targetSuccessfulRecruits}{" "}
+                                    successful invitations
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      )}
+
+                      {showProminentGoalForm && (
+                        <View
+                          className="rounded border p-4 gap-3"
+                          style={{
+                            backgroundColor: "rgba(255,255,255,0.10)",
+                            borderColor: "rgba(255,255,255,0.15)",
+                          }}
+                        >
+                          <View>
+                            <Text
+                              className="text-lg text-white"
                               weight={FontWeight.Semibold}
                             >
-                              {metric.value}
+                              {currentGoal ? "Set a new goal" : "Set a goal"}
+                            </Text>
+                            <Text className="text-sm text-white/70">
+                              New goals can start in the past, but they cannot
+                              overlap another invite goal.
                             </Text>
                           </View>
-                        ),
+                          <View>
+                            <Text
+                              className="text-xs text-white/70 mb-1"
+                              weight={FontWeight.Semibold}
+                            >
+                              Target successful invitations
+                            </Text>
+                            <Input
+                              value={goalTarget}
+                              onChangeText={setGoalTarget}
+                              placeholder="10"
+                              keyboardType="number-pad"
+                            />
+                          </View>
+                          <DatePickerField
+                            label="Start date"
+                            value={goalStartDate}
+                            onChange={setGoalStartDate}
+                            lightLabel
+                          />
+                          <DatePickerField
+                            label="End date"
+                            value={goalDueDate}
+                            onChange={setGoalDueDate}
+                            lightLabel
+                          />
+                          <Button
+                            onPress={handleSetGoal}
+                            color={ButtonColor.White}
+                            loading={isCreatingGoal}
+                            className="border-white"
+                          >
+                            <Text
+                              weight={FontWeight.Semibold}
+                              style={{ color: "#306028" }}
+                            >
+                              Set goal
+                            </Text>
+                          </Button>
+                          {goalFormMessage && (
+                            <Text className="text-sm text-red-100">
+                              {goalFormMessage}
+                            </Text>
+                          )}
+                        </View>
                       )}
-                    </View>
-                  </View>
 
-                  <Text className="text-sm text-zinc-500 leading-snug">
-                    Successful recruits are counted when someone you invited
-                    signs their membership contract.
-                  </Text>
-                </>
+                      <Text className="text-sm text-white/70 leading-snug">
+                        Successful invitations are people you invited who signed
+                        their membership contract.
+                      </Text>
+                    </View>
+                  )}
+                </View>
               )}
             </Card>
+          )}
+          <SegmentedTabs
+            tabs={INVITES_TABS_ORDER}
+            selectedTab={selectedTab}
+            onSelect={setSelectedTab}
+            labels={INVITES_TAB_LABELS}
+          />
+          {selectedTab === InvitesTab.New && (
+            <InviteForm onInviteCreated={handleInviteCreated} />
           )}
           {tabContent[selectedTab]}
         </View>
