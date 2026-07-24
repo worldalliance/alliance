@@ -71,7 +71,7 @@ import {
 import {
   AssignGroupsDto,
   FriendStatusDto,
-  MaybeFirstContractSignedDto,
+  MyVisibilityContextDto,
   NMembersResponseDto,
   ProfileDto,
   ProfileDtoWithFriends,
@@ -229,14 +229,14 @@ export class UserController {
     return new MaybeUserLocationDto(city);
   }
 
-  @Get('myfirstcontractsigned')
+  @Get('myvisibilitycontext')
   @UseGuards(AuthGuard)
-  @ApiOkResponse({ type: MaybeFirstContractSignedDto })
-  async myFirstContractSigned(
+  @ApiOkResponse({ type: MyVisibilityContextDto })
+  async myVisibilityContext(
     @Request() req: JwtRequest,
-  ): Promise<MaybeFirstContractSignedDto> {
-    return new MaybeFirstContractSignedDto(
-      await this.userService.getFirstContractSignedAt(req.user.sub),
+  ): Promise<MyVisibilityContextDto> {
+    return new MyVisibilityContextDto(
+      await this.userService.getVisibilityContext(req.user.sub),
     );
   }
 

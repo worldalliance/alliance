@@ -883,7 +883,8 @@ export type MaybeUserLocationDto = {
     city?: City;
 };
 
-export type MaybeFirstContractSignedDto = {
+export type MyVisibilityContextDto = {
+    userHasCity: boolean;
     firstContractSignedAt?: string;
 };
 
@@ -4093,27 +4094,27 @@ export type UserMyLocationResponses = {
 
 export type UserMyLocationResponse = UserMyLocationResponses[keyof UserMyLocationResponses];
 
-export type UserMyFirstContractSignedData = {
+export type UserMyVisibilityContextData = {
     body?: never;
     path?: never;
     query?: never;
-    url: '/user/myfirstcontractsigned';
+    url: '/user/myvisibilitycontext';
 };
 
-export type UserMyFirstContractSignedErrors = {
+export type UserMyVisibilityContextErrors = {
     /**
      * Default error response for hey-api
      */
     default: HeyApiError;
 };
 
-export type UserMyFirstContractSignedError = UserMyFirstContractSignedErrors[keyof UserMyFirstContractSignedErrors];
+export type UserMyVisibilityContextError = UserMyVisibilityContextErrors[keyof UserMyVisibilityContextErrors];
 
-export type UserMyFirstContractSignedResponses = {
-    200: MaybeFirstContractSignedDto;
+export type UserMyVisibilityContextResponses = {
+    200: MyVisibilityContextDto;
 };
 
-export type UserMyFirstContractSignedResponse = UserMyFirstContractSignedResponses[keyof UserMyFirstContractSignedResponses];
+export type UserMyVisibilityContextResponse = UserMyVisibilityContextResponses[keyof UserMyVisibilityContextResponses];
 
 export type UserRemoveFriendData = {
     body?: never;

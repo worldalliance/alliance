@@ -39,6 +39,15 @@ Don't switch on an enum (or union discriminator) with a ternary or an open `if`/
 
 - `const TABLE: Record<MyEnum, T> = { [MyEnum.A]: ..., [MyEnum.B]: ... }` and index in — `Record<MyEnum, T>` forces every variant to be listed.
 
+The same table pattern applies to **subsets** of a closed set. Declare a `Record<MyEnum, boolean>` and look up in it, so every new variant is a compile error until someone explicitly opts it in or out:
+
+```ts
+const NEEDS_SPECIAL_HANDLING: Record<MyEnum, boolean> = {
+  [MyEnum.A]: true,
+  [MyEnum.B]: false,
+};
+```
+
 Apply this to any branch keyed on a closed set (enum, string-literal union, tagged union `kind`), even when there are only two variants today.
 
 ## Type casts

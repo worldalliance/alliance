@@ -31,7 +31,6 @@ import {
   tasksGetForm,
   tasksGetMyFormResponse,
   tasksRunValidator,
-  userMyFirstContractSigned,
   userMyLocation,
   type UserDto,
 } from "@alliance/shared/client";
@@ -49,13 +48,12 @@ import {
   getVisiblePageIndices,
   resolveDisplayBlockForUser,
   resolveFieldDefaultValue,
-  schemaHasFirstContractSignedCondition,
-  schemaHasUserHasCityCondition,
   validateFieldValue as validateFieldValueShared,
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { outputFieldPublicToggle } from "@alliance/shared/lib/copy";
+import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
@@ -566,16 +564,6 @@ const FormRenderer = ({
     [schema],
   );
 
-  const hasUserHasCityCondition = useMemo(
-    () => schemaHasUserHasCityCondition(schema),
-    [schema],
-  );
-
-  const hasFirstContractSignedCondition = useMemo(
-    () => schemaHasFirstContractSignedCondition(schema),
-    [schema],
-  );
-
   const previousAnswerSourceFormIds = useMemo(() => {
     const ids = new Set<number>();
     for (const page of schema.pages) {
@@ -755,11 +743,7 @@ const FormRenderer = ({
     useState(false);
 
   useEffect(() => {
-    if (
-      !loadCurrentUserLocation ||
-      (!hasUserLocationDisplayBlock && !hasUserHasCityCondition) ||
-      !user
-    ) {
+    if (!loadCurrentUserLocation || !hasUserLocationDisplayBlock || !user) {
       setCurrentUserLocation(null);
       setCurrentUserLocationLoading(false);
       return;
@@ -786,49 +770,18 @@ const FormRenderer = ({
     return () => {
       cancelled = true;
     };
-  }, [
-    hasUserLocationDisplayBlock,
-    hasUserHasCityCondition,
-    loadCurrentUserLocation,
-    user?.id,
-    user,
-  ]);
+  }, [hasUserLocationDisplayBlock, loadCurrentUserLocation, user?.id, user]);
 
   const userLocationDisplayValue =
     currentUserLocation ?? user?.customCityString ?? null;
 
-  const userHasCity = useMemo(
-    () => formatUserLocationDisplayValue(userLocationDisplayValue).length > 0,
-    [userLocationDisplayValue],
-  );
-
-  const [firstContractSignedAt, setFirstContractSignedAt] = useState<
-    string | null
-  >(null);
-
-  useEffect(() => {
-    if (!hasFirstContractSignedCondition || !user) {
-      setFirstContractSignedAt(null);
-      return;
-    }
-
-    let cancelled = false;
-    setFirstContractSignedAt(null);
-
-    userMyFirstContractSigned()
-      .then((response) => {
-        if (cancelled) return;
-        setFirstContractSignedAt(response.data?.firstContractSignedAt ?? null);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setFirstContractSignedAt(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hasFirstContractSignedCondition, user?.id, user]);
+  const {
+    userHasCity,
+    firstContractSignedAt,
+    isLoading: visibilityContextLoading,
+  } = useVisibilityContext(schema, {
+    enabled: !!user,
+  });
 
   // Draft persistence: tracks whether we've loaded a stored draft so the save
   // effect doesn't overwrite stored data with initial defaults.
@@ -1518,6 +1471,14 @@ const FormRenderer = ({
           Restarting the app or downloading the latest version may fix the
           issue.
         </Text>
+      </View>
+    );
+  }
+
+  if (visibilityContextLoading) {
+    return (
+      <View className="items-center py-8">
+        <ActivityIndicator />
       </View>
     );
   }

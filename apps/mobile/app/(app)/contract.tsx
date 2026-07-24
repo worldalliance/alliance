@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, TextInput, View } from "react-native";
 import {
   authMe,
   contractGetById,
@@ -8,21 +6,24 @@ import {
   contractSuspendContract,
 } from "@alliance/shared/client";
 import {
+  CONTRACT_NOTES,
   ContractEventState,
   getLastContractEvent,
-  getSuspensionMessage,
   getSignedMessage,
-  CONTRACT_NOTES,
+  getSuspensionMessage,
 } from "@alliance/shared/lib/contract";
-import { useAuth } from "../../lib/AuthContext";
-import Text, { FontWeight } from "../../components/system/Text";
+import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, TextInput, View } from "react-native";
+import AppMarkdownWrapper from "../../components/AppMarkdownWrapper";
+import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import Button, { ButtonColor } from "../../components/system/Button";
 import Card, { CardStyle } from "../../components/system/Card";
-import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
-import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
-import AppMarkdownWrapper from "../../components/AppMarkdownWrapper";
-import { useQuery } from "@tanstack/react-query";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
+import Text, { FontWeight } from "../../components/system/Text";
+import { useAuth } from "../../lib/AuthContext";
 import { colors } from "../../lib/style/colors";
 
 const WEEKLY_COMMITMENT_CONFIRMATION =
@@ -37,6 +38,7 @@ const isConfirmationLengthCloseEnough = (confirmation: string) =>
 
 export default function ContractScreen() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [editName, setEditName] = useState("");
   const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
@@ -100,6 +102,9 @@ export default function ContractScreen() {
           contractId: latestContract.id,
         });
         setWeeklyCommitmentConfirmation("");
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.myVisibilityContext(),
+        });
         await refreshContractState();
       }
     } catch (error) {
@@ -116,6 +121,7 @@ export default function ContractScreen() {
     latestContract,
     weeklyCommitmentConfirmed,
     editName,
+    queryClient,
     refreshContractState,
   ]);
 
@@ -267,9 +273,7 @@ export default function ContractScreen() {
                       onPress={handleContractSign}
                       color={ButtonColor.Black}
                       disabled={
-                        isSubmitting ||
-                        !editName ||
-                        !weeklyCommitmentConfirmed
+                        isSubmitting || !editName || !weeklyCommitmentConfirmed
                       }
                       loading={isSubmitting}
                       title="Sign"

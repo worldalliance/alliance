@@ -29,7 +29,6 @@ import {
   tasksGetFormResponsesAdmin,
   tasksGetMyFormResponse,
   tasksRunValidator,
-  userMyFirstContractSigned,
   userMyLocation,
   type UserDto,
 } from "@alliance/shared/client";
@@ -40,7 +39,6 @@ import {
   computeFormStorageKey,
   filterAnswersByFieldIds,
   findUnknownFormElementKind,
-  formatUserLocationDisplayValue,
   getFallbackVisiblePageIndex,
   getListSubFieldErrors,
   getNextVisiblePageIndex,
@@ -48,8 +46,6 @@ import {
   getVisiblePageIndices,
   resolveDisplayBlockForUser,
   resolveFieldDefaultValue,
-  schemaHasFirstContractSignedCondition,
-  schemaHasUserHasCityCondition,
   validateFieldValue as validateFieldValueShared,
 } from "@alliance/shared/formrenderer";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
@@ -57,6 +53,7 @@ import {
   guestReferral,
   outputFieldPublicToggle,
 } from "@alliance/shared/lib/copy";
+import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
 import { Ellipsis } from "lucide-react";
 import React, {
@@ -74,6 +71,7 @@ import BaseButton, {
 } from "../ui/BaseButton";
 import ConfettiWrapper from "../ui/ConfettiWrapper";
 import Dropdown from "../ui/Dropdown";
+import Spinner from "../ui/Spinner";
 import {
   useFormPageDurationTracking,
   useFormValidationErrorTracking,
@@ -233,16 +231,6 @@ const FormRenderer = ({
     [schema],
   );
 
-  const hasUserHasCityCondition = useMemo(
-    () => schemaHasUserHasCityCondition(schema),
-    [schema],
-  );
-
-  const hasFirstContractSignedCondition = useMemo(
-    () => schemaHasFirstContractSignedCondition(schema),
-    [schema],
-  );
-
   const pageCount = schema.pages?.length ?? 0;
   const maxPageIndex = Math.max(0, (pageCount || 1) - 1);
   const userDefaultPublic = user?.formDataPreference === "public";
@@ -391,11 +379,7 @@ const FormRenderer = ({
     useState(false);
 
   useEffect(() => {
-    if (
-      !loadCurrentUserLocation ||
-      (!hasUserLocationDisplayBlock && !hasUserHasCityCondition) ||
-      !user
-    ) {
+    if (!loadCurrentUserLocation || !hasUserLocationDisplayBlock || !user) {
       setCurrentUserLocation(null);
       setCurrentUserLocationLoading(false);
       return;
@@ -422,49 +406,18 @@ const FormRenderer = ({
     return () => {
       cancelled = true;
     };
-  }, [
-    hasUserLocationDisplayBlock,
-    hasUserHasCityCondition,
-    loadCurrentUserLocation,
-    user?.id,
-    user,
-  ]);
+  }, [hasUserLocationDisplayBlock, loadCurrentUserLocation, user?.id, user]);
 
   const userLocationDisplayValue =
     currentUserLocation ?? user?.customCityString ?? null;
 
-  const userHasCity = useMemo(
-    () => formatUserLocationDisplayValue(userLocationDisplayValue).length > 0,
-    [userLocationDisplayValue],
-  );
-
-  const [firstContractSignedAt, setFirstContractSignedAt] = useState<
-    string | null
-  >(null);
-
-  useEffect(() => {
-    if (!hasFirstContractSignedCondition || !user) {
-      setFirstContractSignedAt(null);
-      return;
-    }
-
-    let cancelled = false;
-    setFirstContractSignedAt(null);
-
-    userMyFirstContractSigned()
-      .then((response) => {
-        if (cancelled) return;
-        setFirstContractSignedAt(response.data?.firstContractSignedAt ?? null);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setFirstContractSignedAt(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [hasFirstContractSignedCondition, user?.id, user]);
+  const {
+    userHasCity,
+    firstContractSignedAt,
+    isLoading: visibilityContextLoading,
+  } = useVisibilityContext(schema, {
+    enabled: !!user,
+  });
 
   useEffect(() => {
     if (readOnly || typeof window === "undefined") {
@@ -1730,6 +1683,14 @@ const FormRenderer = ({
       >
         <p className="font-medium">This form can&apos;t be displayed</p>
         <p className="mt-1 text-sm">Refreshing the page may fix the issue.</p>
+      </div>
+    );
+  }
+
+  if (visibilityContextLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Spinner />
       </div>
     );
   }

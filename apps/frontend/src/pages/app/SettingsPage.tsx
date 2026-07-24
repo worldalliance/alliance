@@ -6,8 +6,8 @@ import {
   PublicFormResponseDefault,
   UpdateProfileDto,
   userMyLocation,
-  userUpdate,
 } from "@alliance/shared/client";
+import { useUpdateProfileMutation } from "@alliance/shared/lib/user";
 import { CardStyle } from "@alliance/shared/styles/card";
 import TimeZoneSelect from "@alliance/sharedweb/forms/TimeZoneSelect";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
@@ -25,7 +25,6 @@ import { useAuth } from "../../lib/AuthContext";
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   const [location, setLocation] = useState<City | null>(null);
   const [editableUser, setEditableUser] = useState<UpdateProfileDto | null>(
@@ -46,6 +45,8 @@ const SettingsPage: React.FC = () => {
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { mutateAsync: updateProfile, isPending: saving } =
+    useUpdateProfileMutation(user?.id);
 
   const updateEditableUser = useCallback(
     (updates: Partial<UpdateProfileDto>) => {
@@ -134,22 +135,17 @@ const SettingsPage: React.FC = () => {
     }
   }, [user?.email]);
 
-  const handleSave = useCallback(async (userPayload: UpdateProfileDto) => {
-    setSaving(true);
-    try {
-      await userUpdate({
-        body: {
-          ...userPayload,
-        },
-      });
-
-      setInitialUser({ ...userPayload });
-    } catch (error) {
-      console.error("Failed to save settings:", error);
-    } finally {
-      setSaving(false);
-    }
-  }, []);
+  const handleSave = useCallback(
+    async (userPayload: UpdateProfileDto) => {
+      try {
+        await updateProfile({ ...userPayload });
+        setInitialUser({ ...userPayload });
+      } catch (error) {
+        console.error("Failed to save settings:", error);
+      }
+    },
+    [updateProfile],
+  );
 
   useEffect(() => {
     if (!user) {

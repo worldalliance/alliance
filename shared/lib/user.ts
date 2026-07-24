@@ -1,4 +1,13 @@
 import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+  type UseMutationOptions,
+  type UseQueryOptions,
+} from "@tanstack/react-query";
+import { useMemo } from "react";
+import {
   FriendStatusDto,
   PostDto,
   ProfileDto,
@@ -18,15 +27,7 @@ import {
   userRequestFriend,
   userUpdate,
 } from "../client";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-  type UseMutationOptions,
-  type UseQueryOptions,
-} from "@tanstack/react-query";
-import { useMemo } from "react";
+import { queryKeys } from "./queryKeys";
 
 export const userQueryKeys = {
   profile: (userId: number) => ["user", userId, "profile"] as const,
@@ -367,7 +368,6 @@ export const useUpdateProfileMutation = (
   return useMutation({
     mutationFn: async (payload: UpdateProfileDto) => {
       const response = await userUpdate({ body: payload });
-      console.log(response);
       if (response.error) {
         throw response.error;
       }
@@ -375,12 +375,12 @@ export const useUpdateProfileMutation = (
     },
     onSuccess: (data, variables, onMutateResult, context) => {
       const targetId = data?.id ?? userId;
-      console.log(targetId);
-      console.log(data);
       if (targetId) {
-        console.log(userQueryKeys.profile(targetId));
         queryClient.setQueryData(userQueryKeys.profile(targetId), data);
       }
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.myVisibilityContext(),
+      });
       options?.onSuccess?.(data, variables, onMutateResult, context);
     },
     onError: (error, variables, onMutateResult, context) => {

@@ -1,25 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Switch, TextInput, TouchableOpacity, View } from "react-native";
 import {
   authForgotPassword,
   authMe,
   City,
   UpdateProfileDto,
   userMyLocation,
-  userUpdate,
 } from "@alliance/shared/client";
 import { hasSettingsChanges } from "@alliance/shared/lib/settings";
-import { useAuth } from "../../lib/AuthContext";
+import { useUpdateProfileMutation } from "@alliance/shared/lib/user";
+import { cn } from "@alliance/shared/styles/util";
+import { useMutation } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Switch, TextInput, TouchableOpacity, View } from "react-native";
+import AwayRangesSection from "../../components/AwayRangesSection";
+import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
+import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import Button, { ButtonColor } from "../../components/system/Button";
 import Card, { CardStyle } from "../../components/system/Card";
-import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
-import AwayRangesSection from "../../components/AwayRangesSection";
-import { useMutation } from "@tanstack/react-query";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
-import { colors } from "../../lib/style/colors";
-import { cn } from "@alliance/shared/styles/util";
-import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import Text, { FontWeight } from "../../components/system/Text";
+import { useAuth } from "../../lib/AuthContext";
+import { colors } from "../../lib/style/colors";
 
 type SettingsToggleRowProps = {
   label: string;
@@ -62,9 +62,10 @@ function SettingsToggleRow({
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
+  const { mutateAsync: updateProfile, isPending: saving } =
+    useUpdateProfileMutation(user?.id);
 
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
 
   const [location, setLocation] = useState<City | null>(null);
   const [editableUser, setEditableUser] = useState<UpdateProfileDto | null>(
@@ -114,19 +115,17 @@ export default function SettingsPage() {
     forgotPassword.mutate(user.email);
   }, [user?.email, forgotPassword]);
 
-  const handleSave = useCallback(async (userPayload: UpdateProfileDto) => {
-    setSaving(true);
-    try {
-      await userUpdate({
-        body: { ...userPayload },
-      });
-      setInitialUser({ ...userPayload });
-    } catch (error) {
-      console.error("Failed to save settings:", error);
-    } finally {
-      setSaving(false);
-    }
-  }, []);
+  const handleSave = useCallback(
+    async (userPayload: UpdateProfileDto) => {
+      try {
+        await updateProfile({ ...userPayload });
+        setInitialUser({ ...userPayload });
+      } catch (error) {
+        console.error("Failed to save settings:", error);
+      }
+    },
+    [updateProfile],
+  );
 
   useEffect(() => {
     if (!user) return;

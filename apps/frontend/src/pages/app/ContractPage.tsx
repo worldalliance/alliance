@@ -10,12 +10,13 @@ import {
   getSuspensionMessage,
 } from "@alliance/shared/lib/contract";
 import { suspendContractConfirmation } from "@alliance/shared/lib/copy";
+import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useMemo, useState } from "react";
 import MemberContract from "../../components/MemberContract";
 import { useAuth } from "../../lib/AuthContext";
@@ -34,6 +35,7 @@ const isConfirmationLengthCloseEnough = (confirmation: string) =>
 const ContractPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { latestContract } = useContract();
+  const queryClient = useQueryClient();
   const [editName, setEditName] = useState("");
   const [weeklyCommitmentConfirmation, setWeeklyCommitmentConfirmation] =
     useState("");
@@ -87,6 +89,9 @@ const ContractPage: React.FC = () => {
           contractId: latestContract.id,
         });
         setWeeklyCommitmentConfirmation("");
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.myVisibilityContext(),
+        });
         await refreshUser();
       }
     } catch (error) {

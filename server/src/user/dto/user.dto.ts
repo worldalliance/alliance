@@ -556,13 +556,26 @@ export class NMembersResponseDto {
   }
 }
 
-export class MaybeFirstContractSignedDto {
+export type MyVisibilityContext = {
+  userHasCity: boolean;
+  firstContractSignedAt: Date | null;
+};
+
+/**
+ * User-account-derived values consumed by form visibility conditions
+ * (`userHasCity`, `firstContractSigned`). Mirrors the server-side extras used
+ * when stripping hidden answers at submission, so clients preview the same
+ * visibility the server enforces.
+ */
+export class MyVisibilityContextDto {
+  @ApiProperty()
+  userHasCity: boolean;
+
   @ApiPropertyOptional({ type: Date })
-  @IsOptional()
-  @Type(() => Date)
   firstContractSignedAt?: Date;
 
-  constructor(firstContractSignedAt: Date | null) {
-    this.firstContractSignedAt = firstContractSignedAt ?? undefined;
+  constructor(input: MyVisibilityContext) {
+    this.userHasCity = input.userHasCity;
+    this.firstContractSignedAt = input.firstContractSignedAt ?? undefined;
   }
 }

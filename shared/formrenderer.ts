@@ -203,25 +203,25 @@ export function formatUserLocationDisplayValue(
   return `${value.name}${suffix}`;
 }
 
-function schemaHasConditionOfKind(
+function schemaHasConditionMatching(
   schema: FormSchema,
-  kind: ConditionKind,
+  predicate: (kind: ConditionKind) => boolean,
 ): boolean {
-  const formulaHasKind = (
+  const formulaMatches = (
     visibleIfFormula: VisibleIfFormula | undefined,
   ): boolean =>
-    Object.values(visibleIfFormula?.conditions ?? {}).some(
-      (condition) => condition.kind === kind,
+    Object.values(visibleIfFormula?.conditions ?? {}).some((condition) =>
+      predicate(condition.kind),
     );
   for (const page of schema.pages) {
-    if (formulaHasKind(page.visibleIfFormula)) return true;
+    if (formulaMatches(page.visibleIfFormula)) return true;
     for (const element of page.fields) {
-      if (formulaHasKind(element.visibleIfFormula)) return true;
+      if (formulaMatches(element.visibleIfFormula)) return true;
       if (isQuestionField(element) && element.kind === "list") {
         const listField = element as ListField;
         if (Array.isArray(listField.fields)) {
           for (const sub of listField.fields) {
-            if (formulaHasKind(sub.visibleIfFormula)) return true;
+            if (formulaMatches(sub.visibleIfFormula)) return true;
           }
         }
       }
@@ -230,14 +230,29 @@ function schemaHasConditionOfKind(
   return false;
 }
 
-export function schemaHasUserHasCityCondition(schema: FormSchema): boolean {
-  return schemaHasConditionOfKind(schema, "userHasCity");
-}
+/**
+ * Whether a condition kind's value comes from the viewer's account state,
+ * served by `GET /user/myvisibilitycontext`.
+ */
+const CONDITION_KIND_NEEDS_VISIBILITY_CONTEXT: Record<ConditionKind, boolean> =
+  {
+    equals: false,
+    includesOption: false,
+    anySelected: false,
+    hasValue: false,
+    validator: false,
+    deviceType: false,
+    outputBlockVisible: false,
+    userHasCity: true,
+    firstContractSigned: true,
+  };
 
-export function schemaHasFirstContractSignedCondition(
-  schema: FormSchema,
-): boolean {
-  return schemaHasConditionOfKind(schema, "firstContractSigned");
+/** Whether rendering this schema requires fetching the viewer's visibility context. */
+export function schemaNeedsVisibilityContext(schema: FormSchema): boolean {
+  return schemaHasConditionMatching(
+    schema,
+    (kind) => CONDITION_KIND_NEEDS_VISIBILITY_CONTEXT[kind],
+  );
 }
 
 export function getRangeOptionCount(field: RangeField): number {

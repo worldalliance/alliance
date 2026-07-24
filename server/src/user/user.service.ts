@@ -82,6 +82,7 @@ import { CreateTagDto } from './dto/tag.dto';
 import {
   AssignGroupsDto,
   FriendStatusDtoArgs,
+  MyVisibilityContext,
   UpdateProfileDto,
   UserCityCount,
 } from './dto/user.dto';
@@ -983,6 +984,18 @@ export class UserService {
       order: { date: 'ASC', id: 'ASC' },
     });
     return firstSigned?.date ?? null;
+  }
+
+  /**
+   * User-account-derived values for form visibility conditions. Keep in sync
+   * with the condition kinds evaluated in `common/src/forms/visibility.ts`.
+   */
+  async getVisibilityContext(userId: number): Promise<MyVisibilityContext> {
+    const [userHasCity, firstContractSignedAt] = await Promise.all([
+      this.userHasCitySet(userId),
+      this.getFirstContractSignedAt(userId),
+    ]);
+    return { userHasCity, firstContractSignedAt };
   }
 
   async getUserCityCounts(): Promise<UserCityCount[]> {
