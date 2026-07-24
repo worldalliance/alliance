@@ -17,7 +17,7 @@ import FormInput from "@alliance/sharedweb/ui/FormInput";
 import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
 import YesNoToggle from "@alliance/sharedweb/ui/YesNoToggle";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { href, useNavigate } from "react-router";
+import { href, useLocation, useNavigate } from "react-router";
 import AwayRangesSection from "../../components/AwayRangesSection";
 import CityAutosuggest from "../../components/CityAutosuggest";
 import { useAuth } from "../../lib/AuthContext";
@@ -45,6 +45,7 @@ const SettingsPage: React.FC = () => {
   const [passwordResetLoading, setPasswordResetLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const { mutateAsync: updateProfile, isPending: saving } =
     useUpdateProfileMutation(user?.id);
 
@@ -192,6 +193,18 @@ const SettingsPage: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [editableUser, initialUser, hasChanges, handleSave]);
 
+  // The page renders after an async load, so ScrollRestoration's hash
+  // handling fires before the anchor exists.
+  useEffect(() => {
+    if (loading || hash !== "#away-periods") {
+      return;
+    }
+    const el = document.getElementById("away-periods");
+    if (el) {
+      setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 100);
+    }
+  }, [loading, hash]);
+
   if (loading) {
     return (
       <div className="bg-page pt-20 px-2 md:px-16">
@@ -300,7 +313,11 @@ const SettingsPage: React.FC = () => {
           </div>
         </Card>
 
-        <Card style={CardStyle.White} className="p-6">
+        <Card
+          id="away-periods"
+          style={CardStyle.White}
+          className="p-6 scroll-mt-[calc(var(--navbar-top-bar-height)+1rem)]"
+        >
           <AwayRangesSection />
         </Card>
 

@@ -55,7 +55,14 @@ import {
 } from "@alliance/shared/lib/copy";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
-import { Ellipsis } from "lucide-react";
+import {
+  CircleDashed,
+  Clock,
+  Ellipsis,
+  Scale,
+  TreePalm,
+  type LucideIcon,
+} from "lucide-react";
 import React, {
   useCallback,
   useEffect,
@@ -63,7 +70,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useOutsideClick } from "../../sharedweb/lib/useOutsideClick";
 import BaseButton, {
   BaseButtonSize,
@@ -78,6 +85,12 @@ import {
 } from "./formAnalytics";
 import RenderDisplayBlock from "./RenderDisplayBlock";
 import RenderField from "./RenderField";
+
+const WITHDRAWAL_OPTION_ICONS: Record<WithdrawalOption, LucideIcon> = {
+  out_of_time: Clock,
+  moral: Scale,
+  other: CircleDashed,
+};
 
 type FormRendererProps = {
   form: FormSchema;
@@ -373,6 +386,7 @@ const FormRenderer = ({
     useState<WithdrawalOption | null>(null);
   const [customReason, setCustomReason] = useState("");
   const ref = useOutsideClick(() => setDropdownOpen(false));
+  const navigate = useNavigate();
   const [currentUserLocation, setCurrentUserLocation] =
     useState<CityFieldValue | null>(null);
   const [currentUserLocationLoading, setCurrentUserLocationLoading] =
@@ -1827,16 +1841,27 @@ const FormRenderer = ({
               >
                 <p className="mb-1 text-center">Withdrawal options</p>
                 {WITHDRAWAL_OPTIONS.map((option) => (
-                  <BaseButton
-                    key={option}
-                    className={cn(
-                      "justify-start",
-                      withdrawalOption === option && "bg-zinc-100",
+                  <React.Fragment key={option}>
+                    <BaseButton
+                      className={cn(
+                        "justify-start",
+                        withdrawalOption === option && "bg-zinc-100",
+                      )}
+                      iconLeft={WITHDRAWAL_OPTION_ICONS[option]}
+                      onClick={() => toggleWithdrawalOption(option)}
+                    >
+                      {WITHDRAWAL_OPTION_LABELS[option]}
+                    </BaseButton>
+                    {option === "moral" && (
+                      <BaseButton
+                        className="justify-start"
+                        iconLeft={TreePalm}
+                        onClick={() => navigate("/settings#away-periods")}
+                      >
+                        On vacation
+                      </BaseButton>
                     )}
-                    onClick={() => toggleWithdrawalOption(option)}
-                  >
-                    {WITHDRAWAL_OPTION_LABELS[option]}
-                  </BaseButton>
+                  </React.Fragment>
                 ))}
                 {withdrawalOption !== null && (
                   <>

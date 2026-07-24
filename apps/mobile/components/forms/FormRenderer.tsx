@@ -58,6 +58,7 @@ import { cn } from "@alliance/shared/styles/util";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { DeviceType, deviceType as expoDeviceType } from "expo-device";
+import { router } from "expo-router";
 import {
   Check,
   CircleCheck,
@@ -69,7 +70,14 @@ import {
   MessagesSquare,
   Signature,
 } from "lucide-react-native";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Image,
@@ -1649,25 +1657,38 @@ const FormRenderer = ({
           </Text>
           <View className="gap-2 mb-3">
             {WITHDRAWAL_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option}
-                activeOpacity={0.8}
-                className={cn(
-                  "border rounded px-3 py-3",
-                  withdrawalOption === option
-                    ? "border-blue-600 bg-blue-100"
-                    : "border-zinc-200",
+              <Fragment key={option}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  className={cn(
+                    "border rounded px-3 py-3",
+                    withdrawalOption === option
+                      ? "border-blue-600 bg-blue-100"
+                      : "border-zinc-200",
+                  )}
+                  onPress={() => {
+                    setWithdrawalOption((previous) =>
+                      previous === option ? null : option,
+                    );
+                  }}
+                >
+                  <Text className="text-base text-zinc-900">
+                    {WITHDRAWAL_OPTION_LABELS[option]}
+                  </Text>
+                </TouchableOpacity>
+                {option === "moral" && (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    className="border border-zinc-200 rounded px-3 py-3"
+                    onPress={() => {
+                      setWithdrawOpen(false);
+                      router.push("/settings");
+                    }}
+                  >
+                    <Text className="text-base text-zinc-900">On vacation</Text>
+                  </TouchableOpacity>
                 )}
-                onPress={() => {
-                  setWithdrawalOption((previous) =>
-                    previous === option ? null : option,
-                  );
-                }}
-              >
-                <Text className="text-base text-zinc-900">
-                  {WITHDRAWAL_OPTION_LABELS[option]}
-                </Text>
-              </TouchableOpacity>
+              </Fragment>
             ))}
           </View>
           {withdrawalOption !== null && (
