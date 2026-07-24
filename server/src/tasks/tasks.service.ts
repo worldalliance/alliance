@@ -322,6 +322,7 @@ export class TasksService {
   }> {
     const validatorIds = new Set<number>();
     let hasUserHasCityCondition = false;
+    let hasFirstContractSignedCondition = false;
 
     const collectFromFormula = (formula?: { conditions?: unknown }): void => {
       const conditions = formula?.conditions;
@@ -336,6 +337,8 @@ export class TasksService {
           validatorIds.add(condition.validatorId);
         } else if (condition.kind === 'userHasCity') {
           hasUserHasCityCondition = true;
+        } else if (condition.kind === 'firstContractSigned') {
+          hasFirstContractSignedCondition = true;
         }
       }
     };
@@ -402,6 +405,9 @@ export class TasksService {
     const userHasCity = hasUserHasCityCondition
       ? await this.userService.userHasCitySet(userId)
       : false;
+    const firstContractSignedAt = hasFirstContractSignedCondition
+      ? await this.userService.getFirstContractSignedAt(userId)
+      : null;
 
     const fieldLookup = new Map<string, AnyField>();
     for (const page of schema.pages) {
@@ -421,6 +427,7 @@ export class TasksService {
           ? previousAnswerData
           : undefined,
       userHasCity,
+      firstContractSignedAt: firstContractSignedAt?.toISOString() ?? null,
     };
 
     const effectiveAnswers = stripHiddenAnswers(

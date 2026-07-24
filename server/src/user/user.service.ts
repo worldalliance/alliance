@@ -973,6 +973,18 @@ export class UserService {
     return user.city != null || (user.customCityString?.trim().length ?? 0) > 0;
   }
 
+  /**
+   * Date of the user's earliest `signed` contract event, or null when they
+   * have never signed. Drives `firstContractSigned` visibility conditions.
+   */
+  async getFirstContractSignedAt(userId: number): Promise<Date | null> {
+    const firstSigned = await this.contractEventRepository.findOne({
+      where: { user: { id: userId }, type: ContractEventType.SIGNED },
+      order: { date: 'ASC', id: 'ASC' },
+    });
+    return firstSigned?.date ?? null;
+  }
+
   async getUserCityCounts(): Promise<UserCityCount[]> {
     // return (
     //   await this.userRepository.find({

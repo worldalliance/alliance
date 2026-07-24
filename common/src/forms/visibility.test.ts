@@ -81,6 +81,79 @@ describe("isPageCurrentlyVisible", () => {
   });
 });
 
+describe("firstContractSigned condition", () => {
+  const signedPage = (
+    comparison: "before" | "onOrAfter",
+    date = "2026-01-01T00:00:00.000Z",
+  ): Page =>
+    page("p1", {
+      fields: [textField("f1")],
+      visibleIfFormula: formula({
+        c1: { kind: "firstContractSigned", comparison, date },
+      }),
+    });
+
+  it("compares the first signing date against the threshold", () => {
+    const early = {
+      ...extras,
+      firstContractSignedAt: "2025-06-15T12:00:00.000Z",
+    };
+    const late = {
+      ...extras,
+      firstContractSignedAt: "2026-03-01T00:00:00.000Z",
+    };
+
+    expect(isPageCurrentlyVisible(signedPage("before"), {}, early)).toBe(true);
+    expect(isPageCurrentlyVisible(signedPage("before"), {}, late)).toBe(false);
+    expect(isPageCurrentlyVisible(signedPage("onOrAfter"), {}, early)).toBe(
+      false,
+    );
+    expect(isPageCurrentlyVisible(signedPage("onOrAfter"), {}, late)).toBe(
+      true,
+    );
+  });
+
+  it("treats a signing at exactly the threshold as onOrAfter", () => {
+    const atThreshold = {
+      ...extras,
+      firstContractSignedAt: "2026-01-01T00:00:00.000Z",
+    };
+    expect(
+      isPageCurrentlyVisible(signedPage("onOrAfter"), {}, atThreshold),
+    ).toBe(true);
+    expect(isPageCurrentlyVisible(signedPage("before"), {}, atThreshold)).toBe(
+      false,
+    );
+  });
+
+  it("fails both comparisons when the user has never signed", () => {
+    expect(isPageCurrentlyVisible(signedPage("before"), {}, extras)).toBe(
+      false,
+    );
+    expect(isPageCurrentlyVisible(signedPage("onOrAfter"), {}, extras)).toBe(
+      false,
+    );
+    const explicitNull = { ...extras, firstContractSignedAt: null };
+    expect(isPageCurrentlyVisible(signedPage("before"), {}, explicitNull)).toBe(
+      false,
+    );
+  });
+
+  it("fails when either datetime is unparseable", () => {
+    const garbageSignedAt = { ...extras, firstContractSignedAt: "not-a-date" };
+    expect(
+      isPageCurrentlyVisible(signedPage("before"), {}, garbageSignedAt),
+    ).toBe(false);
+    const valid = {
+      ...extras,
+      firstContractSignedAt: "2025-06-15T12:00:00.000Z",
+    };
+    expect(
+      isPageCurrentlyVisible(signedPage("before", "not-a-date"), {}, valid),
+    ).toBe(false);
+  });
+});
+
 describe("stripHiddenAnswers", () => {
   const equalsYes = (when: string): Condition => ({
     kind: "equals",

@@ -20,7 +20,10 @@ import {
   isElementCurrentlyVisible,
   isPageCurrentlyVisible,
 } from "@alliance/common/forms/visibility";
-import type { VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import type {
+  ConditionKind,
+  VisibleIfFormula,
+} from "@alliance/common/forms/visible-if-formula";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
 
 /** Indices into `pages` of the currently visible pages. */
@@ -200,28 +203,41 @@ export function formatUserLocationDisplayValue(
   return `${value.name}${suffix}`;
 }
 
-export function schemaHasUserHasCityCondition(schema: FormSchema): boolean {
-  const formulaHasUserHasCity = (
+function schemaHasConditionOfKind(
+  schema: FormSchema,
+  kind: ConditionKind,
+): boolean {
+  const formulaHasKind = (
     visibleIfFormula: VisibleIfFormula | undefined,
   ): boolean =>
     Object.values(visibleIfFormula?.conditions ?? {}).some(
-      (condition) => condition.kind === "userHasCity",
+      (condition) => condition.kind === kind,
     );
   for (const page of schema.pages) {
-    if (formulaHasUserHasCity(page.visibleIfFormula)) return true;
+    if (formulaHasKind(page.visibleIfFormula)) return true;
     for (const element of page.fields) {
-      if (formulaHasUserHasCity(element.visibleIfFormula)) return true;
+      if (formulaHasKind(element.visibleIfFormula)) return true;
       if (isQuestionField(element) && element.kind === "list") {
         const listField = element as ListField;
         if (Array.isArray(listField.fields)) {
           for (const sub of listField.fields) {
-            if (formulaHasUserHasCity(sub.visibleIfFormula)) return true;
+            if (formulaHasKind(sub.visibleIfFormula)) return true;
           }
         }
       }
     }
   }
   return false;
+}
+
+export function schemaHasUserHasCityCondition(schema: FormSchema): boolean {
+  return schemaHasConditionOfKind(schema, "userHasCity");
+}
+
+export function schemaHasFirstContractSignedCondition(
+  schema: FormSchema,
+): boolean {
+  return schemaHasConditionOfKind(schema, "firstContractSigned");
 }
 
 export function getRangeOptionCount(field: RangeField): number {

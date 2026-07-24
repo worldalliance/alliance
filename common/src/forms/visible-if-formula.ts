@@ -51,6 +51,17 @@ const conditionUserHasCitySchema = z.strictObject({
   userHasCity: z.boolean(),
 });
 
+/**
+ * True when the user's first contract signing (their earliest `signed`
+ * contract event) falls `before` / `onOrAfter` `date`. Users who have never
+ * signed fail both comparisons.
+ */
+const conditionFirstContractSignedSchema = z.strictObject({
+  kind: z.literal("firstContractSigned"),
+  comparison: z.enum(["before", "onOrAfter"]),
+  date: z.iso.datetime(),
+});
+
 export const conditionSchema = z.discriminatedUnion("kind", [
   conditionEqualsSchema,
   conditionIncludesOptionSchema,
@@ -60,6 +71,7 @@ export const conditionSchema = z.discriminatedUnion("kind", [
   conditionDeviceTypeSchema,
   conditionOutputBlockVisibleSchema,
   conditionUserHasCitySchema,
+  conditionFirstContractSignedSchema,
 ]);
 
 export type Condition = z.infer<typeof conditionSchema>;

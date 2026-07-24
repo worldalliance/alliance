@@ -293,6 +293,10 @@ type OutputBlockVisibleCondition = Extract<
   { kind: "outputBlockVisible" }
 >;
 type UserHasCityCondition = Extract<Condition, { kind: "userHasCity" }>;
+type FirstContractSignedCondition = Extract<
+  Condition,
+  { kind: "firstContractSigned" }
+>;
 
 function isFieldCondition(cond: Condition): cond is FieldCondition {
   return (
@@ -319,6 +323,24 @@ function isOutputBlockVisibleCondition(
 
 function isUserHasCityCondition(cond: Condition): cond is UserHasCityCondition {
   return cond.kind === "userHasCity";
+}
+
+function isFirstContractSignedCondition(
+  cond: Condition,
+): cond is FirstContractSignedCondition {
+  return cond.kind === "firstContractSigned";
+}
+
+/** Format an ISO datetime for a datetime-local input (local wall-clock). */
+function isoToDatetimeLocalValue(iso: string): string {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(
+    parsed.getDate(),
+  )}T${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
 }
 
 function isHasValueCondition(
@@ -849,6 +871,31 @@ export function ConditionalVisibility({
       const current = next[index];
       if (!isUserHasCityCondition(current)) return;
       next[index] = { ...current, userHasCity };
+      updateConditions(next, true);
+    },
+    [conditions, updateConditions],
+  );
+
+  const addFirstContractSignedCondition = useCallback(() => {
+    const defaultCondition: FirstContractSignedCondition = {
+      kind: "firstContractSigned",
+      comparison: "before",
+      date: new Date().toISOString(),
+    };
+    updateConditions([...conditions, defaultCondition]);
+  }, [conditions, updateConditions]);
+
+  const handleFirstContractSignedChange = useCallback(
+    (
+      index: number,
+      updates: Partial<
+        Pick<FirstContractSignedCondition, "comparison" | "date">
+      >,
+    ) => {
+      const next = [...conditions];
+      const current = next[index];
+      if (!isFirstContractSignedCondition(current)) return;
+      next[index] = { ...current, ...updates };
       updateConditions(next, true);
     },
     [conditions, updateConditions],
@@ -1496,6 +1543,53 @@ export function ConditionalVisibility({
     );
   };
 
+  const renderFirstContractSignedCondition = (
+    condition: FirstContractSignedCondition,
+    index: number,
+  ) => {
+    const datetimeLocalValue = isoToDatetimeLocalValue(condition.date);
+    return (
+      <div className="space-y-2">
+        <div>
+          <label className="block text-xs text-gray-700 mb-1">
+            Show when the user&apos;s first contract signing is
+          </label>
+          <select
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={condition.comparison}
+            onChange={(event) =>
+              handleFirstContractSignedChange(index, {
+                comparison:
+                  event.target.value === "onOrAfter" ? "onOrAfter" : "before",
+              })
+            }
+          >
+            <option value="before">before</option>
+            <option value="onOrAfter">on or after</option>
+          </select>
+        </div>
+        <div>
+          <input
+            type="datetime-local"
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            value={datetimeLocalValue}
+            onChange={(event) => {
+              const parsed = new Date(event.target.value);
+              if (Number.isNaN(parsed.getTime())) return;
+              handleFirstContractSignedChange(index, {
+                date: parsed.toISOString(),
+              });
+            }}
+          />
+          <p className="mt-1 text-[11px] text-gray-400">
+            Shown in your local timezone. Users who have never signed a contract
+            match neither option.
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const renderDeviceCondition = (condition: DeviceCondition, index: number) => {
     const selected = new Set(condition.deviceType ?? []);
     return (
@@ -1624,6 +1718,8 @@ export function ConditionalVisibility({
               renderOutputBlockVisibleCondition(condition, index)
             ) : isUserHasCityCondition(condition) ? (
               renderUserHasCityCondition(condition, index)
+            ) : isFirstContractSignedCondition(condition) ? (
+              renderFirstContractSignedCondition(condition, index)
             ) : (
               <p className="text-[11px] text-red-500">
                 Unsupported condition type. Remove and re-create this rule.
@@ -1675,13 +1771,22 @@ export function ConditionalVisibility({
             + Device condition
           </button>
           {outputBlocks === undefined && (
-            <button
-              type="button"
-              className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
-              onClick={addUserHasCityCondition}
-            >
-              + User has city condition
-            </button>
+            <>
+              <button
+                type="button"
+                className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                onClick={addUserHasCityCondition}
+              >
+                + User has city condition
+              </button>
+              <button
+                type="button"
+                className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                onClick={addFirstContractSignedCondition}
+              >
+                + First contract signed condition
+              </button>
+            </>
           )}
           {outputBlocks !== undefined && (
             <button

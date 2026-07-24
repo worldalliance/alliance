@@ -31,6 +31,7 @@ import {
   tasksGetForm,
   tasksGetMyFormResponse,
   tasksRunValidator,
+  userMyFirstContractSigned,
   userMyLocation,
   type UserDto,
 } from "@alliance/shared/client";
@@ -48,6 +49,7 @@ import {
   getVisiblePageIndices,
   resolveDisplayBlockForUser,
   resolveFieldDefaultValue,
+  schemaHasFirstContractSignedCondition,
   schemaHasUserHasCityCondition,
   validateFieldValue as validateFieldValueShared,
   type UserLocationDisplayValue,
@@ -569,6 +571,11 @@ const FormRenderer = ({
     [schema],
   );
 
+  const hasFirstContractSignedCondition = useMemo(
+    () => schemaHasFirstContractSignedCondition(schema),
+    [schema],
+  );
+
   const previousAnswerSourceFormIds = useMemo(() => {
     const ids = new Set<number>();
     for (const page of schema.pages) {
@@ -795,6 +802,34 @@ const FormRenderer = ({
     [userLocationDisplayValue],
   );
 
+  const [firstContractSignedAt, setFirstContractSignedAt] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (!hasFirstContractSignedCondition || !user) {
+      setFirstContractSignedAt(null);
+      return;
+    }
+
+    let cancelled = false;
+    setFirstContractSignedAt(null);
+
+    userMyFirstContractSigned()
+      .then((response) => {
+        if (cancelled) return;
+        setFirstContractSignedAt(response.data?.firstContractSignedAt ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setFirstContractSignedAt(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasFirstContractSignedCondition, user?.id, user]);
+
   // Draft persistence: tracks whether we've loaded a stored draft so the save
   // effect doesn't overwrite stored data with initial defaults.
   const draftLoaded = useRef(false);
@@ -1016,6 +1051,7 @@ const FormRenderer = ({
         readOnly,
         previousAnswerData,
         userHasCity,
+        firstContractSignedAt,
       }),
     [
       schema.pages,
@@ -1025,6 +1061,7 @@ const FormRenderer = ({
       readOnly,
       previousAnswerData,
       userHasCity,
+      firstContractSignedAt,
     ],
   );
 
@@ -1040,6 +1077,7 @@ const FormRenderer = ({
         readOnly,
         previousAnswerData,
         userHasCity,
+        firstContractSignedAt,
       }),
     [
       fieldLookup,
@@ -1048,6 +1086,7 @@ const FormRenderer = ({
       readOnly,
       previousAnswerData,
       userHasCity,
+      firstContractSignedAt,
     ],
   );
 
@@ -1060,6 +1099,7 @@ const FormRenderer = ({
         readOnly,
         previousAnswerData,
         userHasCity,
+        firstContractSignedAt,
       }),
     [
       schema.pages,
@@ -1069,6 +1109,7 @@ const FormRenderer = ({
       readOnly,
       previousAnswerData,
       userHasCity,
+      firstContractSignedAt,
     ],
   );
 
@@ -1106,6 +1147,7 @@ const FormRenderer = ({
         fieldLookup,
         previousAnswerData,
         userHasCity,
+        firstContractSignedAt,
       }),
     [
       effectiveFormData,
@@ -1113,6 +1155,7 @@ const FormRenderer = ({
       fieldLookup,
       previousAnswerData,
       userHasCity,
+      firstContractSignedAt,
     ],
   );
 

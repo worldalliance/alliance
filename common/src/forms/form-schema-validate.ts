@@ -151,6 +151,7 @@ function getLocalFieldReference(cond: Condition): string | null {
     case "deviceType":
     case "outputBlockVisible":
     case "userHasCity":
+    case "firstContractSigned":
       return null;
     default:
       cond satisfies never;
@@ -212,12 +213,22 @@ function checkCondition(
   ctx: CheckCtx,
   errors: FormSchemaValidationError[],
 ): void {
-  if (cond.kind === "userHasCity") {
+  if (cond.kind === "userHasCity" || cond.kind === "firstContractSigned") {
     if (ctx.context !== "input") {
       errors.push({
         viewId: ctx.viewId,
         blockId: ctx.blockId,
-        message: '"userHasCity" condition is only valid on input fields',
+        message: `"${cond.kind}" condition is only valid on input fields`,
+      });
+    }
+    if (
+      cond.kind === "firstContractSigned" &&
+      Number.isNaN(Date.parse(cond.date))
+    ) {
+      errors.push({
+        viewId: ctx.viewId,
+        blockId: ctx.blockId,
+        message: `"firstContractSigned" condition has an invalid datetime: "${cond.date}"`,
       });
     }
     return;

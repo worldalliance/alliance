@@ -71,6 +71,7 @@ import {
 import {
   AssignGroupsDto,
   FriendStatusDto,
+  MaybeFirstContractSignedDto,
   NMembersResponseDto,
   ProfileDto,
   ProfileDtoWithFriends,
@@ -226,6 +227,17 @@ export class UserController {
   async myLocation(@Request() req: JwtRequest): Promise<MaybeUserLocationDto> {
     const city = await this.userService.getUserLocation(req.user.sub);
     return new MaybeUserLocationDto(city);
+  }
+
+  @Get('myfirstcontractsigned')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: MaybeFirstContractSignedDto })
+  async myFirstContractSigned(
+    @Request() req: JwtRequest,
+  ): Promise<MaybeFirstContractSignedDto> {
+    return new MaybeFirstContractSignedDto(
+      await this.userService.getFirstContractSignedAt(req.user.sub),
+    );
   }
 
   @Post('friends/:targetUserId')

@@ -555,3 +555,14 @@ export class NMembersResponseDto {
     this.count = count;
   }
 }
+
+export class MaybeFirstContractSignedDto {
+  @ApiPropertyOptional({ type: Date })
+  @IsOptional()
+  @Type(() => Date)
+  firstContractSignedAt?: Date;
+
+  constructor(firstContractSignedAt: Date | null) {
+    this.firstContractSignedAt = firstContractSignedAt ?? undefined;
+  }
+}

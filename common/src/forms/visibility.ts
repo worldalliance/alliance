@@ -35,6 +35,11 @@ export type ConditionExtras = {
   previousAnswerData?: Record<number, Record<string, unknown>>;
   outputBlockVisibility?: Map<string, boolean>;
   userHasCity?: boolean;
+  /**
+   * ISO datetime of the user's earliest `signed` contract event;
+   * null/undefined when they have never signed.
+   */
+  firstContractSignedAt?: string | null;
 };
 
 type ValueBasedCondition = Extract<
@@ -135,6 +140,26 @@ export function evaluateCondition(
     case "userHasCity": {
       const present = extras.userHasCity ?? false;
       return cond.userHasCity ? present : !present;
+    }
+    case "firstContractSigned": {
+      if (!extras.firstContractSignedAt) {
+        return false;
+      }
+      const signedAt = Date.parse(extras.firstContractSignedAt);
+      const threshold = Date.parse(cond.date);
+      if (Number.isNaN(signedAt) || Number.isNaN(threshold)) {
+        return false;
+      }
+      switch (cond.comparison) {
+        case "before":
+          return signedAt < threshold;
+        case "onOrAfter":
+          return signedAt >= threshold;
+        default:
+          throw new Error(
+            `unknown comparison: ${cond.comparison satisfies never}`,
+          );
+      }
     }
     case "equals":
     case "includesOption":
@@ -321,6 +346,7 @@ function evaluateVisibleIfFormula(
       case "validator":
       case "outputBlockVisible":
       case "userHasCity":
+      case "firstContractSigned":
         results[name] = evaluateCondition(cond, data, extras);
         break;
       case "equals":

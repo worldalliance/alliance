@@ -441,6 +441,7 @@ export function collectSourceFormIds(schema: FormSchema): number[] {
       case "deviceType":
       case "outputBlockVisible":
       case "userHasCity":
+      case "firstContractSigned":
         break;
       default:
         throw new Error(

@@ -883,6 +883,10 @@ export type MaybeUserLocationDto = {
     city?: City;
 };
 
+export type MaybeFirstContractSignedDto = {
+    firstContractSignedAt?: string;
+};
+
 export type FriendStatus = 'pending' | 'accepted' | 'declined' | 'none';
 
 export type FriendStatusDto = {
@@ -4088,6 +4092,28 @@ export type UserMyLocationResponses = {
 };
 
 export type UserMyLocationResponse = UserMyLocationResponses[keyof UserMyLocationResponses];
+
+export type UserMyFirstContractSignedData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/myfirstcontractsigned';
+};
+
+export type UserMyFirstContractSignedErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserMyFirstContractSignedError = UserMyFirstContractSignedErrors[keyof UserMyFirstContractSignedErrors];
+
+export type UserMyFirstContractSignedResponses = {
+    200: MaybeFirstContractSignedDto;
+};
+
+export type UserMyFirstContractSignedResponse = UserMyFirstContractSignedResponses[keyof UserMyFirstContractSignedResponses];
 
 export type UserRemoveFriendData = {
     body?: never;

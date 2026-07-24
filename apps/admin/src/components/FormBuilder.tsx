@@ -288,6 +288,7 @@ const mapConditionForOptionValue = (
       return { condition, updated: false };
     case "anySelected":
     case "deviceType":
+    case "firstContractSigned":
     case "hasValue":
     case "outputBlockVisible":
     case "userHasCity":
@@ -433,6 +434,7 @@ const remapConditionFieldReferences = (
     case "deviceType":
     case "outputBlockVisible":
     case "userHasCity":
+    case "firstContractSigned":
       return condition;
     default:
       condition satisfies never;
