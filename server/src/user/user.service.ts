@@ -55,7 +55,10 @@ import {
   Not,
   type Repository,
 } from 'typeorm';
-import { getAmbassadorGoalHalfwayNotificationTime } from './ambassador-invite-goal-notification.utils';
+import {
+  getAmbassadorGoalHalfwayNotificationMessage,
+  getAmbassadorGoalHalfwayNotificationTime,
+} from './ambassador-invite-goal-notification.utils';
 import { CreateAwayRangeDto, UpdateAwayRangeDto } from './dto/away-range.dto';
 import {
   RegisterDeviceDto,
@@ -1932,7 +1935,11 @@ export class UserService {
     await this.notifsService.sendNotif({
       user: goal.ambassador,
       category: NotificationCategory.NewMemberReferred,
-      message: this.getAmbassadorInviteGoalHalfwayMessage(goal, stats),
+      message: getAmbassadorGoalHalfwayNotificationMessage(
+        goal,
+        stats.goalSuccessfulRecruits,
+        sendTime,
+      ),
       webAppLocation: AMBASSADOR_INVITES_URL,
       mobileAppLocation: AMBASSADOR_INVITES_URL,
       associatedUsers: [],
@@ -1966,24 +1973,6 @@ export class UserService {
       sendTime: new Date(),
       shouldPush: true,
     });
-  }
-
-  private getAmbassadorInviteGoalHalfwayMessage(
-    goal: AmbassadorInviteGoal,
-    stats: AmbassadorInviteStats,
-  ): string {
-    const remaining = Math.max(
-      goal.targetSuccessfulRecruits - stats.goalSuccessfulRecruits,
-      0,
-    );
-    if (remaining === 0) {
-      return `You're halfway through your recruiting goal and already hit it: ${this.formatSuccessfulRecruitCount(
-        stats.goalSuccessfulRecruits,
-        goal.targetSuccessfulRecruits,
-      )}.`;
-    }
-
-    return `You're halfway through your recruiting goal. You need ${remaining} more ${remaining === 1 ? 'successful recruit' : 'successful recruits'} to hit ${goal.targetSuccessfulRecruits}.`;
   }
 
   private getAmbassadorInviteGoalEndedMessage(

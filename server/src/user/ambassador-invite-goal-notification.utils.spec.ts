@@ -1,5 +1,8 @@
 import { Temporal } from '@js-temporal/polyfill';
-import { getAmbassadorGoalHalfwayNotificationTime } from './ambassador-invite-goal-notification.utils';
+import {
+  getAmbassadorGoalHalfwayNotificationMessage,
+  getAmbassadorGoalHalfwayNotificationTime,
+} from './ambassador-invite-goal-notification.utils';
 
 describe('getAmbassadorGoalHalfwayNotificationTime', () => {
   const weeklongGoal = {
@@ -50,5 +53,44 @@ describe('getAmbassadorGoalHalfwayNotificationTime', () => {
     );
 
     expect(sendTime.toISOString()).toBe('2026-07-20T20:00:00.000Z');
+  });
+});
+
+describe('getAmbassadorGoalHalfwayNotificationMessage', () => {
+  const goal = {
+    dueAt: new Date('2026-08-01T07:00:00.000Z'),
+    targetSuccessfulRecruits: 5,
+  };
+  const sendTime = new Date('2026-07-18T19:00:00.000Z');
+
+  it('includes the days, remaining people, and goal target', () => {
+    expect(
+      getAmbassadorGoalHalfwayNotificationMessage(goal, 2, sendTime),
+    ).toBe(
+      'You have 14 days left to successfully invite 3 more people and reach your goal of 5.',
+    );
+  });
+
+  it('uses singular labels', () => {
+    expect(
+      getAmbassadorGoalHalfwayNotificationMessage(
+        {
+          dueAt: new Date('2026-07-19T19:00:00.000Z'),
+          targetSuccessfulRecruits: 1,
+        },
+        0,
+        sendTime,
+      ),
+    ).toBe(
+      'You have 1 day left to successfully invite 1 more person and reach your goal of 1.',
+    );
+  });
+
+  it('celebrates a goal that is already complete', () => {
+    expect(
+      getAmbassadorGoalHalfwayNotificationMessage(goal, 5, sendTime),
+    ).toBe(
+      "You have 14 days left, and you've already reached your goal of successfully inviting 5 people.",
+    );
   });
 });
