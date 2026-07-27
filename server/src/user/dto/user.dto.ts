@@ -559,13 +559,14 @@ export class NMembersResponseDto {
 export type MyVisibilityContext = {
   userHasCity: boolean;
   firstContractSignedAt: Date | null;
+  completedActionCount: number;
 };
 
 /**
  * User-account-derived values consumed by form visibility conditions
- * (`userHasCity`, `firstContractSigned`). Mirrors the server-side extras used
- * when stripping hidden answers at submission, so clients preview the same
- * visibility the server enforces.
+ * (`userHasCity`, `firstContractSigned`, `completedActionCount`). Mirrors the
+ * server-side extras used when stripping hidden answers at submission, so
+ * clients preview the same visibility the server enforces.
  */
 export class MyVisibilityContextDto {
   @ApiProperty()
@@ -574,8 +575,12 @@ export class MyVisibilityContextDto {
   @ApiPropertyOptional({ type: Date })
   firstContractSignedAt?: Date;
 
+  @ApiProperty()
+  completedActionCount: number;
+
   constructor(input: MyVisibilityContext) {
     this.userHasCity = input.userHasCity;
     this.firstContractSignedAt = input.firstContractSignedAt ?? undefined;
+    this.completedActionCount = input.completedActionCount;
   }
 }

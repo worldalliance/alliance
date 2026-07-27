@@ -40,6 +40,11 @@ export type ConditionExtras = {
    * null/undefined when they have never signed.
    */
   firstContractSignedAt?: string | null;
+  /**
+   * How many distinct actions the user has completed; undefined is treated as
+   * zero, matching the guest/never-completed evaluation.
+   */
+  completedActionCount?: number;
 };
 
 type ValueBasedCondition = Extract<
@@ -156,11 +161,12 @@ export function evaluateCondition(
         case "onOrAfter":
           return signedAt >= threshold;
         default:
-          throw new Error(
-            `unknown comparison: ${cond.comparison satisfies never}`,
-          );
+          cond.comparison satisfies never;
+          return false;
       }
     }
+    case "completedActionCount":
+      return (extras.completedActionCount ?? 0) >= cond.atLeast;
     case "equals":
     case "includesOption":
     case "anySelected":
@@ -169,10 +175,34 @@ export function evaluateCondition(
       return evaluateValueBasedCondition(cond, val);
     }
     default:
-      throw new Error(
-        `unknown condition kind: ${(cond satisfies never as Condition).kind}`,
-      );
+      // callers that must not guess reject the whole schema first
+      // (`findUnknownConditionKind` in the renderers,
+      // `assertConditionKindsSupported` on submit).
+      cond satisfies never;
+      return false;
   }
+}
+
+/**
+ * Whether a field must be answered. A conditional rule replaces the static
+ * `required` flag when present, and is evaluated against the same answers and
+ * extras as visibility — so callers must pass the same context they use for
+ * `isElementCurrentlyVisible`, and a schema whose requiredness depends on the
+ * viewer's visibility context has to fetch it (see
+ * `schemaNeedsVisibilityContext`).
+ *
+ * A `requiredIfFormula` replaces `required` rather than adding to it, so it can
+ * make a statically-required field optional as well as the other way round.
+ */
+export function isFieldConditionallyRequired(
+  field: AnyField,
+  data: Record<string, FormValue>,
+  extras: ConditionExtras,
+): boolean {
+  if (hasEvaluableFormula(field.requiredIfFormula)) {
+    return evaluateVisibleIfFormula(field.requiredIfFormula, data, extras);
+  }
+  return !!field.required;
 }
 
 function hasEvaluableFormula(
@@ -347,6 +377,7 @@ function evaluateVisibleIfFormula(
       case "outputBlockVisible":
       case "userHasCity":
       case "firstContractSigned":
+      case "completedActionCount":
         results[name] = evaluateCondition(cond, data, extras);
         break;
       case "equals":
@@ -358,9 +389,11 @@ function evaluateVisibleIfFormula(
         break;
       }
       default:
-        throw new Error(
-          `unknown condition kind: ${(cond satisfies never as Condition).kind}`,
-        );
+        // Unknown kind — not met, for the reasons on `evaluateCondition`'s
+        // default.
+        cond satisfies never;
+        results[name] = false;
+        break;
     }
   }
   return evaluateVisibilityFormula(formula.formula, results);

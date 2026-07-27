@@ -56,6 +56,11 @@ export type RenderFieldProps = {
   isOutputView?: boolean;
   user?: Omit<UserDto, "email">;
   hideLabel?: boolean;
+  formData?: Record<string, FormValue>;
+  isFieldRequired?: (
+    field: AnyField,
+    data?: Record<string, FormValue>,
+  ) => boolean;
 };
 
 const sharedInputClasses =
@@ -108,16 +113,20 @@ export function RenderLabel({
   field,
   isOutputView,
   hideLabel,
+  required,
 }: {
   field: AnyField;
   isOutputView?: boolean;
   hideLabel?: boolean;
+  /** Effective requiredness; defaults to the field's static `required` flag. */
+  required?: boolean;
 }) {
   if (hideLabel) return null;
-  if (field.label === null && field.required) return null;
+  const isRequired = required ?? !!field.required;
+  if (field.label === null && isRequired) return null;
   return (
     <View className="mb-1">
-      {!field.required && !isOutputView && <OptionalLabelPrefix />}
+      {!isRequired && !isOutputView && <OptionalLabelPrefix />}
       {field.label !== null && (
         <View>
           <InlineLabelMarkdownWrapper>{field.label}</InlineLabelMarkdownWrapper>
@@ -142,8 +151,11 @@ export function RenderField({
   isOutputView,
   user,
   hideLabel,
+  formData,
+  isFieldRequired,
 }: RenderFieldProps) {
   const [selectOpen, setSelectOpen] = useState(false);
+  const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
@@ -185,6 +197,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TextInput
             className={inputBase}
@@ -207,6 +220,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TextInput
             className={cn(inputBase, "text-base")}
@@ -244,6 +258,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TextInput
             className={inputBase}
@@ -267,6 +282,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TextInput
             className={inputBase}
@@ -295,6 +311,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TextInput
             className={inputBase}
@@ -346,6 +363,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <View className="flex-row justify-between mb-2">
             <Text className="text-xs text-zinc-500">{field.startLabel}</Text>
@@ -399,7 +417,7 @@ export function RenderField({
     case "checkbox":
       return (
         <View>
-          {!field.required && !isOutputView && <OptionalLabelPrefix />}
+          {!required && !isOutputView && <OptionalLabelPrefix />}
           <Checkbox
             checked={!!value}
             disabled={disabled}
@@ -419,6 +437,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <View className={cn(hasError && "border-l-2 border-red-500 pl-3")}>
             {options.map((option: ChoiceOption, optIndex: number) => {
@@ -470,6 +489,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TouchableOpacity
             className={cn(inputBase, "flex-row items-center justify-between")}
@@ -519,6 +539,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <View className={cn(hasError && "border-l-2 border-red-500 pl-3")}>
             {options.map((option: ChoiceOption, optIndex: number) => {
@@ -586,6 +607,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TextInput
             className={inputBase}
@@ -611,6 +633,7 @@ export function RenderField({
           baseError={errorMessage}
           isOutputView={isOutputView}
           hideLabel={hideLabel}
+          required={required}
         />
       );
 
@@ -621,6 +644,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TimeZoneSelect
             value={(value as string) ?? undefined}
@@ -645,6 +669,7 @@ export function RenderField({
             field={field as CityField}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <CityAutosuggest
             value={displayValue}
@@ -692,6 +717,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           {currentPreview && (
             <Image
@@ -787,6 +813,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <View className="gap-3">
             {cards.map((card, cardIndex) => (
@@ -812,6 +839,14 @@ export function RenderField({
                     disableOptionRandomization={disableOptionRandomization}
                     isOutputView={isOutputView}
                     user={user}
+                    // A sub-field's requiredIfFormula can reference either the
+                    // surrounding answers or its own card.
+                    isFieldRequired={
+                      isFieldRequired
+                        ? (sub: AnyField) =>
+                            isFieldRequired(sub, { ...formData, ...card })
+                        : undefined
+                    }
                   />
                 ))}
                 {!disabled && (
@@ -850,7 +885,7 @@ export function RenderField({
                 <AppMarkdownWrapper>{contract.markdown}</AppMarkdownWrapper>
               </View>
               <Card cardStyle={CardStyle.White} className="p-4">
-                {!field.required && !isOutputView && <OptionalLabelPrefix />}
+                {!required && !isOutputView && <OptionalLabelPrefix />}
                 <Text className="text-zinc-900 mb-3" weight={FontWeight.Medium}>
                   {field.signQuestion.trim()}
                 </Text>
@@ -924,6 +959,7 @@ export function RenderField({
                 field={field}
                 isOutputView={isOutputView}
                 hideLabel={hideLabel}
+                required={required}
               />
               <Text className="text-sm text-red-700">
                 Unable to render this field because the selected custom
@@ -944,6 +980,7 @@ export function RenderField({
             user={user}
             disabled={disabled}
             isOutputView={isOutputView}
+            required={required}
           />
           {renderValidationMessage(errorMessage)}
         </View>
@@ -957,6 +994,7 @@ export function RenderField({
             field={field}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <RankingFieldInput
             field={field}
@@ -984,6 +1022,8 @@ type TimeInputFieldProps = {
   baseError: string | null;
   isOutputView?: boolean;
   hideLabel?: boolean;
+  /** Effective requiredness; defaults to the field's static `required` flag. */
+  required?: boolean;
 };
 
 export function TimeInputField({
@@ -995,6 +1035,7 @@ export function TimeInputField({
   baseError,
   isOutputView,
   hideLabel,
+  required = !!field.required,
 }: TimeInputFieldProps) {
   const normalizedValue = typeof value === "string" && value ? value : "";
   const [inputValue, setInputValue] = useState<string>(() =>
@@ -1010,7 +1051,7 @@ export function TimeInputField({
   const commitValue = () => {
     const raw = inputValue.trim();
     if (!raw) {
-      setLocalError(field.required ? "Enter a time such as 7:30 PM" : null);
+      setLocalError(required ? "Enter a time such as 7:30 PM" : null);
       onChange?.("");
       return;
     }
@@ -1046,6 +1087,7 @@ export function TimeInputField({
         field={field}
         isOutputView={isOutputView}
         hideLabel={hideLabel}
+        required={required}
       />
       <View className="relative">
         <Pressable

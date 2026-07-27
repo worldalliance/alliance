@@ -324,15 +324,17 @@ describe("validateFormSchema", () => {
     ]);
   });
 
-  it("rejects outputBlockVisible on an input field's requiredIf", () => {
+  it("rejects outputBlockVisible on an input field's requiredIfFormula", () => {
     const schema = baseSchema({
       pages: [
         page("p1", [
           textField("f1", {
-            requiredIf: {
-              kind: "outputBlockVisible",
-              outputBlockVisible: "anything",
-            },
+            requiredIfFormula: formula({
+              c1: {
+                kind: "outputBlockVisible",
+                outputBlockVisible: "anything",
+              },
+            }),
           }),
         ]),
       ],

@@ -886,6 +886,7 @@ export type MaybeUserLocationDto = {
 export type MyVisibilityContextDto = {
     userHasCity: boolean;
     firstContractSignedAt?: string;
+    completedActionCount: number;
 };
 
 export type FriendStatus = 'pending' | 'accepted' | 'declined' | 'none';

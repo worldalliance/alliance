@@ -1,10 +1,10 @@
-import { useEffect, useRef } from "react";
 import type { CustomComponentProps } from "@alliance/shared/forms/customComponents";
-import Card from "../../ui/Card";
-import { OptionalLabelPrefix } from "../OptionalLabelPrefix";
-import { CardStyle } from "@alliance/shared/styles/card";
 import { shareInfoPubliclyToggle } from "@alliance/shared/lib/copy";
+import { CardStyle } from "@alliance/shared/styles/card";
+import { useEffect, useRef } from "react";
+import Card from "../../ui/Card";
 import YesNoToggle from "../../ui/YesNoToggle";
+import { OptionalLabelPrefix } from "../OptionalLabelPrefix";
 
 const parseBooleanValue = (value: string | null): boolean | null => {
   if (value === "true") {
@@ -23,6 +23,7 @@ const ShareInfoPubliclyToggleComponent = ({
   user,
   disabled,
   isOutputView,
+  required,
 }: CustomComponentProps) => {
   const parsedValue = parseBooleanValue(value);
   const userDefault =
@@ -64,7 +65,8 @@ const ShareInfoPubliclyToggleComponent = ({
     typeof field.description === "string" && field.description.trim().length > 0
       ? field.description
       : shareInfoPubliclyToggle.defaultDescription;
-  const resolvedValue = parsedValue ?? userDefault ?? shareInfoPubliclyToggle.fallbackDefault;
+  const resolvedValue =
+    parsedValue ?? userDefault ?? shareInfoPubliclyToggle.fallbackDefault;
   const isDisabled = Boolean(disabled || user?.anonymous);
 
   return (
@@ -73,7 +75,9 @@ const ShareInfoPubliclyToggleComponent = ({
       className="flex flex-row gap-x-4 items-center justify-between"
     >
       <div>
-        {!field.required && !isOutputView && <OptionalLabelPrefix />}
+        {!(required ?? field.required) && !isOutputView && (
+          <OptionalLabelPrefix />
+        )}
         <label className="block font-medium mb-1">{label}</label>
         <p className="text-zinc-500">{description}</p>
       </div>

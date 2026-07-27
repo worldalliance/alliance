@@ -11,6 +11,7 @@ import {
 import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
 import { noop } from "@alliance/shared/lib/constants";
+import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActivityIndicator, View } from "react-native";
@@ -46,6 +47,7 @@ const ActionTaskPanelForm = ({
 }: ActionTaskPanelFormProps) => {
   const { user, isAuthenticated } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const invalidateVisibilityContext = useInvalidateVisibilityContext();
 
   const {
     data: form,
@@ -92,7 +94,11 @@ const ActionTaskPanelForm = ({
                 : undefined,
             });
         if (response.response.ok) {
-          if (!isAuthenticated) {
+          if (isAuthenticated) {
+            // Bumped `completedActionCount` (and `firstContractSignedAt` for a
+            // contract-signing action).
+            invalidateVisibilityContext();
+          } else {
             const issuedGuestToken =
               response.response.headers.get("x-guest-token");
             if (issuedGuestToken && issuedGuestToken !== storedGuestToken) {

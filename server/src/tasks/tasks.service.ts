@@ -12,6 +12,7 @@ import {
   type CityFieldValue,
   collectSourceFormIds,
   type CustomComponentField,
+  forEachCondition,
   formSchema,
   FormSchema,
   type FormValue,
@@ -30,10 +31,15 @@ import {
 import {
   type ConditionExtras,
   isElementCurrentlyVisible,
+  isFieldConditionallyRequired,
   isPageCurrentlyVisible,
   stripHiddenAnswers,
 } from '@alliance/common/forms/visibility';
-import type { Condition } from '@alliance/common/forms/visible-if-formula';
+import {
+  type AccountDerivedConditionKind,
+  isAccountDerivedConditionKind,
+  isKnownConditionKind,
+} from '@alliance/common/forms/visible-if-formula';
 import { R, type Result } from '@alliance/common/result';
 import { Temporal } from '@js-temporal/polyfill';
 import {
@@ -41,6 +47,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -302,6 +309,23 @@ export class TasksService {
     return form;
   }
 
+  /**
+   * Throws unless every condition in the schema is one this build can
+   * evaluate. `evaluateCondition` reports an unknown kind as "not met" so that
+   * older clients degrade instead of crashing mid-render; the server can't
+   * take that answer, since "not met" silently strips the answers the
+   * condition gates.
+   */
+  private assertConditionKindsSupported(schema: FormSchema): void {
+    forEachCondition(schema, (condition) => {
+      if (!isKnownConditionKind(condition.kind)) {
+        throw new InternalServerErrorException(
+          `Form schema uses an unsupported condition kind: ${condition.kind}`,
+        );
+      }
+    });
+  }
+
   async validateFormSubmission({
     schema,
     submitFormDto,
@@ -321,42 +345,21 @@ export class TasksService {
     effectiveAnswers: Record<string, FormValue>;
   }> {
     const validatorIds = new Set<number>();
-    let hasUserHasCityCondition = false;
-    let hasFirstContractSignedCondition = false;
+    const accountConditionKinds = new Set<AccountDerivedConditionKind>();
 
-    const collectFromFormula = (formula?: { conditions?: unknown }): void => {
-      const conditions = formula?.conditions;
-      if (!conditions || typeof conditions !== 'object') {
-        return;
-      }
-      for (const condition of Object.values(
-        conditions as Record<string, Condition>,
-      )) {
-        if (!condition) continue;
-        if (condition.kind === 'validator') {
-          validatorIds.add(condition.validatorId);
-        } else if (condition.kind === 'userHasCity') {
-          hasUserHasCityCondition = true;
-        } else if (condition.kind === 'firstContractSigned') {
-          hasFirstContractSignedCondition = true;
-        }
-      }
-    };
+    // A stored snapshot can outlive the server that wrote it (a rollback, a
+    // mid-deploy instance). Evaluating a kind we don't know would strip the
+    // answers it gates instead of erroring, so refuse the submission whole.
+    this.assertConditionKindsSupported(schema);
 
-    for (const page of schema.pages) {
-      collectFromFormula(page.visibleIfFormula);
-      for (const element of page.fields) {
-        collectFromFormula(element.visibleIfFormula);
-        if (isQuestionField(element) && element.kind === 'list') {
-          const listField = element as ListField;
-          if (Array.isArray(listField.fields)) {
-            for (const sub of listField.fields) {
-              collectFromFormula(sub.visibleIfFormula);
-            }
-          }
-        }
+    forEachCondition(schema, (condition) => {
+      if (condition.kind === 'validator') {
+        validatorIds.add(condition.validatorId);
       }
-    }
+      if (isAccountDerivedConditionKind(condition.kind)) {
+        accountConditionKinds.add(condition.kind);
+      }
+    });
 
     const validatorResults: Record<number, boolean> = {};
     if (validatorIds.size > 0) {
@@ -402,12 +405,12 @@ export class TasksService {
         if (entry) previousAnswerData[entry[0]] = entry[1];
       }
     }
-    const userHasCity = hasUserHasCityCondition
-      ? await this.userService.userHasCitySet(userId)
-      : false;
-    const firstContractSignedAt = hasFirstContractSignedCondition
-      ? await this.userService.getFirstContractSignedAt(userId)
-      : null;
+    // Fetches only the values this schema's conditions actually read; an empty
+    // set costs no queries and yields the same defaults as before.
+    const visibilityContext = await this.userService.getVisibilityContext(
+      userId,
+      accountConditionKinds,
+    );
 
     const fieldLookup = new Map<string, AnyField>();
     for (const page of schema.pages) {
@@ -426,8 +429,10 @@ export class TasksService {
         Object.keys(previousAnswerData).length > 0
           ? previousAnswerData
           : undefined,
-      userHasCity,
-      firstContractSignedAt: firstContractSignedAt?.toISOString() ?? null,
+      userHasCity: visibilityContext.userHasCity,
+      firstContractSignedAt:
+        visibilityContext.firstContractSignedAt?.toISOString() ?? null,
+      completedActionCount: visibilityContext.completedActionCount,
     };
 
     const effectiveAnswers = stripHiddenAnswers(
@@ -444,8 +449,13 @@ export class TasksService {
       }
       for (const field of page.fields) {
         if (isQuestionField(field)) {
+          const required = isFieldConditionallyRequired(
+            field,
+            effectiveAnswers,
+            visibilityExtras,
+          );
           if (
-            field.required &&
+            required &&
             isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
           ) {
             if (!this.hasRequiredValue(field, effectiveAnswers[field.id])) {
@@ -481,7 +491,7 @@ export class TasksService {
             }
             const slotCount = getRankingSlotCount(field);
             if (
-              field.required &&
+              required &&
               (!Array.isArray(answer) || answer.length < slotCount)
             ) {
               throw new BadRequestException(
@@ -519,7 +529,7 @@ export class TasksService {
               typeof listField.max === 'number' && listField.max >= 0
                 ? Math.floor(listField.max)
                 : Infinity;
-            if (listField.required && listValue.length === 0) {
+            if (required && listValue.length === 0) {
               throw new BadRequestException(
                 `Field ${listField.label} requires at least one item.`,
               );
@@ -544,7 +554,11 @@ export class TasksService {
               for (const sub of subFields) {
                 if (
                   !isQuestionField(sub) ||
-                  !sub.required ||
+                  !isFieldConditionallyRequired(
+                    sub,
+                    mergedData,
+                    visibilityExtras,
+                  ) ||
                   !isElementCurrentlyVisible(sub, mergedData, visibilityExtras)
                 ) {
                   continue;

@@ -1,12 +1,12 @@
+import type { CustomComponentProps } from "@alliance/shared/forms/customComponents";
+import { shareInfoPubliclyToggle } from "@alliance/shared/lib/copy";
+import { CardStyle } from "@alliance/shared/styles/card";
 import { useEffect, useRef } from "react";
 import { Switch, View } from "react-native";
-import { CardStyle } from "@alliance/shared/styles/card";
-import { shareInfoPubliclyToggle } from "@alliance/shared/lib/copy";
+import { colors } from "../../lib/style/colors";
 import Card from "../system/Card";
 import Text, { FontWeight } from "../system/Text";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
-import { colors } from "../../lib/style/colors";
-import type { CustomComponentProps } from "@alliance/shared/forms/customComponents";
 
 const parseBooleanValue = (value: string | null): boolean | null => {
   if (value === "true") return true;
@@ -21,6 +21,7 @@ const ShareInfoPubliclyToggleComponent = ({
   user,
   disabled,
   isOutputView,
+  required,
 }: CustomComponentProps) => {
   const parsedValue = parseBooleanValue(value);
   const userDefault =
@@ -61,7 +62,8 @@ const ShareInfoPubliclyToggleComponent = ({
     typeof field.description === "string" && field.description.trim().length > 0
       ? field.description
       : shareInfoPubliclyToggle.defaultDescription;
-  const resolvedValue = parsedValue ?? userDefault ?? shareInfoPubliclyToggle.fallbackDefault;
+  const resolvedValue =
+    parsedValue ?? userDefault ?? shareInfoPubliclyToggle.fallbackDefault;
   const isDisabled = Boolean(disabled || user?.anonymous);
 
   return (
@@ -70,7 +72,9 @@ const ShareInfoPubliclyToggleComponent = ({
       className="flex-row items-center justify-between gap-x-4"
     >
       <View className="flex-1">
-        {!field.required && !isOutputView && <OptionalLabelPrefix />}
+        {!(required ?? field.required) && !isOutputView && (
+          <OptionalLabelPrefix />
+        )}
         <Text className="mb-1" weight={FontWeight.Medium}>
           {label}
         </Text>

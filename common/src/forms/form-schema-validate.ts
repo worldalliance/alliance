@@ -6,7 +6,11 @@ import {
   type ListField,
   type OutputViewSchema,
 } from "./form-schema";
-import type { Condition, VisibleIfFormula } from "./visible-if-formula";
+import {
+  CONDITION_KIND_IS_ACCOUNT_DERIVED,
+  type Condition,
+  type VisibleIfFormula,
+} from "./visible-if-formula";
 
 export type FormSchemaValidationError = {
   viewId?: string;
@@ -152,6 +156,7 @@ function getLocalFieldReference(cond: Condition): string | null {
     case "outputBlockVisible":
     case "userHasCity":
     case "firstContractSigned":
+    case "completedActionCount":
       return null;
     default:
       cond satisfies never;
@@ -178,12 +183,14 @@ function collectInputErrors(
 ): void {
   const blockId = item.id ?? "<unnamed>";
   checkConditions(item.visibleIfFormula, { context: "input", blockId }, errors);
-  if ("requiredIf" in item && item.requiredIf) {
-    checkCondition(item.requiredIf, { context: "input", blockId }, errors);
-  }
-  if ("kind" in item && item.kind === "list") {
-    const listField = item as ListField;
-    for (const subField of listField.fields ?? []) {
+  if (!isQuestionField(item)) return;
+  checkConditions(
+    item.requiredIfFormula,
+    { context: "input", blockId },
+    errors,
+  );
+  if (item.kind === "list") {
+    for (const subField of item.fields ?? []) {
       collectInputErrors(subField, errors);
     }
   }
@@ -213,7 +220,7 @@ function checkCondition(
   ctx: CheckCtx,
   errors: FormSchemaValidationError[],
 ): void {
-  if (cond.kind === "userHasCity" || cond.kind === "firstContractSigned") {
+  if (CONDITION_KIND_IS_ACCOUNT_DERIVED[cond.kind]) {
     if (ctx.context !== "input") {
       errors.push({
         viewId: ctx.viewId,
@@ -229,6 +236,16 @@ function checkCondition(
         viewId: ctx.viewId,
         blockId: ctx.blockId,
         message: `"firstContractSigned" condition has an invalid datetime: "${cond.date}"`,
+      });
+    }
+    if (
+      cond.kind === "completedActionCount" &&
+      (!Number.isInteger(cond.atLeast) || cond.atLeast < 0)
+    ) {
+      errors.push({
+        viewId: ctx.viewId,
+        blockId: ctx.blockId,
+        message: `"completedActionCount" condition has an invalid count: ${cond.atLeast}`,
       });
     }
     return;

@@ -1,5 +1,9 @@
 import type { Page, TextField } from "./form-schema";
-import { isPageCurrentlyVisible, stripHiddenAnswers } from "./visibility";
+import {
+  isFieldConditionallyRequired,
+  isPageCurrentlyVisible,
+  stripHiddenAnswers,
+} from "./visibility";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 
 const formula = (conditions: Record<string, Condition>): VisibleIfFormula => ({
@@ -151,6 +155,190 @@ describe("firstContractSigned condition", () => {
     expect(
       isPageCurrentlyVisible(signedPage("before", "not-a-date"), {}, valid),
     ).toBe(false);
+  });
+});
+
+describe("a condition kind this build doesn't know", () => {
+  /**
+   * Parsed rather than written as a literal: this is what a schema authored by
+   * a newer build looks like arriving off the wire, which is the only way an
+   * unknown kind reaches these functions.
+   */
+  const futureCondition = (): Condition =>
+    JSON.parse('{ "kind": "somethingAddedLater", "atLeast": 1 }');
+
+  it("evaluates as not met instead of throwing", () => {
+    const futurePage = page("p1", {
+      fields: [textField("f1")],
+      visibleIfFormula: formula({ c1: futureCondition() }),
+    });
+    expect(() => isPageCurrentlyVisible(futurePage, {}, extras)).not.toThrow();
+    expect(isPageCurrentlyVisible(futurePage, {}, extras)).toBe(false);
+  });
+
+  it("does not throw while resolving requiredness", () => {
+    const field = textField("f1", {
+      required: true,
+      requiredIfFormula: formula({ c1: futureCondition() }),
+    });
+    expect(isFieldConditionallyRequired(field, {}, extras)).toBe(false);
+  });
+
+  it("leaves the rest of the formula working", () => {
+    // AND with an unknown operand fails; OR still passes on the known half.
+    const conditions = {
+      c1: futureCondition(),
+      c2: { kind: "equals", when: "f1", equals: "yes" } satisfies Condition,
+    };
+    const orPage = page("p1", {
+      fields: [textField("f1")],
+      visibleIfFormula: {
+        conditions,
+        formula: { op: "OR", left: "c1", right: "c2" },
+      },
+    });
+    expect(isPageCurrentlyVisible(orPage, { f1: "yes" }, extras)).toBe(true);
+    expect(isPageCurrentlyVisible(orPage, { f1: "no" }, extras)).toBe(false);
+  });
+});
+
+describe("completedActionCount condition", () => {
+  const completedPage = (atLeast: number): Page =>
+    page("p1", {
+      fields: [textField("f1")],
+      visibleIfFormula: formula({
+        c1: { kind: "completedActionCount", atLeast },
+      }),
+    });
+
+  it("is visible once the user reaches the threshold", () => {
+    const three = { ...extras, completedActionCount: 3 };
+    expect(isPageCurrentlyVisible(completedPage(2), {}, three)).toBe(true);
+    expect(isPageCurrentlyVisible(completedPage(3), {}, three)).toBe(true);
+    expect(isPageCurrentlyVisible(completedPage(4), {}, three)).toBe(false);
+  });
+
+  it("treats a missing count as zero", () => {
+    expect(isPageCurrentlyVisible(completedPage(1), {}, extras)).toBe(false);
+    expect(isPageCurrentlyVisible(completedPage(0), {}, extras)).toBe(true);
+  });
+
+  it("supports 'fewer than' via a negated formula", () => {
+    const fewerThanTwo: Page = page("p1", {
+      fields: [textField("f1")],
+      visibleIfFormula: {
+        conditions: { c1: { kind: "completedActionCount", atLeast: 2 } },
+        formula: { op: "NOT", operand: "c1" },
+      },
+    });
+    expect(
+      isPageCurrentlyVisible(
+        fewerThanTwo,
+        {},
+        { ...extras, completedActionCount: 1 },
+      ),
+    ).toBe(true);
+    expect(
+      isPageCurrentlyVisible(
+        fewerThanTwo,
+        {},
+        { ...extras, completedActionCount: 2 },
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("isFieldConditionallyRequired", () => {
+  it("falls back to the static flag without a requiredIfFormula", () => {
+    expect(isFieldConditionallyRequired(textField("f1"), {}, extras)).toBe(
+      false,
+    );
+    expect(
+      isFieldConditionallyRequired(
+        textField("f1", { required: true }),
+        {},
+        extras,
+      ),
+    ).toBe(true);
+  });
+
+  it("evaluates a single-condition formula against the answers", () => {
+    const field = textField("f2", {
+      requiredIfFormula: formula({
+        c1: { kind: "equals", when: "f1", equals: "yes" },
+      }),
+    });
+    expect(isFieldConditionallyRequired(field, { f1: "yes" }, extras)).toBe(
+      true,
+    );
+    expect(isFieldConditionallyRequired(field, { f1: "no" }, extras)).toBe(
+      false,
+    );
+  });
+
+  it("evaluates against the account-derived extras", () => {
+    const field = textField("f1", {
+      requiredIfFormula: formula({
+        c1: { kind: "completedActionCount", atLeast: 2 },
+      }),
+    });
+    expect(
+      isFieldConditionallyRequired(
+        field,
+        {},
+        {
+          ...extras,
+          completedActionCount: 2,
+        },
+      ),
+    ).toBe(true);
+    expect(isFieldConditionallyRequired(field, {}, extras)).toBe(false);
+  });
+
+  it("combines conditions with AND/OR/NOT like visibility does", () => {
+    const field = textField("f3", {
+      requiredIfFormula: {
+        conditions: {
+          c1: { kind: "equals", when: "f1", equals: "yes" },
+          c2: { kind: "completedActionCount", atLeast: 2 },
+        },
+        formula: { op: "AND", left: "c1", right: "c2" },
+      },
+    });
+    const twoDone = { ...extras, completedActionCount: 2 };
+    expect(isFieldConditionallyRequired(field, { f1: "yes" }, twoDone)).toBe(
+      true,
+    );
+    // Each half alone is not enough.
+    expect(isFieldConditionallyRequired(field, { f1: "no" }, twoDone)).toBe(
+      false,
+    );
+    expect(isFieldConditionallyRequired(field, { f1: "yes" }, extras)).toBe(
+      false,
+    );
+  });
+
+  it("overrides the static flag in both directions", () => {
+    const requiredButNotYet = textField("f2", {
+      required: true,
+      requiredIfFormula: formula({
+        c1: { kind: "equals", when: "f1", equals: "yes" },
+      }),
+    });
+    expect(
+      isFieldConditionallyRequired(requiredButNotYet, { f1: "no" }, extras),
+    ).toBe(false);
+    expect(
+      isFieldConditionallyRequired(requiredButNotYet, { f1: "yes" }, extras),
+    ).toBe(true);
+  });
+
+  it("ignores an empty formula and falls back to the static flag", () => {
+    const field = textField("f1", {
+      required: true,
+      requiredIfFormula: { conditions: {}, formula: "" },
+    });
+    expect(isFieldConditionallyRequired(field, {}, extras)).toBe(true);
   });
 });
 

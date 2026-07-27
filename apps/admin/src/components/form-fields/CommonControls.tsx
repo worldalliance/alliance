@@ -297,6 +297,10 @@ type FirstContractSignedCondition = Extract<
   Condition,
   { kind: "firstContractSigned" }
 >;
+type CompletedActionCountCondition = Extract<
+  Condition,
+  { kind: "completedActionCount" }
+>;
 
 function isFieldCondition(cond: Condition): cond is FieldCondition {
   return (
@@ -329,6 +333,12 @@ function isFirstContractSignedCondition(
   cond: Condition,
 ): cond is FirstContractSignedCondition {
   return cond.kind === "firstContractSigned";
+}
+
+function isCompletedActionCountCondition(
+  cond: Condition,
+): cond is CompletedActionCountCondition {
+  return cond.kind === "completedActionCount";
 }
 
 /** Format an ISO datetime for a datetime-local input (local wall-clock). */
@@ -896,6 +906,25 @@ export function ConditionalVisibility({
       const current = next[index];
       if (!isFirstContractSignedCondition(current)) return;
       next[index] = { ...current, ...updates };
+      updateConditions(next, true);
+    },
+    [conditions, updateConditions],
+  );
+
+  const addCompletedActionCountCondition = useCallback(() => {
+    const defaultCondition: CompletedActionCountCondition = {
+      kind: "completedActionCount",
+      atLeast: 1,
+    };
+    updateConditions([...conditions, defaultCondition]);
+  }, [conditions, updateConditions]);
+
+  const handleCompletedActionCountChange = useCallback(
+    (index: number, atLeast: number) => {
+      const next = [...conditions];
+      const current = next[index];
+      if (!isCompletedActionCountCondition(current)) return;
+      next[index] = { ...current, atLeast };
       updateConditions(next, true);
     },
     [conditions, updateConditions],
@@ -1590,6 +1619,30 @@ export function ConditionalVisibility({
     );
   };
 
+  const renderCompletedActionCountCondition = (
+    condition: CompletedActionCountCondition,
+    index: number,
+  ) => (
+    <div>
+      <label className="block text-xs text-gray-700 mb-1">
+        Show when the user has completed at least
+      </label>
+      <input
+        type="number"
+        min={0}
+        step={1}
+        className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+        value={condition.atLeast}
+        onChange={(event) => {
+          const parsed = Number.parseInt(event.target.value, 10);
+          if (Number.isNaN(parsed) || parsed < 0) return;
+          handleCompletedActionCountChange(index, parsed);
+        }}
+      />
+      <p className="mt-1 text-[11px] text-gray-400">Actions</p>
+    </div>
+  );
+
   const renderDeviceCondition = (condition: DeviceCondition, index: number) => {
     const selected = new Set(condition.deviceType ?? []);
     return (
@@ -1720,6 +1773,8 @@ export function ConditionalVisibility({
               renderUserHasCityCondition(condition, index)
             ) : isFirstContractSignedCondition(condition) ? (
               renderFirstContractSignedCondition(condition, index)
+            ) : isCompletedActionCountCondition(condition) ? (
+              renderCompletedActionCountCondition(condition, index)
             ) : (
               <p className="text-[11px] text-red-500">
                 Unsupported condition type. Remove and re-create this rule.
@@ -1785,6 +1840,13 @@ export function ConditionalVisibility({
                 onClick={addFirstContractSignedCondition}
               >
                 + First contract signed condition
+              </button>
+              <button
+                type="button"
+                className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
+                onClick={addCompletedActionCountCondition}
+              >
+                + Completed actions condition
               </button>
             </>
           )}

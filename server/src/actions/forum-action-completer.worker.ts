@@ -1,5 +1,8 @@
 import { ActionActivityType } from '@alliance/common/actionActivity';
-import type { FormSchema } from '@alliance/common/forms/form-schema';
+import {
+  forEachCondition,
+  type FormSchema,
+} from '@alliance/common/forms/form-schema';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -288,33 +291,18 @@ export class ForumActionCompleterWorker {
   private collectValidatorIds(schema: FormSchema): number[] {
     const validatorIds = new Set<number>();
 
-    for (const page of schema.pages ?? []) {
-      if (page.visibleIfFormula?.conditions) {
-        for (const condition of Object.values(
-          page.visibleIfFormula.conditions,
-        )) {
-          if (condition && condition.kind === 'validator') {
-            validatorIds.add(condition.validatorId);
-          }
-        }
+    forEachCondition(schema, (condition) => {
+      if (condition.kind === 'validator') {
+        validatorIds.add(condition.validatorId);
       }
+    });
+
+    // Field-level validators hang off the field itself rather than a condition,
+    // so they aren't part of the condition walk.
+    for (const page of schema.pages ?? []) {
       for (const element of page.fields ?? []) {
         if ('customValidatorId' in element && element.customValidatorId) {
           validatorIds.add(element.customValidatorId);
-        }
-        if ('requiredIf' in element && element.requiredIf) {
-          const requiredIf = element.requiredIf;
-          if (requiredIf.kind === 'validator') {
-            validatorIds.add(requiredIf.validatorId);
-          }
-        }
-        const formula = element.visibleIfFormula;
-        if (formula?.conditions) {
-          for (const condition of Object.values(formula.conditions)) {
-            if (condition && condition.kind === 'validator') {
-              validatorIds.add(condition.validatorId);
-            }
-          }
         }
       }
     }

@@ -22,7 +22,9 @@ import {
 } from "@alliance/common/forms/form-schema";
 import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
+  isFieldConditionallyRequired,
   stripHiddenAnswers,
+  type ConditionExtras,
 } from "@alliance/common/forms/visibility";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import {
@@ -40,6 +42,7 @@ import {
   computeActiveUserKey,
   computeFormStorageKey,
   filterAnswersByFieldIds,
+  findUnknownConditionKind,
   findUnknownFormElementKind,
   formatUserLocationDisplayValue,
   getFallbackVisiblePageIndex,
@@ -558,7 +561,8 @@ const FormRenderer = ({
   }, [schema]);
 
   const unknownKind = useMemo(
-    () => findUnknownFormElementKind(schema),
+    () =>
+      findUnknownFormElementKind(schema) ?? findUnknownConditionKind(schema),
     [schema],
   );
   const hasUserLocationDisplayBlock = useMemo(
@@ -786,6 +790,7 @@ const FormRenderer = ({
   const {
     userHasCity,
     firstContractSignedAt,
+    completedActionCount,
     isLoading: visibilityContextLoading,
   } = useVisibilityContext(schema, {
     enabled: !!user,
@@ -998,6 +1003,37 @@ const FormRenderer = ({
     };
   }, [visibilityValidatorIds, visibilityValidatorResults, readOnly]);
 
+  // The single source of the account/device/validator state every visibility
+  // and requiredness evaluation reads. Built once so a new condition kind is
+  // added here rather than at each call site — miss one and it would silently
+  // evaluate against the guest default, since every key is optional.
+  const visibilityExtras = useMemo<ConditionExtras>(
+    () => ({
+      deviceType: DEVICE_TYPE,
+      visibilityValidatorResults,
+      fieldLookup,
+      previousAnswerData,
+      userHasCity,
+      firstContractSignedAt,
+      completedActionCount,
+    }),
+    [
+      visibilityValidatorResults,
+      fieldLookup,
+      previousAnswerData,
+      userHasCity,
+      firstContractSignedAt,
+      completedActionCount,
+    ],
+  );
+
+  // `readOnly` isn't part of `ConditionExtras` — only the element/page
+  // visibility helpers take it, to treat a completed form's fields as visible.
+  const visibilityExtrasReadOnly = useMemo(
+    () => ({ ...visibilityExtras, readOnly }),
+    [visibilityExtras, readOnly],
+  );
+
   // Answers for fields the user can't currently see, treated as never given:
   // visibility, validation, rendering, and the submitted payload all read
   // this, so what the user sees is exactly what submits. Raw formData still
@@ -1005,25 +1041,12 @@ const FormRenderer = ({
   // typed.
   const effectiveFormData = useMemo(
     () =>
-      stripHiddenAnswers(schema.pages ?? [], formData, {
-        deviceType: DEVICE_TYPE,
-        visibilityValidatorResults,
-        fieldLookup,
-        readOnly,
-        previousAnswerData,
-        userHasCity,
-        firstContractSignedAt,
-      }),
-    [
-      schema.pages,
-      formData,
-      visibilityValidatorResults,
-      fieldLookup,
-      readOnly,
-      previousAnswerData,
-      userHasCity,
-      firstContractSignedAt,
-    ],
+      stripHiddenAnswers(
+        schema.pages ?? [],
+        formData,
+        visibilityExtrasReadOnly,
+      ),
+    [schema.pages, formData, visibilityExtrasReadOnly],
   );
 
   const isElementCurrentlyVisible = useCallback(
@@ -1031,47 +1054,35 @@ const FormRenderer = ({
       element: AnyField | DisplayBlock,
       data?: Record<string, FormValue>,
     ): boolean =>
-      isElementCurrentlyVisibleShared(element, data ?? effectiveFormData, {
-        deviceType: DEVICE_TYPE,
-        visibilityValidatorResults,
-        fieldLookup,
-        readOnly,
-        previousAnswerData,
-        userHasCity,
-        firstContractSignedAt,
-      }),
-    [
-      fieldLookup,
-      effectiveFormData,
-      visibilityValidatorResults,
-      readOnly,
-      previousAnswerData,
-      userHasCity,
-      firstContractSignedAt,
-    ],
+      isElementCurrentlyVisibleShared(
+        element,
+        data ?? effectiveFormData,
+        visibilityExtrasReadOnly,
+      ),
+    [effectiveFormData, visibilityExtrasReadOnly],
+  );
+
+  // Mirrors `isElementCurrentlyVisible`: the same answers and extras, so the
+  // label agrees with what `validateFieldValue` and the server's submit-time
+  // check enforce.
+  const isFieldCurrentlyRequired = useCallback(
+    (field: AnyField, data?: Record<string, FormValue>): boolean =>
+      isFieldConditionallyRequired(
+        field,
+        data ?? effectiveFormData,
+        visibilityExtras,
+      ),
+    [effectiveFormData, visibilityExtras],
   );
 
   const visiblePageIndices = useMemo(
     () =>
-      getVisiblePageIndices(schema.pages ?? [], effectiveFormData, {
-        deviceType: DEVICE_TYPE,
-        visibilityValidatorResults,
-        fieldLookup,
-        readOnly,
-        previousAnswerData,
-        userHasCity,
-        firstContractSignedAt,
-      }),
-    [
-      schema.pages,
-      effectiveFormData,
-      visibilityValidatorResults,
-      fieldLookup,
-      readOnly,
-      previousAnswerData,
-      userHasCity,
-      firstContractSignedAt,
-    ],
+      getVisiblePageIndices(
+        schema.pages ?? [],
+        effectiveFormData,
+        visibilityExtrasReadOnly,
+      ),
+    [schema.pages, effectiveFormData, visibilityExtrasReadOnly],
   );
 
   const nextVisiblePageIndex = useMemo(
@@ -1102,22 +1113,13 @@ const FormRenderer = ({
       fieldValue: FormValue | undefined,
       data?: Record<string, FormValue>,
     ): string | null =>
-      validateFieldValueShared(field, fieldValue, data ?? effectiveFormData, {
-        deviceType: DEVICE_TYPE,
-        visibilityValidatorResults,
-        fieldLookup,
-        previousAnswerData,
-        userHasCity,
-        firstContractSignedAt,
-      }),
-    [
-      effectiveFormData,
-      visibilityValidatorResults,
-      fieldLookup,
-      previousAnswerData,
-      userHasCity,
-      firstContractSignedAt,
-    ],
+      validateFieldValueShared(
+        field,
+        fieldValue,
+        data ?? effectiveFormData,
+        visibilityExtras,
+      ),
+    [effectiveFormData, visibilityExtras],
   );
 
   const applyFieldErrorUpdates = useCallback(
@@ -1536,6 +1538,8 @@ const FormRenderer = ({
                 randomizationKey={randomizationKey}
                 disableOptionRandomization={disableOptionRandomization}
                 user={user}
+                formData={effectiveFormData}
+                isFieldRequired={isFieldCurrentlyRequired}
               />
               {renderPublicToggle(field)}
             </View>

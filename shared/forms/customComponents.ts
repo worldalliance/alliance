@@ -1,6 +1,6 @@
+import type { CustomComponentField } from "@alliance/common/forms/form-schema";
 import type { ComponentType } from "react";
 import type { UserDto } from "../client";
-import type { CustomComponentField } from "@alliance/common/forms/form-schema";
 
 export type CustomComponentConfigFieldType = "string" | "number" | "boolean";
 
@@ -19,6 +19,7 @@ export interface CustomComponentProps {
   user?: Omit<UserDto, "email">;
   disabled?: boolean;
   isOutputView?: boolean;
+  required?: boolean;
 }
 
 export interface CustomComponentDefinition {

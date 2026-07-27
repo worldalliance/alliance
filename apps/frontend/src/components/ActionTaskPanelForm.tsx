@@ -11,6 +11,7 @@ import {
 } from "@alliance/shared/client";
 import type { ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import { captureException } from "@alliance/shared/lib/analytics";
+import { useInvalidateVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import FormRenderer, {
@@ -54,6 +55,7 @@ const ActionTaskPanelForm = ({
 }: ActionTaskPanelFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated, refreshUser } = useAuth();
+  const invalidateVisibilityContext = useInvalidateVisibilityContext();
   const {
     data: form,
     error: formError,
@@ -107,6 +109,11 @@ const ActionTaskPanelForm = ({
               body: data,
             });
         if (response.response.ok) {
+          if (isAuthenticated) {
+            // Bumped `completedActionCount` (and `firstContractSignedAt` for a
+            // contract-signing action).
+            invalidateVisibilityContext();
+          }
           if (response.data) {
             onSubmitted?.(response.data);
           }

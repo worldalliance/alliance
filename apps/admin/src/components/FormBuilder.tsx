@@ -287,6 +287,7 @@ const mapConditionForOptionValue = (
       }
       return { condition, updated: false };
     case "anySelected":
+    case "completedActionCount":
     case "deviceType":
     case "firstContractSigned":
     case "hasValue":
@@ -435,6 +436,7 @@ const remapConditionFieldReferences = (
     case "outputBlockVisible":
     case "userHasCity":
     case "firstContractSigned":
+    case "completedActionCount":
       return condition;
     default:
       condition satisfies never;
@@ -472,9 +474,10 @@ const remapListFieldReferences = (
     field.visibleIfFormula,
     idMap,
   ),
-  requiredIf: field.requiredIf
-    ? remapConditionFieldReferences(field.requiredIf, idMap)
-    : undefined,
+  requiredIfFormula: remapVisibleIfFormulaFieldReferences(
+    field.requiredIfFormula,
+    idMap,
+  ),
   fields: field.fields.map((subField) => remapFieldReferences(subField, idMap)),
   outputViewHiddenFieldIds: field.outputViewHiddenFieldIds
     ?.map((id) => idMap.get(id) ?? id)
@@ -502,9 +505,10 @@ const remapFieldReferences = <T extends AnyField>(
       field.visibleIfFormula,
       idMap,
     ),
-    requiredIf: field.requiredIf
-      ? remapConditionFieldReferences(field.requiredIf, idMap)
-      : undefined,
+    requiredIfFormula: remapVisibleIfFormulaFieldReferences(
+      field.requiredIfFormula,
+      idMap,
+    ),
   };
 };
 

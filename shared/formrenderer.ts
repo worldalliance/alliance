@@ -2,9 +2,10 @@ import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   type AnyField,
   type CityFieldValue,
+  forEachCondition,
+  forEachOutputViewCondition,
   type FormSchema,
   type FormValue,
-  isQuestionField,
   type ListField,
   type NumberField,
   type Page,
@@ -16,13 +17,13 @@ import {
 } from "@alliance/common/forms/ranking";
 import {
   type ConditionExtras,
-  evaluateCondition,
   isElementCurrentlyVisible,
+  isFieldConditionallyRequired,
   isPageCurrentlyVisible,
 } from "@alliance/common/forms/visibility";
-import type {
-  ConditionKind,
-  VisibleIfFormula,
+import {
+  CONDITION_KIND_IS_ACCOUNT_DERIVED,
+  isKnownConditionKind,
 } from "@alliance/common/forms/visible-if-formula";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
 
@@ -162,6 +163,28 @@ export function findUnknownFormElementKind(
   return null;
 }
 
+/**
+ * Returns the first condition kind in the schema that the current client
+ * doesn't recognize, or null if every kind is known. The condition-level
+ * counterpart of `findUnknownFormElementKind`, used the same way: block
+ * rendering rather than degrade. An unevaluatable condition treated as "not
+ * met" would show the wrong fields or mark a required field optional, and look
+ * to the user like a form that works. Output views count too, so a stale
+ * client doesn't collect a response it can't render back.
+ */
+export function findUnknownConditionKind(schema: FormSchema): string | null {
+  let unknown: string | null = null;
+  const check = (condition: { kind: string }): boolean => {
+    if (isKnownConditionKind(condition.kind)) return false;
+    unknown = condition.kind;
+    return true;
+  };
+  if (!forEachCondition(schema, check)) {
+    forEachOutputViewCondition(schema, check);
+  }
+  return unknown;
+}
+
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
@@ -203,55 +226,13 @@ export function formatUserLocationDisplayValue(
   return `${value.name}${suffix}`;
 }
 
-function schemaHasConditionMatching(
-  schema: FormSchema,
-  predicate: (kind: ConditionKind) => boolean,
-): boolean {
-  const formulaMatches = (
-    visibleIfFormula: VisibleIfFormula | undefined,
-  ): boolean =>
-    Object.values(visibleIfFormula?.conditions ?? {}).some((condition) =>
-      predicate(condition.kind),
-    );
-  for (const page of schema.pages) {
-    if (formulaMatches(page.visibleIfFormula)) return true;
-    for (const element of page.fields) {
-      if (formulaMatches(element.visibleIfFormula)) return true;
-      if (isQuestionField(element) && element.kind === "list") {
-        const listField = element as ListField;
-        if (Array.isArray(listField.fields)) {
-          for (const sub of listField.fields) {
-            if (formulaMatches(sub.visibleIfFormula)) return true;
-          }
-        }
-      }
-    }
-  }
-  return false;
-}
-
-/**
- * Whether a condition kind's value comes from the viewer's account state,
- * served by `GET /user/myvisibilitycontext`.
- */
-const CONDITION_KIND_NEEDS_VISIBILITY_CONTEXT: Record<ConditionKind, boolean> =
-  {
-    equals: false,
-    includesOption: false,
-    anySelected: false,
-    hasValue: false,
-    validator: false,
-    deviceType: false,
-    outputBlockVisible: false,
-    userHasCity: true,
-    firstContractSigned: true,
-  };
-
 /** Whether rendering this schema requires fetching the viewer's visibility context. */
 export function schemaNeedsVisibilityContext(schema: FormSchema): boolean {
-  return schemaHasConditionMatching(
+  // Stops at the first account-derived condition — `forEachCondition` returns
+  // whether the visitor stopped it.
+  return forEachCondition(
     schema,
-    (kind) => CONDITION_KIND_NEEDS_VISIBILITY_CONTEXT[kind],
+    (condition) => CONDITION_KIND_IS_ACCOUNT_DERIVED[condition.kind],
   );
 }
 
@@ -462,17 +443,6 @@ export function filterAnswersByFieldIds(
     }
   }
   return filtered;
-}
-
-export function isFieldConditionallyRequired(
-  field: AnyField,
-  data: Record<string, FormValue>,
-  extras: ConditionExtras,
-): boolean {
-  if (field.requiredIf) {
-    return evaluateCondition(field.requiredIf, data, extras);
-  }
-  return !!field.required;
 }
 
 export function validateFieldValue(

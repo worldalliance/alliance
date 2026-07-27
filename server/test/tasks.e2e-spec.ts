@@ -3,6 +3,7 @@ import type {
   FormSchema,
   RankingField,
 } from '@alliance/common/forms/form-schema';
+import type { Condition } from '@alliance/common/forms/visible-if-formula';
 import { CreateActionDto } from 'src/actions/dto/action.dto';
 import { ActionActivity } from 'src/actions/entities/action-activity.entity';
 import {
@@ -1106,6 +1107,558 @@ describe('Tasks (e2e)', () => {
       expect(
         submitTwo.body.visibilityValidatorResults[visibilityValidatorId],
       ).toBe(true);
+    });
+  });
+
+  describe('Conditional requiredness', () => {
+    const requiredIfSchema: FormSchema = {
+      title: 'Conditional Requiredness',
+      pages: [
+        {
+          id: 'page-1',
+          fields: [
+            {
+              id: 'attending',
+              type: 'input',
+              kind: 'radio',
+              label: 'Attending?',
+              required: true,
+              options: [
+                { label: 'Yes', value: 'yes' },
+                { label: 'No', value: 'no' },
+              ],
+            },
+            {
+              id: 'guest-count',
+              type: 'input',
+              kind: 'text',
+              label: 'Guest count',
+              requiredIfFormula: {
+                conditions: {
+                  c1: { kind: 'equals', when: 'attending', equals: 'yes' },
+                },
+                formula: 'c1',
+              },
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    };
+
+    const listRequiredIfSchema: FormSchema = {
+      title: 'Conditional Requiredness In List',
+      pages: [
+        {
+          id: 'page-1',
+          fields: [
+            {
+              id: 'people',
+              type: 'input',
+              kind: 'list',
+              label: 'People',
+              fields: [
+                {
+                  id: 'name',
+                  type: 'input',
+                  kind: 'text',
+                  label: 'Name',
+                  required: true,
+                },
+                {
+                  id: 'dietary-notes',
+                  type: 'input',
+                  kind: 'text',
+                  label: 'Dietary notes',
+                  requiredIfFormula: {
+                    conditions: {
+                      c1: {
+                        kind: 'equals',
+                        when: 'has-restrictions',
+                        equals: 'yes',
+                      },
+                    },
+                    formula: 'c1',
+                  },
+                },
+                {
+                  id: 'has-restrictions',
+                  type: 'input',
+                  kind: 'radio',
+                  label: 'Dietary restrictions?',
+                  required: true,
+                  options: [
+                    { label: 'Yes', value: 'yes' },
+                    { label: 'No', value: 'no' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    };
+
+    /**
+     * `required` and `requiredIfFormula` set together on a list and a ranking field:
+     * `requiredIfFormula` wins in both directions, including for the list-minimum and
+     * ranking-slot checks.
+     */
+    const listAndRankingRequiredIfSchema: FormSchema = {
+      title: 'Conditional Requiredness For List And Ranking',
+      pages: [
+        {
+          id: 'page-1',
+          fields: [
+            {
+              id: 'attending',
+              type: 'input',
+              kind: 'radio',
+              label: 'Attending?',
+              required: true,
+              options: [
+                { label: 'Yes', value: 'yes' },
+                { label: 'No', value: 'no' },
+              ],
+            },
+            {
+              id: 'people',
+              type: 'input',
+              kind: 'list',
+              label: 'People',
+              required: true,
+              requiredIfFormula: {
+                conditions: {
+                  c1: { kind: 'equals', when: 'attending', equals: 'yes' },
+                },
+                formula: 'c1',
+              },
+              fields: [
+                {
+                  id: 'name',
+                  type: 'input',
+                  kind: 'text',
+                  label: 'Name',
+                  required: true,
+                },
+              ],
+            },
+            {
+              id: 'priorities',
+              type: 'input',
+              kind: 'ranking',
+              label: 'Priorities',
+              required: true,
+              requiredIfFormula: {
+                conditions: {
+                  c1: { kind: 'equals', when: 'attending', equals: 'yes' },
+                },
+                formula: 'c1',
+              },
+              options: [
+                { label: 'Food', value: 'food' },
+                { label: 'Music', value: 'music' },
+              ],
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    };
+
+    const createRequiredIfForm = async (
+      name: string,
+      schema: FormSchema = requiredIfSchema,
+    ): Promise<{
+      formId: number;
+      formSnapshotId: number;
+      actionId: number;
+    }> => {
+      const action = await createAction(name);
+      const form = await request(ctx.app.getHttpServer())
+        .post('/tasks/createForm')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: name, schema })
+        .expect(201);
+      await actionRepo.update(action.id, {
+        taskFormId: form.body.id as number,
+      });
+      return {
+        formId: form.body.id as number,
+        formSnapshotId: form.body.formSnapshotId as number,
+        actionId: action.id,
+      };
+    };
+
+    it('rejects a submission missing a field its requiredIfFormula demands', async () => {
+      const { formId, formSnapshotId, actionId } =
+        await createRequiredIfForm('RequiredIf Missing');
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { attending: 'yes' },
+          formSnapshotId,
+          actionId,
+          deviceType: 'desktop' as const,
+        })
+        .expect(400);
+    });
+
+    it('accepts the same submission once the field is answered', async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        'RequiredIf Answered',
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { attending: 'yes', 'guest-count': '2' },
+          formSnapshotId,
+          actionId,
+          deviceType: 'desktop' as const,
+        })
+        .expect(201);
+    });
+
+    it('accepts a submission when the requiredIfFormula is false', async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        'RequiredIf Not Triggered',
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { attending: 'no' },
+          formSnapshotId,
+          actionId,
+          deviceType: 'desktop' as const,
+        })
+        .expect(201);
+    });
+
+    it('rejects a list item missing a sub-field its requiredIfFormula demands', async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        'RequiredIf List Missing',
+        listRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            people: [
+              { name: 'Ada', 'has-restrictions': 'no' },
+              // Second item triggers the sub-field's requiredIfFormula but omits it.
+              { name: 'Grace', 'has-restrictions': 'yes' },
+            ],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: 'desktop' as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe(
+        'Field People (item 2): Dietary notes is required.',
+      );
+    });
+
+    it('accepts list items that satisfy or do not trigger the sub-field requiredIfFormula', async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        'RequiredIf List Answered',
+        listRequiredIfSchema,
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            people: [
+              { name: 'Ada', 'has-restrictions': 'no' },
+              {
+                name: 'Grace',
+                'has-restrictions': 'yes',
+                'dietary-notes': 'No shellfish',
+              },
+            ],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: 'desktop' as const,
+        })
+        .expect(201);
+    });
+
+    it('does not enforce list/ranking requiredness when requiredIfFormula is false', async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        'RequiredIf List And Ranking Not Triggered',
+        listAndRankingRequiredIfSchema,
+      );
+
+      // Both fields are statically `required`, but their requiredIfFormula is false —
+      // an empty list and a partial ranking have to be accepted, matching what
+      // the client lets through.
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { attending: 'no', people: [], priorities: ['food'] },
+          formSnapshotId,
+          actionId,
+          deviceType: 'desktop' as const,
+        })
+        .expect(201);
+    });
+
+    it('rejects an empty list when its requiredIfFormula is true', async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        'RequiredIf List Triggered',
+        listAndRankingRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { attending: 'yes', people: [], priorities: [] },
+          formSnapshotId,
+          actionId,
+          deviceType: 'desktop' as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe('Field People is required');
+    });
+
+    it('rejects a partial ranking when its requiredIfFormula is true', async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        'RequiredIf Ranking Triggered',
+        listAndRankingRequiredIfSchema,
+      );
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            attending: 'yes',
+            people: [{ name: 'Ada' }],
+            priorities: ['food'],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: 'desktop' as const,
+        })
+        .expect(400);
+
+      expect(response.body.message).toBe(
+        'Field Priorities requires ranking 2 items.',
+      );
+    });
+
+    it('accepts a list and ranking that satisfy a true requiredIfFormula', async () => {
+      const { formId, formSnapshotId, actionId } = await createRequiredIfForm(
+        'RequiredIf List And Ranking Answered',
+        listAndRankingRequiredIfSchema,
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            attending: 'yes',
+            people: [{ name: 'Ada' }],
+            priorities: ['food', 'music'],
+          },
+          formSnapshotId,
+          actionId,
+          deviceType: 'desktop' as const,
+        })
+        .expect(201);
+    });
+  });
+
+  /**
+   * `submitForm` fetches only the account values a schema's conditions actually
+   * read (see `getVisibilityContext`'s `kinds` argument). These cover each kind
+   * end to end: if a kind were fetched with the wrong query — or not fetched at
+   * all — its condition would silently evaluate against the guest default and
+   * the gated field would stop being enforced.
+   */
+  describe('Account-derived condition visibility', () => {
+    /** A form whose one required field is gated on a single account condition. */
+    const gatedSchema = (title: string, condition: Condition): FormSchema => ({
+      title,
+      pages: [
+        {
+          id: 'page-1',
+          fields: [
+            {
+              id: 'always-shown',
+              type: 'input',
+              kind: 'text',
+              label: 'Always shown',
+              required: true,
+            },
+            {
+              id: 'gated',
+              type: 'input',
+              kind: 'text',
+              label: 'Gated',
+              required: true,
+              visibleIfFormula: {
+                conditions: { c1: condition },
+                formula: 'c1',
+              },
+            },
+          ],
+        },
+      ],
+      outputViews: [],
+    });
+
+    /** Submits `{ 'always-shown': 'x' }` — never the gated field. */
+    const submitWithoutGatedField = async (
+      name: string,
+      condition: Condition,
+    ): Promise<number> => {
+      const action = await createAction(name);
+      const form = await request(ctx.app.getHttpServer())
+        .post('/tasks/createForm')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: name, schema: gatedSchema(name, condition) })
+        .expect(201);
+      await actionRepo.update(action.id, {
+        taskFormId: form.body.id as number,
+      });
+
+      const response = await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.body.id as number}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { 'always-shown': 'x' },
+          formSnapshotId: form.body.formSnapshotId as number,
+          actionId: action.id,
+          deviceType: 'desktop' as const,
+        });
+      return response.status;
+    };
+
+    it('enforces a completedActionCount-gated field only once the count is reached', async () => {
+      const condition: Condition = { kind: 'completedActionCount', atLeast: 1 };
+      expect(
+        await submitWithoutGatedField('Count Not Reached', condition),
+      ).toBe(201);
+
+      const completed = await createAction('Something Completed');
+      await actionActivityRepo.save(
+        actionActivityRepo.create({
+          actionId: completed.id,
+          userId: ctx.testUserId,
+          type: ActionActivityType.USER_COMPLETED,
+        }),
+      );
+
+      expect(await submitWithoutGatedField('Count Reached', condition)).toBe(
+        400,
+      );
+    });
+
+    it('enforces a userHasCity-gated field only once the user has a city', async () => {
+      const condition: Condition = { kind: 'userHasCity', userHasCity: true };
+      expect(await submitWithoutGatedField('No City', condition)).toBe(201);
+
+      await userRepo.update(ctx.testUserId, {
+        customCityString: 'Springfield',
+      });
+
+      expect(await submitWithoutGatedField('Has City', condition)).toBe(400);
+    });
+
+    it('enforces a firstContractSigned-gated field only once a contract is signed', async () => {
+      const condition: Condition = {
+        kind: 'firstContractSigned',
+        comparison: 'before',
+        date: '2030-01-01T00:00:00.000Z',
+      };
+      expect(await submitWithoutGatedField('Never Signed', condition)).toBe(
+        201,
+      );
+
+      const user = await userRepo.findOneOrFail({
+        where: { id: ctx.testUserId },
+      });
+      await contractEventRepo.save(
+        contractEventRepo.create({
+          type: ContractEventType.SIGNED,
+          date: new Date('2026-01-01T00:00:00.000Z'),
+          user,
+          contractId: ctx.defaultContractId,
+        }),
+      );
+
+      expect(await submitWithoutGatedField('Signed', condition)).toBe(400);
+    });
+
+    /**
+     * A snapshot can outlive the server that wrote it (a rollback, or a
+     * mid-deploy instance). `evaluateCondition` reports a kind it doesn't know
+     * as "not met" so older clients degrade instead of crashing, but taking
+     * that answer here would strip the answers the condition gates — so submit
+     * refuses the schema instead.
+     */
+    it('refuses a submission whose schema uses an unsupported condition kind', async () => {
+      const name = 'Unsupported Condition Kind';
+      const action = await createAction(name);
+      const form = await request(ctx.app.getHttpServer())
+        .post('/tasks/createForm')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: name,
+          schema: gatedSchema(name, {
+            kind: 'completedActionCount',
+            atLeast: 1,
+          }),
+        })
+        .expect(201);
+      await actionRepo.update(action.id, {
+        taskFormId: form.body.id as number,
+      });
+
+      // Rewrite the stored snapshot to the shape a newer build would have
+      // written; `createForm` would reject this kind up front.
+      const snapshotId = form.body.formSnapshotId as number;
+      const [stored] = (await ctx.dataSource.query(
+        'SELECT schema FROM form_snapshot WHERE id = $1',
+        [snapshotId],
+      )) as [{ schema: FormSchema }];
+      const rewritten = JSON.stringify(stored.schema).replace(
+        '"kind":"completedActionCount","atLeast":1',
+        '"kind":"somethingAddedLater","atLeast":1',
+      );
+      await ctx.dataSource.query(
+        'UPDATE form_snapshot SET schema = $1 WHERE id = $2',
+        [rewritten, snapshotId],
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${form.body.id as number}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { 'always-shown': 'x' },
+          formSnapshotId: snapshotId,
+          actionId: action.id,
+          deviceType: 'desktop' as const,
+        })
+        .expect(500);
     });
   });
 

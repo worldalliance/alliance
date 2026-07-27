@@ -2392,15 +2392,6 @@ export class ActionsService {
     return merged.slice(0, limit).map((item) => new HomeFeedItemDto(item));
   }
 
-  async countUserCompletedActions(userId: number): Promise<number> {
-    return this.actionActivityRepository.count({
-      where: {
-        userId,
-        type: ActionActivityType.USER_COMPLETED,
-      },
-    });
-  }
-
   async findByName(name: string): Promise<Action[]> {
     const actions = await this.actionRepository.find({
       where: { name: ILike(`%${name}%`) },

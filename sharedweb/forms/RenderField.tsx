@@ -57,6 +57,15 @@ export type RenderFieldProps = {
     element: AnyField,
     data?: Record<string, FormValue>,
   ) => boolean;
+  /**
+   * Effective requiredness, honoring `requiredIfFormula` (which replaces the
+   * static `required` flag in both directions). Falls back to `field.required`
+   * when omitted, so callers with no answer/visibility context still render.
+   */
+  isFieldRequired?: (
+    field: AnyField,
+    data?: Record<string, FormValue>,
+  ) => boolean;
   fieldErrors?: Record<string, string | null>;
   responseHiddenFromOthers?: boolean;
   isOutputView?: boolean;
@@ -106,18 +115,22 @@ export function RenderLabel({
   labelRightAddon,
   isOutputView,
   hideLabel,
+  required,
 }: {
   field: AnyField;
   error?: string | null;
   labelRightAddon?: ReactNode;
   isOutputView?: boolean;
   hideLabel?: boolean;
+  /** Effective requiredness; defaults to the field's static `required` flag. */
+  required?: boolean;
 }) {
   if (hideLabel) return null;
   const hasError = Boolean(error);
+  const isRequired = required ?? !!field.required;
   return (
     <>
-      {!field.required && !isOutputView && <OptionalLabelPrefix />}
+      {!isRequired && !isOutputView && <OptionalLabelPrefix />}
       <label
         className={cn(
           "block",
@@ -153,6 +166,7 @@ export function RenderField({
   labelRightAddon,
   formData,
   isElementVisible,
+  isFieldRequired,
   fieldErrors,
   responseHiddenFromOthers,
   isOutputView,
@@ -160,6 +174,7 @@ export function RenderField({
 }: RenderFieldProps) {
   const instanceId = useId();
   const fieldName = `${field.id}-${instanceId}`;
+  const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
   const hasError = Boolean(errorMessage);
@@ -212,12 +227,13 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <input
             type="text"
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={field.required}
+            required={required}
             disabled={disabled}
             aria-invalid={hasError}
             className={composeClassName(sharedInputClasses, {
@@ -241,6 +257,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TextareaAutosize
             minRows={disabled ? 1 : field.rows || 3}
@@ -248,7 +265,7 @@ export function RenderField({
             maxLength={field.maxLength}
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={field.required}
+            required={required}
             disabled={disabled}
             aria-invalid={hasError}
             className={composeClassName(
@@ -274,12 +291,13 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <input
             type="email"
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={field.required}
+            required={required}
             disabled={disabled}
             aria-invalid={hasError}
             className={composeClassName(sharedInputClasses)}
@@ -298,6 +316,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <input
             type="tel"
@@ -311,7 +330,7 @@ export function RenderField({
                   }
                 : undefined
             }
-            required={field.required}
+            required={required}
             disabled={disabled}
             pattern={field.pattern}
             aria-invalid={hasError}
@@ -335,6 +354,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <input
             type="number"
@@ -360,7 +380,7 @@ export function RenderField({
                   }
                 : undefined
             }
-            required={field.required}
+            required={required}
             disabled={disabled}
             min={field.min}
             max={field.max}
@@ -393,6 +413,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <div className="flex items-center justify-between text-xs text-zinc-500 py-1">
             <span className="text-black">{field.startLabel}</span>
@@ -442,7 +463,7 @@ export function RenderField({
             })}
           </div>
           {renderValidationMessage()}
-          {!field.required && normalizedValue !== undefined && onChange && (
+          {!required && normalizedValue !== undefined && onChange && (
             <button
               type="button"
               onClick={() => onChange("")}
@@ -462,7 +483,7 @@ export function RenderField({
           type="checkbox"
           checked={!!value}
           onChange={onChange ? (e) => onChange(e.target.checked) : undefined}
-          required={field.required}
+          required={required}
           disabled={disabled}
           aria-invalid={hasError}
           className={composeClassName(
@@ -487,7 +508,7 @@ export function RenderField({
       );
       return (
         <div className="space-y-1 pr-5">
-          {!field.required && !isOutputView && <OptionalLabelPrefix />}
+          {!required && !isOutputView && <OptionalLabelPrefix />}
           <label className="flex items-start">
             {checkboxPosition === "right" ? (
               <>
@@ -516,6 +537,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <div
             className={cn(
@@ -533,7 +555,7 @@ export function RenderField({
                   onChange={
                     onChange ? (e) => onChange(e.target.value) : undefined
                   }
-                  required={field.required}
+                  required={required}
                   disabled={disabled}
                   aria-invalid={hasError}
                   className={composeClassName(
@@ -569,11 +591,12 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <select
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={field.required}
+            required={required}
             disabled={disabled}
             aria-invalid={hasError}
             className={composeClassName(
@@ -617,6 +640,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <div
             className={cn(
@@ -648,9 +672,7 @@ export function RenderField({
                         }
                       : undefined
                   }
-                  required={
-                    !!field.required && selectedCount === 0 && optIndex === 0
-                  }
+                  required={required && selectedCount === 0 && optIndex === 0}
                   disabled={
                     disabled ||
                     (!selections.includes(option.value) && maxReached)
@@ -695,12 +717,13 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <input
             type="date"
             value={(value as string) ?? ""}
             onChange={onChange ? (e) => onChange(e.target.value) : undefined}
-            required={field.required}
+            required={required}
             disabled={disabled}
             aria-invalid={hasError}
             className={composeClassName(sharedInputClasses)}
@@ -720,6 +743,7 @@ export function RenderField({
           labelRightAddon={labelRightAddon}
           isOutputView={isOutputView}
           hideLabel={hideLabel}
+          required={required}
         />
       );
 
@@ -732,6 +756,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <TimeZoneSelect
             value={(value as string) ?? "America/Los_Angeles"}
@@ -759,6 +784,7 @@ export function RenderField({
             error={errorMessage}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <CityAutosuggest
             key={`city-${cityValue?.id ?? field.id}`}
@@ -796,6 +822,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           {imageUrl && (
             <div className="mb-2">
@@ -827,7 +854,7 @@ export function RenderField({
                   if (!file || disabled) return;
                   if (onFileSelected) onFileSelected(file);
                 }}
-                required={field.required && !fileValue}
+                required={required && !fileValue}
                 disabled={disabled || isUploading}
                 aria-invalid={hasError}
                 className={composeClassName(
@@ -909,6 +936,13 @@ export function RenderField({
         const mergedData = { ...formData, ...card };
         return subFields.filter((sub) => isElementVisible(sub, mergedData));
       };
+      // A sub-field's requiredIfFormula can reference either the surrounding
+      // answers or its own card, so resolve it against the same merged data
+      // the visibility filter above uses.
+      const subFieldRequiredForCard = (card: Record<string, FormValue>) =>
+        isFieldRequired
+          ? (sub: AnyField) => isFieldRequired(sub, { ...formData, ...card })
+          : undefined;
       const hiddenInOutputIds = new Set(
         listField.outputViewHiddenFieldIds ?? [],
       );
@@ -930,6 +964,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <div className="space-y-3">
             {cards.map((card, cardIndex) => (
@@ -960,6 +995,7 @@ export function RenderField({
                               disableOptionRandomization
                             }
                             user={user}
+                            isFieldRequired={subFieldRequiredForCard(card)}
                           />
                           {!disabled &&
                             isHiddenInOutput &&
@@ -1018,7 +1054,7 @@ export function RenderField({
                 className="flex flex-row gap-x-4 items-center justify-between"
               >
                 <div>
-                  {!field.required && !isOutputView && <OptionalLabelPrefix />}
+                  {!required && !isOutputView && <OptionalLabelPrefix />}
                   <p className="font-medium">{field.signQuestion.trim()}</p>
                 </div>
                 <YesNoToggle
@@ -1052,6 +1088,7 @@ export function RenderField({
               labelRightAddon={labelRightAddon}
               isOutputView={isOutputView}
               hideLabel={hideLabel}
+              required={required}
             />
             <p className="text-sm text-red-700">
               Unable to render this field because the selected custom component
@@ -1070,6 +1107,7 @@ export function RenderField({
             user={user}
             disabled={disabled}
             isOutputView={isOutputView}
+            required={required}
           />
           {renderValidationMessage()}
         </div>
@@ -1085,6 +1123,7 @@ export function RenderField({
             labelRightAddon={labelRightAddon}
             isOutputView={isOutputView}
             hideLabel={hideLabel}
+            required={required}
           />
           <RankingFieldInput
             field={field}
@@ -1114,6 +1153,8 @@ type TimeInputFieldProps = {
   labelRightAddon?: ReactNode;
   isOutputView?: boolean;
   hideLabel?: boolean;
+  /** Effective requiredness; defaults to the field's static `required` flag. */
+  required?: boolean;
 };
 
 export function TimeInputField({
@@ -1125,6 +1166,7 @@ export function TimeInputField({
   labelRightAddon,
   isOutputView,
   hideLabel,
+  required = !!field.required,
 }: TimeInputFieldProps) {
   const normalizedValue = typeof value === "string" && value ? value : "";
   const [inputValue, setInputValue] = useState<string>(() =>
@@ -1162,7 +1204,7 @@ export function TimeInputField({
   const commitValue = () => {
     const raw = inputValue.trim();
     if (!raw) {
-      setLocalError(field.required ? "Enter a time such as 7:30 PM" : null);
+      setLocalError(required ? "Enter a time such as 7:30 PM" : null);
       onChange?.("");
       return;
     }
@@ -1206,6 +1248,7 @@ export function TimeInputField({
         labelRightAddon={labelRightAddon}
         isOutputView={isOutputView}
         hideLabel={hideLabel}
+        required={required}
       />
       <div className="relative">
         <input
@@ -1233,7 +1276,7 @@ export function TimeInputField({
             }
           }}
           placeholder="7:30 PM"
-          required={field.required}
+          required={required}
           disabled={disabled}
           aria-invalid={hasError}
           className={cn(

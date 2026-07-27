@@ -38,6 +38,7 @@ import {
   UserActionRelationsResponseDto,
 } from 'src/user/dto/user-action-relations.dto';
 import { ProfileDto } from 'src/user/dto/user.dto';
+import { UserService } from 'src/user/user.service';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Public } from '../auth/public.decorator';
@@ -133,6 +134,7 @@ export class ActionsController {
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly shareUrlsService: ShareUrlsService,
     private readonly posthog: PosthogService,
+    private readonly userService: UserService,
   ) {}
 
   @Post('optout/:id')
@@ -930,7 +932,7 @@ export class ActionsController {
     @Param('id', ParseIntPipe) id: number,
   ): Promise<UserCompletedActionsCountDto> {
     return new UserCompletedActionsCountDto(
-      await this.actionsService.countUserCompletedActions(id),
+      await this.userService.getCompletedActionCount(id),
     );
   }
 

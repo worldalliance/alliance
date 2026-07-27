@@ -34,6 +34,7 @@ export enum ActivitySource {
 
 @Entity()
 @Index('IDX_action_activity_type_createdAt', ['type', 'createdAt'])
+@Index('IDX_action_activity_user_type', ['userId', 'type'])
 export class ActionActivity {
   @PrimaryGeneratedColumn()
   @Allow()

@@ -1,3 +1,5 @@
+import { ActionActivityType } from '@alliance/common/actionActivity';
+import type { AccountDerivedConditionKind } from '@alliance/common/forms/visible-if-formula';
 import type { Result } from '@alliance/common/result';
 import { Temporal } from '@js-temporal/polyfill';
 import {
@@ -13,6 +15,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { countBy } from 'es-toolkit';
+import { ActionActivity } from 'src/actions/entities/action-activity.entity';
 import { LiveActivityRegistration } from 'src/apns/entities/live-activity-registration.entity';
 import { CampaignService } from 'src/campaign/campaign.service';
 import { Campaign } from 'src/campaign/entities/campaign.entity';
@@ -219,6 +222,8 @@ export class UserService {
     private readonly userDeviceRepository: Repository<UserDevice>,
     @InjectRepository(LiveActivityRegistration)
     private readonly liveActivityRegistrationRepository: Repository<LiveActivityRegistration>,
+    @InjectRepository(ActionActivity)
+    private readonly actionActivityRepository: Repository<ActionActivity>,
     private readonly shareUrlsService: ShareUrlsService,
     private readonly campaignService: CampaignService,
     private readonly jwtService: JwtService,
@@ -987,15 +992,59 @@ export class UserService {
   }
 
   /**
+   * How many actions the user has completed. `USER_COMPLETED` activities are
+   * deduplicated per action (see `ALLOW_DUPLICATE`), so this is a count of
+   * distinct actions.
+   */
+  async getCompletedActionCount(userId: number): Promise<number> {
+    return this.actionActivityRepository.count({
+      where: { userId, type: ActionActivityType.USER_COMPLETED },
+    });
+  }
+
+  /**
    * User-account-derived values for form visibility conditions. Keep in sync
    * with the condition kinds evaluated in `common/src/forms/visibility.ts`.
+   *
+   * Each value costs a query, so `kinds` narrows the fetch to the condition
+   * kinds a schema actually uses; anything omitted comes back as the same
+   * default an unauthenticated viewer would get. Pass nothing to fetch all of
+   * it (the `/user/myvisibilitycontext` endpoint doesn't know the schema).
    */
-  async getVisibilityContext(userId: number): Promise<MyVisibilityContext> {
-    const [userHasCity, firstContractSignedAt] = await Promise.all([
-      this.userHasCitySet(userId),
-      this.getFirstContractSignedAt(userId),
-    ]);
-    return { userHasCity, firstContractSignedAt };
+  async getVisibilityContext(
+    userId: number,
+    kinds?: ReadonlySet<AccountDerivedConditionKind>,
+  ): Promise<MyVisibilityContext> {
+    const fetchers: Record<
+      AccountDerivedConditionKind,
+      () => Promise<Partial<MyVisibilityContext>>
+    > = {
+      userHasCity: async () => ({
+        userHasCity: await this.userHasCitySet(userId),
+      }),
+      firstContractSigned: async () => ({
+        firstContractSignedAt: await this.getFirstContractSignedAt(userId),
+      }),
+      completedActionCount: async () => ({
+        completedActionCount: await this.getCompletedActionCount(userId),
+      }),
+    };
+
+    const requested = kinds
+      ? [...kinds].map((kind) => fetchers[kind])
+      : Object.values(fetchers);
+    const slices = await Promise.all(requested.map((fetch) => fetch()));
+
+    // Unfetched kinds keep the default an unauthenticated viewer would get.
+    // Typing the seed as MyVisibilityContext makes a new *field* an error too.
+    return slices.reduce<MyVisibilityContext>(
+      (context, slice) => ({ ...context, ...slice }),
+      {
+        userHasCity: false,
+        firstContractSignedAt: null,
+        completedActionCount: 0,
+      },
+    );
   }
 
   async getUserCityCounts(): Promise<UserCityCount[]> {

@@ -6,6 +6,7 @@ import {
   SubmitFormDto,
   tasksOptout,
 } from "../client";
+import { useInvalidateVisibilityContext } from "./useVisibilityContext";
 
 export interface ActionTaskPanelPropsShared {
   action: ActionDto;
@@ -34,6 +35,7 @@ export const useTaskFormHandlers = ({
   "action" | "onCompleteAction" | "onOptOutAction" | "guestMode"
 >) => {
   const [actionError, setActionError] = useState<string | null>(null);
+  const invalidateVisibilityContext = useInvalidateVisibilityContext();
 
   const handleComplete = useCallback(
     async (sendComplete: boolean = true) => {
@@ -45,11 +47,13 @@ export const useTaskFormHandlers = ({
           setActionError("Something went wrong. Please try again.");
           return false;
         }
+        // Bumped `completedActionCount`.
+        invalidateVisibilityContext();
       }
       setActionError(null);
       return onCompleteAction();
     },
-    [action, guestMode, onCompleteAction],
+    [action, guestMode, onCompleteAction, invalidateVisibilityContext],
   );
 
   const handleAbandonAction = useCallback(
