@@ -19,7 +19,7 @@
     "test:watch": "bun test --watch src/",
     "test:cov": "bun test --coverage src/",
     "test:e2e": "bun test ./test/*.e2e-spec.ts --timeout 50000 --concurrency 1",
-    "migration:generate": "bun run migration:run && bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSourceMigrations.ts migration:generate",
+    "migration:generate": "bun run migration:run && bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:generate",
     "migration:create": "bun run migration:run && bunx typeorm-ts-node-commonjs migration:create",
     "migration:run": "bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:run",
     "migration:revert": "bunx typeorm-ts-node-commonjs --dataSource src/datasources/dataSource.ts migration:revert",

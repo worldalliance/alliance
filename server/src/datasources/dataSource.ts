@@ -11,7 +11,6 @@ export const connectionOptions = (): PostgresConnectionOptions => {
     username: process.env.DB_USERNAME,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    entities: ['dist/**/*.entity{.ts}'],
     useUTC: true,
     maxQueryExecutionTime: 100,
     logging: ['error', 'warn'],
@@ -21,21 +20,34 @@ export const connectionOptions = (): PostgresConnectionOptions => {
   return process.env.NODE_ENV === 'production' ||
     process.env.NODE_ENV === 'staging'
     ? {
-      ...shared,
-      ssl: {
-        rejectUnauthorized: true,
-        ca: process.env.DB_CA_CERT,
-      },
-      extra: { ssl: { rejectUnauthorized: true, ca: process.env.DB_CA_CERT } },
-    }
+        ...shared,
+        ssl: {
+          rejectUnauthorized: true,
+          ca: process.env.DB_CA_CERT,
+        },
+        extra: {
+          ssl: { rejectUnauthorized: true, ca: process.env.DB_CA_CERT },
+        },
+      }
     : {
-      ...shared,
-    };
+        ...shared,
+      };
 };
 
-// verison used for migrations only
+/**
+ * The DataSource the TypeORM CLI uses — `migration:run`, `migration:generate`
+ * and `schema:log` all point at this file.
+ *
+ * `entities` is only needed here: the app registers its entities through
+ * `TypeOrmModule.forFeature` and `autoLoadEntities`, so `connectionOptions()`
+ * above deliberately has none. The CLI has no Nest container to learn them
+ * from, and without them it cannot diff entities against the schema
+ * (`migration:generate` and the drift check both go silent) nor create
+ * TypeORM's `typeorm_metadata` table when a view or generated column needs it.
+ */
 const dataSource = new DataSource({
   ...connectionOptions(),
+  entities: ['src/**/*.entity.ts'],
   logger: undefined,
   migrations: ['migrations/*{.ts,.js}'],
 });
