@@ -19,7 +19,12 @@ import {
   Repository,
 } from 'typeorm';
 import { ExternalShareTarget } from './entities/external-share-target.entity';
-import { ShareUrl, ShareUrlKind } from './entities/share-url.entity';
+import {
+  ShareUrl,
+  ShareUrlKind,
+  type ShareUrlWithSignupCount,
+} from './entities/share-url.entity';
+import type { StoredInviteAssignment } from './invite-assignment';
 
 const NOT_FOUND_MESSAGE: Record<ShareUrlKind, string> = {
   [ShareUrlKind.Action]: 'specified action not found',
@@ -63,7 +68,11 @@ type GetOrCreateInput =
       externalTarget: ExternalShareTarget;
       owner: ShareUrlOwner;
     }
-  | { kind: ShareUrlKind.Invite; owner: ShareUrlOwner };
+  | {
+      kind: ShareUrlKind.Invite;
+      owner: ShareUrlOwner;
+      inviteAssignment?: StoredInviteAssignment;
+    };
 
 type BuildRowInput = GetOrCreateInput & {
   duplicate: boolean;
@@ -113,6 +122,8 @@ export class ShareUrlsService {
     private readonly shareUrlRepository: Repository<ShareUrl>,
     @InjectRepository(Action)
     private readonly actionRepository: Repository<Action>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async getShareLink(params: {
@@ -181,12 +192,14 @@ export class ShareUrlsService {
   private async createDuplicateForInvite(
     owner: ShareUrlOwner,
     label: string | null,
+    inviteAssignment?: StoredInviteAssignment,
   ): Promise<ShareUrl> {
     return this.buildAndSaveRow(this.shareUrlRepository.manager, {
       kind: ShareUrlKind.Invite,
       owner,
       duplicate: true,
       label,
+      inviteAssignment,
     });
   }
 
@@ -234,34 +247,84 @@ export class ShareUrlsService {
     });
   }
 
-  async findForOwner(owner: ShareUrlOwner): Promise<ShareUrl[]> {
-    return this.shareUrlRepository.find({
+  async withSignupCounts(
+    shareUrls: ShareUrl[],
+  ): Promise<ShareUrlWithSignupCount[]> {
+    if (shareUrls.length === 0) return [];
+
+    const counts = await this.userRepository
+      .createQueryBuilder('user')
+      .select('user.referredByShareUrlId', 'shareUrlId')
+      .addSelect('COUNT(*)', 'signupCount')
+      .where('user.referredByShareUrlId IN (:...shareUrlIds)', {
+        shareUrlIds: shareUrls.map((shareUrl) => shareUrl.id),
+      })
+      .groupBy('user.referredByShareUrlId')
+      .getRawMany<{ shareUrlId: string; signupCount: string }>();
+    const countsByShareUrlId = new Map(
+      counts.map((count) => [count.shareUrlId, Number(count.signupCount)]),
+    );
+
+    return shareUrls.map((shareUrl) => ({
+      shareUrl,
+      signupCount: countsByShareUrlId.get(shareUrl.id) ?? 0,
+    }));
+  }
+
+  async findForOwner(
+    owner: ShareUrlOwner,
+  ): Promise<ShareUrlWithSignupCount[]> {
+    const shareUrls = await this.shareUrlRepository.find({
       where: ownerWhere(owner),
       relations: { action: true, externalTarget: true },
       order: { createdAt: 'DESC' },
     });
+    return this.withSignupCounts(shareUrls);
   }
 
-  async findForUser(userId: number): Promise<ShareUrl[]> {
+  async findForUser(userId: number): Promise<ShareUrlWithSignupCount[]> {
     return this.findForOwner({ type: 'user', userId });
   }
 
-  async findInvitesForUser(userId: number): Promise<ShareUrl[]> {
-    return this.shareUrlRepository.find({
+  async findInvitesForUser(
+    userId: number,
+  ): Promise<ShareUrlWithSignupCount[]> {
+    const shareUrls = await this.shareUrlRepository.find({
       where: { user: { id: userId }, kind: ShareUrlKind.Invite },
       order: { duplicate: 'ASC', createdAt: 'DESC' },
     });
+    return this.withSignupCounts(shareUrls);
   }
 
   async createDuplicateInviteForUser(
     userId: number,
     label?: string,
+    communityId?: number | null,
   ): Promise<ShareUrl> {
-    return this.createDuplicate({
-      owner: { type: 'user', userId },
-      invite: true,
-      label,
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: { leaderOf: true },
     });
+    if (!user) {
+      throw new NotFoundException('user not found');
+    }
+    if (
+      typeof communityId === 'number' &&
+      !user.leaderOfIdSet.has(communityId)
+    ) {
+      throw new BadRequestException(
+        `User is not a leader of community ${communityId}`,
+      );
+    }
+
+    const trimmedLabel = label?.trim();
+    return this.createDuplicateForInvite(
+      { type: 'user', userId },
+      trimmedLabel ? trimmedLabel : null,
+      typeof communityId === 'number'
+        ? { kind: 'community', communityId }
+        : { kind: 'open' },
+    );
   }
 
   async updateInviteLabelForUser(
@@ -304,7 +367,9 @@ export class ShareUrlsService {
     await this.shareUrlRepository.remove(row);
   }
 
-  async findForCampaign(campaignId: number): Promise<ShareUrl[]> {
+  async findForCampaign(
+    campaignId: number,
+  ): Promise<ShareUrlWithSignupCount[]> {
     return this.findForOwner({ type: 'campaign', campaignId });
   }
 
@@ -530,6 +595,14 @@ export class ShareUrlsService {
       },
     );
 
+    const data: Record<string, unknown> = { sid };
+    if (
+      input.kind === ShareUrlKind.Invite &&
+      input.inviteAssignment !== undefined
+    ) {
+      data.inviteAssignment = input.inviteAssignment;
+    }
+
     const shareUrl = repo.create({
       url: built.url,
       kind: input.kind,
@@ -537,7 +610,7 @@ export class ShareUrlsService {
       action: built.action,
       externalTarget: built.externalTarget,
       sid,
-      data: { sid },
+      data,
       duplicate: input.duplicate,
       label: input.label ?? null,
     });

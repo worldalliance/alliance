@@ -59,6 +59,16 @@ export class CommunityService {
     });
   }
 
+  async findOne(
+    id: number,
+    relations?: Relations<Community>,
+  ): Promise<Community | null> {
+    return this.communityRepository.findOne({
+      where: { id },
+      relations: relations ?? COMMUNITY_DEFAULT_RELATIONS,
+    });
+  }
+
   async createCommunityAdmin(body: CreateCommunityDto): Promise<Community> {
     if (body.photo?.startsWith('data:')) {
       body.photo = await this.imagesService.processAndUploadProfileImage(

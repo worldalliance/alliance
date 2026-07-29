@@ -1,22 +1,45 @@
 import { ShareUrlMineDto } from "@alliance/shared/client";
+import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import Card from "@alliance/sharedweb/ui/Card";
 import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy as CopyIcon, Pencil } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ExpandableList from "./ExpandableList";
 
 const inviteTitleClass = "font-semibold text-xl text-zinc-900";
+
+const inviteDestinationLabel = (
+  link: ShareUrlMineDto,
+  communityNames: Map<number, string>,
+): string => {
+  switch (link.assignmentKind) {
+    case "automatic":
+      return "Group: Automatic";
+    case "community":
+      return `Group: ${
+        (link.communityId && communityNames.get(link.communityId)) ??
+        "Selected group"
+      }`;
+    case "open":
+      return "Group: Any open group";
+    default:
+      throw new Error(
+        `unknown invite assignment: ${link.assignmentKind satisfies never}`,
+      );
+  }
+};
 
 type InviteShareLinkProps = {
   showCreateCard?: boolean;
 };
 
 const InviteShareLink = ({ showCreateCard = true }: InviteShareLinkProps) => {
-  const { error: errorToast, confirm } = useToast();
+  const { error: errorToast, success: successToast, confirm } = useToast();
   const {
     links,
     isPending,
@@ -26,6 +49,14 @@ const InviteShareLink = ({ showCreateCard = true }: InviteShareLinkProps) => {
     updateLabel,
     deleteInvite,
   } = useReusableInvites();
+  const { communities } = useMyCommunities({});
+  const communityNames = useMemo(
+    () =>
+      new Map(
+        communities.map((community) => [community.id, community.name]),
+      ),
+    [communities],
+  );
   const [labelDraft, setLabelDraft] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,12 +68,21 @@ const InviteShareLink = ({ showCreateCard = true }: InviteShareLinkProps) => {
   }, []);
 
   const handleCreate = useCallback(() => {
-    createInvite(labelDraft).then(
-      () => setLabelDraft(""),
+    void createInvite({ label: labelDraft, communityId: null }).then(
+      async (link) => {
+        setLabelDraft("");
+        if (await copyToClipboard(link.url)) {
+          successToast("Invite link created and copied to clipboard!");
+        } else {
+          errorToast(
+            "Invite link created, but it could not be copied to the clipboard.",
+          );
+        }
+      },
       (err: Error) =>
         errorToast(`Failed to create invite link: ${err.message}`),
     );
-  }, [createInvite, labelDraft, errorToast]);
+  }, [createInvite, labelDraft, errorToast, successToast]);
 
   const handleCopy = useCallback((link: ShareUrlMineDto) => {
     navigator.clipboard.writeText(link.url);
@@ -156,6 +196,10 @@ const InviteShareLink = ({ showCreateCard = true }: InviteShareLinkProps) => {
                   key={link.id}
                   link={link}
                   copied={copiedId === link.id}
+                  destinationLabel={inviteDestinationLabel(
+                    link,
+                    communityNames,
+                  )}
                   onCopy={handleCopy}
                   onSaveLabel={handleSaveLabel}
                   onDelete={handleDelete}
@@ -172,6 +216,7 @@ const InviteShareLink = ({ showCreateCard = true }: InviteShareLinkProps) => {
 type InviteLinkRowProps = {
   link: ShareUrlMineDto;
   copied: boolean;
+  destinationLabel: string;
   onCopy: (link: ShareUrlMineDto) => void;
   onSaveLabel: (id: string, label: string) => Promise<boolean>;
   onDelete: (id: string, event: React.MouseEvent<HTMLElement>) => void;
@@ -180,6 +225,7 @@ type InviteLinkRowProps = {
 const InviteLinkRow = ({
   link,
   copied,
+  destinationLabel,
   onCopy,
   onSaveLabel,
   onDelete,
@@ -205,8 +251,8 @@ const InviteLinkRow = ({
   }, [link.label]);
 
   return (
-    <div className="flex flex-col sm:flex-row w-full justify-between p-4 gap-y-3 sm:gap-y-0">
-      <div className="flex flex-col min-w-0 gap-y-0.5">
+    <div className="flex flex-col sm:flex-row w-full justify-between p-4 gap-y-3 sm:gap-x-4 sm:gap-y-0">
+      <div className="flex flex-col min-w-0 overflow-hidden sm:flex-1 sm:pr-4 gap-y-0.5">
         {!link.duplicate ? (
           <span className="text-lg font-semibold truncate text-zinc-900">
             {link.label || "Primary invite"}
@@ -254,12 +300,12 @@ const InviteLinkRow = ({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="group flex flex-row items-center gap-x-1.5 self-start max-w-full text-left"
+            className="group flex min-w-0 max-w-full flex-row items-center gap-x-1.5 self-start text-left"
             aria-label="Edit label"
           >
             <span
               className={cn(
-                "text-lg font-semibold truncate",
+                "min-w-0 truncate text-lg font-semibold",
                 link.label
                   ? "text-zinc-900 group-hover:text-zinc-700"
                   : "italic text-zinc-400 group-hover:text-zinc-600",
@@ -274,9 +320,13 @@ const InviteLinkRow = ({
           </button>
         )}
         <p className="break-all text-sm text-zinc-400 font-mono">{link.url}</p>
+        <p className="text-sm text-zinc-500">
+          {link.signupCount} {link.signupCount === 1 ? "use" : "uses"}
+        </p>
+        <p className="text-sm text-zinc-500">{destinationLabel}</p>
       </div>
 
-      <div className="flex flex-col sm:items-end justify-between sm:gap-2">
+      <div className="flex flex-col sm:shrink-0 sm:items-end justify-between sm:gap-2">
         {!link.duplicate && (
           <span className="text-sm font-semibold text-green">Primary</span>
         )}
@@ -286,6 +336,7 @@ const InviteLinkRow = ({
             disabled={copied}
             onClick={() => onCopy(link)}
             iconLeft={!copied && CopyIcon}
+            className="shrink-0 whitespace-nowrap"
           >
             {copied ? "Copied!" : "Copy link"}
           </NewButton>
@@ -293,6 +344,7 @@ const InviteLinkRow = ({
             <NewButton
               color={ButtonColor.Black}
               onClick={(event) => onDelete(link.id, event)}
+              className="shrink-0 whitespace-nowrap"
             >
               Delete
             </NewButton>

@@ -146,3 +146,8 @@ export class ShareUrl {
   @ApiPropertyOptional({ type: Object })
   data?: Record<string, unknown>;
 }
+
+export type ShareUrlWithSignupCount = {
+  shareUrl: ShareUrl;
+  signupCount: number;
+};

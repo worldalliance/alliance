@@ -1280,6 +1280,8 @@ export type ShareLinkDto = {
     url: string;
 };
 
+export type InviteAssignmentKind = 'automatic' | 'community' | 'open';
+
 export type ShareUrlMineDto = {
     id: string;
     url: string;
@@ -1287,6 +1289,9 @@ export type ShareUrlMineDto = {
     duplicate: boolean;
     sid?: string;
     createdAt: string;
+    signupCount: number;
+    assignmentKind: InviteAssignmentKind;
+    communityId: number | null;
 };
 
 export type CreateInviteDuplicateDto = {
@@ -1294,6 +1299,7 @@ export type CreateInviteDuplicateDto = {
      * Optional label to distinguish this duplicate at a glance.
      */
     label?: string;
+    communityId: number | null;
 };
 
 export type UpdateShareLinkLabelDto = {
@@ -1346,6 +1352,7 @@ export type ShareUrlAdminDto = {
     userId: number | null;
     campaignId: number | null;
     createdAt: string;
+    signupCount: number;
     action?: ShareUrlAdminActionDto | null;
     externalTarget?: ShareUrlAdminExternalTargetDto | null;
 };

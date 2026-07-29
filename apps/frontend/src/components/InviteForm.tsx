@@ -10,6 +10,7 @@ import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
@@ -156,7 +157,16 @@ const InviteForm = ({
 
         const response = await userCreateOnetimeInvite({ body });
         if (response.data) {
-          successToast("Invite created successfully!");
+          const copied = await copyToClipboard(
+            getOnetimeInviteSignupUrl(getBaseUrl(), response.data.code),
+          );
+          if (copied) {
+            successToast("Invite created and copied to clipboard!");
+          } else {
+            errorToast(
+              "Invite created, but it could not be copied to the clipboard.",
+            );
+          }
           setInviteeName("");
           onInviteCreated(response.data);
         } else {
@@ -175,15 +185,25 @@ const InviteForm = ({
     [inviteeName, errorToast, successToast, onInviteCreated],
   );
 
-  const handleCreateReusableInvite = useCallback(() => {
+  const handleCreateReusableInvite = useCallback((communityId: number | null) => {
     if (!inviteeName.trim()) {
       errorToast("Please enter a group name");
       return;
     }
 
-    createReusableInvite(inviteeName.trim()).then(
-      () => {
-        successToast("Invite link created successfully!");
+    createReusableInvite({
+      label: inviteeName.trim(),
+      communityId,
+    }).then(
+      async (link) => {
+        const copied = await copyToClipboard(link.url);
+        if (copied) {
+          successToast("Invite link created and copied to clipboard!");
+        } else {
+          errorToast(
+            "Invite link created, but it could not be copied to the clipboard.",
+          );
+        }
         setInviteeName("");
       },
       (err: Error) =>
@@ -191,18 +211,33 @@ const InviteForm = ({
     );
   }, [createReusableInvite, errorToast, inviteeName, successToast]);
 
+  const handleCreateForPlacement = useCallback(
+    (communityId: number | null) => {
+      if (multipleUseInvite) {
+        handleCreateReusableInvite(communityId);
+      } else {
+        void handleCreateInvite(communityId);
+      }
+    },
+    [handleCreateInvite, handleCreateReusableInvite, multipleUseInvite],
+  );
+
   const onCreateCommunity = useCallback(
     async (community: CommunityDto) => {
       try {
-        await handleCreateInvite(community.id);
+        handleCreateForPlacement(community.id);
         await refreshCommunities();
         setPlacement({ kind: "community", id: community.id });
       } catch {
         errorToast("Failed to refresh groups");
       }
     },
-    [errorToast, refreshCommunities, handleCreateInvite],
+    [errorToast, refreshCommunities, handleCreateForPlacement],
   );
+
+  const inviteIsCreating = multipleUseInvite
+    ? creatingReusable
+    : creatingInvite;
 
   const {
     memberCommunityAllowsMemberInvites,
@@ -267,49 +302,36 @@ const InviteForm = ({
           />
         </div>
 
-        {multipleUseInvite ? (
-          <NewButton
-            color={ButtonColor.Black}
-            onClick={handleCreateReusableInvite}
-            disabled={creatingReusable || !inviteeName.trim()}
-            className="w-full"
-          >
-            {creatingReusable
-              ? "Creating invite link..."
-              : "Create invite link"}
-          </NewButton>
-        ) : (
-          <>
-            <div className="flex flex-col gap-y-4">
-              <p className={inviteSectionLabelClass}>
-                {onetimeInviteCreation.responsible.leader.title}
-              </p>
-              <p className="text-invite-form-body">
-                {onetimeInviteCreation.groupContext}
-              </p>
-              <DropdownSelect
-                options={communityOptions}
-                value={dropdownSelectedLabel}
-                onChange={([key]) => {
-                  const k = String(key);
-                  if (k === "assign") {
-                    setPlacement({ kind: "assign" });
-                  } else if (k === "new") {
-                    setPlacement({ kind: "new" });
-                  } else if (k.startsWith("c")) {
-                    setPlacement({
-                      kind: "community",
-                      id: Number(k.slice(1)),
-                    });
-                  }
-                }}
-                titleOverride={dropdownSelectedLabel}
-                dropdownWidth="medium"
-              />
-            </div>
+        <div className="flex flex-col gap-y-4">
+          <p className={inviteSectionLabelClass}>
+            {onetimeInviteCreation.responsible.leader.title}
+          </p>
+          <p className="text-invite-form-body">
+            {onetimeInviteCreation.groupContext}
+          </p>
+          <DropdownSelect
+            options={communityOptions}
+            value={dropdownSelectedLabel}
+            onChange={([key]) => {
+              const k = String(key);
+              if (k === "assign") {
+                setPlacement({ kind: "assign" });
+              } else if (k === "new") {
+                setPlacement({ kind: "new" });
+              } else if (k.startsWith("c")) {
+                setPlacement({
+                  kind: "community",
+                  id: Number(k.slice(1)),
+                });
+              }
+            }}
+            titleOverride={dropdownSelectedLabel}
+            dropdownWidth="medium"
+          />
+        </div>
 
-            {placement.kind === "assign" && (
-              <div className="flex flex-col gap-y-4">
+        {placement.kind === "assign" && (
+          <div className="flex flex-col gap-y-4">
                 {!memberCommunityAllowsMemberInvites ? (
                   <AppMarkdownWrapper
                     className="text-invite-form-body"
@@ -359,19 +381,23 @@ const InviteForm = ({
                     )}
                   />
                 )}
-                <NewButton
-                  color={ButtonColor.Black}
-                  onClick={() => handleCreateInvite(null)}
-                  disabled={creatingInvite || !inviteeName.trim()}
-                  className="w-full"
-                >
-                  {creatingInvite ? "Creating..." : "Create invite"}
-                </NewButton>
-              </div>
-            )}
+            <NewButton
+              color={ButtonColor.Black}
+              onClick={() => handleCreateForPlacement(null)}
+              disabled={inviteIsCreating || !inviteeName.trim()}
+              className="w-full"
+            >
+              {inviteIsCreating
+                ? "Creating..."
+                : multipleUseInvite
+                  ? "Create invite link"
+                  : "Create invite"}
+            </NewButton>
+          </div>
+        )}
 
-            {placement.kind === "new" && (
-              <div className="flex flex-col gap-y-4">
+        {placement.kind === "new" && (
+          <div className="flex flex-col gap-y-4">
                 <AppMarkdownWrapper
                   className="text-invite-form-body"
                   markdownContent={onetimeInviteCreation.responsible.leader.invite.explanation.join(
@@ -397,41 +423,43 @@ const InviteForm = ({
                   </Link>{" "}
                   to learn how to lead a group.
                 </p>
-                <CommunityCreateForm
-                  name={user?.name}
-                  createButtonTextOverride={
-                    creatingInvite
-                      ? "Creating invite..."
-                      : onetimeInviteCreation.responsible.leader.newGroup
-                          .createButtonText
-                  }
-                  createDisabled={creatingInvite || !inviteeName.trim()}
-                  onSuccess={onCreateCommunity}
-                  includePhotoEditor={false}
-                  fullWidthButtons={true}
-                />
-              </div>
-            )}
+            <CommunityCreateForm
+              name={user?.name}
+              createButtonTextOverride={
+                inviteIsCreating
+                  ? "Creating invite..."
+                  : onetimeInviteCreation.responsible.leader.newGroup
+                      .createButtonText
+              }
+              createDisabled={inviteIsCreating || !inviteeName.trim()}
+              onSuccess={onCreateCommunity}
+              includePhotoEditor={false}
+              fullWidthButtons={true}
+            />
+          </div>
+        )}
 
-            {placement.kind === "community" && selectedCommunity && (
-              <div className="flex flex-col gap-y-4">
+        {placement.kind === "community" && selectedCommunity && (
+          <div className="flex flex-col gap-y-4">
                 <AppMarkdownWrapper
                   className="text-invite-form-body"
                   markdownContent={onetimeInviteCreation.responsible.leader.invite.explanation.join(
                     "\n\n",
                   )}
                 />
-                <NewButton
-                  color={ButtonColor.Black}
-                  onClick={() => handleCreateInvite(placement.id)}
-                  disabled={creatingInvite || !inviteeName.trim()}
-                  className="w-full"
-                >
-                  {creatingInvite ? "Creating invite..." : "Create invite"}
-                </NewButton>
-              </div>
-            )}
-          </>
+            <NewButton
+              color={ButtonColor.Black}
+              onClick={() => handleCreateForPlacement(placement.id)}
+              disabled={inviteIsCreating || !inviteeName.trim()}
+              className="w-full"
+            >
+              {inviteIsCreating
+                ? "Creating invite..."
+                : multipleUseInvite
+                  ? "Create invite link"
+                  : "Create invite"}
+            </NewButton>
+          </div>
         )}
       </div>
     </Card>

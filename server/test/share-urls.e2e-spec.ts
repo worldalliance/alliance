@@ -6,12 +6,17 @@ import {
 } from '../src/actions/entities/action-event.entity';
 import { Action, VisibilityMode } from '../src/actions/entities/action.entity';
 import { Campaign } from '../src/campaign/entities/campaign.entity';
+import { Community } from '../src/community/entities/community.entity';
 import { ExternalShareTarget } from '../src/share-urls/entities/external-share-target.entity';
 import {
   ShareUrl,
   ShareUrlKind,
 } from '../src/share-urls/entities/share-url.entity';
 import { ShareUrlsService } from '../src/share-urls/share-urls.service';
+import {
+  ReferralSource,
+  User,
+} from '../src/user/entities/user.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
 
 describe('Share URLs (e2e)', () => {
@@ -21,6 +26,8 @@ describe('Share URLs (e2e)', () => {
   let targetRepo: Repository<ExternalShareTarget>;
   let shareUrlRepo: Repository<ShareUrl>;
   let campaignRepo: Repository<Campaign>;
+  let communityRepo: Repository<Community>;
+  let userRepo: Repository<User>;
   let shareUrlsService: ShareUrlsService;
   let action: Action;
   let target: ExternalShareTarget;
@@ -32,6 +39,8 @@ describe('Share URLs (e2e)', () => {
     targetRepo = ctx.dataSource.getRepository(ExternalShareTarget);
     shareUrlRepo = ctx.dataSource.getRepository(ShareUrl);
     campaignRepo = ctx.dataSource.getRepository(Campaign);
+    communityRepo = ctx.dataSource.getRepository(Community);
+    userRepo = ctx.dataSource.getRepository(User);
     shareUrlsService = ctx.app.get(ShareUrlsService);
 
     action = await actionRepo.save(
@@ -67,6 +76,90 @@ describe('Share URLs (e2e)', () => {
         paramName: 'code',
       }),
     );
+  });
+
+  describe('GET /share-urls/mine/invites', () => {
+    it('returns the number of accounts created with each invite link', async () => {
+      const canonical = await shareUrlsService.getOrCreateForInvite({
+        type: 'user',
+        userId: ctx.testUserId,
+      });
+      const duplicate = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Unused duplicate',
+      );
+      await userRepo.save(
+        userRepo.create({
+          name: 'Reusable Invite Recruit',
+          email: 'reusable-invite-count@example.com',
+          password: 'pass',
+          referralSource: ReferralSource.InviteShareLink,
+          referredByShareUrl: canonical,
+        }),
+      );
+
+      const res = await request(ctx.app.getHttpServer())
+        .get('/share-urls/mine/invites')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      expect(
+        res.body.find((row: { id: string }) => row.id === canonical.id)
+          ?.signupCount,
+      ).toBe(1);
+      expect(
+        res.body.find((row: { id: string }) => row.id === duplicate.id)
+          ?.signupCount,
+      ).toBe(0);
+    });
+  });
+
+  describe('POST /share-urls/mine/invite-duplicate', () => {
+    it('stores a selected community led by the inviter', async () => {
+      const inviter = await userRepo.findOneByOrFail({ id: ctx.testUserId });
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'Reusable Invite Destination',
+          description: 'Selected reusable invite destination',
+          leaders: [inviter],
+          users: [inviter],
+          maxCapacity: 10,
+        }),
+      );
+
+      const res = await request(ctx.app.getHttpServer())
+        .post('/share-urls/mine/invite-duplicate')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({ label: 'Group invite', communityId: community.id })
+        .expect(201);
+
+      expect(res.body.assignmentKind).toBe('community');
+      expect(res.body.communityId).toBe(community.id);
+      const stored = await shareUrlRepo.findOneByOrFail({ id: res.body.id });
+      expect(stored.data?.['inviteAssignment']).toEqual({
+        kind: 'community',
+        communityId: community.id,
+      });
+    });
+
+    it('rejects a community the inviter does not lead', async () => {
+      const admin = await userRepo.findOneByOrFail({ id: ctx.adminUserId });
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'Other Leader Reusable Destination',
+          description: 'Not led by the inviter',
+          leaders: [admin],
+          users: [admin],
+          maxCapacity: 10,
+        }),
+      );
+
+      await request(ctx.app.getHttpServer())
+        .post('/share-urls/mine/invite-duplicate')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({ label: 'Invalid group invite', communityId: community.id })
+        .expect(400);
+    });
   });
 
   describe('POST /share-urls/get-share-link', () => {

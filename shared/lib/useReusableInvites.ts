@@ -37,10 +37,17 @@ export function useReusableInvites(params?: { enabled?: boolean }) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (label: string) => {
+    mutationFn: async (params: {
+      label: string;
+      communityId: number | null;
+    }) => {
+      const { label, communityId } = params;
       const trimmed = label.trim();
       const res = await shareUrlsCreateInviteDuplicate({
-        body: trimmed ? { label: trimmed } : {},
+        body: {
+          ...(trimmed && { label: trimmed }),
+          communityId,
+        },
       });
       if (res.error || !res.data) {
         throw res.error ?? new Error("Failed to create reusable invite");

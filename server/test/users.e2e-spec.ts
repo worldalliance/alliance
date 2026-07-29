@@ -601,6 +601,112 @@ describe('Users (e2e)', () => {
       ).toBe(true);
     });
 
+    it('joins the community selected by a reusable invite link', async () => {
+      const inviter = await userRepo.save(
+        userRepo.create({
+          name: 'Reusable Contract Inviter',
+          email: 'reusable.contract.inviter@example.com',
+          password: 'Password123!',
+        }),
+      );
+      const inviteCommunity = await communityRepo.save(
+        communityRepo.create({
+          name: 'Reusable Invite Community',
+          description: 'Community from reusable invite',
+          leaders: [inviter],
+          users: [inviter],
+          maxCapacity: 10,
+        }),
+      );
+      const reusableInvite =
+        await shareUrlsService.createDuplicateInviteForUser(
+          inviter.id,
+          'Reusable community invite',
+          inviteCommunity.id,
+        );
+      const newUser = await userRepo.save(
+        userRepo.create({
+          name: 'Reusable Contract Invitee',
+          email: 'reusable.contract.invitee@example.com',
+          password: 'Password123!',
+          referredBy: inviter,
+          referredByShareUrl: reusableInvite,
+          referralSource: ReferralSource.InviteShareLink,
+        }),
+      );
+
+      await contractService.signContract({
+        userId: newUser.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: newUser.id },
+        relations: { communities: true },
+      });
+      expect(
+        updatedUser?.communities.some(
+          (community) => community.id === inviteCommunity.id,
+        ),
+      ).toBe(true);
+    });
+
+    it('queues assignment when a reusable invite destination is full', async () => {
+      const inviter = await userRepo.save(
+        userRepo.create({
+          name: 'Full Reusable Inviter',
+          email: 'full.reusable.inviter@example.com',
+          password: 'Password123!',
+        }),
+      );
+      const existingMember = await userRepo.save(
+        userRepo.create({
+          name: 'Full Reusable Existing Member',
+          email: 'full.reusable.member@example.com',
+          password: 'Password123!',
+        }),
+      );
+      const fullCommunity = await communityRepo.save(
+        communityRepo.create({
+          name: 'Full Reusable Invite Community',
+          description: 'Full reusable invite destination',
+          leaders: [inviter],
+          users: [inviter, existingMember],
+          maxCapacity: 1,
+        }),
+      );
+      const reusableInvite =
+        await shareUrlsService.createDuplicateInviteForUser(
+          inviter.id,
+          'Full reusable community invite',
+          fullCommunity.id,
+        );
+      const newUser = await userRepo.save(
+        userRepo.create({
+          name: 'Full Reusable Invitee',
+          email: 'full.reusable.invitee@example.com',
+          password: 'Password123!',
+          referredBy: inviter,
+          referredByShareUrl: reusableInvite,
+          referralSource: ReferralSource.InviteShareLink,
+        }),
+      );
+
+      await contractService.signContract({
+        userId: newUser.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: newUser.id },
+        relations: { communities: true },
+      });
+      expect(updatedUser?.communities).toHaveLength(0);
+      expect(updatedUser?.undergoingGroupAssignment).toBe(true);
+    });
+
     it('joins community from referredBy when no invite community exists', async () => {
       const referrer = await userRepo.save(
         userRepo.create({

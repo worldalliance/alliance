@@ -11,6 +11,7 @@ import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
+import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { ChevronDown, ChevronRight } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -124,7 +125,17 @@ export default function InviteForm({ onInviteCreated }: InviteFormProps) {
 
         const response = await userCreateOnetimeInvite({ body });
         if (response.data) {
-          Alert.alert("Success", "Invite created successfully!");
+          try {
+            await setClipboardStringAsync(
+              getOnetimeInviteSignupUrl(getBaseUrl(), response.data.code),
+            );
+            Alert.alert("Success", "Invite created and copied to clipboard.");
+          } catch {
+            Alert.alert(
+              "Invite created",
+              "The invite link could not be copied to the clipboard.",
+            );
+          }
           setInviteeName("");
           onInviteCreated(response.data);
         } else {
