@@ -968,7 +968,11 @@ export function RenderField({
           />
           <div className="space-y-3">
             {cards.map((card, cardIndex) => (
-              <Card key={cardIndex} style={CardStyle.White}>
+              <Card
+                key={cardIndex}
+                style={CardStyle.WhiteBorder}
+                className="gap-4"
+              >
                 <div className="flex flex-row gap-x-4 justify-between">
                   <div className="w-full space-y-6">
                     {subFieldsForCard(card).map((sub) => {
