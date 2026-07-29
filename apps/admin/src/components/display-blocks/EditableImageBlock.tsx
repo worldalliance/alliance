@@ -78,6 +78,18 @@ export function EditableImageBlock(props: BaseDisplayBlockProps<ImageBlock>) {
             />
           </div>
 
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={activeBlock.expandable ?? false}
+              onChange={(e) =>
+                handleUpdate({ expandable: e.target.checked })
+              }
+              className="h-4 w-4"
+            />
+            Expandable on web (click to enlarge)
+          </label>
+
           {/* Preview */}
           <div className="pt-2 border-t border-gray-200">
             <RenderDisplayBlock block={activeBlock} />

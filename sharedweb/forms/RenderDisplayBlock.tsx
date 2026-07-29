@@ -25,6 +25,7 @@ import { Link } from "react-router";
 import { getApiUrl } from "../lib/config";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
+import { ImageLightboxModal } from "../ui/ImageLightbox";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
 import VideoPlayer from "./VideoPlayer";
 
@@ -65,6 +66,70 @@ function CopyTextDisplay({ text, title }: { text: string; title?: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function ImageDisplay({
+  src,
+  alt,
+  caption,
+  aspectRatio,
+  expandable,
+}: {
+  src: string;
+  alt?: string;
+  caption?: string;
+  aspectRatio?: number;
+  expandable?: boolean;
+}) {
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const resolvedSrc = src.includes("/") ? src : `${getApiUrl()}/images/${src}`;
+  const hasCaption = Boolean(caption && caption.trim().length);
+
+  const openLightbox = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLightboxSrc(resolvedSrc);
+  };
+
+  return (
+    <figure className="mx-auto max-w-full text-center">
+      {expandable ? (
+        <button
+          type="button"
+          className="mx-auto block max-w-full rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 !cursor-zoom-in"
+          onClick={openLightbox}
+          aria-label="Open image"
+        >
+          <img
+            src={resolvedSrc}
+            alt={alt}
+            className="mx-auto max-h-80 w-auto rounded !cursor-zoom-in"
+            style={{
+              aspectRatio: aspectRatio ? aspectRatio.toString() : undefined,
+            }}
+          />
+        </button>
+      ) : (
+        <img
+          src={resolvedSrc}
+          alt={alt}
+          className="mx-auto max-h-80 w-auto rounded"
+          style={{
+            aspectRatio: aspectRatio ? aspectRatio.toString() : undefined,
+          }}
+        />
+      )}
+      {hasCaption && (
+        <figcaption className="mt-2 text-sm text-gray-600">{caption}</figcaption>
+      )}
+      {expandable && (
+        <ImageLightboxModal
+          src={lightboxSrc}
+          onClose={() => setLightboxSrc(null)}
+        />
+      )}
+    </figure>
   );
 }
 
@@ -145,31 +210,16 @@ export default function RenderDisplayBlock({
     case "html":
       return <div dangerouslySetInnerHTML={{ __html: block.html }} />;
 
-    case "image": {
-      const resolvedSrc = block.src.includes("/")
-        ? block.src
-        : `${getApiUrl()}/images/${block.src}`;
-      const hasCaption = Boolean(block.caption && block.caption.trim().length);
+    case "image":
       return (
-        <figure className="mx-auto max-w-full text-center">
-          <img
-            src={resolvedSrc}
-            alt={block.alt}
-            className="mx-auto max-h-80 w-auto rounded"
-            style={{
-              aspectRatio: block.aspectRatio
-                ? block.aspectRatio.toString()
-                : undefined,
-            }}
-          />
-          {hasCaption && (
-            <figcaption className="mt-2 text-sm text-gray-600">
-              {block.caption}
-            </figcaption>
-          )}
-        </figure>
+        <ImageDisplay
+          src={block.src}
+          alt={block.alt}
+          caption={block.caption}
+          aspectRatio={block.aspectRatio}
+          expandable={block.expandable}
+        />
       );
-    }
 
     case "video":
       return (

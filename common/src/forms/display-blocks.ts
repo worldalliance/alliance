@@ -59,6 +59,8 @@ const imageContentSchema = z.strictObject({
   src: z.string(),
   aspectRatio: z.number().optional(),
   caption: z.string().optional(),
+  /** When true, web clients open a closable lightbox on click. */
+  expandable: z.boolean().optional(),
 });
 
 const videoContentSchema = z.strictObject({
