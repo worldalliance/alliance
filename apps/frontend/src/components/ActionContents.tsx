@@ -60,7 +60,7 @@ const ReviewerIcon = ({ icon }: { icon: ActionReviewerIcon }) => {
 
 /** Name list with separators, optionally prefixed (e.g. "Reviewed by"). */
 const NameList = ({ label, items }: { label?: string; items: ReactNode[] }) => (
-  <div className="flex flex-row flex-wrap gap-x-1 text-sm">
+  <div className="flex flex-row flex-wrap gap-x-1">
     {label && <p>{label}</p>}
     {items.map((item, i) => (
       <span key={i} className="text-nowrap">
@@ -298,7 +298,7 @@ const ActionContents = () => {
                             size="override"
                             className="w-5 h-5 rounded"
                           />
-                          <span className="text-sm">{author.displayName}</span>
+                          <span>{author.displayName}</span>
                         </Link>
                       ))}
                     </div>
