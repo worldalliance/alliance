@@ -36,6 +36,8 @@ const PeoplePage: React.FC = () => {
       11: "Grant Hough",
       38: "Akash Borde",
       270: "Gabi van der Velde-Kraft",
+      1038: "Esha Gupta",
+      1788: "Alex Dorey",
     };
   }, []);
 
