@@ -19,6 +19,7 @@ const ActionEventsPanel = ({ action }: ActionEventsPanelProps) => {
 
   return interleaved.length > 0 ? (
     <div className="flex flex-col w-full">
+      <p className="text-title-small mb-4">Timeline</p>
       <Timeline currentIdx={highlightedIndex}>
         {interleaved.map((item) => (
           <Fragment key={item.id}>

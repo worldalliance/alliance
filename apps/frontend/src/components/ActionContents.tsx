@@ -20,6 +20,7 @@ import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import AggregateProgressBarBlock from "@alliance/sharedweb/ui/AggregateProgressBarBlock";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import LinkedInIcon from "@alliance/sharedweb/ui/icons/LinkedInIcon";
 import { useQuery } from "@tanstack/react-query";
@@ -57,18 +58,16 @@ const ReviewerIcon = ({ icon }: { icon: ActionReviewerIcon }) => {
   }
 };
 
-/** Credit line under the action title, e.g. "By A and B", "Reviewed by A, B, and C". */
-const NameList = ({ label, items }: { label: string; items: ReactNode[] }) => (
-  <div className="mt-1">
-    <div className="flex flex-row gap-x-1 text-zinc-500 text-base md:text-lg">
-      <p>{label}</p>
-      {items.map((item, i) => (
-        <span key={i} className="text-nowrap">
-          {item}
-          {nameListSeparator(i, items.length)}
-        </span>
-      ))}
-    </div>
+/** Name list with separators, optionally prefixed (e.g. "Reviewed by"). */
+const NameList = ({ label, items }: { label?: string; items: ReactNode[] }) => (
+  <div className="flex flex-row flex-wrap gap-x-1 text-sm">
+    {label && <p>{label}</p>}
+    {items.map((item, i) => (
+      <span key={i} className="text-nowrap">
+        {item}
+        {nameListSeparator(i, items.length)}
+      </span>
+    ))}
   </div>
 );
 
@@ -194,53 +193,7 @@ const ActionContents = () => {
             />
             <p className="text-title">{action.name}</p>
             {loggedInMode ? (
-              <div>
-                <p className="text-base md:text-lg">
-                  {action.shortDescription}
-                </p>
-                {!!action.authors?.length && (
-                  <NameList
-                    label="By"
-                    items={shuffledAuthors.map((author: ProfileDto) => (
-                      <Link
-                        key={author.id}
-                        to={href("/member/:id", {
-                          id: author.id.toString(),
-                        })}
-                        className="underline"
-                      >
-                        {author.displayName}
-                      </Link>
-                    ))}
-                  />
-                )}
-                {!!action.reviewers?.length && (
-                  <NameList
-                    label="Reviewed by"
-                    items={action.reviewers.map((reviewer, i) =>
-                      reviewer.url ? (
-                        <ExternalLinkPreview
-                          key={i}
-                          href={reviewer.url}
-                          className="underline text-inherit"
-                        >
-                          {reviewer.icon && (
-                            <ReviewerIcon icon={reviewer.icon} />
-                          )}
-                          {reviewer.name}
-                        </ExternalLinkPreview>
-                      ) : (
-                        <Fragment key={i}>
-                          {reviewer.icon && (
-                            <ReviewerIcon icon={reviewer.icon} />
-                          )}
-                          {reviewer.name}
-                        </Fragment>
-                      ),
-                    )}
-                  />
-                )}
-              </div>
+              <p className="text-base md:text-lg">{action.shortDescription}</p>
             ) : (
               <TaskTimeInfo
                 action={action}
@@ -325,6 +278,60 @@ const ActionContents = () => {
                 distinguishActionLinks={true}
               />
             </div>
+
+            {(!!shuffledAuthors.length || !!action.reviewers?.length) && (
+              <div>
+                <p className="text-title-small mb-4">Contributors</p>
+                <div className="flex flex-col gap-y-2">
+                  {!!shuffledAuthors.length && (
+                    <div className="flex flex-row flex-wrap gap-x-3 gap-y-1.5">
+                      {shuffledAuthors.map((author: ProfileDto) => (
+                        <Link
+                          key={author.id}
+                          to={href("/member/:id", {
+                            id: author.id.toString(),
+                          })}
+                          className="flex items-center gap-x-1.5 hover:underline"
+                        >
+                          <AvatarProfile
+                            pfp={author.profilePicture}
+                            size="override"
+                            className="w-5 h-5 rounded"
+                          />
+                          <span className="text-sm">{author.displayName}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                  {!!action.reviewers?.length && (
+                    <NameList
+                      label="Reviewed by"
+                      items={action.reviewers.map((reviewer, i) =>
+                        reviewer.url ? (
+                          <ExternalLinkPreview
+                            key={i}
+                            href={reviewer.url}
+                            className="underline text-inherit"
+                          >
+                            {reviewer.icon && (
+                              <ReviewerIcon icon={reviewer.icon} />
+                            )}
+                            {reviewer.name}
+                          </ExternalLinkPreview>
+                        ) : (
+                          <Fragment key={i}>
+                            {reviewer.icon && (
+                              <ReviewerIcon icon={reviewer.icon} />
+                            )}
+                            {reviewer.name}
+                          </Fragment>
+                        ),
+                      )}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
 
             {isAuthenticated && (
               <div>
