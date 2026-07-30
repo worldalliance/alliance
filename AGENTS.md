@@ -50,6 +50,12 @@ const NEEDS_SPECIAL_HANDLING: Record<MyEnum, boolean> = {
 
 Apply this to any branch keyed on a closed set (enum, string-literal union, tagged union `kind`), even when there are only two variants today.
 
+## Comments
+
+Default to no comment. Add one only when it explains a non-obvious constraint, rationale, invariant, or edge case that the code cannot express clearly.
+
+Do not narrate code, repeat names/types/control flow, add decorative headings, or describe past changes. Prefer clearer code over comments. Keep comments concise and natural.
+
 ## Type casts
 
 Avoid `as` casts where possible — prefer fixing the types at the source, runtime validation (e.g. zod) at trust boundaries, or `satisfies`. If a cast is unavoidable, keep it narrow and comment why it's safe. `as const` is fine. Never `as any` or `x as unknown as T`.

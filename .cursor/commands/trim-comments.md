@@ -1,45 +1,133 @@
-You are in COMMENT CLEANUP MODE, not feature implementation mode.
+Review comments affected by the supplied diff.
 
-# Goal
+## Scope
 
-Review the provided commits, diffs, or code snippets and identify unnecessary comments that should be removed or rewritten to improve readability and long-term maintainability.
+Review only:
 
-Comments should also be short (use as few tokens for an AI agent as is necessary to get the point across)
+1. Comments added or modified by the diff.
+2. Existing comments that the changed code has made false or misleading.
 
-# Tighten wording
+Do not clean up unrelated comments elsewhere in the file.
 
-For every comment you keep, cut words that carry no meaning while preserving clarity and avoiding ambiguity. Drop unnecessary articles ("the", "a"), filler prepositions, and hedges ("one that", "is used to", "in order to"); prefer the shorter phrasing when it reads as clearly. Examples:
+Do not change executable code, names, types, formatting, or behavior. Do not add new comments except when replacing an existing useful but defective comment.
 
-- "A 'terminal' activity is one that determines a user's status" → "A 'terminal' activity determines a user's status"
-- "rescanning the full list for every action" → "rescanning per action"
-- "or `null` if they have neither" → "or `null` if neither exists"
-- "completing an action you previously dismissed" → "completing a previously dismissed action"
+## Objective
 
-Stop when further cuts would lose meaning or create ambiguity — terseness must not cost the reader a second pass.
+Remove comments that do not provide important information beyond the nearby code.
 
-Focus on comments that add noise, restate obvious code, are stale/misleading, duplicate names/types/control flow, or explain implementation details that the code itself should make clear.
+Treat newly added comments as unproven. Keep one only when it passes the keep test below. Do not preserve comments merely because they are harmless or potentially useful.
 
-Do **not** remove useful comments that explain intent, invariants, tradeoffs, non-obvious behavior, external constraints, security reasoning, compatibility concerns, or surprising edge cases.
+## Keep test
 
-# Don't narrate history
+Keep a comment only when all of these are true:
 
-Delete comments that explain what a past change fixed or why the code no longer does something ("we used to X but now Y", "fixed bug where..."). To a fresh reader this just says "a bug existed here once" — it describes a state the code is no longer in, which belongs in the commit message, not the source. A bug-fix rationale earns its place only when it actively guards against a _likely_ re-introduction in _this_ code — and even then, rewrite it as a forward-looking constraint ("must stay in sync with X", "do not reorder these — Y depends on Z") rather than a recounting of the fix. If the current code reads clearly on its own, drop the comment.
+1. It communicates a concrete fact that is not quickly apparent from names, types, control flow, and nearby code.
+2. The fact is important to correctness, maintenance, security, performance, compatibility, or use of the API.
+3. Removing it would create a plausible risk of misunderstanding or an incorrect future change.
+4. It is accurate for the current code.
+5. The information cannot be expressed more clearly by the code already present.
 
-# Check comment correctness
+Useful comments commonly explain:
 
-Every comment you keep must be _true of the current code_. Read the code it describes and verify the claim still holds — names, types, control flow, return values, conditions, and any cross-references (`{@link ...}`, file paths, function names) it mentions. Flag comments that are stale, misleading, or describe behavior the code no longer has. Prefer fixing an incorrect-but-useful comment to match reality over deleting it; delete it only if the underlying point is no longer worth making.
+- an invariant or required relationship
+- a non-obvious rationale or tradeoff
+- an external constraint or dependency
+- surprising behavior or an important edge case
+- a security, correctness, compatibility, or performance consequence
+- a public API contract not captured by names and types
+- why an apparently simpler implementation would be wrong
 
-# Prefer doc comments for declarations
+Do not invent a rationale or risk that is unsupported by the code or surrounding context.
 
-When a comment documents a declaration — a function, class, method, type, interface, enum, exported constant, or field — prefer a JSDoc/TSDoc block (`/** ... */`) over a line comment (`//`) so the IDE surfaces it on hover and at call sites. Convert an existing `//` comment that sits directly above such a declaration into a `/** */` block.
+## Delete
 
-Keep `//` for comments _inside_ a function body (explaining a statement, branch, or expression) — those aren't attached to a symbol and gain nothing from `/** */`.
+Delete comments that:
 
-# Cleanup stance
+- restate the following statement, branch, call, type, or variable name
+- narrate steps in straightforward code
+- act as unnecessary section headings
+- repeat information already expressed by names or types
+- describe standard language or framework behavior
+- explain past changes, fixed bugs, or previous implementations
+- contain vague claims such as “handle,” “process,” “ensure,” or “set up” without adding a specific constraint
+- describe implementation details that are immediately visible
+- merely make the code look organized or documented
+- speculate about intent not established by the current code
 
-- Preserve behavior exactly.
-- Prefer deleting noisy comments over rewriting them.
-- Prefer improving code names/structure over adding explanatory comments, but do not propose broad refactors unless the comment reveals real confusion.
-- Assume the reader of the code is competent. Any code that does not describe something unintuitive should be removed.
-- Be conservative with public API docs, legal/license headers, generated-code markers, TODOs linked to real follow-up work, and comments used by tooling.
-- If uncertain whether a comment is useful, keep it and explain why.
+Examples of comments to delete:
+
+```ts
+// Check whether the user exists
+if (!user) {
+```
+
+```ts
+// Sort by creation date
+items.sort((a, b) => a.createdAt - b.createdAt);
+```
+
+```ts
+// Update the status
+record.status = status;
+```
+
+A description of what the code does is not useful merely because it is accurate.
+
+## Rewrite
+
+Rewrite instead of deleting only when the comment contains important information but is stale, misleading, ambiguous, or substantially longer than necessary.
+
+Preserve the useful fact. Use concise, natural wording. Do not optimize individual words or remove words when doing so makes the comment less natural or requires a second reading.
+
+Rewrite historical explanations as present constraints when the constraint still matters.
+
+Example:
+
+```ts
+// We used to sort this differently, but it caused duplicate notifications.
+```
+
+becomes:
+
+```ts
+// Keep oldest-first ordering so retries cannot skip an earlier notification.
+```
+
+If the current code already makes the constraint clear, delete the comment instead.
+
+## Declaration documentation
+
+Use `/** ... */` only for documentation that is genuinely part of a declaration’s API or contract and useful at call sites.
+
+Do not convert a `//` comment to JSDoc solely because it appears above a declaration.
+
+Use `//` for local implementation rationale inside a function.
+
+## Protected comments
+
+Do not alter:
+
+- license or copyright notices
+- generated-code markers
+- formatter, linter, compiler, coverage, or bundler directives
+- comments whose exact text is consumed by tooling
+- TODOs or FIXMEs that identify concrete unfinished work
+- references required for compatibility workarounds
+
+A TODO is not protected when it is vague, obsolete, or describes work already completed.
+
+## Stability rule
+
+A comment that passes the keep test is finished.
+
+Do not shorten, rephrase, reformat, relocate, or convert a passing comment merely because another valid version is possible. Make no stylistic changes to passing comments.
+
+Do not progressively tighten comments across repeated runs.
+
+## Completion
+
+Apply the edits directly.
+
+After editing, verify that every remaining in-scope comment passes the keep test. If they all pass, stop and make no further changes.
+
+It is valid and expected to make no changes when all in-scope comments already pass.
