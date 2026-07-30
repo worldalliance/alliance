@@ -87,6 +87,18 @@ const MemberMapPage: React.FC = () => {
     [cityCounts],
   );
 
+  const nonUsMembers = useMemo(() => {
+    return cityCounts
+      .filter(
+        (row) =>
+          row.countryCode != null && row.countryCode.toUpperCase() !== "US",
+      )
+      .reduce((sum, row) => sum + row.count, 0);
+  }, [cityCounts]);
+
+  const nonUsPercentage =
+    membersWithLocation > 0 ? (nonUsMembers / membersWithLocation) * 100 : null;
+
   const maxCount = useMemo(
     () =>
       aggregatedPoints.length
@@ -217,6 +229,23 @@ const MemberMapPage: React.FC = () => {
                 <p className="text-xs text-zinc-500">Total members</p>
                 <p className="mt-1 text-xl font-semibold text-zinc-900">
                   {totalMembers}
+                </p>
+              </div>
+              <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
+                <p className="text-xs text-zinc-500">Non-US members</p>
+                <p className="mt-1 text-xl font-semibold text-zinc-900">
+                  {nonUsMembers}
+                </p>
+              </div>
+              <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2">
+                <p className="text-xs text-zinc-500">Non-US percentage</p>
+                <p className="mt-1 text-xl font-semibold text-zinc-900">
+                  {nonUsPercentage == null
+                    ? "—"
+                    : `${nonUsPercentage.toFixed(1)}%`}
+                </p>
+                <p className="mt-1 text-[11px] leading-tight text-zinc-500">
+                  Calculated only from members who report a location.
                 </p>
               </div>
               <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 col-span-2">
