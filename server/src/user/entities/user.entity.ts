@@ -29,6 +29,7 @@ import { Participant } from 'src/messaging/entities/participant.entity';
 import { Mms } from 'src/mms/mms.entity';
 import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
 import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
+import { StoredInviteAssignmentKind } from 'src/share-urls/invite-assignment-kind';
 import { findLeast } from 'src/utils/filter';
 import { phoneNumberTransformer } from 'src/utils/phone';
 import type { Relation } from 'src/utils/Repository';
@@ -38,6 +39,7 @@ import {
   Check,
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToMany,
   ManyToOne,
@@ -94,6 +96,12 @@ export enum ReferralSource {
    AND ("referredById" IS NULL OR "referralSource" IN ('referral_link', 'onetime_invite', 'action_share_link', 'external_share_link', 'invite_share_link'))
    AND ("referredByInviteId" IS NULL OR "referralSource" = 'onetime_invite')`,
 )
+@Check(
+  'CHK_user_invite_assignment',
+  `"inviteAssignmentCommunityId" IS NULL
+   OR "inviteAssignmentKind" IS NOT DISTINCT FROM 'community'`,
+)
+@Index(['referredByShareUrl'])
 @Entity()
 export class User {
   // Fields
@@ -366,6 +374,30 @@ export class User {
   @ManyToOne(() => ShareUrl, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'referredByShareUrlId' })
   referredByShareUrl?: Relation<ShareUrl> | null;
+
+  /**
+   * Group placement copied off the invite link at registration. Deleting the
+   * link nulls `referredByShareUrlId`, which can happen before this user signs
+   * their contract, so placement must not be read back off the link.
+   */
+  @Column({
+    type: 'enum',
+    enum: StoredInviteAssignmentKind,
+    nullable: true,
+  })
+  inviteAssignmentKind: StoredInviteAssignmentKind | null;
+
+  /**
+   * Null for an `open` assignment, and once the target group is deleted — with
+   * a `community` kind that pairing means the named destination is gone, and
+   * the member is queued for manual group assignment instead.
+   */
+  @Column({ nullable: true })
+  inviteAssignmentCommunityId: number | null;
+
+  @ManyToOne(() => Community, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'inviteAssignmentCommunityId' })
+  inviteAssignmentCommunity?: Relation<Community> | null;
 
   @Column({
     type: 'enum',

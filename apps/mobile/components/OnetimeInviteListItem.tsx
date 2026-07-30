@@ -1,26 +1,25 @@
-import React from "react";
-import {
-  View,
-  TouchableOpacity,
-  Share,
-  Alert,
-  Platform,
-  type GestureResponderEvent,
-} from "react-native";
 import type { OnetimeInviteDto } from "@alliance/shared/client";
 import {
-  onetimeInviteStatusLabels,
   deleteInviteConfirmation,
+  onetimeInviteStatusLabels,
 } from "@alliance/shared/lib/copy";
-import type { OnetimeInviteActions } from "@alliance/shared/lib/inviteUtils";
 import { getReferralSignupUrl } from "@alliance/shared/lib/inviteUrls";
-import { getBaseUrl } from "../lib/config";
-import Text, { FontWeight } from "./system/Text";
-import Button, { ButtonColor, ButtonSize } from "./system/Button";
-import ProfileImage from "./ProfileImage";
-import AppMarkdownWrapper from "./AppMarkdownWrapper";
-import { router } from "expo-router";
+import type { OnetimeInviteActions } from "@alliance/shared/lib/inviteUtils";
 import { cn } from "@alliance/shared/styles/util";
+import { router } from "expo-router";
+import {
+  Alert,
+  Platform,
+  Share,
+  TouchableOpacity,
+  View,
+  type GestureResponderEvent,
+} from "react-native";
+import { getBaseUrl } from "../lib/config";
+import AppMarkdownWrapper from "./AppMarkdownWrapper";
+import ProfileImage from "./ProfileImage";
+import Button, { ButtonColor, ButtonSize } from "./system/Button";
+import Text, { FontWeight } from "./system/Text";
 
 /** Mobile Tailwind classes per status; labels come from shared copy. */
 const STATUS_TEXT_CLASS: Record<
@@ -81,8 +80,18 @@ export default function OnetimeInviteListItem({
     }
   };
 
+  const Container = actions.onOpenSettings ? TouchableOpacity : View;
+
   return (
-    <View className="border-b border-zinc-100 px-4 py-3 bg-white">
+    <Container
+      {...(actions.onOpenSettings && {
+        onPress: () => actions.onOpenSettings!(invite.id),
+        activeOpacity: 0.7,
+        accessibilityRole: "button" as const,
+        accessibilityLabel: `Settings for the invite to ${invite.invitee}`,
+      })}
+      className="border-b border-zinc-100 px-4 py-3 bg-white"
+    >
       <View className="flex-row justify-between gap-3">
         <View className="flex-1 min-w-0">
           {invite.invitedUserId ? (
@@ -198,16 +207,17 @@ export default function OnetimeInviteListItem({
                   title={shared ? "Shared!" : "Share link"}
                   disabled={shared}
                 />
-                {(actions.onDelete || actions.onDeleteWithConfirm) && (
-                  <Button
-                    onPress={() =>
-                      handleDeletePress({} as GestureResponderEvent)
-                    }
-                    color={ButtonColor.Black}
-                    size={ButtonSize.Small}
-                    title="Delete"
-                  />
-                )}
+                {(actions.onDelete || actions.onDeleteWithConfirm) &&
+                  !actions.onOpenSettings && (
+                    <Button
+                      onPress={() =>
+                        handleDeletePress({} as GestureResponderEvent)
+                      }
+                      color={ButtonColor.Black}
+                      size={ButtonSize.Small}
+                      title="Delete"
+                    />
+                  )}
               </>
             )}
             {invite.status === "request_pending" &&
@@ -226,6 +236,6 @@ export default function OnetimeInviteListItem({
           </View>
         </View>
       </View>
-    </View>
+    </Container>
   );
 }

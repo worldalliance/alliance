@@ -154,13 +154,20 @@ const InviteForm = ({
           invitee: inviteeName.trim(),
           ...(communityId !== null && { communityId }),
         };
+        // Started rather than awaited: the clipboard write has to be issued
+        // inside the click, before the request it depends on resolves.
+        const request = userCreateOnetimeInvite({ body });
+        const copying = copyToClipboard(
+          request.then((response) =>
+            response.data
+              ? getOnetimeInviteSignupUrl(getBaseUrl(), response.data.code)
+              : Promise.reject(new Error("invite was not created")),
+          ),
+        );
 
-        const response = await userCreateOnetimeInvite({ body });
+        const response = await request;
         if (response.data) {
-          const copied = await copyToClipboard(
-            getOnetimeInviteSignupUrl(getBaseUrl(), response.data.code),
-          );
-          if (copied) {
+          if (await copying) {
             successToast("Invite created and copied to clipboard!");
           } else {
             errorToast(
@@ -185,38 +192,43 @@ const InviteForm = ({
     [inviteeName, errorToast, successToast, onInviteCreated],
   );
 
-  const handleCreateReusableInvite = useCallback((communityId: number | null) => {
-    if (!inviteeName.trim()) {
-      errorToast("Please enter a group name");
-      return;
-    }
+  const handleCreateReusableInvite = useCallback(
+    async (communityId: number | null) => {
+      if (!inviteeName.trim()) {
+        errorToast("Please enter a group name");
+        return;
+      }
 
-    createReusableInvite({
-      label: inviteeName.trim(),
-      communityId,
-    }).then(
-      async (link) => {
-        const copied = await copyToClipboard(link.url);
-        if (copied) {
-          successToast("Invite link created and copied to clipboard!");
-        } else {
-          errorToast(
-            "Invite link created, but it could not be copied to the clipboard.",
-          );
-        }
-        setInviteeName("");
-      },
-      (err: Error) =>
-        errorToast(`Failed to create invite link: ${err.message}`),
-    );
-  }, [createReusableInvite, errorToast, inviteeName, successToast]);
+      const creation = createReusableInvite({
+        label: inviteeName.trim(),
+        communityId,
+      });
+      const copying = copyToClipboard(creation.then((link) => link.url));
+      return creation.then(
+        async () => {
+          if (await copying) {
+            successToast("Invite link created and copied to clipboard!");
+          } else {
+            errorToast(
+              "Invite link created, but it could not be copied to the clipboard.",
+            );
+          }
+          setInviteeName("");
+        },
+        (err: Error) =>
+          errorToast(`Failed to create invite link: ${err.message}`),
+      );
+    },
+    [createReusableInvite, errorToast, inviteeName, successToast],
+  );
 
+  /** Both branches report their own failures, so this settles rather than rejects. */
   const handleCreateForPlacement = useCallback(
-    (communityId: number | null) => {
+    async (communityId: number | null) => {
       if (multipleUseInvite) {
-        handleCreateReusableInvite(communityId);
+        await handleCreateReusableInvite(communityId);
       } else {
-        void handleCreateInvite(communityId);
+        await handleCreateInvite(communityId);
       }
     },
     [handleCreateInvite, handleCreateReusableInvite, multipleUseInvite],
@@ -224,8 +236,8 @@ const InviteForm = ({
 
   const onCreateCommunity = useCallback(
     async (community: CommunityDto) => {
+      await handleCreateForPlacement(community.id);
       try {
-        handleCreateForPlacement(community.id);
         await refreshCommunities();
         setPlacement({ kind: "community", id: community.id });
       } catch {
@@ -263,9 +275,7 @@ const InviteForm = ({
         <div className="flex flex-col gap-y-4">
           <div className="flex flex-col gap-y-2">
             <p className={inviteTitleClass}>
-              {multipleUseInvite
-                ? "Invite a group"
-                : "Invite an individual"}
+              {multipleUseInvite ? "Invite a group" : "Invite an individual"}
             </p>
           </div>
           {multipleUseInvite ? (
@@ -332,58 +342,56 @@ const InviteForm = ({
 
         {placement.kind === "assign" && (
           <div className="flex flex-col gap-y-4">
-                {!memberCommunityAllowsMemberInvites ? (
-                  <AppMarkdownWrapper
-                    className="text-invite-form-body"
-                    markdownContent={onetimeInviteCreation.not_responsible.explanations.genericGroup.join(
-                      "\n\n",
-                    )}
-                  />
-                ) : memberCommunityRemainingCapacity > 0 ? (
-                  <>
-                    <AppMarkdownWrapper
-                      className="text-invite-form-body"
-                      markdownContent={onetimeInviteCreation.not_responsible.explanations.yourGroup.join(
-                        "\n\n",
-                      )}
-                    />
-                    <Link
-                      to={`/groups?communityId=${memberCommunities[0].id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="border border-zinc-200 bg-white hover:bg-zinc-50 rounded px-3 py-2.5 flex flex-col gap-y-2 self-start max-w-full"
-                    >
-                      <p className={inviteSectionLabelClass}>
-                        Your current group
-                      </p>
-                      <div className="flex flex-row items-center gap-x-2 min-w-0">
-                        <AvatarProfile
-                          pfp={memberCommunities[0].photo ?? null}
-                          size="small"
-                        />
-                        <div className="flex flex-col min-w-0 sm:flex-row sm:items-baseline sm:gap-x-2">
-                          <p className={`${inviteStrongClass} truncate`}>
-                            {memberCommunities[0].name}
-                          </p>
-                          <p className="text-invite-form-body shrink-0">
-                            {`${memberCommunityRemainingCapacity} open seat${
-                              memberCommunityRemainingCapacity === 1 ? "" : "s"
-                            }`}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  </>
-                ) : (
-                  <AppMarkdownWrapper
-                    className="text-invite-form-body"
-                    markdownContent={onetimeInviteCreation.not_responsible.explanations.yourGroupNoCapacity.join(
-                      "\n\n",
-                    )}
-                  />
+            {!memberCommunityAllowsMemberInvites ? (
+              <AppMarkdownWrapper
+                className="text-invite-form-body"
+                markdownContent={onetimeInviteCreation.not_responsible.explanations.genericGroup.join(
+                  "\n\n",
                 )}
+              />
+            ) : memberCommunityRemainingCapacity > 0 ? (
+              <>
+                <AppMarkdownWrapper
+                  className="text-invite-form-body"
+                  markdownContent={onetimeInviteCreation.not_responsible.explanations.yourGroup.join(
+                    "\n\n",
+                  )}
+                />
+                <Link
+                  to={`/groups?communityId=${memberCommunities[0].id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="border border-zinc-200 bg-white hover:bg-zinc-50 rounded px-3 py-2.5 flex flex-col gap-y-2 self-start max-w-full"
+                >
+                  <p className={inviteSectionLabelClass}>Your current group</p>
+                  <div className="flex flex-row items-center gap-x-2 min-w-0">
+                    <AvatarProfile
+                      pfp={memberCommunities[0].photo ?? null}
+                      size="small"
+                    />
+                    <div className="flex flex-col min-w-0 sm:flex-row sm:items-baseline sm:gap-x-2">
+                      <p className={`${inviteStrongClass} truncate`}>
+                        {memberCommunities[0].name}
+                      </p>
+                      <p className="text-invite-form-body shrink-0">
+                        {`${memberCommunityRemainingCapacity} open seat${
+                          memberCommunityRemainingCapacity === 1 ? "" : "s"
+                        }`}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              </>
+            ) : (
+              <AppMarkdownWrapper
+                className="text-invite-form-body"
+                markdownContent={onetimeInviteCreation.not_responsible.explanations.yourGroupNoCapacity.join(
+                  "\n\n",
+                )}
+              />
+            )}
             <NewButton
               color={ButtonColor.Black}
-              onClick={() => handleCreateForPlacement(null)}
+              onClick={() => void handleCreateForPlacement(null)}
               disabled={inviteIsCreating || !inviteeName.trim()}
               className="w-full"
             >
@@ -398,31 +406,28 @@ const InviteForm = ({
 
         {placement.kind === "new" && (
           <div className="flex flex-col gap-y-4">
-                <AppMarkdownWrapper
-                  className="text-invite-form-body"
-                  markdownContent={onetimeInviteCreation.responsible.leader.invite.explanation.join(
-                    "\n\n",
-                  )}
-                />
-                <p className={inviteSectionLabelClass}>
-                  {onetimeInviteCreation.responsible.leader.newGroup.title}
-                </p>
-                {!isLeader && (
-                  <p className="text-invite-form-body">
-                    You are not leading a group yet—create one to be responsible
-                    for this member.
-                  </p>
-                )}
-                <p className="text-invite-form-body">
-                  Read our{" "}
-                  <Link
-                    to="/groups-guide"
-                    className="text-green hover:underline"
-                  >
-                    groups guide
-                  </Link>{" "}
-                  to learn how to lead a group.
-                </p>
+            <AppMarkdownWrapper
+              className="text-invite-form-body"
+              markdownContent={onetimeInviteCreation.responsible.leader.invite.explanation.join(
+                "\n\n",
+              )}
+            />
+            <p className={inviteSectionLabelClass}>
+              {onetimeInviteCreation.responsible.leader.newGroup.title}
+            </p>
+            {!isLeader && (
+              <p className="text-invite-form-body">
+                You are not leading a group yet—create one to be responsible for
+                this member.
+              </p>
+            )}
+            <p className="text-invite-form-body">
+              Read our{" "}
+              <Link to="/groups-guide" className="text-green hover:underline">
+                groups guide
+              </Link>{" "}
+              to learn how to lead a group.
+            </p>
             <CommunityCreateForm
               name={user?.name}
               createButtonTextOverride={
@@ -441,15 +446,15 @@ const InviteForm = ({
 
         {placement.kind === "community" && selectedCommunity && (
           <div className="flex flex-col gap-y-4">
-                <AppMarkdownWrapper
-                  className="text-invite-form-body"
-                  markdownContent={onetimeInviteCreation.responsible.leader.invite.explanation.join(
-                    "\n\n",
-                  )}
-                />
+            <AppMarkdownWrapper
+              className="text-invite-form-body"
+              markdownContent={onetimeInviteCreation.responsible.leader.invite.explanation.join(
+                "\n\n",
+              )}
+            />
             <NewButton
               color={ButtonColor.Black}
-              onClick={() => handleCreateForPlacement(placement.id)}
+              onClick={() => void handleCreateForPlacement(placement.id)}
               disabled={inviteIsCreating || !inviteeName.trim()}
               className="w-full"
             >

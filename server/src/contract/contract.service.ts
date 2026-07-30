@@ -1,9 +1,8 @@
-import { run } from '@alliance/common/run';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CommunityService } from 'src/community/community.service';
 import {
-  communityHasCapacity,
+  hasRoomForReturningMember,
   isCommunityLedBy,
 } from 'src/community/community.utils';
 import { Community } from 'src/community/entities/community.entity';
@@ -15,7 +14,11 @@ import {
   type CreateNotifParams,
 } from 'src/notifs/notifs.service';
 import { profileUrl } from 'src/search/approutes';
-import { getStoredInviteAssignment } from 'src/share-urls/invite-assignment';
+import {
+  inviteAssignmentFromColumns,
+  type StoredInviteAssignment,
+  StoredInviteAssignmentKind,
+} from 'src/share-urls/invite-assignment';
 import {
   ContractEvent,
   ContractEventType,
@@ -81,6 +84,49 @@ export class ContractService {
     return this.findOne(id);
   }
 
+  /**
+   * Where a referred member lands when they sign. Placement stored on a
+   * reusable invite link wins over the referral source's default selector;
+   * null means nowhere valid, so the member is queued for manual assignment.
+   */
+  private async selectCommunityForReferral(params: {
+    referralSource: ReferralSource;
+    referredBy: User;
+    inviteAssignment: StoredInviteAssignment | null;
+  }): Promise<Community | null> {
+    const { referralSource, referredBy, inviteAssignment } = params;
+    if (inviteAssignment === null) {
+      return REFERRAL_COMMUNITY_SELECTORS[referralSource](referredBy);
+    }
+    switch (inviteAssignment.kind) {
+      case StoredInviteAssignmentKind.Community: {
+        const { communityId } = inviteAssignment;
+        // Null once the target group is deleted: the invite named a
+        // destination and it is gone, so there is nowhere valid to place this
+        // member.
+        if (communityId === null) return null;
+        const community = await this.communityService.findOne(communityId);
+        // No capacity check: naming this group on an invite link is the
+        // leader's own consent, which `maxCapacity` does not bound. Leadership
+        // is rechecked because it can lapse after the link is made.
+        if (!community || !isCommunityLedBy(community, referredBy.id)) {
+          return null;
+        }
+        return community;
+      }
+      case StoredInviteAssignmentKind.Open:
+        return REFERRAL_COMMUNITY_SELECTORS[ReferralSource.OnetimeInvite](
+          referredBy,
+        );
+      default:
+        throw new Error(
+          `unknown reusable invite assignment: ${
+            inviteAssignment satisfies never
+          }`,
+        );
+    }
+  }
+
   async signContract(params: {
     userId: number;
     signedName: string | undefined;
@@ -96,13 +142,10 @@ export class ContractService {
         referredBy: true,
         referredByCampaign: true,
         referredByInvite: true,
-        referredByShareUrl: true,
         pendingCommunity: true,
       },
     });
-    const reusableInviteAssignment = user.referredByShareUrl
-      ? getStoredInviteAssignment(user.referredByShareUrl)
-      : null;
+    const reusableInviteAssignment = inviteAssignmentFromColumns(user);
 
     const switchingContracts = user.hasActiveContract;
     const contractEvent = this.contractEventRepository.create({
@@ -136,12 +179,18 @@ export class ContractService {
       });
       if (
         user.pendingCommunity &&
-        communityHasCapacity(user.pendingCommunity)
+        !hasRoomForReturningMember(user.pendingCommunity)
       ) {
+        // Their seat went to someone else while they were suspended.
+        // `pendingCommunity` is cleared below either way, so queue them rather
+        // than leaving them in no group and no queue.
+        userUpdate.undergoingGroupAssignment = true;
+      } else if (user.pendingCommunity) {
         promises.push(
           this.communityService.addUsersToCommunityAndRefreshConversation({
             user,
             community: user.pendingCommunity,
+            contractBeingSigned: true,
             notifForLeader: ({ leader }) =>
               memberJoinedCommunityNotif(
                 leader,
@@ -166,6 +215,7 @@ export class ContractService {
       await this.communityService.addUsersToCommunityAndRefreshConversation({
         user,
         community,
+        contractBeingSigned: true,
         notifForLeader: user.referredBy
           ? buildNotifForLeaderWithReferrer(
               user,
@@ -184,64 +234,6 @@ export class ContractService {
       if (user.referredBy && !referrerNotified) {
         notifs.push(newMemberReferredNotif(user, user.referredBy));
       }
-    } else if (user.referredBy && reusableInviteAssignment) {
-      user = await this.userRepository.findOneOrFail({
-        where: { id: userId },
-        relations: {
-          contractEvents: true,
-          referredBy: { communities: { users: true, leaders: true } },
-          referredByShareUrl: true,
-        },
-      });
-      const referredBy = user.referredBy!;
-      const community = await run(async () => {
-        switch (reusableInviteAssignment.kind) {
-          case 'community': {
-            const selectedCommunity = await this.communityService.findOne(
-              reusableInviteAssignment.communityId,
-            );
-            if (
-              !selectedCommunity ||
-              !isCommunityLedBy(selectedCommunity, referredBy.id) ||
-              !communityHasCapacity(selectedCommunity)
-            ) {
-              return null;
-            }
-            return selectedCommunity;
-          }
-          case 'open':
-            return REFERRAL_COMMUNITY_SELECTORS[
-              ReferralSource.OnetimeInvite
-            ](referredBy);
-          default:
-            throw new Error(
-              `unknown reusable invite assignment: ${
-                reusableInviteAssignment satisfies never
-              }`,
-            );
-        }
-      });
-
-      let referrerNotified = false;
-      if (community) {
-        promises.push(
-          this.communityService.addUsersToCommunityAndRefreshConversation({
-            user,
-            community,
-            notifForLeader: buildNotifForLeaderWithReferrer(
-              user,
-              community,
-              referredBy,
-              (value) => (referrerNotified = value),
-            ),
-          }),
-        );
-      } else {
-        userUpdate.undergoingGroupAssignment = true;
-      }
-      if (!referrerNotified) {
-        notifs.push(newMemberReferredNotif(user, referredBy));
-      }
     } else if (user.referredBy) {
       user = await this.userRepository.findOneOrFail({
         where: { id: userId },
@@ -251,12 +243,10 @@ export class ContractService {
         },
       });
       const referredBy = user.referredBy!;
-      const community = run(() => {
-        const selector = REFERRAL_COMMUNITY_SELECTORS[user.referralSource];
-        if (!selector) {
-          throw new Error(`Unknown referral source: ${user.referralSource}`);
-        }
-        return selector(referredBy);
+      const community = await this.selectCommunityForReferral({
+        referralSource: user.referralSource,
+        referredBy,
+        inviteAssignment: reusableInviteAssignment,
       });
 
       let referrerNotified = false;
@@ -265,6 +255,7 @@ export class ContractService {
           this.communityService.addUsersToCommunityAndRefreshConversation({
             user,
             community,
+            contractBeingSigned: true,
             notifForLeader: buildNotifForLeaderWithReferrer(
               user,
               community,

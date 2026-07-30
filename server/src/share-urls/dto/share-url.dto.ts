@@ -9,15 +9,13 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
+import { ShareUrlKind } from '../entities/share-url.entity';
 import {
-  ShareUrlKind,
-  type ShareUrlWithSignupCount,
-} from '../entities/share-url.entity';
-import {
-  getStoredInviteAssignment,
   InviteAssignmentKind,
   type StoredInviteAssignment,
+  StoredInviteAssignmentKind,
 } from '../invite-assignment';
+import type { ShareUrlMine, ShareUrlWithSignupCount } from '../share-url-views';
 
 type InviteAssignmentDetails = {
   assignmentKind: InviteAssignmentKind;
@@ -34,12 +32,12 @@ function inviteAssignmentDetails(
     };
   }
   switch (assignment.kind) {
-    case 'community':
+    case StoredInviteAssignmentKind.Community:
       return {
         assignmentKind: InviteAssignmentKind.Community,
         communityId: assignment.communityId,
       };
-    case 'open':
+    case StoredInviteAssignmentKind.Open:
       return {
         assignmentKind: InviteAssignmentKind.Open,
         communityId: null,
@@ -140,6 +138,30 @@ export class CreateInviteDuplicateDto {
   communityId: number | null;
 }
 
+export class UpdateInviteDto {
+  @ApiPropertyOptional({
+    description:
+      'Omit to leave the label as it is; send an empty string to clear it.',
+  })
+  // Not `@IsOptional()`, which also waves through an explicit null and leaves
+  // the declared `string` lying to everything downstream.
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString()
+  @MaxLength(120)
+  label?: string;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description:
+      'Group future signups join: a group you lead, or null for any open group. Omit to leave the destination as it is.',
+  })
+  @ValidateIf((_object, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(1)
+  communityId?: number | null;
+}
+
 export class ShareUrlMineDto {
   @ApiProperty()
   id: string;
@@ -171,9 +193,12 @@ export class ShareUrlMineDto {
   @ApiProperty({ type: Number, nullable: true })
   communityId: number | null;
 
-  constructor(input: ShareUrlWithSignupCount) {
-    const assignment = getStoredInviteAssignment(input.shareUrl);
-    const assignmentDetails = inviteAssignmentDetails(assignment);
+  /** Null alongside a `community` kind means that group has been deleted. */
+  @ApiProperty({ type: String, nullable: true })
+  communityName: string | null;
+
+  constructor(input: ShareUrlMine) {
+    const assignmentDetails = inviteAssignmentDetails(input.assignment);
     this.id = input.shareUrl.id;
     this.url = input.shareUrl.url;
     this.label = input.shareUrl.label ?? null;
@@ -183,6 +208,7 @@ export class ShareUrlMineDto {
     this.signupCount = input.signupCount;
     this.assignmentKind = assignmentDetails.assignmentKind;
     this.communityId = assignmentDetails.communityId;
+    this.communityName = input.assignmentCommunityName;
   }
 }
 

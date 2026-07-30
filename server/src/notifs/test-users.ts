@@ -50,6 +50,8 @@ export const testUser = new User({
   notifications: [],
   referredBy: null,
   referredByInvite: null,
+  inviteAssignmentKind: null,
+  inviteAssignmentCommunityId: null,
   referredUsers: [],
   shareEmailWithCommunityLead: true,
   undergoingGroupAssignment: false,

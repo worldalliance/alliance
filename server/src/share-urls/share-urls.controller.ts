@@ -22,6 +22,7 @@ import {
   ShareLinkDto,
   ShareUrlAdminDto,
   ShareUrlMineDto,
+  UpdateInviteDto,
   UpdateShareLinkLabelDto,
 } from './dto/share-url.dto';
 import { type ShareUrlOwner, ShareUrlsService } from './share-urls.service';
@@ -79,24 +80,25 @@ export class ShareUrlsController {
       body.label,
       body.communityId,
     );
-    const [result] = await this.shareUrlsService.withSignupCounts([row]);
+    const [result] = await this.shareUrlsService.withInviteDestinations([row]);
     return new ShareUrlMineDto(result);
   }
 
-  @Patch('mine/invites/:id/label')
+  @Patch('mine/invites/:id')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ShareUrlMineDto })
-  async updateMyInviteLabel(
+  async updateMyInvite(
     @Param('id') id: string,
-    @Body() body: UpdateShareLinkLabelDto,
+    @Body() body: UpdateInviteDto,
     @Request() req: JwtRequest,
   ): Promise<ShareUrlMineDto> {
-    const row = await this.shareUrlsService.updateInviteLabelForUser(
+    const row = await this.shareUrlsService.updateInviteForUser({
       id,
-      req.user.sub,
-      body.label,
-    );
-    const [result] = await this.shareUrlsService.withSignupCounts([row]);
+      userId: req.user.sub,
+      label: body.label,
+      communityId: body.communityId,
+    });
+    const [result] = await this.shareUrlsService.withInviteDestinations([row]);
     return new ShareUrlMineDto(result);
   }
 

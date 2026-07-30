@@ -5,11 +5,11 @@ import {
 } from "@alliance/shared/client";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import ImageEditor from "./ImageEditor";
-import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
-import { useCallback, useMemo, useState } from "react";
 import { cn } from "@alliance/shared/styles/util";
+import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import { useCallback, useMemo, useState } from "react";
+import ImageEditor from "./ImageEditor";
 
 export type CommunityCreateFormProps = {
   name?: string;
@@ -18,7 +18,8 @@ export type CommunityCreateFormProps = {
   createDisabled?: boolean;
   fullWidthButtons?: boolean;
   onCancel?: () => void;
-  onSuccess: (community: CommunityDto) => void;
+  /** Awaited, so the submit state covers any follow-up work the caller does. */
+  onSuccess: (community: CommunityDto) => void | Promise<void>;
 };
 
 const CommunityCreateForm = ({
@@ -80,7 +81,7 @@ const CommunityCreateForm = ({
         },
       });
       if (response.data) {
-        onSuccess(response.data);
+        await onSuccess(response.data);
       } else {
         setError(`Failed to create community`);
       }
@@ -244,9 +245,7 @@ const CommunityCreateForm = ({
         )}
       </div>
       <div className="flex flex-row justify-end">
-        <div
-          className={cn("flex gap-x-1 mt-1", fullWidthButtons && "w-full")}
-        >
+        <div className={cn("flex gap-x-1 mt-1", fullWidthButtons && "w-full")}>
           {onCancel && (
             <Button
               onClick={onCancel}
@@ -264,7 +263,7 @@ const CommunityCreateForm = ({
           >
             {isSubmitting
               ? "Creating..."
-              : createButtonTextOverride ?? "Create"}
+              : (createButtonTextOverride ?? "Create")}
           </Button>
         </div>
       </div>

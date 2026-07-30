@@ -1,3 +1,5 @@
+import type { AutomaticInviteReason } from "./inviteUtils";
+
 export const noTasksToDoRightNow = "No tasks to do right now";
 export const noTasksContractSuspended =
   "You will not be assigned tasks while you do not have a signed membership contract.";
@@ -163,6 +165,35 @@ export const onetimeInviteStatusLabels = {
   link_unused: "Pending",
 } as const;
 
+/**
+ * Shown when a multi-use link has no chosen group, keyed by why. A `Record` so
+ * a new reason has to be given wording rather than silently rendering nothing.
+ */
+export const automaticInviteNote = {
+  primary:
+    "Your primary link fills whichever group you lead. Pick a group to send everyone who uses it to the same place.",
+  legacy:
+    "This link was made before you could pick a group, so it fills whichever group you lead. Pick one to make it explicit.",
+} as const satisfies Record<AutomaticInviteReason, string>;
+
+/** Wording for the destination picker, shared by the web and mobile settings modals. */
+export const inviteDestination = {
+  heading: "Which group they join",
+  ledGroupDetail: "A group you lead",
+  reusable: {
+    openLabel: "Any open group",
+    openDetail: "Fills someone else's group that has room",
+    deletedGroup:
+      "The group this link pointed at was deleted. Pick another, or people who sign up will wait for manual assignment.",
+    retargetIsFutureOnly:
+      "Changing this only affects people who sign up from now on.",
+  },
+  onetime: {
+    openDetail: "Someone else's group that has room takes them",
+    joinsOnSigning: "They join this group once they sign their contract.",
+  },
+} as const;
+
 export const deleteInviteConfirmation = {
   message: "Are you sure you want to delete this invite?",
   confirmLabel: "Yes, delete it",
@@ -189,8 +220,7 @@ export const guestReferral = {
   allianceIntro:
     "The Alliance is a global group of people cooperating to improve the world. Join us to participate in actions like this every week.",
   tryOutTaskButton: "Try out this task",
-  completionIntegrityExplanation:
-    "Usually, actions are for members only.",
+  completionIntegrityExplanation: "Usually, actions are for members only.",
   joinToCountContributions:
     "If you're interested in 15-minute weekly actions like this, join the Alliance.",
   createAccountToSubmit: "Create an account to submit",

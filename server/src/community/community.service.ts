@@ -19,7 +19,11 @@ import {
   RequestCommunityInviteDto,
 } from 'src/user/dto/invite.dto';
 import { CommunityMemberContactInfo } from 'src/user/dto/user-action-relations.dto';
-import { DEFAULT_TIME_ZONE, User } from 'src/user/entities/user.entity';
+import {
+  DEFAULT_TIME_ZONE,
+  sqlUserHasActiveContractAt,
+  User,
+} from 'src/user/entities/user.entity';
 import type { Relations } from 'src/utils/Repository';
 import { DeepPartial, In, IsNull, type Repository } from 'typeorm';
 import { CreateCommunityDto, UpdateCommunityDto } from './dto/community.dto';
@@ -28,12 +32,33 @@ import {
   CommunityInviteStatus,
 } from './entities/community-invite.entity';
 import { Community } from './entities/community.entity';
+import { acceptsPublicJoin, acceptsStaffAssignment } from './community.utils';
 
 const COMMUNITY_DEFAULT_RELATIONS: Readonly<Relations<Community>> =
   Object.freeze({
     users: true,
     leaders: true,
   });
+
+/**
+ * Who reads a refusal when someone lacks an active contract. The self-service
+ * joins are telling a member about their own contract; the staff paths are
+ * telling an admin which of someone else's blocked the request.
+ */
+export enum ContractRefusalAudience {
+  Self = 'self',
+  Staff = 'staff',
+}
+
+const CONTRACT_REFUSAL_MESSAGE: Record<
+  ContractRefusalAudience,
+  (blockedNames: string[]) => string
+> = {
+  [ContractRefusalAudience.Self]: () =>
+    'You need an active contract to join a group.',
+  [ContractRefusalAudience.Staff]: (blockedNames) =>
+    `Cannot add members without an active contract to a group: ${blockedNames.join(', ')}`,
+};
 
 @Injectable()
 export class CommunityService {
@@ -133,10 +158,29 @@ export class CommunityService {
     return communities.sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  /**
+   * Nobody joins a group without an active contract — membership is what
+   * signing buys. This is the only path that adds ordinary members, so the rule
+   * is enforced here rather than at each caller.
+   *
+   * It holds for members, not for leaders, who reach `users` by other routes:
+   * {@link createCommunity} seeds it with the founder, and suspension keeps a
+   * leader in the group it removes them as a member of (`removeAsLeader:
+   * false`). So a group can hold a leader with no live contract; it should
+   * never hold a plain member with none.
+   *
+   * `contractBeingSigned` exempts the callers inside
+   * `ContractService.signContract`: they place the member while that member's
+   * SIGNED event is still being written, so neither the loaded entity nor the
+   * database can see it yet.
+   */
   async addUsersToCommunityAndRefreshConversation(
     params: {
       community: Community;
       notifForLeader: (params: { leader: User }) => CreateNotifParams | null;
+      contractBeingSigned?: boolean;
+      /** Defaults to staff; the self-service joins add the requester. */
+      contractRefusalAudience?: ContractRefusalAudience;
     } & (
       | {
           user: Pick<User, 'id' | 'name'> & DeepPartial<User>;
@@ -148,7 +192,14 @@ export class CommunityService {
         }
     ),
   ): Promise<Community> {
-    const { user, users: usersParam, community, notifForLeader } = params;
+    const {
+      user,
+      users: usersParam,
+      community,
+      notifForLeader,
+      contractBeingSigned = false,
+      contractRefusalAudience = ContractRefusalAudience.Staff,
+    } = params;
     const users = usersParam ?? [user];
 
     const userIdSet = new Set(users.map((user) => user.id));
@@ -156,6 +207,9 @@ export class CommunityService {
       throw new BadRequestException(
         `One or more users are already a member of community ${community.id}`,
       );
+    }
+    if (!contractBeingSigned) {
+      await this.assertUsersHaveActiveContracts(users, contractRefusalAudience);
     }
 
     const notifs: CreateNotifParams[] = community
@@ -187,6 +241,34 @@ export class CommunityService {
     ]);
 
     return updated;
+  }
+
+  /**
+   * Public so a batch caller can clear its whole set before it starts
+   * mutating; {@link addUsersToCommunityAndRefreshConversation} still checks
+   * per-add, since that is where the invariant has to hold.
+   */
+  async assertUsersHaveActiveContracts(
+    users: Pick<User, 'id' | 'name'>[],
+    audience: ContractRefusalAudience = ContractRefusalAudience.Staff,
+  ): Promise<void> {
+    const byId = new Map(users.map((user) => [user.id, user]));
+    if (byId.size === 0) return;
+    const rows = await this.userRepository
+      .createQueryBuilder('u')
+      .select('u.id', 'id')
+      .where('u.id IN (:...userIds)', { userIds: Array.from(byId.keys()) })
+      .andWhere(sqlUserHasActiveContractAt('u.id', 'NOW()'))
+      .getRawMany<{ id: number }>();
+    const signed = new Set(rows.map((row) => row.id));
+    const blocked = Array.from(byId.values()).filter(
+      (user) => !signed.has(user.id),
+    );
+    if (blocked.length) {
+      throw new BadRequestException(
+        CONTRACT_REFUSAL_MESSAGE[audience](blocked.map((user) => user.name)),
+      );
+    }
   }
 
   async removeUserFromCommunityAndRefreshConversation(
@@ -293,10 +375,7 @@ export class CommunityService {
       );
     }
 
-    if (
-      community.users.length - community.leaders!.length >=
-      community.maxCapacity!
-    ) {
+    if (!acceptsPublicJoin(community)) {
       throw new BadRequestException('Community is full');
     }
 
@@ -304,6 +383,7 @@ export class CommunityService {
       this.addUsersToCommunityAndRefreshConversation({
         user,
         community,
+        contractRefusalAudience: ContractRefusalAudience.Self,
         notifForLeader: ({ leader }) => ({
           user: leader,
           category: NotificationCategory.MemberJoinedCommunity,
@@ -569,6 +649,12 @@ export class CommunityService {
       this.findOneOrFail(communityId),
       this.userRepository.findOneOrFail({ where: { id: userId } }),
     ]);
+
+    if (!acceptsStaffAssignment(community)) {
+      throw new BadRequestException(
+        `Group ${community.name} is full or does not accept staff assignments`,
+      );
+    }
 
     return this.addUsersToCommunityAndRefreshConversation({
       user,
@@ -1034,6 +1120,7 @@ export class CommunityService {
       this.addUsersToCommunityAndRefreshConversation({
         user: invite.invitedUser,
         community,
+        contractRefusalAudience: ContractRefusalAudience.Self,
         notifForLeader: ({ leader }) => {
           if (leader.id === invite.invitingUser?.id) {
             return null;

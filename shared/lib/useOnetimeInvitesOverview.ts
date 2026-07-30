@@ -6,6 +6,7 @@ import {
   userDeleteOnetimeInvite,
   userGetOnetimeInvitesOverview,
   userRejectOnetimeInvite,
+  userUpdateOnetimeInvite,
 } from "../client";
 import { queryKeys } from "./queryKeys";
 
@@ -75,6 +76,23 @@ export function useOnetimeInvitesOverview(params?: { enabled?: boolean }) {
     onSuccess: (inviteId) => removeInvite(inviteId),
   });
 
+  const updateMutation = useMutation({
+    /** Each field is left alone when omitted; `communityId: null` clears the group. */
+    mutationFn: (vars: {
+      inviteId: number;
+      invitee?: string;
+      communityId?: number | null;
+    }) => {
+      const { inviteId, ...body } = vars;
+      return userUpdateOnetimeInvite({
+        path: { inviteId },
+        body,
+        throwOnError: true,
+      }).then((r) => r.data);
+    },
+    onSuccess: (invite) => upsertInvite(invite),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (inviteId: number) => {
       await userDeleteOnetimeInvite({ path: { inviteId }, throwOnError: true });
@@ -93,6 +111,8 @@ export function useOnetimeInvitesOverview(params?: { enabled?: boolean }) {
     upsertInvite,
     removeInvite,
     approveInvite: approveMutation.mutateAsync,
+    updateInvite: updateMutation.mutateAsync,
+    isUpdatingInvite: updateMutation.isPending,
     rejectInvite: rejectMutation.mutateAsync,
     deleteInvite: deleteMutation.mutateAsync,
   };

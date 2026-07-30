@@ -11,7 +11,11 @@ import {
   CreateCommunityDto,
 } from '../src/community/dto/community.dto';
 import { CommunityService } from '../src/community/community.service';
-import { createTestApp, TestContext } from './e2e-test-utils';
+import {
+  createTestApp,
+  giveActiveContract,
+  TestContext,
+} from './e2e-test-utils';
 
 const defaultCreateDto: Pick<
   CreateCommunityDto,
@@ -72,6 +76,12 @@ describe('Community (e2e)', () => {
       { sub: secondUser.id, email: secondUser.email, name: secondUser.name },
       { secret: process.env.JWT_SECRET },
     );
+    // Both stand in for real members, who can only be in a group by way of a
+    // signed contract.
+    await Promise.all([
+      giveActiveContract(ctx, testUser.id),
+      giveActiveContract(ctx, secondUser.id),
+    ]);
   });
 
   afterEach(async () => {
@@ -2039,5 +2049,82 @@ describe('Community (e2e)', () => {
       .set('Authorization', `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(400);
+  });
+
+  describe('POST /community/:communityId/addMember/admin', () => {
+    const addMember = (communityId: number, userId: number) =>
+      request(ctx.app.getHttpServer())
+        .post(`/community/${communityId}/addMember/admin`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ userId });
+
+    it('adds a member to a group that accepts staff assignments', async () => {
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'Staff Assignable Group',
+          leaders: [testUser],
+          users: [testUser],
+          allowStaffAssignments: true,
+          maxCapacity: 10,
+        }),
+      );
+
+      await addMember(community.id, secondUser.id).expect(201);
+
+      const updated = await communityRepo.findOneOrFail({
+        where: { id: community.id },
+        relations: { users: true },
+      });
+      expect(updated.users.map((u) => u.id)).toContain(secondUser.id);
+    });
+
+    it('refuses a group that has opted out of staff assignments', async () => {
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'No Staff Assignments Group',
+          leaders: [testUser],
+          users: [testUser],
+          public: false,
+          allowMemberInvites: true,
+          allowStaffAssignments: false,
+          maxCapacity: 10,
+        }),
+      );
+
+      await addMember(community.id, secondUser.id).expect(400);
+
+      const updated = await communityRepo.findOneOrFail({
+        where: { id: community.id },
+        relations: { users: true },
+      });
+      expect(updated.users.map((u) => u.id)).not.toContain(secondUser.id);
+    });
+
+    it('refuses a group that is already at capacity', async () => {
+      const existingMember = await userRepo.save(
+        userRepo.create({
+          name: 'Capacity Filler',
+          email: 'capacity.filler@example.com',
+          password: 'Password123!',
+        }),
+      );
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'Full Staff Assignable Group',
+          leaders: [testUser],
+          users: [testUser, existingMember],
+          allowStaffAssignments: true,
+          maxCapacity: 1,
+        }),
+      );
+
+      await addMember(community.id, secondUser.id).expect(400);
+
+      const updated = await communityRepo.findOneOrFail({
+        where: { id: community.id },
+        relations: { users: true },
+      });
+      expect(updated.users.map((u) => u.id)).not.toContain(secondUser.id);
+    });
   });
 });

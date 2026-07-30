@@ -4,12 +4,7 @@ import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
 import { ProfileDto } from 'src/user/dto/user.dto';
 import { User } from 'src/user/entities/user.entity';
 
-export class ShareUrlDto extends PickType(ShareUrl, [
-  'url',
-  'sid',
-  'id',
-  'data',
-]) {
+export class ShareUrlDto extends PickType(ShareUrl, ['url', 'sid', 'id']) {
   @ApiProperty({ type: ProfileDto })
   @Type(() => ProfileDto)
   user: ProfileDto;
@@ -19,7 +14,6 @@ export class ShareUrlDto extends PickType(ShareUrl, [
     this.url = shareUrl.url;
     this.sid = shareUrl.sid;
     this.id = shareUrl.id;
-    this.data = shareUrl.data;
     this.user = new ProfileDto(shareUrl.user!);
   }
 }

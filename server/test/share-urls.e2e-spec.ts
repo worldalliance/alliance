@@ -13,10 +13,8 @@ import {
   ShareUrlKind,
 } from '../src/share-urls/entities/share-url.entity';
 import { ShareUrlsService } from '../src/share-urls/share-urls.service';
-import {
-  ReferralSource,
-  User,
-} from '../src/user/entities/user.entity';
+import { StoredInviteAssignmentKind } from '../src/share-urls/invite-assignment';
+import { ReferralSource, User } from '../src/user/entities/user.entity';
 import { createTestApp, TestContext } from './e2e-test-utils';
 
 describe('Share URLs (e2e)', () => {
@@ -87,6 +85,7 @@ describe('Share URLs (e2e)', () => {
       const duplicate = await shareUrlsService.createDuplicateInviteForUser(
         ctx.testUserId,
         'Unused duplicate',
+        null,
       );
       await userRepo.save(
         userRepo.create({
@@ -135,11 +134,69 @@ describe('Share URLs (e2e)', () => {
 
       expect(res.body.assignmentKind).toBe('community');
       expect(res.body.communityId).toBe(community.id);
+      expect(res.body.communityName).toBe(community.name);
       const stored = await shareUrlRepo.findOneByOrFail({ id: res.body.id });
-      expect(stored.data?.['inviteAssignment']).toEqual({
-        kind: 'community',
-        communityId: community.id,
-      });
+      expect(stored.inviteAssignmentKind).toBe('community');
+      expect(stored.inviteAssignmentCommunityId).toBe(community.id);
+    });
+
+    it('reports a destination group that has since been deleted', async () => {
+      const inviter = await userRepo.findOneByOrFail({ id: ctx.testUserId });
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'Doomed Reusable Destination',
+          description: 'Deleted after the invite link was made',
+          leaders: [inviter],
+          users: [inviter],
+          maxCapacity: 10,
+        }),
+      );
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Doomed group invite',
+        community.id,
+      );
+
+      await communityRepo.delete(community.id);
+
+      const res = await request(ctx.app.getHttpServer())
+        .get('/share-urls/mine/invites')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const row = res.body.find((r: { id: string }) => r.id === invite.id);
+      // Deleting the group nulls the id through the FK, leaving a link that
+      // still names a destination but no longer has one.
+      expect(row?.assignmentKind).toBe('community');
+      expect(row?.communityId).toBeNull();
+      expect(row?.communityName).toBeNull();
+      const stored = await shareUrlRepo.findOneByOrFail({ id: invite.id });
+      expect(stored.inviteAssignmentKind).toBe('community');
+      expect(stored.inviteAssignmentCommunityId).toBeNull();
+    });
+
+    it('cannot store a community id without a community assignment', async () => {
+      const inviter = await userRepo.findOneByOrFail({ id: ctx.testUserId });
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'Constraint Check Group',
+          description: 'Never actually assigned',
+          leaders: [inviter],
+          users: [inviter],
+          maxCapacity: 10,
+        }),
+      );
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Open invite',
+        null,
+      );
+
+      await expect(
+        shareUrlRepo.update(invite.id, {
+          inviteAssignmentCommunityId: community.id,
+        }),
+      ).rejects.toThrow(/CHK_share_url_invite_assignment/);
     });
 
     it('rejects a community the inviter does not lead', async () => {
@@ -159,6 +216,158 @@ describe('Share URLs (e2e)', () => {
         .set('Authorization', `Bearer ${ctx.accessToken}`)
         .send({ label: 'Invalid group invite', communityId: community.id })
         .expect(400);
+    });
+  });
+
+  describe('PATCH /share-urls/mine/invites/:id', () => {
+    const patch = (id: string, body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .patch(`/share-urls/mine/invites/${id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send(body);
+
+    const ledCommunity = async (name: string) => {
+      const inviter = await userRepo.findOneByOrFail({ id: ctx.testUserId });
+      return communityRepo.save(
+        communityRepo.create({
+          name,
+          description: `${name} description`,
+          leaders: [inviter],
+          users: [inviter],
+          maxCapacity: 10,
+        }),
+      );
+    };
+
+    it('retargets an invite at another group the owner leads', async () => {
+      const first = await ledCommunity('Retarget Origin');
+      const second = await ledCommunity('Retarget Destination');
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Retargeted invite',
+        first.id,
+      );
+
+      const res = await patch(invite.id, { communityId: second.id }).expect(
+        200,
+      );
+
+      expect(res.body.assignmentKind).toBe('community');
+      expect(res.body.communityId).toBe(second.id);
+      expect(res.body.communityName).toBe(second.name);
+      // Untouched, since the request did not mention it.
+      expect(res.body.label).toBe('Retargeted invite');
+    });
+
+    it('points an invite at any open group', async () => {
+      const community = await ledCommunity('Open Retarget Origin');
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Open retarget',
+        community.id,
+      );
+
+      const res = await patch(invite.id, { communityId: null }).expect(200);
+
+      expect(res.body.assignmentKind).toBe('open');
+      expect(res.body.communityId).toBeNull();
+    });
+
+    it('renames without disturbing the destination', async () => {
+      const community = await ledCommunity('Rename Destination');
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Before',
+        community.id,
+      );
+
+      const res = await patch(invite.id, { label: '  After  ' }).expect(200);
+
+      expect(res.body.label).toBe('After');
+      expect(res.body.assignmentKind).toBe('community');
+      expect(res.body.communityId).toBe(community.id);
+    });
+
+    it('clears the label when sent an empty one', async () => {
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Labelled',
+        null,
+      );
+
+      const res = await patch(invite.id, { label: '' }).expect(200);
+
+      expect(res.body.label).toBeNull();
+    });
+
+    it('rejects a null label rather than choking on it', async () => {
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Labelled',
+        null,
+      );
+
+      await patch(invite.id, { label: null }).expect(400);
+    });
+
+    it('refuses a group the owner does not lead', async () => {
+      const admin = await userRepo.findOneByOrFail({ id: ctx.adminUserId });
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'Retarget Not Led',
+          description: 'Led by someone else',
+          leaders: [admin],
+          users: [admin],
+          maxCapacity: 10,
+        }),
+      );
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Unretargetable',
+        null,
+      );
+
+      await patch(invite.id, { communityId: community.id }).expect(400);
+
+      const stored = await shareUrlRepo.findOneByOrFail({ id: invite.id });
+      expect(stored.inviteAssignmentKind).toBe('open');
+      expect(stored.inviteAssignmentCommunityId).toBeNull();
+    });
+
+    it("refuses to edit someone else's invite", async () => {
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.adminUserId,
+        "Admin's invite",
+        null,
+      );
+
+      await patch(invite.id, { label: 'Hijacked' }).expect(404);
+    });
+
+    it('leaves people who already signed up where the link sent them', async () => {
+      const original = await ledCommunity('Snapshot Origin');
+      const retargeted = await ledCommunity('Snapshot Destination');
+      const invite = await shareUrlsService.createDuplicateInviteForUser(
+        ctx.testUserId,
+        'Snapshot invite',
+        original.id,
+      );
+      const recruit = await userRepo.save(
+        userRepo.create({
+          name: 'Snapshot Recruit',
+          email: 'snapshot.recruit@example.com',
+          password: 'Password123!',
+          referralSource: ReferralSource.InviteShareLink,
+          referredByShareUrl: invite,
+          inviteAssignmentKind: StoredInviteAssignmentKind.Community,
+          inviteAssignmentCommunityId: original.id,
+        }),
+      );
+
+      await patch(invite.id, { communityId: retargeted.id }).expect(200);
+
+      const stored = await userRepo.findOneByOrFail({ id: recruit.id });
+      expect(stored.inviteAssignmentCommunityId).toBe(original.id);
     });
   });
 

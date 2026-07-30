@@ -1,12 +1,13 @@
 import { OnetimeInviteDto } from "@alliance/shared/client";
-import { cn } from "@alliance/shared/styles/util";
 import { onetimeInviteStatusLabels } from "@alliance/shared/lib/copy";
+import { formatTime } from "@alliance/shared/lib/utils";
+import { cn } from "@alliance/shared/styles/util";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
-import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import { interactiveListRowClass } from "@alliance/sharedweb/ui/List";
+import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
 import { Copy as CopyIcon } from "lucide-react";
 import { href, Link } from "react-router";
-import { formatTime } from "@alliance/shared/lib/utils";
 
 type OnetimeInviteListItemProps = {
   invite: OnetimeInviteDto;
@@ -17,6 +18,8 @@ type OnetimeInviteListItemProps = {
   onCopy?: (code: string) => void;
   onCopied?: (inviteId: number) => void;
   onDelete?: (inviteId: number, event: React.MouseEvent<HTMLElement>) => void;
+  /** Given for invites that can still be edited; makes the whole row open settings. */
+  onOpenSettings?: (inviteId: number) => void;
   onApprove?: (inviteId: number) => void;
   onReject?: (inviteId: number) => void;
 };
@@ -40,6 +43,7 @@ const OnetimeInviteListItem = ({
   onCopy,
   onCopied,
   onDelete,
+  onOpenSettings,
   onApprove,
   onReject,
 }: OnetimeInviteListItemProps) => {
@@ -48,13 +52,31 @@ const OnetimeInviteListItem = ({
   const textColorClass = STATUS_TEXT_CLASS[invite.status];
   communityLabel ??= "No group";
 
-  const handleCopy = () => {
+  const handleCopy = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation();
     onCopy?.(invite.code);
     onCopied?.(invite.id);
   };
 
   return (
-    <div className="flex flex-col sm:flex-row w-full justify-between p-4">
+    <div
+      {...(onOpenSettings && {
+        role: "button",
+        tabIndex: 0,
+        onClick: () => onOpenSettings(invite.id),
+        onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onOpenSettings(invite.id);
+          }
+        },
+        "aria-label": `Settings for the invite to ${invite.invitee}`,
+      })}
+      className={cn(
+        "flex flex-col sm:flex-row w-full justify-between p-4",
+        onOpenSettings && interactiveListRowClass,
+      )}
+    >
       <div className="flex flex-col">
         {invite.invitedUserId ? (
           <Link
@@ -128,13 +150,19 @@ const OnetimeInviteListItem = ({
           {isRequest && onApprove && onReject ? (
             <>
               <NewButton
-                onClick={() => onApprove(invite.id)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onApprove(invite.id);
+                }}
                 color={ButtonColor.Green}
               >
                 Approve
               </NewButton>
               <NewButton
-                onClick={() => onReject(invite.id)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onReject(invite.id);
+                }}
                 color={ButtonColor.Red}
               >
                 Reject
@@ -152,10 +180,13 @@ const OnetimeInviteListItem = ({
                   {copied ? "Copied!" : "Share invite link"}
                 </NewButton>
               )}
-              {onDelete && (
+              {onDelete && !onOpenSettings && (
                 <NewButton
                   color={ButtonColor.Black}
-                  onClick={(event) => onDelete(invite.id, event)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDelete(invite.id, event);
+                  }}
                 >
                   Delete
                 </NewButton>
@@ -166,7 +197,10 @@ const OnetimeInviteListItem = ({
             invite.status === "request_pending" && (
               <NewButton
                 color={ButtonColor.White}
-                onClick={(event) => onDelete(invite.id, event)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(invite.id, event);
+                }}
               >
                 Cancel
               </NewButton>

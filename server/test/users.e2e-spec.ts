@@ -1,10 +1,13 @@
 import { toE164 } from '@alliance/common/phone';
 import { R } from '@alliance/common/result';
+import { AuthService } from 'src/auth/auth.service';
 import { ContractService } from 'src/contract/contract.service';
 import {
   Notification,
   NotificationCategory,
 } from 'src/notifs/entities/notification.entity';
+import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
+import { StoredInviteAssignmentKind } from 'src/share-urls/invite-assignment';
 import { ShareUrlsService } from 'src/share-urls/share-urls.service';
 import {
   OnetimeInvite,
@@ -18,7 +21,11 @@ import { City } from '../src/geo/city.entity';
 import { GeoModule } from '../src/geo/geo.module';
 import { FriendStatus } from '../src/user/entities/friend.entity';
 import { ReferralSource, User } from '../src/user/entities/user.entity';
-import { createTestApp, TestContext } from './e2e-test-utils';
+import {
+  createTestApp,
+  giveActiveContract,
+  TestContext,
+} from './e2e-test-utils';
 
 describe('Users (e2e)', () => {
   let ctx: TestContext;
@@ -29,6 +36,7 @@ describe('Users (e2e)', () => {
   let userService: UserService;
   let contractService: ContractService;
   let shareUrlsService: ShareUrlsService;
+  let authService: AuthService;
 
   let userAId: number;
   let userAToken: string;
@@ -48,6 +56,7 @@ describe('Users (e2e)', () => {
     userService = ctx.app.get(UserService);
     contractService = ctx.app.get(ContractService);
     shareUrlsService = ctx.app.get(ShareUrlsService);
+    authService = ctx.app.get(AuthService);
     const userA = userRepo.create({
       name: 'Friend A',
       email: 'frienda@example.com',
@@ -526,6 +535,26 @@ describe('Users (e2e)', () => {
   });
 
   describe('signContract behavior', () => {
+    /** Signs up through a reusable invite link the way production does, so the
+     * invite assignment snapshot on the user is written by real code. */
+    const signUpThroughInvite = async (params: {
+      name: string;
+      email: string;
+      invite: ShareUrl;
+    }): Promise<User> => {
+      const { sid } = params.invite;
+      if (!sid) {
+        throw new Error('invite link is missing its sid');
+      }
+      return authService.register({
+        name: params.name,
+        email: params.email,
+        password: 'Password123!',
+        mode: 'header',
+        referralCode: sid,
+      });
+    };
+
     it('joins community from referredByInvite when signing contract for first time', async () => {
       // Create a new user with an invite
       const inviter = await userRepo.save(
@@ -624,16 +653,15 @@ describe('Users (e2e)', () => {
           'Reusable community invite',
           inviteCommunity.id,
         );
-      const newUser = await userRepo.save(
-        userRepo.create({
-          name: 'Reusable Contract Invitee',
-          email: 'reusable.contract.invitee@example.com',
-          password: 'Password123!',
-          referredBy: inviter,
-          referredByShareUrl: reusableInvite,
-          referralSource: ReferralSource.InviteShareLink,
-        }),
+      const newUser = await signUpThroughInvite({
+        name: 'Reusable Contract Invitee',
+        email: 'reusable.contract.invitee@example.com',
+        invite: reusableInvite,
+      });
+      expect(newUser.inviteAssignmentKind).toBe(
+        StoredInviteAssignmentKind.Community,
       );
+      expect(newUser.inviteAssignmentCommunityId).toBe(inviteCommunity.id);
 
       await contractService.signContract({
         userId: newUser.id,
@@ -652,7 +680,228 @@ describe('Users (e2e)', () => {
       ).toBe(true);
     });
 
-    it('queues assignment when a reusable invite destination is full', async () => {
+    it('keeps the selected community after the reusable invite link is deleted', async () => {
+      const inviter = await userRepo.save(
+        userRepo.create({
+          name: 'Deleted Link Inviter',
+          email: 'deleted.link.inviter@example.com',
+          password: 'Password123!',
+        }),
+      );
+      const inviteCommunity = await communityRepo.save(
+        communityRepo.create({
+          name: 'Deleted Link Community',
+          description: 'Destination of a since-deleted invite link',
+          leaders: [inviter],
+          users: [inviter],
+          maxCapacity: 10,
+        }),
+      );
+      const reusableInvite =
+        await shareUrlsService.createDuplicateInviteForUser(
+          inviter.id,
+          'Since-deleted community invite',
+          inviteCommunity.id,
+        );
+      const newUser = await signUpThroughInvite({
+        name: 'Deleted Link Invitee',
+        email: 'deleted.link.invitee@example.com',
+        invite: reusableInvite,
+      });
+
+      await shareUrlsService.deleteInviteForUser(reusableInvite.id, inviter.id);
+
+      await contractService.signContract({
+        userId: newUser.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: newUser.id },
+        relations: { communities: true, referredByShareUrl: true },
+      });
+      expect(updatedUser?.referredByShareUrl).toBeNull();
+      expect(
+        updatedUser?.communities.some(
+          (community) => community.id === inviteCommunity.id,
+        ),
+      ).toBe(true);
+    });
+
+    /**
+     * An inviter who leads a second group with room, so a fallback placement
+     * would be visible: these tests assert the deleted destination queues the
+     * member for manual assignment rather than silently landing them there.
+     */
+    const inviterWithSpareGroup = async (params: {
+      slug: string;
+      name: string;
+    }): Promise<{ inviter: User; doomed: Community; spare: Community }> => {
+      const inviter = await userRepo.save(
+        userRepo.create({
+          name: `${params.name} Inviter`,
+          email: `${params.slug}.inviter@example.com`,
+          password: 'Password123!',
+        }),
+      );
+      const doomed = await communityRepo.save(
+        communityRepo.create({
+          name: `${params.name} Destination`,
+          description: 'Named by the invite link, then deleted',
+          leaders: [inviter],
+          users: [inviter],
+          maxCapacity: 10,
+        }),
+      );
+      const spare = await communityRepo.save(
+        communityRepo.create({
+          name: `${params.name} Spare`,
+          description: 'Has room, but the invite never named it',
+          leaders: [inviter],
+          users: [inviter],
+          maxCapacity: 10,
+        }),
+      );
+      return { inviter, doomed, spare };
+    };
+
+    it('queues assignment when the reusable invite group was deleted before signup', async () => {
+      const { inviter, doomed } = await inviterWithSpareGroup({
+        slug: 'deleted.group',
+        name: 'Deleted Group',
+      });
+      const reusableInvite =
+        await shareUrlsService.createDuplicateInviteForUser(
+          inviter.id,
+          'Doomed community invite',
+          doomed.id,
+        );
+      await communityRepo.delete(doomed.id);
+
+      const newUser = await signUpThroughInvite({
+        name: 'Deleted Group Invitee',
+        email: 'deleted.group.invitee@example.com',
+        invite: reusableInvite,
+      });
+      expect(newUser.inviteAssignmentKind).toBe(
+        StoredInviteAssignmentKind.Community,
+      );
+      expect(newUser.inviteAssignmentCommunityId).toBeNull();
+
+      await contractService.signContract({
+        userId: newUser.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: newUser.id },
+        relations: { communities: true },
+      });
+      expect(updatedUser?.communities).toHaveLength(0);
+      expect(updatedUser?.undergoingGroupAssignment).toBe(true);
+    });
+
+    it('queues assignment when the reusable invite group is deleted after signup', async () => {
+      const { inviter, doomed } = await inviterWithSpareGroup({
+        slug: 'later.deleted.group',
+        name: 'Later Deleted Group',
+      });
+      const reusableInvite =
+        await shareUrlsService.createDuplicateInviteForUser(
+          inviter.id,
+          'Later-deleted community invite',
+          doomed.id,
+        );
+      const newUser = await signUpThroughInvite({
+        name: 'Later Deleted Group Invitee',
+        email: 'later.deleted.group.invitee@example.com',
+        invite: reusableInvite,
+      });
+      expect(newUser.inviteAssignmentCommunityId).toBe(doomed.id);
+
+      await communityRepo.delete(doomed.id);
+
+      await contractService.signContract({
+        userId: newUser.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: newUser.id },
+        relations: { communities: true },
+      });
+      expect(updatedUser?.inviteAssignmentKind).toBe(
+        StoredInviteAssignmentKind.Community,
+      );
+      expect(updatedUser?.inviteAssignmentCommunityId).toBeNull();
+      expect(updatedUser?.communities).toHaveLength(0);
+      expect(updatedUser?.undergoingGroupAssignment).toBe(true);
+    });
+
+    it('recovers when the reusable invite group is deleted mid-signup', async () => {
+      const { inviter, doomed } = await inviterWithSpareGroup({
+        slug: 'raced.deleted.group',
+        name: 'Raced Deleted Group',
+      });
+      const reusableInvite =
+        await shareUrlsService.createDuplicateInviteForUser(
+          inviter.id,
+          'Raced community invite',
+          doomed.id,
+        );
+      await communityRepo.delete(doomed.id);
+      // Stands in for the group being deleted after the snapshot's existence
+      // check passed but before the insert: the stale id trips the foreign key.
+      const staleSnapshot = jest
+        .spyOn(userService, 'inviteAssignmentSnapshot')
+        .mockResolvedValueOnce({
+          inviteAssignmentKind: StoredInviteAssignmentKind.Community,
+          inviteAssignmentCommunityId: doomed.id,
+        });
+
+      let newUser: User;
+      let snapshotCalls = 0;
+      try {
+        newUser = await signUpThroughInvite({
+          name: 'Raced Deleted Group Invitee',
+          email: 'raced.deleted.group.invitee@example.com',
+          invite: reusableInvite,
+        });
+      } finally {
+        snapshotCalls = staleSnapshot.mock.calls.length;
+        staleSnapshot.mockRestore();
+      }
+
+      // Without this the real check would return a null id and the assertions
+      // below would pass without the recovery path ever running.
+      expect(snapshotCalls).toBe(1);
+      expect(newUser.inviteAssignmentKind).toBe(
+        StoredInviteAssignmentKind.Community,
+      );
+      expect(newUser.inviteAssignmentCommunityId).toBeNull();
+
+      await contractService.signContract({
+        userId: newUser.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: newUser.id },
+        relations: { communities: true },
+      });
+      expect(updatedUser?.communities).toHaveLength(0);
+      expect(updatedUser?.undergoingGroupAssignment).toBe(true);
+    });
+
+    /**
+     * Capacity bounds the members a leader receives *without* asking for them.
+     * Naming a group on an invite link is asking, so it overrides the cap.
+     */
+    it('places into a reusable invite destination that is already full', async () => {
       const inviter = await userRepo.save(
         userRepo.create({
           name: 'Full Reusable Inviter',
@@ -682,15 +931,178 @@ describe('Users (e2e)', () => {
           'Full reusable community invite',
           fullCommunity.id,
         );
-      const newUser = await userRepo.save(
+      const newUser = await signUpThroughInvite({
+        name: 'Full Reusable Invitee',
+        email: 'full.reusable.invitee@example.com',
+        invite: reusableInvite,
+      });
+
+      await contractService.signContract({
+        userId: newUser.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: newUser.id },
+        relations: { communities: true },
+      });
+      expect(
+        updatedUser?.communities.some(
+          (community) => community.id === fullCommunity.id,
+        ),
+      ).toBe(true);
+      expect(updatedUser?.undergoingGroupAssignment).toBe(false);
+    });
+
+    it('joins an uncapped community selected by a reusable invite link', async () => {
+      const inviter = await userRepo.save(
         userRepo.create({
-          name: 'Full Reusable Invitee',
-          email: 'full.reusable.invitee@example.com',
+          name: 'Uncapped Reusable Inviter',
+          email: 'uncapped.reusable.inviter@example.com',
           password: 'Password123!',
-          referredBy: inviter,
-          referredByShareUrl: reusableInvite,
-          referralSource: ReferralSource.InviteShareLink,
         }),
+      );
+      // maxCapacity may only be null while the group is private and takes
+      // neither member invites nor staff assignments.
+      const uncappedCommunity = await communityRepo.save(
+        communityRepo.create({
+          name: 'Uncapped Reusable Invite Community',
+          description: 'Reusable invite destination with no member cap',
+          leaders: [inviter],
+          users: [inviter],
+          public: false,
+          allowMemberInvites: false,
+          allowStaffAssignments: false,
+          maxCapacity: null,
+        }),
+      );
+      const reusableInvite =
+        await shareUrlsService.createDuplicateInviteForUser(
+          inviter.id,
+          'Uncapped community invite',
+          uncappedCommunity.id,
+        );
+      const newUser = await signUpThroughInvite({
+        name: 'Uncapped Reusable Invitee',
+        email: 'uncapped.reusable.invitee@example.com',
+        invite: reusableInvite,
+      });
+
+      await contractService.signContract({
+        userId: newUser.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: newUser.id },
+        relations: { communities: true },
+      });
+      expect(
+        updatedUser?.communities.some(
+          (community) => community.id === uncappedCommunity.id,
+        ),
+      ).toBe(true);
+      expect(updatedUser?.undergoingGroupAssignment).toBe(false);
+    });
+
+    /**
+     * An inviter who leads one group and is a plain member of another, both
+     * with room. The legacy placement picks the led group and an `open`
+     * assignment picks the other, so each test can prove which one ran.
+     */
+    const inviterLeadingAndJoining = async (params: {
+      slug: string;
+      name: string;
+    }): Promise<{ inviter: User; led: Community; joined: Community }> => {
+      const inviter = await userRepo.save(
+        userRepo.create({
+          name: `${params.name} Inviter`,
+          email: `${params.slug}.inviter@example.com`,
+          password: 'Password123!',
+        }),
+      );
+      const otherLeader = await userRepo.save(
+        userRepo.create({
+          name: `${params.name} Other Leader`,
+          email: `${params.slug}.other.leader@example.com`,
+          password: 'Password123!',
+        }),
+      );
+      const led = await communityRepo.save(
+        communityRepo.create({
+          name: `${params.name} Led`,
+          description: 'Led by the inviter',
+          leaders: [inviter],
+          users: [inviter],
+          maxCapacity: 10,
+        }),
+      );
+      const joined = await communityRepo.save(
+        communityRepo.create({
+          name: `${params.name} Joined`,
+          description: 'The inviter is a member here, not a leader',
+          leaders: [otherLeader],
+          users: [otherLeader, inviter],
+          maxCapacity: 10,
+        }),
+      );
+      return { inviter, led, joined };
+    };
+
+    it('keeps legacy placement for invite links that predate group selection', async () => {
+      const { inviter, led, joined } = await inviterLeadingAndJoining({
+        slug: 'legacy.invite.link',
+        name: 'Legacy Invite Link',
+      });
+      // Carries no stored assignment, like every link made before this feature.
+      const legacyInvite = await shareUrlsService.getOrCreateForInvite({
+        type: 'user',
+        userId: inviter.id,
+      });
+      const newUser = await signUpThroughInvite({
+        name: 'Legacy Invite Link Invitee',
+        email: 'legacy.invite.link.invitee@example.com',
+        invite: legacyInvite,
+      });
+      expect(newUser.referralSource).toBe(ReferralSource.InviteShareLink);
+      expect(newUser.inviteAssignmentKind).toBeNull();
+
+      await contractService.signContract({
+        userId: newUser.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: newUser.id },
+        relations: { communities: true },
+      });
+      const communityIds = (updatedUser?.communities ?? []).map(
+        (community) => community.id,
+      );
+      expect(communityIds).toContain(led.id);
+      expect(communityIds).not.toContain(joined.id);
+    });
+
+    it('places an "any open group" invite outside the groups the inviter leads', async () => {
+      const { inviter, led, joined } = await inviterLeadingAndJoining({
+        slug: 'open.invite.link',
+        name: 'Open Invite Link',
+      });
+      const openInvite = await shareUrlsService.createDuplicateInviteForUser(
+        inviter.id,
+        'Any open group invite',
+        null,
+      );
+      const newUser = await signUpThroughInvite({
+        name: 'Open Invite Link Invitee',
+        email: 'open.invite.link.invitee@example.com',
+        invite: openInvite,
+      });
+      expect(newUser.inviteAssignmentKind).toBe(
+        StoredInviteAssignmentKind.Open,
       );
 
       await contractService.signContract({
@@ -703,8 +1115,11 @@ describe('Users (e2e)', () => {
         where: { id: newUser.id },
         relations: { communities: true },
       });
-      expect(updatedUser?.communities).toHaveLength(0);
-      expect(updatedUser?.undergoingGroupAssignment).toBe(true);
+      const communityIds = (updatedUser?.communities ?? []).map(
+        (community) => community.id,
+      );
+      expect(communityIds).toContain(joined.id);
+      expect(communityIds).not.toContain(led.id);
     });
 
     it('joins community from referredBy when no invite community exists', async () => {
@@ -862,7 +1277,7 @@ describe('Users (e2e)', () => {
       expect(updatedUser?.pendingCommunity).toBeNull();
     });
 
-    it('does not join pendingCommunity if capacity is full', async () => {
+    it('queues for assignment when the pendingCommunity filled the seat', async () => {
       const leader = await userRepo.save(
         userRepo.create({
           name: 'Full Community Leader',
@@ -871,7 +1286,6 @@ describe('Users (e2e)', () => {
         }),
       );
 
-      // Create community at max capacity
       const members = await Promise.all(
         Array.from({ length: 5 }, (_, i) =>
           userRepo.save(
@@ -890,7 +1304,7 @@ describe('Users (e2e)', () => {
           description: 'Full',
           leaders: [leader],
           users: [leader, ...members],
-          maxCapacity: 5, // At capacity (1 leader + 4 members = 5)
+          maxCapacity: 5, // At capacity (1 leader + 5 members, cap counts non-leaders)
         }),
       );
 
@@ -899,11 +1313,24 @@ describe('Users (e2e)', () => {
           name: 'Full Community User',
           email: 'full.user@example.com',
           password: 'Password123!',
-          pendingCommunity: fullComm,
         }),
       );
 
-      // Sign contract (non-first time)
+      await contractService.signContract({
+        userId: user.id,
+        signedName: 'Test Name',
+        contractId: ctx.defaultContractId,
+      });
+      await contractService.suspendContract(user.id);
+
+      // Stand in for the suspend flow, and clear the queue flag the first
+      // signing set so the assertion below can only come from the re-signing.
+      await userRepo.save({
+        id: user.id,
+        pendingCommunity: fullComm,
+        undergoingGroupAssignment: false,
+      });
+
       await contractService.signContract({
         userId: user.id,
         signedName: 'Test Name',
@@ -915,11 +1342,13 @@ describe('Users (e2e)', () => {
         relations: { communities: true, pendingCommunity: true },
       });
 
-      // Should not join because capacity is full
       expect(updatedUser?.communities.some((c) => c.id === fullComm.id)).toBe(
         false,
       );
       expect(updatedUser?.pendingCommunity).toBeNull();
+      // Their seat is gone, so they must land in the manual queue rather than
+      // in no group at all.
+      expect(updatedUser?.undergoingGroupAssignment).toBe(true);
     });
   });
 
@@ -1306,6 +1735,78 @@ describe('Users (e2e)', () => {
         });
       });
 
+      describe('updateOnetimeInvite', () => {
+        const createInvite = async (communityId?: number) => {
+          const res = await request(ctx.app.getHttpServer())
+            .post('/user/onetimeInvite/create')
+            .set('Authorization', `Bearer ${userAToken}`)
+            .send({
+              invitee: `editable-${Math.random().toString(36).slice(2)}`,
+              ...(communityId !== undefined && { communityId }),
+            })
+            .expect(201);
+          return res.body;
+        };
+
+        const patch = (inviteId: number, body: Record<string, unknown>) =>
+          request(ctx.app.getHttpServer())
+            .patch(`/user/onetimeInvites/${inviteId}`)
+            .set('Authorization', `Bearer ${userAToken}`)
+            .send(body);
+
+        it('renames the invitee', async () => {
+          const invite = await createInvite(communityLedByUserA.id);
+
+          const res = await patch(invite.id, {
+            invitee: '  Renamed Invitee  ',
+          }).expect(200);
+
+          expect(res.body.invitee).toBe('Renamed Invitee');
+          expect(res.body.community.id).toBe(communityLedByUserA.id);
+        });
+
+        it('clears the group so the invitee is placed like any referral', async () => {
+          const invite = await createInvite(communityLedByUserA.id);
+
+          const res = await patch(invite.id, { communityId: null }).expect(200);
+
+          expect(res.body.community ?? null).toBeNull();
+        });
+
+        it('refuses a group the inviter does not lead', async () => {
+          const invite = await createInvite(communityLedByUserA.id);
+
+          await patch(invite.id, {
+            communityId: communityLedByUserB.id,
+          }).expect(400);
+        });
+
+        it('refuses an empty invitee name', async () => {
+          const invite = await createInvite(communityLedByUserA.id);
+
+          await patch(invite.id, { invitee: '   ' }).expect(400);
+        });
+
+        it("refuses to edit someone else's invite", async () => {
+          const invite = await createInvite(communityLedByUserA.id);
+
+          await request(ctx.app.getHttpServer())
+            .patch(`/user/onetimeInvites/${invite.id}`)
+            .set('Authorization', `Bearer ${userBToken}`)
+            .send({ invitee: 'Hijacked' })
+            .expect(400);
+        });
+
+        it('refuses once the invite has been used', async () => {
+          const invite = await createInvite(communityLedByUserA.id);
+          await onetimeInviteRepo.update(invite.id, {
+            status: OnetimeInviteStatus.LINK_USED,
+          });
+
+          await patch(invite.id, { invitee: 'Too late' }).expect(400);
+        });
+      });
+
       describe('requestOnetimeInvite', () => {
         it('rejects requests from users that are not members of the community', async () => {
           const res = await request(ctx.app.getHttpServer())
@@ -1469,6 +1970,11 @@ describe('Users (e2e)', () => {
           undergoingGroupAssignment: true,
         }),
       );
+      // The assignment queue only ever holds people who have signed.
+      await Promise.all([
+        giveActiveContract(ctx, batchUser1.id),
+        giveActiveContract(ctx, batchUser2.id),
+      ]);
 
       // Assign both users to the same community in a single call
       const res = await request(ctx.app.getHttpServer())
@@ -1493,6 +1999,129 @@ describe('Users (e2e)', () => {
       expect(memberIds).toContain(batchUser1.id);
       expect(memberIds).toContain(batchUser2.id);
       expect(memberIds).toContain(leader.id);
+    });
+
+    it('refuses a group that has opted out of staff assignments', async () => {
+      const leader = await userRepo.save(
+        userRepo.create({
+          name: 'Opted Out Leader',
+          email: 'optedout.leader@example.com',
+          password: 'Password123!',
+        }),
+      );
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'Opted Out Community',
+          description: 'Leader turned off staff assignments',
+          leaders: [leader],
+          users: [leader],
+          public: false,
+          allowMemberInvites: true,
+          allowStaffAssignments: false,
+          maxCapacity: 10,
+        }),
+      );
+      const pending = await userRepo.save(
+        userRepo.create({
+          name: 'Opted Out Assignee',
+          email: 'optedout.assignee@example.com',
+          password: 'Password123!',
+          undergoingGroupAssignment: true,
+        }),
+      );
+
+      const res = await request(ctx.app.getHttpServer())
+        .post('/user/groupAssignment/assign')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          assignments: [{ userId: pending.id, communityId: community.id }],
+        });
+
+      expect(res.status).toBe(400);
+
+      const updated = await userRepo.findOneOrFail({
+        where: { id: pending.id },
+        relations: { communities: true },
+      });
+      expect(updated.communities).toHaveLength(0);
+      expect(updated.undergoingGroupAssignment).toBe(true);
+    });
+
+    it('assigns nobody when one member of the batch has no active contract', async () => {
+      const leader = await userRepo.save(
+        userRepo.create({
+          name: 'Atomic Leader',
+          email: 'atomic.leader@example.com',
+          password: 'Password123!',
+        }),
+      );
+      const destination = await communityRepo.save(
+        communityRepo.create({
+          name: 'Atomic Destination',
+          description: 'Where the batch was headed',
+          leaders: [leader],
+          users: [leader],
+          maxCapacity: 10,
+        }),
+      );
+      // The valid member is assigned first, so an unvalidated batch would move
+      // them out of here before it reached the one it has to refuse.
+      const origin = await communityRepo.save(
+        communityRepo.create({
+          name: 'Atomic Origin',
+          description: 'The group the valid member starts in',
+          leaders: [leader],
+          users: [leader],
+          maxCapacity: 10,
+        }),
+      );
+      const signed = await userRepo.save(
+        userRepo.create({
+          name: 'Atomic Signed',
+          email: 'atomic.signed@example.com',
+          password: 'Password123!',
+          undergoingGroupAssignment: true,
+          communities: [origin],
+        }),
+      );
+      // Queued, then their contract lapsed — nothing dequeues them.
+      const lapsed = await userRepo.save(
+        userRepo.create({
+          name: 'Atomic Lapsed',
+          email: 'atomic.lapsed@example.com',
+          password: 'Password123!',
+          undergoingGroupAssignment: true,
+        }),
+      );
+      await giveActiveContract(ctx, signed.id);
+
+      const res = await request(ctx.app.getHttpServer())
+        .post('/user/groupAssignment/assign')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          assignments: [
+            { userId: signed.id, communityId: destination.id },
+            { userId: lapsed.id, communityId: destination.id },
+          ],
+        });
+
+      expect(res.status).toBe(400);
+
+      const [updatedSigned, updatedLapsed] = await Promise.all([
+        userRepo.findOneOrFail({
+          where: { id: signed.id },
+          relations: { communities: true },
+        }),
+        userRepo.findOneOrFail({
+          where: { id: lapsed.id },
+          relations: { communities: true },
+        }),
+      ]);
+      // Untouched: still in the group they started in, still queued.
+      expect(updatedSigned.communities.map((c) => c.id)).toEqual([origin.id]);
+      expect(updatedSigned.undergoingGroupAssignment).toBe(true);
+      expect(updatedLapsed.communities).toHaveLength(0);
+      expect(updatedLapsed.undergoingGroupAssignment).toBe(true);
     });
 
     it('correctly reassigns a user to a community they were previously removed from', async () => {
@@ -1524,6 +2153,7 @@ describe('Users (e2e)', () => {
           undergoingGroupAssignment: true,
         }),
       );
+      await giveActiveContract(ctx, reassignUser.id);
 
       // Assign the user back to the same community they're already in
       // (this simulates the flow where the user is removed from old communities

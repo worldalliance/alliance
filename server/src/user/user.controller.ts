@@ -58,6 +58,7 @@ import {
   OnetimeInviteListDto,
   OnetimeInviteMemberStatsDto,
   RequestOnetimeInviteDto,
+  UpdateOnetimeInviteDto,
   UpdateAmbassadorInviteGoalDto,
   UpdateAmbassadorProgramMemberDto,
   UpsertAmbassadorProgramMemberDto,
@@ -808,6 +809,23 @@ export class UserController {
     @Request() req: JwtRequest,
   ): Promise<void> {
     await this.userService.deleteAmbassadorInviteGoal(goalId, req.user.sub);
+  }
+
+  @Patch('onetimeInvites/:inviteId')
+  @UseGuards(AuthGuard)
+  @ApiOkResponse({ type: OnetimeInviteDto })
+  async updateOnetimeInvite(
+    @Param('inviteId', ParseIntPipe) inviteId: number,
+    @Body() body: UpdateOnetimeInviteDto,
+    @Request() req: JwtRequest,
+  ): Promise<OnetimeInviteDto> {
+    const invite = await this.userService.updateOnetimeInvite({
+      inviteId,
+      userId: req.user.sub,
+      invitee: body.invitee,
+      communityId: body.communityId,
+    });
+    return new OnetimeInviteDto(invite);
   }
 
   @Delete('onetimeInvites/:inviteId')

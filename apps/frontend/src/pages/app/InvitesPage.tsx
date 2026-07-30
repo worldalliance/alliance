@@ -3,14 +3,21 @@ import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
 import {
   deleteInviteConfirmation,
   inviteBuckets,
+  inviteDestination,
+  onetimeInviteCreation,
   roleBadges,
 } from "@alliance/shared/lib/copy";
-import { bucketOnetimeInvitesByActionability } from "@alliance/shared/lib/inviteUtils";
+import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import {
+  bucketOnetimeInvitesByActionability,
+  onetimeInviteNotes,
+} from "@alliance/shared/lib/inviteUtils";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
+import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
-import { pluralize } from "@alliance/shared/lib/utils";
+import { formatTime, pluralize } from "@alliance/shared/lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import Card from "@alliance/sharedweb/ui/Card";
@@ -23,6 +30,9 @@ import type { FormEvent, MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ExpandableList from "../../components/ExpandableList";
 import InviteForm from "../../components/InviteForm";
+import InviteSettingsModal, {
+  type InviteSettingsTarget,
+} from "../../components/InviteSettingsModal";
 import InviteShareLink from "../../components/InviteShareLink";
 import OnetimeInviteListItem from "../../components/OnetimeInviteListItem";
 import { useAuth } from "../../lib/AuthContext";
@@ -81,8 +91,11 @@ const InvitesPage = () => {
     upsertInvite,
     approveInvite,
     rejectInvite,
+    updateInvite,
     deleteInvite,
   } = useOnetimeInvitesOverview({ enabled: Boolean(user) });
+  const { communities } = useMyCommunities({});
+  const [settingsInviteId, setSettingsInviteId] = useState<number | null>(null);
   const [copiedInviteId, setCopiedInviteId] = useState<number | null>(null);
   const [showManyPeople, setShowManyPeople] = useState(false);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -319,6 +332,49 @@ const InvitesPage = () => {
     },
     [confirm, deleteInvite],
   );
+
+  const leaderCommunities = useMemo(
+    () =>
+      user
+        ? communities.filter((community) =>
+            community.leaders.some((leader) => leader.id === user.id),
+          )
+        : [],
+    [communities, user],
+  );
+
+  const settingsInvite =
+    invites.find((invite) => invite.id === settingsInviteId) ?? null;
+  const settingsTarget: InviteSettingsTarget | null = settingsInvite && {
+    title: settingsInvite.invitee,
+    meta: `Invited ${formatTime(new Date(settingsInvite.createdAt), { addSuffix: true })}`,
+    url: getOnetimeInviteSignupUrl(getBaseUrl(), settingsInvite.code),
+    name: {
+      label: "Who this invite is for",
+      value: settingsInvite.invitee,
+      placeholder: "Their name",
+      helper: "Shown to you and to the group lead who takes them on.",
+      required: true,
+    },
+    destination: {
+      current: settingsInvite.community?.id ?? null,
+      openLabel: onetimeInviteCreation.assignToOpenGroup,
+      openDetail: inviteDestination.onetime.openDetail,
+      notes: onetimeInviteNotes,
+    },
+    delete: {
+      enabled: true,
+      disabledReason: "",
+      confirmMessage: deleteInviteConfirmation.message,
+    },
+    onSave: ({ name, communityId }) =>
+      updateInvite({
+        inviteId: settingsInvite.id,
+        ...(name !== undefined && { invitee: name }),
+        ...(communityId !== undefined && { communityId }),
+      }),
+    onDelete: () => deleteInvite(settingsInvite.id),
+  };
 
   const handleDeleteRequest = useCallback(
     (inviteId: number) => {
@@ -901,13 +957,11 @@ const InvitesPage = () => {
         </div>
 
         {showManyPeople ? (
-          <InviteShareLink showCreateCard={false} />
+          <InviteShareLink />
         ) : hasSingleUseInvites || isError ? (
           <div className="flex flex-col gap-y-12 pt-5">
             <div className="flex flex-col gap-y-1">
-              <p className="font-semibold text-2xl">
-                Your single-use invites
-              </p>
+              <p className="font-semibold text-2xl">Your single-use invites</p>
               <p className="text-zinc-500">
                 Each invite is created for one specific person and can only be
                 used once.
@@ -959,6 +1013,11 @@ const InvitesPage = () => {
                       selfInvited={user.id === invite.invitingUser?.id}
                       copied={copiedInviteId === invite.id}
                       onDelete={handleDeleteInvite}
+                      onOpenSettings={
+                        user.id === invite.invitingUser?.id
+                          ? setSettingsInviteId
+                          : undefined
+                      }
                       onCopy={copyToClipboard}
                       onCopied={handleCopied}
                     />
@@ -1021,6 +1080,13 @@ const InvitesPage = () => {
             )}
           </div>
         ) : null}
+        {settingsTarget && (
+          <InviteSettingsModal
+            target={settingsTarget}
+            leaderCommunities={leaderCommunities}
+            onClose={() => setSettingsInviteId(null)}
+          />
+        )}
       </div>
     </CenterLayout>
   );

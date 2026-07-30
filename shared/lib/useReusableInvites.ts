@@ -4,7 +4,7 @@ import {
   shareUrlsCreateInviteDuplicate,
   shareUrlsDeleteMyInvite,
   shareUrlsFindMyInvites,
-  shareUrlsUpdateMyInviteLabel,
+  shareUrlsUpdateMyInvite,
 } from "../client";
 import { queryKeys } from "./queryKeys";
 
@@ -12,7 +12,7 @@ const QUERY_KEY = queryKeys.myReusableInvites();
 
 /**
  * Single source of truth for the current user's reusable invite links.
- * Owns the query plus create/relabel/delete mutations and their cache updates;
+ * Owns the query plus create/edit/delete mutations and their cache updates;
  * callers supply only presentation (and attach `onError` per `mutateAsync`
  * call for platform-specific error surfaces).
  */
@@ -62,14 +62,17 @@ export function useReusableInvites(params?: { enabled?: boolean }) {
     },
   });
 
-  const updateLabelMutation = useMutation({
-    mutationFn: async (vars: { id: string; label: string }) => {
-      const res = await shareUrlsUpdateMyInviteLabel({
-        path: { id: vars.id },
-        body: { label: vars.label },
-      });
+  const updateMutation = useMutation({
+    /** Each field is left alone when omitted; `communityId: null` means any open group. */
+    mutationFn: async (vars: {
+      id: string;
+      label?: string;
+      communityId?: number | null;
+    }) => {
+      const { id, ...body } = vars;
+      const res = await shareUrlsUpdateMyInvite({ path: { id }, body });
       if (res.error || !res.data) {
-        throw res.error ?? new Error("Failed to update label");
+        throw res.error ?? new Error("Failed to update invite link");
       }
       return res.data;
     },
@@ -104,7 +107,8 @@ export function useReusableInvites(params?: { enabled?: boolean }) {
     isError,
     isCreating: createMutation.isPending,
     createInvite: createMutation.mutateAsync,
-    updateLabel: updateLabelMutation.mutateAsync,
+    updateInvite: updateMutation.mutateAsync,
+    isUpdating: updateMutation.isPending,
     deleteInvite: deleteMutation.mutateAsync,
   };
 }

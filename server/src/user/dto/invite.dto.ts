@@ -9,7 +9,9 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { CommunityDto } from 'src/community/dto/community.dto';
@@ -35,6 +37,27 @@ export class CreateOnetimeInviteDto extends PickType(OnetimeInvite, [
   @IsOptional()
   @IsNumber()
   communityId?: number;
+}
+
+export class UpdateOnetimeInviteDto {
+  @ApiPropertyOptional({
+    description: 'Omit to leave the invitee name as it is.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  invitee?: string;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description:
+      'Group the invitee joins: a group you lead, or null for any open group. Omit to leave it as it is.',
+  })
+  @ValidateIf((_object, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(1)
+  communityId?: number | null;
 }
 
 export class CreateCommunityInviteDto {

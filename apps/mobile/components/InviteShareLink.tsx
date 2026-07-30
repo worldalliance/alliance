@@ -1,22 +1,21 @@
-import type {
-  CommunityDto,
-  ShareUrlMineDto,
-} from "@alliance/shared/client";
+import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
 import { communityCreateCommunity } from "@alliance/shared/client";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
-import { onetimeInviteCreation } from "@alliance/shared/lib/copy";
+import {
+  inviteDestination,
+  onetimeInviteCreation,
+} from "@alliance/shared/lib/copy";
+import {
+  inviteDestinationLabel,
+  inviteDestinationSelection,
+  reusableInviteNotes,
+} from "@alliance/shared/lib/inviteUtils";
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { cn } from "@alliance/shared/styles/util";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
-import { ChevronDown, Pencil } from "lucide-react-native";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { ChevronDown, ChevronRight } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Platform,
@@ -28,6 +27,9 @@ import {
 import { useAuth } from "../lib/AuthContext";
 import { colors } from "../lib/style/colors";
 import FormModal from "./forms/FormModal";
+import InviteSettingsModal, {
+  type InviteSettingsTarget,
+} from "./InviteSettingsModal";
 import Button, { ButtonColor, ButtonSize } from "./system/Button";
 import Card, { CardStyle } from "./system/Card";
 import Input from "./system/Input";
@@ -40,27 +42,6 @@ type PlacementSelection =
   | { kind: "assign" }
   | { kind: "new" };
 
-function inviteDestinationLabel(
-  link: ShareUrlMineDto,
-  communityNames: Map<number, string>,
-): string {
-  switch (link.assignmentKind) {
-    case "automatic":
-      return "Group: Automatic";
-    case "community":
-      return `Group: ${
-        (link.communityId && communityNames.get(link.communityId)) ??
-        "Selected group"
-      }`;
-    case "open":
-      return "Group: Any open group";
-    default:
-      throw new Error(
-        `unknown invite assignment: ${link.assignmentKind satisfies never}`,
-      );
-  }
-}
-
 export default function InviteShareLink() {
   const { user } = useAuth();
   const {
@@ -69,7 +50,7 @@ export default function InviteShareLink() {
     isError,
     isCreating,
     createInvite,
-    updateLabel,
+    updateInvite,
     deleteInvite,
   } = useReusableInvites();
   const { communities, refreshCommunities } = useMyCommunities({});
@@ -81,6 +62,7 @@ export default function InviteShareLink() {
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [openLinkId, setOpenLinkId] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
@@ -93,18 +75,8 @@ export default function InviteShareLink() {
 
   const leaderCommunitiesById = useMemo(
     () =>
-      new Map(
-        leaderCommunities.map((community) => [community.id, community]),
-      ),
+      new Map(leaderCommunities.map((community) => [community.id, community])),
     [leaderCommunities],
-  );
-
-  const communityNames = useMemo(
-    () =>
-      new Map(
-        communities.map((community) => [community.id, community.name]),
-      ),
-    [communities],
   );
 
   const selectedCommunity = useMemo(() => {
@@ -208,12 +180,7 @@ export default function InviteShareLink() {
     } finally {
       setCreatingGroup(false);
     }
-  }, [
-    handleCreate,
-    newGroupDescription,
-    newGroupName,
-    refreshCommunities,
-  ]);
+  }, [handleCreate, newGroupDescription, newGroupName, refreshCommunities]);
 
   const handleShare = useCallback((link: ShareUrlMineDto) => {
     void Share.share(
@@ -223,17 +190,44 @@ export default function InviteShareLink() {
     );
   }, []);
 
-  const handleSaveLabel = useCallback(
-    (id: string, label: string) =>
-      updateLabel({ id, label }).then(
-        () => true,
-        () => {
-          Alert.alert("Error", "Failed to update label");
-          return false;
-        },
-      ),
-    [updateLabel],
-  );
+  const openLink = links.find((link) => link.id === openLinkId) ?? null;
+  const settingsTarget: InviteSettingsTarget | null = openLink && {
+    title:
+      openLink.label ||
+      (openLink.duplicate ? "Untitled link" : "Primary invite"),
+    meta: `${openLink.signupCount} ${
+      openLink.signupCount === 1 ? "signup" : "signups"
+    } so far`,
+    url: openLink.url,
+    name: {
+      label: "Label",
+      value: openLink.label ?? "",
+      placeholder: "e.g. Instagram bio",
+      helper:
+        "Only you can see this — it is a reminder of where you shared the link.",
+    },
+    destination: {
+      current: inviteDestinationSelection(openLink),
+      openLabel: inviteDestination.reusable.openLabel,
+      openDetail: inviteDestination.reusable.openDetail,
+      notes: reusableInviteNotes(openLink),
+    },
+    delete: {
+      enabled: openLink.duplicate,
+      disabledReason: "Your primary link cannot be deleted",
+    },
+    onSave: ({ name, communityId }) =>
+      updateInvite({
+        id: openLink.id,
+        ...(name !== undefined && { label: name }),
+        ...(communityId !== undefined && { communityId }),
+      }),
+    // Closes settings first so the typed-DELETE modal is not stacked on it.
+    onDelete: async () => {
+      setOpenLinkId(null);
+      handleDelete(openLink.id);
+    },
+  };
 
   const handleDelete = useCallback((id: string) => {
     setDeleteConfirmText("");
@@ -370,10 +364,7 @@ export default function InviteShareLink() {
         onClose={() => setGroupSelectModalOpen(false)}
       >
         <View className="flex-row items-center justify-between mb-3">
-          <Text
-            className="text-lg text-zinc-900"
-            weight={FontWeight.Semibold}
-          >
+          <Text className="text-lg text-zinc-900" weight={FontWeight.Semibold}>
             {onetimeInviteCreation.responsible.leader.title}
           </Text>
           <TouchableOpacity onPress={() => setGroupSelectModalOpen(false)}>
@@ -447,18 +438,20 @@ export default function InviteShareLink() {
               <InviteLinkRow
                 key={link.id}
                 link={link}
-                destinationLabel={inviteDestinationLabel(
-                  link,
-                  communityNames,
-                )}
+                destinationLabel={inviteDestinationLabel(link)}
                 onShare={handleShare}
-                onSaveLabel={handleSaveLabel}
-                onDelete={handleDelete}
+                onOpenSettings={setOpenLinkId}
               />
             ))}
           </View>
         </View>
       )}
+
+      <InviteSettingsModal
+        target={settingsTarget}
+        leaderCommunities={leaderCommunities}
+        onClose={() => setOpenLinkId(null)}
+      />
 
       <FormModal visible={pendingDeleteId !== null} onClose={closeDeleteModal}>
         <View className="gap-4">
@@ -508,128 +501,58 @@ type InviteLinkRowProps = {
   link: ShareUrlMineDto;
   destinationLabel: string;
   onShare: (link: ShareUrlMineDto) => void;
-  onSaveLabel: (id: string, label: string) => Promise<boolean>;
-  onDelete: (id: string) => void;
+  onOpenSettings: (id: string) => void;
 };
 
 function InviteLinkRow({
   link,
   destinationLabel,
   onShare,
-  onSaveLabel,
-  onDelete,
+  onOpenSettings,
 }: InviteLinkRowProps) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(link.label ?? "");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!editing) setDraft(link.label ?? "");
-  }, [link.label, editing]);
-
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    const ok = await onSaveLabel(link.id, draft);
-    setSaving(false);
-    if (ok) setEditing(false);
-  }, [onSaveLabel, link.id, draft]);
-
-  const handleCancel = useCallback(() => {
-    setDraft(link.label ?? "");
-    setEditing(false);
-  }, [link.label]);
-
   return (
-    <View className="border-b border-zinc-100 px-4 py-3 bg-white gap-2">
-      {!link.duplicate ? (
+    <TouchableOpacity
+      onPress={() => onOpenSettings(link.id)}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Settings for ${link.label || "this invite link"}`}
+      className="border-b border-zinc-100 px-4 py-3 bg-white gap-2"
+    >
+      <View className="flex-row items-center gap-1.5">
         <Text
-          className="text-base text-zinc-900"
+          className={cn(
+            "flex-1 text-base",
+            link.label ? "text-zinc-900" : "italic text-zinc-400",
+          )}
           weight={FontWeight.Semibold}
           numberOfLines={1}
         >
-          {link.label || "Primary invite"}
+          {link.label || (link.duplicate ? "Add a label" : "Primary invite")}
         </Text>
-      ) : editing ? (
-        <View className="gap-2">
-          <Input
-            placeholder="Label"
-            value={draft}
-            onChangeText={setDraft}
-            editable={!saving}
-            autoFocus
-            containerClassName="gap-0"
-          />
-          <View className="flex-row gap-2">
-            <Button
-              onPress={handleSave}
-              color={ButtonColor.Green}
-              size={ButtonSize.Small}
-              title={saving ? "Saving…" : "Save"}
-              disabled={saving}
-              loading={saving}
-            />
-            <Button
-              onPress={handleCancel}
-              color={ButtonColor.White}
-              size={ButtonSize.Small}
-              title="Cancel"
-              disabled={saving}
-            />
-          </View>
-        </View>
-      ) : (
-        <TouchableOpacity
-          onPress={() => setEditing(true)}
-          activeOpacity={0.7}
-          className="flex-row items-center gap-1.5 self-start"
-        >
-          <Text
-            className={cn(
-              "text-base",
-              link.label ? "text-zinc-900" : "italic text-zinc-400",
-            )}
-            weight={FontWeight.Semibold}
-            numberOfLines={1}
-          >
-            {link.label || "Add a label"}
+        {!link.duplicate && (
+          <Text className="text-xs text-green" weight={FontWeight.Semibold}>
+            Primary
           </Text>
-          <Pencil size={14} color={colors.text.icon} />
-        </TouchableOpacity>
-      )}
+        )}
+        <ChevronRight size={18} color={colors.text.light} />
+      </View>
 
       <Text className="text-xs text-zinc-400 font-mono" numberOfLines={1}>
         {link.url}
       </Text>
       <Text className="text-sm text-zinc-500">
-        {link.signupCount} {link.signupCount === 1 ? "use" : "uses"}
+        {link.signupCount} {link.signupCount === 1 ? "use" : "uses"} ·{" "}
+        {destinationLabel}
       </Text>
-      <Text className="text-sm text-zinc-500">{destinationLabel}</Text>
 
-      <View className="flex-row items-center justify-between mt-1">
-        {!link.duplicate ? (
-          <Text className="text-xs text-green" weight={FontWeight.Semibold}>
-            Primary
-          </Text>
-        ) : (
-          <View />
-        )}
-        <View className="flex-row items-center gap-2">
-          <Button
-            onPress={() => onShare(link)}
-            color={ButtonColor.Outline}
-            size={ButtonSize.Small}
-            title="Share"
-          />
-          {link.duplicate && (
-            <Button
-              onPress={() => onDelete(link.id)}
-              color={ButtonColor.Black}
-              size={ButtonSize.Small}
-              title="Delete"
-            />
-          )}
-        </View>
+      <View className="flex-row items-center justify-end mt-1">
+        <Button
+          onPress={() => onShare(link)}
+          color={ButtonColor.Outline}
+          size={ButtonSize.Small}
+          title="Share"
+        />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
