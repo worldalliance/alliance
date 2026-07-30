@@ -11,8 +11,7 @@ export const testUser = new User({
   id: -1,
   name: 'Test User',
   email: 'test@example.com',
-  phoneNumber: process.env.NOTIF_TEST_PHONE_NUMBER,
-  phoneNumberValidated: true,
+  phoneNumber: process.env.NOTIF_TEST_PHONE_NUMBER ?? null,
   emailVerified: false,
   devices: [],
   contractEvents: [

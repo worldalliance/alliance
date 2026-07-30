@@ -19,7 +19,7 @@ type CohortRow = {
   accounts_created: string;
   partial_profiles: string;
   email_verified: string;
-  phone_validated: string;
+  text_opt_in: string;
   signed_contracts: string;
   active_contracts: string;
   churned_contracts: string;
@@ -147,9 +147,9 @@ function printCohort(row: CohortRow): void {
     )} of churned)`,
   );
   console.log(
-    `  email verified / phone validated: ${formatCount(
+    `  email verified / text opt-in: ${formatCount(
       row.email_verified,
-    )} / ${formatCount(row.phone_validated)}`,
+    )} / ${formatCount(row.text_opt_in)}`,
   );
   console.log(`  partial profiles: ${formatCount(row.partial_profiles)}`);
   console.log(
@@ -291,7 +291,7 @@ async function main(): Promise<void> {
         count(*)::text as accounts_created,
         count(*) filter (where "isNotSignedUpPartialProfile")::text as partial_profiles,
         count(*) filter (where "emailVerified")::text as email_verified,
-        count(*) filter (where "phoneNumberValidated")::text as phone_validated,
+        count(*) filter (where "optInMmsId" is not null)::text as text_opt_in,
         count(*) filter (where first_signed_at is not null)::text as signed_contracts,
         count(*) filter (where latest_contract_type = 'signed')::text as active_contracts,
         count(*) filter (

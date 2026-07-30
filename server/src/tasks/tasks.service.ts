@@ -40,6 +40,7 @@ import {
   isAccountDerivedConditionKind,
   isKnownConditionKind,
 } from '@alliance/common/forms/visible-if-formula';
+import { toE164 } from '@alliance/common/phone';
 import { R, type Result } from '@alliance/common/result';
 import { Temporal } from '@js-temporal/polyfill';
 import {
@@ -52,8 +53,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { parsePhoneNumberWithError } from 'libphonenumber-js';
-import { parsePhoneNumber } from 'libphonenumber-js/max';
 import { ActionFormVariantService } from 'src/actions/action-form-variant.service';
 import { ActionsService } from 'src/actions/actions.service';
 import { ActionDto } from 'src/actions/dto/action.dto';
@@ -722,40 +721,34 @@ export class TasksService {
 
     if (phoneNumber) {
       this.logger.log(`Extracted phone number: ${phoneNumber}`);
-      try {
-        const parsedNumber = parsePhoneNumberWithError(phoneNumber, 'US');
+      const parsed = toE164(phoneNumber);
 
-        if (parsedNumber.isValid()) {
-          this.logger.log(`Valid phone number: ${parsedNumber.number}`);
-          userUpdates.phoneNumber = parsedNumber.number;
-          userUpdates.phoneNumberValidated = true;
+      if (R.isFailure(parsed)) {
+        this.logger.warn(`Could not parse phone number: ${phoneNumber}`);
+      } else {
+        const normalized = parsed.value;
+        this.logger.log(`Valid phone number: ${normalized}`);
+        userUpdates.phoneNumber = normalized;
 
-          if (!user.optInMms) {
-            const mms = await this.mmsService.sendMms(
-              parsedNumber.number,
-              welcomeMessage,
-              [],
-            );
-            if (mms) {
-              await this.userService.setOptInMms(user.id, mms.id);
-            } else {
-              if (process.env.NODE_ENV === 'production') {
-                await this.eventLogService.sendMessage({
-                  type: EventType.SmsFailure,
-                  message: `Failed to send opt-in MMS to ${parsedNumber.number}`,
-                  userId: user.id,
-                  blob: { to: parsedNumber.number },
-                });
-              }
+        if (!user.optInMms) {
+          const mms = await this.mmsService.sendMms(
+            normalized,
+            welcomeMessage,
+            [],
+          );
+          if (mms) {
+            await this.userService.setOptInMms(user.id, mms.id);
+          } else {
+            if (process.env.NODE_ENV === 'production') {
+              await this.eventLogService.sendMessage({
+                type: EventType.SmsFailure,
+                message: `Failed to send opt-in MMS to ${normalized}`,
+                userId: user.id,
+                blob: { to: normalized },
+              });
             }
           }
-        } else {
-          this.logger.warn(`Parsed an invalid phone number: ${phoneNumber}`);
-          userUpdates.phoneNumber = phoneNumber;
         }
-      } catch {
-        this.logger.warn(`Failed to parse phone number: ${phoneNumber}`);
-        userUpdates.phoneNumber = phoneNumber;
       }
     }
 
@@ -1543,16 +1536,13 @@ export class TasksService {
               'You have not entered a phone number yet - please do that now.',
           };
         }
-        try {
-          parsePhoneNumber(fieldValue, 'US');
-          return { isValid: true };
-        } catch (error) {
-          console.log('Error parsing phone number: ', error);
-          return {
-            isValid: false,
-            message: 'Could not validate phone number',
-          };
-        }
+        return R.isSuccess(toE164(fieldValue))
+          ? { isValid: true }
+          : {
+              isValid: false,
+              message:
+                'Could not read that as a phone number. If it is not a US number, include the country code, e.g. +44 20 7946 0958.',
+            };
       case CustomValidatorType.MemberTag:
         if (!validator.idArgument) {
           throw new BadRequestException('Validator has no id argument');

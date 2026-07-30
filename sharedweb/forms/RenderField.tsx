@@ -5,10 +5,12 @@ import type {
   FormValue,
   ListField,
   ListFieldValue,
+  PhoneField,
   RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
 import type { UserDto } from "@alliance/shared/client";
+import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { isOutputValueMissing } from "@alliance/shared/outputrenderer";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -29,6 +31,7 @@ import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import DropdownIcon from "../ui/icons/DropdownIcon";
 import ImageLightbox from "../ui/ImageLightbox";
 import NewButton, { ButtonColor, ButtonSize } from "../ui/NewButton";
+import PhoneNumberInput from "../ui/PhoneNumberInput";
 import YesNoToggle from "../ui/YesNoToggle";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./components";
@@ -309,36 +312,17 @@ export function RenderField({
 
     case "phone":
       return (
-        <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <input
-            type="tel"
-            value={(value as string) ?? ""}
-            onChange={
-              onChange
-                ? (e) => {
-                    const raw = e.target.value;
-                    const sanitized = raw.replace(/[^0-9+\-()\s]/g, "");
-                    onChange(sanitized);
-                  }
-                : undefined
-            }
-            required={required}
-            disabled={disabled}
-            pattern={field.pattern}
-            aria-invalid={hasError}
-            className={composeClassName(sharedInputClasses)}
-            placeholder={field.placeholder || "Enter phone number"}
-          />
-          {renderValidationMessage()}
-        </div>
+        <PhoneInputField
+          field={field}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          baseError={errorMessage}
+          labelRightAddon={labelRightAddon}
+          isOutputView={isOutputView}
+          hideLabel={hideLabel}
+          required={required}
+        />
       );
 
     case "number": {
@@ -1147,6 +1131,57 @@ export function RenderField({
 }
 
 export default RenderField;
+
+type PhoneInputFieldProps = {
+  field: PhoneField;
+  value: FormValue | undefined;
+  onChange?: (value: FormValue) => void;
+  disabled?: boolean;
+  baseError: string | null;
+  labelRightAddon?: ReactNode;
+  isOutputView?: boolean;
+  hideLabel?: boolean;
+  required?: boolean;
+};
+
+export function PhoneInputField({
+  field,
+  value,
+  onChange,
+  disabled,
+  baseError,
+  labelRightAddon,
+  isOutputView,
+  hideLabel,
+  required = !!field.required,
+}: PhoneInputFieldProps) {
+  const answer = typeof value === "string" ? value : "";
+  const [country, setCountry] = usePhoneFieldCountry(answer);
+
+  return (
+    <div className="space-y-1">
+      <RenderLabel
+        field={field}
+        error={baseError}
+        labelRightAddon={labelRightAddon}
+        isOutputView={isOutputView}
+        hideLabel={hideLabel}
+        required={required}
+      />
+      <PhoneNumberInput
+        name={field.id}
+        value={answer}
+        onChange={(next) => onChange?.(next)}
+        country={country}
+        onCountryChange={setCountry}
+        disabled={disabled || !onChange}
+        required={required}
+        placeholder={field.placeholder || "Enter phone number"}
+        error={baseError ?? undefined}
+      />
+    </div>
+  );
+}
 
 type TimeInputFieldProps = {
   field: TimeField;

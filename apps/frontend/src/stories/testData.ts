@@ -120,6 +120,7 @@ export const testAuthUser: UserDto = {
   id: 1,
   name: "First Lastname",
   email: "first.lastname@example.com",
+  phoneNumber: null,
   admin: false,
   referralCode: "1234567890",
   referralSource: "onetime_invite",

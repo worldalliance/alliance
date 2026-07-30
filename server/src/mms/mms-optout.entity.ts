@@ -1,37 +1,50 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { CreateDateColumnTz, UpdateDateColumnTz } from "src/datasources/basecolumns";
-import type { Relation } from "src/utils/Repository";
-import { User } from "src/user/entities/user.entity";
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { ApiProperty } from '@nestjs/swagger';
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from 'src/datasources/basecolumns';
+import type { Relation } from 'src/utils/Repository';
+import { User } from 'src/user/entities/user.entity';
+import { phoneNumberTransformer } from 'src/utils/phone';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity()
 export class MmsOptout {
-    @PrimaryGeneratedColumn('uuid')
-    @ApiProperty()
-    id: string;
+  @PrimaryGeneratedColumn('uuid')
+  @ApiProperty()
+  id: string;
 
-    @Column()
-    @ApiProperty()
-    phoneNumber: string;
+  @Column({
+    comment: 'E.164 format (+15551234567)',
+    transformer: phoneNumberTransformer,
+  })
+  @ApiProperty()
+  phoneNumber: string;
 
-    @Column()
-    @ApiProperty()
-    reason: string;
+  @Column()
+  @ApiProperty()
+  reason: string;
 
-    @CreateDateColumnTz()
-    @ApiProperty()
-    createdAt: Date;
+  @CreateDateColumnTz()
+  @ApiProperty()
+  createdAt: Date;
 
-    @UpdateDateColumnTz()
-    @ApiProperty()
-    updatedAt: Date;
+  @UpdateDateColumnTz()
+  @ApiProperty()
+  updatedAt: Date;
 
-    @Column()
-    @ApiProperty()
-    rawBody: string;
+  @Column()
+  @ApiProperty()
+  rawBody: string;
 
-    @ManyToOne(() => User, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'userId' })
-    @ApiProperty({ type: () => User })
-    user: Relation<User>;
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
+  @ApiProperty({ type: () => User })
+  user: Relation<User>;
 }

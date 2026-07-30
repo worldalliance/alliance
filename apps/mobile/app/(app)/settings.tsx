@@ -5,16 +5,19 @@ import {
   UpdateProfileDto,
   userMyLocation,
 } from "@alliance/shared/client";
-import { hasSettingsChanges } from "@alliance/shared/lib/settings";
-import { useUpdateProfileMutation } from "@alliance/shared/lib/user";
+import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { cn } from "@alliance/shared/styles/util";
 import { useMutation } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Switch, TextInput, TouchableOpacity, View } from "react-native";
 import AwayRangesSection from "../../components/AwayRangesSection";
+import PhoneNumberInput from "../../components/forms/PhoneNumberInput";
 import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
-import Button, { ButtonColor } from "../../components/system/Button";
+import Button, {
+  ButtonColor,
+  ButtonSize,
+} from "../../components/system/Button";
 import Card, { CardStyle } from "../../components/system/Card";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
@@ -62,29 +65,27 @@ function SettingsToggleRow({
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
-  const { mutateAsync: updateProfile, isPending: saving } =
-    useUpdateProfileMutation(user?.id);
+  const [location, setLocation] = useState<City | null>(null);
+
+  const {
+    editableUser,
+    updateEditableUser,
+    setSavedProfile,
+    phoneNumberError,
+    phoneNumberCountry,
+    setPhoneNumberCountry,
+    setPhoneNumberEditing,
+    saveStatus,
+    saveStatusText,
+    saveError,
+    retrySave,
+  } = useSettingsAutosave(user?.id, location?.countryCode);
 
   const [loading, setLoading] = useState(true);
-
-  const [location, setLocation] = useState<City | null>(null);
-  const [editableUser, setEditableUser] = useState<UpdateProfileDto | null>(
-    null,
-  );
-  const [initialUser, setInitialUser] = useState<UpdateProfileDto | null>(null);
 
   const [passwordResetMessage, setPasswordResetMessage] = useState<
     string | null
   >(null);
-
-  const updateEditableUser = useCallback(
-    (updates: Partial<UpdateProfileDto>) => {
-      setEditableUser((prev: UpdateProfileDto | null) =>
-        prev ? { ...prev, ...updates } : prev,
-      );
-    },
-    [],
-  );
 
   const handleLogout = useCallback(async () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -99,10 +100,6 @@ export default function SettingsPage() {
     ]);
   }, [logout]);
 
-  const hasChanges = useMemo(() => {
-    return hasSettingsChanges(editableUser, initialUser);
-  }, [editableUser, initialUser]);
-
   const forgotPassword = useMutation({
     mutationFn: (email: string) => authForgotPassword({ body: { email } }),
   });
@@ -115,26 +112,13 @@ export default function SettingsPage() {
     forgotPassword.mutate(user.email);
   }, [user?.email, forgotPassword]);
 
-  const handleSave = useCallback(
-    async (userPayload: UpdateProfileDto) => {
-      try {
-        await updateProfile({ ...userPayload });
-        setInitialUser({ ...userPayload });
-      } catch (error) {
-        console.error("Failed to save settings:", error);
-      }
-    },
-    [updateProfile],
-  );
-
   useEffect(() => {
     if (!user) return;
 
     authMe()
       .then((response: { data?: { user: UpdateProfileDto } }) => {
         if (response.data) {
-          setEditableUser(response.data.user);
-          setInitialUser(response.data.user);
+          setSavedProfile(response.data.user);
         }
       })
       .finally(() => {
@@ -146,26 +130,12 @@ export default function SettingsPage() {
       if (city) {
         setLocation(city);
         const cityId = city.id;
-        setEditableUser((prev: UpdateProfileDto | null) =>
-          prev ? { ...prev, cityId } : { ...user, cityId },
-        );
-        setInitialUser((prev: UpdateProfileDto | null) =>
+        setSavedProfile((prev: UpdateProfileDto | null) =>
           prev ? { ...prev, cityId } : { ...user, cityId },
         );
       }
     });
-  }, [user]);
-
-  // Auto-save with debounce
-  useEffect(() => {
-    if (!editableUser || !initialUser || !hasChanges) return;
-
-    const timeoutId = setTimeout(() => {
-      handleSave(editableUser);
-    }, 250);
-
-    return () => clearTimeout(timeoutId);
-  }, [editableUser, initialUser, hasChanges, handleSave]);
+  }, [user, setSavedProfile]);
 
   if (loading) {
     return (
@@ -194,16 +164,28 @@ export default function SettingsPage() {
   return (
     <View className="flex-1" testID="vr-settings-ready">
       <SimplePageTitle title="Settings">
-        <Text className="text-sm text-zinc-500 mr-4">
-          {saving
-            ? "Saving..."
-            : hasChanges
-              ? "Unsaved changes"
-              : "Changes saved"}
+        <Text
+          className={cn(
+            "text-sm mr-4",
+            saveStatus === "failed" ? "text-red-600" : "text-zinc-500",
+          )}
+        >
+          {saveStatusText}
         </Text>
       </SimplePageTitle>
       <KeyboardAwareScrollView className="flex-1">
         <View className=" px-2 pb-8 pt-2 flex flex-col gap-2">
+          {saveError && (
+            <View className="flex-row items-center justify-between gap-4 rounded-lg border border-red-300 bg-red-50 px-4 py-3">
+              <Text className="flex-1 text-sm text-red-700">{saveError}</Text>
+              <Button
+                onPress={retrySave}
+                title="Try again"
+                color={ButtonColor.Red}
+                size={ButtonSize.Small}
+              />
+            </View>
+          )}
           {/* Profile Section */}
           <Card cardStyle={CardStyle.White}>
             <View className="gap-4">
@@ -247,15 +229,15 @@ export default function SettingsPage() {
 
               <View>
                 <Text className="mb-1">Phone number</Text>
-                <TextInput
-                  className={inputClasses}
+                <PhoneNumberInput
                   value={editableUser.phoneNumber ?? ""}
-                  onChangeText={(text) =>
-                    updateEditableUser({ phoneNumber: text })
+                  onChange={(phoneNumber) =>
+                    updateEditableUser({ phoneNumber })
                   }
-                  placeholder="Enter phone number"
-                  placeholderTextColor={colors.text.light}
-                  keyboardType="phone-pad"
+                  country={phoneNumberCountry}
+                  onCountryChange={setPhoneNumberCountry}
+                  onEditingChange={setPhoneNumberEditing}
+                  error={phoneNumberError}
                 />
               </View>
             </View>

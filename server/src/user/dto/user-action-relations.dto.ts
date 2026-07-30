@@ -182,8 +182,8 @@ export class CommunityMemberContactInfoDto extends PickType(User, [
   @ApiPropertyOptional()
   email?: string;
 
-  @ApiPropertyOptional()
-  phoneNumber?: string;
+  @ApiProperty({ type: String, nullable: true })
+  phoneNumber: string | null;
 
   @ApiPropertyOptional({ type: 'string' })
   preferredReminderTimeUserTz?: string;
@@ -201,7 +201,7 @@ export class CommunityMemberContactInfoDto extends PickType(User, [
     this.email = user.shareEmailWithCommunityLead ? user.email : undefined;
     this.phoneNumber = user.sharePhoneNumberWithCommunityLead
       ? user.phoneNumber
-      : undefined;
+      : null;
     this.timeZone = user.timeZone?.toString();
     this.awayRanges = (user.awayRanges ?? [])
       .slice()

@@ -1,3 +1,4 @@
+import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import {
   CommunityMemberContactInfoDto,
   communityRemoveMember,
@@ -183,7 +184,9 @@ const CommunityMemberTableRow = ({
                     </div>
                     <div className="flex flex-row items-center gap-x-1">
                       <span className="font-semibold">Phone:</span>{" "}
-                      {contactInfo.phoneNumber ?? (
+                      {contactInfo.phoneNumber ? (
+                        formatPhoneNumberForDisplay(contactInfo.phoneNumber)
+                      ) : (
                         <>
                           <span className="text-zinc-500">Not provided</span>
                           {showInfoTooltip && (

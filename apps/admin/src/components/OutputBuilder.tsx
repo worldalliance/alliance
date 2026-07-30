@@ -179,7 +179,7 @@ const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
         answers[field.id] = "user@example.com";
         break;
       case "phone":
-        answers[field.id] = "(555) 010-1234";
+        answers[field.id] = "+14155552671";
         break;
       default:
         answers[field.id] = `${field.label} response`;

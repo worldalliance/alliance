@@ -11,10 +11,12 @@ import { PostHog, setupExpressErrorHandler } from 'posthog-node';
 import type { ServerOptions } from 'socket.io';
 import { AppModule } from './app.module';
 import { MetricsInterceptor } from './metrics';
+import { twilioSignatureEnforced } from './mms/twilio-signature.guard';
 import { injectResponseSchemas } from './openapi-errors';
 import { PosthogExceptionFilter } from './posthog.filter';
 import { requestContext } from './utils/request-context';
 import { RouteContextGuard } from './utils/request-context.guard';
+import { VALIDATION_PIPE_OPTIONS } from './utils/validation-pipe-options';
 
 function validateEnv() {
   const requiredVars = [
@@ -24,6 +26,7 @@ function validateEnv() {
     'DB_NAME',
     'JWT_SECRET',
     'JWT_REFRESH_SECRET',
+    ...(twilioSignatureEnforced() ? ['TWILIO_AUTH_TOKEN', 'APP_URL'] : []),
   ];
 
   const missing = requiredVars.filter((v) => !process.env[v]);
@@ -76,6 +79,8 @@ class SocketIoAdapter extends IoAdapter {
 }
 
 async function bootstrap() {
+  validateEnv();
+
   const port = Number(process.env.PORT ?? '3005');
   let client: PostHog | null = null;
 
@@ -90,17 +95,9 @@ async function bootstrap() {
     bodyParser: false,
   });
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
-  validateEnv();
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
-  app.useGlobalPipes(
-    new ValidationPipe({
-      disableErrorMessages: false,
-      forbidUnknownValues: true,
-      transform: true,
-      whitelist: true,
-    }),
-  );
+  app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
   app.useGlobalGuards(new RouteContextGuard());
   app.useGlobalInterceptors(new MetricsInterceptor());
   app.use((req, _res, next) => {

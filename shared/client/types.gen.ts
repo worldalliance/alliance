@@ -672,8 +672,7 @@ export type Cluster = {
 export type User = {
     id: number;
     name: string;
-    phoneNumber?: string;
-    phoneNumberValidated: boolean;
+    phoneNumber: string | null;
     emailVerified: boolean;
     preferredReminderTime?: string;
     timeZone?: string;
@@ -739,7 +738,7 @@ export type Tag = {
 export type UserDto = {
     id: number;
     name: string;
-    phoneNumber?: string;
+    phoneNumber: string | null;
     preferredReminderTime?: string;
     timeZone?: string;
     emailNotifsForActions: boolean;
@@ -839,8 +838,6 @@ export type UpdateAwayRangeDto = {
 
 export type UpdateProfileDto = {
     name?: string;
-    phoneNumber?: string;
-    phoneNumberValidated?: boolean;
     preferredReminderTime?: string;
     timeZone?: string;
     emailNotifsForActions?: boolean;
@@ -864,6 +861,7 @@ export type UpdateProfileDto = {
     remindAboutUncompletedGroupMembers?: boolean;
     receiveReplyNotifications?: boolean;
     cityId?: number | null;
+    phoneNumber?: string | null;
 };
 
 export type City = {
@@ -927,7 +925,7 @@ export type UserAdminInvitedByDto = {
 export type UserAdminDetailDto = {
     id: number;
     name: string;
-    phoneNumber?: string;
+    phoneNumber: string | null;
     preferredReminderTime?: string;
     timeZone?: string;
     emailNotifsForActions: boolean;
@@ -1453,7 +1451,7 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
-export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested';
+export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested';
 
 export type EventLogUserDto = {
     id: number;
@@ -1508,7 +1506,7 @@ export type CommunityMemberContactInfoDto = {
     id: number;
     timeZone?: string;
     email?: string;
-    phoneNumber?: string;
+    phoneNumber: string | null;
     preferredReminderTimeUserTz?: string;
     preferredReminderTimeLeaderTz?: string;
     awayRanges: Array<UserAwayRangeDto>;

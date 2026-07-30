@@ -4,19 +4,20 @@ import {
   City,
   CitySearchDto,
   PublicFormResponseDefault,
-  UpdateProfileDto,
   userMyLocation,
 } from "@alliance/shared/client";
-import { useUpdateProfileMutation } from "@alliance/shared/lib/user";
+import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
 import TimeZoneSelect from "@alliance/sharedweb/forms/TimeZoneSelect";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
 import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
+import PhoneNumberInput from "@alliance/sharedweb/ui/PhoneNumberInput";
 import YesNoToggle from "@alliance/sharedweb/ui/YesNoToggle";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { href, useLocation, useNavigate } from "react-router";
 import AwayRangesSection from "../../components/AwayRangesSection";
 import CityAutosuggest from "../../components/CityAutosuggest";
@@ -27,10 +28,19 @@ const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const [location, setLocation] = useState<City | null>(null);
-  const [editableUser, setEditableUser] = useState<UpdateProfileDto | null>(
-    null,
-  );
-  const [initialUser, setInitialUser] = useState<UpdateProfileDto | null>(null);
+  const {
+    editableUser,
+    updateEditableUser,
+    setSavedProfile,
+    phoneNumberError,
+    phoneNumberCountry,
+    setPhoneNumberCountry,
+    setPhoneNumberEditing,
+    saveStatus,
+    saveStatusText,
+    saveError,
+    retrySave,
+  } = useSettingsAutosave(user?.id, location?.countryCode);
 
   // const [paymentMethod, setPaymentMethod] = useState<PaymentMethodDto | null>(
   //   null
@@ -46,15 +56,6 @@ const SettingsPage: React.FC = () => {
 
   const navigate = useNavigate();
   const { hash } = useLocation();
-  const { mutateAsync: updateProfile, isPending: saving } =
-    useUpdateProfileMutation(user?.id);
-
-  const updateEditableUser = useCallback(
-    (updates: Partial<UpdateProfileDto>) => {
-      setEditableUser((prev) => (prev ? { ...prev, ...updates } : prev));
-    },
-    [],
-  );
 
   const handleLogout = useCallback(async () => {
     await logout();
@@ -71,15 +72,6 @@ const SettingsPage: React.FC = () => {
     },
     [updateEditableUser],
   );
-
-  const hasChanges = useMemo(() => {
-    if (!editableUser || !initialUser) {
-      return false;
-    }
-    const keys = Object.keys(editableUser) as (keyof UpdateProfileDto)[];
-
-    return keys.some((key) => editableUser[key] !== initialUser[key]);
-  }, [editableUser, initialUser]);
 
   // const loadPaymentMethod = useCallback(async () => {
   //   try {
@@ -136,18 +128,6 @@ const SettingsPage: React.FC = () => {
     }
   }, [user?.email]);
 
-  const handleSave = useCallback(
-    async (userPayload: UpdateProfileDto) => {
-      try {
-        await updateProfile({ ...userPayload });
-        setInitialUser({ ...userPayload });
-      } catch (error) {
-        console.error("Failed to save settings:", error);
-      }
-    },
-    [updateProfile],
-  );
-
   useEffect(() => {
     if (!user) {
       return;
@@ -156,8 +136,7 @@ const SettingsPage: React.FC = () => {
     authMe()
       .then((response) => {
         if (response.data) {
-          setEditableUser(response.data.user);
-          setInitialUser(response.data.user);
+          setSavedProfile(response.data.user);
         }
       })
       .finally(() => {
@@ -171,27 +150,12 @@ const SettingsPage: React.FC = () => {
       if (city) {
         setLocation(city);
         const cityId = city.id;
-        setEditableUser((prev) =>
-          prev ? { ...prev, cityId } : { ...user, cityId },
-        );
-        setInitialUser((prev) =>
+        setSavedProfile((prev) =>
           prev ? { ...prev, cityId } : { ...user, cityId },
         );
       }
     });
-  }, [user]);
-
-  useEffect(() => {
-    if (!editableUser || !initialUser || !hasChanges) {
-      return;
-    }
-
-    const timeoutId = setTimeout(() => {
-      handleSave(editableUser);
-    }, 250);
-
-    return () => clearTimeout(timeoutId);
-  }, [editableUser, initialUser, hasChanges, handleSave]);
+  }, [user, setSavedProfile]);
 
   // The page renders after an async load, so ScrollRestoration's hash
   // handling fires before the anchor exists.
@@ -233,12 +197,13 @@ const SettingsPage: React.FC = () => {
             <h1 className="text-title">Settings</h1>
           </div>
           <div className="flex flex-row gap-x-4 items-center">
-            <p className="text-sm text-zinc-500">
-              {saving
-                ? "Saving..."
-                : hasChanges
-                  ? "Unsaved changes"
-                  : "All changes saved"}
+            <p
+              className={cn(
+                "text-sm",
+                saveStatus === "failed" ? "text-red-600" : "text-zinc-500",
+              )}
+            >
+              {saveStatusText}
             </p>
             <Button
               onClick={handleLogout}
@@ -249,6 +214,22 @@ const SettingsPage: React.FC = () => {
             </Button>
           </div>
         </div>
+        {saveError && (
+          <div
+            role="alert"
+            className="flex items-center justify-between gap-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            <span>{saveError}</span>
+            <Button
+              onClick={retrySave}
+              color={ButtonColor.RedOutline}
+              size="small"
+              className="shrink-0"
+            >
+              Try again
+            </Button>
+          </div>
+        )}
         <Card style={CardStyle.White} className="p-6">
           <h2 className="font-semibold! text-2xl! mb-4">Profile</h2>
           <div className="flex flex-col gap-y-4">
@@ -298,15 +279,15 @@ const SettingsPage: React.FC = () => {
               </div>
               <div className="flex-1 flex flex-col w-full">
                 <label className="block mb-1">Phone number</label>
-                <FormInput
-                  name="phoneNumber"
-                  type="tel"
+                <PhoneNumberInput
                   value={editableUser.phoneNumber ?? ""}
-                  onChange={(event) =>
-                    updateEditableUser({ phoneNumber: event.target.value })
+                  onChange={(phoneNumber) =>
+                    updateEditableUser({ phoneNumber })
                   }
-                  placeholder="Enter phone number"
-                  className="flex-1"
+                  country={phoneNumberCountry}
+                  onCountryChange={setPhoneNumberCountry}
+                  onEditingChange={setPhoneNumberEditing}
+                  error={phoneNumberError ?? undefined}
                 />
               </div>
             </div>

@@ -1,3 +1,4 @@
+import { isCanonicalE164 } from '@alliance/common/phone';
 import { User } from './entities/user.entity';
 
 export function userActionNotifsEnabled_email(
@@ -20,16 +21,15 @@ export function userActionNotifsEnabled_text(
     | 'turnedOffAllNotifs'
     | 'phoneNumber'
     | 'hasActiveContract'
-    | 'phoneNumberValidated'
     | 'phoneNumberUnsubscribed'
   >,
 ): boolean {
   return Boolean(
     user.textNotifsForActions &&
     !user.turnedOffAllNotifs &&
-    user.phoneNumber &&
+    user.phoneNumber !== null &&
+    isCanonicalE164(user.phoneNumber) &&
     user.hasActiveContract &&
-    user.phoneNumberValidated &&
     !user.phoneNumberUnsubscribed,
   );
 }

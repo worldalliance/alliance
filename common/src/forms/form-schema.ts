@@ -102,7 +102,6 @@ const phoneFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("phone"),
   placeholder: z.string().optional(),
-  pattern: z.string().optional(),
   autoExtractUserData: z.boolean().optional(),
 });
 export type PhoneField = z.infer<typeof phoneFieldSchema>;

@@ -41,19 +41,6 @@ export function EditablePhoneField({
         />
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
-          Pattern (regex)
-        </label>
-        <input
-          type="text"
-          value={field.pattern || ""}
-          onChange={(e) => onUpdate({ pattern: e.target.value })}
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-          placeholder="e.g., ^\\+?[1-9]\\d{1,14}$"
-        />
-      </div>
-
       <RequiredToggle
         checked={field.required}
         onChange={(checked) => onUpdate({ required: checked })}

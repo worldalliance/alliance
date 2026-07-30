@@ -12,11 +12,17 @@ export class Mms {
   @ApiProperty()
   id: number;
 
-  @Column()
+  @Column({
+    comment:
+      'Twilio recipient address; may be E.164, a short code, or a channel address',
+  })
   @ApiProperty()
   to: string;
 
-  @Column()
+  @Column({
+    comment:
+      'Twilio sender identifier; may be E.164, a short code, or alphanumeric',
+  })
   @ApiProperty()
   from: string;
 

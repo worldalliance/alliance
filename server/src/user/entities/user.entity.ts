@@ -30,6 +30,7 @@ import { Mms } from 'src/mms/mms.entity';
 import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
 import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
 import { findLeast } from 'src/utils/filter';
+import { phoneNumberTransformer } from 'src/utils/phone';
 import type { Relation } from 'src/utils/Repository';
 import {
   BeforeInsert,
@@ -111,14 +112,14 @@ export class User {
   @IsEmail()
   email: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  @IsOptional()
-  phoneNumber?: string;
-
-  @Column({ default: false })
-  @ApiProperty()
-  phoneNumberValidated: boolean;
+  @Column({
+    type: 'varchar',
+    nullable: true,
+    comment: 'E.164 format (+15551234567)',
+    transformer: phoneNumberTransformer,
+  })
+  @ApiProperty({ type: String, nullable: true })
+  phoneNumber: string | null;
 
   @Column({ default: false })
   phoneNumberUnsubscribed: boolean;

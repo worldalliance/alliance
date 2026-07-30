@@ -1,6 +1,8 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
 import { ApiOkResponse } from '@nestjs/swagger';
+import { normalizePhoneNumber } from '@alliance/common/phone';
 import { MmsUnsubService } from './mms-unsub.service';
+import { TwilioSignatureGuard } from './twilio-signature.guard';
 
 const STOP_KEYWORDS = new Set([
   'STOP',
@@ -25,6 +27,7 @@ export class MmsController {
    * would break Twilio's response handling.
    */
   @Post('inbound')
+  @UseGuards(TwilioSignatureGuard)
   @ApiOkResponse({ type: String })
   async handleInboundMms(
     @Body() body: Record<string, unknown>,
@@ -39,16 +42,18 @@ export class MmsController {
     //   ...
     // }
 
-    const from = body.From as string | undefined;
-    const to = body.To as string | undefined;
+    const rawFrom = body.From as string | undefined;
+    const rawTo = body.To as string | undefined;
     const text = (body.Body as string | undefined) ?? '';
 
-    if (!from || !to) {
+    if (!rawFrom || !rawTo) {
       console.warn(
         `Missing From/To in Twilio webhook: ${JSON.stringify(body)}`,
       );
       return '';
     }
+
+    const from = normalizePhoneNumber(rawFrom);
 
     const keyword = text.trim().toUpperCase();
 
@@ -63,11 +68,11 @@ export class MmsController {
 
     if (START_KEYWORDS.has(keyword)) {
       console.log(`Received START from ${from}, marking subscribed`);
-      await this.mmsUnsubService.subscribeToMms(from);
+      await this.mmsUnsubService.subscribeToMms(from, { rawBody: text });
       return '';
     }
 
-    await this.mmsUnsubService.logUnhandledMessage(from, to, text);
+    await this.mmsUnsubService.logUnhandledMessage(from, rawTo, text);
     return '';
   }
 }

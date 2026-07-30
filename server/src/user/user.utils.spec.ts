@@ -24,9 +24,8 @@ function textUser(overrides: Partial<TextUser> = {}): TextUser {
   return {
     textNotifsForActions: true,
     turnedOffAllNotifs: false,
-    phoneNumber: '+15555550123',
+    phoneNumber: '+14155552671',
     hasActiveContract: true,
-    phoneNumberValidated: true,
     phoneNumberUnsubscribed: false,
     ...overrides,
   };
@@ -67,7 +66,7 @@ describe('userActionNotifsEnabled_email', () => {
 });
 
 describe('userActionNotifsEnabled_text', () => {
-  it('is enabled when opted in with a validated, subscribed phone and active contract', () => {
+  it('is enabled when opted in with a canonical, subscribed phone and active contract', () => {
     expect(userActionNotifsEnabled_text(textUser())).toBe(true);
   });
 
@@ -84,9 +83,9 @@ describe('userActionNotifsEnabled_text', () => {
   });
 
   it('is disabled without a phone number', () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ phoneNumber: undefined })),
-    ).toBe(false);
+    expect(userActionNotifsEnabled_text(textUser({ phoneNumber: null }))).toBe(
+      false,
+    );
   });
 
   it('is disabled without an active contract', () => {
@@ -95,10 +94,12 @@ describe('userActionNotifsEnabled_text', () => {
     ).toBe(false);
   });
 
-  it('is disabled when the phone number is not validated', () => {
-    expect(
-      userActionNotifsEnabled_text(textUser({ phoneNumberValidated: false })),
-    ).toBe(false);
+  it('is disabled when the phone number is invalid or not canonical', () => {
+    for (const phoneNumber of ['not-a-phone', '15550100', '(415) 555-2671']) {
+      expect(userActionNotifsEnabled_text(textUser({ phoneNumber }))).toBe(
+        false,
+      );
+    }
   });
 
   it('is disabled when the phone number is unsubscribed', () => {

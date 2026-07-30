@@ -3,6 +3,7 @@ import { CreateActionDto, UserDto } from "@alliance/shared/client";
 export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   id: 0,
   name: "Preview User",
+  phoneNumber: null,
   emailNotifsForActions: false,
   textNotifsForActions: false,
   pushNotifsForActions: false,

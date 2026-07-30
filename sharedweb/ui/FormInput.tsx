@@ -1,19 +1,20 @@
-import React from "react";
 import { cn } from "@alliance/shared/styles/util";
+import React from "react";
 
-interface FormInputProps
-  extends Pick<
-    React.InputHTMLAttributes<HTMLInputElement>,
-    | "type"
-    | "value"
-    | "onChange"
-    | "placeholder"
-    | "required"
-    | "autoComplete"
-    | "disabled"
-    | "className"
-    | "min"
-  > {
+interface FormInputProps extends Pick<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  | "type"
+  | "value"
+  | "onChange"
+  | "placeholder"
+  | "required"
+  | "autoComplete"
+  | "disabled"
+  | "className"
+  | "min"
+  | "onFocus"
+  | "onBlur"
+> {
   label?: string;
   error?: string;
   name: string;
@@ -34,6 +35,8 @@ const FormInput: React.FC<FormInputProps> = ({
   className,
   min,
   inputClassName,
+  onFocus,
+  onBlur,
 }) => {
   return (
     <div className={cn("flex flex-col gap-1", className)}>
@@ -48,6 +51,8 @@ const FormInput: React.FC<FormInputProps> = ({
         type={type}
         value={value}
         onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
         placeholder={placeholder}
         required={required}
         disabled={disabled}
@@ -58,7 +63,7 @@ const FormInput: React.FC<FormInputProps> = ({
             ? "bg-page text-zinc-500 cursor-not-allowed"
             : "hover:border-zinc-300",
           error ? "focus:border-red-500" : "focus:border-green",
-          inputClassName
+          inputClassName,
         )}
         autoComplete={autoComplete}
         min={min}

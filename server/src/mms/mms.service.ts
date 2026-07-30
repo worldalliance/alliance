@@ -154,10 +154,13 @@ export class MmsService {
         blob: message.toJSON(),
       });
     }
-    return this.mmsRepository.save({
-      ...mms,
-      ...message,
-    });
+    mms.to = message.to;
+    mms.from = message.from;
+    mms.body = message.body;
+    mms.status = message.status;
+    mms.errorCode = message.errorCode;
+    mms.errorMessage = message.errorMessage;
+    return this.mmsRepository.save(mms);
   }
 
   // doesnt throw to allow fallback to mail - TODO this is kind of unintuitive

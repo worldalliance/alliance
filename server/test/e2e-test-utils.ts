@@ -10,6 +10,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import cookieParser from 'cookie-parser';
 import { Contract } from 'src/contract/entities/contract.entity';
 import { testConnectionOptions } from 'src/datasources/dataSourceTest';
+import { VALIDATION_PIPE_OPTIONS } from 'src/utils/validation-pipe-options';
 import { ForumModule } from 'src/forum/forum.module';
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { PosthogModule } from 'src/posthog/posthog.module';
@@ -81,7 +82,7 @@ export async function createTestApp(
   const moduleFixture: TestingModule = await builder.compile();
 
   const app = moduleFixture.createNestApplication();
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
   app.use(cookieParser());
   await app.init();
 

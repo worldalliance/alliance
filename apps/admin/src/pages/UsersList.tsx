@@ -1,3 +1,4 @@
+import { phoneSearchDigits } from "@alliance/common/phone";
 import {
   actionsActionRelationsAdmin,
   analyticsGetTimeSpentPerUserAdmin,
@@ -30,9 +31,6 @@ import UserCard from "../components/UserCard";
 type ViewMode = "cards" | "rows";
 
 const MEMBERS_PER_PAGE = 50;
-
-const normalizePhoneSearch = (value: string | undefined): string =>
-  value?.replace(/\D/g, "") ?? "";
 
 const UsersList: React.FC = () => {
   const { data: users = [] } = useQuery({
@@ -146,12 +144,12 @@ const UsersList: React.FC = () => {
       return filteredByTags;
     }
     const query = searchQuery.toLowerCase().trim();
-    const phoneQuery = normalizePhoneSearch(query);
+    const phoneQuery = phoneSearchDigits(query);
     return filteredByTags.filter((user) => {
       const name = user.name?.toLowerCase() ?? "";
       const email = user.email?.toLowerCase() ?? "";
       const phone = user.phoneNumber?.toLowerCase() ?? "";
-      const normalizedPhone = normalizePhoneSearch(user.phoneNumber);
+      const normalizedPhone = phoneSearchDigits(user.phoneNumber);
       return (
         name.includes(query) ||
         email.includes(query) ||

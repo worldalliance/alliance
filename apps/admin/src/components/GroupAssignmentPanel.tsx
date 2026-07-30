@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import {
   communityGetCommunitiesAdmin,
   userAssignGroupsAdmin,
@@ -9,13 +8,15 @@ import type {
   CommunityDto,
   UserDto,
 } from "@alliance/shared/client/types.gen";
+import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import { CardStyle } from "@alliance/shared/styles/card";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import List from "@alliance/sharedweb/ui/List";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import { CardStyle } from "@alliance/shared/styles/card";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import ConfirmDialog from "./ConfirmDialog";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 
 const storageKey = "admin.groupAssignmentSelections";
 
@@ -89,7 +90,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
     }
     try {
       const serializable = Object.fromEntries(
-        Object.entries(assignmentSelections).filter(([, value]) => value)
+        Object.entries(assignmentSelections).filter(([, value]) => value),
       );
       window.localStorage.setItem(storageKey, JSON.stringify(serializable));
     } catch (error) {
@@ -123,7 +124,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
     return [...communities].sort((a, b) =>
       a.name
         .trim()
-        .localeCompare(b.name.trim(), undefined, { sensitivity: "base" })
+        .localeCompare(b.name.trim(), undefined, { sensitivity: "base" }),
     );
   }, [communities]);
 
@@ -134,12 +135,12 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
           member.id,
           member.communities.filter(
             (community) =>
-              !community.leaders?.some((leader) => leader.id === member.id)
+              !community.leaders?.some((leader) => leader.id === member.id),
           ),
-        ])
+        ]),
       ),
 
-    [members]
+    [members],
   );
 
   const handleSelectionChange = useCallback(
@@ -150,12 +151,12 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
         [memberId]: value,
       }));
     },
-    []
+    [],
   );
 
   const selectedCommunityByMemberId = useMemo(() => {
     const communityById = new Map(
-      communities.map((community) => [community.id.toString(), community])
+      communities.map((community) => [community.id.toString(), community]),
     );
     return new Map(
       Object.entries(assignmentSelections)
@@ -163,7 +164,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
           const selected = communityById.get(communityId);
           return selected ? [Number(memberId), selected] : null;
         })
-        .filter((entry): entry is [number, CommunityDto] => entry !== null)
+        .filter((entry): entry is [number, CommunityDto] => entry !== null),
     );
   }, [assignmentSelections, communities]);
 
@@ -190,13 +191,13 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
         })
         .filter(
           (
-            entry
+            entry,
           ): entry is {
             member: (typeof members)[number];
             community: CommunityDto;
-          } => entry !== null
+          } => entry !== null,
         ),
-    [members, selectedCommunityByMemberId]
+    [members, selectedCommunityByMemberId],
   );
 
   const hasSelections = assignmentPreview.length > 0;
@@ -204,15 +205,15 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
     return new Set(
       communities
         .filter((community) => community.maxCapacity === null)
-        .map((community) => community.id)
+        .map((community) => community.id),
     );
   }, [communities]);
   const hasInvalidSelections = useMemo(
     () =>
       Array.from(selectedCommunityByMemberId.values()).some((community) =>
-        invalidCommunityIds.has(community.id)
+        invalidCommunityIds.has(community.id),
       ),
-    [invalidCommunityIds, selectedCommunityByMemberId]
+    [invalidCommunityIds, selectedCommunityByMemberId],
   );
   const overCapacityByCommunityId = useMemo(() => {
     const overages = new Map<number, number>();
@@ -247,7 +248,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
           .get(member.id)
           ?.map((group) => group.name)
           .sort((a, b) =>
-            a.localeCompare(b, undefined, { sensitivity: "base" })
+            a.localeCompare(b, undefined, { sensitivity: "base" }),
           ) ?? [];
       const groupTransitionSummary = currentGroups.length
         ? `(Remove from: ${currentGroups.join(", ")}) -> ${community.name}`
@@ -293,7 +294,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
         }));
       return [placeholder, ...options];
     },
-    [loadingCommunities, pendingAssignmentsByCommunityId, sortedCommunities]
+    [loadingCommunities, pendingAssignmentsByCommunityId, sortedCommunities],
   );
 
   const handleOpenConfirm = useCallback(() => {
@@ -394,7 +395,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
               const selection = assignmentSelections[member.id] ?? "";
               const memberGroups = memberGroupsByMemberId.get(member.id) ?? [];
               const selectedCommunity = selectedCommunityByMemberId.get(
-                member.id
+                member.id,
               );
               return (
                 <div
@@ -412,7 +413,9 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
                       </Link>
                       <div className="text-sm text-zinc-500">
                         {member.email}
-                        {member.phoneNumber ? ` • ${member.phoneNumber}` : ""}
+                        {member.phoneNumber
+                          ? ` • ${formatPhoneNumberForDisplay(member.phoneNumber)}`
+                          : ""}
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs text-zinc-600">
                         {memberGroups.length ? (
@@ -475,7 +478,7 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
                         className="text-xs self-end"
                         onClick={() =>
                           navigate(
-                            `/groups/${selectedCommunity.id}?from=groups`
+                            `/groups/${selectedCommunity.id}?from=groups`,
                           )
                         }
                       >

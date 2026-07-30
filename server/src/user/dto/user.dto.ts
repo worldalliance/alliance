@@ -14,6 +14,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { getImageSource } from 'src/images/images.service';
+import { IsE164 } from 'src/utils/phone';
 import { ClusterSummaryDto } from '../../cluster/dto/cluster.dto';
 import { Cluster } from '../../cluster/entities/cluster.entity';
 import { Campaign } from '../../campaign/entities/campaign.entity';
@@ -215,9 +216,9 @@ export class UserDto extends PickType(User, [
   @Allow()
   email: string;
 
-  @ApiPropertyOptional()
+  @ApiProperty({ type: String, nullable: true })
   @IsOptional()
-  phoneNumber?: string;
+  phoneNumber: string | null;
 
   @ApiProperty()
   @Allow()
@@ -437,8 +438,6 @@ function humanizeReferralSource(source: ReferralSource) {
 export class UpdateProfileDto extends PartialType(
   PickType(User, [
     'name',
-    'phoneNumber',
-    'phoneNumberValidated',
     'profileDescription',
     'profilePicture',
     'anonymous',
@@ -466,6 +465,11 @@ export class UpdateProfileDto extends PartialType(
   @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()
   cityId?: number | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsE164()
+  phoneNumber?: string | null;
 }
 
 export class UpdateUserRolesAdminDto extends PartialType(

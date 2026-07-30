@@ -1,3 +1,5 @@
+import { toE164 } from '@alliance/common/phone';
+import { R } from '@alliance/common/result';
 import { ContractService } from 'src/contract/contract.service';
 import {
   Notification,
@@ -118,6 +120,125 @@ describe('Users (e2e)', () => {
       .set('Authorization', `Bearer ${userAToken}`);
 
     expect(res.status).toBe(201);
+  });
+
+  describe('phone number on /user/update', () => {
+    const phoneOf = async (id: number) =>
+      (await userRepo.findOneByOrFail({ id })).phoneNumber;
+
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post('/user/update')
+        .send(body)
+        .set('Authorization', `Bearer ${userAToken}`);
+
+    afterAll(async () => {
+      await update({ phoneNumber: null });
+    });
+
+    it('stores a number sent in E.164', async () => {
+      const res = await update({ phoneNumber: '+14155552671' });
+
+      expect(res.status).toBe(201);
+      expect(await phoneOf(userAId)).toBe('+14155552671');
+    });
+
+    it('rejects a number that is not already E.164', async () => {
+      for (const typed of [
+        '(415) 555-2671',
+        '415.555.2672',
+        '4155552671',
+        ' +14155552671 ',
+      ]) {
+        const res = await update({ phoneNumber: typed });
+
+        expect(res.status).toBe(400);
+        expect(await phoneOf(userAId)).toBe('+14155552671');
+      }
+    });
+
+    it('clears the number when null is submitted', async () => {
+      expect(await phoneOf(userAId)).toBe('+14155552671');
+
+      const res = await update({
+        phoneNumber: null,
+        profileDescription: 'saved alongside the cleared number',
+      });
+
+      expect(res.status).toBe(201);
+
+      const user = await userRepo.findOneByOrFail({ id: userAId });
+      expect(user.phoneNumber).toBeNull();
+      expect(user.profileDescription).toBe(
+        'saved alongside the cleared number',
+      );
+    });
+
+    it('rejects an empty string rather than reading it as a clear', async () => {
+      await update({ phoneNumber: '+14155552671' });
+
+      for (const blank of ['', '   ']) {
+        const res = await update({ phoneNumber: blank });
+
+        expect(res.status).toBe(400);
+        expect(await phoneOf(userAId)).toBe('+14155552671');
+      }
+    });
+
+    it('still rejects a number that is neither null nor parseable', async () => {
+      const res = await update({ phoneNumber: '555-12' });
+
+      expect(res.status).toBe(400);
+      expect(await phoneOf(userAId)).toBe('+14155552671');
+    });
+
+    it('accepts whatever the client turns a typed number into', async () => {
+      for (const typed of [
+        '(415) 555-2671',
+        '415.555.2672',
+        '+44 20 7946 0958',
+        '+86 138 0013 8000',
+      ]) {
+        const asSentByClient = R.unwrapOr(toE164(typed), null);
+        expect(asSentByClient).not.toBeNull();
+
+        const res = await update({ phoneNumber: asSentByClient });
+
+        expect(res.status).toBe(201);
+        expect(await phoneOf(userAId)).toBe(asSentByClient);
+      }
+    });
+
+    it('rejects a number that is E.164-shaped but cannot exist', async () => {
+      await update({ phoneNumber: '+14155552671' });
+
+      for (const wellFormed of ['+18001230000', '+861380013800']) {
+        expect(/^\+[1-9]\d{1,14}$/.test(wellFormed)).toBe(true);
+        expect(R.isSuccess(toE164(wellFormed))).toBe(false);
+
+        const res = await update({ phoneNumber: wellFormed });
+
+        expect(res.status).toBe(400);
+        expect(await phoneOf(userAId)).toBe('+14155552671');
+      }
+    });
+
+    it('drops a field that is not on the DTO rather than 400ing', async () => {
+      const res = await update({
+        phoneNumber: '+14155552671',
+        phoneNumberValidated: true,
+      });
+
+      expect(res.status).toBe(201);
+      expect(await phoneOf(userAId)).toBe('+14155552671');
+    });
+
+    it('names the expected format when it rejects', async () => {
+      const res = await update({ phoneNumber: '(415) 555-2671' });
+
+      expect(res.status).toBe(400);
+      expect(JSON.stringify(res.body)).toContain('E.164');
+    });
   });
 
   it('can update user anonymous setting and city via update endpoint', async () => {

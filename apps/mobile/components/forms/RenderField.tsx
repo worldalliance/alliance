@@ -5,6 +5,7 @@ import type {
   FormValue,
   ListField,
   ListFieldValue,
+  PhoneField,
   RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
@@ -14,6 +15,7 @@ import {
   formatTimeForDisplay,
   parseTimeInput,
 } from "@alliance/shared/forms/timeUtils";
+import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
 import { launchImageLibraryAsync } from "expo-image-picker";
 import { Check, ChevronDown } from "lucide-react-native";
@@ -38,6 +40,7 @@ import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./customComponentRegistry";
 import FormModal from "./FormModal";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
+import PhoneNumberInput from "./PhoneNumberInput";
 import { RankingFieldInput } from "./RankingFieldInput";
 import TimeZoneSelect from "./TimeZoneSelect";
 
@@ -277,28 +280,17 @@ export function RenderField({
 
     case "phone":
       return (
-        <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
-          <TextInput
-            className={inputBase}
-            value={(value as string) ?? ""}
-            onChangeText={(text) => {
-              const sanitized = text.replace(/[^0-9+\-()\s]/g, "");
-              onChange?.(sanitized);
-            }}
-            onFocus={onFocus}
-            placeholder={field.placeholder || "Enter phone number"}
-            placeholderTextColor="#9ca3af"
-            keyboardType="phone-pad"
-            editable={!disabled}
-          />
-          {renderValidationMessage(errorMessage)}
-        </View>
+        <PhoneInputField
+          field={field}
+          value={value}
+          onChange={onChange}
+          onFocus={onFocus}
+          disabled={disabled}
+          baseError={errorMessage}
+          isOutputView={isOutputView}
+          hideLabel={hideLabel}
+          required={required}
+        />
       );
 
     case "number": {
@@ -1011,6 +1003,58 @@ export function RenderField({
     default:
       return null;
   }
+}
+
+type PhoneInputFieldProps = {
+  field: PhoneField;
+  value: FormValue | undefined;
+  onChange?: (value: FormValue) => void;
+  onFocus?: () => void;
+  disabled?: boolean;
+  baseError: string | null;
+  isOutputView?: boolean;
+  hideLabel?: boolean;
+  required?: boolean;
+};
+
+export function PhoneInputField({
+  field,
+  value,
+  onChange,
+  onFocus,
+  disabled,
+  baseError,
+  isOutputView,
+  hideLabel,
+  required = !!field.required,
+}: PhoneInputFieldProps) {
+  const answer = typeof value === "string" ? value : "";
+  const [country, setCountry] = usePhoneFieldCountry(answer);
+
+  return (
+    <View>
+      <RenderLabel
+        field={field}
+        isOutputView={isOutputView}
+        hideLabel={hideLabel}
+        required={required}
+      />
+      <PhoneNumberInput
+        value={answer}
+        onChange={(next) => onChange?.(next)}
+        country={country}
+        onCountryChange={setCountry}
+        onEditingChange={(editing) => {
+          if (editing) {
+            onFocus?.();
+          }
+        }}
+        disabled={disabled || !onChange}
+        placeholder={field.placeholder || "Enter phone number"}
+        error={baseError}
+      />
+    </View>
+  );
 }
 
 type TimeInputFieldProps = {

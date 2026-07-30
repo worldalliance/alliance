@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
 import {
   actionsActionRelationsForUserAdmin,
   analyticsGetTimeSpentPerUserAdmin,
@@ -636,7 +637,7 @@ const UserDetailView: React.FC = () => {
             {user.phoneNumber && (
               <span className="text-zinc-400">
                 <Phone size={16} className="text-zinc-500 inline mr-1" />
-                {user.phoneNumber}
+                {formatPhoneNumberForDisplay(user.phoneNumber)}
               </span>
             )}
             <span className="text-zinc-400">ID: {user.id}</span>

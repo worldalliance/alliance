@@ -131,7 +131,6 @@ describe('Tasks (e2e)', () => {
     await customValidatorRepo.query('DELETE FROM custom_validator');
     await userRepo.update(ctx.testUserId, {
       phoneNumber: null as unknown as string,
-      phoneNumberValidated: false,
       profilePicture: null as unknown as string,
       profileDescription: null as unknown as string,
       timeZone: null as unknown as string,
@@ -288,7 +287,6 @@ describe('Tasks (e2e)', () => {
     );
 
     const user = await userRepo.findOne({ where: { id: ctx.testUserId } });
-    expect(user?.phoneNumberValidated).toBe(true);
     expect(user?.phoneNumber).toContain('+1');
 
     const listResponse = await request(ctx.app.getHttpServer())
@@ -939,10 +937,39 @@ describe('Tasks (e2e)', () => {
 
       result = await runValidator(phoneValidValidatorId, 'not-a-phone');
       expect(result.isValid).toBe(false);
-      expect(result.message).toBe('Could not validate phone number');
+      expect(result.message).toContain('include the country code');
 
       result = await runValidator(phoneValidValidatorId, '+14155552671');
       expect(result.isValid).toBe(true);
+    });
+
+    it('accepts the E.164 a phone field now submits, from any country', async () => {
+      const phoneValidValidatorId = await createValidator(
+        CustomValidatorType.IsPhoneNumberValid,
+      );
+
+      for (const submitted of [
+        '+14155552671',
+        '+447578497969',
+        '+33751181445',
+        '+525512345678',
+      ]) {
+        expect(await runValidator(phoneValidValidatorId, submitted)).toEqual({
+          isValid: true,
+        });
+      }
+    });
+
+    it('tells a member sending a bare non-US number what is missing', async () => {
+      // Legacy clients send national numbers without country metadata.
+      const phoneValidValidatorId = await createValidator(
+        CustomValidatorType.IsPhoneNumberValid,
+      );
+
+      const result = await runValidator(phoneValidValidatorId, '07578497969');
+
+      expect(result.isValid).toBe(false);
+      expect(result.message).toContain('country code');
     });
 
     it('validates tag and community membership', async () => {
@@ -2136,8 +2163,7 @@ describe('Tasks (e2e)', () => {
         'This is my profile description that should not be deleted';
       await userRepo.update(ctx.testUserId, {
         profileDescription: initialDescription,
-        phoneNumber: null as unknown as string,
-        phoneNumberValidated: false,
+        phoneNumber: null,
         timeZone: null as unknown as string,
         customCityString: null as unknown as string,
         shareInfoPublicly: false,
@@ -2218,11 +2244,61 @@ describe('Tasks (e2e)', () => {
 
       // Verify extracted fields were saved
       expect(updatedUser?.phoneNumber).toBe('+14155551234');
-      expect(updatedUser?.phoneNumberValidated).toBe(true);
       expect(updatedUser?.timeZone).toBe('America/New_York');
       expect(updatedUser?.customCityString).toBe('Custom City Name');
       expect(updatedUser?.shareInfoPublicly).toBe(true);
       expect(updatedUser?.profileDescription).toBe(initialDescription);
+    });
+
+    it('extracts a non-US number, which is what the picker unblocks', async () => {
+      await userRepo.update(ctx.testUserId, { phoneNumber: null });
+
+      const schema: FormSchema = {
+        title: 'Non-US Phone Form',
+        pages: [
+          {
+            id: 'page-1',
+            fields: [
+              {
+                id: 'phone-field',
+                type: 'input',
+                kind: 'phone',
+                label: 'Phone Number',
+                autoExtractUserData: true,
+              },
+            ],
+          },
+        ],
+        outputViews: [],
+        aggregateViews: [],
+      };
+
+      const action = await createAction('Non-US Phone Action');
+      const formResponse = await request(ctx.app.getHttpServer())
+        .post('/tasks/createForm')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: schema.title, schema })
+        .expect(201);
+      await actionRepo.update(action.id, {
+        taskFormId: formResponse.body.id as number,
+      });
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${formResponse.body.id}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: { 'phone-field': '+447578497969' },
+          formSnapshotId: formResponse.body.formSnapshotId as number,
+          actionId: action.id,
+          deviceType: 'desktop' as const,
+        })
+        .expect(201);
+
+      const updatedUser = await userRepo.findOne({
+        where: { id: ctx.testUserId },
+      });
+
+      expect(updatedUser?.phoneNumber).toBe('+447578497969');
     });
 
     it('extracts preferredReminderTime from time field', async () => {
@@ -2289,7 +2365,6 @@ describe('Tasks (e2e)', () => {
       await userRepo.update(ctx.testUserId, {
         profileDescription: initialDescription,
         phoneNumber: initialPhone,
-        phoneNumberValidated: true,
         shareInfoPublicly: true,
       });
 
@@ -2349,14 +2424,13 @@ describe('Tasks (e2e)', () => {
       // All user fields should remain unchanged
       expect(updatedUser?.profileDescription).toBe(initialDescription);
       expect(updatedUser?.phoneNumber).toBe(initialPhone);
-      expect(updatedUser?.phoneNumberValidated).toBe(true);
       expect(updatedUser?.shareInfoPublicly).toBe(true);
     });
 
-    it('handles invalid phone numbers without setting phoneNumberValidated', async () => {
+    it('does not overwrite the profile with an invalid phone number', async () => {
+      const initialPhoneNumber = '+14155552671';
       await userRepo.update(ctx.testUserId, {
-        phoneNumber: null as unknown as string,
-        phoneNumberValidated: false,
+        phoneNumber: initialPhoneNumber,
       });
 
       const phoneSchema: FormSchema = {
@@ -2406,9 +2480,7 @@ describe('Tasks (e2e)', () => {
         where: { id: ctx.testUserId },
       });
 
-      // Phone should be saved but not validated
-      expect(updatedUser?.phoneNumber).toBe('not-a-valid-phone');
-      expect(updatedUser?.phoneNumberValidated).toBe(false);
+      expect(updatedUser?.phoneNumber).toBe(initialPhoneNumber);
     });
   });
 });
