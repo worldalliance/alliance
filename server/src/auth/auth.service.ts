@@ -8,6 +8,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import type { Request, Response } from 'express';
 import { Campaign } from 'src/campaign/entities/campaign.entity';
 import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
+import {
+  inviteAssignmentFromColumns,
+  type StoredInviteAssignment,
+} from 'src/share-urls/invite-assignment';
 import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
 import { Repository } from 'typeorm';
 import { MailService } from '../mail/mail.service';
@@ -180,6 +184,7 @@ export class AuthService {
     referringUser: User | null;
     referredByCampaign: Campaign | null;
     referredByShareUrl: ShareUrl | null;
+    inviteAssignment: StoredInviteAssignment | null;
     referralSource: ReferralSource;
   }> {
     const resolution = await this.usersService.resolveReferral(referralCode, {
@@ -199,6 +204,7 @@ export class AuthService {
         referringUser: null,
         referredByCampaign: null,
         referredByShareUrl: null,
+        inviteAssignment: null,
         referralSource: ReferralSource.None,
       };
     }
@@ -217,6 +223,7 @@ export class AuthService {
           referringUser: invite.invitingUser,
           referredByCampaign: null,
           referredByShareUrl: null,
+          inviteAssignment: null,
           referralSource: ReferralSource.OnetimeInvite,
         };
       }
@@ -226,6 +233,7 @@ export class AuthService {
           referringUser: null,
           referredByCampaign: resolution.campaign,
           referredByShareUrl: null,
+          inviteAssignment: null,
           referralSource: ReferralSource.Campaign,
         };
       case 'user':
@@ -234,6 +242,9 @@ export class AuthService {
           referringUser: resolution.user,
           referredByCampaign: null,
           referredByShareUrl: resolution.shareUrl,
+          inviteAssignment: resolution.shareUrl
+            ? inviteAssignmentFromColumns(resolution.shareUrl)
+            : null,
           referralSource: resolution.referralSource,
         };
       default:
@@ -257,20 +268,24 @@ export class AuthService {
       referringUser,
       referredByCampaign,
       referredByShareUrl,
+      inviteAssignment,
       referralSource,
     } = await this.resolveReferralCode(signUp.referralCode);
 
     const defaultTag = await this.usersService.findAllMembersTag();
 
-    const user = await this.usersService.create({
-      ...signUp,
-      referredBy: referringUser ?? null,
-      referredByInvite: invite ?? null,
-      referredByCampaign: referredByCampaign ?? null,
-      referredByShareUrl: referredByShareUrl ?? null,
-      referralSource,
-      tags: defaultTag ? [defaultTag] : undefined,
-    });
+    const user = await this.usersService.createWithInviteAssignment(
+      {
+        ...signUp,
+        referredBy: referringUser ?? null,
+        referredByInvite: invite ?? null,
+        referredByCampaign: referredByCampaign ?? null,
+        referredByShareUrl: referredByShareUrl ?? null,
+        referralSource,
+        tags: defaultTag ? [defaultTag] : undefined,
+      },
+      inviteAssignment,
+    );
 
     if (referringUser) {
       await this.usersService.makeFriendsAutomated(referringUser.id, user.id);

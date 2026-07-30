@@ -1,12 +1,23 @@
 import type { OnetimeInviteDto } from "@alliance/shared/client";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
-import { inviteBuckets, roleBadges } from "@alliance/shared/lib/copy";
-import { bucketOnetimeInvitesByActionability } from "@alliance/shared/lib/inviteUtils";
+import {
+  deleteInviteConfirmation,
+  inviteBuckets,
+  inviteDestination,
+  onetimeInviteCreation,
+  roleBadges,
+} from "@alliance/shared/lib/copy";
+import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import {
+  bucketOnetimeInvitesByActionability,
+  onetimeInviteNotes,
+} from "@alliance/shared/lib/inviteUtils";
 import { useAllianceMemberCount } from "@alliance/shared/lib/useAllianceMemberCount";
 import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassadorInviteDashboard";
+import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
-import { pluralize } from "@alliance/shared/lib/utils";
+import { formatTime, pluralize } from "@alliance/shared/lib/utils";
 import {
   CalendarDays,
   ChevronDown,
@@ -26,6 +37,9 @@ import React, {
 import { Alert, RefreshControl, TouchableOpacity, View } from "react-native";
 import InviteForm from "../../components/InviteForm";
 import { InviteSection } from "../../components/InviteSection";
+import InviteSettingsModal, {
+  type InviteSettingsTarget,
+} from "../../components/InviteSettingsModal";
 import InviteShareLink from "../../components/InviteShareLink";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import ReferralQrSection from "../../components/ReferralQrSection";
@@ -38,6 +52,7 @@ import { SegmentedTabs } from "../../components/system/SegmentedTabs";
 import { SimplePageTitle } from "../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../components/system/Text";
 import { useAuth } from "../../lib/AuthContext";
+import { getBaseUrl } from "../../lib/config";
 import { colors } from "../../lib/style/colors";
 import { useReferralLink } from "../../lib/useReferralLink";
 
@@ -308,10 +323,13 @@ export default function InvitesScreen() {
     upsertInvite,
     approveInvite,
     rejectInvite,
+    updateInvite,
     deleteInvite,
   } = useOnetimeInvitesOverview({ enabled: Boolean(user) });
+  const { communities } = useMyCommunities({});
   const [refreshing, setRefreshing] = useState(false);
   const [sharedInviteId, setSharedInviteId] = useState<number | null>(null);
+  const [settingsInviteId, setSettingsInviteId] = useState<number | null>(null);
   const [selectedTab, setSelectedTab] = useState<InvitesTab>(
     InvitesTab.ReferralQr,
   );
@@ -486,6 +504,57 @@ export default function InvitesScreen() {
     },
     [deleteInvite],
   );
+
+  const leaderCommunities = useMemo(
+    () =>
+      user
+        ? communities.filter((community) =>
+            community.leaders.some((leader) => leader.id === user.id),
+          )
+        : [],
+    [communities, user],
+  );
+
+  const settingsInvite =
+    invites.find((invite) => invite.id === settingsInviteId) ?? null;
+  const settingsTarget: InviteSettingsTarget | null = settingsInvite && {
+    title: settingsInvite.invitee,
+    meta: `Invited ${formatTime(new Date(settingsInvite.createdAt), {
+      addSuffix: true,
+    })}`,
+    url: getOnetimeInviteSignupUrl(getBaseUrl(), settingsInvite.code),
+    name: {
+      label: "Who this invite is for",
+      value: settingsInvite.invitee,
+      placeholder: "Their name",
+      helper: "Shown to you and to the group lead who takes them on.",
+      required: true,
+    },
+    destination: {
+      current: settingsInvite.community?.id ?? null,
+      openLabel: onetimeInviteCreation.assignToOpenGroup,
+      openDetail: inviteDestination.onetime.openDetail,
+      notes: onetimeInviteNotes,
+    },
+    delete: { enabled: true, disabledReason: "" },
+    onSave: ({ name, communityId }) =>
+      updateInvite({
+        inviteId: settingsInvite.id,
+        ...(name !== undefined && { invitee: name }),
+        ...(communityId !== undefined && { communityId }),
+      }),
+    onDelete: async () => {
+      setSettingsInviteId(null);
+      Alert.alert(deleteInviteConfirmation.message, undefined, [
+        { text: deleteInviteConfirmation.cancelLabel, style: "cancel" },
+        {
+          text: deleteInviteConfirmation.confirmLabel,
+          style: "destructive",
+          onPress: () => handleDeleteInvite(settingsInvite.id, null),
+        },
+      ]);
+    },
+  };
 
   const handleInviteCreated = useCallback(
     (invite: OnetimeInviteDto) => {
@@ -726,6 +795,7 @@ export default function InvitesScreen() {
             sharedInviteId={sharedInviteId}
             actions={{
               onDeleteWithConfirm: handleDeleteInvite,
+              onOpenSettings: setSettingsInviteId,
               onShared: handleShared,
             }}
           />
@@ -762,6 +832,7 @@ export default function InvitesScreen() {
           sharedInviteId={sharedInviteId}
           actions={{
             onDeleteWithConfirm: handleDeleteInvite,
+            onOpenSettings: setSettingsInviteId,
             onShared: handleShared,
           }}
         />
@@ -1234,6 +1305,12 @@ export default function InvitesScreen() {
           {tabContent[selectedTab]}
         </View>
       </KeyboardAwareScrollView>
+
+      <InviteSettingsModal
+        target={settingsTarget}
+        leaderCommunities={leaderCommunities}
+        onClose={() => setSettingsInviteId(null)}
+      />
     </View>
   );
 }

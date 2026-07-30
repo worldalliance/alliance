@@ -1,11 +1,14 @@
 import { BadRequestException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
-import { CommunityService } from './community.service';
+import { CommunityService, ContractRefusalAudience } from './community.service';
 import { Community } from './entities/community.entity';
 import { User } from 'src/user/entities/user.entity';
 import { ConversationService } from 'src/messaging/conversation.service';
 import { ImagesService } from 'src/images/images.service';
-import { NotifsService, type CreateNotifParams } from 'src/notifs/notifs.service';
+import {
+  NotifsService,
+  type CreateNotifParams,
+} from 'src/notifs/notifs.service';
 import { NotificationCategory } from 'src/notifs/entities/notification.entity';
 import { CommunityInvite } from './entities/community-invite.entity';
 
@@ -19,6 +22,9 @@ describe('CommunityService', () => {
 
   const leader1 = { id: 10, name: 'Leader One' } as User;
   const leader2 = { id: 11, name: 'Leader Two' } as User;
+
+  /** Ids the contract check should treat as signed; every id by default. */
+  let signedUserIds: number[] | 'all';
 
   const buildCommunity = (overrides?: Partial<Community>): Community =>
     ({
@@ -40,8 +46,31 @@ describe('CommunityService', () => {
         .mockImplementation((entity) => Promise.resolve({ ...entity })),
     } as unknown as jest.Mocked<Repository<Community>>;
 
+    // The only query builder this service builds is the contract check, which
+    // asks "which of these ids have signed" and reads back raw ids.
+    signedUserIds = 'all';
+    let checkedIds: number[] = [];
+    const contractCheck = {
+      select: jest.fn(() => contractCheck),
+      where: jest.fn((_condition: string, params: { userIds: number[] }) => {
+        checkedIds = params.userIds;
+        return contractCheck;
+      }),
+      andWhere: jest.fn(() => contractCheck),
+      getRawMany: jest.fn(() =>
+        Promise.resolve(
+          checkedIds
+            .filter(
+              (id) => signedUserIds === 'all' || signedUserIds.includes(id),
+            )
+            .map((id) => ({ id })),
+        ),
+      ),
+    };
+
     userRepository = {
       save: jest.fn().mockResolvedValue(undefined),
+      createQueryBuilder: jest.fn(() => contractCheck),
     } as unknown as jest.Mocked<Repository<User>>;
 
     conversationService = {
@@ -77,6 +106,72 @@ describe('CommunityService', () => {
 
       expect(communityRepository.save).not.toHaveBeenCalled();
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
+    });
+
+    it('throws when the user has no active contract', async () => {
+      const user = { id: 5, name: 'Unsigned User' } as User;
+      const community = buildCommunity();
+      signedUserIds = [];
+
+      await expect(
+        service.addUsersToCommunityAndRefreshConversation({
+          user,
+          community,
+          notifForLeader: () => null,
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(communityRepository.save).not.toHaveBeenCalled();
+      expect(notifsService.sendNotifs).not.toHaveBeenCalled();
+    });
+
+    it('names who is blocked for staff, rather than exposing ids', async () => {
+      const user = { id: 5, name: 'Unsigned User' } as User;
+      signedUserIds = [];
+
+      await expect(
+        service.addUsersToCommunityAndRefreshConversation({
+          user,
+          community: buildCommunity(),
+          notifForLeader: () => null,
+        }),
+      ).rejects.toThrow(/Unsigned User/);
+    });
+
+    it('tells a member joining for themselves about their own contract', async () => {
+      const user = { id: 5, name: 'Unsigned User' } as User;
+      signedUserIds = [];
+
+      const rejection = service.addUsersToCommunityAndRefreshConversation({
+        user,
+        community: buildCommunity(),
+        contractRefusalAudience: ContractRefusalAudience.Self,
+        notifForLeader: () => null,
+      });
+
+      await expect(rejection).rejects.toThrow(
+        'You need an active contract to join a group.',
+      );
+      // Nothing about the account behind the request.
+      await expect(rejection).rejects.not.toThrow(/Unsigned User|\b5\b/);
+    });
+
+    it('skips the contract check while the contract is being signed', async () => {
+      const user = { id: 5, name: 'Signing User' } as User;
+      const community = buildCommunity();
+
+      await service.addUsersToCommunityAndRefreshConversation({
+        user,
+        community,
+        contractBeingSigned: true,
+        notifForLeader: () => null,
+      });
+
+      expect(userRepository.createQueryBuilder).not.toHaveBeenCalled();
+      expect(communityRepository.save).toHaveBeenCalledWith({
+        id: community.id,
+        users: [user],
+      });
     });
 
     it('adds user to community, sends notifs, and syncs conversation', async () => {

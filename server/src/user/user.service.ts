@@ -20,7 +20,7 @@ import { LiveActivityRegistration } from 'src/apns/entities/live-activity-regist
 import { CampaignService } from 'src/campaign/campaign.service';
 import { Campaign } from 'src/campaign/entities/campaign.entity';
 import { CommunityService } from 'src/community/community.service';
-import { getCommunityFreeSlots } from 'src/community/community.utils';
+import { getStaffAssignableSlots } from 'src/community/community.utils';
 import { Community } from 'src/community/entities/community.entity';
 import { ALL_MEMBERS_TAG_NAME } from 'src/constants';
 import { EventType } from 'src/eventlog/event-log.entity';
@@ -41,7 +41,13 @@ import {
   ShareUrl,
   ShareUrlKind,
 } from 'src/share-urls/entities/share-url.entity';
+import {
+  inviteAssignmentColumns,
+  type InviteAssignmentColumns,
+  type StoredInviteAssignment,
+} from 'src/share-urls/invite-assignment';
 import { ShareUrlsService } from 'src/share-urls/share-urls.service';
+import { isForeignKeyViolation } from 'src/utils/db-errors';
 import { PaginationQueryDto } from 'src/utils/pagination.dto';
 import type { Relations } from 'src/utils/Repository';
 import {
@@ -481,6 +487,57 @@ export class UserService {
         throw new Error(
           `unknown referral resolution: ${resolution satisfies never}`,
         );
+    }
+  }
+
+  /**
+   * Snapshot columns for the group placement an invite link carries.
+   *
+   * A `community` target whose group is already gone keeps its kind but drops
+   * the id, matching the state the `ON DELETE SET NULL` FK leaves behind when
+   * the group is deleted after signup — otherwise the stale id, which nothing
+   * prunes from `share_url.data`, fails that FK and the signup 500s.
+   */
+  async inviteAssignmentSnapshot(
+    assignment: StoredInviteAssignment | null,
+  ): Promise<InviteAssignmentColumns> {
+    const columns = inviteAssignmentColumns(assignment);
+    const { inviteAssignmentCommunityId: communityId } = columns;
+    if (communityId === null) return columns;
+    const communityExists = await this.communityRepository.exists({
+      where: { id: communityId },
+    });
+    return communityExists
+      ? columns
+      : { ...columns, inviteAssignmentCommunityId: null };
+  }
+
+  /**
+   * Create a user carrying the group placement their invite link named.
+   *
+   * The snapshot checks the group and writes it in two steps, so a group
+   * deleted in between still fails the FK. Confirm it is actually gone before
+   * retrying without it — any other foreign key is a real error, not this race.
+   */
+  async createWithInviteAssignment(
+    data: DeepPartial<User>,
+    assignment: StoredInviteAssignment | null,
+  ): Promise<User> {
+    const columns = await this.inviteAssignmentSnapshot(assignment);
+    const { inviteAssignmentCommunityId: communityId } = columns;
+    try {
+      return await this.create({ ...data, ...columns });
+    } catch (error) {
+      if (communityId === null || !isForeignKeyViolation(error)) throw error;
+      const communityExists = await this.communityRepository.exists({
+        where: { id: communityId },
+      });
+      if (communityExists) throw error;
+      return this.create({
+        ...data,
+        ...columns,
+        inviteAssignmentCommunityId: null,
+      });
     }
   }
 
@@ -2313,6 +2370,62 @@ export class UserService {
     }
   }
 
+  /**
+   * Edit what the inviter chose when the invite was made. Each field is left
+   * alone when omitted; `communityId: null` drops the named group, leaving the
+   * invitee to be placed like any other referral.
+   *
+   * Only an unused invite can be edited — once someone has signed up through
+   * it, the placement it named has already been acted on.
+   */
+  async updateOnetimeInvite(params: {
+    inviteId: number;
+    userId: number;
+    invitee?: string;
+    communityId?: number | null;
+  }): Promise<OnetimeInvite> {
+    const { inviteId, userId, invitee, communityId } = params;
+    const [invite, user] = await Promise.all([
+      this.onetimeInviteRepository.findOneOrFail({
+        where: { id: inviteId, deletedAt: IsNull() },
+        relations: { invitingUser: true },
+      }),
+      this.findOneOrFail(userId, { leaderOf: true }),
+    ]);
+    if (invite.invitingUser?.id !== userId && !user.admin) {
+      throw new BadRequestException('Invite belongs to someone else');
+    }
+    if (invite.status !== OnetimeInviteStatus.LINK_UNUSED) {
+      throw new BadRequestException('This invite can no longer be edited');
+    }
+    if (
+      communityId !== undefined &&
+      communityId !== null &&
+      !user.admin &&
+      !user.leaderOfIdSet.has(communityId)
+    ) {
+      throw new BadRequestException(
+        `User is not a leader of community ${communityId}`,
+      );
+    }
+
+    const trimmedInvitee = invitee?.trim();
+    if (invitee !== undefined && !trimmedInvitee) {
+      throw new BadRequestException('Invitee name cannot be empty');
+    }
+    await this.onetimeInviteRepository.save({
+      id: inviteId,
+      ...(trimmedInvitee !== undefined && { invitee: trimmedInvitee }),
+      ...(communityId !== undefined && {
+        community: communityId === null ? null : { id: communityId },
+      }),
+    });
+    return this.onetimeInviteRepository.findOneOrFail({
+      where: { id: inviteId },
+      relations: { invitingUser: true, community: true, invitedUser: true },
+    });
+  }
+
   async deleteOnetimeInvite(inviteId: number, userId: number): Promise<void> {
     const invite = await this.onetimeInviteRepository.findOneOrFail({
       where: { id: inviteId, deletedAt: IsNull() },
@@ -2666,31 +2779,13 @@ export class UserService {
 
     const userById = await userByIdP;
     const communityById = await communityByIdP;
-    const communities = Array.from(communityById.values());
 
-    if (communities.some((community) => community.maxCapacity === null)) {
-      throw new BadRequestException(
-        'One or more communities has no max capacity',
-      );
-    }
-    const allowedMemberCounts = new Map<number, number>(
-      communities.map((community) => [
-        community.id,
-        getCommunityFreeSlots(community),
-      ]),
-    );
-    for (const { communityId } of body.assignments) {
-      const allowed = allowedMemberCounts.get(communityId);
-      if (allowed! <= 0) {
-        throw new BadRequestException(
-          `Too many members assigned to community ${communityId}`,
-        );
-      }
-      allowedMemberCounts.set(communityId, allowed! - 1);
-    }
-
-    const userNotifs: CreateNotifParams[] = [];
-    for (const { userId, communityId } of body.assignments) {
+    // The loop below drops each member from their old groups before adding them
+    // to the new one, and it is not transactional — so everything that can
+    // refuse the batch has to refuse it here, before the first write. A throw
+    // part-way through leaves earlier assignments applied and the member it
+    // stopped on in no group at all.
+    const assignments = body.assignments.map(({ userId, communityId }) => {
       const user = userById.get(userId);
       if (!user) {
         throw new NotFoundException(`User ${userId} not found`);
@@ -2699,7 +2794,43 @@ export class UserService {
       if (!community) {
         throw new NotFoundException(`Community ${communityId} not found`);
       }
+      return { user, community };
+    });
 
+    // Implies maxCapacity is non-null for everything left, per the check
+    // constraint on Community.
+    const closed = Array.from(communityById.values()).filter(
+      (community) => !community.allowStaffAssignments,
+    );
+    if (closed.length) {
+      throw new BadRequestException(
+        `Cannot assign to groups that do not accept staff assignments: ${closed
+          .map((community) => community.name)
+          .join(', ')}`,
+      );
+    }
+
+    const remainingSlots = new Map<number, number>();
+    for (const { community } of assignments) {
+      const remaining =
+        remainingSlots.get(community.id) ?? getStaffAssignableSlots(community);
+      if (remaining <= 0) {
+        throw new BadRequestException(
+          `Too many members assigned to community ${community.id}`,
+        );
+      }
+      remainingSlots.set(community.id, remaining - 1);
+    }
+
+    // Queued members can lose their contract after they join the queue —
+    // nothing clears `undergoingGroupAssignment` on suspension — so this is a
+    // live rejection, not a formality.
+    await this.communityService.assertUsersHaveActiveContracts(
+      assignments.map(({ user }) => user),
+    );
+
+    const userNotifs: CreateNotifParams[] = [];
+    for (const { user, community } of assignments) {
       // Remove user from old communities (except ones they lead)
       await Promise.all(
         user.communities
@@ -2728,7 +2859,7 @@ export class UserService {
 
       // Refetch community to get up-to-date users list
       const freshCommunity = await this.communityRepository.findOneOrFail({
-        where: { id: communityId },
+        where: { id: community.id },
         relations: { users: true, leaders: true },
       });
 

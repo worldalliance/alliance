@@ -22,6 +22,7 @@ import {
   ShareLinkDto,
   ShareUrlAdminDto,
   ShareUrlMineDto,
+  UpdateInviteDto,
   UpdateShareLinkLabelDto,
 } from './dto/share-url.dto';
 import { type ShareUrlOwner, ShareUrlsService } from './share-urls.service';
@@ -77,24 +78,28 @@ export class ShareUrlsController {
     const row = await this.shareUrlsService.createDuplicateInviteForUser(
       req.user.sub,
       body.label,
+      body.communityId,
     );
-    return new ShareUrlMineDto(row);
+    const [result] = await this.shareUrlsService.withInviteDestinations([row]);
+    return new ShareUrlMineDto(result);
   }
 
-  @Patch('mine/invites/:id/label')
+  @Patch('mine/invites/:id')
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ShareUrlMineDto })
-  async updateMyInviteLabel(
+  async updateMyInvite(
     @Param('id') id: string,
-    @Body() body: UpdateShareLinkLabelDto,
+    @Body() body: UpdateInviteDto,
     @Request() req: JwtRequest,
   ): Promise<ShareUrlMineDto> {
-    const row = await this.shareUrlsService.updateInviteLabelForUser(
+    const row = await this.shareUrlsService.updateInviteForUser({
       id,
-      req.user.sub,
-      body.label,
-    );
-    return new ShareUrlMineDto(row);
+      userId: req.user.sub,
+      label: body.label,
+      communityId: body.communityId,
+    });
+    const [result] = await this.shareUrlsService.withInviteDestinations([row]);
+    return new ShareUrlMineDto(result);
   }
 
   @Delete('mine/invites/:id')
@@ -120,7 +125,8 @@ export class ShareUrlsController {
       invite: body.invite,
       label: body.label,
     });
-    return new ShareUrlAdminDto(row);
+    const [result] = await this.shareUrlsService.withSignupCounts([row]);
+    return new ShareUrlAdminDto(result);
   }
 
   @Get('for-user/:userId')
@@ -151,7 +157,8 @@ export class ShareUrlsController {
     @Body() body: UpdateShareLinkLabelDto,
   ): Promise<ShareUrlAdminDto> {
     const row = await this.shareUrlsService.updateLabel(id, body.label);
-    return new ShareUrlAdminDto(row);
+    const [result] = await this.shareUrlsService.withSignupCounts([row]);
+    return new ShareUrlAdminDto(result);
   }
 
   @Delete(':id')

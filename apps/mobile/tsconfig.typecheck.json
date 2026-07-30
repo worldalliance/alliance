@@ -14,8 +14,7 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "../../shared",
-    "../../common",
-    "../../sharedweb"
+    "../../common"
   ],
   "exclude": ["../../common/**/*.test.ts", "../../shared/**/*.test.ts"]
 }

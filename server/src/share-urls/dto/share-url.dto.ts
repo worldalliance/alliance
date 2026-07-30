@@ -6,8 +6,48 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  Min,
+  ValidateIf,
 } from 'class-validator';
-import { ShareUrl, ShareUrlKind } from '../entities/share-url.entity';
+import { ShareUrlKind } from '../entities/share-url.entity';
+import {
+  InviteAssignmentKind,
+  type StoredInviteAssignment,
+  StoredInviteAssignmentKind,
+} from '../invite-assignment';
+import type { ShareUrlMine, ShareUrlWithSignupCount } from '../share-url-views';
+
+type InviteAssignmentDetails = {
+  assignmentKind: InviteAssignmentKind;
+  communityId: number | null;
+};
+
+function inviteAssignmentDetails(
+  assignment: StoredInviteAssignment | null,
+): InviteAssignmentDetails {
+  if (assignment === null) {
+    return {
+      assignmentKind: InviteAssignmentKind.Automatic,
+      communityId: null,
+    };
+  }
+  switch (assignment.kind) {
+    case StoredInviteAssignmentKind.Community:
+      return {
+        assignmentKind: InviteAssignmentKind.Community,
+        communityId: assignment.communityId,
+      };
+    case StoredInviteAssignmentKind.Open:
+      return {
+        assignmentKind: InviteAssignmentKind.Open,
+        communityId: null,
+      };
+    default:
+      throw new Error(
+        `unknown invite assignment: ${assignment satisfies never}`,
+      );
+  }
+}
 
 export class GetShareLinkDto {
   @ApiPropertyOptional()
@@ -90,6 +130,36 @@ export class CreateInviteDuplicateDto {
   @IsString()
   @MaxLength(120)
   label?: string;
+
+  @ApiProperty({ type: Number, nullable: true })
+  @ValidateIf((_object, value) => value !== null)
+  @IsInt()
+  @Min(1)
+  communityId: number | null;
+}
+
+export class UpdateInviteDto {
+  @ApiPropertyOptional({
+    description:
+      'Omit to leave the label as it is; send an empty string to clear it.',
+  })
+  // Not `@IsOptional()`, which also waves through an explicit null and leaves
+  // the declared `string` lying to everything downstream.
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString()
+  @MaxLength(120)
+  label?: string;
+
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    description:
+      'Group future signups join: a group you lead, or null for any open group. Omit to leave the destination as it is.',
+  })
+  @ValidateIf((_object, value) => value !== null && value !== undefined)
+  @IsInt()
+  @Min(1)
+  communityId?: number | null;
 }
 
 export class ShareUrlMineDto {
@@ -111,13 +181,34 @@ export class ShareUrlMineDto {
   @ApiProperty({ type: Date })
   createdAt: Date;
 
-  constructor(input: ShareUrl) {
-    this.id = input.id;
-    this.url = input.url;
-    this.label = input.label ?? null;
-    this.duplicate = input.duplicate;
-    this.sid = input.sid;
-    this.createdAt = input.createdAt;
+  @ApiProperty({ minimum: 0 })
+  signupCount: number;
+
+  @ApiProperty({
+    enum: InviteAssignmentKind,
+    enumName: 'InviteAssignmentKind',
+  })
+  assignmentKind: InviteAssignmentKind;
+
+  @ApiProperty({ type: Number, nullable: true })
+  communityId: number | null;
+
+  /** Null alongside a `community` kind means that group has been deleted. */
+  @ApiProperty({ type: String, nullable: true })
+  communityName: string | null;
+
+  constructor(input: ShareUrlMine) {
+    const assignmentDetails = inviteAssignmentDetails(input.assignment);
+    this.id = input.shareUrl.id;
+    this.url = input.shareUrl.url;
+    this.label = input.shareUrl.label ?? null;
+    this.duplicate = input.shareUrl.duplicate;
+    this.sid = input.shareUrl.sid;
+    this.createdAt = input.shareUrl.createdAt;
+    this.signupCount = input.signupCount;
+    this.assignmentKind = assignmentDetails.assignmentKind;
+    this.communityId = assignmentDetails.communityId;
+    this.communityName = input.assignmentCommunityName;
   }
 }
 
@@ -177,6 +268,9 @@ export class ShareUrlAdminDto {
   @ApiProperty({ type: Date })
   createdAt: Date;
 
+  @ApiProperty({ minimum: 0 })
+  signupCount: number;
+
   @ApiPropertyOptional({ type: () => ShareUrlAdminActionDto, nullable: true })
   @Type(() => ShareUrlAdminActionDto)
   action?: ShareUrlAdminActionDto | null;
@@ -188,26 +282,27 @@ export class ShareUrlAdminDto {
   @Type(() => ShareUrlAdminExternalTargetDto)
   externalTarget?: ShareUrlAdminExternalTargetDto | null;
 
-  constructor(input: ShareUrl) {
-    this.id = input.id;
-    this.kind = input.kind;
-    this.sid = input.sid;
-    this.url = input.url;
-    this.duplicate = input.duplicate;
-    this.label = input.label ?? null;
-    this.userId = input.userId ?? null;
-    this.campaignId = input.campaignId ?? null;
-    this.createdAt = input.createdAt;
-    this.action = input.action
+  constructor(input: ShareUrlWithSignupCount) {
+    this.id = input.shareUrl.id;
+    this.kind = input.shareUrl.kind;
+    this.sid = input.shareUrl.sid;
+    this.url = input.shareUrl.url;
+    this.duplicate = input.shareUrl.duplicate;
+    this.label = input.shareUrl.label ?? null;
+    this.userId = input.shareUrl.userId ?? null;
+    this.campaignId = input.shareUrl.campaignId ?? null;
+    this.createdAt = input.shareUrl.createdAt;
+    this.signupCount = input.signupCount;
+    this.action = input.shareUrl.action
       ? new ShareUrlAdminActionDto({
-          id: input.action.id,
-          name: input.action.name,
+          id: input.shareUrl.action.id,
+          name: input.shareUrl.action.name,
         })
       : null;
-    this.externalTarget = input.externalTarget
+    this.externalTarget = input.shareUrl.externalTarget
       ? new ShareUrlAdminExternalTargetDto({
-          id: input.externalTarget.id,
-          name: input.externalTarget.name,
+          id: input.shareUrl.externalTarget.id,
+          name: input.shareUrl.externalTarget.name,
         })
       : null;
   }

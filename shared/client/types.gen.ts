@@ -1173,6 +1173,17 @@ export type UpdateAmbassadorInviteGoalDto = {
     dueAt?: string;
 };
 
+export type UpdateOnetimeInviteDto = {
+    /**
+     * Omit to leave the invitee name as it is.
+     */
+    invitee?: string;
+    /**
+     * Group the invitee joins: a group you lead, or null for any open group. Omit to leave it as it is.
+     */
+    communityId?: number | null;
+};
+
 export type OnetimeInviteListDto = {
     items: Array<OnetimeInviteDto>;
     totalCount: number;
@@ -1280,6 +1291,8 @@ export type ShareLinkDto = {
     url: string;
 };
 
+export type InviteAssignmentKind = 'automatic' | 'community' | 'open';
+
 export type ShareUrlMineDto = {
     id: string;
     url: string;
@@ -1287,6 +1300,10 @@ export type ShareUrlMineDto = {
     duplicate: boolean;
     sid?: string;
     createdAt: string;
+    signupCount: number;
+    assignmentKind: InviteAssignmentKind;
+    communityId: number | null;
+    communityName: string | null;
 };
 
 export type CreateInviteDuplicateDto = {
@@ -1294,13 +1311,18 @@ export type CreateInviteDuplicateDto = {
      * Optional label to distinguish this duplicate at a glance.
      */
     label?: string;
+    communityId: number | null;
 };
 
-export type UpdateShareLinkLabelDto = {
+export type UpdateInviteDto = {
     /**
-     * New label for the share URL. Send an empty string or omit to clear.
+     * Omit to leave the label as it is; send an empty string to clear it.
      */
     label?: string;
+    /**
+     * Group future signups join: a group you lead, or null for any open group. Omit to leave the destination as it is.
+     */
+    communityId?: number | null;
 };
 
 export type CreateDuplicateShareLinkDto = {
@@ -1346,8 +1368,16 @@ export type ShareUrlAdminDto = {
     userId: number | null;
     campaignId: number | null;
     createdAt: string;
+    signupCount: number;
     action?: ShareUrlAdminActionDto | null;
     externalTarget?: ShareUrlAdminExternalTargetDto | null;
+};
+
+export type UpdateShareLinkLabelDto = {
+    /**
+     * New label for the share URL. Send an empty string or omit to clear.
+     */
+    label?: string;
 };
 
 export type ExternalShareTargetDto = {
@@ -2818,9 +2848,6 @@ export type ScheduledPlansOverviewDto = {
 export type ShareUrlDto = {
     url: string;
     sid?: string;
-    data?: {
-        [key: string]: unknown;
-    };
     user: ProfileDto;
 };
 
@@ -5181,6 +5208,30 @@ export type UserDeleteOnetimeInviteResponses = {
 
 export type UserDeleteOnetimeInviteResponse = UserDeleteOnetimeInviteResponses[keyof UserDeleteOnetimeInviteResponses];
 
+export type UserUpdateOnetimeInviteData = {
+    body: UpdateOnetimeInviteDto;
+    path: {
+        inviteId: number;
+    };
+    query?: never;
+    url: '/user/onetimeInvites/{inviteId}';
+};
+
+export type UserUpdateOnetimeInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserUpdateOnetimeInviteError = UserUpdateOnetimeInviteErrors[keyof UserUpdateOnetimeInviteErrors];
+
+export type UserUpdateOnetimeInviteResponses = {
+    200: OnetimeInviteDto;
+};
+
+export type UserUpdateOnetimeInviteResponse = UserUpdateOnetimeInviteResponses[keyof UserUpdateOnetimeInviteResponses];
+
 export type UserGetOnetimeInvitesAdminData = {
     body?: never;
     path?: never;
@@ -5688,30 +5739,6 @@ export type ShareUrlsCreateInviteDuplicateResponses = {
 
 export type ShareUrlsCreateInviteDuplicateResponse = ShareUrlsCreateInviteDuplicateResponses[keyof ShareUrlsCreateInviteDuplicateResponses];
 
-export type ShareUrlsUpdateMyInviteLabelData = {
-    body: UpdateShareLinkLabelDto;
-    path: {
-        id: string;
-    };
-    query?: never;
-    url: '/share-urls/mine/invites/{id}/label';
-};
-
-export type ShareUrlsUpdateMyInviteLabelErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ShareUrlsUpdateMyInviteLabelError = ShareUrlsUpdateMyInviteLabelErrors[keyof ShareUrlsUpdateMyInviteLabelErrors];
-
-export type ShareUrlsUpdateMyInviteLabelResponses = {
-    200: ShareUrlMineDto;
-};
-
-export type ShareUrlsUpdateMyInviteLabelResponse = ShareUrlsUpdateMyInviteLabelResponses[keyof ShareUrlsUpdateMyInviteLabelResponses];
-
 export type ShareUrlsDeleteMyInviteData = {
     body?: never;
     path: {
@@ -5737,6 +5764,30 @@ export type ShareUrlsDeleteMyInviteResponses = {
 };
 
 export type ShareUrlsDeleteMyInviteResponse = ShareUrlsDeleteMyInviteResponses[keyof ShareUrlsDeleteMyInviteResponses];
+
+export type ShareUrlsUpdateMyInviteData = {
+    body: UpdateInviteDto;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/share-urls/mine/invites/{id}';
+};
+
+export type ShareUrlsUpdateMyInviteErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ShareUrlsUpdateMyInviteError = ShareUrlsUpdateMyInviteErrors[keyof ShareUrlsUpdateMyInviteErrors];
+
+export type ShareUrlsUpdateMyInviteResponses = {
+    200: ShareUrlMineDto;
+};
+
+export type ShareUrlsUpdateMyInviteResponse = ShareUrlsUpdateMyInviteResponses[keyof ShareUrlsUpdateMyInviteResponses];
 
 export type ShareUrlsCreateDuplicateAdminData = {
     body: CreateDuplicateShareLinkDto;

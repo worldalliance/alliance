@@ -55,10 +55,7 @@ const FormResponses: React.FC = () => {
         (res) => {
           setSidsToUserMap(
             Object.fromEntries(
-              res.data?.map((r) => [
-                r.sid ?? (r.data as { sid?: string })?.sid,
-                r.user,
-              ]) ?? [],
+              res.data?.flatMap((r) => (r.sid ? [[r.sid, r.user]] : [])) ?? [],
             ),
           );
         },

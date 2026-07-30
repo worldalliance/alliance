@@ -1037,6 +1037,11 @@ const ShareUrlRow: React.FC<{
         {row.sid && (
           <p className="text-[11px] text-zinc-400 font-mono">{row.sid}</p>
         )}
+        {row.kind === "invite" && (
+          <p className="text-xs font-medium text-green">
+            {row.signupCount} {row.signupCount === 1 ? "use" : "uses"}
+          </p>
+        )}
       </div>
       <Button
         type="button"

@@ -162,8 +162,7 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
 
       const sids: Record<string, ProfileDto> = {};
       for (const link of shareLinkRes?.data ?? []) {
-        const sid = link.sid ?? (link.data as { sid?: string })?.sid;
-        if (sid) sids[sid] = link.user;
+        if (link.sid) sids[link.sid] = link.user;
       }
       setSidsToUserMap(sids);
     } catch (e) {

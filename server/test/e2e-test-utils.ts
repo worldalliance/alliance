@@ -17,6 +17,10 @@ import { PosthogModule } from 'src/posthog/posthog.module';
 import { Form } from 'src/tasks/entities/form.entity';
 import { FormSnapshot } from 'src/tasks/entities/formsnapshot.entity';
 import { FormSnapshotService } from 'src/tasks/formsnapshot.service';
+import {
+  ContractEvent,
+  ContractEventType,
+} from 'src/user/entities/contract-event.entity';
 import { Tag } from 'src/user/entities/tag.entity';
 import { ALL_THROTTLERS } from 'src/utils/throttle';
 import supertest from 'supertest';
@@ -197,4 +201,21 @@ export async function createFormWithSnapshot(
   );
   await attachFormSnapshot(dataSource, form.id, snapshot.id);
   return { form, snapshot };
+}
+
+/**
+ * Give a fixture user an active contract. Anyone added to a group through
+ * `addUsersToCommunityAndRefreshConversation` needs one — fixtures built by
+ * saving a bare `User` have no contract events at all.
+ */
+export async function giveActiveContract(
+  ctx: Pick<TestContext, 'dataSource' | 'defaultContractId'>,
+  userId: number,
+): Promise<void> {
+  await ctx.dataSource.getRepository(ContractEvent).save({
+    user: { id: userId },
+    type: ContractEventType.SIGNED,
+    date: new Date(),
+    contract: { id: ctx.defaultContractId },
+  });
 }

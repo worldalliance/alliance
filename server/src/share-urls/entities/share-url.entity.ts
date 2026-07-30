@@ -2,11 +2,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { Action } from 'src/actions/entities/action.entity';
 import { Campaign } from 'src/campaign/entities/campaign.entity';
+import { Community } from 'src/community/entities/community.entity';
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
 } from 'src/datasources/basecolumns';
 import { User } from 'src/user/entities/user.entity';
+import { StoredInviteAssignmentKind } from '../invite-assignment-kind';
 import type { Relation } from 'src/utils/Repository';
 import {
   Check,
@@ -43,6 +45,12 @@ export enum ShareUrlKind {
   'CHK_share_url_owner',
   '("userId" IS NOT NULL AND "campaignId" IS NULL) ' +
     'OR ("userId" IS NULL AND "campaignId" IS NOT NULL)',
+)
+@Check(
+  'CHK_share_url_invite_assignment',
+  `("inviteAssignmentKind" IS NULL OR "kind" = 'invite')
+   AND ("inviteAssignmentCommunityId" IS NULL
+        OR "inviteAssignmentKind" IS NOT DISTINCT FROM 'community')`,
 )
 @Index('UQ_share_url_user_action', ['user', 'action'], {
   unique: true,
@@ -141,8 +149,27 @@ export class ShareUrl {
   @UpdateDateColumnTz()
   updatedAt: Date;
 
-  @Column({ type: 'jsonb' })
-  @Type(() => Object)
-  @ApiPropertyOptional({ type: Object })
-  data?: Record<string, unknown>;
+  /**
+   * Where an invite link places the people who sign up through it. Null for a
+   * link that names nowhere — including every link made before the owner could
+   * choose — which places them by referral default instead.
+   */
+  @Column({
+    type: 'enum',
+    enum: StoredInviteAssignmentKind,
+    nullable: true,
+  })
+  inviteAssignmentKind: StoredInviteAssignmentKind | null;
+
+  /**
+   * Null for an `open` assignment, and once the target group is deleted — with
+   * a `community` kind that pairing means the group this link named is gone,
+   * and signups fall through to manual assignment until the owner retargets it.
+   */
+  @Column({ nullable: true })
+  inviteAssignmentCommunityId: number | null;
+
+  @ManyToOne(() => Community, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'inviteAssignmentCommunityId' })
+  inviteAssignmentCommunity?: Relation<Community> | null;
 }
