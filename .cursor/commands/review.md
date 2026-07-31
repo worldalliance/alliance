@@ -12,7 +12,8 @@ Provide a high-signal review of the proposed change that improves long-term code
 # Reviewer stance
 
 - Assume the author is competent and had reasons; ask questions when context is missing.
-- Prefer “smallest safe change” and local refactors over broad rewrites.
+- Prefer robust, root-cause fixes that preserve clear invariants and hold up as the code evolves. Do not recommend a narrow patch solely because it is smaller.
+- Keep recommendations proportional to the risk. When the most robust fix would require disproportionate effort, risk, or scope, describe it as the preferred approach and also offer one or more pragmatic alternatives with their tradeoffs and any follow-up work they create.
 - If something is out-of-scope for this change, flag it as a follow-up (don’t block unless it’s a real risk).
 - If you are uncertain, say so and name what evidence would resolve it.
 
@@ -66,7 +67,8 @@ kebab-case-name
 - Severity: BLOCKER | HIGH | MEDIUM
 - Evidence: file(s) + relevant snippet/behavioral description
 - Why it matters (risk/regression/security/maintenance)
-- Minimal fix (concrete suggestion; include small code snippets if helpful)
+- Recommended fix (favor a durable, root-cause solution; include small code snippets if helpful)
+- Alternatives (include when the recommended fix is disproportionately costly, risky, or broad; explain the tradeoffs and any follow-up work for each)
 ## Should-fix improvements
 Same structure, but severity: MEDIUM | LOW. Prefer maintainability/duplication/clarity wins.
 ## Nits
