@@ -118,7 +118,7 @@ echo "==> Loading existing seed (FKs disabled via session_replication_role)"
   echo "SET session_replication_role = 'replica';"
   # Strip pg17-only constructs so the dump replays on older Postgres versions
   # (matches the stripping the screenshot runner does at load time).
-  sed -E '/^SET[[:space:]]+transaction_timeout[[:space:]]*=/d; /^\\restrict\b/d; /^\\unrestrict\b/d' "$SEED_FILE"
+  sed -E '/^SET[[:space:]]+transaction_timeout[[:space:]]*=/d; /^\\restrict([[:space:]]|$)/d; /^\\unrestrict([[:space:]]|$)/d' "$SEED_FILE"
   echo "SET session_replication_role = 'origin';"
 } | "${PSQL_BASE[@]}" -d "$DB_NAME" -v ON_ERROR_STOP=1 >/dev/null
 
