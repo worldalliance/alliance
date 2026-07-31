@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict zjw8moFLn85Vv5aturrZV9riKjntUmLFfBjfYA9PgTuXhZFCg8DclJ0gopcnvfJ
+\restrict ad53oR2iwrZ8fdBQxEh9VHqdySKAgy3CNMX9dCFOmu5rGS4Dt7S1q4IJuWSlB0k
 
 -- Dumped from database version 18.3 (Homebrew)
 -- Dumped by pg_dump version 18.3 (Homebrew)
@@ -626,13 +626,13 @@ COPY public.mms (id, "to", "from", body, status, "twilioSid", "errorMessage", "c
 -- Data for Name: user; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public."user" (id, name, email, password, "createdAt", "updatedAt", admin, "profilePicture", "profileDescription", over18, "referredById", "cityId", "referralCode", "stripeCustomerId", "isNotSignedUpPartialProfile", anonymous, "phoneNumber", "emailVerified", "socialNotifsPreference", "turnedOffAllNotifs", "emailNotifsForActions", "textNotifsForActions", "pushNotifsForActions", staff, "welcomeMailId", "forumDigestPreference", "preferredReminderTime", "timeZone", "shareEmailWithCommunityLead", "sharePhoneNumberWithCommunityLead", "formDataPreference", "customCityString", "shareInfoPublicly", "pushesForLikes", "pushesForComments", "pushesForFriendRequests", "optInMmsId", "undergoingGroupAssignment", "remindAboutUncompletedGroupMembers", "referredByInviteId", "pendingCommunityId", "phoneNumberUnsubscribed", "receiveReplyNotifications", "pushesForMessages", "referralSource", "pushesForActionUpdates", "clusterId", "referredByCampaignId", ambassador, "referredByShareUrlId") FROM stdin;
-23	Shreshth Srivastava	user23@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-09-18 16:37:49.301944-07	2026-01-14 16:59:50.442335-08	f	\N	Trying to help others as much as I can :)	\N	7	\N	lsupo9yhyoo	cus_T4cnObOBwfmzJ0	f	f	\N	f	all	f	f	t	f	f	\N	off	14:00:00	America/Los_Angeles	t	f	private	\N	t	t	t	t	\N	f	t	\N	\N	f	t	t	referral_link	t	\N	\N	f	\N
-15	Casey Manning	user15@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-08-30 12:33:31.360133-07	2026-01-29 17:49:18.152935-08	t	\N	Tell me if you find any bugs.	\N	7	\N	0n8p16at3wh	cus_T336rBi3rwzkRs	f	f	\N	f	all	f	f	t	f	t	\N	off	16:00:00	America/Los_Angeles	t	t	public		t	t	t	t	\N	f	t	\N	\N	f	t	t	referral_link	t	\N	\N	f	\N
-24	Eamon OCearuil	user24@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-09-18 16:55:45.493649-07	2026-01-13 14:24:36.162317-08	f	\N	I believe that most of the challenges we face can be solved through coordinated, collective action.\n\n	\N	7	\N	lw1i4hq76hs	cus_TaTVZxK6TDfpF6	f	f	\N	f	all	f	f	t	f	f	\N	off	14:30:00	America/Bogota	t	t	public	\N	f	t	t	t	\N	f	t	\N	\N	f	t	t	referral_link	t	\N	\N	f	\N
-11	Grant Hough	user11@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-08-25 18:54:57.805462-07	2026-01-30 15:41:31.63535-08	t	\N	I study EECS @ UC Berkeley. I like skiing, biking, hiking, and taking pictures.\n\n[granthough.com](https://granthough.com)	t	7	\N	wrpzq7q80jm	cus_Svfb45M1kT3AOP	f	f	\N	f	all	f	f	t	f	f	\N	off	12:00:00	America/Los_Angeles	t	t	public		t	t	t	t	\N	f	t	\N	\N	f	t	t	referral_link	t	\N	\N	f	\N
-10	Mark Xu	user10@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-07-19 16:28:41.545197-07	2026-01-30 16:00:18.769544-08	t	1763446793321.webp	I lead the Alliance with [Sidney Hough](https://worldalliance.org/member/7). I'm interested in the ways that trust facilitates coordination.\n\nI was previously a researcher at the [Alignment Research Center](https://alignment.org), where I worked to prevent AI deception. Before that, I studied mathematics and computer science at Caltech.\n\nI live in San Francisco, California, USA. I enjoy backpacking, birding, and cooking. My personal website is [markxu.com](https://markxu.com).	\N	\N	\N	xcqtspgf0gh	cus_SuDJdOQPrx9zGb	f	f	\N	f	all	f	f	t	f	t	\N	off	19:00:00	America/Los_Angeles	t	t	public	\N	t	t	t	t	\N	f	t	\N	\N	f	t	t	none	t	\N	\N	f	\N
-7	Sidney Hough	user7@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-07-05 11:23:03.948484-07	2026-01-28 14:56:48.486266-08	t	\N	I lead the Alliance with [Mark Xu](https://worldalliance.org/member/10). I believe that if individual people around the world can rely on one another, we can make significant progress on our greatest shared problems. I am personally excited about how we can eventually conduct large-scale nature preservation and restoration.\n\nI live in San Francisco, California, USA. [sidney.com](https://sidney.com)	\N	\N	\N	09vjxetx3lwd	cus_SuDKRrE9Dr3ByM	f	f	\N	f	all	f	f	t	f	t	\N	daily	20:00:00	America/Los_Angeles	t	t	public	\N	t	t	t	t	\N	f	t	\N	\N	f	t	t	none	t	\N	\N	f	\N
+COPY public."user" (id, name, email, password, "createdAt", "updatedAt", admin, "profilePicture", "profileDescription", over18, "referredById", "cityId", "referralCode", "stripeCustomerId", "isNotSignedUpPartialProfile", anonymous, "phoneNumber", "emailVerified", "socialNotifsPreference", "turnedOffAllNotifs", "emailNotifsForActions", "textNotifsForActions", "pushNotifsForActions", staff, "welcomeMailId", "forumDigestPreference", "preferredReminderTime", "timeZone", "shareEmailWithCommunityLead", "sharePhoneNumberWithCommunityLead", "formDataPreference", "customCityString", "shareInfoPublicly", "pushesForLikes", "pushesForComments", "pushesForFriendRequests", "optInMmsId", "undergoingGroupAssignment", "remindAboutUncompletedGroupMembers", "referredByInviteId", "pendingCommunityId", "phoneNumberUnsubscribed", "receiveReplyNotifications", "pushesForMessages", "referralSource", "pushesForActionUpdates", "clusterId", "referredByCampaignId", ambassador, "referredByShareUrlId", "inviteAssignmentKind", "inviteAssignmentCommunityId") FROM stdin;
+23	Shreshth Srivastava	user23@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-09-18 16:37:49.301944-07	2026-01-14 16:59:50.442335-08	f	\N	Trying to help others as much as I can :)	\N	7	\N	lsupo9yhyoo	cus_T4cnObOBwfmzJ0	f	f	\N	f	all	f	f	t	f	f	\N	off	14:00:00	America/Los_Angeles	t	f	private	\N	t	t	t	t	\N	f	t	\N	\N	f	t	t	referral_link	t	\N	\N	f	\N	\N	\N
+15	Casey Manning	user15@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-08-30 12:33:31.360133-07	2026-01-29 17:49:18.152935-08	t	\N	Tell me if you find any bugs.	\N	7	\N	0n8p16at3wh	cus_T336rBi3rwzkRs	f	f	\N	f	all	f	f	t	f	t	\N	off	16:00:00	America/Los_Angeles	t	t	public		t	t	t	t	\N	f	t	\N	\N	f	t	t	referral_link	t	\N	\N	f	\N	\N	\N
+24	Eamon OCearuil	user24@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-09-18 16:55:45.493649-07	2026-01-13 14:24:36.162317-08	f	\N	I believe that most of the challenges we face can be solved through coordinated, collective action.\n\n	\N	7	\N	lw1i4hq76hs	cus_TaTVZxK6TDfpF6	f	f	\N	f	all	f	f	t	f	f	\N	off	14:30:00	America/Bogota	t	t	public	\N	f	t	t	t	\N	f	t	\N	\N	f	t	t	referral_link	t	\N	\N	f	\N	\N	\N
+11	Grant Hough	user11@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-08-25 18:54:57.805462-07	2026-01-30 15:41:31.63535-08	t	\N	I study EECS @ UC Berkeley. I like skiing, biking, hiking, and taking pictures.\n\n[granthough.com](https://granthough.com)	t	7	\N	wrpzq7q80jm	cus_Svfb45M1kT3AOP	f	f	\N	f	all	f	f	t	f	f	\N	off	12:00:00	America/Los_Angeles	t	t	public		t	t	t	t	\N	f	t	\N	\N	f	t	t	referral_link	t	\N	\N	f	\N	\N	\N
+10	Mark Xu	user10@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-07-19 16:28:41.545197-07	2026-01-30 16:00:18.769544-08	t	1763446793321.webp	I lead the Alliance with [Sidney Hough](https://worldalliance.org/member/7). I'm interested in the ways that trust facilitates coordination.\n\nI was previously a researcher at the [Alignment Research Center](https://alignment.org), where I worked to prevent AI deception. Before that, I studied mathematics and computer science at Caltech.\n\nI live in San Francisco, California, USA. I enjoy backpacking, birding, and cooking. My personal website is [markxu.com](https://markxu.com).	\N	\N	\N	xcqtspgf0gh	cus_SuDJdOQPrx9zGb	f	f	\N	f	all	f	f	t	f	t	\N	off	19:00:00	America/Los_Angeles	t	t	public	\N	t	t	t	t	\N	f	t	\N	\N	f	t	t	none	t	\N	\N	f	\N	\N	\N
+7	Sidney Hough	user7@example.com	$2b$10$xmfGrvkaIvhgzruAUoRwguo3dCVj1L1Umya1m77gN/qFDsgNcVB0O	2025-07-05 11:23:03.948484-07	2026-01-28 14:56:48.486266-08	t	\N	I lead the Alliance with [Mark Xu](https://worldalliance.org/member/10). I believe that if individual people around the world can rely on one another, we can make significant progress on our greatest shared problems. I am personally excited about how we can eventually conduct large-scale nature preservation and restoration.\n\nI live in San Francisco, California, USA. [sidney.com](https://sidney.com)	\N	\N	\N	09vjxetx3lwd	cus_SuDKRrE9Dr3ByM	f	f	\N	f	all	f	f	t	f	t	\N	daily	20:00:00	America/Los_Angeles	t	t	public	\N	t	t	t	t	\N	f	t	\N	\N	f	t	t	none	t	\N	\N	f	\N	\N	\N
 \.
 
 
@@ -2451,13 +2451,13 @@ COPY public.reminder_group_users ("reminderGroupId", "userId") FROM stdin;
 -- Data for Name: share_url; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.share_url (id, url, "createdAt", "updatedAt", data, "userId", "actionId", sid, "externalTargetId", duplicate, label, "campaignId", kind) FROM stdin;
-7ba997f4-7f69-41d1-8b11-6ee94506c172	https://worldalliance.org/actions/55?sid=share-13592774af	2025-12-16 21:00:51.259354-08	2025-12-16 21:00:51.259354-08	{"sid": "share-13592774af"}	10	55	share-13592774af	\N	f	\N	\N	action
-925266a7-d937-426d-b499-d0315a4b9641	https://worldalliance.org/actions/55?sid=share-c4e8d495af	2025-12-16 23:05:16.895035-08	2025-12-16 23:05:16.895035-08	{"sid": "share-c4e8d495af"}	15	55	share-c4e8d495af	\N	f	\N	\N	action
-ffca3736-f581-49a4-8c58-c43b8e2fc723	https://worldalliance.org/actions/55?sid=share-4f026733e9	2025-12-11 18:33:44.400888-08	2025-12-11 18:33:44.400888-08	{"sid": "share-4f026733e9"}	7	55	share-4f026733e9	\N	f	\N	\N	action
-5bad5e4f-1767-45d8-b826-893185d45da8	https://worldalliance.org/actions/55?sid=share-0c0a07d27e	2025-12-11 19:10:06.42049-08	2025-12-11 19:10:06.42049-08	{"sid": "share-0c0a07d27e"}	24	55	share-0c0a07d27e	\N	f	\N	\N	action
-bc65f342-9eac-4bcd-9d3c-7d6cb29de2a5	https://worldalliance.org/actions/55?sid=share-ac6731adf1	2025-12-11 20:05:16.202338-08	2025-12-11 20:05:16.202338-08	{"sid": "share-ac6731adf1"}	11	55	share-ac6731adf1	\N	f	\N	\N	action
-9b7c2798-8a10-427f-8929-01c2472033cc	https://worldalliance.org/actions/55?sid=share-466ef08cae	2025-12-19 12:58:10.584147-08	2025-12-19 12:58:10.584147-08	{"sid": "share-466ef08cae"}	23	55	share-466ef08cae	\N	f	\N	\N	action
+COPY public.share_url (id, url, "createdAt", "updatedAt", "userId", "actionId", sid, "externalTargetId", duplicate, label, "campaignId", kind, "inviteAssignmentKind", "inviteAssignmentCommunityId") FROM stdin;
+7ba997f4-7f69-41d1-8b11-6ee94506c172	https://worldalliance.org/actions/55?sid=share-13592774af	2025-12-16 21:00:51.259354-08	2025-12-16 21:00:51.259354-08	10	55	share-13592774af	\N	f	\N	\N	action	\N	\N
+925266a7-d937-426d-b499-d0315a4b9641	https://worldalliance.org/actions/55?sid=share-c4e8d495af	2025-12-16 23:05:16.895035-08	2025-12-16 23:05:16.895035-08	15	55	share-c4e8d495af	\N	f	\N	\N	action	\N	\N
+ffca3736-f581-49a4-8c58-c43b8e2fc723	https://worldalliance.org/actions/55?sid=share-4f026733e9	2025-12-11 18:33:44.400888-08	2025-12-11 18:33:44.400888-08	7	55	share-4f026733e9	\N	f	\N	\N	action	\N	\N
+5bad5e4f-1767-45d8-b826-893185d45da8	https://worldalliance.org/actions/55?sid=share-0c0a07d27e	2025-12-11 19:10:06.42049-08	2025-12-11 19:10:06.42049-08	24	55	share-0c0a07d27e	\N	f	\N	\N	action	\N	\N
+bc65f342-9eac-4bcd-9d3c-7d6cb29de2a5	https://worldalliance.org/actions/55?sid=share-ac6731adf1	2025-12-11 20:05:16.202338-08	2025-12-11 20:05:16.202338-08	11	55	share-ac6731adf1	\N	f	\N	\N	action	\N	\N
+9b7c2798-8a10-427f-8929-01c2472033cc	https://worldalliance.org/actions/55?sid=share-466ef08cae	2025-12-19 12:58:10.584147-08	2025-12-19 12:58:10.584147-08	23	55	share-466ef08cae	\N	f	\N	\N	action	\N	\N
 \.
 
 
@@ -2830,7 +2830,7 @@ SELECT pg_catalog.setval('public.mail_id_seq', 752, true);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 339, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 340, true);
 
 
 --
@@ -2949,5 +2949,5 @@ SELECT pg_catalog.setval('public.video_id_seq', 1, false);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict zjw8moFLn85Vv5aturrZV9riKjntUmLFfBjfYA9PgTuXhZFCg8DclJ0gopcnvfJ
+\unrestrict ad53oR2iwrZ8fdBQxEh9VHqdySKAgy3CNMX9dCFOmu5rGS4Dt7S1q4IJuWSlB0k
 
