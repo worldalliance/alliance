@@ -6,8 +6,8 @@
   "scripts": {
     "start": "expo start --dev-client",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo prebuild && expo run:android",
-    "ios": "expo prebuild && expo run:ios",
+    "android": "expo prebuild -p android && expo run:android",
+    "ios": "expo prebuild -p ios && expo run:ios",
     "typecheck": "tsc -p tsconfig.typecheck.json && eslint .",
     "lint": "expo lint",
     "eas-build-pre-install": "cd ../.. && bun install --frozen-lockfile",
