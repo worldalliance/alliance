@@ -291,6 +291,11 @@ jobs:
   migrations-drift-check:
     uses: ./.github/workflows/migrations-drift-check.yaml
 
+  mobile-fingerprint-check:
+    uses: ./.github/workflows/mobile-fingerprint-check.yaml
+    secrets:
+      SLACK_WEBHOOK_URL_DEPLOYMENT: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+
   visual-regression:
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}

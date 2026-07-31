@@ -55,10 +55,15 @@ jobs:
         if: steps.fp.outputs.drift == 'true'
         env:
           WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL_DEPLOYMENT }}
+          # Exactly one of the PR / commit groups is populated: pull_request
+          # events carry no head_commit, push events carry no pull_request.
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_URL: ${{ github.event.pull_request.html_url }}
-          BRANCH: ${{ github.head_ref }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          COMMIT_URL: ${{ github.event.head_commit.url }}
+          SHA: ${{ github.sha }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
           DETAILS: ${{ steps.fp.outputs.details }}
           NEEDS_CAPTURE: ${{ steps.fp.outputs.needs_capture }}
         run: |
@@ -75,7 +80,16 @@ jobs:
             HEADLINE=$':iphone: *Mobile build captured — awaiting store release.*\nThe native fingerprint is already recorded in `fingerprint-pending.gen.json`; existing installs just need this build to go live in the store.'
             FOOTER='Once the build is live in the store, run `bun run fingerprint:promote` and commit/deploy promptly to clear this.'
           fi
-          MSG=$(printf '%s\n\n*PR:* <%s|#%s %s>\n*Branch:* `%s`\n```\n%s\n```\n%s' \
-            "$HEADLINE" "$PR_URL" "$PR_NUMBER" "$PR_TITLE" "$BRANCH" "$DETAILS" "$FOOTER")
+          # An unescaped > closes a Slack <url|label> link early, and subjects
+          # routinely name components like <Button>.
+          esc() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+          if [ -n "$PR_NUMBER" ]; then
+            SOURCE=$(printf '*PR:* <%s|#%s %s>' "$PR_URL" "$PR_NUMBER" "$(esc "$PR_TITLE")")
+          else
+            # Commit messages are multi-line; Slack links get the subject only.
+            SOURCE=$(printf '*Commit:* <%s|%s %s>' "$COMMIT_URL" "${SHA:0:7}" "$(esc "${COMMIT_MESSAGE%%$'\n'*}")")
+          fi
+          MSG=$(printf '%s\n\n%s\n*Branch:* `%s`\n```\n%s\n```\n%s' \
+            "$HEADLINE" "$SOURCE" "$BRANCH" "$DETAILS" "$FOOTER")
           PAYLOAD=$(jq -n --arg text "$MSG" '{text: $text}')
           curl -sS -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$WEBHOOK"
