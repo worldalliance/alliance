@@ -1,9 +1,12 @@
 import type { DisplayBlock } from "./display-blocks";
 import {
   isQuestionField,
+  numberFieldControl,
   type AnyField,
   type FormSchema,
   type ListField,
+  type NumberField,
+  type NumberFieldControl,
   type OutputViewSchema,
 } from "./form-schema";
 import {
@@ -177,6 +180,33 @@ function collectQuestionFieldIds(
   }
 }
 
+/** A control that maps a position to a value can't be drawn without bounds. */
+const CONTROL_NEEDS_BOUNDS: Record<NumberFieldControl, boolean> = {
+  input: false,
+  slider: true,
+};
+
+function collectNumberFieldErrors(
+  field: NumberField,
+  blockId: string,
+  errors: FormSchemaValidationError[],
+): void {
+  if (!CONTROL_NEEDS_BOUNDS[numberFieldControl(field)]) return;
+  if (typeof field.min !== "number" || typeof field.max !== "number") {
+    errors.push({
+      blockId,
+      message: "A slider needs both a min and a max value",
+    });
+    return;
+  }
+  if (field.max <= field.min) {
+    errors.push({
+      blockId,
+      message: "A slider's max must be greater than its min",
+    });
+  }
+}
+
 function collectInputErrors(
   item: AnyField | DisplayBlock,
   errors: FormSchemaValidationError[],
@@ -189,6 +219,9 @@ function collectInputErrors(
     { context: "input", blockId },
     errors,
   );
+  if (item.kind === "number") {
+    collectNumberFieldErrors(item, blockId, errors);
+  }
   if (item.kind === "list") {
     for (const subField of item.fields ?? []) {
       collectInputErrors(subField, errors);

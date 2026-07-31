@@ -1,8 +1,21 @@
-import type { NumberField } from "@alliance/common/forms/form-schema";
+import {
+  NUMBER_FIELD_CONTROLS,
+  numberFieldControl,
+  type NumberField,
+  type NumberFieldControl,
+} from "@alliance/common/forms/form-schema";
 import { RequiredToggle } from "./CommonControls";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
+
+const CONTROL_LABELS: Record<NumberFieldControl, string> = {
+  input: "Number input",
+  slider: "Slider",
+};
+
+const SLIDER_DEFAULT_MIN = 0;
+const SLIDER_DEFAULT_MAX = 100;
 
 export function EditableNumberField({
   field,
@@ -13,6 +26,10 @@ export function EditableNumberField({
   isDragging,
   previousFields,
 }: BaseFieldProps<NumberField>) {
+  const control = numberFieldControl(field);
+  const isSlider = control === "slider";
+  const boundsLabelSuffix = isSlider ? " (required)" : "";
+
   return (
     <FieldWrapper
       field={field}
@@ -33,9 +50,41 @@ export function EditableNumberField({
         onChange={(checked) => onUpdate({ required: checked })}
       />
 
+      <div>
+        <label className="block text-xs font-medium text-gray-700 mb-1">
+          Display as
+        </label>
+        <select
+          value={control}
+          onChange={(event) => {
+            const next =
+              NUMBER_FIELD_CONTROLS.find((c) => c === event.target.value) ??
+              "input";
+            onUpdate({
+              control: next === "input" ? undefined : next,
+              // A slider can't be drawn without bounds, and the schema
+              // validator rejects it — seed them rather than fail on save.
+              ...(next === "slider" && {
+                min: field.min ?? SLIDER_DEFAULT_MIN,
+                max: field.max ?? SLIDER_DEFAULT_MAX,
+              }),
+            });
+          }}
+          className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          {NUMBER_FIELD_CONTROLS.map((option) => (
+            <option key={option} value={option}>
+              {CONTROL_LABELS[option]}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="block text-xs text-gray-700 mb-1">Min Value</label>
+          <label className="block text-xs text-gray-700 mb-1">
+            Min Value{boundsLabelSuffix}
+          </label>
           <input
             type="number"
             value={field.min ?? ""}
@@ -49,7 +98,9 @@ export function EditableNumberField({
           />
         </div>
         <div>
-          <label className="block text-xs text-gray-700 mb-1">Max Value</label>
+          <label className="block text-xs text-gray-700 mb-1">
+            Max Value{boundsLabelSuffix}
+          </label>
           <input
             type="number"
             value={field.max ?? ""}

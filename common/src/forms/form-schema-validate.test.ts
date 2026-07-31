@@ -3,6 +3,7 @@ import type {
   AnyField,
   FormSchema,
   ListField,
+  NumberField,
   OutputBlock,
   OutputFieldBlock,
   Page,
@@ -619,5 +620,68 @@ describe("validateFormSchema", () => {
         message: 'References missing output block "missing"',
       },
     ]);
+  });
+
+  describe("slider bounds", () => {
+    const numberField = (
+      overrides: Partial<NumberField> = {},
+    ): NumberField => ({
+      id: "n1",
+      type: "input",
+      kind: "number",
+      label: "n1",
+      ...overrides,
+    });
+
+    it("accepts a plain number field with no bounds", () => {
+      const schema = baseSchema({ pages: [page("p1", [numberField()])] });
+      expect(validateFormSchema(schema)).toEqual([]);
+    });
+
+    it("accepts a slider with both bounds", () => {
+      const schema = baseSchema({
+        pages: [
+          page("p1", [numberField({ control: "slider", min: 0, max: 100 })]),
+        ],
+      });
+      expect(validateFormSchema(schema)).toEqual([]);
+    });
+
+    it("rejects a slider missing a bound", () => {
+      const schema = baseSchema({
+        pages: [page("p1", [numberField({ control: "slider", min: 0 })])],
+      });
+      expect(validateFormSchema(schema)).toEqual([
+        { blockId: "n1", message: "A slider needs both a min and a max value" },
+      ]);
+    });
+
+    it("rejects a slider whose max does not exceed its min", () => {
+      const schema = baseSchema({
+        pages: [
+          page("p1", [numberField({ control: "slider", min: 10, max: 10 })]),
+        ],
+      });
+      expect(validateFormSchema(schema)).toEqual([
+        {
+          blockId: "n1",
+          message: "A slider's max must be greater than its min",
+        },
+      ]);
+    });
+
+    it("checks a slider nested in a list", () => {
+      const nested: ListField = {
+        id: "list1",
+        type: "input",
+        kind: "list",
+        label: "list1",
+        fields: [numberField({ control: "slider" })],
+      };
+      const schema = baseSchema({ pages: [{ id: "p1", fields: [nested] }] });
+      expect(validateFormSchema(schema)).toEqual([
+        { blockId: "n1", message: "A slider needs both a min and a max value" },
+      ]);
+    });
   });
 });

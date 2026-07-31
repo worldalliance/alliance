@@ -1,13 +1,14 @@
-import type {
-  AnyField,
-  CityField,
-  CityFieldValue,
-  FormValue,
-  ListField,
-  ListFieldValue,
-  PhoneField,
-  RangeField,
-  TimeField,
+import {
+  numberFieldControl,
+  type AnyField,
+  type CityField,
+  type CityFieldValue,
+  type FormValue,
+  type ListField,
+  type ListFieldValue,
+  type PhoneField,
+  type RangeField,
+  type TimeField,
 } from "@alliance/common/forms/form-schema";
 import type { UserDto } from "@alliance/shared/client";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
@@ -35,6 +36,7 @@ import PhoneNumberInput from "../ui/PhoneNumberInput";
 import YesNoToggle from "../ui/YesNoToggle";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./components";
+import { NumberSliderInput } from "./NumberSliderInput";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { shuffleWithSeed } from "./randomutils";
 import { RankingFieldInput } from "./RankingFieldInput";
@@ -330,16 +332,43 @@ export function RenderField({
       const numberDecimalPlaces = field.allowDecimals
         ? (field.decimalPlaces ?? undefined)
         : undefined;
+      const numberLabel = (
+        <RenderLabel
+          field={field}
+          error={errorMessage}
+          labelRightAddon={labelRightAddon}
+          isOutputView={isOutputView}
+          hideLabel={hideLabel}
+          required={required}
+        />
+      );
+      const numberControl = numberFieldControl(field);
+      switch (numberControl) {
+        case "slider":
+          return (
+            <div className="space-y-1">
+              {numberLabel}
+              <NumberSliderInput
+                field={field}
+                value={value}
+                onChange={onChange}
+                disabled={disabled}
+                required={required}
+                hasError={hasError}
+              />
+              {renderValidationMessage()}
+            </div>
+          );
+        case "input":
+          break;
+        default:
+          throw new Error(
+            `unknown number control: ${numberControl satisfies never}`,
+          );
+      }
       return (
         <div className="space-y-1">
-          <RenderLabel
-            field={field}
-            error={errorMessage}
-            labelRightAddon={labelRightAddon}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
+          {numberLabel}
           <input
             type="number"
             value={

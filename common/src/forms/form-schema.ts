@@ -106,6 +106,10 @@ const phoneFieldSchema = z.strictObject({
 });
 export type PhoneField = z.infer<typeof phoneFieldSchema>;
 
+export const NUMBER_FIELD_CONTROLS = ["input", "slider"] as const;
+const numberFieldControlSchema = z.enum(NUMBER_FIELD_CONTROLS);
+export type NumberFieldControl = z.infer<typeof numberFieldControlSchema>;
+
 const numberFieldSchema = z.strictObject({
   ...baseFieldSchema.shape,
   kind: z.literal("number"),
@@ -114,6 +118,8 @@ const numberFieldSchema = z.strictObject({
   step: z.number().optional(),
   allowDecimals: z.boolean().optional(),
   decimalPlaces: z.number().optional(),
+  /** Absent means `"input"`; `"slider"` requires `min` and `max`. */
+  control: numberFieldControlSchema.optional(),
 });
 export type NumberField = z.infer<typeof numberFieldSchema>;
 
@@ -400,6 +406,10 @@ export const formSchema = z.strictObject({
   aggregateViews: z.array(aggregateViewSchemaSchema).optional(),
 });
 export type FormSchema = z.infer<typeof formSchema>;
+
+export function numberFieldControl(field: NumberField): NumberFieldControl {
+  return field.control ?? "input";
+}
 
 export function isQuestionField(
   field: AnyField | DisplayBlock,

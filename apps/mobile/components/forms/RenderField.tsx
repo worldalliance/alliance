@@ -1,13 +1,14 @@
-import type {
-  AnyField,
-  CityField,
-  CityFieldValue,
-  FormValue,
-  ListField,
-  ListFieldValue,
-  PhoneField,
-  RangeField,
-  TimeField,
+import {
+  numberFieldControl,
+  type AnyField,
+  type CityField,
+  type CityFieldValue,
+  type FormValue,
+  type ListField,
+  type ListFieldValue,
+  type PhoneField,
+  type RangeField,
+  type TimeField,
 } from "@alliance/common/forms/form-schema";
 import type { UserDto } from "@alliance/shared/client";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
@@ -39,6 +40,7 @@ import Text, { FontWeight } from "../system/Text";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./customComponentRegistry";
 import FormModal from "./FormModal";
+import NumberSliderInput from "./NumberSliderInput";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import PhoneNumberInput from "./PhoneNumberInput";
 import { RankingFieldInput } from "./RankingFieldInput";
@@ -297,14 +299,40 @@ export function RenderField({
       const numberDecimalPlaces = field.allowDecimals
         ? (field.decimalPlaces ?? undefined)
         : undefined;
+      const numberLabel = (
+        <RenderLabel
+          field={field}
+          isOutputView={isOutputView}
+          hideLabel={hideLabel}
+          required={required}
+        />
+      );
+      const numberControl = numberFieldControl(field);
+      switch (numberControl) {
+        case "slider":
+          return (
+            <View>
+              {numberLabel}
+              <NumberSliderInput
+                field={field}
+                value={value}
+                onChange={onChange}
+                disabled={disabled}
+                hasError={hasError}
+              />
+              {renderValidationMessage(errorMessage)}
+            </View>
+          );
+        case "input":
+          break;
+        default:
+          throw new Error(
+            `unknown number control: ${numberControl satisfies never}`,
+          );
+      }
       return (
         <View>
-          <RenderLabel
-            field={field}
-            isOutputView={isOutputView}
-            hideLabel={hideLabel}
-            required={required}
-          />
+          {numberLabel}
           <TextInput
             className={inputBase}
             value={value === undefined || value === null ? "" : String(value)}
