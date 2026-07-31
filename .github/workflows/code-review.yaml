@@ -286,6 +286,9 @@ jobs:
             nuakashborde)
               mention="<@U0B2T057ZPU>"
               ;;
+            dorey)
+              mention="<@U0BLD70L7DY>"
+              ;;
           esac
           echo "mention=$mention" >> "$GITHUB_OUTPUT"
 
