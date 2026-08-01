@@ -2079,7 +2079,7 @@ describe('Actions (e2e)', () => {
         where: {
           user: { id: ctx.testUserId },
           category: NotificationCategory.Likes,
-          groupingKey: `activity_like:${activityId}`,
+          groupingKey: `like:activity:user_completed:${activityId}`,
         },
       });
 
@@ -2120,7 +2120,7 @@ describe('Actions (e2e)', () => {
         where: {
           user: { id: ctx.testUserId },
           category: NotificationCategory.Likes,
-          groupingKey: `activity_like:${activityId}`,
+          groupingKey: `like:activity:user_completed:${activityId}`,
         },
       });
 
@@ -2176,7 +2176,7 @@ describe('Actions (e2e)', () => {
         where: {
           user: { id: ctx.testUserId },
           category: NotificationCategory.Likes,
-          groupingKey: `activity_like:${activityId}`,
+          groupingKey: `like:activity:user_completed:${activityId}`,
         },
         relations: { associatedUsers: true },
       });

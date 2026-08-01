@@ -6,7 +6,7 @@ import { CreateCommentDto, UpdateCommentDto } from 'src/forum/dto/comment.dto';
 import { CommentParentObject } from 'src/forum/entities/comment.entity';
 import { User } from 'src/user/entities/user.entity';
 import request from 'supertest';
-import type { Repository } from 'typeorm';
+import { In, type Repository } from 'typeorm';
 import { Action } from '../src/actions/entities/action.entity';
 import { CreatePostDto } from '../src/forum/dto/post.dto';
 import { createTestApp, TestContext } from './e2e-test-utils';
@@ -844,7 +844,7 @@ describe('Forum (e2e)', () => {
         .expect(201);
     });
 
-    it('groups unread like notifications for forum posts', async () => {
+    it('groups unread post likes and migrates legacy grouping keys', async () => {
       const postResponse = await request(ctx.app.getHttpServer())
         .post('/forum/posts')
         .set('Authorization', `Bearer ${ctx.accessToken}`)
@@ -859,7 +859,7 @@ describe('Forum (e2e)', () => {
         .expect(201);
 
       const postId = postResponse.body.id;
-      const groupingKey = `forum_like:post:${postId}:user:${ctx.testUserId}`;
+      const groupingKey = `like:post:${postId}`;
 
       await request(ctx.app.getHttpServer())
         .post(`/forum/posts/${postId}/like`)
@@ -882,6 +882,11 @@ describe('Forum (e2e)', () => {
       expect(likeNotifs[0].groupingKey).toBe(groupingKey);
       expect(likeNotifs[0].webAppLocation).toBe(`/forum/post/${postId}`);
 
+      const legacyGroupingKey = `forum_like:post:${postId}:user:${ctx.testUserId}`;
+      await notifRepo.update(likeNotifs[0].id, {
+        groupingKey: legacyGroupingKey,
+      });
+
       const { token: likerToken } = await createExtraUserAndToken();
 
       await request(ctx.app.getHttpServer())
@@ -902,6 +907,9 @@ describe('Forum (e2e)', () => {
         '2 people liked your post: Post To Get Likes',
       );
       expect(likeNotifs[0].groupingCount).toBe(2);
+      expect(
+        await notifRepo.countBy({ groupingKey: legacyGroupingKey }),
+      ).toBe(0);
     });
 
     it('creates a new post like notification after the previous one is read', async () => {
@@ -919,7 +927,7 @@ describe('Forum (e2e)', () => {
         .expect(201);
 
       const postId = postResponse.body.id;
-      const groupingKey = `forum_like:post:${postId}:user:${ctx.testUserId}`;
+      const groupingKey = `like:post:${postId}`;
 
       await request(ctx.app.getHttpServer())
         .post(`/forum/posts/${postId}/like`)
@@ -992,7 +1000,7 @@ describe('Forum (e2e)', () => {
     //     .expect(201);
 
     //   const commentId = commentResponse.body.id;
-    //   const groupingKey = `forum_like:comment:${commentId}`;
+    //   const groupingKey = `like:comment:${commentId}`;
 
     //   await request(ctx.app.getHttpServer())
     //     .post(`/forum/comments/${commentId}/like`)
@@ -1160,7 +1168,7 @@ describe('Forum (e2e)', () => {
         where: {
           user: { id: ctx.testUserId },
           category: NotificationCategory.Likes,
-          groupingKey: `forum_like:post:${postId}:user:${ctx.testUserId}`,
+          groupingKey: `like:post:${postId}`,
         },
       });
       expect(originalAuthorLikeNotifs).toHaveLength(1);
@@ -1169,7 +1177,7 @@ describe('Forum (e2e)', () => {
         where: {
           user: { id: coAuthor.id },
           category: NotificationCategory.Likes,
-          groupingKey: `forum_like:post:${postId}:user:${coAuthor.id}`,
+          groupingKey: `like:post:${postId}`,
         },
       });
       expect(coAuthorLikeNotifs).toHaveLength(1);
@@ -1197,7 +1205,7 @@ describe('Forum (e2e)', () => {
         .expect(201);
 
       const commentId = commentResponse.body.id;
-      const groupingKey = `forum_like:comment:${commentId}`;
+      const groupingKey = `like:comment:${commentId}`;
 
       await request(ctx.app.getHttpServer())
         .post(`/forum/comments/${commentId}/like`)
@@ -1213,6 +1221,11 @@ describe('Forum (e2e)', () => {
       });
       expect(likeNotifs).toHaveLength(1);
 
+      const legacyGroupingKey = `forum_like:comment:${commentId}`;
+      await notifRepo.update(likeNotifs[0].id, {
+        groupingKey: legacyGroupingKey,
+      });
+
       await request(ctx.app.getHttpServer())
         .post(`/forum/comments/${commentId}/unlike`)
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
@@ -1222,7 +1235,7 @@ describe('Forum (e2e)', () => {
         where: {
           user: { id: ctx.testUserId },
           category: NotificationCategory.Likes,
-          groupingKey,
+          groupingKey: In([groupingKey, legacyGroupingKey]),
         },
       });
       expect(likeNotifs).toHaveLength(0);
@@ -1240,7 +1253,7 @@ describe('Forum (e2e)', () => {
         .expect(201);
 
       const postId = postResponse.body.id;
-      const groupingKey = `forum_like:post:${postId}:user:${ctx.testUserId}`;
+      const groupingKey = `like:post:${postId}`;
 
       await request(ctx.app.getHttpServer())
         .post(`/forum/posts/${postId}/like`)
@@ -1319,7 +1332,7 @@ describe('Forum (e2e)', () => {
           where: {
             user: { id: ownerId },
             category: NotificationCategory.Likes,
-            groupingKey: `forum_like:post:${postId}:user:${ownerId}`,
+            groupingKey: `like:post:${postId}`,
           },
           relations: { associatedUsers: true },
         });
@@ -1493,7 +1506,7 @@ describe('Forum (e2e)', () => {
         where: {
           user: { id: ctx.testUserId },
           category: NotificationCategory.Likes,
-          groupingKey: `forum_like:comment:${commentId}`,
+          groupingKey: `like:comment:${commentId}`,
         },
       });
 

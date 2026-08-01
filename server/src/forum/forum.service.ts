@@ -920,7 +920,6 @@ export class ForumService {
         targetId: post.id,
         targetContent: post.title,
         webAppLocation: postUrl(post.id),
-        groupingKey: `forum_like:post:${post.id}:user:${owner.id}`,
       });
     }
   }
@@ -950,7 +949,6 @@ export class ForumService {
       targetId: comment.id,
       targetContent: comment.editableContent?.body,
       webAppLocation,
-      groupingKey: `forum_like:comment:${comment.id}`,
     });
   }
 
@@ -964,7 +962,6 @@ export class ForumService {
         unlikerId: unliker.id,
         targetType: 'post',
         targetId: post.id,
-        groupingKey: `forum_like:post:${post.id}:user:${owner.id}`,
       });
     }
   }
@@ -978,7 +975,6 @@ export class ForumService {
       unlikerId: unliker.id,
       targetType: 'comment',
       targetId: comment.id,
-      groupingKey: `forum_like:comment:${comment.id}`,
     });
   }
 

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, type EntityManager, type Repository } from 'typeorm';
+import { In, IsNull, type EntityManager, type Repository } from 'typeorm';
 import {
   Notification,
   NotificationCategory,
@@ -15,11 +15,12 @@ export type LikeNotificationTarget =
   | 'comment'
   | `activity:${GlobalFeedActivityType}`;
 
-export type GroupingKey =
+type LegacyGroupingKey =
   | `activity_like:${number}`
   | `forum_like:post:${number}:user:${number}`
-  | `forum_like:comment:${number}`
-  | `like:${LikeNotificationTarget}:${number}`;
+  | `forum_like:comment:${number}`;
+
+export type GroupingKey = `like:${LikeNotificationTarget}:${number}`;
 
 @Injectable()
 export class LikeNotificationService {
@@ -35,7 +36,6 @@ export class LikeNotificationService {
     targetType: LikeNotificationTarget;
     targetId: number;
     webAppLocation: string;
-    groupingKey?: GroupingKey;
     targetContent?: string;
   }): Promise<void> {
     const {
@@ -51,22 +51,28 @@ export class LikeNotificationService {
       return;
     }
 
-    const groupingKey = params.groupingKey ?? `like:${targetType}:${targetId}`;
+    const [groupingKey, legacyGroupingKey] = this.getGroupingKeys({
+      targetType,
+      targetId,
+      ownerId: owner.id,
+    });
+    const compatibleGroupingKeys = [groupingKey, legacyGroupingKey];
 
     // Advisory lock on the groupingKey serializes create/update/delete for
     // this notification across all three code paths, including the
     // create-branch where there is no row yet to take a row lock on.
     await this.notifRepository.manager.transaction(async (manager) => {
-      await this.acquireGroupingKeyLock(manager, groupingKey);
+      await this.acquireGroupingKeyLocks(manager, compatibleGroupingKeys);
       const notifRepo = manager.getRepository(Notification);
       const existingNotif = await notifRepo.findOne({
         where: {
           user: { id: owner.id },
-          groupingKey,
+          groupingKey: In(compatibleGroupingKeys),
           category: NotificationCategory.Likes,
           readAt: IsNull(),
         },
         relations: { associatedUsers: true },
+        order: { createdAt: 'ASC', id: 'ASC' },
       });
 
       if (existingNotif) {
@@ -75,9 +81,13 @@ export class LikeNotificationService {
             (user) => user.id === liker.id,
           )
         ) {
+          if (existingNotif.groupingKey !== groupingKey) {
+            await notifRepo.update(existingNotif.id, { groupingKey });
+          }
           return;
         }
 
+        existingNotif.groupingKey = groupingKey;
         existingNotif.targetContent =
           existingNotif.targetContent ?? targetContent;
         const updatedUsers = [...(existingNotif.associatedUsers ?? []), liker];
@@ -127,7 +137,6 @@ export class LikeNotificationService {
     unlikerId: number;
     targetType: LikeNotificationTarget;
     targetId: number;
-    groupingKey?: GroupingKey;
   }): Promise<void> {
     const { ownerId, unlikerId, targetType, targetId } = params;
 
@@ -135,7 +144,12 @@ export class LikeNotificationService {
       return;
     }
 
-    const groupingKey = params.groupingKey ?? `like:${targetType}:${targetId}`;
+    const [groupingKey, legacyGroupingKey] = this.getGroupingKeys({
+      targetType,
+      targetId,
+      ownerId,
+    });
+    const compatibleGroupingKeys = [groupingKey, legacyGroupingKey];
 
     // Advisory lock on the groupingKey serializes this with createOrUpdate
     // (see matching lock there), including races where the notification row
@@ -144,16 +158,17 @@ export class LikeNotificationService {
     // editing it risks picking the wrong row when a read+unread pair shares
     // the same groupingKey.
     await this.notifRepository.manager.transaction(async (manager) => {
-      await this.acquireGroupingKeyLock(manager, groupingKey);
+      await this.acquireGroupingKeyLocks(manager, compatibleGroupingKeys);
       const notifRepo = manager.getRepository(Notification);
       const notif = await notifRepo.findOne({
         where: {
           user: { id: ownerId },
-          groupingKey,
+          groupingKey: In(compatibleGroupingKeys),
           category: NotificationCategory.Likes,
           readAt: IsNull(),
         },
         relations: { associatedUsers: true },
+        order: { createdAt: 'ASC', id: 'ASC' },
       });
 
       if (!notif) {
@@ -169,6 +184,7 @@ export class LikeNotificationService {
         return;
       }
 
+      notif.groupingKey = groupingKey;
       notif.associatedUsers = updatedUsers;
       notif.groupingCount = updatedUsers.length;
       notif.message = this.buildMessage({
@@ -185,14 +201,39 @@ export class LikeNotificationService {
     });
   }
 
-  private async acquireGroupingKeyLock(
+  private getGroupingKeys(params: {
+    targetType: LikeNotificationTarget;
+    targetId: number;
+    ownerId: number;
+  }): [GroupingKey, LegacyGroupingKey] {
+    const { targetType, targetId, ownerId } = params;
+    const groupingKey: GroupingKey = `like:${targetType}:${targetId}`;
+
+    switch (targetType) {
+      case 'post':
+        return [groupingKey, `forum_like:post:${targetId}:user:${ownerId}`];
+      case 'comment':
+        return [groupingKey, `forum_like:comment:${targetId}`];
+      case 'activity:user_completed':
+      case 'activity:user_submitted_follow_up_form':
+        return [groupingKey, `activity_like:${targetId}`];
+      default:
+        throw new Error(
+          `Unknown like notification target: ${targetType satisfies never}`,
+        );
+    }
+  }
+
+  private async acquireGroupingKeyLocks(
     manager: EntityManager,
-    groupingKey: string,
+    groupingKeys: string[],
   ): Promise<void> {
-    await manager.query(
-      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
-      [groupingKey],
-    );
+    for (const groupingKey of [...groupingKeys].sort()) {
+      await manager.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        [groupingKey],
+      );
+    }
   }
 
   private buildMessage(params: {

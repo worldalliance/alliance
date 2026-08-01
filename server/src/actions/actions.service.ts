@@ -2497,7 +2497,6 @@ export class ActionsService {
           updatedActivity.action?.id ?? updatedActivity.actionId,
           updatedActivity.id,
         ),
-        groupingKey: `activity_like:${updatedActivity.id}`,
       });
     }
 
@@ -2507,7 +2506,6 @@ export class ActionsService {
         unlikerId: user.id,
         targetType: `activity:${updatedActivity.type as GlobalFeedActivityType}`,
         targetId: updatedActivity.id,
-        groupingKey: `activity_like:${updatedActivity.id}`,
       });
     }
 
