@@ -71,10 +71,7 @@ type ResolveRelationPropExact<Prop, R> =
  *
  * Contrast with {@link WithRelations}, which leaves the unspecified relations optional.
  */
-export type WithRelationsExact<
-  Entity,
-  R extends Relations<Entity>,
-> = NoRelations<Entity> & {
+export type WithRelationsExact<Entity, R extends Relations<Entity>> = {
   [K in keyof Entity as K extends keyof Relations<Entity>
     ? K extends keyof R
       ? R[K] extends undefined
@@ -94,7 +91,7 @@ export type WithRelationsExact<
         : never
       : K
     : never]: undefined;
-};
+} & Entity;
 type ResolveRelationProp<Prop, R> =
   Prop extends Promise<infer I>
     ? Promise<ResolveRelationProp<NonNullable<I>, R> | (I & (null | undefined))>
@@ -115,10 +112,7 @@ type ResolveRelationProp<Prop, R> =
  *
  * Contrast with {@link WithRelationsExact}, which requires all unspecified relations to be absent.
  */
-export type WithRelations<
-  Entity,
-  R extends Relations<Entity>,
-> = NoRelations<Entity> & {
+export type WithRelations<Entity, R extends Relations<Entity>> = {
   [K in keyof Entity as K extends keyof Relations<Entity>
     ? K extends keyof R
       ? R[K] extends undefined
@@ -136,7 +130,7 @@ export type WithRelations<
         : never
       : K
     : never]?: Entity[K];
-};
+} & Entity;
 type OptionalKeys<T> = {
   [K in keyof T]-?: {} extends Pick<T, K> ? K : never;
 }[keyof T];
@@ -150,9 +144,11 @@ type RelationKeys<T> = {
  * is a relation, so `undefined` unambiguously means "not loaded". Everything
  * else is required and spells absence as `| null`.
  *
- * The convention is what makes `WithRelationsExact<Entity, R>` assignable back
- * to `Entity` — a required relation can't accept the `undefined` that stands
- * for "not loaded", so entities that violate it can't round-trip.
+ * The convention is what makes `undefined` meaningful. A violating entity has
+ * no usable shape: the mapped types intersect `Entity`, so a required relation
+ * meets the `undefined` standing for "not loaded" and the whole entity type
+ * reduces to `never`. {@link Repository} rejects such entities up front rather
+ * than handing out `never` rows.
  */
 export type EntityShapeViolations<Entity> =
   | Exclude<RelationKeys<Entity>, OptionalKeys<Entity>>
@@ -160,8 +156,9 @@ export type EntityShapeViolations<Entity> =
 
 /**
  * `true` when `Entity` follows the convention, otherwise a type naming the
- * offending fields. Use as `Assert<EntityShape<Entity>>` so the violation shows
- * up in the compile error. Entities opt in from `entity-shape.typecheck.ts`.
+ * offending fields. {@link Repository} gates on this, so an entity with a typed
+ * repository is already checked; assert it from `entity-shape.typecheck.ts` to
+ * pin an entity's shape ahead of that.
  */
 export type EntityShape<Entity> = [EntityShapeViolations<Entity>] extends [
   never,
@@ -171,12 +168,7 @@ export type EntityShape<Entity> = [EntityShapeViolations<Entity>] extends [
       [K in EntityShapeViolations<Entity>]: 'must be optional if and only if it is a relation';
     };
 
-/**
- * Adoption caveat: relations declared `eager: true` are loaded at runtime by
- * every find method — `loadEagerRelations` defaults to true — but typed as
- * unloaded here. Resolve those relations before typing a repository with this.
- */
-export type Repository<Entity extends ObjectLiteral> = Omit<
+type ShapedRepository<Entity extends ObjectLiteral> = Omit<
   TypeOrmRepository<Entity>,
   | 'find'
   | 'findOne'
@@ -225,3 +217,17 @@ export type Repository<Entity extends ObjectLiteral> = Omit<
   /** @deprecated use `findBy` with the `In` operator instead. */
   findByIds(ids: unknown[]): Promise<WithRelationsExact<Entity, {}>[]>;
 };
+
+/**
+ * Adoption caveat: relations declared `eager: true` are loaded at runtime by
+ * every find method — `loadEagerRelations` defaults to true — but typed as
+ * unloaded here. Resolve those relations before typing a repository with this.
+ *
+ * An entity that breaks the {@link EntityShapeViolations} convention resolves
+ * to the violation itself instead of a repository, so the first call against it
+ * reports the offending field rather than failing somewhere downstream.
+ */
+export type Repository<Entity extends ObjectLiteral> =
+  EntityShape<Entity> extends true
+    ? ShapedRepository<Entity>
+    : EntityShape<Entity>;

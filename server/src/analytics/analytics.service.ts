@@ -29,6 +29,7 @@ import { User } from 'src/user/entities/user.entity';
 import { UserService } from 'src/user/user.service';
 import { yieldToEventLoop } from 'src/utils/event-loop';
 import { Between, In, IsNull, type Repository } from 'typeorm';
+import type { Repository as TypedRepository } from 'src/utils/Repository';
 import { ActionCompletionCurve } from './action-completion-curve.dto';
 import { ActionStatsWithOnboarding } from './actionstats-with-onboarding.dto';
 import { ActionStatsRecord } from './actionstats.entity';
@@ -101,7 +102,7 @@ ORDER BY pp.total_session_duration_seconds DESC
   constructor(
     private readonly userService: UserService,
     @InjectRepository(DailyStatsRecord)
-    private readonly dailyStatsRepository: Repository<DailyStatsRecord>,
+    private readonly dailyStatsRepository: TypedRepository<DailyStatsRecord>,
     @InjectRepository(ActionStatsRecord)
     private readonly actionStatsRepository: Repository<ActionStatsRecord>,
     @InjectRepository(User)

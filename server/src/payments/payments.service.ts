@@ -7,7 +7,7 @@ import { ActionsService } from 'src/actions/actions.service';
 import { ActionTaskType } from 'src/actions/entities/action.entity';
 import { UserService } from 'src/user/user.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import Stripe from 'stripe';
 import { PaymentUserDataToken } from './entities/payment-token.entity';
 import { MailService } from 'src/mail/mail.service';

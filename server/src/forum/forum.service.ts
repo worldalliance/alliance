@@ -31,6 +31,7 @@ import {
   type Repository,
   type SelectQueryBuilder,
 } from 'typeorm';
+import type { Repository as TypedRepository } from 'src/utils/Repository';
 import { Notification } from '../notifs/entities/notification.entity';
 import { User } from '../user/entities/user.entity';
 import {
@@ -67,7 +68,7 @@ export class ForumService {
     @InjectRepository(ActionActivity)
     private actionActivityRepository: Repository<ActionActivity>,
     @InjectRepository(EditableContent)
-    private editableContentRepository: Repository<EditableContent>,
+    private editableContentRepository: TypedRepository<EditableContent>,
     private readonly likeNotificationService: LikeNotificationService,
     private readonly eventLogService: EventLogService,
     private readonly notifsService: NotifsService,

@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import type {
+  Repository as TypedRepository,
+  WithRelationsExact,
+} from 'src/utils/Repository';
 import {
   CreateActionPartnershipNoteDto,
   CreateActionPartnershipResponseDto,
@@ -12,7 +16,7 @@ import { ActionPartnershipResponse } from './entities/action-partnership-respons
 export class ActionPartnershipsService {
   constructor(
     @InjectRepository(ActionPartnershipResponse)
-    private readonly responseRepository: Repository<ActionPartnershipResponse>,
+    private readonly responseRepository: TypedRepository<ActionPartnershipResponse>,
     @InjectRepository(ActionPartnershipNote)
     private readonly noteRepository: Repository<ActionPartnershipNote>,
   ) {}
@@ -28,7 +32,9 @@ export class ActionPartnershipsService {
     return this.responseRepository.save(response);
   }
 
-  async findAllResponsesAdmin(): Promise<ActionPartnershipResponse[]> {
+  async findAllResponsesAdmin(): Promise<
+    WithRelationsExact<ActionPartnershipResponse, { notesHistory: true }>[]
+  > {
     return this.responseRepository.find({
       relations: { notesHistory: true },
       order: {

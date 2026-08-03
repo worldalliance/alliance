@@ -6,6 +6,7 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsNotEmpty,
+  IsOptional,
   IsString,
   IsUrl,
   MaxLength,
@@ -18,6 +19,7 @@ import {
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { trim, trimStringArray } from 'src/utils/transforms';
 import { ActionPartnershipNote } from './action-partnership-note.entity';
+import type { Relation } from 'src/utils/Repository';
 
 @Entity()
 export class ActionPartnershipResponse {
@@ -117,7 +119,7 @@ export class ActionPartnershipResponse {
   updatedAt: Date;
 
   @OneToMany(() => ActionPartnershipNote, (note) => note.response)
-  @Allow()
+  @IsOptional()
   @Type(() => ActionPartnershipNote)
-  notesHistory: ActionPartnershipNote[];
+  notesHistory?: Relation<ActionPartnershipNote>[];
 }

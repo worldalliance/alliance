@@ -2,7 +2,8 @@ import { createHash } from 'crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import jsonStableStringify from 'json-stable-stringify';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import {
   FORM_SNAPSHOT_HISTORY_TABLE,
   FormSnapshot,

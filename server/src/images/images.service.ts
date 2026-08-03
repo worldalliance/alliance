@@ -7,7 +7,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import convert from 'heic-convert';
 import sharp from 'sharp';
-import type { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { Image } from './entities/image.entity';
 
 @Injectable()

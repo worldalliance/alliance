@@ -211,7 +211,7 @@ export class UserService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     @InjectRepository(City)
-    private cityRepository: Repository<City>,
+    private cityRepository: TypedRepository<City>,
     @InjectRepository(Friend)
     private readonly friendRepository: Repository<Friend>,
     @InjectRepository(Tag)

@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomToken } from 'src/utils/random';
-import { QueryFailedError, Repository } from 'typeorm';
+import { QueryFailedError } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { CreateCampaignDto, UpdateCampaignDto } from './dto/campaign.dto';
 import { Campaign } from './entities/campaign.entity';
 

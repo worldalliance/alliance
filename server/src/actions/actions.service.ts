@@ -95,6 +95,7 @@ import {
   Or,
   type Repository,
 } from 'typeorm';
+import type { Repository as TypedRepository } from 'src/utils/Repository';
 import { UserService } from '../user/user.service';
 import {
   findLatestTerminalActivity,
@@ -235,7 +236,7 @@ export class ActionsService {
     @InjectRepository(Comment)
     private readonly commentRepository: Repository<Comment>,
     @InjectRepository(EditableContent)
-    private readonly editableContentRepository: Repository<EditableContent>,
+    private readonly editableContentRepository: TypedRepository<EditableContent>,
     @InjectRepository(GeneralUpdate)
     private readonly generalUpdateRepository: Repository<GeneralUpdate>,
     @InjectRepository(GeneralUpdateActivity)

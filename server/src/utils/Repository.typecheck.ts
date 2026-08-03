@@ -262,13 +262,13 @@ type _typecheck_WithRelationsExact =
         $EagerEvaluation<
           WithRelationsExact<
             {
-              param: Relation<{ subparam: string }>;
+              param?: Relation<{ subparam: string }>;
             },
             {}
           >
         >,
         {
-          param: undefined;
+          param?: undefined;
         }
       >
     >
@@ -277,13 +277,13 @@ type _typecheck_WithRelationsExact =
         $EagerEvaluation<
           WithRelationsExact<
             {
-              param: Relation<{ subparam: string }>;
+              param?: Relation<{ subparam: string }>;
             },
             { param: undefined }
           >
         >,
         {
-          param: undefined;
+          param?: undefined;
         }
       >
     >
@@ -292,7 +292,7 @@ type _typecheck_WithRelationsExact =
         $EagerEvaluation<
           WithRelationsExact<
             {
-              param: Relation<{ subparam: string }>;
+              param?: Relation<{ subparam: string }>;
             },
             { param: true }
           >
@@ -318,7 +318,7 @@ type _typecheck_WithRelationsExact =
         $EagerEvaluation<
           WithRelationsExact<
             {
-              param: Relation<{ subparam: string }>[];
+              param?: Relation<{ subparam: string }>[];
             },
             { param: true }
           >
@@ -396,15 +396,15 @@ type _typecheck_WithRelationsExact =
         $EagerEvaluation<
           WithRelationsExact<
             {
-              param: Relation<{
+              param?: Relation<{
                 subparam: string;
-                subparam2: Relation<{ subsubparam: string }>;
+                subparam2?: Relation<{ subsubparam: string }>;
               }>;
             },
             { param: true }
           >
         >,
-        { param: { subparam: string; subparam2: undefined } }
+        { param: { subparam: string; subparam2?: undefined } }
       >
     >
   | Assert<
@@ -412,15 +412,15 @@ type _typecheck_WithRelationsExact =
         $EagerEvaluation<
           WithRelationsExact<
             {
-              param: Relation<{
+              param?: Relation<{
                 subparam: string;
-                subparam2: Relation<{ subsubparam: string }>;
+                subparam2?: Relation<{ subsubparam: string }>;
               }>;
             },
             { param: { subparam2: undefined } }
           >
         >,
-        { param: { subparam: string; subparam2: undefined } }
+        { param: { subparam: string; subparam2?: undefined } }
       >
     >
   | Assert<
@@ -428,9 +428,9 @@ type _typecheck_WithRelationsExact =
         $EagerEvaluation<
           WithRelationsExact<
             {
-              param: Relation<{
+              param?: Relation<{
                 subparam: string;
-                subparam2: Relation<{ subsubparam: string }>;
+                subparam2?: Relation<{ subsubparam: string }>;
               }>;
             },
             { param: { subparam2: true } }
@@ -446,13 +446,13 @@ type _typecheck_WithRelationsExact =
             {
               param?: Relation<{
                 subparam1: string;
-                subparam2: Relation<{ subsubparam: string }>;
+                subparam2?: Relation<{ subsubparam: string }>;
               }>;
             },
             { param: true }
           >
         >,
-        { param: { subparam1: string; subparam2: undefined } }
+        { param: { subparam1: string; subparam2?: undefined } }
       >
     >
   | Assert<
@@ -461,7 +461,7 @@ type _typecheck_WithRelationsExact =
           WithRelationsExact<
             {
               settings: { theme: string; notifications: boolean };
-              posts: Relation<{ id: number; title: string }>[];
+              posts?: Relation<{ id: number; title: string }>[];
             },
             { posts: true }
           >
@@ -478,12 +478,12 @@ type _typecheck_WithRelationsExact =
           WithRelationsExact<
             {
               settings: { theme: string };
-              posts: Relation<{ id: number }>[];
+              posts?: Relation<{ id: number }>[];
             },
             {}
           >
         >,
-        { settings: { theme: string }; posts: undefined }
+        { settings: { theme: string }; posts?: undefined }
       >
     >;
 
@@ -497,7 +497,7 @@ type _typecheck_WithRelations =
   | Assert<
       Equal<
         $EagerEvaluation<
-          WithRelations<{ param: Relation<{ subparam: string }> }, {}>
+          WithRelations<{ param?: Relation<{ subparam: string }> }, {}>
         >,
         { param?: { subparam: string } }
       >
@@ -506,7 +506,7 @@ type _typecheck_WithRelations =
       Equal<
         $EagerEvaluation<
           WithRelations<
-            { param: Relation<{ subparam: string }> },
+            { param?: Relation<{ subparam: string }> },
             { param: true }
           >
         >,
@@ -518,8 +518,8 @@ type _typecheck_WithRelations =
         $EagerEvaluation<
           WithRelations<
             {
-              requiredRel: Relation<{ a: string }>;
-              otherRel: Relation<{ b: number }>;
+              requiredRel?: Relation<{ a: string }>;
+              otherRel?: Relation<{ b: number }>;
             },
             { requiredRel: true }
           >
@@ -533,8 +533,8 @@ type _typecheck_WithRelations =
           WithRelations<
             {
               settings: { theme: string };
-              posts: Relation<{ id: number }>[];
-              tags: Relation<{ name: string }>[];
+              posts?: Relation<{ id: number }>[];
+              tags?: Relation<{ name: string }>[];
             },
             { posts: true }
           >
@@ -551,10 +551,10 @@ type _typecheck_WithRelations =
         $EagerEvaluation<
           WithRelations<
             {
-              param: Relation<{
+              param?: Relation<{
                 subparam: string;
-                subRel: Relation<{ deep: number }>;
-                subOther: Relation<{ extra: boolean }>;
+                subRel?: Relation<{ deep: number }>;
+                subOther?: Relation<{ extra: boolean }>;
               }>;
             },
             { param: { subRel: true } }
@@ -573,7 +573,7 @@ type _typecheck_WithRelations =
   | Assert<
       Equal<
         $EagerEvaluation<
-          WithRelations<{ parent: Relation<{ id: number }> | null }, {}>
+          WithRelations<{ parent?: Relation<{ id: number }> | null }, {}>
         >,
         { parent?: { id: number } | null }
       >
@@ -585,16 +585,16 @@ type _typecheck_WithRelations =
         WithRelationsExact<
           {
             settings: { theme: string };
-            posts: Relation<{ id: number }>[];
-            tags: Relation<{ name: string }>[];
+            posts?: Relation<{ id: number }>[];
+            tags?: Relation<{ name: string }>[];
           },
           { posts: true }
         >,
         WithRelations<
           {
             settings: { theme: string };
-            posts: Relation<{ id: number }>[];
-            tags: Relation<{ name: string }>[];
+            posts?: Relation<{ id: number }>[];
+            tags?: Relation<{ name: string }>[];
           },
           { posts: true }
         >
@@ -605,15 +605,15 @@ type _typecheck_WithRelations =
       Extends<
         WithRelationsExact<
           {
-            posts: Relation<{ id: number }>[];
-            tags: Relation<{ name: string }>[];
+            posts?: Relation<{ id: number }>[];
+            tags?: Relation<{ name: string }>[];
           },
           { posts: true; tags: true }
         >,
         WithRelations<
           {
-            posts: Relation<{ id: number }>[];
-            tags: Relation<{ name: string }>[];
+            posts?: Relation<{ id: number }>[];
+            tags?: Relation<{ name: string }>[];
           },
           { posts: true }
         >
@@ -704,3 +704,65 @@ async function _typecheck_Repository(repo: Repository<Probe>) {
   const [_allRows] = await repo.findAndCount();
   type _15 = Assert<Extends<(typeof _allRows)[number], Probe>>;
 }
+
+type NestedProbe = {
+  id: number;
+  editors?: Relation<{ id: number; boss?: Relation<Author> }>[];
+};
+
+/**
+ * A loaded to-many relation must stay exact however it is iterated, not just
+ * when indexed. Never called — it only has to compile.
+ */
+async function _typecheck_ToManyExactness(repo: Repository<NestedProbe>) {
+  const [row] = await repo.find({ relations: { editors: true } });
+
+  type _1 = Assert<Equal<(typeof row)['editors'][number]['boss'], undefined>>;
+
+  row.editors.map((_editor) => {
+    type _2 = Assert<Equal<(typeof _editor)['boss'], undefined>>;
+  });
+
+  row.editors.forEach((_editor) => {
+    type _3 = Assert<Equal<(typeof _editor)['boss'], undefined>>;
+  });
+
+  const _found = row.editors.find(() => true);
+  type _4 = Assert<Equal<NonNullable<typeof _found>['boss'], undefined>>;
+
+  for (const _editor of row.editors) {
+    type _5 = Assert<Equal<(typeof _editor)['boss'], undefined>>;
+  }
+}
+
+class ClassProbe {
+  id: number;
+  editors?: Relation<Author>[];
+  private cache: Map<number, boolean>;
+}
+
+// Entities are classes, and several carry private members. Mapping over
+// `keyof Entity` drops those, so the intersection has to keep `Entity` itself
+// for results to stay assignable back to the entity type.
+type _typecheck_PrivateMemberRoundTrip =
+  | Assert<Extends<WithRelationsExact<ClassProbe, {}>, ClassProbe>>
+  | Assert<
+      Extends<WithRelationsExact<ClassProbe, { editors: true }>, ClassProbe>
+    >;
+
+// A misshapen entity resolves to its violation rather than to a repository, so
+// the compile error names the field instead of surfacing as `never` rows.
+type _typecheck_RepositoryRejectsUnshapedEntity =
+  | Assert<Extends<Repository<Probe>, { find: unknown }>>
+  | Assert<
+      Equal<
+        Repository<{ id: number; author: Relation<Author> }>,
+        { author: 'must be optional if and only if it is a relation' }
+      >
+    >
+  | Assert<
+      Equal<
+        Repository<{ id: number; note?: string }>,
+        { note: 'must be optional if and only if it is a relation' }
+      >
+    >;

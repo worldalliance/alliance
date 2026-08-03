@@ -2,11 +2,16 @@ import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { IsDateString, IsOptional } from 'class-validator';
 import { ActionPartnershipNote } from '../entities/action-partnership-note.entity';
 import { ActionPartnershipResponse } from '../entities/action-partnership-response.entity';
+import type { WithRelations } from 'src/utils/Repository';
 
-export class ActionPartnershipNoteDto extends PickType(
-  ActionPartnershipNote,
-  ['id', 'responseId', 'noteDate', 'body', 'createdAt', 'updatedAt'],
-) {
+export class ActionPartnershipNoteDto extends PickType(ActionPartnershipNote, [
+  'id',
+  'responseId',
+  'noteDate',
+  'body',
+  'createdAt',
+  'updatedAt',
+]) {
   constructor(note: ActionPartnershipNote) {
     super();
     this.id = note.id;
@@ -38,7 +43,9 @@ export class ActionPartnershipResponseDto extends PickType(
   @ApiProperty({ type: () => ActionPartnershipNoteDto, isArray: true })
   notesHistory: ActionPartnershipNoteDto[];
 
-  constructor(response: ActionPartnershipResponse) {
+  constructor(
+    response: WithRelations<ActionPartnershipResponse, { notesHistory: true }>,
+  ) {
     super();
     this.id = response.id;
     this.organizationName = response.organizationName;
@@ -52,7 +59,7 @@ export class ActionPartnershipResponseDto extends PickType(
     this.notes = response.notes;
     this.createdAt = response.createdAt;
     this.updatedAt = response.updatedAt;
-    this.notesHistory = (response.notesHistory ?? []).map(
+    this.notesHistory = response.notesHistory.map(
       (note) => new ActionPartnershipNoteDto(note),
     );
   }

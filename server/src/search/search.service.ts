@@ -9,7 +9,7 @@ import { ForumService } from 'src/forum/forum.service';
 import { ProfileDto } from 'src/user/dto/user.dto';
 import { User } from 'src/user/entities/user.entity';
 import { UserService } from 'src/user/user.service';
-import type { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { actionUrl, postUrl, profileUrl } from './approutes';
 import { RecentSearch } from './recentsearch.entity';
 import {

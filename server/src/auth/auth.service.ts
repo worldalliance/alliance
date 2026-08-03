@@ -13,7 +13,7 @@ import {
   type StoredInviteAssignment,
 } from 'src/share-urls/invite-assignment';
 import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
-import { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { MailService } from '../mail/mail.service';
 import { ReferralSource, User } from '../user/entities/user.entity';
 import { type PWResetJwtPayload, UserService } from '../user/user.service';

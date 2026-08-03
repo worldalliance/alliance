@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import {
   CreateExternalShareTargetDto,
   UpdateExternalShareTargetDto,

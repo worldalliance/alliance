@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { sqlUserHasActiveContractAt } from 'src/user/entities/user.entity';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { bulkAssign, type ClusterUser } from './cluster.algorithm';
 import { Cluster } from './entities/cluster.entity';
 
