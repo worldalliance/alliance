@@ -1,5 +1,6 @@
 import {
   NUMBER_FIELD_CONTROLS,
+  NUMBER_VALUE_TEMPLATE_TOKEN,
   numberFieldControl,
   type NumberField,
   type NumberFieldControl,
@@ -79,6 +80,28 @@ export function EditableNumberField({
           ))}
         </select>
       </div>
+
+      {isSlider && (
+        <div>
+          <label className="block text-xs text-gray-700 mb-1">
+            Value display template
+          </label>
+          <input
+            type="text"
+            value={field.valueTemplate ?? ""}
+            onChange={(e) =>
+              onUpdate({ valueTemplate: e.target.value || undefined })
+            }
+            className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder={NUMBER_VALUE_TEMPLATE_TOKEN}
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            {NUMBER_VALUE_TEMPLATE_TOKEN} stands in for the number — e.g.{" "}
+            <code>{`${NUMBER_VALUE_TEMPLATE_TOKEN}%`}</code> shows 50 as{" "}
+            <code>50%</code>. Leave blank for just the number.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-2">
         <div>

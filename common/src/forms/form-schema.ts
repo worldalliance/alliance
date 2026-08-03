@@ -120,6 +120,11 @@ const numberFieldSchema = z.strictObject({
   decimalPlaces: z.number().optional(),
   /** Absent means `"input"`; `"slider"` requires `min` and `max`. */
   control: numberFieldControlSchema.optional(),
+  /**
+   * How a slider renders the answer, with `${value}` standing in for the
+   * number — `"${value}%"` shows 50 as "50%". Absent means the bare number.
+   */
+  valueTemplate: z.string().optional(),
 });
 export type NumberField = z.infer<typeof numberFieldSchema>;
 
@@ -409,6 +414,16 @@ export type FormSchema = z.infer<typeof formSchema>;
 
 export function numberFieldControl(field: NumberField): NumberFieldControl {
   return field.control ?? "input";
+}
+
+export const NUMBER_VALUE_TEMPLATE_TOKEN = "${value}";
+
+export function formatNumberFieldValue(
+  field: NumberField,
+  value: number,
+): string {
+  const template = field.valueTemplate ?? NUMBER_VALUE_TEMPLATE_TOKEN;
+  return template.replaceAll(NUMBER_VALUE_TEMPLATE_TOKEN, String(value));
 }
 
 export function isQuestionField(

@@ -4,7 +4,9 @@ import {
   anyFieldSchema,
   collectSourceFormIds,
   forEachCondition,
+  formatNumberFieldValue,
   type FormSchema,
+  type NumberField,
   type TextField,
 } from "./form-schema";
 import type { Condition } from "./visible-if-formula";
@@ -243,5 +245,35 @@ describe("collectSourceFormIds", () => {
       outputViews: [],
     };
     expect(collectSourceFormIds(schema).sort()).toEqual([7, 9]);
+  });
+});
+
+describe("formatNumberFieldValue", () => {
+  const numberField = (valueTemplate?: string): NumberField => ({
+    id: "n1",
+    type: "input",
+    kind: "number",
+    label: "n1",
+    valueTemplate,
+  });
+
+  it("renders the bare number with no template", () => {
+    expect(formatNumberFieldValue(numberField(), 50)).toBe("50");
+  });
+
+  it("substitutes the value into a template", () => {
+    expect(formatNumberFieldValue(numberField("${value}%"), 50)).toBe("50%");
+  });
+
+  it("substitutes every occurrence", () => {
+    expect(
+      formatNumberFieldValue(numberField("${value} of 100 (${value}%)"), 7),
+    ).toBe("7 of 100 (7%)");
+  });
+
+  it("keeps surrounding text, including a leading symbol", () => {
+    expect(formatNumberFieldValue(numberField("$${value}"), 12.5)).toBe(
+      "$12.5",
+    );
   });
 });

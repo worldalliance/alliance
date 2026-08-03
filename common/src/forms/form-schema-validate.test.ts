@@ -622,7 +622,7 @@ describe("validateFormSchema", () => {
     ]);
   });
 
-  describe("slider bounds", () => {
+  describe("number fields", () => {
     const numberField = (
       overrides: Partial<NumberField> = {},
     ): NumberField => ({
@@ -631,6 +631,49 @@ describe("validateFormSchema", () => {
       kind: "number",
       label: "n1",
       ...overrides,
+    });
+
+    it("accepts a value template containing the token", () => {
+      const schema = baseSchema({
+        pages: [
+          page("p1", [
+            numberField({
+              control: "slider",
+              min: 0,
+              max: 100,
+              valueTemplate: "${value}%",
+            }),
+          ]),
+        ],
+      });
+      expect(validateFormSchema(schema)).toEqual([]);
+    });
+
+    it("rejects a value template without the token", () => {
+      const schema = baseSchema({
+        pages: [
+          page("p1", [
+            numberField({
+              control: "slider",
+              min: 0,
+              max: 100,
+              valueTemplate: "percent",
+            }),
+          ]),
+        ],
+      });
+      expect(validateFormSchema(schema)).toEqual([
+        { blockId: "n1", message: "A value template must contain ${value}" },
+      ]);
+    });
+
+    it("rejects a value template on a plain number input too", () => {
+      const schema = baseSchema({
+        pages: [page("p1", [numberField({ valueTemplate: "" })])],
+      });
+      expect(validateFormSchema(schema)).toEqual([
+        { blockId: "n1", message: "A value template must contain ${value}" },
+      ]);
     });
 
     it("accepts a plain number field with no bounds", () => {

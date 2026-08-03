@@ -1,6 +1,7 @@
 import type { DisplayBlock } from "./display-blocks";
 import {
   isQuestionField,
+  NUMBER_VALUE_TEMPLATE_TOKEN,
   numberFieldControl,
   type AnyField,
   type FormSchema,
@@ -191,6 +192,17 @@ function collectNumberFieldErrors(
   blockId: string,
   errors: FormSchemaValidationError[],
 ): void {
+  // Checked even on a plain number input, where the template is inert: it
+  // would otherwise only break once someone switched the field to a slider.
+  if (
+    field.valueTemplate !== undefined &&
+    !field.valueTemplate.includes(NUMBER_VALUE_TEMPLATE_TOKEN)
+  ) {
+    errors.push({
+      blockId,
+      message: `A value template must contain ${NUMBER_VALUE_TEMPLATE_TOKEN}`,
+    });
+  }
   if (!CONTROL_NEEDS_BOUNDS[numberFieldControl(field)]) return;
   if (typeof field.min !== "number" || typeof field.max !== "number") {
     errors.push({
