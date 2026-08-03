@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import type {
   Repository as TypedRepository,
   WithRelationsExact,
@@ -18,7 +17,7 @@ export class ActionPartnershipsService {
     @InjectRepository(ActionPartnershipResponse)
     private readonly responseRepository: TypedRepository<ActionPartnershipResponse>,
     @InjectRepository(ActionPartnershipNote)
-    private readonly noteRepository: Repository<ActionPartnershipNote>,
+    private readonly noteRepository: TypedRepository<ActionPartnershipNote>,
   ) {}
 
   async createResponse(
@@ -56,7 +55,7 @@ export class ActionPartnershipsService {
     }
 
     const note = this.noteRepository.create({
-      response,
+      responseId: response.id,
       noteDate: dto.noteDate ? new Date(dto.noteDate) : new Date(),
       body: dto.body,
     });

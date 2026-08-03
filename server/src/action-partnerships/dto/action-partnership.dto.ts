@@ -15,7 +15,7 @@ export class ActionPartnershipNoteDto extends PickType(ActionPartnershipNote, [
   constructor(note: ActionPartnershipNote) {
     super();
     this.id = note.id;
-    this.responseId = note.responseId ?? note.response.id;
+    this.responseId = note.responseId;
     this.noteDate = note.noteDate;
     this.body = note.body;
     this.createdAt = note.createdAt;

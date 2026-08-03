@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 @Entity()
 @Unique(['actionId'])
@@ -52,10 +52,11 @@ export class ActionStatsRecord {
   lastCalculatedAt: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
-  @ApiPropertyOptional({
+  @ApiProperty({
+    nullable: true,
     description: 'When the action was completed (if applicable)',
   })
-  actionCompletedAt?: Date;
+  actionCompletedAt: Date | null;
 
   @Column({ default: true })
   @ApiProperty({
@@ -65,14 +66,16 @@ export class ActionStatsRecord {
   showInChart: boolean;
 
   @Column({ type: 'timestamptz', nullable: true })
-  @ApiPropertyOptional({
+  @ApiProperty({
+    nullable: true,
     description: 'When the member_action phase started',
   })
-  memberActionStartDate?: Date;
+  memberActionStartDate: Date | null;
 
   @Column({ type: 'timestamptz', nullable: true })
-  @ApiPropertyOptional({
+  @ApiProperty({
+    nullable: true,
     description: 'When the member_action phase ended (next status event date)',
   })
-  memberActionEndDate?: Date;
+  memberActionEndDate: Date | null;
 }

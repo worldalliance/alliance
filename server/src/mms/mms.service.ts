@@ -8,7 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EventType } from 'src/eventlog/event-log.entity';
 import { EventLogService } from 'src/eventlog/eventlog.service';
 import Twilio from 'twilio';
-import type { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { Mms } from './mms.entity';
 
 @Injectable()
@@ -57,12 +57,13 @@ export class MmsService {
     }
   }
 
-  async sendMms(
-    to: string,
-    body: string,
-    mediaUrls: string[],
-    cid?: string,
-  ): Promise<Mms | null> {
+  async sendMms(params: {
+    to: string;
+    body: string;
+    mediaUrls: string[];
+    cid: string | null;
+  }): Promise<Mms | null> {
+    const { to, body, mediaUrls, cid } = params;
     if (
       process.env.NODE_ENV === 'test' ||
       !(
@@ -77,7 +78,9 @@ export class MmsService {
         body: body,
         status: 'sent',
         twilioSid: 'test-sid',
-        cid: cid,
+        errorCode: null,
+        errorMessage: null,
+        cid,
       });
       return this.mmsRepository.save(mms);
     }
@@ -123,7 +126,7 @@ export class MmsService {
         status: message.status,
         errorCode: message.errorCode,
         errorMessage: message.errorMessage,
-        cid: cid,
+        cid,
       });
 
       return this.mmsRepository.save(mms);
@@ -139,6 +142,7 @@ export class MmsService {
           type: EventType.SmsFailure,
           message: `Failed to send MMS to ${to}: ${errorMessage}`,
           blob: { errorMessage, to, from: this.twilioPhoneNumber },
+          userId: null,
         });
       }
       return null;
@@ -152,6 +156,7 @@ export class MmsService {
         type: EventType.SmsFailure,
         message: `MMS to ${mms.to} failed with status ${message.status}. Error code: ${message.errorCode}`,
         blob: message.toJSON(),
+        userId: null,
       });
     }
     mms.to = message.to;

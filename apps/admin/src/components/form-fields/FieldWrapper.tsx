@@ -112,11 +112,11 @@ export function FieldWrapper<T extends AnyField>({
     CustomValidatorType | undefined
   >(undefined);
   const [customValidatorIdArgument, setCustomValidatorIdArgument] = useState<
-    string | undefined
-  >(undefined);
+    string | null
+  >(null);
   const [customValidatorExpression, setCustomValidatorExpression] = useState<
-    string | undefined
-  >(undefined);
+    string | null
+  >(null);
   const [loadedValidatorId, setLoadedValidatorId] = useState<number | null>(
     null,
   );
@@ -140,8 +140,8 @@ export function FieldWrapper<T extends AnyField>({
           setLoadedValidatorId(validatorId);
         } else {
           setCustomValidatorType(undefined);
-          setCustomValidatorIdArgument(undefined);
-          setCustomValidatorExpression(undefined);
+          setCustomValidatorIdArgument(null);
+          setCustomValidatorExpression(null);
           setLoadedValidatorId(null);
         }
       } else if (loadedValidatorId !== validatorId) {
@@ -160,8 +160,8 @@ export function FieldWrapper<T extends AnyField>({
       }
     } else if (loadedValidatorId !== null) {
       setCustomValidatorType(undefined);
-      setCustomValidatorIdArgument(undefined);
-      setCustomValidatorExpression(undefined);
+      setCustomValidatorIdArgument(null);
+      setCustomValidatorExpression(null);
       setLoadedValidatorId(null);
     }
 
@@ -206,11 +206,12 @@ export function FieldWrapper<T extends AnyField>({
     };
   }, [isExtraMenuOpen]);
 
-  const handleValidatorChange = async (
-    validatorType: CustomValidatorType | undefined,
-    idArgument?: string,
-    expression?: string,
-  ) => {
+  const handleValidatorChange = async (params: {
+    validatorType: CustomValidatorType | undefined;
+    idArgument: string | null;
+    expression: string | null;
+  }) => {
+    const { validatorType, idArgument, expression } = params;
     console.log("handlevalidatorchange", validatorType, idArgument);
     if (!validatorType) {
       if (
@@ -221,8 +222,8 @@ export function FieldWrapper<T extends AnyField>({
       }
       onUpdate({ customValidatorId: undefined } as Partial<T>);
       setCustomValidatorType(undefined);
-      setCustomValidatorIdArgument(undefined);
-      setCustomValidatorExpression(undefined);
+      setCustomValidatorIdArgument(null);
+      setCustomValidatorExpression(null);
       return;
     }
 
@@ -248,7 +249,11 @@ export function FieldWrapper<T extends AnyField>({
   const handleCustomValidatorToggle = (checked: boolean) => {
     setShowCustomValidatorControl(checked);
     if (!checked) {
-      handleValidatorChange(undefined);
+      handleValidatorChange({
+        validatorType: undefined,
+        idArgument: null,
+        expression: null,
+      });
     }
   };
 

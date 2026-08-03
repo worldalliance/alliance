@@ -126,6 +126,7 @@ export class TwilioSignatureGuard implements CanActivate {
         'check that the webhook URL in the Twilio console is exactly ' +
         `${expectedUrl ?? '<APP_URL is unusable>'}.`,
       blob: { ...blob, rejectionsSinceLastAlert: rejections },
+      userId: null,
     });
   }
 }

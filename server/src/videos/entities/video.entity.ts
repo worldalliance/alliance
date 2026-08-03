@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -32,12 +32,12 @@ export class Video {
   status: 'processing' | 'ready' | 'failed';
 
   @Column({ type: 'float', nullable: true })
-  @ApiPropertyOptional()
-  duration?: number;
+  @ApiProperty({ nullable: true })
+  duration: number | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  @ApiPropertyOptional()
-  processingInfo?: Record<string, unknown> | null;
+  @ApiProperty({ nullable: true })
+  processingInfo: Record<string, unknown> | null;
 
   @CreateDateColumnTz()
   dateCreated: Date;

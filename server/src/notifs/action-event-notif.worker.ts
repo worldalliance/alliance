@@ -242,12 +242,12 @@ export class ActionEventNotifWorker {
         cid,
         uncompletedTasks,
       );
-      const result = await this.mmsService.sendMms(
-        plan.user.phoneNumber!,
-        textMessage,
-        [],
+      const result = await this.mmsService.sendMms({
+        to: plan.user.phoneNumber!,
+        body: textMessage,
+        mediaUrls: [],
         cid,
-      );
+      });
 
       if (result && !result.errorCode) {
         notif.sent = true;
@@ -270,12 +270,12 @@ export class ActionEventNotifWorker {
         uncompletedTasks,
       );
 
-      const result = await this.mailService.sendActionEventNotificationEmail(
-        emailSubject,
-        emailMessage,
+      const result = await this.mailService.sendActionEventNotificationEmail({
+        subject: emailSubject,
+        message: emailMessage,
         cid,
-        plan.user.email,
-      );
+        recipient: plan.user.email,
+      });
       notif.mail = result;
       if (result.status === EmailStatus.Sent) {
         notif.sent = true;

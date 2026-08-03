@@ -2,7 +2,7 @@ import { R, type Result } from '@alliance/common/result';
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import {
   EventLogDto,
   EventLogList,
@@ -52,7 +52,7 @@ export class EventLogService {
   async findOne(id: string): Promise<EventLog | null> {
     return this.eventLogRepository.findOne({
       where: { id },
-      relations: ['user'],
+      relations: { user: true },
     });
   }
 
@@ -76,8 +76,8 @@ export class EventLogService {
     type: EventType;
     message: string;
     slackMessage?: string;
-    blob?: Record<string, unknown>;
-    userId?: number;
+    blob: Record<string, unknown> | null;
+    userId: number | null;
   }): Promise<Result<void, Error>> {
     const { type, message, blob, userId } = data;
 
@@ -86,8 +86,8 @@ export class EventLogService {
         this.eventLogRepository.create({
           event: type,
           message: message,
-          blob: blob,
-          user: userId ? { id: userId } : undefined,
+          blob,
+          userId,
         }),
       ),
     );
@@ -125,7 +125,7 @@ export class EventLogService {
     // Re-query with user relation for the event payload
     const fullEvent = await this.eventLogRepository.findOne({
       where: { id: saved.id },
-      relations: ['user'],
+      relations: { user: true },
     });
     if (fullEvent) {
       this.eventEmitter.emit(

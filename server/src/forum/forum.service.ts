@@ -736,24 +736,24 @@ export class ForumService {
         if (post.notifyForReplies && parentAuthor.receiveReplyNotifications) {
           const url = withCid(commentUrl(comment, undefined, true), cid);
           if (userActionNotifsEnabled_text(parentAuthor)) {
-            await this.mmsService.sendMms(
-              parentAuthor.phoneNumber!,
-              `${authorDto.displayName} replied to your comment on ${post.title}: ${url}`,
-              [],
+            await this.mmsService.sendMms({
+              to: parentAuthor.phoneNumber!,
+              body: `${authorDto.displayName} replied to your comment on ${post.title}: ${url}`,
+              mediaUrls: [],
               cid,
-            );
+            });
           } else if (userActionNotifsEnabled_email(parentAuthor)) {
-            await this.mailService.sendMail(
-              parentAuthor.email!,
-              EmailType.ForumReply,
-              `${authorDto.displayName} replied to your comment on ${post.title}`,
-              {
+            await this.mailService.sendMail({
+              recipient: parentAuthor.email!,
+              emailType: EmailType.ForumReply,
+              subject: `${authorDto.displayName} replied to your comment on ${post.title}`,
+              context: {
                 url,
                 displayName: authorDto.displayName,
                 postTitle: post.title,
               },
               cid,
-            );
+            });
           } else {
             this.eventLogService.sendMessage({
               type: EventType.ForumReplyNotifFailure,

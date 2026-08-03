@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { Allow, IsNotEmpty, IsString } from 'class-validator';
+import { Allow, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -8,11 +8,11 @@ import {
 import {
   Column,
   Entity,
+  JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  RelationId,
 } from 'typeorm';
-import type { Relation } from 'typeorm';
+import type { Relation } from 'src/utils/Repository';
 import type { ActionPartnershipResponse } from './action-partnership-response.entity';
 
 @Entity()
@@ -31,10 +31,11 @@ export class ActionPartnershipNote {
       nullable: false,
     },
   )
-  @Allow()
-  response: Relation<ActionPartnershipResponse>;
+  @JoinColumn({ name: 'responseId' })
+  @IsOptional()
+  response?: Relation<ActionPartnershipResponse>;
 
-  @RelationId((note: ActionPartnershipNote) => note.response)
+  @Column({ type: 'int' })
   @ApiProperty()
   @Allow()
   responseId: number;

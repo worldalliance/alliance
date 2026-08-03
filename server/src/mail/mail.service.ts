@@ -3,7 +3,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ActionEvent } from 'src/actions/entities/action-event.entity';
 import { groupMembersListUrl, tasksUrl, withCid } from 'src/search/approutes';
-import type { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { EmailStatus, EmailType, Mail } from './mail.entity';
 import { getTimeLeftString } from 'src/notifs/textnotifcontents';
 import { User } from 'src/user/entities/user.entity';
@@ -139,14 +139,17 @@ export class MailService {
     );
   }
 
-  async sendMail(
-    recipient: string,
-    emailType: EmailType,
-    subject: string | null,
-    context: ISendMailOptions['context'],
-    cid?: string,
-  ): Promise<Mail> {
-    const mail = await this.mailRepository.create({
+  async sendMail(params: {
+    recipient: string;
+    emailType: EmailType;
+    subject: string | null;
+    context: ISendMailOptions['context'];
+    cid: string | null;
+  }): Promise<Mail> {
+    const { recipient, emailType, subject, context, cid } = params;
+    const mail = this.mailRepository.create({
+      sentMessageId: null,
+      renderedHtml: null,
       to: recipient,
       emailType: emailType,
       status: EmailStatus.Pending,
@@ -192,108 +195,117 @@ export class MailService {
     return this.mailRepository.save(mail);
   }
 
-  public async sendWelcomeEmail(
-    recipient: string,
-    name: string,
-    verifyToken: string,
-  ): Promise<Mail> {
-    return this.sendMail(
+  public async sendWelcomeEmail(params: {
+    recipient: string;
+    name: string;
+    verifyToken: string;
+  }): Promise<Mail> {
+    const { recipient, name, verifyToken } = params;
+    return this.sendMail({
       recipient,
-      EmailType.Welcome,
-      'Welcome to the Alliance',
-      {
+      emailType: EmailType.Welcome,
+      subject: 'Welcome to the Alliance',
+      context: {
         name,
         url: `${process.env.APP_URL}/verifyEmail?token=${verifyToken}`,
       },
-    );
+      cid: null,
+    });
   }
 
   private getPasswordResetUrl(resetToken: string) {
     return `${process.env.APP_URL}/resetpassword?token=${resetToken}`; //todo: domain param
   }
 
-  public async sendPasswordResetEmail(
-    email: string,
-    name: string,
-    resetToken: string,
-  ): Promise<Mail> {
+  public async sendPasswordResetEmail(params: {
+    email: string;
+    name: string;
+    resetToken: string;
+  }): Promise<Mail> {
+    const { email, name, resetToken } = params;
     const url = this.getPasswordResetUrl(resetToken);
-    return this.sendMail(
-      email,
-      EmailType.PasswordReset,
-      'a link to reset your password',
-      {
+    return this.sendMail({
+      recipient: email,
+      emailType: EmailType.PasswordReset,
+      subject: 'a link to reset your password',
+      context: {
         name,
         url,
       },
-    );
+      cid: null,
+    });
   }
 
-  public async sendPartialSignupEmail(
-    email: string,
-    name: string,
-    resetToken: string,
-  ): Promise<Mail> {
+  public async sendPartialSignupEmail(params: {
+    email: string;
+    name: string;
+    resetToken: string;
+  }): Promise<Mail> {
+    const { email, name, resetToken } = params;
     const url = this.getPasswordResetUrl(resetToken);
-    return this.sendMail(
-      email,
-      EmailType.PartialSignup,
-      'Thanks for helping out! Want to do more?',
-      {
+    return this.sendMail({
+      recipient: email,
+      emailType: EmailType.PartialSignup,
+      subject: 'Thanks for helping out! Want to do more?',
+      context: {
         name,
         email,
         url,
       },
-    );
+      cid: null,
+    });
   }
 
   public async sendContractSuspendedEmail(
     email: string,
     name: string,
   ): Promise<Mail> {
-    return this.sendMail(
-      email,
-      EmailType.ContractSuspended,
-      'Alliance contract suspended',
-      {
+    return this.sendMail({
+      recipient: email,
+      emailType: EmailType.ContractSuspended,
+      subject: 'Alliance contract suspended',
+      context: {
         name,
       },
-    );
+      cid: null,
+    });
   }
 
   public async sendContractReminderEmail(
     email: string,
     name: string,
   ): Promise<Mail> {
-    return this.sendMail(
-      email,
-      EmailType.ContractReminder,
-      'Sign your membership contract to participate in actions',
-      {
+    return this.sendMail({
+      recipient: email,
+      emailType: EmailType.ContractReminder,
+      subject: 'Sign your membership contract to participate in actions',
+      context: {
         name,
         link: `${process.env.APP_URL}/tasks`,
       },
-    );
+      cid: null,
+    });
   }
 
-  public async sendForumDigestEmail(
-    email: string,
-    name: string,
-    unreadCount: number,
+  public async sendForumDigestEmail(params: {
+    email: string;
+    name: string;
+    unreadCount: number;
     notifications: {
       message: string;
       url?: string | null;
       createdAt: string;
-    }[],
-    cid: string,
-  ): Promise<Mail> {
+    }[];
+    cid: string;
+  }): Promise<Mail> {
+    const { email, name, unreadCount, notifications, cid } = params;
     const subject = `You have ${unreadCount} unread Alliance forum notification${unreadCount === 1 ? '' : 's'}`;
 
-    return this.sendMail(
-      email,
-      EmailType.ForumDigest,
+    return this.sendMail({
+      recipient: email,
+      emailType: EmailType.ForumDigest,
       subject,
-      {
+      context: {
         name,
         count: unreadCount,
         notifications: notifications.map((item) => ({
@@ -304,24 +316,25 @@ export class MailService {
         appUrl: process.env.APP_URL,
       },
       cid,
-    );
+    });
   }
 
-  public async sendActionEventNotificationEmail(
-    subject: string,
-    message: string,
-    cid: string,
-    recipient: string,
-  ): Promise<Mail> {
-    return this.sendMail(
+  public async sendActionEventNotificationEmail(params: {
+    subject: string;
+    message: string;
+    cid: string;
+    recipient: string;
+  }): Promise<Mail> {
+    const { subject, message, cid, recipient } = params;
+    return this.sendMail({
       recipient,
-      EmailType.CustomActionReminder,
+      emailType: EmailType.CustomActionReminder,
       subject,
-      {
+      context: {
         customMessage: message.replace(/\n/g, '<br>'),
       },
       cid,
-    );
+    });
   }
 
   async setClickedLinkByCid(cid: string): Promise<void> {

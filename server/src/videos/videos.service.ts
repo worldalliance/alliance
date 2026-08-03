@@ -11,7 +11,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import type { VideoDetailResponse } from './dto/video-response.dto';
 import { Video } from './entities/video.entity';
 
@@ -111,6 +111,8 @@ export class VideosService {
         mime: 'application/vnd.apple.mpegurl',
         size: totalSize,
         status: 'ready',
+        duration: null,
+        processingInfo: null,
       }),
     );
   }

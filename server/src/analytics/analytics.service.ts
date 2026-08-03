@@ -104,7 +104,7 @@ ORDER BY pp.total_session_duration_seconds DESC
     @InjectRepository(DailyStatsRecord)
     private readonly dailyStatsRepository: TypedRepository<DailyStatsRecord>,
     @InjectRepository(ActionStatsRecord)
-    private readonly actionStatsRepository: Repository<ActionStatsRecord>,
+    private readonly actionStatsRepository: TypedRepository<ActionStatsRecord>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(ActionActivity)
@@ -412,11 +412,10 @@ ORDER BY pp.total_session_duration_seconds DESC
         existingRecord.usersDismissed = usersDismissed;
         existingRecord.completionRate = completionRate;
         existingRecord.lastCalculatedAt = now;
-        existingRecord.actionCompletedAt = completedDate ?? undefined;
+        existingRecord.actionCompletedAt = completedDate;
         existingRecord.showInChart = showInChart;
-        existingRecord.memberActionStartDate =
-          memberActionStartDate ?? undefined;
-        existingRecord.memberActionEndDate = memberActionEndDate ?? undefined;
+        existingRecord.memberActionStartDate = memberActionStartDate;
+        existingRecord.memberActionEndDate = memberActionEndDate;
         await this.actionStatsRepository.save(existingRecord);
       } else {
         const newRecord = this.actionStatsRepository.create({
@@ -428,10 +427,10 @@ ORDER BY pp.total_session_duration_seconds DESC
           usersDismissed,
           completionRate,
           lastCalculatedAt: now,
-          actionCompletedAt: completedDate ?? undefined,
+          actionCompletedAt: completedDate,
           showInChart,
-          memberActionStartDate: memberActionStartDate ?? undefined,
-          memberActionEndDate: memberActionEndDate ?? undefined,
+          memberActionStartDate,
+          memberActionEndDate,
         });
         await this.actionStatsRepository.save(newRecord);
       }
@@ -526,26 +525,28 @@ ORDER BY pp.total_session_duration_seconds DESC
     const msPerDay = 24 * 60 * 60 * 1000;
     const maxDurationDays = 21;
 
-    const eligibleActions = actionStats.filter((record) => {
-      if (!record.memberActionStartDate || record.usersJoined <= 0) {
-        return false;
-      }
-      if (record.memberActionStartDate > now) {
-        return false;
-      }
-      if (onboardingByActionId.get(record.actionId)) {
-        return false;
-      }
-      const plannedEnd = record.memberActionEndDate ?? now;
-      const durationDays = Math.ceil(
-        (plannedEnd.getTime() - record.memberActionStartDate.getTime()) /
-          msPerDay,
-      );
-      if (!Number.isFinite(durationDays) || durationDays <= 0) {
-        return false;
-      }
-      return durationDays <= maxDurationDays;
-    });
+    const eligibleActions = actionStats.filter(
+      (record): record is typeof record & { memberActionStartDate: Date } => {
+        if (!record.memberActionStartDate || record.usersJoined <= 0) {
+          return false;
+        }
+        if (record.memberActionStartDate > now) {
+          return false;
+        }
+        if (onboardingByActionId.get(record.actionId)) {
+          return false;
+        }
+        const plannedEnd = record.memberActionEndDate ?? now;
+        const durationDays = Math.ceil(
+          (plannedEnd.getTime() - record.memberActionStartDate.getTime()) /
+            msPerDay,
+        );
+        if (!Number.isFinite(durationDays) || durationDays <= 0) {
+          return false;
+        }
+        return durationDays <= maxDurationDays;
+      },
+    );
 
     if (eligibleActions.length === 0) {
       return [];
@@ -572,7 +573,7 @@ ORDER BY pp.total_session_duration_seconds DESC
     const msPerBucket = isHourly ? 60 * 60 * 1000 : msPerDay;
 
     return eligibleActions.map((record) => {
-      const startDate = new Date(record.memberActionStartDate!);
+      const startDate = new Date(record.memberActionStartDate);
       const plannedEndDate = record.memberActionEndDate
         ? new Date(record.memberActionEndDate)
         : null;
@@ -606,8 +607,8 @@ ORDER BY pp.total_session_duration_seconds DESC
           actionId: record.actionId,
           actionName: record.actionName,
           usersJoined: record.usersJoined,
-          memberActionStartDate: record.memberActionStartDate!,
-          memberActionEndDate: record.memberActionEndDate ?? undefined,
+          memberActionStartDate: record.memberActionStartDate,
+          memberActionEndDate: record.memberActionEndDate,
           bucketDays: 0,
           dayOffsets: [],
           completedCounts: counts,
@@ -621,8 +622,8 @@ ORDER BY pp.total_session_duration_seconds DESC
         actionId: record.actionId,
         actionName: record.actionName,
         usersJoined: record.usersJoined,
-        memberActionStartDate: record.memberActionStartDate!,
-        memberActionEndDate: record.memberActionEndDate ?? undefined,
+        memberActionStartDate: record.memberActionStartDate,
+        memberActionEndDate: record.memberActionEndDate,
         bucketDays: 1,
         dayOffsets: Array.from({ length: bucketCount }, (_, index) => index),
         completedCounts: counts,

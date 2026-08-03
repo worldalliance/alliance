@@ -284,6 +284,7 @@ export class ContractService {
           .filter(Boolean)
           .join(' '),
         userId: user.id,
+        blob: null,
       }),
       ...promises,
     ]);
@@ -340,6 +341,7 @@ export class ContractService {
         type: EventType.ContractSuspended,
         message: `${user.name} suspended their contract :(`,
         userId: user.id,
+        blob: null,
       });
     }
 

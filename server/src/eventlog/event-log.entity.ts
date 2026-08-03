@@ -8,7 +8,6 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  RelationId,
 } from 'typeorm';
 
 export enum EventType {
@@ -56,8 +55,8 @@ export class EventLog {
   message: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  @ApiPropertyOptional()
-  blob?: Record<string, unknown>;
+  @ApiProperty({ nullable: true })
+  blob: Record<string, unknown> | null;
 
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })
@@ -68,7 +67,7 @@ export class EventLog {
   @ApiPropertyOptional({ type: () => User })
   user?: Relation<User>;
 
-  @RelationId((event: EventLog) => event.user)
-  @ApiPropertyOptional()
-  userId?: number;
+  @Column({ type: 'int', nullable: true })
+  @ApiProperty({ nullable: true })
+  userId: number | null;
 }

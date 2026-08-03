@@ -1,12 +1,7 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { Allow, IsOptional } from 'class-validator';
-import {
-  Column,
-  Entity,
-  PrimaryGeneratedColumn,
-  Unique,
-} from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -57,20 +52,20 @@ export class AiDetectionResult {
   status: DetectionStatus;
 
   @Column({ type: 'float', nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ nullable: true })
   @IsOptional()
-  aiProbability?: number | null;
+  aiProbability: number | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ nullable: true })
   @IsOptional()
   @Type(() => Object)
-  rawApiResponse?: string | null;
+  rawApiResponse: string | null;
 
   @Column({ type: 'text', nullable: true })
-  @ApiPropertyOptional()
+  @ApiProperty({ nullable: true })
   @IsOptional()
-  modelVersion?: string | null;
+  modelVersion: string | null;
 
   @CreateDateColumnTz()
   @ApiProperty()

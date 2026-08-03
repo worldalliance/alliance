@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
+import { In, Not } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { AiDetectionJobData } from './ai-detection.types';
 import { DETECTION_REGISTRY } from './detection-registry';
 import {
@@ -19,11 +20,13 @@ export class AiDetectionProcessor {
     private readonly detectionResultRepository: Repository<AiDetectionResult>,
     private readonly entityResolver: EntityResolverService,
     private readonly pangramApiService: PangramAiDetectionApiService,
-  ) { }
+  ) {}
 
   async handleDetection(job: AiDetectionJobData): Promise<void> {
     const { entityType, entityId } = job;
-    const config = DETECTION_REGISTRY.find((entry) => entry.entityType === entityType);
+    const config = DETECTION_REGISTRY.find(
+      (entry) => entry.entityType === entityType,
+    );
     if (!config) {
       this.logger.warn(
         `No AI detection config found for entityType=${entityType}`,
@@ -70,13 +73,14 @@ export class AiDetectionProcessor {
           },
           {
             status: DetectionStatus.Completed,
-            aiProbability: apiResult.probability ?? undefined,
-            rawApiResponse: apiResult.raw ? JSON.stringify(apiResult.raw) : undefined,
-            modelVersion: apiResult.modelVersion ?? undefined,
+            aiProbability: apiResult.probability,
+            rawApiResponse: JSON.stringify(apiResult.raw),
+            modelVersion: apiResult.modelVersion,
           },
         );
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
         await this.detectionResultRepository.update(
           {
             entityType,

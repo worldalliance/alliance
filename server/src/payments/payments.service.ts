@@ -136,7 +136,11 @@ export class PaymentsService {
         email,
       });
       const token = await this.userService.generatePasswordResetToken(user.id);
-      this.mailService.sendPartialSignupEmail(email, firstName, token);
+      this.mailService.sendPartialSignupEmail({
+        email,
+        name: firstName,
+        resetToken: token,
+      });
 
       const customer = await this.stripe.customers.create({
         metadata: { userId: String(user.id) },

@@ -258,6 +258,7 @@ export class UserService {
         .filter(Boolean)
         .join(' '),
       userId: user.id,
+      blob: null,
     });
     return user;
   }
@@ -581,11 +582,11 @@ export class UserService {
 
     const user = await this.findOneOrFail(userId);
     const token = await this.getVerifyEmailToken(userId);
-    const mail = await this.mailService.sendWelcomeEmail(
-      user.email,
-      user.name,
-      token,
-    );
+    const mail = await this.mailService.sendWelcomeEmail({
+      recipient: user.email,
+      name: user.name,
+      verifyToken: token,
+    });
     await this.userRepository.update(userId, { welcomeMail: mail });
   }
 
@@ -3028,6 +3029,7 @@ export class UserService {
       type: EventType.AccountDeletionRequested,
       message: `User ${userId} requested account deletion`,
       userId: userId,
+      blob: null,
     });
   }
 }

@@ -628,11 +628,19 @@ describe('Tasks (e2e)', () => {
       const response = await request(ctx.app.getHttpServer())
         .post('/tasks/createCustomValidator')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ type, idArgument })
+        .send({ type, idArgument: idArgument ?? null, expression: null })
         .expect(201);
 
       return response.body.id;
     };
+
+    it('rejects a create body that omits the nullable fields', async () => {
+      await request(ctx.app.getHttpServer())
+        .post('/tasks/createCustomValidator')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ type: CustomValidatorType.AnyCommunity })
+        .expect(400);
+    });
 
     const runValidator = async (
       id: number,

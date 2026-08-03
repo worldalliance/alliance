@@ -77,12 +77,12 @@ export class ContractSuspenderWorker {
           if (res) {
             const cid = generateCIDForNotif();
             if (userActionNotifsEnabled_text(user)) {
-              await this.mmsService.sendMms(
-                user.phoneNumber!,
-                suspensionMessage,
-                [],
+              await this.mmsService.sendMms({
+                to: user.phoneNumber!,
+                body: suspensionMessage,
+                mediaUrls: [],
                 cid,
-              );
+              });
             }
             if (userActionNotifsEnabled_email(user)) {
               await this.mailService.sendContractSuspendedEmail(

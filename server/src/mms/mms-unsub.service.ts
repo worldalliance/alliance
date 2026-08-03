@@ -52,6 +52,8 @@ export class MmsUnsubService {
       this.eventLogService.sendMessage({
         type: EventType.SmsUnsubscribe,
         message: `Unhandled SMS opt-out from ${phoneNumber}`,
+        blob: null,
+        userId: null,
       });
       return;
     }
@@ -60,6 +62,7 @@ export class MmsUnsubService {
         type: EventType.SmsUnsubscribe,
         message: `${user.name} keyword unsubscribed from SMS`,
         userId: user.id,
+        blob: null,
       });
     }
   }
@@ -93,6 +96,7 @@ export class MmsUnsubService {
         type: EventType.SmsResubscribe,
         message: `Unhandled SMS resubscribe from ${phoneNumber}`,
         blob: { phoneNumber, rawBody },
+        userId: null,
       });
       return;
     }
@@ -115,6 +119,7 @@ export class MmsUnsubService {
       type: EventType.SmsInbound,
       message: `Unhandled inbound SMS from ${from}: ${body}`,
       blob: { from, to, body },
+      userId: null,
     });
   }
 }

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
 import { User } from 'src/user/entities/user.entity';
 import {
   CustomValidator,
@@ -44,13 +44,15 @@ export class CreateCustomValidatorDto {
   @IsNotEmpty()
   type: CustomValidatorType;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  idArgument?: string;
+  @ApiProperty({ type: String, nullable: true })
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  idArgument: string | null;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  expression?: string;
+  @ApiProperty({ type: String, nullable: true })
+  @ValidateIf((_object, value) => value !== null)
+  @IsString()
+  expression: string | null;
 }
 
 export class CustomValidatorDto extends PickType(CustomValidator, [

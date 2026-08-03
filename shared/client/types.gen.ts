@@ -255,13 +255,13 @@ export type EmailType = 'verification' | 'password_reset' | 'partial_signup' | '
 
 export type Mail = {
     id: number;
-    sentMessageId?: string;
-    renderedHtml?: string;
+    sentMessageId: string | null;
+    renderedHtml: string | null;
     to: string;
     status: EmailStatus;
     emailType: EmailType;
     createdAt: string;
-    cid?: string;
+    cid: string | null;
     clickedLink: boolean;
 };
 
@@ -272,11 +272,11 @@ export type Mms = {
     body: string;
     status: string;
     twilioSid: string;
-    errorCode?: number;
-    errorMessage?: string;
+    errorCode: number | null;
+    errorMessage: string | null;
     createdAt: string;
     updatedAt: string;
-    cid?: string;
+    cid: string | null;
     clickedLink: boolean;
 };
 
@@ -1492,11 +1492,11 @@ export type EventLogDto = {
     id: string;
     event: EventType;
     message: string;
-    blob?: {
+    blob: {
         [key: string]: unknown;
-    };
+    } | null;
     createdAt: string;
-    userId?: number;
+    userId: number | null;
     user?: EventLogUserDto;
 };
 
@@ -3048,7 +3048,7 @@ export type VideoListItemDto = {
     mime: string;
     size: number;
     status: string;
-    duration?: number;
+    duration: number | null;
     dateCreated: string;
     dateUpdated: string;
 };
@@ -3061,7 +3061,7 @@ export type VideoStatusResponseDto = {
     id: number;
     key: string;
     status: string;
-    duration?: number;
+    duration: number | null;
 };
 
 export type VideoSegmentDto = {
@@ -3089,7 +3089,7 @@ export type VideoDetailResponseDto = {
     mime: string;
     size: number;
     status: string;
-    duration?: number;
+    duration: number | null;
     segments: Array<VideoSegmentDto>;
     totalOutputSize: number;
     processingInfo?: VideoProcessingInfoDto;
@@ -3167,8 +3167,8 @@ export type AiDetectionResultDto = {
     id: number;
     fieldPath: string;
     status: DetectionStatus;
-    aiProbability?: number;
-    modelVersion?: string;
+    aiProbability: number | null;
+    modelVersion: string | null;
     createdAt: string;
     updatedAt: string;
 };
@@ -3318,14 +3318,14 @@ export type CustomValidatorResponseDto = {
 export type CustomValidatorDto = {
     id: number;
     type: CustomValidatorType;
-    idArgument?: string;
-    expression?: string;
+    idArgument: string | null;
+    expression: string | null;
 };
 
 export type CreateCustomValidatorDto = {
     type: CustomValidatorType;
-    idArgument?: string;
-    expression?: string;
+    idArgument: string | null;
+    expression: string | null;
 };
 
 export type CreateCustomValidatorResponseDto = {
@@ -3407,7 +3407,7 @@ export type ActionStatsWithOnboardingDto = {
     /**
      * When the action was completed (if applicable)
      */
-    actionCompletedAt?: string;
+    actionCompletedAt: string | null;
     /**
      * Whether to show this action in the chart (false for publicOnly or actions without member_action event)
      */
@@ -3415,11 +3415,11 @@ export type ActionStatsWithOnboardingDto = {
     /**
      * When the member_action phase started
      */
-    memberActionStartDate?: string;
+    memberActionStartDate: string | null;
     /**
      * When the member_action phase ended (next status event date)
      */
-    memberActionEndDate?: string;
+    memberActionEndDate: string | null;
     /**
      * Whether the action is marked as onboarding.
      */
@@ -3528,13 +3528,13 @@ export type ActionCompletionCurveDto = {
      */
     usersJoined: number;
     /**
-     * When the member_action phase started
-     */
-    memberActionStartDate?: string;
-    /**
      * When the member_action phase ended (next status event date)
      */
-    memberActionEndDate?: string;
+    memberActionEndDate: string | null;
+    /**
+     * When the member_action phase started.
+     */
+    memberActionStartDate: string;
     /**
      * Bucket size in days used to group completions.
      */

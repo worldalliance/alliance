@@ -93,13 +93,13 @@ export class ForumDigestService {
       }));
 
       try {
-        await this.mailService.sendForumDigestEmail(
-          user.email,
-          user.name,
-          userNotifications.length,
-          digestItems,
-          cidForNotif,
-        );
+        await this.mailService.sendForumDigestEmail({
+          email: user.email,
+          name: user.name,
+          unreadCount: userNotifications.length,
+          notifications: digestItems,
+          cid: cidForNotif,
+        });
         await this.notificationRepository.update(
           userNotifications.map((item) => item.id),
           { readAt: new Date() },

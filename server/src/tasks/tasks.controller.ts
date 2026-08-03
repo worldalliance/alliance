@@ -302,11 +302,11 @@ export class TasksController {
   async createCustomValidatorAdmin(
     @Body() body: CreateCustomValidatorDto,
   ): Promise<CreateCustomValidatorResponseDto> {
-    const validator = await this.tasksService.findOrCreateCustomValidator(
-      body.type,
-      body.idArgument,
-      body.expression,
-    );
+    const validator = await this.tasksService.findOrCreateCustomValidator({
+      type: body.type,
+      idArgument: body.idArgument,
+      expression: body.expression,
+    });
     return new CreateCustomValidatorResponseDto(validator.id);
   }
 

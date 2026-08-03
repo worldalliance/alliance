@@ -5,8 +5,8 @@ export type ActionCompletionCurve = {
   actionId: number;
   actionName: string;
   usersJoined: number;
-  memberActionStartDate?: Date;
-  memberActionEndDate?: Date;
+  memberActionStartDate: Date;
+  memberActionEndDate: Date | null;
   bucketDays: number;
   dayOffsets: number[];
   completedCounts: number[];
@@ -19,9 +19,15 @@ export class ActionCompletionCurveDto extends PickType(ActionStatsRecord, [
   'actionId',
   'actionName',
   'usersJoined',
-  'memberActionStartDate',
   'memberActionEndDate',
 ] as const) {
+  // Nullable on the entity, but a curve is only built for actions that have a
+  // member_action start, so it is always present here.
+  @ApiProperty({
+    description: 'When the member_action phase started.',
+  })
+  memberActionStartDate: Date;
+
   @ApiProperty({
     description: 'Bucket size in days used to group completions.',
     example: 1,

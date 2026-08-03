@@ -391,7 +391,11 @@ export class AuthService {
     }
 
     const token = await this.usersService.generatePasswordResetToken(user.id);
-    await this.mailService.sendPasswordResetEmail(user.email, user.name, token);
+    await this.mailService.sendPasswordResetEmail({
+      email: user.email,
+      name: user.name,
+      resetToken: token,
+    });
     return user;
   }
 

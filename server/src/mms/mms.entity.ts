@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -38,13 +38,13 @@ export class Mms {
   @ApiProperty()
   twilioSid: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  errorCode?: number;
+  @Column({ type: 'int', nullable: true })
+  @ApiProperty({ nullable: true })
+  errorCode: number | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  errorMessage?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  errorMessage: string | null;
 
   @CreateDateColumnTz()
   @ApiProperty()
@@ -54,9 +54,9 @@ export class Mms {
   @ApiProperty()
   updatedAt: Date;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  cid?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  cid: string | null;
 
   @Column({ default: false })
   @ApiProperty({ type: Boolean })

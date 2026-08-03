@@ -731,11 +731,12 @@ export class TasksService {
         userUpdates.phoneNumber = normalized;
 
         if (!user.optInMms) {
-          const mms = await this.mmsService.sendMms(
-            normalized,
-            welcomeMessage,
-            [],
-          );
+          const mms = await this.mmsService.sendMms({
+            to: normalized,
+            body: welcomeMessage,
+            mediaUrls: [],
+            cid: null,
+          });
           if (mms) {
             await this.userService.setOptInMms(user.id, mms.id);
           } else {
@@ -1333,23 +1334,24 @@ export class TasksService {
     }));
   }
 
-  async findOrCreateCustomValidator(
-    type: CustomValidatorType,
-    idArg?: string,
-    expression?: string,
-  ): Promise<CustomValidator> {
+  async findOrCreateCustomValidator(params: {
+    type: CustomValidatorType;
+    idArgument: string | null;
+    expression: string | null;
+  }): Promise<CustomValidator> {
+    const { type, idArgument, expression } = params;
     let validator = await this.customValidatorRepository.findOne({
       where: {
         type,
-        idArgument: idArg ?? IsNull(),
+        idArgument: idArgument ?? IsNull(),
         expression: expression ?? IsNull(),
       },
     });
     if (!validator) {
       validator = this.customValidatorRepository.create({
         type,
-        idArgument: idArg,
-        expression: expression,
+        idArgument,
+        expression,
       });
       await this.customValidatorRepository.save(validator);
     }

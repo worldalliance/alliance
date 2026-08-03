@@ -1,7 +1,7 @@
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Mms } from './mms.entity';
 import { Injectable } from '@nestjs/common';
-import type { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { MmsService } from './mms.service';
 import { InjectRepository } from '@nestjs/typeorm';
 

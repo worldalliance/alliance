@@ -271,6 +271,7 @@ export class ForumActionCompleterWorker {
             type: EventType.ForumActionAutocomplete,
             message: `Automatically completing action ${action.id} for user ${userId} based on forum participation`,
             userId: userId,
+            blob: null,
           });
         } catch (error) {
           if (error instanceof QueryFailedError) {

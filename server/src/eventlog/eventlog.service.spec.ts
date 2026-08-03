@@ -1,5 +1,5 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import type { Repository } from 'typeorm';
+import type { Repository } from 'src/utils/Repository';
 import { EventLog, EventType } from './event-log.entity';
 import { EventLogEvents } from './eventlog.events';
 import { EventLogService } from './eventlog.service';
@@ -7,7 +7,9 @@ import { escapeSlackText } from './slack-format';
 
 describe('EventLogService.sendMessage', () => {
   let service: EventLogService;
-  let repository: jest.Mocked<Repository<EventLog>>;
+  // `findOne` is generic over the requested relations, so its mocked signature
+  // would demand a fully loaded row; widen just that one to a bare mock.
+  let repository: jest.Mocked<Repository<EventLog>> & { findOne: jest.Mock };
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let fetchMock: jest.Mock;
 
@@ -31,7 +33,7 @@ describe('EventLogService.sendMessage', () => {
       save: jest.fn().mockResolvedValue(savedRow),
       // null skips the created-event emit; tests that need it override this.
       findOne: jest.fn().mockResolvedValue(null),
-    } as unknown as jest.Mocked<Repository<EventLog>>;
+    } as unknown as jest.Mocked<Repository<EventLog>> & { findOne: jest.Mock };
 
     eventEmitter = {
       emit: jest.fn(),
@@ -61,6 +63,8 @@ describe('EventLogService.sendMessage', () => {
     const result = await service.sendMessage({
       type: EventType.ContractSigned,
       message: 'Jane signed their contract',
+      blob: null,
+      userId: null,
     });
 
     expect(result).toEqual({ ok: false, error: dbError });
@@ -74,10 +78,28 @@ describe('EventLogService.sendMessage', () => {
     const result = await service.sendMessage({
       type: EventType.ContractSigned,
       message: 'Jane signed their contract',
+      blob: null,
+      userId: null,
     });
 
     expect(result).toEqual({ ok: true, value: undefined });
     expect(service['logger'].error).toHaveBeenCalled();
+  });
+
+  it('stores nullable fields as null', async () => {
+    await service.sendMessage({
+      type: EventType.ContractSigned,
+      message: 'Jane signed their contract',
+      blob: null,
+      userId: null,
+    });
+
+    expect(repository.create).toHaveBeenCalledWith({
+      event: EventType.ContractSigned,
+      message: 'Jane signed their contract',
+      blob: null,
+      userId: null,
+    });
   });
 
   it('stores the raw message and escapes the Slack copy by default', async () => {
@@ -86,6 +108,8 @@ describe('EventLogService.sendMessage', () => {
     const result = await service.sendMessage({
       type: EventType.ActionOptOut,
       message,
+      blob: null,
+      userId: null,
     });
 
     expect(result.ok).toBe(true);
@@ -102,6 +126,8 @@ describe('EventLogService.sendMessage', () => {
       type: EventType.ActionComment,
       message: 'New comment on action 42',
       slackMessage,
+      blob: null,
+      userId: null,
     });
 
     expect(repository.save).toHaveBeenCalledWith(
@@ -114,6 +140,8 @@ describe('EventLogService.sendMessage', () => {
     const result = await service.sendMessage({
       type: EventType.ForumReplyNotifFailure,
       message: 'notif failure',
+      blob: null,
+      userId: null,
     });
 
     expect(result.ok).toBe(true);
@@ -126,6 +154,8 @@ describe('EventLogService.sendMessage', () => {
     const result = await service.sendMessage({
       type: EventType.ContractSigned,
       message: 'Jane signed their contract',
+      blob: null,
+      userId: null,
     });
 
     expect(result.ok).toBe(true);
@@ -147,6 +177,7 @@ describe('EventLogService.sendMessage', () => {
       type: EventType.ContractSigned,
       message: 'Jane signed their contract',
       userId: 5,
+      blob: null,
     });
 
     expect(eventEmitter.emit).toHaveBeenCalledWith(

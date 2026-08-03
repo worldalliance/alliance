@@ -16,7 +16,7 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
-function formatDuration(seconds?: number): string {
+function formatDuration(seconds: number | null): string {
   if (seconds == null) return "-";
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);

@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 
@@ -34,12 +34,12 @@ export class Mail {
   id: number;
 
   @Column({ type: 'text', nullable: true })
-  @ApiPropertyOptional()
-  sentMessageId?: string;
+  @ApiProperty({ nullable: true })
+  sentMessageId: string | null;
 
   @Column({ type: 'text', nullable: true })
-  @ApiPropertyOptional()
-  renderedHtml?: string;
+  @ApiProperty({ nullable: true })
+  renderedHtml: string | null;
 
   @ApiProperty()
   @Column()
@@ -57,9 +57,9 @@ export class Mail {
   @CreateDateColumnTz()
   createdAt: Date;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  cid?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  cid: string | null;
 
   @Column({ default: false })
   @ApiProperty({ type: Boolean })

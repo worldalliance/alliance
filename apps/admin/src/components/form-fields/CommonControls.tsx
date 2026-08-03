@@ -687,11 +687,14 @@ export function ConditionalVisibility({
     return withoutId?.id ?? usableValidators[0]?.id;
   }, [usableValidators]);
 
+  type ValidatorConfig = {
+    type: CustomValidatorType;
+    idArgument: string | null;
+    expression: string | null;
+  };
+
   const [validatorConfigs, setValidatorConfigs] = useState<
-    Record<
-      number,
-      { type: CustomValidatorType; idArgument?: string; expression?: string }
-    >
+    Record<number, ValidatorConfig>
   >({});
 
   const pendingValidatorFetch = useRef<Set<number>>(new Set());
@@ -701,7 +704,7 @@ export function ConditionalVisibility({
       .filter(isValidatorCondition)
       .map((condition) => condition.validatorId)
       .filter(
-        (id) =>
+        (id): boolean =>
           !isDraftValidatorId(id) &&
           validatorConfigs[id] === undefined &&
           !pendingValidatorFetch.current.has(id),
@@ -727,7 +730,7 @@ export function ConditionalVisibility({
               idArgument: response.data.idArgument,
               expression: response.data.expression,
             },
-          ];
+          ] as const;
         } catch (error) {
           console.error("Failed to load visibility validator", error);
           return [id, undefined] as const;
@@ -735,16 +738,15 @@ export function ConditionalVisibility({
       }),
     )
       .then((entries) => {
-        const resolved = entries.filter((entry) => entry[1] !== undefined);
+        const resolved = entries.filter(
+          (entry): entry is readonly [number, ValidatorConfig] =>
+            entry[1] !== undefined,
+        );
         if (resolved.length === 0) return;
         setValidatorConfigs((prev) => {
           const next = { ...prev };
           for (const [id, config] of resolved) {
-            next[id as unknown as number] = config as {
-              type: CustomValidatorType;
-              idArgument?: string;
-              expression?: string;
-            };
+            next[id] = config;
           }
           return next;
         });
@@ -755,13 +757,13 @@ export function ConditionalVisibility({
   }, [conditions, validatorConfigs]);
 
   const addValidatorCondition = useCallback(
-    async (opts?: {
-      type?: CustomValidatorType;
-      idArgument?: string;
-      resultEquals?: boolean;
-      expression?: string;
+    async (params: {
+      type: CustomValidatorType | undefined;
+      idArgument: string | null;
+      resultEquals: boolean;
+      expression: string | null;
     }): Promise<boolean> => {
-      const desiredType = opts?.type ?? pickDefaultValidatorType();
+      const desiredType = params.type ?? pickDefaultValidatorType();
       if (!desiredType) {
         setConditionError(
           "No custom validators are available for conditional visibility.",
@@ -771,13 +773,13 @@ export function ConditionalVisibility({
       const draftId = createDraftId();
       setDraft(draftId, {
         type: desiredType,
-        idArgument: opts?.idArgument,
-        expression: opts?.expression,
+        idArgument: params.idArgument,
+        expression: params.expression,
       });
       const nextCondition: ValidatorCondition = {
         kind: "validator",
         validatorId: draftId,
-        resultEquals: opts?.resultEquals ?? true,
+        resultEquals: params.resultEquals,
       };
       const next = [...conditions, nextCondition];
       updateConditions(next);
@@ -1130,12 +1132,13 @@ export function ConditionalVisibility({
   );
 
   const handleValidatorSelection = useCallback(
-    async (
-      index: number,
-      validatorType: CustomValidatorType | undefined,
-      idArgument?: string,
-      expression?: string,
-    ) => {
+    async (params: {
+      index: number;
+      validatorType: CustomValidatorType | undefined;
+      idArgument: string | null;
+      expression: string | null;
+    }) => {
+      const { index, validatorType, idArgument, expression } = params;
       if (!validatorType) {
         removeCondition(index);
         return;
@@ -1439,15 +1442,15 @@ export function ConditionalVisibility({
       <div className="space-y-2">
         <CustomValidatorSelect
           type={config?.type}
-          idArgument={config?.idArgument}
-          expression={config?.expression}
-          onChange={(validatorType, idArgument, expression) =>
-            void handleValidatorSelection(
+          idArgument={config?.idArgument ?? null}
+          expression={config?.expression ?? null}
+          onChange={({ validatorType, idArgument, expression }) =>
+            void handleValidatorSelection({
               index,
               validatorType,
               idArgument,
               expression,
-            )
+            })
           }
           filter={(validator) => validator.usableForVisibility}
           label="Visibility validator"
@@ -1813,7 +1816,14 @@ export function ConditionalVisibility({
           <button
             type="button"
             className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100 disabled:opacity-40"
-            onClick={() => void addValidatorCondition()}
+            onClick={() =>
+              void addValidatorCondition({
+                type: undefined,
+                idArgument: null,
+                resultEquals: true,
+                expression: null,
+              })
+            }
             disabled={!canUseValidators}
           >
             + Validator condition
@@ -2103,13 +2113,13 @@ const externalSchemaCache = new Map<number, AnyField[]>();
 
 type CustomValidatorSelectProps = {
   type?: CustomValidatorType;
-  idArgument?: string;
-  expression?: string;
-  onChange: (
-    validatorType: CustomValidatorType | undefined,
-    idArgument?: string,
-    expression?: string,
-  ) => void;
+  idArgument: string | null;
+  expression: string | null;
+  onChange: (params: {
+    validatorType: CustomValidatorType | undefined;
+    idArgument: string | null;
+    expression: string | null;
+  }) => void;
   className?: string;
   label?: string;
   filter?: (validator: CustomValidatorTypeDto) => boolean;
@@ -2174,10 +2184,14 @@ export function CustomValidatorSelect({
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const nextValue = event.target.value;
     if (!nextValue) {
-      onChange(undefined, idArgument, expression);
+      onChange({ validatorType: undefined, idArgument, expression });
       return;
     }
-    onChange(nextValue as CustomValidatorType, idArgument, expression);
+    onChange({
+      validatorType: nextValue as CustomValidatorType,
+      idArgument,
+      expression,
+    });
   };
 
   const hasValidators = availableValidators.length > 0;
@@ -2338,11 +2352,11 @@ export function CustomValidatorSelect({
             <select
               value={idArgument ?? ""}
               onChange={(e) =>
-                onChange(
-                  type,
-                  e.target.value === "" ? undefined : e.target.value,
+                onChange({
+                  validatorType: type,
+                  idArgument: e.target.value === "" ? null : e.target.value,
                   expression,
-                )
+                })
               }
               className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-32"
               disabled={tagsLoading}
@@ -2361,11 +2375,11 @@ export function CustomValidatorSelect({
               type="text"
               value={idArgument ?? ""}
               onChange={(e) =>
-                onChange(
-                  type,
-                  e.target.value === "" ? undefined : e.target.value,
+                onChange({
+                  validatorType: type,
+                  idArgument: e.target.value === "" ? null : e.target.value,
                   expression,
-                )
+                })
               }
               className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-24"
             />
@@ -2375,7 +2389,13 @@ export function CustomValidatorSelect({
         <div className="space-y-2">
           <textarea
             value={expression ?? ""}
-            onChange={(e) => onChange(type, idArgument, e.target.value)}
+            onChange={(e) =>
+              onChange({
+                validatorType: type,
+                idArgument,
+                expression: e.target.value,
+              })
+            }
             className="px-2 py-1 text-xs border border-gray-300 rounded bg-white w-full font-mono"
           />
           <Card style={CardStyle.Grey} className="p-2! gap-y-2">

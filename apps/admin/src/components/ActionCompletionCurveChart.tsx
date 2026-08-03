@@ -33,7 +33,7 @@ function computeMaxOffset(
       if (lastOffset !== undefined && lastOffset > max) max = lastOffset;
     }
     // Also derive from dates if offsets are shorter than the full action duration
-    if (curve.memberActionStartDate && curve.memberActionEndDate) {
+    if (curve.memberActionEndDate) {
       const start = new Date(curve.memberActionStartDate).getTime();
       const end = new Date(curve.memberActionEndDate).getTime();
       const duration = Math.ceil((end - start) / msPerUnit);
@@ -88,12 +88,8 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
     return actionCompletionCurves
       .slice()
       .sort((a, b) => {
-        const dateA = a.memberActionStartDate
-          ? new Date(a.memberActionStartDate).getTime()
-          : Number.NEGATIVE_INFINITY;
-        const dateB = b.memberActionStartDate
-          ? new Date(b.memberActionStartDate).getTime()
-          : Number.NEGATIVE_INFINITY;
+        const dateA = new Date(a.memberActionStartDate).getTime();
+        const dateB = new Date(b.memberActionStartDate).getTime();
         if (dateA !== dateB) {
           return dateB - dateA;
         }
@@ -146,7 +142,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
     const curve = actionCompletionCurves.find(
       (c) => String(c.actionId) === effectiveActionId,
     );
-    if (!curve?.memberActionStartDate) return;
+    if (!curve) return;
     const msPerDay = 24 * 60 * 60 * 1000;
     const start = new Date(curve.memberActionStartDate).getTime();
     const end = curve.memberActionEndDate
@@ -164,8 +160,7 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
     const minDays = minDurationDays !== "" ? Number(minDurationDays) : null;
     const maxDays = maxDurationDays !== "" ? Number(maxDurationDays) : null;
 
-    function curveDurationDays(curve: ActionCompletionCurveDto): number | null {
-      if (!curve.memberActionStartDate) return null;
+    function curveDurationDays(curve: ActionCompletionCurveDto): number {
       const start = new Date(curve.memberActionStartDate).getTime();
       const end = curve.memberActionEndDate
         ? new Date(curve.memberActionEndDate).getTime()
@@ -176,7 +171,6 @@ const ActionCompletionCurveChart: React.FC<ActionCompletionCurveChartProps> = ({
     function passesDurationFilter(curve: ActionCompletionCurveDto): boolean {
       if (minDays === null && maxDays === null) return true;
       const days = curveDurationDays(curve);
-      if (days === null) return false;
       if (minDays !== null && days < minDays) return false;
       if (maxDays !== null && days > maxDays) return false;
       return true;

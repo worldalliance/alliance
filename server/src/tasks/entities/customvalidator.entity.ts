@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Allow, IsOptional } from 'class-validator';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
@@ -21,7 +21,8 @@ export const typeName: Record<CustomValidatorType, string> = {
   [CustomValidatorType.SignedContract]: 'Signed Contract',
   [CustomValidatorType.AddedProfileDescription]: 'Added Profile Description',
   [CustomValidatorType.RepliedToForumPost]: 'Replied to Forum Post',
-  [CustomValidatorType.RepliedToForumPostOrChild]: 'Replied to Forum Post (children ok)',
+  [CustomValidatorType.RepliedToForumPostOrChild]:
+    'Replied to Forum Post (children ok)',
   [CustomValidatorType.HasPhoneNumber]: 'Has Phone Number',
   [CustomValidatorType.IsPhoneNumberValid]: 'Entered phone number is valid',
   [CustomValidatorType.MemberTag]: 'Member has tag',
@@ -73,13 +74,13 @@ export class CustomValidator {
   @Allow()
   type: CustomValidatorType;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
   @IsOptional()
-  idArgument?: string;
+  idArgument: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
   @IsOptional()
-  expression?: string;
+  expression: string | null;
 }
