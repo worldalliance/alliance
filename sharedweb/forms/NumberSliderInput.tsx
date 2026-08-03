@@ -5,6 +5,7 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { cn } from "@alliance/shared/styles/util";
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -23,6 +24,9 @@ const THUMB_SIZE_PX = 20;
  * corner radius plus half the tail's rotated width, so it never straddles a corner.
  */
 const TAIL_INSET_PX = 15;
+const LONG_PRESS_MS = 450;
+/** Movement past this cancels a pending long press, treating it as a drag. */
+const LONG_PRESS_SLOP_PX = 6;
 
 const clamp = (value: number, low: number, high: number) =>
   Math.min(Math.max(value, low), high);
@@ -59,6 +63,22 @@ export function NumberSliderInput({
 
   const dragOrigin = useRef<{ x: number; value: number } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const editRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) editRef.current?.select();
+  }, [editing]);
+
+  useEffect(
+    () => () => {
+      if (longPressTimer.current !== null) clearTimeout(longPressTimer.current);
+    },
+    [],
+  );
 
   // Laying the bubble out needs real pixels: it has to stay inside the track
   // while its tail stays inside its own rounded corners.
@@ -139,17 +159,51 @@ export function NumberSliderInput({
     if (!answered && interactive) commit(position);
   };
 
-  const startBubbleDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const cancelLongPress = () => {
+    if (longPressTimer.current === null) return;
+    clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+  };
+
+  /** Touch and pen have no double-click, so a press held in place stands in. */
+  const armLongPress = (pointerType: string) => {
+    if (pointerType === "mouse") return;
+    longPressTimer.current = setTimeout(beginEdit, LONG_PRESS_MS);
+  };
+
+  const beginEdit = () => {
     if (!interactive) return;
+    cancelLongPress();
+    dragOrigin.current = null;
+    setDragging(false);
+    setDraft(answered ? String(position) : "");
+    setEditing(true);
+  };
+
+  const commitEdit = () => {
+    setEditing(false);
+    const parsed = parseFloat(draft);
+    // An unparseable or empty entry abandons the edit rather than clearing an
+    // answer the user never meant to touch.
+    if (!Number.isFinite(parsed)) return;
+    commit(snap(parsed));
+  };
+
+  const startBubbleDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!interactive || editing) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragOrigin.current = { x: event.clientX, value: position };
     setDragging(true);
     answerOnFirstInteraction();
+    armLongPress(event.pointerType);
   };
 
   const moveBubbleDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     const origin = dragOrigin.current;
     if (!origin) return;
+    if (Math.abs(event.clientX - origin.x) > LONG_PRESS_SLOP_PX) {
+      cancelLongPress();
+    }
     if (travel <= 0) return;
     // Scaled to the thumb's own travel, so the bubble keeps pace with the
     // pointer rather than drifting away from it.
@@ -158,6 +212,7 @@ export function NumberSliderInput({
   };
 
   const endBubbleDrag = () => {
+    cancelLongPress();
     dragOrigin.current = null;
     setDragging(false);
   };
@@ -179,6 +234,7 @@ export function NumberSliderInput({
           onPointerMove={moveBubbleDrag}
           onPointerUp={endBubbleDrag}
           onPointerCancel={endBubbleDrag}
+          onDoubleClick={beginEdit}
           style={{ left: bubbleLeft }}
           className={cn(
             "absolute bottom-2.5 rounded-md border bg-white px-2 py-0.5 text-xl whitespace-nowrap tabular-nums shadow-sm",
@@ -187,11 +243,41 @@ export function NumberSliderInput({
             "touch-none",
             accentBorder,
             answered ? "text-zinc-900" : "text-zinc-400",
-            interactive ? "cursor-ew-resize" : "cursor-not-allowed",
+            editing
+              ? "cursor-text"
+              : interactive
+                ? "cursor-ew-resize"
+                : "cursor-not-allowed",
             dragging && "ring-2 ring-green/30",
           )}
         >
-          {answered ? formatted : "—"}
+          {editing ? (
+            <input
+              ref={editRef}
+              // Deliberately not `type="number"`: browsers refuse `select()` on
+              // one, so the old value couldn't be pre-selected for replacement.
+              // `commitEdit` clamps and snaps, so the native hints buy nothing.
+              type="text"
+              inputMode={field.allowDecimals ? "decimal" : "numeric"}
+              autoFocus
+              value={draft}
+              aria-label="Enter a value"
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitEdit();
+                if (e.key === "Escape") setEditing(false);
+              }}
+              // Sized to the digits so the bubble doesn't jump width, and
+              // `!bg-transparent` for the same global `input` rule as the track.
+              style={{ width: `${Math.max(draft.length, 2) + 1}ch` }}
+              className="block appearance-none !bg-transparent text-xl tabular-nums outline-none select-text"
+            />
+          ) : answered ? (
+            formatted
+          ) : (
+            "—"
+          )}
         </div>
         <div
           style={{ left: tailCentre }}
@@ -224,8 +310,15 @@ export function NumberSliderInput({
           disabled={disabled}
           aria-invalid={hasError}
           aria-valuetext={answered ? formatted : "No answer selected"}
-          onPointerDown={answerOnFirstInteraction}
+          onPointerDown={(e) => {
+            answerOnFirstInteraction();
+            armLongPress(e.pointerType);
+          }}
+          onPointerMove={cancelLongPress}
+          onPointerUp={cancelLongPress}
+          onPointerCancel={cancelLongPress}
           onKeyDown={answerOnFirstInteraction}
+          onDoubleClick={beginEdit}
           onChange={
             onChange ? (e) => commit(parseFloat(e.target.value)) : undefined
           }

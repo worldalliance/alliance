@@ -5,8 +5,13 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { cn } from "@alliance/shared/styles/util";
 import Slider from "@react-native-community/slider";
-import { useRef, useState } from "react";
-import { PanResponder, View, type LayoutChangeEvent } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  PanResponder,
+  TextInput,
+  View,
+  type LayoutChangeEvent,
+} from "react-native";
 import { colors } from "../../lib/style/colors";
 import Text from "../system/Text";
 
@@ -23,6 +28,9 @@ const TAIL_SIZE_PX = 12;
  * radius plus half the tail's rotated width, so it never straddles a corner.
  */
 const TAIL_INSET_PX = 15;
+const LONG_PRESS_MS = 450;
+/** Movement past this cancels a pending long press, treating it as a drag. */
+const LONG_PRESS_SLOP_PX = 6;
 
 const clamp = (value: number, low: number, high: number) =>
   Math.min(Math.max(value, low), high);
@@ -46,6 +54,16 @@ export default function NumberSliderInput({
 
   const [trackWidth, setTrackWidth] = useState(0);
   const [bubbleWidth, setBubbleWidth] = useState(0);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  useEffect(
+    () => () => {
+      if (longPressTimer.current !== null) clearTimeout(longPressTimer.current);
+    },
+    [],
+  );
 
   const numeric =
     typeof value === "number"
@@ -95,24 +113,52 @@ export default function NumberSliderInput({
     return Math.min(max, min + Math.round((clamped - min) / step) * step);
   };
 
+  const cancelLongPress = () => {
+    if (longPressTimer.current === null) return;
+    clearTimeout(longPressTimer.current);
+    longPressTimer.current = null;
+  };
+
+  const beginEdit = () => {
+    if (!interactive) return;
+    cancelLongPress();
+    setDraft(answered ? String(position) : "");
+    setEditing(true);
+  };
+
+  const commitEdit = () => {
+    setEditing(false);
+    const parsed = parseFloat(draft);
+    // An unparseable or empty entry abandons the edit rather than clearing an
+    // answer the user never meant to touch.
+    if (!Number.isFinite(parsed)) return;
+    commit(snap(parsed));
+  };
+
   // Held in a ref so the move handler reads the value the gesture began at,
   // whichever render's closure the responder system ends up invoking.
   const dragStartValue = useRef(0);
   const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => interactive,
-    onMoveShouldSetPanResponder: () => interactive,
+    onStartShouldSetPanResponder: () => interactive && !editing,
+    onMoveShouldSetPanResponder: () => interactive && !editing,
     onPanResponderGrant: () => {
       dragStartValue.current = position;
       // A drag that ends where it started still counts as answering.
       commit(position);
+      // Touch has no double-tap-to-edit convention here, so a press held in
+      // place opens the editor instead.
+      longPressTimer.current = setTimeout(beginEdit, LONG_PRESS_MS);
     },
     onPanResponderMove: (_event, gesture) => {
+      if (Math.abs(gesture.dx) > LONG_PRESS_SLOP_PX) cancelLongPress();
       if (travel <= 0) return;
       // Scaled to the thumb's own travel, so the bubble keeps pace with the
       // finger rather than drifting away from it.
       const perPixel = (max - min) / travel;
       commit(snap(dragStartValue.current + gesture.dx * perPixel));
     },
+    onPanResponderRelease: cancelLongPress,
+    onPanResponderTerminate: cancelLongPress,
   });
 
   const accent = hasError
@@ -140,14 +186,28 @@ export default function NumberSliderInput({
           }}
           className="rounded-md border bg-white px-2 py-0.5"
         >
-          <Text
-            className={cn(
-              "text-xl",
-              answered ? "text-zinc-900" : "text-zinc-400",
-            )}
-          >
-            {answered ? formatNumberFieldValue(field, position) : "—"}
-          </Text>
+          {editing ? (
+            <TextInput
+              autoFocus
+              selectTextOnFocus
+              value={draft}
+              keyboardType={field.allowDecimals ? "decimal-pad" : "number-pad"}
+              onChangeText={setDraft}
+              onBlur={commitEdit}
+              onSubmitEditing={commitEdit}
+              className="text-xl text-zinc-900"
+              style={{ minWidth: 3 * TAIL_SIZE_PX }}
+            />
+          ) : (
+            <Text
+              className={cn(
+                "text-xl",
+                answered ? "text-zinc-900" : "text-zinc-400",
+              )}
+            >
+              {answered ? formatNumberFieldValue(field, position) : "—"}
+            </Text>
+          )}
         </View>
         <View
           style={{
