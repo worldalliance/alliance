@@ -92,7 +92,7 @@ export default function AwayRangesSection() {
         startDay: startDateInput,
         endDay: endDateInput,
         reason: selectedReason,
-        note: noteInput || undefined,
+        note: noteInput.trim() || null,
       });
 
       setStartDateInput("");

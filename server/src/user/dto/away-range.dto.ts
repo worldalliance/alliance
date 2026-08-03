@@ -1,12 +1,17 @@
 import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
 
 import { UserAwayRange } from '../entities/user-away-range.entity';
+import { Transform } from 'class-transformer';
 import { IsDefined, IsOptional, IsString } from 'class-validator';
+import { trimToNull } from 'src/utils/transforms';
 
-export class CreateAwayRangeDto extends PickType(UserAwayRange, [
-  'note',
-  'reason',
-]) {
+export class CreateAwayRangeDto extends PickType(UserAwayRange, ['reason']) {
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  @Transform(trimToNull)
+  note?: string | null;
+
   @ApiProperty()
   @IsDefined()
   @IsString()
@@ -18,10 +23,13 @@ export class CreateAwayRangeDto extends PickType(UserAwayRange, [
   endDay: string;
 }
 
-export class UpdateAwayRangeDto extends PickType(UserAwayRange, [
-  'note',
-  'reason',
-]) {
+export class UpdateAwayRangeDto extends PickType(UserAwayRange, ['reason']) {
+  @ApiPropertyOptional({ nullable: true })
+  @IsOptional()
+  @IsString()
+  @Transform(trimToNull)
+  note?: string | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

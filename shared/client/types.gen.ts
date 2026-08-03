@@ -826,7 +826,7 @@ export type UserAwayRangeDto = {
     endDate: string;
     createdAt: string;
     reason: UserAwayRangeReason;
-    note?: string | null;
+    note: string | null;
 };
 
 export type UpdateAwayRangeDto = {

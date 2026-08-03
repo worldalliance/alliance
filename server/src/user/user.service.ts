@@ -49,7 +49,10 @@ import {
 import { ShareUrlsService } from 'src/share-urls/share-urls.service';
 import { isForeignKeyViolation } from 'src/utils/db-errors';
 import { PaginationQueryDto } from 'src/utils/pagination.dto';
-import type { Relations } from 'src/utils/Repository';
+import type {
+  Relations,
+  Repository as TypedRepository,
+} from 'src/utils/Repository';
 import {
   Brackets,
   DeepPartial,
@@ -224,7 +227,7 @@ export class UserService {
     @InjectRepository(AmbassadorProgramInteraction)
     private readonly ambassadorProgramInteractionRepository: Repository<AmbassadorProgramInteraction>,
     @InjectRepository(UserAwayRange)
-    private readonly userAwayRangeRepository: Repository<UserAwayRange>,
+    private readonly userAwayRangeRepository: TypedRepository<UserAwayRange>,
     @InjectRepository(ContractEvent)
     private readonly contractEventRepository: Repository<ContractEvent>,
     @InjectRepository(UserDevice)
@@ -1251,7 +1254,7 @@ export class UserService {
     startDate: Date,
     endDate: Date,
     reason: UserAwayRangeReason,
-    note?: string,
+    note: string | null,
     options?: { validateStartDate?: boolean },
   ): void {
     const { validateStartDate = true } = options ?? {};
@@ -1281,6 +1284,7 @@ export class UserService {
     data: CreateAwayRangeDto,
   ): Promise<UserAwayRange> {
     const reason = data.reason;
+    const note = data.note ?? null;
     const startDay = Temporal.PlainDate.from(data.startDay);
     const endDay = Temporal.PlainDate.from(data.endDay);
     const user = await this.findOneOrFail(userId);
@@ -1303,14 +1307,14 @@ export class UserService {
         .toInstant().epochMilliseconds,
     );
 
-    this.validateAwayRange(startDate, endDate, reason, data.note);
+    this.validateAwayRange(startDate, endDate, reason, note);
 
     const awayRange = this.userAwayRangeRepository.create({
       userId,
       startDate,
       endDate,
       reason,
-      note: data.note,
+      note,
     });
 
     return this.userAwayRangeRepository.save(awayRange);

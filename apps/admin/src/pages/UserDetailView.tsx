@@ -475,7 +475,7 @@ const UserDetailView: React.FC = () => {
           startDay: awayStartDate,
           endDay: awayEndDate,
           reason: awayReason,
-          note: awayNote.trim() || undefined,
+          note: awayNote.trim() || null,
         },
         throwOnError: true,
       });
@@ -523,7 +523,7 @@ const UserDetailView: React.FC = () => {
           startDay: editAwayStartDate,
           endDay: editAwayEndDate,
           reason: editAwayReason,
-          note: editAwayNote.trim() || undefined,
+          note: editAwayNote.trim() || null,
         },
         throwOnError: true,
       });

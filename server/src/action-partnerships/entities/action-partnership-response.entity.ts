@@ -15,21 +15,9 @@ import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
 } from 'src/datasources/basecolumns';
-import {
-  Column,
-  Entity,
-  OneToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { trim, trimStringArray } from 'src/utils/transforms';
 import { ActionPartnershipNote } from './action-partnership-note.entity';
-
-const trim = ({ value }: { value: unknown }): unknown =>
-  typeof value === 'string' ? value.trim() : value;
-
-const trimStringArray = ({ value }: { value: unknown }): unknown =>
-  Array.isArray(value)
-    ? value.map((item) => (typeof item === 'string' ? item.trim() : item))
-    : value;
 
 @Entity()
 export class ActionPartnershipResponse {

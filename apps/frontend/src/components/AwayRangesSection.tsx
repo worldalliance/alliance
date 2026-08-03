@@ -124,7 +124,7 @@ const AwayRangesSection: React.FC = () => {
         startDay: startDateInput,
         endDay: endDateInput,
         reason,
-        note: noteInput || undefined,
+        note: noteInput.trim() || null,
       });
       setStartDateInput("");
       setEndDateInput("");
@@ -189,7 +189,7 @@ const AwayRangesSection: React.FC = () => {
           startDay: editStartDate,
           endDay: editEndDate,
           reason,
-          note: editNote || undefined,
+          note: editNote.trim() || null,
         },
       });
       cancelEditing();
@@ -301,7 +301,7 @@ const AwayRangesSection: React.FC = () => {
                         !editStartDate ||
                         !editEndDate ||
                         editReason === "Select a reason" ||
-                        (editReasonIsOther && !editNote)
+                        (editReasonIsOther && !editNote.trim())
                       }
                     >
                       {updating ? "Saving..." : "Save"}
@@ -435,7 +435,7 @@ const AwayRangesSection: React.FC = () => {
                 !startDateInput ||
                 !endDateInput ||
                 selectedReason === "Select a reason" ||
-                (selectedReasonIsOther && !noteInput)
+                (selectedReasonIsOther && !noteInput.trim())
               }
               className="w-full md:w-auto"
             >

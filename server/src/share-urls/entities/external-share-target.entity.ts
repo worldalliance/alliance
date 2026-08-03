@@ -6,10 +6,8 @@ import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
 } from 'src/datasources/basecolumns';
+import { trim } from 'src/utils/transforms';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-
-const trim = ({ value }: { value: unknown }): unknown =>
-  typeof value === 'string' ? value.trim() : value;
 
 @Entity()
 export class ExternalShareTarget {

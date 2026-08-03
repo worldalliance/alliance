@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Allow, IsEnum, IsOptional } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { Allow, IsEnum, IsOptional, IsString } from 'class-validator';
 import {
   Column,
   Entity,
@@ -31,8 +31,9 @@ export class UserAwayRange {
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   @Allow()
+  @IsOptional()
   @Type(() => User)
-  user: Relation<User>;
+  user?: Relation<User>;
 
   @Column()
   @ApiProperty()
@@ -76,7 +77,8 @@ export class UserAwayRange {
   reason: UserAwayRangeReason;
 
   @Column({ type: 'text', nullable: true })
-  @ApiPropertyOptional({ nullable: true })
+  @ApiProperty({ nullable: true })
   @IsOptional()
-  note?: string;
+  @IsString()
+  note: string | null;
 }

@@ -4,10 +4,11 @@ import {
   type Repository as TypeOrmRepository,
   FindManyOptions,
   FindOneOptions,
+  FindOptionsWhere,
 } from 'typeorm';
-import type { Assert, Equal, Extends } from '@alliance/common/types';
 
 declare const relationBrand: unique symbol;
+export type RelationBrand = typeof relationBrand;
 export type Relation<T> = T & { [relationBrand]?: undefined };
 
 type NonNullableIsRelation<T> = [T] extends [never]
@@ -20,83 +21,15 @@ type NonNullableIsRelation<T> = [T] extends [never]
         ? true
         : false;
 export type IsRelation<T> = NonNullableIsRelation<NonNullable<T>>;
-type _typecheck_IsRelation =
-  | Assert<Equal<IsRelation<null>, false>>
-  | Assert<Equal<IsRelation<string>, false>>
-  | Assert<Equal<IsRelation<number>, false>>
-  | Assert<Equal<IsRelation<boolean>, false>>
-  | Assert<Equal<IsRelation<Date>, false>>
-  | Assert<Equal<IsRelation<number | null>, false>>
-  | Assert<Equal<IsRelation<number | undefined>, false>>
-  | Assert<Equal<IsRelation<number | null | undefined>, false>>
-  | Assert<Equal<IsRelation<{ param: string }>, false>>
-  | Assert<Equal<IsRelation<{ param: string } | null>, false>>
-  | Assert<Equal<IsRelation<{ param: string }[]>, false>>
-  | Assert<Equal<IsRelation<{ theme: string; notifications: boolean }>, false>>
-  | Assert<Equal<IsRelation<{ nested: { deep: number } }>, false>>
-  | Assert<Equal<IsRelation<{ items: { id: string }[] }>, false>>
-  | Assert<Equal<IsRelation<{ kind: 'a' } | { kind: 'b' }>, false>>
-  | Assert<Equal<IsRelation<Record<string, number>>, false>>
-  | Assert<Equal<IsRelation<Relation<{ param: string }>>, true>>
-  | Assert<Equal<IsRelation<Relation<{ param: number }> | null>, true>>
-  | Assert<Equal<IsRelation<Relation<{ param: number }>[] | null>, true>>
-  | Assert<Equal<IsRelation<(Relation<{ param: number }> | null)[]>, true>>
-  | Assert<
-      Equal<IsRelation<(Relation<{ param: number }> | null)[] | null>, true>
-    >;
-
-type $EagerEvaluation<T> =
-  T extends Array<infer I>
-    ? $EagerEvaluation<I>[]
-    : T extends Promise<infer I>
-      ? Promise<$EagerEvaluation<I>>
-      : T extends object
-        ? {
-            [K in keyof T as K extends typeof relationBrand
-              ? never
-              : [T[K]] extends [never]
-                ? never
-                : K]: $EagerEvaluation<T[K]>;
-          }
-        : T;
-type _typecheck_StripItems =
-  | Assert<Equal<$EagerEvaluation<{ param: string }>, { param: string }>>
-  | Assert<
-      Equal<
-        $EagerEvaluation<{ param?: { subparam: string } }>,
-        { param?: { subparam: string } }
-      >
-    >
-  | Assert<Equal<$EagerEvaluation<{ param: never }>, {}>>
-  | Assert<Equal<$EagerEvaluation<{ param: undefined }>, { param: undefined }>>
-  | Assert<Equal<$EagerEvaluation<{ param?: never }>, { param?: never }>>
-  | Assert<
-      Equal<$EagerEvaluation<{ param?: undefined }>, { param?: undefined }>
-    >
-  | Assert<Equal<$EagerEvaluation<{ param?: null }>, { param?: null }>>
-  | Assert<
-      Equal<
-        $EagerEvaluation<{ param1?: string; param2: number; param3: never }>,
-        { param1?: string; param2: number }
-      >
-    >
-  | Assert<
-      Equal<$EagerEvaluation<Relation<{ param: string }>>, { param: string }>
-    >
-  | never;
-
 /**
  * @param T - The type to check for emptiness
  * @param Default - The default value to return if `T` is empty
  *
  * @returns `Default` if, `T` is `{}`. Otherwise `T`.
  */
-type NonEmpty<T, Default = never> = [keyof T] extends [never] ? Default : T;
-type _typecheck_NonEmpty =
-  | Assert<Equal<NonEmpty<{}, { test: 123 }>, { test: 123 }>>
-  | Assert<Equal<NonEmpty<{}>, never>>
-  | Assert<Equal<NonEmpty<{ param: string }>, { param: string }>>;
-
+export type NonEmpty<T, Default = never> = [keyof T] extends [never]
+  ? Default
+  : T;
 type RelationsProperty<Property> =
   Property extends Promise<infer I>
     ? RelationsProperty<NonNullable<I>>
@@ -110,147 +43,11 @@ export type Relations<Entity> = {
     ? P
     : never]?: RelationsProperty<NonNullable<Entity[P]>>;
 };
-type _typecheck_Relations =
-  | Assert<Equal<Relations<{ param: string }>, {}>>
-  | Assert<Equal<Relations<{ param: number[] }>, {}>>
-  | Assert<Equal<Relations<{ param: Date }>, {}>>
-  | Assert<Equal<Relations<{ param: { subparam: string } }>, {}>>
-  | Assert<
-      Equal<
-        Relations<{ param: Relation<{ subparam: string }> }>,
-        { param?: true | undefined }
-      >
-    >
-  | Assert<
-      Equal<
-        Relations<{ param: Relation<{ subparam: string }>[] }>,
-        { param?: true | undefined }
-      >
-    >
-  | Assert<
-      Equal<
-        Relations<{ param: Promise<Relation<{ subparam: string }>> }>,
-        { param?: true | undefined }
-      >
-    >
-  | Assert<
-      Equal<
-        Relations<{
-          param: Relation<{ subparam: Relation<{ subsubparam: string }> }>;
-        }>,
-        { param?: true | undefined | { subparam?: true | undefined } }
-      >
-    >
-  | Assert<
-      Equal<
-        Relations<{
-          param1: string;
-          param2: Relation<{ subparam: string }>;
-          param3: Relation<{ subparam: Relation<{ subsubparam: string }> }>;
-        }>,
-        {
-          param2?: true | undefined;
-          param3?: true | undefined | { subparam?: true | undefined };
-        }
-      >
-    >
-  | Assert<
-      Equal<
-        Relations<{
-          settings: { theme: string; notifications: boolean };
-          posts: Relation<{ id: number }>[];
-        }>,
-        { posts?: true | undefined }
-      >
-    >
-  | Assert<
-      Equal<
-        Relations<{
-          jsonbA: { a: string };
-          jsonbB: { b: number }[];
-          jsonbC: { c: { nested: boolean } } | null;
-        }>,
-        {}
-      >
-    >;
-
 export type NoRelations<Entity> = {
   [K in keyof Entity as IsRelation<Entity[K]> extends false
     ? K
     : never]: IsRelation<Entity[K]> extends false ? Entity[K] : never;
 };
-type _typecheck_NoRelations =
-  | Assert<Equal<NoRelations<{ param: string }>, { param: string }>>
-  | Assert<Equal<NoRelations<{ param?: number }>, { param?: number }>>
-  | Assert<Equal<NoRelations<{ param: null }>, { param: null }>>
-  | Assert<Equal<NoRelations<{ param: string[] }>, { param: string[] }>>
-  | Assert<
-      Equal<
-        NoRelations<{ param: (string | null)[] }>,
-        { param: (string | null)[] }
-      >
-    >
-  | Assert<
-      Equal<
-        NoRelations<{ param: { subparam: string } }>,
-        { param: { subparam: string } }
-      >
-    >
-  | Assert<Equal<NoRelations<{ param: Relation<{ subparam: string }> }>, {}>>
-  | Assert<Equal<NoRelations<{ param?: Relation<{ subparam: string }> }>, {}>>
-  | Assert<Equal<NoRelations<{ param: Relation<{ subparam: string }>[] }>, {}>>
-  | Assert<
-      Equal<NoRelations<{ param: Relation<{ subparam: string }>[] | null }>, {}>
-    >
-  | Assert<
-      Equal<
-        NoRelations<{
-          param: (Relation<{ subparam: string }> | null)[];
-        }>,
-        {}
-      >
-    >
-  | Assert<
-      Equal<NoRelations<{ param: Promise<Relation<{ subparam: string }>> }>, {}>
-    >
-  | Assert<
-      Equal<
-        NoRelations<{
-          param: Promise<Relation<{ subparam: string }> | null>;
-        }>,
-        {}
-      >
-    >
-  | Assert<
-      Equal<
-        NoRelations<{
-          param: Promise<Relation<{ subparam: string }>> | null;
-        }>,
-        {}
-      >
-    >
-  | Assert<
-      Equal<
-        NoRelations<{ settings: { theme: string; notifications: boolean } }>,
-        { settings: { theme: string; notifications: boolean } }
-      >
-    >
-  | Assert<
-      Equal<
-        NoRelations<{
-          settings: { theme: string };
-          posts: Relation<{ id: number }>[];
-        }>,
-        { settings: { theme: string } }
-      >
-    >
-  | Assert<
-      Equal<
-        NoRelations<{ items: { id: string; label: string }[] | null }>,
-        { items: { id: string; label: string }[] | null }
-      >
-    >;
-
 type ResolveRelationPropExact<Prop, R> =
   Prop extends Promise<infer I>
     ? Promise<
@@ -298,263 +95,6 @@ export type WithRelationsExact<
       : K
     : never]: undefined;
 };
-type _typecheck_WithRelationsExact =
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param: string;
-            },
-            {}
-          >
-        >,
-        { param: string }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param?: number;
-            },
-            {}
-          >
-        >,
-        { param?: number }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param: Relation<{ subparam: string }>;
-            },
-            {}
-          >
-        >,
-        {
-          param: undefined;
-        }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param: Relation<{ subparam: string }>;
-            },
-            { param: undefined }
-          >
-        >,
-        {
-          param: undefined;
-        }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param: Relation<{ subparam: string }>;
-            },
-            { param: true }
-          >
-        >,
-        { param: { subparam: string } }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param?: Relation<{ subparam: string }>;
-            },
-            { param: true }
-          >
-        >,
-        { param: { subparam: string } }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param: Relation<{ subparam: string }>[];
-            },
-            { param: true }
-          >
-        >,
-        { param: { subparam: string }[] }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param?: Relation<{ subparam: string }>[];
-            },
-            { param: true }
-          >
-        >,
-        { param: { subparam: string }[] }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param?: (Relation<{ subparam: string }> | null)[];
-            },
-            { param: true }
-          >
-        >,
-        { param: ({ subparam: string } | null)[] }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param: Promise<Relation<{ subparam: string }>>;
-            },
-            { param: true }
-          >
-        >,
-        { param: Promise<{ subparam: string }> }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param?: Promise<Relation<{ subparam: string }>>;
-            },
-            { param: true }
-          >
-        >,
-        { param: Promise<{ subparam: string }> }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param?: Promise<Relation<{ subparam: string }> | null>;
-            },
-            { param: true }
-          >
-        >,
-        { param: Promise<{ subparam: string } | null> }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param: Relation<{
-                subparam: string;
-                subparam2: Relation<{ subsubparam: string }>;
-              }>;
-            },
-            { param: true }
-          >
-        >,
-        { param: { subparam: string; subparam2: undefined } }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param: Relation<{
-                subparam: string;
-                subparam2: Relation<{ subsubparam: string }>;
-              }>;
-            },
-            { param: { subparam2: undefined } }
-          >
-        >,
-        { param: { subparam: string; subparam2: undefined } }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param: Relation<{
-                subparam: string;
-                subparam2: Relation<{ subsubparam: string }>;
-              }>;
-            },
-            { param: { subparam2: true } }
-          >
-        >,
-        { param: { subparam: string; subparam2: { subsubparam: string } } }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              param?: Relation<{
-                subparam1: string;
-                subparam2: Relation<{ subsubparam: string }>;
-              }>;
-            },
-            { param: true }
-          >
-        >,
-        { param: { subparam1: string; subparam2: undefined } }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              settings: { theme: string; notifications: boolean };
-              posts: Relation<{ id: number; title: string }>[];
-            },
-            { posts: true }
-          >
-        >,
-        {
-          settings: { theme: string; notifications: boolean };
-          posts: { id: number; title: string }[];
-        }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelationsExact<
-            {
-              settings: { theme: string };
-              posts: Relation<{ id: number }>[];
-            },
-            {}
-          >
-        >,
-        { settings: { theme: string }; posts: undefined }
-      >
-    >;
-
 type ResolveRelationProp<Prop, R> =
   Prop extends Promise<infer I>
     ? Promise<ResolveRelationProp<NonNullable<I>, R> | (I & (null | undefined))>
@@ -597,152 +137,91 @@ export type WithRelations<
       : K
     : never]?: Entity[K];
 };
-type _typecheck_WithRelations =
-  | Assert<
-      Equal<
-        $EagerEvaluation<WithRelations<{ param: string }, {}>>,
-        { param: string }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelations<{ param: Relation<{ subparam: string }> }, {}>
-        >,
-        { param?: { subparam: string } }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelations<
-            { param: Relation<{ subparam: string }> },
-            { param: true }
-          >
-        >,
-        { param: { subparam: string } }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelations<
-            {
-              requiredRel: Relation<{ a: string }>;
-              otherRel: Relation<{ b: number }>;
-            },
-            { requiredRel: true }
-          >
-        >,
-        { requiredRel: { a: string }; otherRel?: { b: number } }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelations<
-            {
-              settings: { theme: string };
-              posts: Relation<{ id: number }>[];
-              tags: Relation<{ name: string }>[];
-            },
-            { posts: true }
-          >
-        >,
-        {
-          settings: { theme: string };
-          posts: { id: number }[];
-          tags?: { name: string }[];
-        }
-      >
-    >
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelations<
-            {
-              param: Relation<{
-                subparam: string;
-                subRel: Relation<{ deep: number }>;
-                subOther: Relation<{ extra: boolean }>;
-              }>;
-            },
-            { param: { subRel: true } }
-          >
-        >,
-        {
-          param: {
-            subparam: string;
-            subRel: { deep: number };
-            subOther?: { extra: boolean };
-          };
-        }
-      >
-    >
-  // nullable relation: optional still preserves null
-  | Assert<
-      Equal<
-        $EagerEvaluation<
-          WithRelations<{ parent: Relation<{ id: number }> | null }, {}>
-        >,
-        { parent?: { id: number } | null }
-      >
-    >
-  // WithRelationsExact<E, R> is assignable to WithRelations<E, R>:
-  // the strict return type satisfies the loose input type
-  | Assert<
-      Extends<
-        WithRelationsExact<
-          {
-            settings: { theme: string };
-            posts: Relation<{ id: number }>[];
-            tags: Relation<{ name: string }>[];
-          },
-          { posts: true }
-        >,
-        WithRelations<
-          {
-            settings: { theme: string };
-            posts: Relation<{ id: number }>[];
-            tags: Relation<{ name: string }>[];
-          },
-          { posts: true }
-        >
-      >
-    >
-  // and loading more than required still satisfies the loose input type
-  | Assert<
-      Extends<
-        WithRelationsExact<
-          {
-            posts: Relation<{ id: number }>[];
-            tags: Relation<{ name: string }>[];
-          },
-          { posts: true; tags: true }
-        >,
-        WithRelations<
-          {
-            posts: Relation<{ id: number }>[];
-            tags: Relation<{ name: string }>[];
-          },
-          { posts: true }
-        >
-      >
-    >;
+type OptionalKeys<T> = {
+  [K in keyof T]-?: {} extends Pick<T, K> ? K : never;
+}[keyof T];
 
+type RelationKeys<T> = {
+  [K in keyof T]-?: IsRelation<T[K]> extends true ? K : never;
+}[keyof T];
+
+/**
+ * Keys that break the entity convention: a field is optional if and only if it
+ * is a relation, so `undefined` unambiguously means "not loaded". Everything
+ * else is required and spells absence as `| null`.
+ *
+ * The convention is what makes `WithRelationsExact<Entity, R>` assignable back
+ * to `Entity` — a required relation can't accept the `undefined` that stands
+ * for "not loaded", so entities that violate it can't round-trip.
+ */
+export type EntityShapeViolations<Entity> =
+  | Exclude<RelationKeys<Entity>, OptionalKeys<Entity>>
+  | Exclude<OptionalKeys<Entity>, RelationKeys<Entity>>;
+
+/**
+ * `true` when `Entity` follows the convention, otherwise a type naming the
+ * offending fields. Use as `Assert<EntityShape<Entity>>` so the violation shows
+ * up in the compile error. Entities opt in from `entity-shape.typecheck.ts`.
+ */
+export type EntityShape<Entity> = [EntityShapeViolations<Entity>] extends [
+  never,
+]
+  ? true
+  : {
+      [K in EntityShapeViolations<Entity>]: 'must be optional if and only if it is a relation';
+    };
+
+/**
+ * Adoption caveat: relations declared `eager: true` are loaded at runtime by
+ * every find method — `loadEagerRelations` defaults to true — but typed as
+ * unloaded here. Resolve those relations before typing a repository with this.
+ */
 export type Repository<Entity extends ObjectLiteral> = Omit<
   TypeOrmRepository<Entity>,
-  'find' | 'findOne' | 'findOneOrFail'
+  | 'find'
+  | 'findOne'
+  | 'findOneOrFail'
+  | 'findBy'
+  | 'findOneBy'
+  | 'findOneByOrFail'
+  | 'findAndCount'
+  | 'findAndCountBy'
+  | 'findByIds'
 > & {
-  find<R extends Relations<Entity>>(
-    options: FindManyOptions<Entity> & { relations?: R },
+  find<R extends Relations<Entity> = {}>(
+    options?: FindManyOptions<Entity> & { relations?: R },
   ): Promise<WithRelationsExact<Entity, R>[]>;
 
-  findOne<R extends Relations<Entity>>(
+  findOne<R extends Relations<Entity> = {}>(
     options: FindOneOptions<Entity> & { relations?: R },
   ): Promise<WithRelationsExact<Entity, R> | null>;
 
-  findOneOrFail<R extends Relations<Entity>>(
+  findOneOrFail<R extends Relations<Entity> = {}>(
     options: FindOneOptions<Entity> & { relations?: R },
   ): Promise<WithRelationsExact<Entity, R>>;
+
+  findAndCount<R extends Relations<Entity> = {}>(
+    options?: FindManyOptions<Entity> & { relations?: R },
+  ): Promise<[WithRelationsExact<Entity, R>[], number]>;
+
+  // The `*By` overloads take a bare `where`, so relations can't be requested.
+
+  findBy(
+    where: FindOptionsWhere<Entity> | FindOptionsWhere<Entity>[],
+  ): Promise<WithRelationsExact<Entity, {}>[]>;
+
+  findAndCountBy(
+    where: FindOptionsWhere<Entity> | FindOptionsWhere<Entity>[],
+  ): Promise<[WithRelationsExact<Entity, {}>[], number]>;
+
+  findOneBy(
+    where: FindOptionsWhere<Entity> | FindOptionsWhere<Entity>[],
+  ): Promise<WithRelationsExact<Entity, {}> | null>;
+
+  findOneByOrFail(
+    where: FindOptionsWhere<Entity> | FindOptionsWhere<Entity>[],
+  ): Promise<WithRelationsExact<Entity, {}>>;
+
+  /** @deprecated use `findBy` with the `In` operator instead. */
+  findByIds(ids: unknown[]): Promise<WithRelationsExact<Entity, {}>[]>;
 };
