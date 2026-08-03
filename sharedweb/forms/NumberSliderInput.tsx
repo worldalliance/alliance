@@ -245,7 +245,7 @@ export function NumberSliderInput({
         />
       </div>
       {/* Bare bounds: the template describes the answer, and a wordy one
-          ("${value}% of plastic recycled") reads as clutter on an axis. */}
+          ("#{value}% of plastic recycled") reads as clutter on an axis. */}
       <div className="mt-1.5 flex justify-between text-xs tabular-nums text-zinc-500">
         <span>{min}</span>
         <span>{max}</span>

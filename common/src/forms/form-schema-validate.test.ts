@@ -641,7 +641,7 @@ describe("validateFormSchema", () => {
               control: "slider",
               min: 0,
               max: 100,
-              valueTemplate: "${value}%",
+              valueTemplate: "#{value}%",
             }),
           ]),
         ],
@@ -663,7 +663,7 @@ describe("validateFormSchema", () => {
         ],
       });
       expect(validateFormSchema(schema)).toEqual([
-        { blockId: "n1", message: "A value template must contain ${value}" },
+        { blockId: "n1", message: "A value template must contain #{value}" },
       ]);
     });
 
@@ -672,7 +672,7 @@ describe("validateFormSchema", () => {
         pages: [page("p1", [numberField({ valueTemplate: "" })])],
       });
       expect(validateFormSchema(schema)).toEqual([
-        { blockId: "n1", message: "A value template must contain ${value}" },
+        { blockId: "n1", message: "A value template must contain #{value}" },
       ]);
     });
 

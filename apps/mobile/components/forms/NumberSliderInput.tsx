@@ -182,7 +182,7 @@ export default function NumberSliderInput({
         />
       </View>
       {/* Bare bounds: the template describes the answer, and a wordy one
-          ("${value}% of plastic recycled") reads as clutter on an axis. */}
+          ("#{value}% of plastic recycled") reads as clutter on an axis. */}
       <View className="flex-row justify-between">
         <Text className="text-xs text-zinc-500">{min}</Text>
         <Text className="text-xs text-zinc-500">{max}</Text>

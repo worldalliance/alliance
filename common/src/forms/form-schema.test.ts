@@ -262,17 +262,17 @@ describe("formatNumberFieldValue", () => {
   });
 
   it("substitutes the value into a template", () => {
-    expect(formatNumberFieldValue(numberField("${value}%"), 50)).toBe("50%");
+    expect(formatNumberFieldValue(numberField("#{value}%"), 50)).toBe("50%");
   });
 
   it("substitutes every occurrence", () => {
     expect(
-      formatNumberFieldValue(numberField("${value} of 100 (${value}%)"), 7),
+      formatNumberFieldValue(numberField("#{value} of 100 (#{value}%)"), 7),
     ).toBe("7 of 100 (7%)");
   });
 
   it("keeps surrounding text, including a leading symbol", () => {
-    expect(formatNumberFieldValue(numberField("$${value}"), 12.5)).toBe(
+    expect(formatNumberFieldValue(numberField("$#{value}"), 12.5)).toBe(
       "$12.5",
     );
   });
