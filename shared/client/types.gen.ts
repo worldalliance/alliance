@@ -271,7 +271,7 @@ export type Push = {
     errorCode: string | null;
     errorMessage: string | null;
     lastCheckedStatusAt: string | null;
-    idempotencyKey: string | null;
+    idempotencyKey: string;
     openedAt: string | null;
 };
 
@@ -1232,7 +1232,7 @@ export type PushDto = {
     errorCode: string | null;
     errorMessage: string | null;
     lastCheckedStatusAt: string | null;
-    idempotencyKey: string | null;
+    idempotencyKey: string;
     openedAt: string | null;
 };
 

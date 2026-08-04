@@ -18,10 +18,7 @@ import {
 } from 'typeorm';
 
 @Entity()
-@Index(['idempotencyKey'], {
-  unique: true,
-  where: '"idempotencyKey" IS NOT NULL',
-})
+@Index(['idempotencyKey'], { unique: true })
 // Serves the every-minute receipt cron: both its expiry UPDATE and its
 // pending-pushes SELECT filter on this predicate, keeping the index tiny.
 @Index(['createdAt'], {
@@ -81,9 +78,9 @@ export class Push {
   @ApiProperty({ type: Date, nullable: true })
   lastCheckedStatusAt: Date | null;
 
-  @Column({ type: 'varchar', nullable: true })
-  @ApiProperty({ nullable: true })
-  idempotencyKey: string | null;
+  @Column({ type: 'varchar' })
+  @ApiProperty()
+  idempotencyKey: string;
 
   @ManyToOne(() => Notification, (notification) => notification.pushes, {
     nullable: true,

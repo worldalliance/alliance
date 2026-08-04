@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PickType } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
+import { randomUUID } from 'node:crypto';
 import { UserDevice } from 'src/user/entities/user-device.entity';
 import {
   In,
@@ -26,13 +27,11 @@ const RECEIPT_MAX_AGE_MS = 1000 * 60 * 60 * 48;
 export class CreatePushMessage extends PickType(Push, [
   'expoPushToken',
   'body',
+  'idempotencyKey',
   'notification',
   'unreadContent',
 ]) {
   userId: number;
-  // Omitted by most callers, so these stay optional here rather than inheriting
-  // the column's `| null` — `create` writes NULL for whatever is absent.
-  idempotencyKey?: string;
   screen?: string;
 }
 
@@ -56,6 +55,7 @@ export class PushService {
       userId,
       expoPushToken: token,
       body,
+      idempotencyKey: randomUUID(),
     };
     return (await this.sendMessages([message]))[0];
   }
