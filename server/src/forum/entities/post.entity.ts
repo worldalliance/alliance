@@ -35,14 +35,13 @@ export class Post {
 
   @OneToOne(() => EditableContent, {
     cascade: true,
-    eager: true,
     onDelete: 'CASCADE',
   })
   @JoinColumn()
-  @ApiProperty({ type: () => EditableContent })
-  @Allow()
+  @ApiPropertyOptional({ type: () => EditableContent })
+  @IsOptional()
   @Type(() => EditableContent)
-  editableContent: Relation<EditableContent>;
+  editableContent?: Relation<EditableContent>;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn()
@@ -98,12 +97,12 @@ export class Post {
   @Allow()
   deleted: boolean;
 
-  @ManyToMany(() => User, { onDelete: 'CASCADE', eager: true })
-  @ApiProperty({ type: () => User, isArray: true })
+  @ManyToMany(() => User, { onDelete: 'CASCADE' })
+  @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
-  @Allow()
+  @IsOptional()
   @Type(() => User)
-  likes: Relation<User>[];
+  likes?: Relation<User>[];
 
   @RelationId((post: Post) => post.likes)
   @ApiProperty({ type: () => Number, isArray: true })
@@ -121,24 +120,24 @@ export class Post {
   @Allow()
   expertLabel?: string;
 
-  @ManyToMany(() => User, { onDelete: 'CASCADE', eager: true })
-  @ApiProperty({ type: () => User, isArray: true })
+  @ManyToMany(() => User, { onDelete: 'CASCADE' })
+  @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
-  @Allow()
+  @IsOptional()
   @Type(() => User)
-  experts: Relation<User>[];
+  experts?: Relation<User>[];
 
   @RelationId((post: Post) => post.experts)
   @ApiProperty({ type: () => Number, isArray: true })
   @Allow()
   expertIds: number[];
 
-  @ManyToMany(() => User, { onDelete: 'CASCADE', eager: true })
-  @ApiProperty({ type: () => User, isArray: true })
+  @ManyToMany(() => User, { onDelete: 'CASCADE' })
+  @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
-  @Allow()
+  @IsOptional()
   @Type(() => User)
-  authors: Relation<User>[];
+  authors?: Relation<User>[];
 
   @RelationId((post: Post) => post.authors)
   @ApiProperty({ type: () => Number, isArray: true })

@@ -91,7 +91,6 @@ export class ActionActivity {
 
   @OneToOne(() => EditableContent, {
     cascade: true,
-    eager: true,
     onDelete: 'CASCADE',
   })
   @JoinColumn()

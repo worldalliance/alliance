@@ -516,7 +516,7 @@ export type ActionUpdate = {
     action: Action;
     actionId: number;
     title: string;
-    content: EditableContent;
+    content?: EditableContent;
     date: string;
     visibleAt: string;
     shortNotifString: string;
@@ -531,7 +531,7 @@ export type CommentParentObject = 'post' | 'action' | 'activity';
 
 export type Comment = {
     id: number;
-    editableContent: EditableContent;
+    editableContent?: EditableContent;
     author: {
         [key: string]: unknown;
     };

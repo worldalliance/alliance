@@ -219,10 +219,6 @@ type ShapedRepository<Entity extends ObjectLiteral> = Omit<
 };
 
 /**
- * Adoption caveat: relations declared `eager: true` are loaded at runtime by
- * every find method — `loadEagerRelations` defaults to true — but typed as
- * unloaded here. Resolve those relations before typing a repository with this.
- *
  * An entity that breaks the {@link EntityShapeViolations} convention resolves
  * to the violation itself instead of a repository, so the first call against it
  * reports the offending field rather than failing somewhere downstream.

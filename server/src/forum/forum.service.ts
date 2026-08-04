@@ -188,7 +188,8 @@ export class ForumService {
 
     const postsWithAuthors = await this.postRepository.find({
       where: { id: In(postIds) },
-      relations: { authors: true },
+      relations: { authors: true, likes: true },
+      relationLoadStrategy: 'query',
     });
     const relationsByPostId = new Map(postsWithAuthors.map((p) => [p.id, p]));
     for (const post of posts) {
@@ -558,7 +559,7 @@ export class ForumService {
       actionId: updatePostDto.actionId ?? post.actionId,
       visibleAt: updatePostDto.visibleAt ?? post.visibleAt,
     });
-    if (updatePostDto.editableContent) {
+    if (updatePostDto.editableContent && post.editableContent) {
       const ec = await this.editableContentRepository.findOneBy({
         id: post.editableContent.id,
       });
@@ -790,7 +791,7 @@ export class ForumService {
       throw new NotFoundException('You can only edit your own replies');
     }
 
-    if (updateCommentDto.editableContent) {
+    if (updateCommentDto.editableContent && reply.editableContent) {
       const ec = await this.editableContentRepository.findOneBy({
         id: reply.editableContent.id,
       });
@@ -840,7 +841,7 @@ export class ForumService {
       type === 'comment'
         ? await this.commentRepository.findOne({
             where: { id },
-            relations: { likes: true, author: true },
+            relations: { likes: true, author: true, editableContent: true },
           })
         : await this.postRepository.findOne({
             where: { id },
@@ -855,18 +856,19 @@ export class ForumService {
       where: { id: userId },
     });
 
+    const likes = object.likes ?? [];
     if (unlike) {
-      if (!object.likes.some((like) => like.id === userId)) {
+      if (!likes.some((like) => like.id === userId)) {
         throw new NotFoundException(`User has not liked this ${type}`);
       }
 
-      object.likes = object.likes.filter((like) => like.id !== userId);
+      object.likes = likes.filter((like) => like.id !== userId);
     } else {
-      if (object.likes.some((like) => like.id === userId)) {
+      if (likes.some((like) => like.id === userId)) {
         throw new NotFoundException(`User has already liked this ${type}`);
       }
 
-      object.likes.push(user);
+      object.likes = [...likes, user];
     }
     const obj = await (type === 'comment'
       ? this.commentRepository.save(object)
@@ -1005,6 +1007,7 @@ export class ForumService {
       .createQueryBuilder('post')
       .leftJoinAndSelect('post.author', 'author')
       .leftJoinAndSelect('post.action', 'action')
+      .leftJoinAndSelect('post.editableContent', 'editableContent')
       .leftJoin('post.authors', 'coAuthor')
       .andWhere('(post.authorId = :userId OR coAuthor.id = :userId)', {
         userId,
@@ -1020,7 +1023,7 @@ export class ForumService {
         deleted: false,
         parentObjectType: Not(CommentParentObject.Activity),
       },
-      relations: { author: true },
+      relations: { author: true, editableContent: true },
     });
     const postIds = comments
       .filter(
@@ -1112,7 +1115,12 @@ export class ForumService {
   async getPostsForAdmin(): Promise<Post[]> {
     return this.postRepository.find({
       where: { deleted: false },
-      relations: { author: true, experts: true, authors: true },
+      relations: {
+        author: true,
+        experts: true,
+        authors: true,
+        editableContent: true,
+      },
       order: { createdAt: 'DESC' },
     });
   }

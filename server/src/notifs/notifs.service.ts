@@ -337,7 +337,7 @@ export class NotifsService {
       forumReplyIds.length
         ? this.commentRepository.find({
             where: { id: In(forumReplyIds), deleted: false },
-            relations: { author: true },
+            relations: { author: true, editableContent: true },
           })
         : Promise.resolve([]),
       actionUpdateIds.length
@@ -374,7 +374,7 @@ export class NotifsService {
     return unreadContents.flatMap((unreadContent) => {
       if (unreadContent.contentType === UnreadContentType.ForumReply) {
         const comment = commentById.get(unreadContent.contentId);
-        if (!comment) {
+        if (!comment?.editableContent) {
           return [];
         }
 

@@ -49,6 +49,11 @@ export class CommentDto extends PickType(Comment, [
 
   constructor(comment: Comment, requestingUserId?: number) {
     super();
+    if (!comment.editableContent) {
+      throw new Error(
+        `Comment ${comment.id} was loaded without editableContent`,
+      );
+    }
     const allLikes = comment.likes ?? [];
     this.id = comment.id;
     this.parentObjectId = comment.parentObjectId;

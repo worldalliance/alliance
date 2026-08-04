@@ -50,12 +50,12 @@ export class ActionUpdate {
   @ApiProperty()
   title: string;
 
-  @ManyToOne(() => EditableContent, { eager: true, cascade: true })
+  @ManyToOne(() => EditableContent, { cascade: true })
   @JoinColumn({ name: 'contentId' })
   @Type(() => EditableContent)
-  @Allow()
-  @ApiProperty({ type: () => EditableContent })
-  content: Relation<EditableContent>;
+  @IsOptional()
+  @ApiPropertyOptional({ type: () => EditableContent })
+  content?: Relation<EditableContent>;
 
   @Column({ type: 'timestamptz' })
   @IsNotEmpty()

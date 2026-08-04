@@ -940,7 +940,7 @@ export class ActionsService {
       relations: {
         events: true,
         activities: true,
-        updates: true,
+        updates: { content: true },
         suite: true,
         authors: true,
         followUpForms: { form: true },
@@ -1688,6 +1688,7 @@ export class ActionsService {
       relations: {
         action: true,
         user: true,
+        editableContent: true,
         taskFormResponse: { formSnapshot: true },
       },
     });
@@ -2055,7 +2056,7 @@ export class ActionsService {
       where: {
         user: { id: userId },
       },
-      relations: { action: true, user: true },
+      relations: { action: true, user: true, editableContent: true },
     });
   }
 
@@ -2411,6 +2412,7 @@ export class ActionsService {
         user: true,
         action: true,
         likes: true,
+        editableContent: true,
         taskFormResponse: { formSnapshot: true },
       },
     });
@@ -2443,7 +2445,12 @@ export class ActionsService {
   ): Promise<ActionActivityDto> {
     const activity = await this.actionActivityRepository.findOne({
       where: { id },
-      relations: { user: true, action: true, likes: true },
+      relations: {
+        user: true,
+        action: true,
+        likes: true,
+        editableContent: true,
+      },
     });
     if (!activity) {
       throw new NotFoundException('Activity not found');
@@ -2481,7 +2488,12 @@ export class ActionsService {
 
     const updatedActivity = await this.actionActivityRepository.findOne({
       where: { id },
-      relations: { user: true, action: true, likes: true },
+      relations: {
+        user: true,
+        action: true,
+        likes: true,
+        editableContent: true,
+      },
     });
     if (!updatedActivity) {
       throw new NotFoundException('Activity not found');
@@ -2677,7 +2689,7 @@ export class ActionsService {
     return this.actionUpdateRepository.find({
       take: limit,
       order: { date: 'DESC' },
-      relations: { action: true },
+      relations: { action: true, content: true },
       select: {
         action: {
           name: true,
@@ -3989,7 +4001,7 @@ export class ActionsService {
     });
 
     for (const update of actionUpdates) {
-      if (update.visibleAt <= now) {
+      if (update.visibleAt <= now && update.content) {
         const actionUpdateDto: GlobalFeedActionUpdateDto = {
           id: update.id,
           title: update.title,

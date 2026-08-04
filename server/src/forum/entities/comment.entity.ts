@@ -36,14 +36,13 @@ export class Comment {
 
   @OneToOne(() => EditableContent, {
     cascade: true,
-    eager: true,
     onDelete: 'CASCADE',
   })
   @JoinColumn()
-  @ApiProperty({ type: () => EditableContent })
-  @Allow()
+  @ApiPropertyOptional({ type: () => EditableContent })
+  @IsOptional()
   @Type(() => EditableContent)
-  editableContent: Relation<EditableContent>;
+  editableContent?: Relation<EditableContent>;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn()

@@ -1,8 +1,8 @@
-import { ActionUpdate } from "@alliance/shared/client/types.gen";
+import { ActionUpdateDto } from "@alliance/shared/client/types.gen";
 import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
 import { useState } from "react";
 
-const ActionUpdatesPanel = ({ updates }: { updates: ActionUpdate[] }) => {
+const ActionUpdatesPanel = ({ updates }: { updates: ActionUpdateDto[] }) => {
   const [expanded, setExpanded] = useState(false);
   const visibleUpdates = expanded ? updates : updates.slice(0, 1);
   return (
