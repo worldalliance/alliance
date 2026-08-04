@@ -682,7 +682,9 @@ export class ForumService {
         where: { id: comment.parentObjectId, deleted: false },
         relations: { author: true, authors: true },
       });
-      usersToNotify.push(post.author);
+      if (post.author) {
+        usersToNotify.push(post.author);
+      }
       if (post.authors?.length) {
         usersToNotify.push(...post.authors);
       }

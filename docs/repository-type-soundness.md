@@ -228,7 +228,7 @@ whole `eager-relation-brand` rule).
   removed were counted under `eagerMustBeRequired` back then, so the lazy
   number didn't move.
 
-## Phase 4 — drain the 87
+## Phase 4 — drain the 87 (2 done, 85 left)
 
 - [ ] `eslint --rule '{"local-rules/relation-optionality":"error"}' --fix` —
       the fixer inserts the `?`. Hand-fix the `foo!:` cases (the fixer skips
@@ -237,6 +237,47 @@ whole `eager-relation-brand` rule).
       call sites that must now request the relation explicitly — that's the
       real work, and it's where behaviour changes.
 - [ ] Flip `checkLazyOptional` on and delete the option once the count is zero.
+
+### Backlog by entity
+
+Run to refresh:
+
+```
+bunx eslint "src/**/*.entity.ts" \
+  --rule '{"local-rules/relation-optionality":["error",{"checkLazyOptional":true}]}'
+```
+
+| n  | entity |
+| -- | ------ |
+| 11 | `user/user` |
+| 5  | `actions/action`, `forum/comment` |
+| 4  | `messaging/message` |
+| 3  | `actions/action-activity`, `actions/action-form-assignment`, `actions/action-suite`, `notifs/action-event-notif`, `tasks/form`, `user/onetime-invite` |
+| 2  | `actions/action-event`, `actions/action-form-variant`, `actions/action-update`, `actions/follow-up-form`, `actions/general-update-activity`, `actions/reminder-group`, `apns/live-activity-registration`, `community/community-invite`, `community/community`, `messaging/conversation`, `messaging/participant`, `notifs/notification`, `tasks/formresponse`, `user/ambassador-program-member`, `user/friend`, `user/tag` |
+| 1  | `actions/general-update`, `contract/contract`, `forum/forum-digest-log`, `mms/mms-optout`, `notifs/unread-content`, `push/push`, `user/ambassador-invite-goal`, `user/ambassador-program-interaction`, `user/contract-event`, `user/user-device` |
+
+### Batch 1 — `Post` ✅ (first fully-conforming entity)
+
+`author` and `action`. Two compile errors, both in the forum module:
+
+- `PostDto` now throws on a missing `author`, alongside the `editableContent`
+  guard from phase 1. All eight `new PostDto(...)` paths already load it
+  (`createPost` sets it; the four query builders `leftJoinAndSelect` it;
+  `getPostsForAdmin`, `updatePostExperts` and `updatePostAuthors` name it in
+  `relations`), so the throw is an assertion, not a behaviour change.
+- `sendNotifsForNewComment` pushed `post.author` unguarded; now guarded, matching
+  how the `post.authors` collection right below it was already handled.
+
+`action` also picked up `| null` — the FK is `nullable: true, onDelete: 'SET NULL'`,
+so it was lying in two directions at once. It cost nothing: every reader already
+used a truthiness guard. Note this is a separate claim from `?` and won't apply
+to most of the backlog.
+
+Verified: typecheck clean, e2e 549 pass, all five `PostDto` endpoints checked
+live for a present `author` and `editableContent`, and `gen-api` produces no
+diff (the raw `Post` schema isn't emitted). The dev DB has no post with an
+`actionId`, so the `action` path is covered by e2e rather than by the live
+check.
 
 ## Phase 5 — land `Repository.ts`, eager-free
 

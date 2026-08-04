@@ -46,10 +46,10 @@ export class Post {
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn()
-  @ApiProperty()
-  @Allow()
+  @ApiPropertyOptional()
+  @IsOptional()
   @Type(() => User)
-  author: Relation<User>;
+  author?: Relation<User>;
 
   @Column()
   @ApiProperty()
@@ -58,10 +58,10 @@ export class Post {
 
   @ManyToOne(() => Action, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn()
-  @ApiProperty({ required: false, type: () => Action })
-  @Allow()
+  @ApiPropertyOptional({ type: () => Action })
+  @IsOptional()
   @Type(() => Action)
-  action: Relation<Action>;
+  action?: Relation<Action> | null;
 
   @Column({ nullable: true })
   @ApiPropertyOptional({ required: false })

@@ -79,6 +79,9 @@ export class PostDto extends PickType(Post, [
     if (!post.editableContent) {
       throw new Error(`Post ${post.id} was loaded without editableContent`);
     }
+    if (!post.author) {
+      throw new Error(`Post ${post.id} was loaded without author`);
+    }
     this.id = post.id;
     this.title = post.title;
     this.actionId = post.actionId;
