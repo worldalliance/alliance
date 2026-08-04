@@ -371,6 +371,33 @@ describe('Users (e2e)', () => {
       expect(res.status).toBe(201);
       expect(await reminderTimeOf(userAId)).toBe('09:30:00');
     });
+
+    // The mobile settings screen is a free-text input, so unparseable times are
+    // ordinary user input rather than a malformed request.
+    it.each(['9am', '25:00', '10:75', '2026-01-01', 42, {}])(
+      'rejects %p instead of failing on the write',
+      async (invalid) => {
+        await update({ preferredReminderTime: '09:30:00' });
+
+        const res = await update({ preferredReminderTime: invalid });
+
+        expect(res.status).toBe(400);
+        expect(await reminderTimeOf(userAId)).toBe('09:30:00');
+      },
+    );
+
+    it.each([
+      ['09:30', '09:30:00'],
+      ['  09:30  ', '09:30:00'],
+      ['9:30', '09:30:00'],
+    ])('normalizes %p to %p before storing it', async (input, stored) => {
+      await update({ preferredReminderTime: null });
+
+      const res = await update({ preferredReminderTime: input });
+
+      expect(res.status).toBe(201);
+      expect(await reminderTimeOf(userAId)).toBe(stored);
+    });
   });
 
   it('can update user anonymous setting and city via update endpoint', async () => {

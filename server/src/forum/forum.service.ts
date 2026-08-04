@@ -682,9 +682,10 @@ export class ForumService {
         where: { id: comment.parentObjectId, deleted: false },
         relations: { author: true, authors: true },
       });
-      if (post.author) {
-        usersToNotify.push(post.author);
+      if (!post.author) {
+        throw new Error(`Post ${post.id} was loaded without author`);
       }
+      usersToNotify.push(post.author);
       if (post.authors?.length) {
         usersToNotify.push(...post.authors);
       }
@@ -898,10 +899,10 @@ export class ForumService {
   }
 
   private getUniquePostAuthors(post: Post): User[] {
-    const allAuthors: User[] = [];
-    if (post.author) {
-      allAuthors.push(post.author);
+    if (!post.author) {
+      throw new Error(`Post ${post.id} was loaded without author`);
     }
+    const allAuthors: User[] = [post.author];
     if (post.authors?.length) {
       allAuthors.push(...post.authors);
     }

@@ -147,11 +147,21 @@ describe('Mms Twilio address columns (e2e)', () => {
 
   it('normalizes the opt-out log the same way', async () => {
     const optoutRepo = ctx.dataSource.getRepository(MmsOptout);
+    const userRepo = ctx.dataSource.getRepository(User);
+    const user = await userRepo.save(
+      userRepo.create({
+        email: 'optout-normalization@example.com',
+        password: 'pass',
+        name: 'Optout Normalization',
+        referralSource: ReferralSource.None,
+      }),
+    );
     const saved = await optoutRepo.save(
       optoutRepo.create({
         phoneNumber: '(415) 555-2671',
         reason: 'keyword',
         rawBody: 'STOP',
+        user: { id: user.id },
       }),
     );
 

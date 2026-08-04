@@ -17,6 +17,7 @@ import {
 } from 'class-validator';
 import { getImageSource } from 'src/images/images.service';
 import { IsE164 } from 'src/utils/phone';
+import { IsPlainTime, trimToPlainTime } from 'src/utils/plain-time';
 import { trimToNull } from 'src/utils/transforms';
 import { ClusterSummaryDto } from '../../cluster/dto/cluster.dto';
 import { Cluster } from '../../cluster/entities/cluster.entity';
@@ -513,7 +514,8 @@ export class UpdateProfileDto extends PartialType(
 
   @IsOptional()
   @ApiPropertyOptional({ type: String, nullable: true })
-  @Transform(trimToNull)
+  @IsPlainTime()
+  @Transform(trimToPlainTime)
   preferredReminderTime?: Temporal.PlainTime | null;
 
   @IsOptional()
