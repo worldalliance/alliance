@@ -250,6 +250,65 @@ describe('Users (e2e)', () => {
     });
   });
 
+  describe('profile picture on /user/update', () => {
+    const pictureOf = async (id: number) =>
+      (await userRepo.findOneByOrFail({ id })).profilePicture;
+
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post('/user/update')
+        .send(body)
+        .set('Authorization', `Bearer ${userAToken}`);
+
+    it('stores a key it is given', async () => {
+      const res = await update({ profilePicture: 'some/uploaded/key.jpg' });
+
+      expect(res.status).toBe(201);
+      expect(await pictureOf(userAId)).toBe('some/uploaded/key.jpg');
+    });
+
+    it('stores blank input as null, not as an empty string', async () => {
+      for (const blank of ['', '   ']) {
+        await update({ profilePicture: 'some/uploaded/key.jpg' });
+
+        const res = await update({ profilePicture: blank });
+
+        expect(res.status).toBe(201);
+        expect(await pictureOf(userAId)).toBeNull();
+      }
+    });
+
+    it('rejects a non-string picture instead of storing it', async () => {
+      await update({ profilePicture: 'some/uploaded/key.jpg' });
+
+      const res = await update({ profilePicture: 42 });
+
+      expect(res.status).toBe(400);
+      expect(await pictureOf(userAId)).toBe('some/uploaded/key.jpg');
+    });
+
+    it('leaves the picture alone when the field is absent', async () => {
+      await update({ profilePicture: 'some/uploaded/key.jpg' });
+
+      const res = await update({ profileDescription: 'unrelated edit' });
+
+      expect(res.status).toBe(201);
+      expect(await pictureOf(userAId)).toBe('some/uploaded/key.jpg');
+    });
+
+    it('serializes a cleared picture as null rather than omitting it', async () => {
+      await update({ profilePicture: null });
+
+      const res = await request(ctx.app.getHttpServer())
+        .get('/user/me')
+        .set('Authorization', `Bearer ${userAToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('profilePicture');
+      expect(res.body.profilePicture).toBeNull();
+    });
+  });
+
   it('can update user anonymous setting and city via update endpoint', async () => {
     // Create another test city
     const newCity = cityRepo.create({

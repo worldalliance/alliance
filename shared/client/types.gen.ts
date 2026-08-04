@@ -689,7 +689,7 @@ export type User = {
     ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
-    referralCode: string | null;
+    referralCode: string;
     stripeCustomerId: string | null;
     isNotSignedUpPartialProfile: boolean;
     customCityString?: string | null;
@@ -753,7 +753,7 @@ export type UserDto = {
     ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
-    referralCode: string | null;
+    referralCode: string;
     customCityString?: string | null;
     anonymous: boolean;
     shareInfoPublicly: boolean;
@@ -846,7 +846,6 @@ export type UpdateProfileDto = {
     shareEmailWithCommunityLead?: boolean;
     sharePhoneNumberWithCommunityLead?: boolean;
     forumDigestPreference?: ForumDigestPreference;
-    profilePicture?: string | null;
     profileDescription?: string | null;
     isNotSignedUpPartialProfile?: boolean;
     customCityString?: string | null;
@@ -862,6 +861,7 @@ export type UpdateProfileDto = {
     receiveReplyNotifications?: boolean;
     cityId?: number | null;
     phoneNumber?: string | null;
+    profilePicture?: string | null;
 };
 
 export type City = {
@@ -940,7 +940,7 @@ export type UserAdminDetailDto = {
     ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
-    referralCode: string | null;
+    referralCode: string;
     customCityString?: string | null;
     anonymous: boolean;
     shareInfoPublicly: boolean;

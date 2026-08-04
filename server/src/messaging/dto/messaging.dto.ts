@@ -206,7 +206,9 @@ export class ConversationDto extends PickType(Conversation, [
   }
 
   private resolveDirectPhoto(contextUserId?: number): string | undefined {
-    return this.findOtherParticipant(contextUserId)?.user.profilePicture;
+    return (
+      this.findOtherParticipant(contextUserId)?.user.profilePicture ?? undefined
+    );
   }
 
   private findOtherParticipant(

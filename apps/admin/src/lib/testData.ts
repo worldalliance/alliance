@@ -25,7 +25,7 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   tags: [],
   formDataPreference: "public",
   hasActiveContract: true,
-  referralCode: null,
+  referralCode: "preview-referral-code",
   anonymous: false,
   email: "preview@example.com",
   contractEvents: [

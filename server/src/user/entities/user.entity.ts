@@ -241,22 +241,22 @@ export class User {
   @ApiProperty()
   ambassador: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   @ApiProperty({ nullable: true })
-  profilePicture: string;
+  profilePicture: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   @ApiProperty({ nullable: true })
-  profileDescription: string;
+  profileDescription: string | null;
 
-  @Column({ nullable: true })
-  @ApiProperty({ nullable: true })
+  @Column()
+  @ApiProperty()
   referralCode: string;
 
-  @Column({ nullable: true, unique: true })
+  @Column({ type: 'varchar', nullable: true, unique: true })
   @ApiProperty({ nullable: true })
   @Allow()
-  stripeCustomerId: string;
+  stripeCustomerId: string | null;
 
   @Column({ default: false })
   @ApiProperty()
@@ -268,10 +268,10 @@ export class User {
   @Allow()
   customCityString?: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'boolean', nullable: true })
   @ApiProperty({ nullable: true })
   @Allow()
-  over18: boolean;
+  over18: boolean | null;
 
   @Column({ default: false })
   @ApiProperty()

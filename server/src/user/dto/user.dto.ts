@@ -4,17 +4,19 @@ import {
   PartialType,
   PickType,
 } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   Allow,
   IsArray,
   IsBoolean,
   IsInt,
   IsOptional,
+  IsString,
   ValidateNested,
 } from 'class-validator';
 import { getImageSource } from 'src/images/images.service';
 import { IsE164 } from 'src/utils/phone';
+import { trimToNull } from 'src/utils/transforms';
 import { ClusterSummaryDto } from '../../cluster/dto/cluster.dto';
 import { Cluster } from '../../cluster/entities/cluster.entity';
 import { Campaign } from '../../campaign/entities/campaign.entity';
@@ -106,9 +108,9 @@ export class ProfileDto extends PickType(User, [
       this.displayName = user.name;
     }
 
-    if (user.profilePicture) {
-      this.profilePicture = getImageSource(user.profilePicture);
-    }
+    this.profilePicture = user.profilePicture
+      ? getImageSource(user.profilePicture)
+      : null;
 
     if (user.cluster) {
       this.cluster = new ClusterSummaryDto(user.cluster);
@@ -269,7 +271,9 @@ export class UserDto extends PickType(User, [
     this.communities = user.communities;
     this.leaderOfIds = user.leaderOfIds;
     this.hasActiveContract = user.hasActiveContract;
-    this.profilePicture = getImageSource(user.profilePicture);
+    this.profilePicture = user.profilePicture
+      ? getImageSource(user.profilePicture)
+      : null;
     this.referredById = user.referredBy?.id ?? null;
     this.clusterId = user.clusterId;
   }
@@ -439,7 +443,6 @@ export class UpdateProfileDto extends PartialType(
   PickType(User, [
     'name',
     'profileDescription',
-    'profilePicture',
     'anonymous',
     'emailNotifsForActions',
     'pushNotifsForActions',
@@ -470,6 +473,12 @@ export class UpdateProfileDto extends PartialType(
   @ApiPropertyOptional({ type: String, nullable: true })
   @IsE164()
   phoneNumber?: string | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsString()
+  @Transform(trimToNull)
+  profilePicture?: string | null;
 }
 
 export class UpdateUserRolesAdminDto extends PartialType(
