@@ -25,6 +25,7 @@ import { ShareUrl } from '../../share-urls/entities/share-url.entity';
 import {
   compareContractEventsNewestFirst,
   ContractEvent,
+  ContractEventType,
 } from '../entities/contract-event.entity';
 import { FriendStatus } from '../entities/friend.entity';
 import { OnetimeInvite } from '../entities/onetime-invite.entity';
@@ -49,6 +50,29 @@ export class FriendStatusDto {
   }
 }
 
+export class ContractEventDto {
+  @ApiProperty({ enum: ContractEventType, enumName: 'ContractEventType' })
+  type: ContractEventType;
+
+  @ApiProperty()
+  date: Date;
+
+  @ApiProperty()
+  automatic: boolean;
+
+  @ApiProperty({ type: Number, nullable: true })
+  contractId: number | null;
+
+  constructor(
+    input: Pick<ContractEvent, 'type' | 'date' | 'automatic' | 'contractId'>,
+  ) {
+    this.type = input.type;
+    this.date = input.date;
+    this.automatic = input.automatic;
+    this.contractId = input.contractId;
+  }
+}
+
 export class ProfileDto extends PickType(User, [
   'admin',
   'staff',
@@ -67,8 +91,8 @@ export class ProfileDto extends PickType(User, [
   @ApiProperty()
   isCommunityLeader: boolean;
 
-  @ApiPropertyOptional({ type: ContractEvent })
-  lastContractEvent?: ContractEvent;
+  @ApiPropertyOptional({ type: ContractEventDto })
+  lastContractEvent?: ContractEventDto;
 
   @ApiPropertyOptional({ type: ClusterSummaryDto })
   cluster?: ClusterSummaryDto;
@@ -99,8 +123,11 @@ export class ProfileDto extends PickType(User, [
     this.hasActiveContract = user.hasActiveContract;
     this.isCommunityLeader = user.isCommunityLeader;
     this.anonymous = user.anonymous;
-    this.lastContractEvent = user.contractEvents?.length
-      ? user.contractEvents?.sort(compareContractEventsNewestFirst)[0]
+    const lastContractEvent = user.contractEvents?.length
+      ? user.contractEvents.sort(compareContractEventsNewestFirst)[0]
+      : undefined;
+    this.lastContractEvent = lastContractEvent
+      ? new ContractEventDto(lastContractEvent)
       : undefined;
     if (user.anonymous) {
       this.displayName = 'Someone';
@@ -206,7 +233,6 @@ export class UserDto extends PickType(User, [
   'remindAboutUncompletedGroupMembers',
   'timeZone',
   'formDataPreference',
-  'contractEvents',
   'shareInfoPublicly',
   'customCityString',
   'undergoingGroupAssignment',
@@ -229,6 +255,11 @@ export class UserDto extends PickType(User, [
   @ApiPropertyOptional()
   @IsOptional()
   referredById?: number | null;
+
+  @ApiPropertyOptional({ type: ContractEventDto, isArray: true })
+  @IsOptional()
+  @Type(() => ContractEventDto)
+  contractEvents?: ContractEventDto[];
 
   constructor(user: User) {
     super();
@@ -265,7 +296,9 @@ export class UserDto extends PickType(User, [
     this.remindAboutUncompletedGroupMembers =
       user.remindAboutUncompletedGroupMembers;
     this.receiveReplyNotifications = user.receiveReplyNotifications;
-    this.contractEvents = user.contractEvents;
+    this.contractEvents = user.contractEvents?.map(
+      (event) => new ContractEventDto(event),
+    );
     this.activities = user.activities;
     this.tags = user.tags;
     this.communities = user.communities;

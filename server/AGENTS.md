@@ -4,9 +4,19 @@ Before editing any `*.dto.ts` or `*.controller.ts`, read `../.claude/skills/dto-
 
 Every controller endpoint needs `@ApiOkResponse({ type: })` (or `@ApiResponse`) matching its return type (omit `type` for void).
 
-DTOs: use mapped types over entities, e.g. `SampleDto extends OmitType(SampleEntity, ['sample']) {}`. Mark optional (`?`) fields with `@ApiPropertyOptional`, not `nullable`.
+DTOs: use mapped types over entities, e.g. `SampleDto extends OmitType(SampleEntity, ['sample']) {}`.
 
 New endpoints need `@AuthGuard`, `@AdminGuard`, or `@CommunityLeaderGuard` depending on access level.
+
+## Entities
+
+On an entity, `undefined` means "not loaded". A column is always loaded, so a column property is never `?` — absence is spelled `null`, and only when the column is `nullable: true`. The TS type restates the DB constraint:
+
+```ts
+@Column() name: string;                              // NOT NULL
+@Column({ type: 'varchar', nullable: true })
+bio: string | null;                                  // NULL
+```
 
 ## Service methods
 

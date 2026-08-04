@@ -814,7 +814,7 @@ export class TasksService {
     for (const contractId of contractIdsSigned) {
       await this.contractService.signContract({
         userId: user.id,
-        signedName: undefined,
+        signedName: null,
         contractId,
       });
     }

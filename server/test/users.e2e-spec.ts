@@ -1306,7 +1306,7 @@ describe('Users (e2e)', () => {
       });
 
       // Suspend contract (this should set pendingCommunity)
-      await contractService.suspendContract(user.id);
+      await contractService.suspendContract({ userId: user.id });
 
       // Set pendingCommunity manually to simulate the suspend flow
       const userWithPending = await userRepo.findOne({
@@ -1380,7 +1380,7 @@ describe('Users (e2e)', () => {
         signedName: 'Test Name',
         contractId: ctx.defaultContractId,
       });
-      await contractService.suspendContract(user.id);
+      await contractService.suspendContract({ userId: user.id });
 
       // Stand in for the suspend flow, and clear the queue flag the first
       // signing set so the assertion below can only come from the re-signing.
@@ -1447,7 +1447,7 @@ describe('Users (e2e)', () => {
       });
 
       // Suspend contract
-      await contractService.suspendContract(member.id);
+      await contractService.suspendContract({ userId: member.id });
 
       const updatedMember = await userRepo.findOne({
         where: { id: member.id },
@@ -1488,7 +1488,7 @@ describe('Users (e2e)', () => {
       });
 
       // Suspend contract
-      await contractService.suspendContract(leader.id);
+      await contractService.suspendContract({ userId: leader.id });
 
       const updatedLeader = await userRepo.findOne({
         where: { id: leader.id },
@@ -1544,7 +1544,7 @@ describe('Users (e2e)', () => {
         signedName: 'Test Name',
         contractId: ctx.defaultContractId,
       });
-      await contractService.suspendContract(member.id);
+      await contractService.suspendContract({ userId: member.id });
 
       const notifRepo = ctx.dataSource.getRepository(Notification);
       const leader1Notifs = await notifRepo.find({
@@ -1623,7 +1623,7 @@ describe('Users (e2e)', () => {
         signedName: 'Test Name',
         contractId: ctx.defaultContractId,
       });
-      await contractService.suspendContract(member.id);
+      await contractService.suspendContract({ userId: member.id });
 
       const updatedMember = await userRepo.findOne({
         where: { id: member.id },

@@ -25,16 +25,16 @@ export default tseslint.config([
     rules: {
       '@darraghor/nestjs-typed/controllers-should-supply-api-tags': 'off',
       // `checkLazyOptional` is off while the un-migrated entities are drained.
-      // Drain them with
-      // `eslint --rule '{"local-rules/relation-optionality":"error"}' --fix`,
-      // then flip it on and delete the option.
+      // Drain them by re-running the rule with the option forced back on —
+      // repeat the options, since `--rule` with a bare severity keeps the ones
+      // configured here:
+      // `eslint --rule '{"local-rules/relation-optionality":["error",{"checkLazyOptional":true}]}' --fix`
       'local-rules/relation-optionality': [
         'error',
         { checkLazyOptional: false },
       ],
-      // Same deal for columns — see docs/entity-column-nullability.md. Drain
-      // with `eslint --rule '{"local-rules/column-optionality":"error"}' --fix`
-      // per phase, then flip these on and delete the options.
+      // Same deal for columns — see docs/entity-column-nullability.md, which
+      // has the drain command and the remaining slices.
       'local-rules/column-optionality': [
         'error',
         { checkOptional: false, checkMissingNull: false },

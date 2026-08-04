@@ -79,20 +79,20 @@ export class ContractEvent {
   @Allow()
   automatic: boolean;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ type: 'string' })
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ type: 'string', nullable: true })
   @IsOptional()
-  autoSuspendKey?: string;
+  autoSuspendKey: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ type: 'string' })
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ type: 'string', nullable: true })
   @IsOptional()
-  signedName?: string;
+  signedName: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: 'int', nullable: true })
+  @ApiProperty({ nullable: true })
   @IsOptional()
-  contractId?: number;
+  contractId: number | null;
 
   // Relations
 

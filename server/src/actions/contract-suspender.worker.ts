@@ -1,3 +1,4 @@
+import { R } from '@alliance/common/result';
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ActionsService } from 'src/actions/actions.service';
@@ -49,47 +50,62 @@ export class ContractSuspenderWorker {
       async () => {
         const now = new Date();
 
-        const { usersToSuspend, suspendReasonKeys } =
-          await this.actionsService.findUsersToSuspend(now);
+        const candidates = await this.actionsService.findUsersToSuspend(now);
 
-        if (usersToSuspend.length > 0) {
+        if (candidates.length > 0) {
           console.log(
             'suspending users for action failure: ',
-            usersToSuspend.map((user) => user.name),
+            candidates.map(({ user }) => user.name),
           );
         }
 
-        for (const user of usersToSuspend) {
-          const res = await this.contractService.suspendContract(
-            user.id,
-            true,
-            suspendReasonKeys.get(user.id),
+        for (const { user, reasonKey } of candidates) {
+          const suspension = await R.fromPromiseFn(() =>
+            this.contractService.suspendContract({
+              userId: user.id,
+              automatic: true,
+              autoSuspendKey: reasonKey,
+            }),
           );
+          if (R.isFailure(suspension)) {
+            this.logger.error(
+              `Failed to suspend contract for ${user.name} (${user.id}), failure code ${reasonKey}`,
+              suspension.error,
+            );
+            continue;
+          }
+
           await this.eventLogService.sendMessage({
             type: EventType.ContractSuspended,
-            message: `[${process.env.NODE_ENV}]: Suspending contract for ${user.name}. failure code ${suspendReasonKeys.get(user.id)}`,
+            message: `[${process.env.NODE_ENV}]: Suspending contract for ${user.name}. failure code ${reasonKey}`,
             userId: user.id,
             blob: {
-              suspendReason: suspendReasonKeys.get(user.id),
+              suspendReason: reasonKey,
               automatic: true,
             },
           });
-          if (res) {
-            const cid = generateCIDForNotif();
-            if (userActionNotifsEnabled_text(user)) {
-              await this.mmsService.sendMms({
-                to: user.phoneNumber!,
-                body: suspensionMessage,
-                mediaUrls: [],
-                cid,
-              });
-            }
-            if (userActionNotifsEnabled_email(user)) {
-              await this.mailService.sendContractSuspendedEmail(
-                user.email,
-                user.name,
-              );
-            }
+          const cid = generateCIDForNotif();
+          if (userActionNotifsEnabled_text(user)) {
+            await this.sendBestEffort(
+              `suspension text to user ${user.id}`,
+              () =>
+                this.mmsService.sendMms({
+                  to: user.phoneNumber!,
+                  body: suspensionMessage,
+                  mediaUrls: [],
+                  cid,
+                }),
+            );
+          }
+          if (userActionNotifsEnabled_email(user)) {
+            await this.sendBestEffort(
+              `suspension email to user ${user.id}`,
+              () =>
+                this.mailService.sendContractSuspendedEmail(
+                  user.email,
+                  user.name,
+                ),
+            );
           }
         }
       },
@@ -97,6 +113,21 @@ export class ContractSuspenderWorker {
 
     if (ran === null) {
       this.logger.log('suspender processOne skipped bc of lock');
+    }
+  }
+
+  /**
+   * The contract is already suspended by this point and the user drops out of
+   * the next run's candidates, so a failed notification is never retried —
+   * log it and keep going rather than losing the rest of the batch.
+   */
+  private async sendBestEffort(
+    what: string,
+    send: () => Promise<unknown>,
+  ): Promise<void> {
+    const sent = await R.fromPromiseFn(send);
+    if (R.isFailure(sent)) {
+      this.logger.error(`Failed to send ${what}`, sent.error);
     }
   }
 }

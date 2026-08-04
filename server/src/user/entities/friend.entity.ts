@@ -37,8 +37,8 @@ export class Friend {
   @CreateDateColumnTz()
   createdAt: Date;
 
-  @Column({ nullable: true })
-  acceptedAt?: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  acceptedAt: Date | null;
 
   @UpdateDateColumnTz()
   updatedAt: Date;

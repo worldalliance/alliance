@@ -13,7 +13,7 @@ import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
 } from 'src/datasources/basecolumns';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 @Entity()
 @Index(['userId', 'actionId'], { unique: true })
@@ -36,13 +36,13 @@ export class LiveActivityRegistration {
   @JoinColumn({ name: 'actionId' })
   action: Relation<Action>;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  updateToken?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  updateToken: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  activityId?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  activityId: string | null;
 
   @Column({ default: false })
   @ApiProperty()
@@ -52,9 +52,9 @@ export class LiveActivityRegistration {
   @ApiProperty()
   ended: boolean;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  lastCompletedCountSent?: number;
+  @Column({ type: 'int', nullable: true })
+  @ApiProperty({ nullable: true })
+  lastCompletedCountSent: number | null;
 
   @CreateDateColumnTz()
   createdAt: Date;

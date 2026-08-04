@@ -95,7 +95,9 @@ export class ContractController {
   async suspendContract(
     @Request() req: JwtRequest,
   ): Promise<ContractEventDateDto> {
-    const date = await this.contractService.suspendContract(req.user.sub);
+    const date = await this.contractService.suspendContract({
+      userId: req.user.sub,
+    });
     this.posthog.capture({
       event: AnalyticsEvent.ContractSuspended,
       distinctId: String(req.user.sub),
@@ -109,7 +111,7 @@ export class ContractController {
   async suspendContractAdmin(
     @Param('userId', ParseIntPipe) userId: number,
   ): Promise<ContractEventDateDto> {
-    const date = await this.contractService.suspendContract(userId);
+    const date = await this.contractService.suspendContract({ userId });
     this.posthog.capture({
       event: AnalyticsEvent.ContractSuspended,
       distinctId: String(userId),

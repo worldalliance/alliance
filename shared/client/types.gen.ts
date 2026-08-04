@@ -47,28 +47,6 @@ export type ForumDigestPreference = 'off' | 'daily' | 'weekly';
 
 export type PublicFormResponseDefault = 'public' | 'private';
 
-export type ContractEventType = 'signed' | 'suspended';
-
-export type Contract = {
-    id: number;
-    name: string | null;
-    createdAt: string;
-    markdown: string;
-    startDate: string | null;
-    endDate: string | null;
-    events: Array<ContractEvent>;
-};
-
-export type ContractEvent = {
-    type: ContractEventType;
-    date: string;
-    automatic: boolean;
-    autoSuspendKey?: string;
-    signedName?: string;
-    contractId?: number;
-    contract?: Contract | null;
-};
-
 export type ReferralSource = 'referral_link' | 'onetime_invite' | 'action_share_link' | 'external_share_link' | 'invite_share_link' | 'campaign' | 'none';
 
 export type NotificationPreference = 'all' | 'digest' | 'none';
@@ -705,7 +683,6 @@ export type User = {
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
-    contractEvents?: Array<ContractEvent>;
     referredByInvite: OnetimeInvite | null;
     referralSource: ReferralSource;
     referredByCampaign?: Campaign | null;
@@ -733,6 +710,15 @@ export type Tag = {
     updatedAt: string;
     users: Array<User>;
     generalUpdates: Array<GeneralUpdate>;
+};
+
+export type ContractEventType = 'signed' | 'suspended';
+
+export type ContractEventDto = {
+    type: ContractEventType;
+    date: string;
+    automatic: boolean;
+    contractId: number | null;
 };
 
 export type UserDto = {
@@ -766,7 +752,6 @@ export type UserDto = {
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
-    contractEvents?: Array<ContractEvent>;
     referralSource: ReferralSource;
     tags: Array<Tag>;
     communities: Array<Community>;
@@ -775,6 +760,7 @@ export type UserDto = {
     email: string;
     hasActiveContract: boolean;
     referredById?: number;
+    contractEvents?: Array<ContractEventDto>;
 };
 
 export type AuthMeResponseDto = {
@@ -807,7 +793,7 @@ export type ProfileDto = {
     displayName: string;
     hasActiveContract: boolean;
     isCommunityLeader: boolean;
-    lastContractEvent?: ContractEvent;
+    lastContractEvent?: ContractEventDto;
     cluster?: ClusterSummaryDto;
 };
 
@@ -953,7 +939,6 @@ export type UserAdminDetailDto = {
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
-    contractEvents?: Array<ContractEvent>;
     referralSource: ReferralSource;
     tags: Array<Tag>;
     communities: Array<Community>;
@@ -962,6 +947,7 @@ export type UserAdminDetailDto = {
     email: string;
     hasActiveContract: boolean;
     referredById?: number;
+    contractEvents?: Array<ContractEventDto>;
     location: UserAdminLocationDto;
     invitedBy: UserAdminInvitedByDto | null;
 };
@@ -981,7 +967,7 @@ export type ProfileDtoWithFriends = {
     displayName: string;
     hasActiveContract: boolean;
     isCommunityLeader: boolean;
-    lastContractEvent?: ContractEvent;
+    lastContractEvent?: ContractEventDto;
     cluster?: ClusterSummaryDto;
     friendIds: Array<number>;
 };

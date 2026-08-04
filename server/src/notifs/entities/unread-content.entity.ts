@@ -30,8 +30,9 @@ export class UnreadContent {
   @ApiProperty()
   contentId: number;
 
-  @Column({ nullable: true })
-  groupingKey?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  groupingKey: string | null;
 
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })

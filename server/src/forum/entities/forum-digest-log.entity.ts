@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   Column,
   Entity,
@@ -53,10 +53,8 @@ export class ForumDigestLog {
   notificationIds: number[];
 
   @Column({ type: 'jsonb', nullable: true })
-  @ApiPropertyOptional({
-    isArray: true,
-  })
-  notificationsSummary?: StoredNotificationSummary[];
+  @ApiProperty({ type: [Object], nullable: true })
+  notificationsSummary: StoredNotificationSummary[] | null;
 
   @CreateDateColumnTz()
   @ApiProperty({ type: String, format: 'date-time' })

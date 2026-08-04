@@ -338,7 +338,6 @@ export class User {
 
   @OneToMany(() => ContractEvent, (event) => event.user, { cascade: true })
   @Type(() => ContractEvent)
-  @ApiPropertyOptional({ type: () => ContractEvent, isArray: true })
   contractEvents?: Relation<ContractEvent>[];
 
   @OneToMany(() => ActionActivity, (activity) => activity.user)

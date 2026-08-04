@@ -196,6 +196,13 @@ type SuspendPlanContext = {
   allExpectedUsers: number[];
 };
 
+/**
+ * A user due for automatic suspension, paired with the key identifying the
+ * failure streak that triggered it. `ContractEvent`'s `(user, autoSuspendKey)`
+ * unique constraint dedupes on it, so it is never absent for a candidate.
+ */
+export type SuspensionCandidate = { user: User; reasonKey: string };
+
 /** Facepile preview size; member-list endpoints paginate full lists. */
 const GLOBAL_FEED_FACEPILE_LIMIT = 8;
 
@@ -3733,13 +3740,12 @@ export class ActionsService {
   private computeUsersToSuspendFromContext(
     now: Date,
     context: SuspendPlanContext,
-  ) {
+  ): SuspensionCandidate[] {
     const pastSuites = context.orderedSuites.filter(
       (suite) => suite.pastDate && suite.pastDate < now,
     );
 
-    const usersToSuspend = new Set<number>();
-    const suspendReasonKeys = new Map<number, string>();
+    const candidates: SuspensionCandidate[] = [];
 
     for (const userId of context.allExpectedUsers) {
       let streak = 0;
@@ -3760,8 +3766,10 @@ export class ActionsService {
           lastThreeSuiteIds.push(suite.suiteId);
           if (lastThreeSuiteIds.length > 3) lastThreeSuiteIds.shift();
           if (streak >= 3) {
-            usersToSuspend.add(userId);
-            suspendReasonKeys.set(userId, `s-${lastThreeSuiteIds.join('-')}`);
+            candidates.push({
+              user: context.idToUser.get(userId)!,
+              reasonKey: `s-${lastThreeSuiteIds.join('-')}`,
+            });
             break;
           }
         } else {
@@ -3772,12 +3780,7 @@ export class ActionsService {
       }
     }
 
-    return {
-      usersToSuspend: Array.from(usersToSuspend).map(
-        (userId) => context.idToUser.get(userId)!,
-      ),
-      suspendReasonKeys,
-    };
+    return candidates;
   }
 
   async findUsersToSuspend(now: Date, preloadedActions?: ParsedAction[]) {
@@ -3810,13 +3813,12 @@ export class ActionsService {
     const stepMs = stepHours * 60 * 60 * 1000;
 
     while (date.getTime() <= rangeEndMs) {
-      const { usersToSuspend } = this.computeUsersToSuspendFromContext(
+      const notAlreadySuspended = this.computeUsersToSuspendFromContext(
         date,
         context,
-      );
-      const notAlreadySuspended = usersToSuspend.filter(
-        (user) => !suspendedUsers.has(user.id),
-      );
+      )
+        .map((candidate) => candidate.user)
+        .filter((user) => !suspendedUsers.has(user.id));
       if (notAlreadySuspended.length > 0) {
         for (const user of notAlreadySuspended) {
           suspendedUsers.add(user.id);

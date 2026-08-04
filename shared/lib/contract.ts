@@ -1,18 +1,18 @@
-import type { ContractEvent } from "../client";
+import type { ContractEventDto } from "../client";
 
 export type ContractEventState = Pick<
-  ContractEvent,
+  ContractEventDto,
   "type" | "date" | "automatic" | "contractId"
 > | null;
 
 export function getLastContractEvent(
-  contractEvents: ContractEvent[] | undefined
+  contractEvents: ContractEventDto[] | undefined,
 ): ContractEventState {
   if (!contractEvents?.length) {
     return null;
   }
   return contractEvents.sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   )[0];
 }
 
