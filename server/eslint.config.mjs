@@ -1,4 +1,4 @@
-// import eslintPluginExample from './eslint/eslint-local-rules.mjs';
+import localRules from './eslint/eslint-local-rules.mjs';
 import tseslint from 'typescript-eslint';
 import eslintNestJs from '@darraghor/eslint-plugin-nestjs-typed';
 import parser from '@typescript-eslint/parser';
@@ -20,11 +20,18 @@ export default tseslint.config([
   eslintNestJs.configs.flatRecommended,
   sharedRules,
   {
-    // plugins: { 'local-rules': eslintPluginExample },
+    plugins: { 'local-rules': localRules },
     files: ['**/*.ts'],
     rules: {
       '@darraghor/nestjs-typed/controllers-should-supply-api-tags': 'off',
-      //   'local-rules/enforce-foo-bar': 'error',
+      // `checkLazyOptional` is off while the un-migrated entities are drained.
+      // Drain them with
+      // `eslint --rule '{"local-rules/relation-optionality":"error"}' --fix`,
+      // then flip it on and delete the option.
+      'local-rules/relation-optionality': [
+        'error',
+        { checkLazyOptional: false },
+      ],
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {
