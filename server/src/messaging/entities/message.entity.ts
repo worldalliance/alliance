@@ -36,12 +36,14 @@ export class Message {
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn()
   @ApiProperty({ type: () => User })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   author: Relation<User>;
 
   @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'conversationId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   conversation: Relation<Conversation>;
 
   @CreateDateColumnTz()
@@ -53,13 +55,16 @@ export class Message {
 
   @Column({ type: 'timestamptz', nullable: true })
   @ApiPropertyOptional({ type: Date })
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   deletedAt?: Date;
 
   @ManyToOne(() => Message, (message) => message.replies)
   @JoinColumn({ name: 'replyToId' })
   @ApiProperty({ type: () => Message, required: false })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   replyTo: Relation<Message>;
 
   @OneToMany(() => Message, (message) => message.replyTo)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   replies: Relation<Message>[];
 }

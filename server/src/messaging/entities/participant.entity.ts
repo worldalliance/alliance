@@ -36,10 +36,12 @@ export class Participant {
   @ManyToOne(() => Conversation, (conversation) => conversation.participants, {
     onDelete: 'CASCADE',
   })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   conversation: Relation<Conversation>;
 
   @ManyToOne(() => User, (user) => user.participants, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column({ type: 'enum', enum: ParticipantRole, enumName: 'ParticipantRole' })

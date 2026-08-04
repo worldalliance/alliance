@@ -32,6 +32,7 @@ export class FollowUpForm {
   })
   @Allow()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   name?: string;
 
   @Column({ type: 'timestamptz', nullable: true })
@@ -42,6 +43,7 @@ export class FollowUpForm {
   @Type(() => Date)
   @Allow()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   startDate?: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
@@ -52,6 +54,7 @@ export class FollowUpForm {
   @Type(() => Date)
   @Allow()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   endDate?: Date;
 
   @Column({ type: 'text', nullable: true })
@@ -61,12 +64,14 @@ export class FollowUpForm {
   })
   @Allow()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   instructions?: string;
 
   @Column({ type: 'jsonb', nullable: true })
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @Type(() => Object)
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   cohortExpression?: unknown;
 
   // Relations
@@ -82,6 +87,7 @@ export class FollowUpForm {
   @JoinColumn({ name: 'actionId' })
   @Type(() => Action)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   action: Relation<Action>;
 
   @Column()
@@ -93,6 +99,7 @@ export class FollowUpForm {
   @JoinColumn({ name: 'formId' })
   @Type(() => Form)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   form: Relation<Form>;
 }
 

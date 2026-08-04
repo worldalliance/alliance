@@ -164,6 +164,7 @@ export class Notification {
   @ManyToOne(() => User, (user) => user.notifications, {
     onDelete: 'CASCADE',
   })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @ManyToMany(() => User)
@@ -174,6 +175,7 @@ export class Notification {
     nullable: true,
     onDelete: 'CASCADE',
   })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   pushes: Relation<Push>[];
 
   @ApiPropertyOptional({ type: () => ActionUpdate })

@@ -50,6 +50,7 @@ export class Comment {
   @ApiProperty()
   @Allow()
   @Type(() => User)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   author: Relation<User>;
 
   @Column()
@@ -95,22 +96,26 @@ export class Comment {
   @ApiProperty({ type: () => Comment, required: false })
   @Allow()
   @IsOptional()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   parent: Relation<Comment> | null;
 
   @Column({ nullable: true })
   @IsOptional()
   @ApiPropertyOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   parentId?: number;
 
   @OneToMany(() => Comment, (comment) => comment.parent)
   @ApiProperty({ type: () => Comment, required: false, isArray: true })
   @Allow()
   @Type(() => Comment)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   children: Relation<Comment>[];
 
   @OneToMany(() => Notification, (notification) => notification.comment)
   @Allow()
   @Type(() => Notification)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   notifications: Relation<Notification>[];
 
   @Column({ default: false })
@@ -123,6 +128,7 @@ export class Comment {
   @JoinTable()
   @Allow()
   @Type(() => User)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   likes: Relation<User>[];
 
   @Column({ default: 0 })

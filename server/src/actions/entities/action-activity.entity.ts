@@ -55,6 +55,7 @@ export class ActionActivity {
   @JoinColumn({ name: 'actionId' })
   @Allow()
   @Type(() => Action)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   action: Relation<Action>;
 
   @Column()
@@ -66,6 +67,7 @@ export class ActionActivity {
   @JoinColumn({ name: 'userId' })
   @Allow()
   @Type(() => User)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column()
@@ -81,12 +83,14 @@ export class ActionActivity {
 
   @Column({ type: 'text', nullable: true })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   metadata?: string;
 
   // just for donation-based actions
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   dollar_amount?: number;
 
   @OneToOne(() => EditableContent, {
@@ -105,6 +109,7 @@ export class ActionActivity {
   @Allow()
   @ApiProperty({ type: () => User, isArray: true })
   @Type(() => User)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   likes: Relation<User>[];
 
   @Column({ default: 0 })
@@ -125,16 +130,19 @@ export class ActionActivity {
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   declineReason?: string;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   isMoral?: boolean; // for moral declines
 
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   outOfTime?: boolean; // for opting out due to running out of time
 
   @Column({ type: 'enum', enum: ActivitySource, default: ActivitySource.USER })

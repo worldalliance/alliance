@@ -9,17 +9,21 @@ export class PaymentUserDataToken {
 
   @Column({ nullable: true })
   @ApiProperty()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   paymentIntentId: string;
 
   @Column({ nullable: true })
   @ApiProperty()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   firstName: string;
 
   @Column({ nullable: true })
   @ApiProperty()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   lastName: string;
 
   @Column({ nullable: true })
   @ApiProperty()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   email: string;
 }

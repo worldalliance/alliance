@@ -55,6 +55,7 @@ export class GeneralUpdate {
   @Type(() => Date)
   @Allow()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   startDate?: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
@@ -62,6 +63,7 @@ export class GeneralUpdate {
   @Type(() => Date)
   @Allow()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   endDate?: Date;
 
   @Column({ default: false })
@@ -77,6 +79,7 @@ export class GeneralUpdate {
     nullable: true,
   })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   manualCohortUserIds?: number[] | null;
 
   @Column({ default: 0 })
@@ -98,6 +101,7 @@ export class GeneralUpdate {
   @Allow()
   @JoinTable()
   @Type(() => Tag)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   tags: Relation<Tag>[];
 
   @ManyToMany(() => ActionSuite, (suite) => suite.generalUpdates, {

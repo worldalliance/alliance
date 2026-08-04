@@ -50,18 +50,21 @@ export class ActionSuite {
   @ApiProperty({ type: () => Action, isArray: true })
   @Allow()
   @Type(() => Action)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   actions: Relation<Action>[];
 
   @ManyToMany(() => GeneralUpdate, (generalUpdate) => generalUpdate.suites)
   @ApiProperty({ type: () => GeneralUpdate, isArray: true })
   @Allow()
   @Type(() => GeneralUpdate)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   generalUpdates: Relation<GeneralUpdate>[];
 
   @OneToMany(() => ReminderGroup, (reminderGroup) => reminderGroup.actionSuite)
   @ApiProperty({ type: () => ReminderGroup, isArray: true })
   @Allow()
   @Type(() => ReminderGroup)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   reminderGroups: Relation<ReminderGroup>[];
 
   // Methods

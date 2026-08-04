@@ -43,11 +43,13 @@ export class OnetimeInvite {
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   inviteeDescription?: string;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   info?: string;
 
   @ApiProperty()
@@ -93,18 +95,21 @@ export class OnetimeInvite {
   @Type(() => User)
   @JoinColumn({ name: 'invitingUserId' })
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   invitingUser: Relation<User>;
 
   @OneToOne(() => User, (user) => user.referredByInvite)
   @ApiProperty({ type: () => User, nullable: true })
   @Type(() => User)
   @IsOptional()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   invitedUser: Relation<User> | null;
 
   @RelationId((invite: OnetimeInvite) => invite.invitedUser)
   @Type(() => Number)
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   invitedUserId?: number;
 
   @ManyToOne(() => Community, (community) => community.invites, {
@@ -121,11 +126,13 @@ export class OnetimeInvite {
   @Type(() => Number)
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   communityId?: number;
 
   @OneToMany(() => Notification, (notif) => notif.onetimeInvite)
   @Type(() => Notification)
   @ApiProperty({ type: () => Notification, isArray: true })
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   notifs: Relation<Notification>[];
 }

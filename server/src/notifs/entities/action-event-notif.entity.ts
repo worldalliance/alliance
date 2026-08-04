@@ -48,11 +48,13 @@ export class ActionEventNotif {
   @ApiProperty({ type: Mail, nullable: true })
   @OneToOne(() => Mail, { nullable: true })
   @JoinColumn({ name: 'mailId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   mail: Relation<Mail> | null;
 
   @ApiProperty({ type: Mms, nullable: true })
   @OneToOne(() => Mms, { nullable: true })
   @JoinColumn({ name: 'mmsId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   mms: Relation<Mms> | null;
 
   @ApiPropertyOptional({ type: () => Push, isArray: true })
@@ -104,6 +106,7 @@ export class ActionEventNotif {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'userId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column({ default: false })

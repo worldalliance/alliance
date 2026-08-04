@@ -99,12 +99,14 @@ export class ActionEvent {
   @IsDefined()
   @Allow()
   @Type(() => Action)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   action: Relation<Action>;
 
   @OneToMany(() => ActionUpdate, (update) => update.associatedEvent)
   @ApiProperty({ type: () => ActionUpdate, isArray: true })
   @Type(() => ActionUpdate)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   updates: Relation<ActionUpdate>[];
 
   @ApiProperty()

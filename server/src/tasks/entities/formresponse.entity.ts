@@ -36,6 +36,7 @@ export class FormResponse {
   @ManyToOne(() => Form, (f) => f.responses, { onDelete: 'CASCADE' })
   @IsDefined()
   @Type(() => Form)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   form: Relation<Form>;
 
   @Column({ type: 'jsonb' })
@@ -61,6 +62,7 @@ export class FormResponse {
   @ApiPropertyOptional({ type: 'string' })
   @IsOptional()
   @Type(() => String)
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   deviceType?: DeviceVisibilityTarget;
 
   @ApiPropertyOptional({ type: () => User })
@@ -79,6 +81,7 @@ export class FormResponse {
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => String)
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   sessionReplayUrl?: string;
 
   @CreateDateColumnTz()
@@ -90,6 +93,7 @@ export class FormResponse {
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   phDistinctId?: string;
 
   @Column()
@@ -101,11 +105,13 @@ export class FormResponse {
   @JoinColumn({ name: 'formSnapshotId' })
   @Type(() => FormSnapshot)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   formSnapshot: Relation<FormSnapshot>;
 
   @Column({ type: 'text', nullable: true })
   @ApiPropertyOptional({ type: 'string' })
   @IsOptional()
   @Type(() => String)
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   sid?: string;
 }

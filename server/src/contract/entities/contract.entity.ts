@@ -53,5 +53,6 @@ export class Contract {
   @Allow()
   @IsArray()
   @Type(() => ContractEvent)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   events: Relation<ContractEvent>[];
 }

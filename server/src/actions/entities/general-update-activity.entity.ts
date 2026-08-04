@@ -47,6 +47,7 @@ export class GeneralUpdateActivity {
   @JoinColumn({ name: 'generalUpdateId' })
   @Allow()
   @Type(() => GeneralUpdate)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   generalUpdate: Relation<GeneralUpdate>;
 
   @Column()
@@ -58,6 +59,7 @@ export class GeneralUpdateActivity {
   @JoinColumn({ name: 'userId' })
   @Allow()
   @Type(() => User)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column()

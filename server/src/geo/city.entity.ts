@@ -14,6 +14,7 @@ export class City {
 
   @Column({ nullable: true })
   @ApiProperty()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   asciiName: string;
 
   @Column({ type: 'varchar', nullable: true })

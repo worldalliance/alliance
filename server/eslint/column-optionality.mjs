@@ -141,11 +141,6 @@ const rule = {
       {
         type: 'object',
         properties: {
-          /**
-           * Both off while the un-migrated entities are drained — they are
-           * backlog, not regressions. `nonNullableColumnHasNull` is already
-           * clean, so it stays on and keeps new violations out.
-           */
           checkOptional: { type: 'boolean' },
           checkMissingNull: { type: 'boolean' },
         },

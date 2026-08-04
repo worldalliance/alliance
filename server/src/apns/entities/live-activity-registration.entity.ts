@@ -27,6 +27,7 @@ export class LiveActivityRegistration {
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column()
@@ -34,6 +35,7 @@ export class LiveActivityRegistration {
 
   @ManyToOne(() => Action, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'actionId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   action: Relation<Action>;
 
   @Column({ type: 'varchar', nullable: true })

@@ -81,6 +81,7 @@ export class CommunityInvite {
   @Type(() => User)
   @JoinColumn({ name: 'invitedUserId' })
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   invitedUser: Relation<User>;
 
   @ManyToOne(() => Community, (community) => community.internalInvites, {
@@ -90,6 +91,7 @@ export class CommunityInvite {
   @Type(() => Community)
   @JoinColumn({ name: 'communityId' })
   @IsDefined()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   community: Relation<Community>;
 
   @OneToMany(() => Notification, (notif) => notif.communityInvite)

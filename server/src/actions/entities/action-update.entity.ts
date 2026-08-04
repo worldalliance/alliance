@@ -36,6 +36,7 @@ export class ActionUpdate {
   @Type(() => Action)
   @Allow()
   @ApiProperty({ type: () => Action })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   action: Relation<Action>;
 
   @RelationId((update: ActionUpdate) => update.action)
@@ -85,6 +86,7 @@ export class ActionUpdate {
   @Type(() => Number)
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   associatedEventId?: number | null;
 
   @Column({
@@ -104,6 +106,7 @@ export class ActionUpdate {
   @Type(() => Notification)
   @ApiProperty({ type: () => Notification, isArray: true })
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   notifs: Relation<Notification>[];
 
   @ManyToOne(() => Tag, { nullable: true })

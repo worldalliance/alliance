@@ -54,6 +54,7 @@ export class AmbassadorProgramMember {
   @ApiProperty({ type: () => User })
   @Type(() => User)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @RelationId((member: AmbassadorProgramMember) => member.user)
@@ -69,5 +70,6 @@ export class AmbassadorProgramMember {
   @ApiProperty({ type: () => AmbassadorProgramInteraction, isArray: true })
   @Type(() => AmbassadorProgramInteraction)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   interactions: Relation<AmbassadorProgramInteraction>[];
 }

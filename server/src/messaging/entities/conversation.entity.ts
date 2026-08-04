@@ -36,6 +36,7 @@ export class Conversation {
 
   @OneToMany(() => Message, (message) => message.conversation)
   @ApiProperty({ type: () => Message, isArray: true })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   messages: Relation<Message>[];
 
   @CreateDateColumnTz()
@@ -48,6 +49,7 @@ export class Conversation {
 
   @OneToMany(() => Participant, (participant) => participant.conversation)
   @ApiProperty({ type: () => Participant, isArray: true })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   participants: Relation<Participant>[];
 
   @Column({
@@ -64,6 +66,7 @@ export class Conversation {
 
   @Column({ nullable: true })
   @ApiPropertyOptional({ type: String })
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   photo?: string;
 
   @ManyToOne(() => Community, { nullable: true, onDelete: 'CASCADE' })

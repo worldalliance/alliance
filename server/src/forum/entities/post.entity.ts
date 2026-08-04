@@ -67,6 +67,7 @@ export class Post {
   @ApiPropertyOptional({ required: false })
   @IsOptional()
   @Allow()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   actionId?: number;
 
   @CreateDateColumnTz()
@@ -91,6 +92,7 @@ export class Post {
   @IsOptional()
   @Type(() => Date)
   @Allow()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   visibleAt?: Date;
 
   @Column({ default: false })
@@ -119,6 +121,7 @@ export class Post {
   @ApiPropertyOptional()
   @IsOptional()
   @Allow()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   expertLabel?: string;
 
   @ManyToMany(() => User, { onDelete: 'CASCADE' })
