@@ -75,15 +75,19 @@ export class ContractSuspenderWorker {
             continue;
           }
 
-          await this.eventLogService.sendMessage({
-            type: EventType.ContractSuspended,
-            message: `[${process.env.NODE_ENV}]: Suspending contract for ${user.name}. failure code ${reasonKey}`,
-            userId: user.id,
-            blob: {
-              suspendReason: reasonKey,
-              automatic: true,
-            },
-          });
+          await this.sendBestEffort(
+            `suspension event log for user ${user.id}`,
+            () =>
+              this.eventLogService.sendMessage({
+                type: EventType.ContractSuspended,
+                message: `[${process.env.NODE_ENV}]: Suspending contract for ${user.name}. failure code ${reasonKey}`,
+                userId: user.id,
+                blob: {
+                  suspendReason: reasonKey,
+                  automatic: true,
+                },
+              }),
+          );
           const cid = generateCIDForNotif();
           if (userActionNotifsEnabled_text(user)) {
             await this.sendBestEffort(
@@ -118,8 +122,8 @@ export class ContractSuspenderWorker {
 
   /**
    * The contract is already suspended by this point and the user drops out of
-   * the next run's candidates, so a failed notification is never retried —
-   * log it and keep going rather than losing the rest of the batch.
+   * the next run's candidates, so nothing sent after it is ever retried — log
+   * the failure and keep going rather than losing the rest of the batch.
    */
   private async sendBestEffort(
     what: string,

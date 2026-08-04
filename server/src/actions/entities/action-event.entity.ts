@@ -88,6 +88,7 @@ export class ActionEvent {
   updatedAt: Date;
 
   @ManyToOne(() => Action, (action) => action.events, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'actionId' })

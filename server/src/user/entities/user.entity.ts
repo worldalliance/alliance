@@ -141,9 +141,8 @@ export class User {
   emailVerified: boolean;
 
   @Column({ type: 'time', nullable: true })
-  @ApiPropertyOptional({ type: 'string' })
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  preferredReminderTime?: Temporal.PlainTime;
+  @ApiProperty({ type: 'string', nullable: true })
+  preferredReminderTime: Temporal.PlainTime | null;
 
   @Column({ type: 'text', nullable: true })
   @ApiPropertyOptional({ type: 'string' })
@@ -265,11 +264,10 @@ export class User {
   @Allow()
   isNotSignedUpPartialProfile: boolean;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
   @Allow()
-  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
-  customCityString?: string;
+  customCityString: string | null;
 
   @Column({ type: 'boolean', nullable: true })
   @ApiProperty({ nullable: true })

@@ -96,7 +96,10 @@ export class ContractEvent {
 
   // Relations
 
-  @ManyToOne(() => User, (user) => user.contractEvents, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.contractEvents, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
   @Allow()
   @Type(() => User)
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating

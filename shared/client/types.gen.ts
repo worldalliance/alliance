@@ -652,7 +652,7 @@ export type User = {
     name: string;
     phoneNumber: string | null;
     emailVerified: boolean;
-    preferredReminderTime?: string;
+    preferredReminderTime: string | null;
     timeZone?: string;
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
@@ -670,7 +670,7 @@ export type User = {
     referralCode: string;
     stripeCustomerId: string | null;
     isNotSignedUpPartialProfile: boolean;
-    customCityString?: string | null;
+    customCityString: string | null;
     over18: boolean | null;
     anonymous: boolean;
     shareInfoPublicly: boolean;
@@ -725,7 +725,7 @@ export type UserDto = {
     id: number;
     name: string;
     phoneNumber: string | null;
-    preferredReminderTime?: string;
+    preferredReminderTime: string | null;
     timeZone?: string;
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
@@ -740,7 +740,7 @@ export type UserDto = {
     profilePicture: string | null;
     profileDescription: string | null;
     referralCode: string;
-    customCityString?: string | null;
+    customCityString: string | null;
     anonymous: boolean;
     shareInfoPublicly: boolean;
     formDataPreference: PublicFormResponseDefault;
@@ -824,7 +824,6 @@ export type UpdateAwayRangeDto = {
 
 export type UpdateProfileDto = {
     name?: string;
-    preferredReminderTime?: string;
     timeZone?: string;
     emailNotifsForActions?: boolean;
     textNotifsForActions?: boolean;
@@ -832,9 +831,7 @@ export type UpdateProfileDto = {
     shareEmailWithCommunityLead?: boolean;
     sharePhoneNumberWithCommunityLead?: boolean;
     forumDigestPreference?: ForumDigestPreference;
-    profileDescription?: string | null;
     isNotSignedUpPartialProfile?: boolean;
-    customCityString?: string | null;
     anonymous?: boolean;
     shareInfoPublicly?: boolean;
     formDataPreference?: PublicFormResponseDefault;
@@ -848,6 +845,9 @@ export type UpdateProfileDto = {
     cityId?: number | null;
     phoneNumber?: string | null;
     profilePicture?: string | null;
+    preferredReminderTime?: string | null;
+    profileDescription?: string | null;
+    customCityString?: string | null;
 };
 
 export type City = {
@@ -912,7 +912,7 @@ export type UserAdminDetailDto = {
     id: number;
     name: string;
     phoneNumber: string | null;
-    preferredReminderTime?: string;
+    preferredReminderTime: string | null;
     timeZone?: string;
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
@@ -927,7 +927,7 @@ export type UserAdminDetailDto = {
     profilePicture: string | null;
     profileDescription: string | null;
     referralCode: string;
-    customCityString?: string | null;
+    customCityString: string | null;
     anonymous: boolean;
     shareInfoPublicly: boolean;
     formDataPreference: PublicFormResponseDefault;

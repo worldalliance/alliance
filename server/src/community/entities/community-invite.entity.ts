@@ -75,6 +75,7 @@ export class CommunityInvite {
   invitingUser?: Relation<User>;
 
   @ManyToOne(() => User, (user) => user.invitedCommunities, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   @ApiProperty({ type: () => User })
@@ -85,6 +86,7 @@ export class CommunityInvite {
   invitedUser: Relation<User>;
 
   @ManyToOne(() => Community, (community) => community.internalInvites, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   @ApiProperty({ type: () => Community })

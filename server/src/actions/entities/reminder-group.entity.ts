@@ -101,7 +101,7 @@ export class ReminderGroup {
   @IsOptional()
   actionSuite?: Relation<ActionSuite>;
 
-  @ManyToOne(() => ActionEvent, { onDelete: 'CASCADE' })
+  @ManyToOne(() => ActionEvent, { nullable: false, onDelete: 'CASCADE' })
   @ApiProperty({ type: () => ActionEvent })
   @Type(() => ActionEvent)
   @IsDefined()

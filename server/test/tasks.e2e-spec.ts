@@ -130,13 +130,13 @@ describe('Tasks (e2e)', () => {
     await communityRepo.query('DELETE FROM community');
     await customValidatorRepo.query('DELETE FROM custom_validator');
     await userRepo.update(ctx.testUserId, {
-      phoneNumber: null as unknown as string,
-      profilePicture: null as unknown as string,
-      profileDescription: null as unknown as string,
+      phoneNumber: null,
+      profilePicture: null,
+      profileDescription: null,
       timeZone: null as unknown as string,
-      customCityString: null as unknown as string,
+      customCityString: null,
       shareInfoPublicly: false,
-      preferredReminderTime: null as unknown as string,
+      preferredReminderTime: null,
     });
   });
 
@@ -2173,7 +2173,7 @@ describe('Tasks (e2e)', () => {
         profileDescription: initialDescription,
         phoneNumber: null,
         timeZone: null as unknown as string,
-        customCityString: null as unknown as string,
+        customCityString: null,
         shareInfoPublicly: false,
       });
 
@@ -2313,7 +2313,7 @@ describe('Tasks (e2e)', () => {
       const initialDescription = 'Another description that should persist';
       await userRepo.update(ctx.testUserId, {
         profileDescription: initialDescription,
-        preferredReminderTime: null as unknown as string,
+        preferredReminderTime: null,
       });
 
       const timeSchema: FormSchema = {

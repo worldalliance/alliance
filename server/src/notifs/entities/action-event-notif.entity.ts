@@ -103,6 +103,7 @@ export class ActionEventNotif {
   notifiedActionIds: number[] | null;
 
   @ManyToOne(() => User, (user) => user.actionEventNotifs, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'userId' })

@@ -1,3 +1,4 @@
+import { Temporal } from '@js-temporal/polyfill';
 import {
   ApiProperty,
   ApiPropertyOptional,
@@ -475,7 +476,6 @@ function humanizeReferralSource(source: ReferralSource) {
 export class UpdateProfileDto extends PartialType(
   PickType(User, [
     'name',
-    'profileDescription',
     'anonymous',
     'emailNotifsForActions',
     'pushNotifsForActions',
@@ -485,12 +485,10 @@ export class UpdateProfileDto extends PartialType(
     'receiveReplyNotifications',
     'sharePhoneNumberWithCommunityLead',
     'forumDigestPreference',
-    'preferredReminderTime',
     'formDataPreference',
     'timeZone',
     'isNotSignedUpPartialProfile',
     'shareInfoPublicly',
-    'customCityString',
     'pushesForLikes',
     'pushesForComments',
     'pushesForFriendRequests',
@@ -512,6 +510,23 @@ export class UpdateProfileDto extends PartialType(
   @IsString()
   @Transform(trimToNull)
   profilePicture?: string | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @Transform(trimToNull)
+  preferredReminderTime?: Temporal.PlainTime | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsString()
+  @Transform(trimToNull)
+  profileDescription?: string | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsString()
+  @Transform(trimToNull)
+  customCityString?: string | null;
 }
 
 export class UpdateUserRolesAdminDto extends PartialType(

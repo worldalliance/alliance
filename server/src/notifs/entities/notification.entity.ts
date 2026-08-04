@@ -162,6 +162,7 @@ export class Notification {
   // Relations
 
   @ManyToOne(() => User, (user) => user.notifications, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating

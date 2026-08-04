@@ -42,8 +42,9 @@ export const testUser = new User({
   staff: false,
   ambassador: false,
   leaderOfIds: [],
-  profilePicture: '',
-  profileDescription: '',
+  profilePicture: null,
+  profileDescription: null,
+  customCityString: null,
   activities: [],
   createdAt: new Date(),
   updatedAt: new Date(),
@@ -88,6 +89,7 @@ export const testUser = new User({
   pushesForMessages: true,
   pushesForActionUpdates: true,
   clusterId: null,
+  preferredReminderTime: null,
 } satisfies Omit<
   User,
   | 'friends'

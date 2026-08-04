@@ -33,13 +33,14 @@ export class Message {
   })
   attachments: string[];
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn()
   @ApiProperty({ type: () => User })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   author: Relation<User>;
 
   @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'conversationId' })

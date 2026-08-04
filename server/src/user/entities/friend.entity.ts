@@ -46,11 +46,13 @@ export class Friend {
   // Relations
 
   @ManyToOne(() => User, (user) => user.sentFriendRequests, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   requester?: Relation<User>;
 
   @ManyToOne(() => User, (user) => user.receivedFriendRequests, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   addressee?: Relation<User>;

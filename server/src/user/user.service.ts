@@ -287,10 +287,6 @@ export class UserService {
 
     const { cityId: _cityId, profilePicture, ...updateData } = data;
 
-    if (!updateData.preferredReminderTime) {
-      updateData.preferredReminderTime = undefined;
-    }
-
     if (profilePicture?.startsWith('data:')) {
       //TODO: differentiate between file and url
       const key =

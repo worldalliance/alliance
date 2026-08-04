@@ -309,6 +309,70 @@ describe('Users (e2e)', () => {
     });
   });
 
+  describe('blank text fields on /user/update', () => {
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post('/user/update')
+        .send(body)
+        .set('Authorization', `Bearer ${userAToken}`);
+
+    it.each(['profileDescription', 'customCityString'] as const)(
+      'stores blank %s as null, not as an empty string',
+      async (field) => {
+        for (const blank of ['', '   ']) {
+          await update({ [field]: 'something' });
+
+          const res = await update({ [field]: blank });
+
+          expect(res.status).toBe(201);
+          expect(
+            (await userRepo.findOneByOrFail({ id: userAId }))[field],
+          ).toBeNull();
+        }
+      },
+    );
+  });
+
+  describe('preferred reminder time on /user/update', () => {
+    const reminderTimeOf = async (id: number) =>
+      (await userRepo.findOneByOrFail({ id })).preferredReminderTime;
+
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post('/user/update')
+        .send(body)
+        .set('Authorization', `Bearer ${userAToken}`);
+
+    it('stores a time it is given', async () => {
+      const res = await update({ preferredReminderTime: '09:30:00' });
+
+      expect(res.status).toBe(201);
+      expect(await reminderTimeOf(userAId)).toBe('09:30:00');
+    });
+
+    // The settings pages send the raw input value, so clearing the field
+    // arrives as a blank string rather than as null.
+    it('clears the time on blank input instead of keeping the old one', async () => {
+      for (const blank of ['', '   ', null]) {
+        await update({ preferredReminderTime: '09:30:00' });
+
+        const res = await update({ preferredReminderTime: blank });
+
+        expect(res.status).toBe(201);
+        expect(await reminderTimeOf(userAId)).toBeNull();
+      }
+    });
+
+    it('leaves the time alone when the field is absent', async () => {
+      await update({ preferredReminderTime: '09:30:00' });
+
+      const res = await update({ profileDescription: 'unrelated edit' });
+
+      expect(res.status).toBe(201);
+      expect(await reminderTimeOf(userAId)).toBe('09:30:00');
+    });
+  });
+
   it('can update user anonymous setting and city via update endpoint', async () => {
     // Create another test city
     const newCity = cityRepo.create({
