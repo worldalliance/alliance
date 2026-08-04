@@ -212,13 +212,12 @@ export class CommunityMemberContactInfoDto extends PickType(User, [
       return;
     }
 
-    this.preferredReminderTimeUserTz = Temporal.PlainTime.from(
-      user.preferredReminderTime,
-    ).toLocaleString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    this.preferredReminderTimeUserTz =
+      user.preferredReminderTime.toLocaleString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
 
     if (!user.timeZone || !viewerTz) {
       return;

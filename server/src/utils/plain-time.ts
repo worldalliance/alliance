@@ -1,23 +1,25 @@
 import { Temporal } from '@js-temporal/polyfill';
 import { registerDecorator, type ValidationOptions } from 'class-validator';
+import type { ValueTransformer } from 'typeorm';
 
 /**
  * `Temporal.PlainTime.from` also parses datetime forms that a Postgres `time`
- * column rejects, so canonicalize rather than passing input straight through.
+ * column rejects, so parse rather than passing input straight through.
  *
- * It is stricter than Postgres about a single-digit hour, which the free-text
- * mobile settings input accepts today, so pad before parsing.
+ * It is stricter than Postgres about a single-digit hour. Both settings screens
+ * now send `HH:MM:SS`, but the mobile ones that shipped with a free-text field
+ * are still installed, so keep padding.
  */
-function toPlainTimeString(value: string): string | null {
+function toPlainTime(value: string): Temporal.PlainTime | null {
   try {
-    return Temporal.PlainTime.from(value.replace(/^\d:/, '0$&')).toString();
+    return Temporal.PlainTime.from(value.replace(/^\d:/, '0$&'));
   } catch {
     return null;
   }
 }
 
 /**
- * Normalizes a wall-clock time to `HH:MM:SS` and blank input to `null`, leaving
+ * Parses a wall-clock time and collapses blank input to `null`, leaving
  * unparseable input intact for `@IsPlainTime` to reject.
  */
 export const trimToPlainTime = ({ value }: { value: unknown }): unknown => {
@@ -28,10 +30,10 @@ export const trimToPlainTime = ({ value }: { value: unknown }): unknown => {
   if (!trimmed) {
     return null;
   }
-  return toPlainTimeString(trimmed) ?? trimmed;
+  return toPlainTime(trimmed) ?? trimmed;
 };
 
-/** Accepts a canonical wall-clock time. Pair with `@IsOptional()` for nulls. */
+/** Accepts a wall-clock time. Pair with `@IsOptional()` for nulls. */
 export function IsPlainTime(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string): void {
     registerDecorator({
@@ -41,9 +43,7 @@ export function IsPlainTime(validationOptions?: ValidationOptions) {
       options: validationOptions,
       validator: {
         validate(value: unknown): boolean {
-          return (
-            typeof value === 'string' && toPlainTimeString(value) === value
-          );
+          return value instanceof Temporal.PlainTime;
         },
         defaultMessage(): string {
           return '$property must be a time of day, e.g. 09:30';
@@ -52,3 +52,18 @@ export function IsPlainTime(validationOptions?: ValidationOptions) {
     });
   };
 }
+
+/**
+ * Lets a `time` column be typed as the value it holds. Postgres renders `time`
+ * as `HH:MM:SS[.ffffff]`, which `PlainTime` parses, and `PlainTime.toString()`
+ * renders back into the same form.
+ *
+ * `24:00:00` is the one `time` value Postgres accepts and `PlainTime` rejects.
+ * Nothing can write it, since every path in goes through `IsPlainTime`.
+ */
+export const plainTimeTransformer: ValueTransformer = {
+  to: (value: Temporal.PlainTime | null | undefined) =>
+    value?.toString() ?? null,
+  from: (value: string | null | undefined) =>
+    value ? Temporal.PlainTime.from(value) : null,
+};

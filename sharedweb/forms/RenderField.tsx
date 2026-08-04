@@ -38,7 +38,10 @@ import { getCustomComponentById } from "./components";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { shuffleWithSeed } from "./randomutils";
 import { RankingFieldInput } from "./RankingFieldInput";
-import { formatTimeForDisplay, parseTimeInput } from "./timeUtils";
+import {
+  formatTimeForDisplay,
+  parseTimeInput,
+} from "@alliance/shared/forms/timeUtils";
 import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {

@@ -32,6 +32,7 @@ import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
 import { StoredInviteAssignmentKind } from 'src/share-urls/invite-assignment-kind';
 import { findLeast } from 'src/utils/filter';
 import { phoneNumberTransformer } from 'src/utils/phone';
+import { plainTimeTransformer } from 'src/utils/plain-time';
 import type { Relation } from 'src/utils/Repository';
 import {
   BeforeInsert,
@@ -140,7 +141,7 @@ export class User {
   @ApiProperty()
   emailVerified: boolean;
 
-  @Column({ type: 'time', nullable: true })
+  @Column({ type: 'time', nullable: true, transformer: plainTimeTransformer })
   @ApiProperty({ type: 'string', nullable: true })
   preferredReminderTime: Temporal.PlainTime | null;
 

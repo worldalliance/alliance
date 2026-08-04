@@ -1,5 +1,6 @@
 import { toE164 } from '@alliance/common/phone';
 import { R } from '@alliance/common/result';
+import { Temporal } from '@js-temporal/polyfill';
 import { AuthService } from 'src/auth/auth.service';
 import { ContractService } from 'src/contract/contract.service';
 import {
@@ -335,7 +336,9 @@ describe('Users (e2e)', () => {
 
   describe('preferred reminder time on /user/update', () => {
     const reminderTimeOf = async (id: number) =>
-      (await userRepo.findOneByOrFail({ id })).preferredReminderTime;
+      (
+        await userRepo.findOneByOrFail({ id })
+      ).preferredReminderTime?.toString() ?? null;
 
     const update = (body: Record<string, unknown>) =>
       request(ctx.app.getHttpServer())
@@ -343,11 +346,29 @@ describe('Users (e2e)', () => {
         .send(body)
         .set('Authorization', `Bearer ${userAToken}`);
 
-    it('stores a time it is given', async () => {
+    it('stores a time it is given, as the type the column claims', async () => {
       const res = await update({ preferredReminderTime: '09:30:00' });
 
       expect(res.status).toBe(201);
-      expect(await reminderTimeOf(userAId)).toBe('09:30:00');
+      const { preferredReminderTime } = await userRepo.findOneByOrFail({
+        id: userAId,
+      });
+      expect(preferredReminderTime).toBeInstanceOf(Temporal.PlainTime);
+      expect(preferredReminderTime?.toString()).toBe('09:30:00');
+    });
+
+    // The settings pages read the time off `/auth/me` and put it straight into
+    // an input, so it has to stay a string on the wire even though the column
+    // now hands back a `PlainTime`.
+    it('still serializes the time as a plain string', async () => {
+      await update({ preferredReminderTime: '09:30:00' });
+
+      const res = await request(ctx.app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${userAToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.preferredReminderTime).toBe('09:30:00');
     });
 
     // The settings pages send the raw input value, so clearing the field
