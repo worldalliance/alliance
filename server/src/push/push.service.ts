@@ -26,12 +26,14 @@ const RECEIPT_MAX_AGE_MS = 1000 * 60 * 60 * 48;
 export class CreatePushMessage extends PickType(Push, [
   'expoPushToken',
   'body',
-  'idempotencyKey',
-  'screen',
   'notification',
   'unreadContent',
 ]) {
   userId: number;
+  // Omitted by most callers, so these stay optional here rather than inheriting
+  // the column's `| null` — `create` writes NULL for whatever is absent.
+  idempotencyKey?: string;
+  screen?: string;
 }
 
 @Injectable()
@@ -150,7 +152,7 @@ export class PushService {
         pushEntities[i].receiptStatus = 'pending';
       } else {
         // https://docs.expo.io/push-notifications/sending-notifications/#individual-errors
-        pushEntities[i].errorCode = ticket.details?.error;
+        pushEntities[i].errorCode = ticket.details?.error ?? null;
         pushEntities[i].errorMessage = ticket.message;
         console.error(`expo push error: ${ticket.details?.error}`);
         console.error(`expo push error: ${ticket.message}`);
@@ -210,7 +212,7 @@ export class PushService {
             console.error(
               `There was an error sending a notification: ${receipt.message}`,
             );
-            push.errorCode = receipt.details?.error;
+            push.errorCode = receipt.details?.error ?? null;
             push.errorMessage = receipt.message;
 
             if (receipt.details && receipt.details.error) {

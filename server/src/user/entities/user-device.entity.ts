@@ -25,14 +25,14 @@ export class UserDevice {
   @JoinColumn({ name: 'userId' })
   user: Relation<User>;
 
-  @Column({ nullable: true })
-  deviceType?: string;
+  @Column({ type: 'varchar', nullable: true })
+  deviceType: string | null;
 
-  @Column({ nullable: true })
-  expoPushToken?: string;
+  @Column({ type: 'varchar', nullable: true })
+  expoPushToken: string | null;
 
-  @Column({ nullable: true })
-  liveActivityPushToStartToken?: string;
+  @Column({ type: 'varchar', nullable: true })
+  liveActivityPushToStartToken: string | null;
 
   @UpdateDateColumnTz()
   updatedAt: Date;

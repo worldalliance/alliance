@@ -113,8 +113,8 @@ export class ActionEventNotif {
   sent: boolean;
 
   @Column({ type: 'text', nullable: true })
-  @ApiPropertyOptional({ type: String })
-  idempotency_key?: string;
+  @ApiProperty({ type: String, nullable: true })
+  idempotency_key: string | null;
 
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })

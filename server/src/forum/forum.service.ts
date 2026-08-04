@@ -952,7 +952,7 @@ export class ForumService {
       liker,
       targetType: 'comment',
       targetId: comment.id,
-      targetContent: comment.editableContent?.body,
+      targetContent: comment.editableContent?.body ?? null,
       webAppLocation,
     });
   }

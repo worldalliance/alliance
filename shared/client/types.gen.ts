@@ -263,16 +263,16 @@ export type Push = {
     expoPushToken: string;
     createdAt: string;
     body: string;
-    screen?: string;
+    screen: string | null;
     updatedAt: string;
-    receiptId?: string;
-    ticketStatus?: string;
-    receiptStatus?: string;
-    errorCode?: string;
-    errorMessage?: string;
-    lastCheckedStatusAt?: string;
-    idempotencyKey?: string;
-    openedAt?: string;
+    receiptId: string | null;
+    ticketStatus: string | null;
+    receiptStatus: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
+    lastCheckedStatusAt: string | null;
+    idempotencyKey: string | null;
+    openedAt: string | null;
 };
 
 export type ActionEventNotif = {
@@ -288,7 +288,7 @@ export type ActionEventNotif = {
      * Indicates whether the notification has been sent
      */
     sent: boolean;
-    idempotency_key?: string;
+    idempotency_key: string | null;
     createdAt: string;
 };
 
@@ -532,15 +532,15 @@ export type Notification = {
     category: NotificationCategory;
     message: string;
     priority: NotifPriority;
-    targetContent?: string;
+    targetContent: string | null;
     webAppLocation: string;
     mobileAppLocation: string | null;
     readAt: string | null;
     createdAt: string;
     updatedAt: string;
     sendTime: string;
-    groupingKey?: string;
-    groupingCount?: number;
+    groupingKey: string | null;
+    groupingCount: number | null;
     shouldPush: boolean;
     pushDispatchedAt: string | null;
     pushClaimedBy: string | null;
@@ -549,7 +549,7 @@ export type Notification = {
     comment?: Comment;
     onetimeInvite?: OnetimeInvite;
     communityInvite?: CommunityInvite;
-    cid?: string;
+    cid: string | null;
 };
 
 export type CommunityInvite = {
@@ -1224,16 +1224,16 @@ export type PushDto = {
     expoPushToken: string;
     createdAt: string;
     body: string;
-    screen?: string;
+    screen: string | null;
     updatedAt: string;
-    receiptId?: string;
-    ticketStatus?: string;
-    receiptStatus?: string;
-    errorCode?: string;
-    errorMessage?: string;
-    lastCheckedStatusAt?: string;
-    idempotencyKey?: string;
-    openedAt?: string;
+    receiptId: string | null;
+    ticketStatus: string | null;
+    receiptStatus: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
+    lastCheckedStatusAt: string | null;
+    idempotencyKey: string | null;
+    openedAt: string | null;
 };
 
 export type RegisterLiveActivityPushToStartTokenDto = {
@@ -1454,7 +1454,7 @@ export type ActionEventNotifDto = {
      * Indicates whether the notification has been sent
      */
     sent: boolean;
-    idempotency_key?: string;
+    idempotency_key: string | null;
     createdAt: string;
     user: ProfileDto;
 };

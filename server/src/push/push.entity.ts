@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -48,41 +48,41 @@ export class Push {
   @ApiProperty()
   body: string;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  screen?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  screen: string | null;
 
   @UpdateDateColumnTz()
   @ApiProperty()
   updatedAt: Date;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  receiptId?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  receiptId: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  ticketStatus?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  ticketStatus: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  receiptStatus?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  receiptStatus: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  errorCode?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  errorCode: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  errorMessage?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  errorMessage: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  lastCheckedStatusAt?: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
+  lastCheckedStatusAt: Date | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  idempotencyKey?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  idempotencyKey: string | null;
 
   @ManyToOne(() => Notification, (notification) => notification.pushes, {
     nullable: true,
@@ -109,7 +109,7 @@ export class Push {
   @JoinColumn({ name: 'actionEventNotifId' })
   actionEventNotif?: Relation<ActionEventNotif>;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  openedAt?: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
+  openedAt: Date | null;
 }
