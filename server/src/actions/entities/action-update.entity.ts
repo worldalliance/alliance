@@ -50,7 +50,7 @@ export class ActionUpdate {
   @ApiProperty()
   title: string;
 
-  @ManyToOne(() => EditableContent, { cascade: true })
+  @ManyToOne(() => EditableContent, { cascade: true, nullable: false })
   @JoinColumn({ name: 'contentId' })
   @Type(() => EditableContent)
   @IsOptional()

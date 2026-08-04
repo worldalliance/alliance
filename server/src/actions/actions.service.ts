@@ -2672,9 +2672,20 @@ export class ActionsService {
   ): Promise<ActionUpdate> {
     const actionUpdate = await this.actionUpdateRepository.findOneOrFail({
       where: { id },
+      relations: { content: true },
     });
-    const updatedActionUpdate = { ...actionUpdate, ...createActionUpdateDto };
-    return this.actionUpdateRepository.save(updatedActionUpdate);
+
+    const { content, ...fields } = createActionUpdateDto;
+
+    return this.actionUpdateRepository.save({
+      ...actionUpdate,
+      ...fields,
+      content: {
+        ...actionUpdate.content,
+        body: content.body ?? actionUpdate.content!.body,
+        attachments: content.attachments ?? actionUpdate.content!.attachments,
+      },
+    });
   }
 
   async deleteActionUpdate(id: number) {

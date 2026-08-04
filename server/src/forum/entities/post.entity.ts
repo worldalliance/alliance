@@ -35,6 +35,7 @@ export class Post {
 
   @OneToOne(() => EditableContent, {
     cascade: true,
+    nullable: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn()

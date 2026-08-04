@@ -36,6 +36,7 @@ export class Comment {
 
   @OneToOne(() => EditableContent, {
     cascade: true,
+    nullable: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn()
