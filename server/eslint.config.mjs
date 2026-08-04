@@ -32,6 +32,13 @@ export default tseslint.config([
         'error',
         { checkLazyOptional: false },
       ],
+      // Same deal for columns — see docs/entity-column-nullability.md. Drain
+      // with `eslint --rule '{"local-rules/column-optionality":"error"}' --fix`
+      // per phase, then flip these on and delete the options.
+      'local-rules/column-optionality': [
+        'error',
+        { checkOptional: false, checkMissingNull: false },
+      ],
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {

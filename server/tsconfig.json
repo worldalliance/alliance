@@ -11,12 +11,8 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "src/*": [
-        "./src/*"
-      ],
-      "@alliance/common/*": [
-        "../common/src/*"
-      ]
+      "src/*": ["./src/*"],
+      "@alliance/common/*": ["../common/src/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
@@ -32,10 +28,9 @@
       }
     ]
   },
+  "exclude": ["node_modules", "dist", "eslint"],
   "ts-node": {
-    "require": [
-      "tsconfig-paths/register"
-    ],
+    "require": ["tsconfig-paths/register"],
     "target": "esnext",
     "transpileOnly": true
   }

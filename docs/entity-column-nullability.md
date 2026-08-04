@@ -39,8 +39,12 @@ the driver cannot produce.
 
 Taken 2026-08-04 against `750f03a1e` by a throwaway `@typescript-eslint/parser`
 walk over `server/src/**/*.entity.ts` (`node`, not `bun` — bun can't resolve
-`typescript` for the parser). Phase 0 replaces it with a lint rule, which is the
-only version worth keeping.
+`typescript` for the parser). Phase 0 replaced it with a lint rule, which
+reproduces every count below and is the only version worth keeping:
+
+```
+eslint --rule '{"local-rules/column-optionality":["error",{"checkOptional":true,"checkMissingNull":true}]}' 'src/**/*.entity.ts'
+```
 
 Inventory — 59 entities, 543 non-relation fields:
 
@@ -147,18 +151,42 @@ over18: boolean` is `NOT NULL` on read even though an insert may omit it. That
 Mirror `relation-optionality`: the durable version of the audit script, so the
 backlog is queryable and can't grow.
 
-- [ ] `server/eslint/column-optionality.mjs`, reusing `relation-ast.mjs`
-      (`findRelationDecorator` to _exclude_ relations, `propertyName`). Three
-      checks: - `columnMustNotBeOptional` — a `@Column`-family or `@RelationId` property
+- [x] `server/eslint/column-optionality.mjs`, reusing `relation-ast.mjs`
+      (`findRelationDecorator` to _exclude_ relations, `propertyName`,
+      `decoratorName` — newly exported). Three checks: - `columnMustNotBeOptional` — a `@Column`-family or `@RelationId` property
       may not be `?:` or include `undefined`. Fixable: drop the `?`, append
       `| null` when the decorator says `nullable: true`. - `nullableColumnNeedsNull` — `nullable: true` ⇒ type includes `null`. - `nonNullableColumnHasNull` — no `nullable: true` ⇒ type excludes `null`.
       (Zero violations today; on from day one.)
-- [ ] Wire into `server/eslint.config.mjs` with the first two behind options,
-      defaulted off, exactly as `checkLazyOptional` is today.
-- [ ] `RuleTester` tests next to `relation-optionality.spec.mjs`. The
+- [x] Wire into `server/eslint.config.mjs` behind `checkOptional` and
+      `checkMissingNull`, both defaulted off, as `checkLazyOptional` is today.
+- [x] `RuleTester` tests in `server/eslint/column-optionality.spec.ts`. The
       decorator-options reader (`nullable: true`, `default:`, enum columns) is
       the fiddly part.
-- [ ] Confirm the rule reproduces 78 / 0 / 13 before trusting it.
+- [x] Confirm the rule reproduces 78 / 0 / 13 before trusting it.
+
+What the rule settled while being written:
+
+- **A property that is both optional and missing `| null` reports only
+  `columnMustNotBeOptional`.** The null checks are meaningless until the `?` is
+  gone, and letting both fire would give two fixers the same insertion point.
+  So bucket A drains to `T | null` in one pass, and bucket C is whatever is left
+  over after it.
+- **`@RelationId` is reported but never auto-fixed.** Its nullability lives on
+  the relation, not on the decorator, so the rule can't tell `number` from
+  `number | null` — which is exactly what phase 6 does by hand. `--fix` therefore
+  drains bucket A (78) and bucket C (13) and leaves bucket D's 3 reported.
+- **Unreadable decorator options disable the null checks, not the rule.** A
+  spread, a computed key, or a non-literal `nullable:` makes the schema
+  undecidable; optionality is still decidable and still reported.
+- **`@DeleteDateColumn` is treated as implicitly nullable** — TypeORM makes the
+  soft-delete column nullable whatever the options say. Unused today.
+- The spec is `.ts`, not `.mjs`, because `bun test` only discovers
+  `.{js,ts,jsx,tsx}`. `server/tsconfig.json` now excludes `eslint/`, so the file
+  runs under bun without the server's `commonjs`/node10 program trying to
+  resolve `@typescript-eslint/parser` (exports-only, no `main`).
+
+The trial `--fix` over `src/**/*.entity.ts` touched 26 files / 91 fields and was
+reverted; phase 5 is where it lands for real.
 
 ## Phase 1 — bucket C1: `User`'s five fields
 
@@ -294,8 +322,8 @@ serializes `"field": null`, and the client type says the key may be absent.
 
 ## Phase 8 — ratchet
 
-- [ ] Flip `columnMustNotBeOptional` and `nullableColumnNeedsNull` to `error`,
-      delete the options.
+- [ ] Delete the `checkOptional` / `checkMissingNull` options from
+      `column-optionality.mjs` and from `server/eslint.config.mjs`.
 - [ ] Fold the convention into `server/AGENTS.md` in one paragraph: entities
       describe reads; `?` means "relation not loaded"; `| null` means the column
       is nullable; input DTOs declare their own optionality.

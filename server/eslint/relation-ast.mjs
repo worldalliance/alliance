@@ -12,7 +12,7 @@ const RELATION_DECORATORS = new Set([
 /** Type references that wrap a relation rather than being one. */
 const TRANSPARENT_WRAPPERS = new Set(['Promise', 'Array', 'Readonly']);
 
-function decoratorName(decorator) {
+export function decoratorName(decorator) {
   const { expression } = decorator;
   if (expression.type !== 'CallExpression') return null;
   return expression.callee.type === 'Identifier'
