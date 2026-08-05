@@ -13,7 +13,7 @@ import { Friend, FriendStatus } from 'src/user/entities/friend.entity';
 import { User } from 'src/user/entities/user.entity';
 import { type FriendsAcceptedPayload, UserEvents } from 'src/user/user.events';
 import type { Relations } from 'src/utils/Repository';
-import { In, type Repository } from 'typeorm';
+import { In, type EntityManager, type Repository } from 'typeorm';
 import {
   ConversationAdminSummaryDto,
   ConversationDto,
@@ -721,6 +721,73 @@ export class ConversationService {
     );
     await this.emitConversationUpdate(updatedConversation);
     return updatedConversation;
+  }
+
+  async placeCommunityConversationParticipant(params: {
+    manager: EntityManager;
+    user: User;
+    sourceCommunity: Community | null;
+    destinationCommunity: Community;
+  }): Promise<void> {
+    const { manager, user, sourceCommunity, destinationCommunity } = params;
+    const conversationRepository = manager.getRepository(Conversation);
+    const participantRepository = manager.getRepository(Participant);
+
+    if (sourceCommunity) {
+      const sourceConversation = await conversationRepository.findOne({
+        where: { community: { id: sourceCommunity.id } },
+      });
+      if (sourceConversation) {
+        await participantRepository.delete({
+          conversation: { id: sourceConversation.id },
+          user: { id: user.id },
+        });
+      }
+    }
+
+    let destinationConversation = await conversationRepository.findOne({
+      where: { community: { id: destinationCommunity.id } },
+    });
+    if (!destinationConversation) {
+      destinationConversation = await conversationRepository.save(
+        conversationRepository.create({
+          title: destinationCommunity.name,
+          photo: destinationCommunity.photo,
+          type: ConversationType.Community,
+          community: destinationCommunity,
+        }),
+      );
+    }
+
+    const existingParticipant = await participantRepository.findOne({
+      where: {
+        conversation: { id: destinationConversation.id },
+        user: { id: user.id },
+      },
+    });
+    const role = destinationCommunity.leaders?.some(
+      (leader) => leader.id === user.id,
+    )
+      ? ParticipantRole.Admin
+      : ParticipantRole.Member;
+    if (existingParticipant) {
+      await participantRepository.save({
+        ...existingParticipant,
+        role,
+        state: ParticipantState.Joined,
+      });
+      return;
+    }
+
+    await participantRepository.save(
+      participantRepository.create({
+        conversation: destinationConversation,
+        user,
+        role,
+        state: ParticipantState.Joined,
+        joinedAt: new Date(),
+      }),
+    );
   }
 
   async markConversationRead(

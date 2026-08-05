@@ -155,10 +155,12 @@ const UserDetailView: React.FC = () => {
     notifs,
     formResponses,
     friends,
-    communities,
   } = loaderData;
 
   const [user, setUser] = useState<UserAdminDetailDto>(loaderData.user);
+  const [communities, setCommunities] = useState<CommunityDto[]>(
+    loaderData.communities,
+  );
   const [actionRelationsState, setActionRelationsState] =
     useState<UserActionRelationDetailDto[]>(actionRelations);
   const [allTags, setAllTags] = useState<TagSummaryDto[]>(loaderData.allTags);
@@ -1087,6 +1089,7 @@ const UserDetailView: React.FC = () => {
             user={user}
             communities={communities}
             onUserUpdated={setUser}
+            onCommunitiesUpdated={setCommunities}
           />
 
           {/* Friends */}
@@ -1466,10 +1469,12 @@ function MemberGroupMoveSection({
   user,
   communities,
   onUserUpdated,
+  onCommunitiesUpdated,
 }: {
   user: UserAdminDetailDto;
   communities: CommunityDto[];
   onUserUpdated: (user: UserAdminDetailDto) => void;
+  onCommunitiesUpdated: (communities: CommunityDto[]) => void;
 }) {
   const [sourceCommunityId, setSourceCommunityId] = useState("");
   const [destinationCommunityId, setDestinationCommunityId] = useState("");
@@ -1569,6 +1574,7 @@ function MemberGroupMoveSection({
 
     setIsMoving(true);
     setMutationError(null);
+    let membershipUpdated = false;
     try {
       if (sourceCommunity) {
         await communityMoveMemberAdmin({
@@ -1586,25 +1592,36 @@ function MemberGroupMoveSection({
           throwOnError: true,
         });
       }
+      membershipUpdated = true;
 
-      const refreshed = await userUserDetailAdmin({
-        path: { id: user.id },
-        throwOnError: true,
-      });
-      onUserUpdated(refreshed.data);
+      const [refreshedUser, refreshedCommunities] = await Promise.all([
+        userUserDetailAdmin({
+          path: { id: user.id },
+          throwOnError: true,
+        }),
+        communityGetCommunitiesAdmin({ throwOnError: true }),
+      ]);
+      onUserUpdated(refreshedUser.data);
+      onCommunitiesUpdated(refreshedCommunities.data);
       success(
         sourceCommunity ? "Member moved" : "Member assigned",
         destinationCommunity.name,
       );
     } catch (error) {
-      setMutationError(
-        errorMessage({
-          error,
-          fallback: sourceCommunity
-            ? "Could not move this member."
-            : "Could not assign this member.",
-        }),
-      );
+      if (membershipUpdated) {
+        setMutationError(
+          "Membership was updated, but the page could not refresh. Reload to see the latest group capacity.",
+        );
+      } else {
+        setMutationError(
+          errorMessage({
+            error,
+            fallback: sourceCommunity
+              ? "Could not move this member."
+              : "Could not assign this member.",
+          }),
+        );
+      }
     } finally {
       setIsMoving(false);
     }
@@ -1613,6 +1630,7 @@ function MemberGroupMoveSection({
     confirm,
     destinationCommunityId,
     memberCommunities,
+    onCommunitiesUpdated,
     onUserUpdated,
     sourceCommunityId,
     success,

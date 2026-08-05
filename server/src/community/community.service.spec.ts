@@ -1,5 +1,5 @@
-import { BadRequestException } from '@nestjs/common';
-import type { Repository } from 'typeorm';
+import { BadRequestException, Logger } from '@nestjs/common';
+import type { EntityManager, Repository } from 'typeorm';
 import { CommunityService, ContractRefusalAudience } from './community.service';
 import { Community } from './entities/community.entity';
 import { User } from 'src/user/entities/user.entity';
@@ -19,6 +19,8 @@ describe('CommunityService', () => {
   let userRepository: jest.Mocked<Repository<User>>;
   let conversationService: jest.Mocked<ConversationService>;
   let notifsService: jest.Mocked<NotifsService>;
+  let transaction: jest.Mock;
+  let transactionManager: EntityManager;
 
   const leader1 = { id: 10, name: 'Leader One' } as User;
   const leader2 = { id: 11, name: 'Leader Two' } as User;
@@ -40,11 +42,21 @@ describe('CommunityService', () => {
       save: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<Repository<CommunityInvite>>;
 
+    transactionManager = {
+      getRepository: jest.fn((entity) =>
+        entity === Community ? communityRepository : userRepository,
+      ),
+    } as unknown as EntityManager;
+    transaction = jest.fn(
+      (callback: (manager: EntityManager) => Promise<unknown>) =>
+        callback(transactionManager),
+    );
     communityRepository = {
       save: jest
         .fn()
         .mockImplementation((entity) => Promise.resolve({ ...entity })),
       findOneOrFail: jest.fn(),
+      manager: { transaction },
     } as unknown as jest.Mocked<Repository<Community>>;
 
     // The only query builder this service builds is the contract check, which
@@ -74,8 +86,10 @@ describe('CommunityService', () => {
       findOneOrFail: jest.fn(),
       createQueryBuilder: jest.fn(() => contractCheck),
     } as unknown as jest.Mocked<Repository<User>>;
-
     conversationService = {
+      placeCommunityConversationParticipant: jest
+        .fn()
+        .mockResolvedValue(undefined),
       syncCommunityConversationMembers: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<ConversationService>;
 
@@ -368,7 +382,7 @@ describe('CommunityService', () => {
   });
 
   describe('moveUserBetweenCommunitiesAdmin', () => {
-    it('sends the member one notification describing the move', async () => {
+    const setUpMove = () => {
       const user = { id: 99, name: 'Moving Member' } as User;
       const sourceCommunity = buildCommunity({
         id: 1,
@@ -384,29 +398,146 @@ describe('CommunityService', () => {
         allowStaffAssignments: true,
         maxCapacity: 10,
       });
-      jest
-        .spyOn(service, 'findOneOrFail')
-        .mockImplementation((id) =>
-          Promise.resolve(
-            id === sourceCommunity.id ? sourceCommunity : destinationCommunity,
-          ),
+      communityRepository.findOneOrFail.mockImplementation(({ where }) => {
+        const condition = Array.isArray(where) ? where[0] : where;
+        return Promise.resolve(
+          condition?.id === sourceCommunity.id
+            ? sourceCommunity
+            : destinationCommunity,
         );
+      });
+      userRepository.findOneOrFail.mockResolvedValue(user);
+      return { user, sourceCommunity, destinationCommunity };
+    };
+
+    const move = (params: ReturnType<typeof setUpMove>) =>
+      service.moveUserBetweenCommunitiesAdmin({
+        sourceCommunityId: params.sourceCommunity.id,
+        destinationCommunityId: params.destinationCommunity.id,
+        userId: params.user.id,
+      });
+
+    it('writes both memberships in one transaction before side effects', async () => {
+      const { user, sourceCommunity, destinationCommunity } = setUpMove();
+
+      await move({ user, sourceCommunity, destinationCommunity });
+
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(communityRepository.save).toHaveBeenCalledWith([
+        { id: sourceCommunity.id, users: [leader1] },
+        { id: destinationCommunity.id, users: [leader2, user] },
+      ]);
+      expect(userRepository.save).toHaveBeenCalledWith({
+        id: user.id,
+        undergoingGroupAssignment: false,
+        pendingCommunity: null,
+      });
+      expect(
+        conversationService.placeCommunityConversationParticipant,
+      ).toHaveBeenCalledWith({
+        manager: transactionManager,
+        user,
+        sourceCommunity,
+        destinationCommunity,
+      });
+      expect(
+        conversationService.syncCommunityConversationMembers,
+      ).toHaveBeenCalledTimes(2);
+      expect(notifsService.sendNotifs).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            user,
+            category: NotificationCategory.CommunityAssigned,
+            message: 'Alliance staff moved you from Old Group to New Group',
+          }),
+        ]),
+      );
+    });
+
+    it('does not announce a move when its membership write fails', async () => {
+      const communities = setUpMove();
+      communityRepository.save.mockRejectedValueOnce(new Error('db is down'));
+
+      await expect(move(communities)).rejects.toThrow('db is down');
+
+      expect(
+        conversationService.syncCommunityConversationMembers,
+      ).not.toHaveBeenCalled();
+      expect(notifsService.sendNotifs).not.toHaveBeenCalled();
+    });
+
+    it('does not commit the placement when participant authorization cannot be updated', async () => {
+      const communities = setUpMove();
+      conversationService.placeCommunityConversationParticipant.mockRejectedValueOnce(
+        new Error('participant write failed'),
+      );
+
+      await expect(move(communities)).rejects.toThrow(
+        'participant write failed',
+      );
+
+      expect(
+        conversationService.syncCommunityConversationMembers,
+      ).not.toHaveBeenCalled();
+      expect(notifsService.sendNotifs).not.toHaveBeenCalled();
+    });
+
+    it('keeps the committed move successful when a follow-up effect fails', async () => {
+      const communities = setUpMove();
+      const syncError = new Error('conversation sync failed');
+      conversationService.syncCommunityConversationMembers.mockRejectedValueOnce(
+        syncError,
+      );
+      const loggerError = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      await expect(move(communities)).resolves.toBeUndefined();
+
+      expect(notifsService.sendNotifs).toHaveBeenCalled();
+      expect(loggerError).toHaveBeenCalledWith(
+        'Post-commit membership effect failed: sync community conversation 1',
+        syncError,
+      );
+      loggerError.mockRestore();
+    });
+  });
+
+  describe('addUserToCommunityAdmin', () => {
+    it('locks and writes the assignment transactionally and notifies the member', async () => {
+      const user = { id: 99, name: 'New Member' } as User;
+      const destinationCommunity = buildCommunity({
+        id: 2,
+        name: 'New Group',
+        users: [leader2],
+        leaders: [leader2],
+        allowStaffAssignments: true,
+        maxCapacity: 10,
+      });
+      communityRepository.findOneOrFail.mockResolvedValue(destinationCommunity);
       userRepository.findOneOrFail.mockResolvedValue(user);
 
-      await service.moveUserBetweenCommunitiesAdmin({
-        sourceCommunityId: sourceCommunity.id,
-        destinationCommunityId: destinationCommunity.id,
+      await service.addUserToCommunityAdmin({
+        communityId: destinationCommunity.id,
         userId: user.id,
       });
 
-      expect(notifsService.sendNotif).toHaveBeenCalledTimes(1);
-      expect(notifsService.sendNotif).toHaveBeenCalledWith({
-        user,
-        category: NotificationCategory.CommunityAssigned,
-        message: 'Alliance staff moved you from Old Group to New Group',
-        webAppLocation: '/groups?communityId=2',
-        associatedUsers: [],
-      });
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(communityRepository.save).toHaveBeenCalledWith([
+        { id: destinationCommunity.id, users: [leader2, user] },
+      ]);
+      expect(
+        conversationService.syncCommunityConversationMembers,
+      ).toHaveBeenCalledWith(destinationCommunity.id);
+      expect(notifsService.sendNotifs).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            user,
+            category: NotificationCategory.CommunityAssigned,
+            message: 'Alliance staff assigned you to New Group',
+          }),
+        ]),
+      );
     });
   });
 });

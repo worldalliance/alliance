@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -62,6 +63,8 @@ const CONTRACT_REFUSAL_MESSAGE: Record<
 
 @Injectable()
 export class CommunityService {
+  private readonly logger = new Logger(CommunityService.name);
+
   constructor(
     @InjectRepository(CommunityInvite)
     private readonly communityInviteRepository: Repository<CommunityInvite>,
@@ -643,32 +646,9 @@ export class CommunityService {
     communityId: number;
     userId: number;
   }): Promise<Community> {
-    const { communityId, userId } = params;
-
-    const [community, user] = await Promise.all([
-      this.findOneOrFail(communityId),
-      this.userRepository.findOneOrFail({ where: { id: userId } }),
-    ]);
-
-    if (!acceptsStaffAssignment(community)) {
-      throw new BadRequestException(
-        `Group ${community.name} is full or does not accept staff assignments`,
-      );
-    }
-
-    return this.addUsersToCommunityAndRefreshConversation({
-      user,
-      community,
-      notifForLeader: ({ leader }) => ({
-        user: leader,
-        category: NotificationCategory.MemberJoinedCommunity,
-        message: `Staff added ${user.name} to your group (${community.name})`,
-        webAppLocation: groupUrl({
-          tab: 'members',
-          communityId: community.id,
-        }),
-        associatedUsers: [user],
-      }),
+    return this.placeUserInCommunityAdmin({
+      userId: params.userId,
+      destinationCommunityId: params.communityId,
     });
   }
 
@@ -682,70 +662,192 @@ export class CommunityService {
       throw new BadRequestException('Source and destination must be different');
     }
 
-    const [sourceCommunity, destinationCommunity, user] = await Promise.all([
-      this.findOneOrFail(sourceCommunityId),
-      this.findOneOrFail(destinationCommunityId),
-      this.userRepository.findOneOrFail({ where: { id: userId } }),
-    ]);
-
-    if (!sourceCommunity.users.some((member) => member.id === userId)) {
-      throw new BadRequestException(
-        `${user.name} is not a member of ${sourceCommunity.name}`,
-      );
-    }
-    if (sourceCommunity.leaders?.some((leader) => leader.id === userId)) {
-      throw new BadRequestException(
-        'Group leaders cannot be moved without first removing their leader role',
-      );
-    }
-    if (destinationCommunity.users.some((member) => member.id === userId)) {
-      throw new BadRequestException(
-        `${user.name} is already a member of ${destinationCommunity.name}`,
-      );
-    }
-    if (!acceptsStaffAssignment(destinationCommunity)) {
-      throw new BadRequestException(
-        `Group ${destinationCommunity.name} is full or does not accept staff assignments`,
-      );
-    }
-
-    await this.assertUsersHaveActiveContracts([user]);
-    await this.addUsersToCommunityAndRefreshConversation({
-      user,
-      community: destinationCommunity,
-      notifForLeader: ({ leader }) => ({
-        user: leader,
-        category: NotificationCategory.MemberJoinedCommunity,
-        message: `Staff added ${user.name} to your group (${destinationCommunity.name})`,
-        webAppLocation: groupUrl({
-          tab: 'members',
-          communityId: destinationCommunity.id,
-        }),
-        associatedUsers: [user],
-      }),
+    await this.placeUserInCommunityAdmin({
+      sourceCommunityId,
+      destinationCommunityId,
+      userId,
     });
-    await this.removeUserFromCommunityAndRefreshConversation({
-      user,
-      community: sourceCommunity,
-      removeAsLeader: false,
-      notifForLeader: ({ leader }) => ({
-        user: leader,
-        category: NotificationCategory.RemovedFromCommunityForLeader,
-        message: `Alliance staff removed ${user.name} from your group (${sourceCommunity.name})`,
-        webAppLocation: groupUrl({
-          tab: 'members',
-          communityId: sourceCommunity.id,
-        }),
-        associatedUsers: [user],
+  }
+
+  private async placeUserInCommunityAdmin(params: {
+    sourceCommunityId?: number;
+    destinationCommunityId: number;
+    userId: number;
+  }): Promise<Community> {
+    const { sourceCommunityId, destinationCommunityId, userId } = params;
+
+    const { sourceCommunity, destinationCommunity, destinationUsers, user } =
+      await this.communityRepository.manager.transaction(async (manager) => {
+        const communityRepository = manager.getRepository(Community);
+        const userRepository = manager.getRepository(User);
+        const user = await userRepository.findOneOrFail({
+          where: { id: userId },
+          lock: { mode: 'pessimistic_write' },
+        });
+
+        const communityIds = Array.from(
+          new Set(
+            sourceCommunityId === undefined
+              ? [destinationCommunityId]
+              : [sourceCommunityId, destinationCommunityId],
+          ),
+        ).sort((a, b) => a - b);
+        for (const id of communityIds) {
+          await communityRepository.findOneOrFail({
+            where: { id },
+            select: { id: true },
+            lock: { mode: 'pessimistic_write' },
+          });
+        }
+
+        const sourceCommunity =
+          sourceCommunityId === undefined
+            ? null
+            : await communityRepository.findOneOrFail({
+                where: { id: sourceCommunityId },
+                relations: COMMUNITY_DEFAULT_RELATIONS,
+              });
+        const destinationCommunity = await communityRepository.findOneOrFail({
+          where: { id: destinationCommunityId },
+          relations: COMMUNITY_DEFAULT_RELATIONS,
+        });
+
+        if (
+          sourceCommunity &&
+          !sourceCommunity.users.some((member) => member.id === userId)
+        ) {
+          throw new BadRequestException(
+            `${user.name} is not a member of ${sourceCommunity.name}`,
+          );
+        }
+        if (sourceCommunity?.leaders?.some((leader) => leader.id === userId)) {
+          throw new BadRequestException(
+            'Group leaders cannot be moved without first removing their leader role',
+          );
+        }
+        if (destinationCommunity.users.some((member) => member.id === userId)) {
+          throw new BadRequestException(
+            `${user.name} is already a member of ${destinationCommunity.name}`,
+          );
+        }
+        if (!acceptsStaffAssignment(destinationCommunity)) {
+          throw new BadRequestException(
+            `Group ${destinationCommunity.name} is full or does not accept staff assignments`,
+          );
+        }
+
+        await this.assertUsersHaveActiveContracts([user]);
+        const destinationUsers = [...destinationCommunity.users, user];
+        const communityUpdates: DeepPartial<Community>[] = [
+          { id: destinationCommunity.id, users: destinationUsers },
+        ];
+        if (sourceCommunity) {
+          communityUpdates.unshift({
+            id: sourceCommunity.id,
+            users: sourceCommunity.users.filter(
+              (member) => member.id !== userId,
+            ),
+          });
+        }
+        await communityRepository.save(communityUpdates);
+        await userRepository.save({
+          id: user.id,
+          undergoingGroupAssignment: false,
+          pendingCommunity: null,
+        });
+        await this.conversationService.placeCommunityConversationParticipant({
+          manager,
+          user,
+          sourceCommunity,
+          destinationCommunity,
+        });
+
+        return {
+          sourceCommunity,
+          destinationCommunity,
+          destinationUsers,
+          user,
+        };
+      });
+
+    const destinationLeaderNotifs: CreateNotifParams[] = (
+      destinationCommunity.leaders ?? []
+    ).map((leader) => ({
+      user: leader,
+      category: NotificationCategory.MemberJoinedCommunity,
+      message: `Staff added ${user.name} to your group (${destinationCommunity.name})`,
+      webAppLocation: groupUrl({
+        tab: 'members',
+        communityId: destinationCommunity.id,
       }),
-      saveAsPendingCommunity: false,
-    });
-    await this.notifsService.sendNotif({
+      associatedUsers: [user],
+    }));
+    const sourceLeaderNotifs: CreateNotifParams[] = sourceCommunity
+      ? (sourceCommunity.leaders ?? []).map((leader) => ({
+          user: leader,
+          category: NotificationCategory.RemovedFromCommunityForLeader,
+          message: `Alliance staff removed ${user.name} from your group (${sourceCommunity.name})`,
+          webAppLocation: groupUrl({
+            tab: 'members',
+            communityId: sourceCommunity.id,
+          }),
+          associatedUsers: [user],
+        }))
+      : [];
+    const memberNotif: CreateNotifParams = {
       user,
       category: NotificationCategory.CommunityAssigned,
-      message: `Alliance staff moved you from ${sourceCommunity.name} to ${destinationCommunity.name}`,
+      message: sourceCommunity
+        ? `Alliance staff moved you from ${sourceCommunity.name} to ${destinationCommunity.name}`
+        : `Alliance staff assigned you to ${destinationCommunity.name}`,
       webAppLocation: groupUrl({ communityId: destinationCommunity.id }),
       associatedUsers: [],
+    };
+    const affectedCommunityIds = sourceCommunity
+      ? [sourceCommunity.id, destinationCommunity.id]
+      : [destinationCommunity.id];
+
+    await this.settlePostCommitMembershipEffects([
+      ...affectedCommunityIds.map((communityId) => ({
+        description: `sync community conversation ${communityId}`,
+        run: () =>
+          this.conversationService.syncCommunityConversationMembers(
+            communityId,
+          ),
+      })),
+      {
+        description: `send membership notifications for user ${user.id}`,
+        run: () =>
+          this.notifsService.sendNotifs([
+            ...destinationLeaderNotifs,
+            ...sourceLeaderNotifs,
+            memberNotif,
+          ]),
+      },
+    ]);
+
+    return { ...destinationCommunity, users: destinationUsers };
+  }
+
+  private async settlePostCommitMembershipEffects(
+    effects: { description: string; run: () => Promise<unknown> }[],
+  ): Promise<void> {
+    const results = await Promise.allSettled(
+      effects.map((effect) => effect.run()),
+    );
+    results.forEach((result, index) => {
+      switch (result.status) {
+        case 'fulfilled':
+          break;
+        case 'rejected':
+          this.logger.error(
+            `Post-commit membership effect failed: ${effects[index].description}`,
+            result.reason,
+          );
+          break;
+        default:
+          result satisfies never;
+      }
     });
   }
 

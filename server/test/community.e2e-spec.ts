@@ -11,6 +11,9 @@ import {
   CreateCommunityDto,
 } from '../src/community/dto/community.dto';
 import { CommunityService } from '../src/community/community.service';
+import { ConversationService } from '../src/messaging/conversation.service';
+import { Conversation } from '../src/messaging/entities/conversation.entity';
+import { Participant } from '../src/messaging/entities/participant.entity';
 import {
   createTestApp,
   giveActiveContract,
@@ -39,6 +42,9 @@ describe('Community (e2e)', () => {
   let communityRepo: Repository<Community>;
   let communityInviteRepo: Repository<CommunityInvite>;
   let communityService: CommunityService;
+  let conversationService: ConversationService;
+  let conversationRepo: Repository<Conversation>;
+  let participantRepo: Repository<Participant>;
   let testUser: User;
   let testUserToken: string;
   let secondUser: User;
@@ -50,6 +56,9 @@ describe('Community (e2e)', () => {
     communityRepo = ctx.dataSource.getRepository(Community);
     communityInviteRepo = ctx.dataSource.getRepository(CommunityInvite);
     communityService = ctx.app.get(CommunityService);
+    conversationService = ctx.app.get(ConversationService);
+    conversationRepo = ctx.dataSource.getRepository(Conversation);
+    participantRepo = ctx.dataSource.getRepository(Participant);
   }, 50000);
 
   beforeEach(async () => {
@@ -2125,6 +2134,249 @@ describe('Community (e2e)', () => {
         relations: { users: true },
       });
       expect(updated.users.map((u) => u.id)).not.toContain(secondUser.id);
+    });
+
+    it('allows only one concurrent assignment into the final available slot', async () => {
+      const competingMember = await userRepo.save(
+        userRepo.create({
+          name: 'Competing Assigned Member',
+          email: 'competing.assigned.member@example.com',
+          password: 'Password123!',
+        }),
+      );
+      await giveActiveContract(ctx, competingMember.id);
+      const community = await communityRepo.save(
+        communityRepo.create({
+          name: 'Final Staff Assignment Slot',
+          leaders: [testUser],
+          users: [testUser],
+          allowStaffAssignments: true,
+          maxCapacity: 1,
+        }),
+      );
+
+      const responses = await Promise.all([
+        addMember(community.id, secondUser.id),
+        addMember(community.id, competingMember.id),
+      ]);
+
+      expect(responses.map((response) => response.status).sort()).toEqual([
+        201, 400,
+      ]);
+      const updated = await communityRepo.findOneOrFail({
+        where: { id: community.id },
+        relations: { users: true, leaders: true },
+      });
+      expect(updated.users.length - updated.leaders!.length).toBe(1);
+    });
+  });
+
+  describe('POST /community/:communityId/moveMember/admin', () => {
+    const setUpGroups = async (
+      destinationOverrides?: Partial<Community>,
+    ): Promise<{
+      source: Community;
+      destination: Community;
+    }> => {
+      const destinationLeader = await userRepo.save(
+        userRepo.create({
+          name: 'Destination Leader',
+          email: 'destination.leader@example.com',
+          password: 'Password123!',
+        }),
+      );
+      const [source, destination] = await Promise.all([
+        communityRepo.save(
+          communityRepo.create({
+            name: 'Source Group',
+            leaders: [testUser],
+            users: [testUser, secondUser],
+            allowStaffAssignments: true,
+            maxCapacity: 10,
+          }),
+        ),
+        communityRepo.save(
+          communityRepo.create({
+            name: 'Destination Group',
+            leaders: [destinationLeader],
+            users: [destinationLeader],
+            allowStaffAssignments: true,
+            maxCapacity: 10,
+            ...destinationOverrides,
+          }),
+        ),
+      ]);
+      return { source, destination };
+    };
+
+    const moveMember = (params: {
+      from: Community;
+      to: Community;
+      userId: number;
+    }) =>
+      request(ctx.app.getHttpServer())
+        .post(`/community/${params.from.id}/moveMember/admin`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ userId: params.userId, destinationCommunityId: params.to.id });
+
+    const memberIds = async (community: Community): Promise<number[]> => {
+      const refreshed = await communityRepo.findOneOrFail({
+        where: { id: community.id },
+        relations: { users: true },
+      });
+      return refreshed.users.map((member) => member.id);
+    };
+
+    it('moves the member out of the source group and into the destination', async () => {
+      const { source, destination } = await setUpGroups();
+
+      await moveMember({
+        from: source,
+        to: destination,
+        userId: secondUser.id,
+      }).expect(200);
+
+      expect(await memberIds(source)).not.toContain(secondUser.id);
+      expect(await memberIds(destination)).toContain(secondUser.id);
+    });
+
+    it('updates participant authorization even when post-commit sync fails', async () => {
+      const { source, destination } = await setUpGroups();
+      await Promise.all([
+        conversationService.syncCommunityConversationMembers(source.id),
+        conversationService.syncCommunityConversationMembers(destination.id),
+      ]);
+      const [sourceConversation, destinationConversation] = await Promise.all([
+        conversationRepo.findOneOrFail({
+          where: { community: { id: source.id } },
+        }),
+        conversationRepo.findOneOrFail({
+          where: { community: { id: destination.id } },
+        }),
+      ]);
+      const sync = jest
+        .spyOn(conversationService, 'syncCommunityConversationMembers')
+        .mockRejectedValue(new Error('sync failed'));
+
+      try {
+        await moveMember({
+          from: source,
+          to: destination,
+          userId: secondUser.id,
+        }).expect(200);
+      } finally {
+        sync.mockRestore();
+      }
+
+      expect(
+        await participantRepo.exists({
+          where: {
+            conversation: { id: sourceConversation.id },
+            user: { id: secondUser.id },
+          },
+        }),
+      ).toBe(false);
+      expect(
+        await participantRepo.exists({
+          where: {
+            conversation: { id: destinationConversation.id },
+            user: { id: secondUser.id },
+          },
+        }),
+      ).toBe(true);
+    });
+
+    it('allows only one concurrent move into the final available slot', async () => {
+      const { source, destination } = await setUpGroups({ maxCapacity: 1 });
+      const competingMember = await userRepo.save(
+        userRepo.create({
+          name: 'Competing Member',
+          email: 'competing.member@example.com',
+          password: 'Password123!',
+        }),
+      );
+      await giveActiveContract(ctx, competingMember.id);
+      const competingSource = await communityRepo.save(
+        communityRepo.create({
+          name: 'Competing Source Group',
+          leaders: [testUser],
+          users: [testUser, competingMember],
+          allowStaffAssignments: true,
+          maxCapacity: 10,
+        }),
+      );
+
+      const responses = await Promise.all([
+        moveMember({
+          from: source,
+          to: destination,
+          userId: secondUser.id,
+        }),
+        moveMember({
+          from: competingSource,
+          to: destination,
+          userId: competingMember.id,
+        }),
+      ]);
+
+      expect(responses.map((response) => response.status).sort()).toEqual([
+        200, 400,
+      ]);
+      const destinationMemberIds = await memberIds(destination);
+      const movedUserIds = [secondUser.id, competingMember.id];
+      expect(
+        movedUserIds.filter((userId) => destinationMemberIds.includes(userId)),
+      ).toHaveLength(1);
+
+      const sourceMemberships = await Promise.all([
+        memberIds(source),
+        memberIds(competingSource),
+      ]);
+      movedUserIds.forEach((userId, index) => {
+        expect(destinationMemberIds.includes(userId)).not.toBe(
+          sourceMemberships[index].includes(userId),
+        );
+      });
+    });
+
+    it('coordinates a concurrent assignment and move into the final slot', async () => {
+      const { source, destination } = await setUpGroups({ maxCapacity: 1 });
+      const competingMember = await userRepo.save(
+        userRepo.create({
+          name: 'Competing Unassigned Member',
+          email: 'competing.unassigned.member@example.com',
+          password: 'Password123!',
+        }),
+      );
+      await giveActiveContract(ctx, competingMember.id);
+
+      const responses = await Promise.all([
+        moveMember({
+          from: source,
+          to: destination,
+          userId: secondUser.id,
+        }),
+        request(ctx.app.getHttpServer())
+          .post(`/community/${destination.id}/addMember/admin`)
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send({ userId: competingMember.id }),
+      ]);
+
+      expect(
+        responses.filter((response) => response.status === 400),
+      ).toHaveLength(1);
+      expect(
+        responses.filter((response) => [200, 201].includes(response.status)),
+      ).toHaveLength(1);
+      const destinationMemberIds = await memberIds(destination);
+      expect(
+        [secondUser.id, competingMember.id].filter((userId) =>
+          destinationMemberIds.includes(userId),
+        ),
+      ).toHaveLength(1);
+      expect((await memberIds(source)).includes(secondUser.id)).not.toBe(
+        destinationMemberIds.includes(secondUser.id),
+      );
     });
   });
 });

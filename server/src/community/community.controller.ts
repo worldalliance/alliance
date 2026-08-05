@@ -173,6 +173,7 @@ export class CommunityController {
   }
 
   @Post(':communityId/moveMember/admin')
+  @HttpCode(200)
   @UseGuards(AdminGuard)
   @ApiOkResponse()
   async moveMemberAdmin(
