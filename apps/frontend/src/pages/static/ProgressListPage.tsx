@@ -1,4 +1,5 @@
 import React from "react";
+import BalancedColumns from "../../components/BalancedColumns";
 import FeaturedImpactCard from "../../components/FeaturedImpactCard";
 import Footer from "../../components/Footer";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
@@ -21,11 +22,11 @@ const ProgressListPage: React.FC = () => {
                 Series of actions that built on each other.
               </p>
             </div>
-            <div className="columns-1 gap-2 *:break-inside-avoid *:mb-2">
+            <BalancedColumns columns={1}>
               {PROGRESS_PROJECTS.map((project) => (
                 <ProjectCard key={project.slug} project={project} />
               ))}
-            </div>
+            </BalancedColumns>
           </section>
 
           <section className="flex flex-col gap-6">
@@ -35,11 +36,11 @@ const ProgressListPage: React.FC = () => {
                 One-time actions that achieved tangible impact.
               </p>
             </div>
-            <div className="columns-1 sm:columns-2 md:columns-3 gap-2 *:break-inside-avoid *:mb-2">
+            <BalancedColumns columns={{ default: 1, sm: 2, md: 3 }}>
               {FEATURED_IMPACT_ACTIONS.map((action) => (
                 <FeaturedImpactCard key={action.actionId} {...action} />
               ))}
-            </div>
+            </BalancedColumns>
           </section>
         </div>
       </div>

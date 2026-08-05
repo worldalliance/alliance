@@ -16,7 +16,7 @@ export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
     imageSrc: "https://dj92mxbdjuclo.cloudfront.net/1785971888425.webp",
   },
   {
-    actionId: 91,
+    actionId: 139,
     emphasis: "We shared input on AI child safety standards",
     rest: "by partnering with an apgard, an AI safety certification organization.",
   },
