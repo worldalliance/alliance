@@ -23,6 +23,7 @@ import {
 import React, { useState } from "react";
 import { Link } from "react-router";
 import { getApiUrl } from "../lib/config";
+import { AvatarProfile } from "../ui/Avatar";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
 import { ImageLightboxModal } from "../ui/ImageLightbox";
@@ -232,8 +233,21 @@ export default function RenderDisplayBlock({
 
     case "quote":
       return (
-        <div className="prose prose-sm max-w-none bg-zinc-100 px-5 py-4">
-          <FormMarkdownWrapper markdownContent={block.text} />
+        <div className="bg-zinc-100 px-5 py-4 space-y-3">
+          {block.userId != null && (
+            <div className="flex items-center gap-2">
+              <AvatarProfile
+                pfp={block.userProfilePicture ?? null}
+                size="medium"
+              />
+              <span className="font-medium text-zinc-900">
+                {block.userName ?? `User #${block.userId}`}
+              </span>
+            </div>
+          )}
+          <div className="prose prose-sm max-w-none">
+            <FormMarkdownWrapper markdownContent={block.text} />
+          </div>
         </div>
       );
 

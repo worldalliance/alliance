@@ -91,6 +91,7 @@ import {
 } from "react-native";
 import AppMarkdownWrapper, { useHandleLinkPress } from "../AppMarkdownWrapper";
 import { ImageLightboxModal } from "../ImageLightbox";
+import ProfileImage from "../ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
@@ -339,7 +340,18 @@ export function RenderDisplayBlockMobile({
     }
     case "quote":
       return (
-        <View className="bg-zinc-100 p-4 rounded-lg">
+        <View className="bg-zinc-100 p-4 rounded-lg gap-3">
+          {block.userId != null ? (
+            <View className="flex-row items-center gap-2">
+              <ProfileImage
+                pfp={block.userProfilePicture ?? null}
+                size="medium"
+              />
+              <Text className="text-zinc-900" weight={FontWeight.Medium}>
+                {block.userName ?? `User #${block.userId}`}
+              </Text>
+            </View>
+          ) : null}
           <AppMarkdownWrapper>{block.text}</AppMarkdownWrapper>
         </View>
       );

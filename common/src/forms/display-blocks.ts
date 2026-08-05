@@ -31,6 +31,9 @@ const textContentSchema = z.strictObject({
 const quoteContentSchema = z.strictObject({
   ...baseContentFields,
   text: z.string(),
+  userId: z.number().optional(),
+  userName: z.string().optional(),
+  userProfilePicture: z.string().nullable().optional(),
 });
 
 const labelContentSchema = z.strictObject({
