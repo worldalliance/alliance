@@ -8,11 +8,18 @@ import {
 import { Type } from 'class-transformer';
 import { ValidateNested } from 'class-validator';
 import { ProfileDto } from 'src/user/dto/user.dto';
+import { User } from 'src/user/entities/user.entity';
 import { Comment } from '../entities/comment.entity';
 import {
   CreateEditableContentDto,
   EditableContentDto,
 } from './editablecontent.dto';
+
+export type CommentDtoOptions = {
+  requestingUserId?: number;
+  /** Truncated display data; it cannot answer liker membership questions. */
+  facepile?: User[];
+};
 
 export class CommentDto extends PickType(Comment, [
   'id',
@@ -40,21 +47,22 @@ export class CommentDto extends PickType(Comment, [
   @ApiProperty()
   likesCount: number;
 
-  /** Undefined for anonymous/admin views. */
+  /** Undefined without both a requesting user and the full `likes` relation. */
   @ApiPropertyOptional({ type: Boolean })
   likedByMe?: boolean;
 
   @ApiProperty({ type: () => EditableContentDto })
   editableContent: EditableContentDto;
 
-  constructor(comment: Comment, requestingUserId?: number) {
+  constructor(comment: Comment, options?: CommentDtoOptions) {
     super();
     if (!comment.editableContent) {
       throw new Error(
         `Comment ${comment.id} was loaded without editableContent`,
       );
     }
-    const allLikes = comment.likes ?? [];
+    const { requestingUserId, facepile } = options ?? {};
+    const likers = facepile ?? comment.likes ?? [];
     this.id = comment.id;
     this.parentObjectId = comment.parentObjectId;
     this.parentId = comment.parentId;
@@ -65,14 +73,17 @@ export class CommentDto extends PickType(Comment, [
     this.pinned = comment.pinned;
     this.author = new ProfileDto(comment.author);
     this.children = comment.children
-      ? comment.children.map((child) => new CommentDto(child, requestingUserId))
+      ? comment.children.map(
+          (child) => new CommentDto(child, { requestingUserId }),
+        )
       : undefined;
-    this.likesCount = comment.likesCount ?? allLikes.length;
+    this.likesCount = comment.likesCount;
+    // Only the full relation can answer this; a passed facepile is truncated.
     this.likedByMe =
       requestingUserId !== undefined && comment.likes !== undefined
-        ? allLikes.some((like) => like.id === requestingUserId)
+        ? comment.likes.some((like) => like.id === requestingUserId)
         : undefined;
-    this.likes = allLikes
+    this.likes = likers
       .map((like) => new ProfileDto(like))
       .sort(byLikeOrder(comment.id))
       .slice(0, LIKE_FACEPILE_LIMIT);
@@ -84,16 +95,16 @@ export class UserCommentDto extends CommentDto {
   @ApiPropertyOptional()
   parentTitle?: string;
 
-  constructor(
-    { comment, parentTitle }: UserComment,
-    requestingUserId?: number,
-  ) {
-    super(comment, requestingUserId);
+  constructor({ comment, parentTitle, ...rest }: UserComment) {
+    super(comment, rest);
     this.parentTitle = parentTitle;
   }
 }
 
-export type UserComment = { comment: Comment; parentTitle?: string };
+export type UserComment = {
+  comment: Comment;
+  parentTitle?: string;
+} & CommentDtoOptions;
 
 export class CreateCommentDto extends PickType(Comment, [
   'parentObjectId',

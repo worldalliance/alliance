@@ -9,6 +9,7 @@ import { Comment } from 'src/forum/entities/comment.entity';
 import { EditableContent } from 'src/forum/entities/editablecontent.entity';
 import { Post } from 'src/forum/entities/post.entity';
 import { ForumModule } from 'src/forum/forum.module';
+import { FacepileModule } from 'src/likes/facepile.module';
 import { MailModule } from 'src/mail/mail.module';
 import { MmsModule } from 'src/mms/mms.module';
 import { ActionEventNotifWorker } from 'src/notifs/action-event-notif.worker';
@@ -83,6 +84,7 @@ import { ReloadUsersJoinedWorker } from './reload-users-joined.worker';
     MmsModule,
     PushModule,
     ForumModule,
+    FacepileModule,
     EventLogModule,
     FormSnapshotModule,
     forwardRef(() => ShareUrlsModule),

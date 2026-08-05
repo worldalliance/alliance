@@ -113,7 +113,10 @@ export class ForumController {
     return this.forumService
       .findCommentsForPost(+id)
       .then((comments) =>
-        comments.map((comment) => new CommentDto(comment, req.user?.sub)),
+        comments.map(
+          (comment) =>
+            new CommentDto(comment, { requestingUserId: req.user?.sub }),
+        ),
       );
   }
 
@@ -128,7 +131,10 @@ export class ForumController {
     return this.forumService
       .findCommentsForActivity(+id)
       .then((comments) =>
-        comments.map((comment) => new CommentDto(comment, req.user?.sub)),
+        comments.map(
+          (comment) =>
+            new CommentDto(comment, { requestingUserId: req.user?.sub }),
+        ),
       );
   }
 
@@ -143,7 +149,10 @@ export class ForumController {
     return this.forumService
       .findCommentsForAction(+id)
       .then((comments) =>
-        comments.map((comment) => new CommentDto(comment, req.user?.sub)),
+        comments.map(
+          (comment) =>
+            new CommentDto(comment, { requestingUserId: req.user?.sub }),
+        ),
       );
   }
 
@@ -176,7 +185,8 @@ export class ForumController {
   ): Promise<UserCommentDto[]> {
     const userComments = await this.forumService.findCommentsByUser(id);
     return userComments.map(
-      (userComment) => new UserCommentDto(userComment, req.user?.sub),
+      (userComment) =>
+        new UserCommentDto({ ...userComment, requestingUserId: req.user?.sub }),
     );
   }
 
@@ -191,7 +201,10 @@ export class ForumController {
     return this.forumService
       .findForumCommentsByUser(id)
       .then((comments) =>
-        comments.map((comment) => new CommentDto(comment, req.user?.sub)),
+        comments.map(
+          (comment) =>
+            new CommentDto(comment, { requestingUserId: req.user?.sub }),
+        ),
       );
   }
 
@@ -240,7 +253,7 @@ export class ForumController {
         commentId: comment.id,
       },
     });
-    return new CommentDto(comment, user.sub);
+    return new CommentDto(comment, { requestingUserId: user.sub });
   }
 
   @Patch('comments/:id')
@@ -254,7 +267,7 @@ export class ForumController {
   ): Promise<CommentDto> {
     return new CommentDto(
       await this.forumService.updateComment(id, updateCommentDto, user.sub),
-      user.sub,
+      { requestingUserId: user.sub },
     );
   }
 

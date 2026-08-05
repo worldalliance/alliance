@@ -756,6 +756,54 @@ describe('Forum (e2e)', () => {
       ).toBe(true);
     });
 
+    it('includes liker facepiles on user feed forum comments', async () => {
+      const postResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/posts')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          title: 'Post With Liked Feed Comment',
+          editableContent: { body: 'Body', attachments: [] },
+          visibleAt: new Date(),
+        } satisfies CreatePostDto)
+        .expect(201);
+
+      const commentResponse = await request(ctx.app.getHttpServer())
+        .post('/forum/comments')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .send({
+          editableContent: { body: 'Feed facepile comment', attachments: [] },
+          parentObjectId: postResponse.body.id,
+          parentObjectType: CommentParentObject.Post,
+        } satisfies CreateCommentDto)
+        .expect(201);
+      expect(commentResponse.body.likesCount).toBe(0);
+
+      const commentId = commentResponse.body.id;
+      const firstLiker = await createExtraUserAndToken();
+      const secondLiker = await createExtraUserAndToken();
+      for (const liker of [firstLiker, secondLiker]) {
+        await request(ctx.app.getHttpServer())
+          .post(`/forum/comments/${commentId}/like`)
+          .set('Authorization', `Bearer ${liker.token}`)
+          .expect(201);
+      }
+
+      const feed = await request(ctx.app.getHttpServer())
+        .get(`/actions/userFeed/${ctx.testUserId}`)
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .expect(200);
+
+      const item = feed.body.find(
+        (feedItem) => feedItem.forumComment?.comment.id === commentId,
+      );
+      expect(item).toBeDefined();
+      expect(item.forumComment.likesCount).toBe(2);
+      const byId = (a: number, b: number) => a - b;
+      expect(
+        item.forumComment.comment.likes.map((liker) => liker.id).sort(byId),
+      ).toEqual([firstLiker.user.id, secondLiker.user.id].sort(byId));
+    });
+
     it('provides activity and action level comment listings', async () => {
       const actionComplete = await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${testAction.id}`)
@@ -907,9 +955,9 @@ describe('Forum (e2e)', () => {
         '2 people liked your post: Post To Get Likes',
       );
       expect(likeNotifs[0].groupingCount).toBe(2);
-      expect(
-        await notifRepo.countBy({ groupingKey: legacyGroupingKey }),
-      ).toBe(0);
+      expect(await notifRepo.countBy({ groupingKey: legacyGroupingKey })).toBe(
+        0,
+      );
     });
 
     it('creates a new post like notification after the previous one is read', async () => {

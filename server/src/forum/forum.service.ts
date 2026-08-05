@@ -10,6 +10,7 @@ import { AiDetectionQueueService } from 'src/ai-detection/ai-detection-queue.ser
 import { DetectableEntity } from 'src/ai-detection/entities/ai-detection-result.entity';
 import { EventType } from 'src/eventlog/event-log.entity';
 import { EventLogService } from 'src/eventlog/eventlog.service';
+import { FacepileService } from 'src/likes/facepile.service';
 import { EmailType } from 'src/mail/mail.entity';
 import { MailService } from 'src/mail/mail.service';
 import { MmsService } from 'src/mms/mms.service';
@@ -50,6 +51,7 @@ export type ForumFeedComment = {
   postTitle: string;
   likedByMe: boolean;
   likesCount: number;
+  facepile: User[];
 };
 
 @Injectable()
@@ -75,6 +77,7 @@ export class ForumService {
     private readonly aiDetectionQueueService: AiDetectionQueueService,
     private readonly mailService: MailService,
     private readonly mmsService: MmsService,
+    private readonly facepileService: FacepileService,
   ) {}
 
   async createPost(
@@ -410,10 +413,12 @@ export class ForumService {
     qb.orderBy('comment.createdAt', 'DESC').limit(limit);
 
     const { entities, raw } = await qb.getRawAndEntities();
-    const likedCommentIds = await this.getLikedCommentIds(
-      entities.map((c) => c.id),
-      userId,
+    const commentIds = entities.map((c) => c.id);
+    const facepiles = await this.facepileService.loadFacepiles(
+      Comment,
+      commentIds,
     );
+    const likedCommentIds = await this.getLikedCommentIds(commentIds, userId);
     const titleByCommentId = new Map<number, string>();
     for (const row of raw) {
       titleByCommentId.set(row.comment_id, row.post_title);
@@ -428,6 +433,7 @@ export class ForumService {
         postTitle,
         likedByMe: likedCommentIds.has(comment.id),
         likesCount: comment.likesCount,
+        facepile: facepiles(comment.id),
       });
     }
     return items;
@@ -459,11 +465,13 @@ export class ForumService {
     qb.orderBy('comment.createdAt', 'DESC').limit(limit);
 
     const { entities, raw } = await qb.getRawAndEntities();
+    const commentIds = entities.map((c) => c.id);
+    const facepiles = await this.facepileService.loadFacepiles(
+      Comment,
+      commentIds,
+    );
     const likedCommentIds = requestingUserId
-      ? await this.getLikedCommentIds(
-          entities.map((c) => c.id),
-          requestingUserId,
-        )
+      ? await this.getLikedCommentIds(commentIds, requestingUserId)
       : new Set<number>();
     const titleByCommentId = new Map<number, string>();
     for (const row of raw) {
@@ -479,6 +487,7 @@ export class ForumService {
         postTitle,
         likedByMe: likedCommentIds.has(comment.id),
         likesCount: comment.likesCount,
+        facepile: facepiles(comment.id),
       });
     }
     return items;

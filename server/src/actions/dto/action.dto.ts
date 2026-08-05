@@ -30,6 +30,7 @@ import {
   EditableContentDto,
 } from 'src/forum/dto/editablecontent.dto';
 import type { Comment } from 'src/forum/entities/comment.entity';
+import type { ForumFeedComment } from 'src/forum/forum.service';
 import { getImageSource } from 'src/images/images.service';
 import { Form } from 'src/tasks/entities/form.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
@@ -637,6 +638,7 @@ export class ActionActivityDto extends PickType(ActionActivity, [
       formResponseOutput?: FormResponse;
       likedByMe?: boolean;
       requestingUserId?: number;
+      facepile?: User[];
     },
   ) {
     super();
@@ -647,8 +649,9 @@ export class ActionActivityDto extends PickType(ActionActivity, [
     this.likesCount = actionActivity.likesCount;
     this.actionName = actionActivity.action?.name;
     this.user = new ProfileDto(actionActivity.user);
-    if (actionActivity.likes !== undefined) {
-      this.likes = actionActivity.likes
+    const likers = extra?.facepile ?? actionActivity.likes;
+    if (likers !== undefined) {
+      this.likes = likers
         .map((like) => new ProfileDto(like))
         .sort(byLikeOrder(actionActivity.id))
         .slice(0, LIKE_FACEPILE_LIMIT);
@@ -656,7 +659,10 @@ export class ActionActivityDto extends PickType(ActionActivity, [
     this.likedByMe = extra?.likedByMe;
     this.comments =
       extra?.comments?.map(
-        (comment) => new CommentDto(comment, extra?.requestingUserId),
+        (comment) =>
+          new CommentDto(comment, {
+            requestingUserId: extra?.requestingUserId,
+          }),
       ) ?? [];
     this.formResponseOutput = extra?.formResponseOutput
       ? new FormResponseOutputDto(extra.formResponseOutput)
@@ -1288,14 +1294,8 @@ export class HomeFeedForumCommentDto {
   @ApiProperty()
   likesCount: number;
 
-  constructor(input: {
-    comment: Comment;
-    postId: number;
-    postTitle: string;
-    likedByMe: boolean;
-    likesCount: number;
-  }) {
-    this.comment = new CommentDto(input.comment);
+  constructor(input: ForumFeedComment) {
+    this.comment = new CommentDto(input.comment, { facepile: input.facepile });
     this.postId = input.postId;
     this.postTitle = input.postTitle;
     this.likedByMe = input.likedByMe;
@@ -1314,13 +1314,7 @@ export type HomeFeedItem = {
   | {
       type: HomeFeedItemType.ForumComment;
       activity?: undefined;
-      forumComment: {
-        comment: Comment;
-        postId: number;
-        postTitle: string;
-        likedByMe: boolean;
-        likesCount: number;
-      };
+      forumComment: ForumFeedComment;
     }
 );
 

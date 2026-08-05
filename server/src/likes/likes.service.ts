@@ -9,7 +9,8 @@ import {
 import { Post } from 'src/forum/entities/post.entity';
 import { ForumService } from 'src/forum/forum.service';
 import { User } from 'src/user/entities/user.entity';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
+import { FacepileService } from './facepile.service';
 
 @Injectable()
 export class LikesService {
@@ -19,6 +20,7 @@ export class LikesService {
     @InjectRepository(Comment)
     private readonly commentRepository: Repository<Comment>,
     private readonly forumService: ForumService,
+    private readonly facepileService: FacepileService,
   ) {}
 
   async getPostLikers(
@@ -120,20 +122,6 @@ export class LikesService {
     const pageIds = (await query.getRawMany<{ id: number }>()).map((row) =>
       Number(row.id),
     );
-    return this.hydrateLikerPage(pageIds);
-  }
-
-  /** Hydrates ordered ids with `ProfileDto` relations, preserving order. */
-  private async hydrateLikerPage(orderedIds: number[]): Promise<User[]> {
-    if (orderedIds.length === 0) return [];
-
-    const users = await this.userRepository.find({
-      where: { id: In(orderedIds) },
-      relations: { cluster: true, contractEvents: true },
-    });
-    const byId = new Map(users.map((user) => [user.id, user]));
-    return orderedIds
-      .map((id) => byId.get(id))
-      .filter((user): user is User => user !== undefined);
+    return this.facepileService.hydrateLikers(pageIds);
   }
 }

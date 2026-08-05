@@ -11,7 +11,6 @@ import {
   type CohortExpression,
 } from '@alliance/common/cohort-expression';
 import type { FormSchema } from '@alliance/common/forms/form-schema';
-import { LIKE_FACEPILE_LIMIT, likeOrderRank } from '@alliance/common/likeOrder';
 import { run } from '@alliance/common/run';
 import { Assert } from '@alliance/common/types';
 import {
@@ -38,6 +37,7 @@ import {
 import { EditableContent } from 'src/forum/entities/editablecontent.entity';
 import { Post } from 'src/forum/entities/post.entity';
 import { ForumService } from 'src/forum/forum.service';
+import { FacepileService } from 'src/likes/facepile.service';
 import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
 import {
   ActionEventReminderService,
@@ -282,6 +282,7 @@ export class ActionsService {
     private readonly eventLogService: EventLogService,
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
+    private readonly facepileService: FacepileService,
   ) {}
 
   async applyAssignedFormIds(
@@ -1700,24 +1701,7 @@ export class ActionsService {
       },
     });
 
-    const likedIds = requestingUserId
-      ? await this.getLikedActivityIds(
-          activities.map((a) => a.id),
-          requestingUserId,
-        )
-      : new Set<number>();
-
-    await this.attachActivityLikes(activities);
-
-    if (comments) {
-      return await this.attachComments(activities, requestingUserId);
-    }
-    return activities.map(
-      (activity) =>
-        new ActionActivityDto(activity, {
-          likedByMe: likedIds.has(activity.id),
-        }),
-    );
+    return this.toActivityDtos({ activities, requestingUserId, comments });
   }
 
   buildOutputFormResponse(activity: ActionActivity): FormResponse | undefined {
@@ -1779,40 +1763,28 @@ export class ActionsService {
       before,
     });
 
-    if (activities.length === 0) {
-      return [];
-    }
-
-    await this.attachActivityLikes(activities);
-
-    const likedIds = requestingUserId
-      ? await this.getLikedActivityIds(
-          activities.map((a) => a.id),
-          requestingUserId,
-        )
-      : new Set<number>();
-
-    if (comments) {
-      return this.attachComments(activities, requestingUserId);
-    }
-    return activities.map(
-      (activity) =>
-        new ActionActivityDto(activity, {
-          likedByMe: likedIds.has(activity.id),
-        }),
-    );
+    return this.toActivityDtos({ activities, requestingUserId, comments });
   }
 
-  async attachComments(
-    activities: ActionActivity[],
-    requestingUserId?: number,
-    options?: { includeComments?: boolean },
-  ): Promise<ActionActivityDto[]> {
-    const includeComments = options?.includeComments ?? true;
+  /**
+   * Adds public form response output on top of {@link toActivityDtos}, and
+   * comments when `comments` is set. Used by the feeds that render activity
+   * cards in full.
+   */
+  private async toDetailedActivityDtos(params: {
+    activities: ActionActivity[];
+    requestingUserId?: number;
+    comments: boolean;
+  }): Promise<ActionActivityDto[]> {
+    const { activities, requestingUserId, comments: includeComments } = params;
     const activityIds = activities.map((activity) => activity.id);
     const likedIds = requestingUserId
       ? await this.getLikedActivityIds(activityIds, requestingUserId)
       : new Set<number>();
+    const facepiles = await this.facepileService.loadFacepiles(
+      ActionActivity,
+      activityIds,
+    );
 
     const commentsByActivity = includeComments
       ? await this.forumService.findCommentsForActivities(activityIds)
@@ -1827,76 +1799,45 @@ export class ActionsService {
           : undefined,
         likedByMe: likedIds.has(activity.id),
         requestingUserId,
+        facepile: facepiles(activity.id),
       });
     });
   }
 
-  /**
-   * Attaches bounded activity liker facepiles. SQL selects at most
-   * `LIKE_FACEPILE_LIMIT` likers per activity; JS then applies display ordering.
-   *
-   * The SQL window uses `md5` only to choose a bounded unbiased subset. Activities
-   * above the cap can show a different facepile than the modal's first page.
-   */
-  private async attachActivityLikes(
-    activities: ActionActivity[],
-  ): Promise<void> {
-    if (activities.length === 0) return;
-
-    const ids = activities.map((a) => a.id);
-    // Quote derived-table columns; TypeORM leaves raw subquery aliases unquoted.
-    const pairs = await this.actionActivityRepository.manager
-      .createQueryBuilder()
-      .select('"ranked"."activityId"', 'activityId')
-      .addSelect('"ranked"."likerId"', 'likerId')
-      .from(
-        (qb) =>
-          qb
-            .select('activity.id', 'activityId')
-            .addSelect('liker.id', 'likerId')
-            .addSelect(
-              "ROW_NUMBER() OVER (PARTITION BY activity.id ORDER BY md5(activity.id::text || ':' || liker.id::text))",
-              'rn',
-            )
-            .from(ActionActivity, 'activity')
-            .innerJoin('activity.likes', 'liker')
-            .where('activity.id IN (:...ids)', { ids }),
-        'ranked',
-      )
-      .where('"ranked"."rn" <= :limit', { limit: LIKE_FACEPILE_LIMIT })
-      .getRawMany<{ activityId: number; likerId: number }>();
-
-    const facepileIdsByActivity = new Map<number, number[]>();
-    const neededUserIds = new Set<number>();
-    for (const pair of pairs) {
-      const activityId = Number(pair.activityId);
-      const likerId = Number(pair.likerId);
-      const existing = facepileIdsByActivity.get(activityId);
-      if (existing) existing.push(likerId);
-      else facepileIdsByActivity.set(activityId, [likerId]);
-      neededUserIds.add(likerId);
+  /** Feed activities with their bounded liker facepiles and liked-by-me state. */
+  private async toActivityDtos(params: {
+    activities: ActionActivity[];
+    requestingUserId?: number;
+    comments?: boolean;
+  }): Promise<ActionActivityDto[]> {
+    const { activities, requestingUserId, comments } = params;
+    if (activities.length === 0) {
+      return [];
+    }
+    if (comments) {
+      return this.toDetailedActivityDtos({
+        activities,
+        requestingUserId,
+        comments: true,
+      });
     }
 
-    const users =
-      neededUserIds.size > 0
-        ? await this.userRepository.find({
-            where: { id: In([...neededUserIds]) },
-            relations: { cluster: true, contractEvents: true },
-          })
-        : [];
-    const usersById = new Map(users.map((user) => [user.id, user]));
+    const activityIds = activities.map((activity) => activity.id);
+    const likedIds = requestingUserId
+      ? await this.getLikedActivityIds(activityIds, requestingUserId)
+      : new Set<number>();
+    const facepiles = await this.facepileService.loadFacepiles(
+      ActionActivity,
+      activityIds,
+    );
 
-    for (const activity of activities) {
-      const facepileIds = facepileIdsByActivity.get(activity.id) ?? [];
-      activity.likes = facepileIds
-        .sort(
-          (a, b) =>
-            likeOrderRank(activity.id, a) - likeOrderRank(activity.id, b) ||
-            a - b,
-        )
-        .map((id) => usersById.get(id))
-        .filter((user): user is User => user !== undefined);
-    }
+    return activities.map(
+      (activity) =>
+        new ActionActivityDto(activity, {
+          likedByMe: likedIds.has(activity.id),
+          facepile: facepiles(activity.id),
+        }),
+    );
   }
 
   /**
@@ -1995,29 +1936,7 @@ export class ActionsService {
       before,
     });
 
-    if (activities.length === 0) {
-      return [];
-    }
-
-    await this.attachActivityLikes(activities);
-
-    const likedIds = requestingUserId
-      ? await this.getLikedActivityIds(
-          activities.map((a) => a.id),
-          requestingUserId,
-        )
-      : new Set<number>();
-
-    if (comments) {
-      return this.attachComments(activities, requestingUserId);
-    }
-
-    return activities.map(
-      (activity) =>
-        new ActionActivityDto(activity, {
-          likedByMe: likedIds.has(activity.id),
-        }),
-    );
+    return this.toActivityDtos({ activities, requestingUserId, comments });
   }
 
   async isCompletionAllowed(
@@ -2092,27 +2011,11 @@ export class ActionsService {
       userIds: friends.map((f) => f.id),
     });
 
-    if (friendActivities.length === 0) {
-      return [];
-    }
-
-    await this.attachActivityLikes(friendActivities);
-
-    const likedIds = await this.getLikedActivityIds(
-      friendActivities.map((a) => a.id),
-      userId,
-    );
-
-    if (comments) {
-      return this.attachComments(friendActivities, userId);
-    }
-
-    return friendActivities.map(
-      (activity) =>
-        new ActionActivityDto(activity, {
-          likedByMe: likedIds.has(activity.id),
-        }),
-    );
+    return this.toActivityDtos({
+      activities: friendActivities,
+      requestingUserId: userId,
+      comments,
+    });
   }
 
   async friendActivityForAction(
@@ -2133,27 +2036,11 @@ export class ActionsService {
       actionId,
     });
 
-    if (friendActivities.length === 0) {
-      return [];
-    }
-
-    await this.attachActivityLikes(friendActivities);
-
-    const likedIds = await this.getLikedActivityIds(
-      friendActivities.map((a) => a.id),
-      userId,
-    );
-
-    if (comments) {
-      return this.attachComments(friendActivities, userId);
-    }
-
-    return friendActivities.map(
-      (activity) =>
-        new ActionActivityDto(activity, {
-          likedByMe: likedIds.has(activity.id),
-        }),
-    );
+    return this.toActivityDtos({
+      activities: friendActivities,
+      requestingUserId: userId,
+      comments,
+    });
   }
 
   async communityActivity(
@@ -2177,29 +2064,11 @@ export class ActionsService {
       userIds: members.map((m) => m.id),
     });
 
-    if (memberActivities.length === 0) {
-      return [];
-    }
-
-    await this.attachActivityLikes(memberActivities);
-
-    const likedIds = requestingUserId
-      ? await this.getLikedActivityIds(
-          memberActivities.map((a) => a.id),
-          requestingUserId,
-        )
-      : new Set<number>();
-
-    if (comments) {
-      return this.attachComments(memberActivities, requestingUserId);
-    }
-
-    return memberActivities.map(
-      (activity) =>
-        new ActionActivityDto(activity, {
-          likedByMe: likedIds.has(activity.id),
-        }),
-    );
+    return this.toActivityDtos({
+      activities: memberActivities,
+      requestingUserId,
+      comments,
+    });
   }
 
   async countCommunityCompletedActions(
@@ -2319,10 +2188,10 @@ export class ActionsService {
       if (contentful.length + commentsNewerThanCursor >= limit) break;
     }
 
-    await this.attachActivityLikes(contentful);
-
-    const activityDtos = await this.attachComments(contentful, userId, {
-      includeComments: !!comments,
+    const activityDtos = await this.toDetailedActivityDtos({
+      activities: contentful,
+      requestingUserId: userId,
+      comments: !!comments,
     });
 
     const activityItems = activityDtos.map(
@@ -2372,15 +2241,11 @@ export class ActionsService {
       }),
     ]);
 
-    await this.attachActivityLikes(activities);
-
-    const activityDtos = await this.attachComments(
+    const activityDtos = await this.toDetailedActivityDtos({
       activities,
       requestingUserId,
-      {
-        includeComments: !!comments,
-      },
-    );
+      comments: !!comments,
+    });
 
     const activityItems = activityDtos.map(
       (activity): HomeFeedItem => ({
@@ -2554,7 +2419,7 @@ export class ActionsService {
       editableContent: content,
     });
     const savedComment = await this.commentRepository.save(comment);
-    return new CommentDto(savedComment, userId);
+    return new CommentDto(savedComment, { requestingUserId: userId });
   }
 
   async updateActivity(

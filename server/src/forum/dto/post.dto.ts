@@ -113,7 +113,7 @@ export class PostDto extends PickType(Post, [
         ? (likerIds?.includes(requestingUserId) ?? false)
         : undefined;
     this.lastComment = lastComment
-      ? new CommentDto(lastComment, requestingUserId)
+      ? new CommentDto(lastComment, { requestingUserId })
       : undefined;
     this.likeCount = likerIds?.length;
     this.experts = post.experts
