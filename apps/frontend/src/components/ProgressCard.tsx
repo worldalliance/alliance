@@ -7,7 +7,7 @@ export type ProgressCardProps = {
   to: string;
   title: string;
   description?: string;
-  meta?: string;
+  // meta?: string;
   imageSrc?: string;
   imageAlt?: string;
   external?: boolean;
@@ -19,7 +19,7 @@ const ProgressCard: React.FC<ProgressCardProps> = ({
   to,
   title,
   description,
-  meta,
+  // meta,
   imageSrc,
   imageAlt,
   external = false,
