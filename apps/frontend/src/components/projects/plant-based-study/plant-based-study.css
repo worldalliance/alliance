@@ -1,0 +1,446 @@
+/* Interactive results page — ported from the standalone vis
+   (interactive-vis/variations/v14-synthesis in the analysis repo).
+   All rules are scoped under .ir; tokens shadow site tokens only
+   inside the wrapper. Light-only, matching the site. */
+
+.ir {
+  --surface: #f3f2f0; /* site background, so cards blend */
+  --ink: #1b211d;
+  --sub: #4e5852;
+  --mut: #66706a;
+  --grid: #e3e8e2;
+  --axis: #c6cec7;
+  --hairline: rgba(27, 33, 29, 0.13);
+  --reduction: #009e73;
+  --reduction-soft: rgba(0, 158, 115, 0.16);
+  --comparison: #64748b;
+  --comparison-soft: rgba(100, 116, 139, 0.16);
+  --dv-e2: #007a58;
+  --dv-e1: #74c3a6;
+  --dv-0: #c3c9c3;
+  --dv-h1: #c795be;
+  --dv-h2: #84519c;
+  --chip-bg: rgba(27, 33, 29, 0.05);
+  --tooltip-bg: #22281f;
+  --tooltip-ink: #f2f4ef;
+  --seg-label-light: #ffffff;
+  --font-display:
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia,
+    serif;
+  --font-body:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --font-data:
+    ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  width: 100%;
+  max-width: 960px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+.ir .text-col {
+  max-width: 680px;
+}
+.ir a {
+  color: inherit;
+  text-underline-offset: 4px;
+}
+.ir a:hover {
+  color: var(--sub);
+}
+.ir .back-home {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-bottom: 24px;
+  padding: 5px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  color: var(--mut);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+.ir .back-home:hover {
+  color: var(--ink);
+  background: var(--chip-bg);
+}
+.ir :focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.ir .visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+.ir svg text {
+  font-family: var(--font-body);
+}
+.ir svg .t-mono {
+  font-family: var(--font-data);
+}
+.ir section[id] {
+  scroll-margin-top: 24px;
+}
+@media (max-width: 560px) {
+  .ir {
+    font-size: 16px;
+  }
+}
+
+/* ================= masthead ================= */
+.ir .masthead {
+  padding-bottom: 26px;
+}
+.ir h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(32px, 5.6vw, 50px);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  margin: 0 0 14px;
+  text-wrap: balance;
+  max-width: 21ch;
+}
+.ir h1 > span {
+  color: var(--reduction);
+}
+.ir .dek {
+  font-size: clamp(17px, 2.2vw, 19.5px);
+  color: var(--sub);
+  margin: 0;
+  max-width: 62ch;
+  text-wrap: pretty;
+}
+
+/* ================= takeaway tiles ================= */
+.ir .tk-lead {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: -0.005em;
+  margin: 28px 0 0;
+}
+.ir .tiles {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  margin: 14px 0 0;
+}
+@media (min-width: 640px) {
+  .ir .tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.ir a.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-decoration: none;
+  background: #ffffff;
+  border: 1px solid var(--hairline);
+  border-left: 3px solid var(--reduction);
+  border-radius: 0 12px 12px 0;
+  padding: 13px 18px 12px;
+}
+.ir a.tile:hover {
+  background: var(--chip-bg);
+  color: inherit;
+}
+.ir .t-claim {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 19.5px;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+}
+.ir .t-sub {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--sub);
+}
+
+/* ================= sections & figures ================= */
+.ir section.finding {
+  margin-top: 60px;
+}
+.ir section.finding h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(25px, 3.6vw, 32px);
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  margin: 0 0 14px;
+  text-wrap: balance;
+}
+.ir .kick {
+  font-family: var(--font-data);
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--mut);
+  margin: 0 0 10px;
+}
+.ir .prose p {
+  margin: 0 0 18px;
+}
+.ir .prose strong {
+  font-weight: 650;
+}
+.ir .scale-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+.ir .scale-chips span {
+  font-family: var(--font-data);
+  font-size: 12px;
+  color: var(--sub);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 3px 11px;
+  background: var(--chip-bg);
+}
+.ir figure.fig {
+  margin: 26px 0 8px;
+  padding: 20px 20px 12px;
+  background: #ffffff;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+}
+.ir .fig-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.ir .fig-eyebrow {
+  font-family: var(--font-data);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mut);
+}
+.ir .fig-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+}
+.ir .fig-note {
+  font-size: 13px;
+  color: var(--mut);
+  line-height: 1.55;
+  margin: 8px 0 4px;
+}
+.ir .chart {
+  width: 100%;
+  overflow-x: auto;
+}
+.ir .chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+@media (max-width: 700px) {
+  .ir .chart svg {
+    min-width: 660px;
+  }
+}
+.ir .legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+  color: var(--sub);
+  margin: 2px 0 6px;
+}
+.ir .legend .dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: -1px;
+}
+
+/* ================= chip buttons ================= */
+.ir .fig-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 2px 0 10px;
+}
+.ir .ctl-label {
+  font-family: var(--font-data);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mut);
+  margin-right: 2px;
+}
+.ir button.chip {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--sub);
+  background: var(--chip-bg);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 4px 13px;
+  cursor: pointer;
+}
+.ir button.chip:hover {
+  color: var(--ink);
+}
+.ir button.chip[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--surface);
+  border-color: var(--ink);
+}
+
+/* dot + row-reorder transitions */
+.ir #chart-who circle.person {
+  transition:
+    transform 0.55s ease,
+    opacity 0.4s ease;
+}
+.ir #chart-dumbbell g.drow {
+  transition: transform 0.55s ease;
+}
+
+/* ================= tooltip & report note ================= */
+.ir #ir-tip {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  display: none;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-ink);
+  font-family: var(--font-data);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 7px 10px;
+  border-radius: 8px;
+  max-width: 260px;
+}
+.ir #ir-tip .tt-h {
+  font-weight: 700;
+}
+.ir .report-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: center;
+  margin-top: 56px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 24px;
+}
+.ir .rn-method {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--mut);
+}
+.ir .rn-method p {
+  margin: 0 0 12px;
+}
+.ir .rn-method p:last-child {
+  margin-bottom: 0;
+}
+.ir .report-note h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(25px, 3.6vw, 32px);
+  line-height: 1.18;
+  letter-spacing: -0.01em;
+  margin: 0 0 14px;
+  text-wrap: balance;
+  color: var(--ink);
+}
+.ir a.rn-pdf {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.ir a.rn-pdf:hover .rn-page {
+  box-shadow:
+    0 2px 4px rgba(27, 33, 29, 0.14),
+    0 10px 22px -10px rgba(27, 33, 29, 0.45);
+}
+.ir a.rn-pdf:hover .rn-cap {
+  color: var(--ink);
+}
+.ir .rn-page {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 92px;
+  height: 119px;
+  padding: 10px 9px;
+  background: #ffffff;
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  box-shadow:
+    0 1px 2px rgba(27, 33, 29, 0.1),
+    0 6px 16px -10px rgba(27, 33, 29, 0.35);
+  box-sizing: border-box;
+}
+.ir .rn-page i {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: #c9cfc9;
+}
+.ir .rn-page i.rn-t {
+  height: 6px;
+  width: 70%;
+  background: #9aa39b;
+  margin-bottom: 2px;
+}
+.ir .rn-page i.rn-s {
+  width: 55%;
+}
+.ir .rn-cap {
+  font-family: var(--font-data);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mut);
+}
+
+@media (max-width: 700px) {
+  .ir .report-note {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .ir a.rn-pdf {
+    align-self: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ir * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

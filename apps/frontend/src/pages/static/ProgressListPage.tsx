@@ -1,79 +1,41 @@
-import { formatLongDateEnUS } from "@alliance/shared/lib/dateFormatters";
-import List from "@alliance/sharedweb/ui/List";
-import matter from "gray-matter";
-import { ChevronRight } from "lucide-react";
 import React from "react";
-import { Link, href, useLoaderData } from "react-router";
 import FeaturedImpactCard from "../../components/FeaturedImpactCard";
 import Footer from "../../components/Footer";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
+import ProjectCard from "../../components/ProjectCard";
 import { FEATURED_IMPACT_ACTIONS } from "../../content/featuredImpactActions";
-
-export async function loader() {
-  const postFiles = import.meta.glob("/src/action-posts/*.md", {
-    as: "raw",
-  });
-
-  const posts = await Promise.all(
-    Object.entries(postFiles).map(async ([path, data]) => {
-      const { content, data: frontmatter } = matter(await data());
-      return {
-        slug: path.split("/").pop()?.replace(".md", "") ?? "",
-        frontmatter,
-        content,
-      };
-    }),
-  );
-
-  return posts;
-}
+import { PROGRESS_PROJECTS } from "../../content/projects";
 
 const ProgressListPage: React.FC = () => {
-  const posts = useLoaderData<typeof loader>();
-
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <PrelaunchNavbar transparent={false} absolute={false} />
       <div className="flex-1 container mx-auto pt-16 md:pt-20 pb-56 flex flex-col px-5">
-        <div className="mx-auto w-full max-w-4xl flex flex-col gap-8 md:gap-20">
+        <div className="mx-auto w-full max-w-7xl flex flex-col gap-8 md:gap-20">
           <h1 className="text-title-large text-center">Progress</h1>
 
           <section className="flex flex-col gap-4">
-            <h2 className="text-title-medium">Updates</h2>
-
-            <List className="w-full">
-              {posts.map((post) => (
-                <Link
-                  to={href("/progress/:slug", { slug: post.slug })}
-                  key={post.slug}
-                  className="flex flex-row items-center justify-between hover:bg-zinc-50 p-4 -mx-4"
-                >
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm md:text-base text-zinc-500">
-                      {formatLongDateEnUS(new Date(post.frontmatter.date))}
-                    </p>
-                    <p className="text-lg md:text-xl">
-                      {post.frontmatter.title}
-                    </p>
-                  </div>
-                  <ChevronRight
-                    className="h-5 w-5 shrink-0 text-black"
-                    aria-hidden
-                  />
-                </Link>
+            <div className="flex flex-col gap-2">
+              <h2 className="text-title-medium">Projects</h2>
+              <p className="text-zinc-500 text-lg md:text-xl">
+                Series of actions that built on each other.
+              </p>
+            </div>
+            <div className="columns-1 gap-2 *:break-inside-avoid *:mb-2">
+              {PROGRESS_PROJECTS.map((project) => (
+                <ProjectCard key={project.slug} project={project} />
               ))}
-            </List>
+            </div>
           </section>
 
           <section className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
-              <h2 className="text-title-medium">Impact</h2>
+              <h2 className="text-title-medium">Actions</h2>
               <p className="text-zinc-500 text-lg md:text-xl">
-                At this stage, we are taking small-scale actions in order to
-                learn and build our processes.
+                One-time actions that achieved tangible impact.
               </p>
             </div>
-            <div className="columns-1 sm:columns-2 gap-2 *:break-inside-avoid *:mb-2">
+            <div className="columns-1 sm:columns-2 md:columns-3 gap-2 *:break-inside-avoid *:mb-2">
               {FEATURED_IMPACT_ACTIONS.map((action) => (
                 <FeaturedImpactCard key={action.actionId} {...action} />
               ))}

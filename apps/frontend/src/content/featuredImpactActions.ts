@@ -9,12 +9,6 @@ export type FeaturedImpactAction = {
 
 export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
   {
-    actionId: 122,
-    emphasis: "We ran a global behavioral study on eating less meat",
-    rest: "with 274 member and non-member participants.",
-    customLink: "https://plantbasedstudy.org/",
-  },
-  {
     actionId: 130,
     emphasis:
       "We helped 77% of members bring their privacy in line with their preferences",
