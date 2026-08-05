@@ -20,3 +20,7 @@ PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USERNAME -d $DB_NAME
 - Table names: snake_case from TypeORM entity classes (`ReminderGroup` → `reminder_group`).
 - Column names: keep entity camelCase, must be double-quoted in SQL (`"newStatus"`).
 - Test DB (`server/.env.test`): password `postgres`, database `postgres` — don't mix up with dev DB.
+
+# Prod data
+
+Running `misc/load_staging_data.sh` sets the local DB data to the staging data, which is a pii-pruned version of prod.
