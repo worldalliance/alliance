@@ -18,6 +18,7 @@ export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
     actionId: 84,
     emphasis: "We raised $2,702 for Helen Keller International",
     rest: "by making small adjustments to our personal spending habits.",
+    imageSrc: "https://dj92mxbdjuclo.cloudfront.net/1785969542083.webp",
   },
   {
     actionId: 75,
@@ -51,6 +52,7 @@ export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
     emphasis:
       "We helped a small electronics company replace two components with environmentally friendly alternatives",
     rest: "in exchange for feedback on their product.",
+    imageSrc: "https://dj92mxbdjuclo.cloudfront.net/1785969766857.webp",
   },
   {
     actionId: 86,
@@ -85,14 +87,14 @@ export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
     rest: "after we emailed local restaurants who previously offered utensils by default.",
   },
   {
-    actionId: 54,
-    emphasis: "We submitted 27 well-researched comments",
-    rest: "to our representatives by identifying local issues relevant to Alliance priorities.",
-  },
-  {
     actionId: 50,
     emphasis: "We filled up to 20 potholes",
     rest: "by reporting them to our local governments.",
     imageSrc: "https://worldalliance.org/api/images/1762827853197.webp",
+  },
+  {
+    actionId: 54,
+    emphasis: "We submitted 27 researched comments",
+    rest: "to our representatives by identifying local issues relevant to Alliance priorities.",
   },
 ] as const;
