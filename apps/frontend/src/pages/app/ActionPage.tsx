@@ -9,6 +9,7 @@ import useActivities, {
 } from "@alliance/shared/lib/useActivities";
 import { cn } from "@alliance/shared/styles/util";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
+import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import { zIndex } from "@alliance/sharedweb/ui/zIndex";
 import { X } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -24,6 +25,7 @@ import {
 } from "react-router";
 import { ActionActivityDetailContext } from "../../components/ActionActivityDetail";
 import ActionActivityList from "../../components/ActionActivityList";
+import AllianceSignupPitch from "../../components/AllianceSignupPitch";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { useAuth } from "../../lib/AuthContext";
@@ -206,7 +208,7 @@ export default function ActionPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="referral-invite-popup-title"
-            className="relative w-full max-w-lg rounded-md bg-white p-6 shadow-2xl"
+            className="relative w-full max-w-xl rounded-3xl border border-white/70 bg-white p-6 shadow-2xl sm:p-8"
           >
             <button
               type="button"
@@ -227,9 +229,14 @@ export default function ActionPage() {
             >
               <X />
             </button>
+            {guestCompleted && (
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-green/10">
+                <CheckIcon size={28} />
+              </div>
+            )}
             <h2
               id="referral-invite-popup-title"
-              className="pr-8 text-2xl font-semibold text-zinc-900"
+              className="pr-8 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl"
             >
               {guestCompleted
                 ? taskHeaders.actionPage.completed
@@ -244,15 +251,13 @@ export default function ActionPage() {
             </p>
             {guestCompleted ? (
               <>
-                <p className="mt-4 text-base leading-7 text-zinc-700">
-                  {guestReferral.joinToCountContributions}
+                <p className="mt-1 text-base leading-7 text-zinc-700">
+                  {guestReferral.joinToCountContributionsLead}{" "}
+                  <strong className="font-semibold">join the Alliance.</strong>
                 </p>
-                <Link
-                  to={signupHref}
-                  className="mt-6 inline-flex w-full justify-center rounded-full bg-green px-6 py-3 text-base font-medium text-white transition hover:opacity-90"
-                >
-                  Sign up
-                </Link>
+                <div className="mt-6">
+                  <AllianceSignupPitch signupHref={signupHref} />
+                </div>
               </>
             ) : (
               <button

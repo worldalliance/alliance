@@ -32,6 +32,7 @@ import { isRouteErrorResponse, Link, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import { useAuth } from "../lib/AuthContext";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
+import AllianceSignupPitch from "./AllianceSignupPitch";
 import ActionTaskPanel from "./ActionTaskPanel";
 import ShareButton from "./ShareButton";
 import StackedCard from "./system/StackedCard";
@@ -267,7 +268,7 @@ const ActionPageTaskPanel = () => {
               signupHref && (
                 <div className="-mx-4 -mt-4 mb-4 overflow-hidden sm:-mx-6 sm:-mt-6">
                   <div
-                    className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-6 sm:py-5 ${
+                    className={`rounded-b-2xl rounded-t-none border-b border-zinc-200 bg-white px-4 py-5 sm:px-6 sm:py-6 ${
                       !guestCompleted && animateReferralPanel
                         ? "referral-panel-slide-in"
                         : ""
@@ -278,9 +279,15 @@ const ActionPageTaskPanel = () => {
                         <p className="text-base leading-7 text-zinc-700">
                           {guestReferral.completionIntegrityExplanation}
                         </p>
-                        <p className="mt-3 text-base leading-7 text-zinc-700">
-                          {guestReferral.joinToCountContributions}
+                        <p className="mt-1 text-base leading-7 text-zinc-700">
+                          {guestReferral.joinToCountContributionsLead}{" "}
+                          <strong className="font-semibold">
+                            join the Alliance.
+                          </strong>
                         </p>
+                        <div className="mt-5">
+                          <AllianceSignupPitch signupHref={signupHref} />
+                        </div>
                       </>
                     ) : (
                       <>
@@ -295,12 +302,14 @@ const ActionPageTaskPanel = () => {
                         </p>
                       </>
                     )}
-                    <Link
-                      to={signupHref}
-                      className="mt-5 block w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
-                    >
-                      Sign up
-                    </Link>
+                    {!guestCompleted && (
+                      <Link
+                        to={signupHref}
+                        className="mt-5 block w-full rounded-full bg-green px-6 py-3 text-center text-base font-medium text-white"
+                      >
+                        Sign up
+                      </Link>
+                    )}
                   </div>
                 </div>
               )}
