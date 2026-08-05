@@ -1,4 +1,3 @@
-import { formatLongDateEnUS } from "@alliance/shared/lib/dateFormatters";
 import React from "react";
 import { href } from "react-router";
 import type { ProgressProject } from "../content/projects";
@@ -10,7 +9,7 @@ const ProjectCard: React.FC<{ project: ProgressProject }> = ({ project }) => {
       to={href("/progress/projects/:slug", { slug: project.slug })}
       title={project.title}
       description={project.summary}
-      meta={formatLongDateEnUS(new Date(project.date))}
+      // meta={formatLongDateEnUS(new Date(project.date))}
     />
   );
 };
