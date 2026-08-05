@@ -36,7 +36,7 @@ export class LikeNotificationService {
     targetType: LikeNotificationTarget;
     targetId: number;
     webAppLocation: string;
-    targetContent?: string;
+    targetContent: string | null;
   }): Promise<void> {
     const {
       owner,
@@ -88,8 +88,7 @@ export class LikeNotificationService {
         }
 
         existingNotif.groupingKey = groupingKey;
-        existingNotif.targetContent =
-          existingNotif.targetContent ?? targetContent;
+        existingNotif.targetContent ??= targetContent;
         const updatedUsers = [...(existingNotif.associatedUsers ?? []), liker];
         existingNotif.associatedUsers = updatedUsers;
         existingNotif.groupingCount = updatedUsers.length;
@@ -239,7 +238,7 @@ export class LikeNotificationService {
   private buildMessage(params: {
     targetType: LikeNotificationTarget;
     count: number;
-    targetContent?: string;
+    targetContent: string | null;
     likerName?: string;
   }): string {
     const { targetType, count, targetContent, likerName } = params;

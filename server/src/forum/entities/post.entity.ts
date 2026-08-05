@@ -46,10 +46,10 @@ export class Post {
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn()
-  @ApiProperty()
-  @Allow()
+  @ApiPropertyOptional()
+  @IsOptional()
   @Type(() => User)
-  author: Relation<User>;
+  author?: Relation<User>;
 
   @Column()
   @ApiProperty()
@@ -58,15 +58,16 @@ export class Post {
 
   @ManyToOne(() => Action, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn()
-  @ApiProperty({ required: false, type: () => Action })
-  @Allow()
+  @ApiPropertyOptional({ type: () => Action })
+  @IsOptional()
   @Type(() => Action)
-  action: Relation<Action>;
+  action?: Relation<Action> | null;
 
   @Column({ nullable: true })
   @ApiPropertyOptional({ required: false })
   @IsOptional()
   @Allow()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   actionId?: number;
 
   @CreateDateColumnTz()
@@ -91,6 +92,7 @@ export class Post {
   @IsOptional()
   @Type(() => Date)
   @Allow()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   visibleAt?: Date;
 
   @Column({ default: false })
@@ -119,6 +121,7 @@ export class Post {
   @ApiPropertyOptional()
   @IsOptional()
   @Allow()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   expertLabel?: string;
 
   @ManyToMany(() => User, { onDelete: 'CASCADE' })

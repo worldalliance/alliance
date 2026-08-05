@@ -37,6 +37,7 @@ export class ActionFormAssignment {
   @JoinColumn({ name: 'actionId' })
   @Type(() => Action)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   action: Relation<Action>;
 
   @Column()
@@ -48,6 +49,7 @@ export class ActionFormAssignment {
   @JoinColumn({ name: 'userId' })
   @Type(() => User)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column({ type: 'int', nullable: true })
@@ -59,6 +61,7 @@ export class ActionFormAssignment {
   @JoinColumn({ name: 'variantId' })
   @Type(() => ActionFormVariant)
   @IsOptional()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   variant: Relation<ActionFormVariant> | null;
 
   @CreateDateColumnTz()

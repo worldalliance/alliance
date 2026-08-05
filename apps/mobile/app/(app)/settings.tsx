@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Alert, Switch, TextInput, TouchableOpacity, View } from "react-native";
 import AwayRangesSection from "../../components/AwayRangesSection";
 import PhoneNumberInput from "../../components/forms/PhoneNumberInput";
+import ReminderTimeSelect from "../../components/forms/ReminderTimeSelect";
 import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
 import KeyboardAwareScrollView from "../../components/KeyboardAwareScrollView";
 import Button, {
@@ -372,14 +373,11 @@ export default function SettingsPage() {
               <Text className="mb-2" weight={FontWeight.Medium}>
                 Preferred reminder time:
               </Text>
-              <TextInput
-                className={inputClasses}
-                value={editableUser.preferredReminderTime ?? ""}
-                onChangeText={(text) =>
-                  updateEditableUser({ preferredReminderTime: text })
+              <ReminderTimeSelect
+                value={editableUser.preferredReminderTime}
+                onChange={(preferredReminderTime) =>
+                  updateEditableUser({ preferredReminderTime })
                 }
-                placeholder="HH:MM (e.g., 09:00)"
-                placeholderTextColor={colors.text.light}
               />
             </View>
 

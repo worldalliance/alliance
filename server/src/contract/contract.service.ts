@@ -129,7 +129,7 @@ export class ContractService {
 
   async signContract(params: {
     userId: number;
-    signedName: string | undefined;
+    signedName: string | null;
     contractId: number;
   }): Promise<Date> {
     const { userId, signedName, contractId } = params;
@@ -292,11 +292,13 @@ export class ContractService {
     return contractEvent.date;
   }
 
-  async suspendContract(
-    userId: number,
-    automatic: boolean = false,
-    autoSuspendKey?: string,
-  ): Promise<Date> {
+  async suspendContract(params: {
+    userId: number;
+    automatic?: boolean;
+    autoSuspendKey?: string | null;
+  }): Promise<Date> {
+    const { userId, automatic = false, autoSuspendKey = null } = params;
+
     const user = await this.userService.findOneOrFail(userId, {
       contractEvents: true,
       communities: { leaders: true, users: true },

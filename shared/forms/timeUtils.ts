@@ -1,5 +1,7 @@
 const MINUTES_IN_DAY = 24 * 60;
-const TIME_24H_REGEX = /^([01]?\d|2[0-3]):([0-5]\d)$/;
+// Seconds are optional because a Postgres `time` column renders as `HH:MM:SS`,
+// while form answers and `<input type="time">` use `HH:MM`.
+const TIME_24H_REGEX = /^([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/;
 const TIME_12H_REGEX = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i;
 
 export type ParsedTime = {
@@ -87,6 +89,44 @@ export function formatTimeForDisplay(value: string | undefined | null): string {
   const minutes = parseTimeToMinutes(value);
   if (minutes === null) return value;
   return formatMinutesAs12h(minutes);
+}
+
+/**
+ * The form a `time` column round-trips in, and what the API expects for
+ * `preferredReminderTime`. The server accepts `HH:MM` too, but sending the
+ * canonical form keeps what the client holds identical to what it reads back.
+ */
+export function formatMinutesAsWireTime(totalMinutes: number): string {
+  return `${formatMinutesAs24h(totalMinutes)}:00`;
+}
+
+/** Canonicalizes a time for the wire; `null` for blank or unparseable input. */
+export function toWireTime(value: string | undefined | null): string | null {
+  const minutes = parseTimeToMinutes(value);
+  return minutes === null ? null : formatMinutesAsWireTime(minutes);
+}
+
+/** Strips the seconds an `<input type="time">` cannot round-trip. */
+export function toTimeInputValue(value: string | undefined | null): string {
+  const minutes = parseTimeToMinutes(value);
+  return minutes === null ? "" : formatMinutesAs24h(minutes);
+}
+
+export type TimeOfDayOption = {
+  /** Wire form, so it can be sent as-is. */
+  value: string;
+  label: string;
+};
+
+/** Every time of day on a `stepMinutes` grid, for a picker to list. */
+export function buildTimeOfDayOptions(stepMinutes: number): TimeOfDayOption[] {
+  return Array.from({ length: MINUTES_IN_DAY / stepMinutes }, (_, i) => {
+    const minutes = i * stepMinutes;
+    return {
+      value: formatMinutesAsWireTime(minutes),
+      label: formatMinutesAs12h(minutes),
+    };
+  });
 }
 
 export { TIME_12H_REGEX };

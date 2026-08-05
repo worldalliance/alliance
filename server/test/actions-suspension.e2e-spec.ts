@@ -252,7 +252,7 @@ describe('findUsersToSuspend (e2e)', () => {
       // so only the first 3 (fully past) suites should count.
       // failingUser has failed all 3 past suites => still suspended.
       const result = await actionsService.findUsersToSuspend(now);
-      expect(result.usersToSuspend.map((u) => u.id)).toEqual([failingUser.id]);
+      expect(result.map(({ user }) => user.id)).toEqual([failingUser.id]);
 
       // Now query at a time where only 2 suites are past and the 3rd suite's
       // deadline hasn't passed yet. Remove suite three's completed event deadline
@@ -263,7 +263,7 @@ describe('findUsersToSuspend (e2e)', () => {
       const midSuiteThree = new Date('2023-03-11T12:00:00Z');
       const midResult = await actionsService.findUsersToSuspend(midSuiteThree);
       // Only 2 suites are fully past at this point, not enough for suspension
-      expect(midResult.usersToSuspend).toHaveLength(0);
+      expect(midResult).toHaveLength(0);
     } finally {
       // Clean up the in-progress suite
       await eventRepo.delete({ action: { id: inProgressAction.id } });
@@ -332,9 +332,7 @@ describe('findUsersToSuspend (e2e)', () => {
     try {
       // 2 required failures + 1 optional failure should NOT trigger suspension
       const result = await actionsService.findUsersToSuspend(now);
-      expect(result.usersToSuspend.map((u) => u.id)).not.toContain(
-        failingUser.id,
-      );
+      expect(result.map(({ user }) => user.id)).not.toContain(failingUser.id);
     } finally {
       // Restore Suite Three so subsequent tests have the original 3 required suites
       await eventRepo.delete({ action: { id: optionalAction.id } });
@@ -359,22 +357,20 @@ describe('findUsersToSuspend (e2e)', () => {
   it('suspends users who fail three suites and does not re-suspend once inactive or re-signed', async () => {
     const initialRun = await actionsService.findUsersToSuspend(now);
 
-    expect(initialRun.usersToSuspend.map((u) => u.id)).toEqual([
-      failingUser.id,
-    ]);
-    expect(initialRun.suspendReasonKeys.get(failingUser.id)).toContain('s-');
-    expect(
-      initialRun.usersToSuspend.some((user) => user.id === completingUser.id),
-    ).toBe(false);
-
-    await contractService.suspendContract(
-      failingUser.id,
-      true,
-      'test-auto-key',
+    expect(initialRun.map(({ user }) => user.id)).toEqual([failingUser.id]);
+    expect(initialRun[0].reasonKey).toContain('s-');
+    expect(initialRun.some(({ user }) => user.id === completingUser.id)).toBe(
+      false,
     );
 
+    await contractService.suspendContract({
+      userId: failingUser.id,
+      automatic: true,
+      autoSuspendKey: 'test-auto-key',
+    });
+
     const afterSuspension = await actionsService.findUsersToSuspend(now);
-    expect(afterSuspension.usersToSuspend).toHaveLength(0);
+    expect(afterSuspension).toHaveLength(0);
 
     await contractService.signContract({
       userId: failingUser.id,
@@ -383,7 +379,7 @@ describe('findUsersToSuspend (e2e)', () => {
     });
 
     const afterResigning = await actionsService.findUsersToSuspend(now);
-    expect(afterResigning.usersToSuspend).toHaveLength(0);
+    expect(afterResigning).toHaveLength(0);
   });
 
   it('counts a user as failing a suite only when they miss every assigned action', async () => {
@@ -470,10 +466,10 @@ describe('findUsersToSuspend (e2e)', () => {
 
     const result = await actionsService.findUsersToSuspend(now);
 
-    expect(result.usersToSuspend.map((user) => user.id)).toContain(
+    expect(result.map(({ user }) => user.id)).toContain(
       multiActionFailingUser.id,
     );
-    expect(result.usersToSuspend.map((user) => user.id)).not.toContain(
+    expect(result.map(({ user }) => user.id)).not.toContain(
       multiActionCompletingUser.id,
     );
   });

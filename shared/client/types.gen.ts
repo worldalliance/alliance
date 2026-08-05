@@ -47,28 +47,6 @@ export type ForumDigestPreference = 'off' | 'daily' | 'weekly';
 
 export type PublicFormResponseDefault = 'public' | 'private';
 
-export type ContractEventType = 'signed' | 'suspended';
-
-export type Contract = {
-    id: number;
-    name: string | null;
-    createdAt: string;
-    markdown: string;
-    startDate: string | null;
-    endDate: string | null;
-    events: Array<ContractEvent>;
-};
-
-export type ContractEvent = {
-    type: ContractEventType;
-    date: string;
-    automatic: boolean;
-    autoSuspendKey?: string;
-    signedName?: string;
-    contractId?: number;
-    contract?: Contract | null;
-};
-
 export type ReferralSource = 'referral_link' | 'onetime_invite' | 'action_share_link' | 'external_share_link' | 'invite_share_link' | 'campaign' | 'none';
 
 export type NotificationPreference = 'all' | 'digest' | 'none';
@@ -285,16 +263,16 @@ export type Push = {
     expoPushToken: string;
     createdAt: string;
     body: string;
-    screen?: string;
+    screen: string | null;
     updatedAt: string;
-    receiptId?: string;
-    ticketStatus?: string;
-    receiptStatus?: string;
-    errorCode?: string;
-    errorMessage?: string;
-    lastCheckedStatusAt?: string;
-    idempotencyKey?: string;
-    openedAt?: string;
+    receiptId: string | null;
+    ticketStatus: string | null;
+    receiptStatus: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
+    lastCheckedStatusAt: string | null;
+    idempotencyKey: string;
+    openedAt: string | null;
 };
 
 export type ActionEventNotif = {
@@ -310,7 +288,7 @@ export type ActionEventNotif = {
      * Indicates whether the notification has been sent
      */
     sent: boolean;
-    idempotency_key?: string;
+    idempotency_key: string | null;
     createdAt: string;
 };
 
@@ -554,15 +532,15 @@ export type Notification = {
     category: NotificationCategory;
     message: string;
     priority: NotifPriority;
-    targetContent?: string;
+    targetContent: string | null;
     webAppLocation: string;
     mobileAppLocation: string | null;
     readAt: string | null;
     createdAt: string;
     updatedAt: string;
     sendTime: string;
-    groupingKey?: string;
-    groupingCount?: number;
+    groupingKey: string | null;
+    groupingCount: number | null;
     shouldPush: boolean;
     pushDispatchedAt: string | null;
     pushClaimedBy: string | null;
@@ -571,7 +549,7 @@ export type Notification = {
     comment?: Comment;
     onetimeInvite?: OnetimeInvite;
     communityInvite?: CommunityInvite;
-    cid?: string;
+    cid: string | null;
 };
 
 export type CommunityInvite = {
@@ -674,7 +652,7 @@ export type User = {
     name: string;
     phoneNumber: string | null;
     emailVerified: boolean;
-    preferredReminderTime?: string;
+    preferredReminderTime: string | null;
     timeZone?: string;
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
@@ -689,10 +667,10 @@ export type User = {
     ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
-    referralCode: string | null;
+    referralCode: string;
     stripeCustomerId: string | null;
     isNotSignedUpPartialProfile: boolean;
-    customCityString?: string | null;
+    customCityString: string | null;
     over18: boolean | null;
     anonymous: boolean;
     shareInfoPublicly: boolean;
@@ -705,7 +683,6 @@ export type User = {
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
-    contractEvents?: Array<ContractEvent>;
     referredByInvite: OnetimeInvite | null;
     referralSource: ReferralSource;
     referredByCampaign?: Campaign | null;
@@ -735,11 +712,20 @@ export type Tag = {
     generalUpdates: Array<GeneralUpdate>;
 };
 
+export type ContractEventType = 'signed' | 'suspended';
+
+export type ContractEventDto = {
+    type: ContractEventType;
+    date: string;
+    automatic: boolean;
+    contractId: number | null;
+};
+
 export type UserDto = {
     id: number;
     name: string;
     phoneNumber: string | null;
-    preferredReminderTime?: string;
+    preferredReminderTime: string | null;
     timeZone?: string;
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
@@ -753,8 +739,8 @@ export type UserDto = {
     ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
-    referralCode: string | null;
-    customCityString?: string | null;
+    referralCode: string;
+    customCityString: string | null;
     anonymous: boolean;
     shareInfoPublicly: boolean;
     formDataPreference: PublicFormResponseDefault;
@@ -766,7 +752,6 @@ export type UserDto = {
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
-    contractEvents?: Array<ContractEvent>;
     referralSource: ReferralSource;
     tags: Array<Tag>;
     communities: Array<Community>;
@@ -775,6 +760,7 @@ export type UserDto = {
     email: string;
     hasActiveContract: boolean;
     referredById?: number;
+    contractEvents?: Array<ContractEventDto>;
 };
 
 export type AuthMeResponseDto = {
@@ -807,7 +793,7 @@ export type ProfileDto = {
     displayName: string;
     hasActiveContract: boolean;
     isCommunityLeader: boolean;
-    lastContractEvent?: ContractEvent;
+    lastContractEvent?: ContractEventDto;
     cluster?: ClusterSummaryDto;
 };
 
@@ -838,7 +824,6 @@ export type UpdateAwayRangeDto = {
 
 export type UpdateProfileDto = {
     name?: string;
-    preferredReminderTime?: string;
     timeZone?: string;
     emailNotifsForActions?: boolean;
     textNotifsForActions?: boolean;
@@ -846,10 +831,7 @@ export type UpdateProfileDto = {
     shareEmailWithCommunityLead?: boolean;
     sharePhoneNumberWithCommunityLead?: boolean;
     forumDigestPreference?: ForumDigestPreference;
-    profilePicture?: string | null;
-    profileDescription?: string | null;
     isNotSignedUpPartialProfile?: boolean;
-    customCityString?: string | null;
     anonymous?: boolean;
     shareInfoPublicly?: boolean;
     formDataPreference?: PublicFormResponseDefault;
@@ -862,6 +844,10 @@ export type UpdateProfileDto = {
     receiveReplyNotifications?: boolean;
     cityId?: number | null;
     phoneNumber?: string | null;
+    profilePicture?: string | null;
+    preferredReminderTime?: string | null;
+    profileDescription?: string | null;
+    customCityString?: string | null;
 };
 
 export type City = {
@@ -926,7 +912,7 @@ export type UserAdminDetailDto = {
     id: number;
     name: string;
     phoneNumber: string | null;
-    preferredReminderTime?: string;
+    preferredReminderTime: string | null;
     timeZone?: string;
     emailNotifsForActions: boolean;
     textNotifsForActions: boolean;
@@ -940,8 +926,8 @@ export type UserAdminDetailDto = {
     ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
-    referralCode: string | null;
-    customCityString?: string | null;
+    referralCode: string;
+    customCityString: string | null;
     anonymous: boolean;
     shareInfoPublicly: boolean;
     formDataPreference: PublicFormResponseDefault;
@@ -953,7 +939,6 @@ export type UserAdminDetailDto = {
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
-    contractEvents?: Array<ContractEvent>;
     referralSource: ReferralSource;
     tags: Array<Tag>;
     communities: Array<Community>;
@@ -962,6 +947,7 @@ export type UserAdminDetailDto = {
     email: string;
     hasActiveContract: boolean;
     referredById?: number;
+    contractEvents?: Array<ContractEventDto>;
     location: UserAdminLocationDto;
     invitedBy: UserAdminInvitedByDto | null;
 };
@@ -981,7 +967,7 @@ export type ProfileDtoWithFriends = {
     displayName: string;
     hasActiveContract: boolean;
     isCommunityLeader: boolean;
-    lastContractEvent?: ContractEvent;
+    lastContractEvent?: ContractEventDto;
     cluster?: ClusterSummaryDto;
     friendIds: Array<number>;
 };
@@ -1238,16 +1224,16 @@ export type PushDto = {
     expoPushToken: string;
     createdAt: string;
     body: string;
-    screen?: string;
+    screen: string | null;
     updatedAt: string;
-    receiptId?: string;
-    ticketStatus?: string;
-    receiptStatus?: string;
-    errorCode?: string;
-    errorMessage?: string;
-    lastCheckedStatusAt?: string;
-    idempotencyKey?: string;
-    openedAt?: string;
+    receiptId: string | null;
+    ticketStatus: string | null;
+    receiptStatus: string | null;
+    errorCode: string | null;
+    errorMessage: string | null;
+    lastCheckedStatusAt: string | null;
+    idempotencyKey: string;
+    openedAt: string | null;
 };
 
 export type RegisterLiveActivityPushToStartTokenDto = {
@@ -1468,7 +1454,7 @@ export type ActionEventNotifDto = {
      * Indicates whether the notification has been sent
      */
     sent: boolean;
-    idempotency_key?: string;
+    idempotency_key: string | null;
     createdAt: string;
     user: ProfileDto;
 };

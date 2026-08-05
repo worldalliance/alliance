@@ -79,26 +79,30 @@ export class ContractEvent {
   @Allow()
   automatic: boolean;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ type: 'string' })
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ type: 'string', nullable: true })
   @IsOptional()
-  autoSuspendKey?: string;
+  autoSuspendKey: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ type: 'string' })
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ type: 'string', nullable: true })
   @IsOptional()
-  signedName?: string;
+  signedName: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
+  @Column({ type: 'int', nullable: true })
+  @ApiProperty({ nullable: true })
   @IsOptional()
-  contractId?: number;
+  contractId: number | null;
 
   // Relations
 
-  @ManyToOne(() => User, (user) => user.contractEvents, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.contractEvents, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
   @Allow()
   @Type(() => User)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @ManyToOne(() => Contract, (contract) => contract.events, {

@@ -128,6 +128,7 @@ export class ShareUrl {
 
   @Column({ nullable: true })
   @ApiPropertyOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   sid?: string;
 
   @Column({ default: false })

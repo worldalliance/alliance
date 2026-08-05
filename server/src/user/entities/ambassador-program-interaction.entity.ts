@@ -46,6 +46,7 @@ export class AmbassadorProgramInteraction {
   @ApiProperty({ type: () => AmbassadorProgramMember })
   @Type(() => AmbassadorProgramMember)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   programMember: Relation<AmbassadorProgramMember>;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })

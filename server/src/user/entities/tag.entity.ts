@@ -40,6 +40,7 @@ export class Tag {
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   publicDisplayName?: string;
 
   @CreateDateColumnTz()
@@ -63,11 +64,13 @@ export class Tag {
   @Allow()
   @JoinTable()
   @Type(() => User)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   users: Relation<User>[];
 
   @ManyToMany(() => GeneralUpdate, (generalUpdate) => generalUpdate.tags)
   @ApiProperty({ type: () => GeneralUpdate, isArray: true })
   @Allow()
   @Type(() => GeneralUpdate)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   generalUpdates: Relation<GeneralUpdate>[];
 }

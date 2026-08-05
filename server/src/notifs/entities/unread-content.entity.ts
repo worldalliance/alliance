@@ -18,8 +18,9 @@ export class UnreadContent {
   @ApiProperty()
   id: number;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column({ type: 'enum', enum: UnreadContentType })
@@ -30,8 +31,9 @@ export class UnreadContent {
   @ApiProperty()
   contentId: number;
 
-  @Column({ nullable: true })
-  groupingKey?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  groupingKey: string | null;
 
   @CreateDateColumnTz()
   @ApiProperty({ type: Date })

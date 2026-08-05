@@ -26,11 +26,6 @@ const rule = {
       {
         type: 'object',
         properties: {
-          /**
-           * Off while the un-migrated entities are drained — they are backlog,
-           * not regressions. `missingBrand` is already clean, so it stays on
-           * and keeps new violations out.
-           */
           checkLazyOptional: { type: 'boolean' },
         },
         additionalProperties: false,

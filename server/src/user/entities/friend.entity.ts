@@ -37,8 +37,8 @@ export class Friend {
   @CreateDateColumnTz()
   createdAt: Date;
 
-  @Column({ nullable: true })
-  acceptedAt?: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  acceptedAt: Date | null;
 
   @UpdateDateColumnTz()
   updatedAt: Date;
@@ -46,11 +46,13 @@ export class Friend {
   // Relations
 
   @ManyToOne(() => User, (user) => user.sentFriendRequests, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   requester?: Relation<User>;
 
   @ManyToOne(() => User, (user) => user.receivedFriendRequests, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
   addressee?: Relation<User>;
@@ -61,6 +63,7 @@ export class Friend {
     onDelete: 'SET NULL',
   })
   @JoinColumn()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   sentNotif: Relation<Notification> | null;
 
   @OneToOne(() => Notification, {
@@ -69,5 +72,6 @@ export class Friend {
     onDelete: 'SET NULL',
   })
   @JoinColumn()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   acceptedNotif: Relation<Notification> | null;
 }

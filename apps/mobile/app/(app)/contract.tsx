@@ -140,6 +140,7 @@ export default function ContractScreen() {
                 type: "suspended",
                 date: res.data.date,
                 automatic: false,
+                contractId: null,
               });
               await refreshContractState();
             }

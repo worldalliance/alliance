@@ -58,5 +58,6 @@ export class AmbassadorInviteGoal {
   @ApiProperty({ type: () => User })
   @Type(() => User)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   ambassador: Relation<User>;
 }

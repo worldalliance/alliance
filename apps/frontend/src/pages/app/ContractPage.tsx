@@ -46,7 +46,7 @@ const ContractPage: React.FC = () => {
   );
 
   const signedContractId =
-    lastContractEvent?.contractId !== undefined &&
+    typeof lastContractEvent?.contractId === "number" &&
     lastContractEvent.contractId !== latestContract?.id
       ? lastContractEvent.contractId
       : null;
@@ -112,6 +112,7 @@ const ContractPage: React.FC = () => {
           type: "suspended",
           date: res.data.date,
           automatic: false,
+          contractId: null,
         });
         await refreshUser();
       }

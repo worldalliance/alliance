@@ -130,13 +130,13 @@ describe('Tasks (e2e)', () => {
     await communityRepo.query('DELETE FROM community');
     await customValidatorRepo.query('DELETE FROM custom_validator');
     await userRepo.update(ctx.testUserId, {
-      phoneNumber: null as unknown as string,
-      profilePicture: null as unknown as string,
-      profileDescription: null as unknown as string,
+      phoneNumber: null,
+      profilePicture: null,
+      profileDescription: null,
       timeZone: null as unknown as string,
-      customCityString: null as unknown as string,
+      customCityString: null,
       shareInfoPublicly: false,
-      preferredReminderTime: null as unknown as string,
+      preferredReminderTime: null,
     });
   });
 
@@ -2173,7 +2173,7 @@ describe('Tasks (e2e)', () => {
         profileDescription: initialDescription,
         phoneNumber: null,
         timeZone: null as unknown as string,
-        customCityString: null as unknown as string,
+        customCityString: null,
         shareInfoPublicly: false,
       });
 
@@ -2309,63 +2309,70 @@ describe('Tasks (e2e)', () => {
       expect(updatedUser?.phoneNumber).toBe('+447578497969');
     });
 
-    it('extracts preferredReminderTime from time field', async () => {
-      const initialDescription = 'Another description that should persist';
-      await userRepo.update(ctx.testUserId, {
-        profileDescription: initialDescription,
-        preferredReminderTime: null as unknown as string,
-      });
+    it.each([
+      ['09:30', '09:30:00'],
+      ['9:30', '09:30:00'],
+      ['  09:30  ', '09:30:00'],
+    ])(
+      'extracts preferredReminderTime %p from time field as %p',
+      async (answer, stored) => {
+        const initialDescription = 'Another description that should persist';
+        await userRepo.update(ctx.testUserId, {
+          profileDescription: initialDescription,
+          preferredReminderTime: null,
+        });
 
-      const timeSchema: FormSchema = {
-        title: 'Time Extraction Form',
-        pages: [
-          {
-            id: 'page-1',
-            fields: [
-              {
-                id: 'time-field',
-                type: 'input',
-                kind: 'time',
-                label: 'Preferred Reminder Time',
-                autoExtractUserData: true,
-              },
-            ],
-          },
-        ],
-        outputViews: [],
-        aggregateViews: [],
-      };
+        const timeSchema: FormSchema = {
+          title: 'Time Extraction Form',
+          pages: [
+            {
+              id: 'page-1',
+              fields: [
+                {
+                  id: 'time-field',
+                  type: 'input',
+                  kind: 'time',
+                  label: 'Preferred Reminder Time',
+                  autoExtractUserData: true,
+                },
+              ],
+            },
+          ],
+          outputViews: [],
+          aggregateViews: [],
+        };
 
-      const action = await createAction('Time Extraction Action');
-      const formResponse = await request(ctx.app.getHttpServer())
-        .post('/tasks/createForm')
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: timeSchema.title, schema: timeSchema })
-        .expect(201);
-      await actionRepo.update(action.id, {
-        taskFormId: formResponse.body.id as number,
-      });
+        const action = await createAction(`Time Extraction Action ${answer}`);
+        const formResponse = await request(ctx.app.getHttpServer())
+          .post('/tasks/createForm')
+          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .send({ title: timeSchema.title, schema: timeSchema })
+          .expect(201);
+        await actionRepo.update(action.id, {
+          taskFormId: formResponse.body.id as number,
+        });
 
-      await request(ctx.app.getHttpServer())
-        .post(`/tasks/submitForm/${formResponse.body.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
-        .send({
-          answers: {
-            'time-field': '09:30',
-          },
-          formSnapshotId: formResponse.body.formSnapshotId as number,
-          actionId: action.id,
-          deviceType: 'desktop' as const,
-        })
-        .expect(201);
+        await request(ctx.app.getHttpServer())
+          .post(`/tasks/submitForm/${formResponse.body.id}`)
+          .set('Authorization', `Bearer ${ctx.accessToken}`)
+          .send({
+            answers: {
+              'time-field': answer,
+            },
+            formSnapshotId: formResponse.body.formSnapshotId as number,
+            actionId: action.id,
+            deviceType: 'desktop' as const,
+          })
+          .expect(201);
 
-      const updatedUser = await userRepo.findOne({
-        where: { id: ctx.testUserId },
-      });
+        const updatedUser = await userRepo.findOne({
+          where: { id: ctx.testUserId },
+        });
 
-      expect(updatedUser?.preferredReminderTime).toBeDefined();
-      expect(updatedUser?.profileDescription).toBe(initialDescription);
-    });
+        expect(updatedUser?.preferredReminderTime?.toString()).toBe(stored);
+        expect(updatedUser?.profileDescription).toBe(initialDescription);
+      },
+    );
 
     it('does not update user fields when form has no auto-extract fields', async () => {
       const initialDescription = 'Description that must not change';

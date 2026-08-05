@@ -43,8 +43,9 @@ export class MmsOptout {
   @ApiProperty()
   rawBody: string;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   @ApiProperty({ type: () => User })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 }

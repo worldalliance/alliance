@@ -105,9 +105,9 @@ export class Notification {
   @ApiProperty({ enum: NotifPriority, enumName: 'NotifPriority' })
   priority: NotifPriority;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  targetContent?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  targetContent: string | null;
 
   @Column()
   @ApiProperty()
@@ -134,13 +134,13 @@ export class Notification {
   @Type(() => Date)
   sendTime: Date;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  groupingKey?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  groupingKey: string | null;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  groupingCount?: number;
+  @Column({ type: 'int', nullable: true })
+  @ApiProperty({ type: Number, nullable: true })
+  groupingCount: number | null;
 
   @Column({ default: true })
   @ApiProperty()
@@ -162,8 +162,10 @@ export class Notification {
   // Relations
 
   @ManyToOne(() => User, (user) => user.notifications, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @ManyToMany(() => User)
@@ -174,6 +176,7 @@ export class Notification {
     nullable: true,
     onDelete: 'CASCADE',
   })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   pushes: Relation<Push>[];
 
   @ApiPropertyOptional({ type: () => ActionUpdate })
@@ -204,7 +207,7 @@ export class Notification {
   })
   communityInvite?: Relation<CommunityInvite>;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional()
-  cid?: string;
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  cid: string | null;
 }

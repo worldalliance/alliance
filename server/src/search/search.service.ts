@@ -115,7 +115,7 @@ export class SearchService {
       name: profile.displayName,
       type: SearchItemType.User,
       webAppLocation: profileUrl(user.id),
-      image: profile.profilePicture,
+      image: profile.profilePicture ?? undefined,
       secondaryData: friends ? ['Friend'] : self ? ['This is you!'] : [],
     };
   }

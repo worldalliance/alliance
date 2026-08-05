@@ -21,18 +21,22 @@ export class UserDevice {
   @ApiProperty()
   id: string;
 
-  @ManyToOne(() => User, (user) => user.devices, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.devices, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'userId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
-  @Column({ nullable: true })
-  deviceType?: string;
+  @Column({ type: 'varchar', nullable: true })
+  deviceType: string | null;
 
-  @Column({ nullable: true })
-  expoPushToken?: string;
+  @Column({ type: 'varchar', nullable: true })
+  expoPushToken: string | null;
 
-  @Column({ nullable: true })
-  liveActivityPushToStartToken?: string;
+  @Column({ type: 'varchar', nullable: true })
+  liveActivityPushToStartToken: string | null;
 
   @UpdateDateColumnTz()
   updatedAt: Date;

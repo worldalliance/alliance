@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   Column,
   Entity,
@@ -27,6 +27,7 @@ export class ForumDigestLog {
 
   @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: false })
   @ApiProperty({ type: () => User })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column({ type: 'date' })
@@ -53,10 +54,8 @@ export class ForumDigestLog {
   notificationIds: number[];
 
   @Column({ type: 'jsonb', nullable: true })
-  @ApiPropertyOptional({
-    isArray: true,
-  })
-  notificationsSummary?: StoredNotificationSummary[];
+  @ApiProperty({ type: [Object], nullable: true })
+  notificationsSummary: StoredNotificationSummary[] | null;
 
   @CreateDateColumnTz()
   @ApiProperty({ type: String, format: 'date-time' })

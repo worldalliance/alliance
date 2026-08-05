@@ -1,20 +1,24 @@
+import { Temporal } from '@js-temporal/polyfill';
 import {
   ApiProperty,
   ApiPropertyOptional,
   PartialType,
   PickType,
 } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   Allow,
   IsArray,
   IsBoolean,
   IsInt,
   IsOptional,
+  IsString,
   ValidateNested,
 } from 'class-validator';
 import { getImageSource } from 'src/images/images.service';
 import { IsE164 } from 'src/utils/phone';
+import { IsPlainTime, trimToPlainTime } from 'src/utils/plain-time';
+import { trimToNull } from 'src/utils/transforms';
 import { ClusterSummaryDto } from '../../cluster/dto/cluster.dto';
 import { Cluster } from '../../cluster/entities/cluster.entity';
 import { Campaign } from '../../campaign/entities/campaign.entity';
@@ -23,6 +27,7 @@ import { ShareUrl } from '../../share-urls/entities/share-url.entity';
 import {
   compareContractEventsNewestFirst,
   ContractEvent,
+  ContractEventType,
 } from '../entities/contract-event.entity';
 import { FriendStatus } from '../entities/friend.entity';
 import { OnetimeInvite } from '../entities/onetime-invite.entity';
@@ -47,6 +52,29 @@ export class FriendStatusDto {
   }
 }
 
+export class ContractEventDto {
+  @ApiProperty({ enum: ContractEventType, enumName: 'ContractEventType' })
+  type: ContractEventType;
+
+  @ApiProperty()
+  date: Date;
+
+  @ApiProperty()
+  automatic: boolean;
+
+  @ApiProperty({ type: Number, nullable: true })
+  contractId: number | null;
+
+  constructor(
+    input: Pick<ContractEvent, 'type' | 'date' | 'automatic' | 'contractId'>,
+  ) {
+    this.type = input.type;
+    this.date = input.date;
+    this.automatic = input.automatic;
+    this.contractId = input.contractId;
+  }
+}
+
 export class ProfileDto extends PickType(User, [
   'admin',
   'staff',
@@ -65,8 +93,8 @@ export class ProfileDto extends PickType(User, [
   @ApiProperty()
   isCommunityLeader: boolean;
 
-  @ApiPropertyOptional({ type: ContractEvent })
-  lastContractEvent?: ContractEvent;
+  @ApiPropertyOptional({ type: ContractEventDto })
+  lastContractEvent?: ContractEventDto;
 
   @ApiPropertyOptional({ type: ClusterSummaryDto })
   cluster?: ClusterSummaryDto;
@@ -97,8 +125,11 @@ export class ProfileDto extends PickType(User, [
     this.hasActiveContract = user.hasActiveContract;
     this.isCommunityLeader = user.isCommunityLeader;
     this.anonymous = user.anonymous;
-    this.lastContractEvent = user.contractEvents?.length
-      ? user.contractEvents?.sort(compareContractEventsNewestFirst)[0]
+    const lastContractEvent = user.contractEvents?.length
+      ? user.contractEvents.sort(compareContractEventsNewestFirst)[0]
+      : undefined;
+    this.lastContractEvent = lastContractEvent
+      ? new ContractEventDto(lastContractEvent)
       : undefined;
     if (user.anonymous) {
       this.displayName = 'Someone';
@@ -106,9 +137,9 @@ export class ProfileDto extends PickType(User, [
       this.displayName = user.name;
     }
 
-    if (user.profilePicture) {
-      this.profilePicture = getImageSource(user.profilePicture);
-    }
+    this.profilePicture = user.profilePicture
+      ? getImageSource(user.profilePicture)
+      : null;
 
     if (user.cluster) {
       this.cluster = new ClusterSummaryDto(user.cluster);
@@ -204,7 +235,6 @@ export class UserDto extends PickType(User, [
   'remindAboutUncompletedGroupMembers',
   'timeZone',
   'formDataPreference',
-  'contractEvents',
   'shareInfoPublicly',
   'customCityString',
   'undergoingGroupAssignment',
@@ -227,6 +257,11 @@ export class UserDto extends PickType(User, [
   @ApiPropertyOptional()
   @IsOptional()
   referredById?: number | null;
+
+  @ApiPropertyOptional({ type: ContractEventDto, isArray: true })
+  @IsOptional()
+  @Type(() => ContractEventDto)
+  contractEvents?: ContractEventDto[];
 
   constructor(user: User) {
     super();
@@ -263,13 +298,17 @@ export class UserDto extends PickType(User, [
     this.remindAboutUncompletedGroupMembers =
       user.remindAboutUncompletedGroupMembers;
     this.receiveReplyNotifications = user.receiveReplyNotifications;
-    this.contractEvents = user.contractEvents;
+    this.contractEvents = user.contractEvents?.map(
+      (event) => new ContractEventDto(event),
+    );
     this.activities = user.activities;
     this.tags = user.tags;
     this.communities = user.communities;
     this.leaderOfIds = user.leaderOfIds;
     this.hasActiveContract = user.hasActiveContract;
-    this.profilePicture = getImageSource(user.profilePicture);
+    this.profilePicture = user.profilePicture
+      ? getImageSource(user.profilePicture)
+      : null;
     this.referredById = user.referredBy?.id ?? null;
     this.clusterId = user.clusterId;
   }
@@ -438,8 +477,6 @@ function humanizeReferralSource(source: ReferralSource) {
 export class UpdateProfileDto extends PartialType(
   PickType(User, [
     'name',
-    'profileDescription',
-    'profilePicture',
     'anonymous',
     'emailNotifsForActions',
     'pushNotifsForActions',
@@ -449,12 +486,10 @@ export class UpdateProfileDto extends PartialType(
     'receiveReplyNotifications',
     'sharePhoneNumberWithCommunityLead',
     'forumDigestPreference',
-    'preferredReminderTime',
     'formDataPreference',
     'timeZone',
     'isNotSignedUpPartialProfile',
     'shareInfoPublicly',
-    'customCityString',
     'pushesForLikes',
     'pushesForComments',
     'pushesForFriendRequests',
@@ -470,6 +505,30 @@ export class UpdateProfileDto extends PartialType(
   @ApiPropertyOptional({ type: String, nullable: true })
   @IsE164()
   phoneNumber?: string | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsString()
+  @Transform(trimToNull)
+  profilePicture?: string | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsPlainTime()
+  @Transform(trimToPlainTime)
+  preferredReminderTime?: Temporal.PlainTime | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsString()
+  @Transform(trimToNull)
+  profileDescription?: string | null;
+
+  @IsOptional()
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsString()
+  @Transform(trimToNull)
+  customCityString?: string | null;
 }
 
 export class UpdateUserRolesAdminDto extends PartialType(

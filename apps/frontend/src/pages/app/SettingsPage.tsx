@@ -6,6 +6,7 @@ import {
   PublicFormResponseDefault,
   userMyLocation,
 } from "@alliance/shared/client";
+import { toTimeInputValue, toWireTime } from "@alliance/shared/forms/timeUtils";
 import { useSettingsAutosave } from "@alliance/shared/lib/useSettingsAutosave";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -482,10 +483,10 @@ const SettingsPage: React.FC = () => {
               <input
                 type="time"
                 className="border border-zinc-300 rounded px-3 py-3 self-start min-w-[200px]"
-                value={editableUser.preferredReminderTime}
+                value={toTimeInputValue(editableUser.preferredReminderTime)}
                 onChange={(event) =>
                   updateEditableUser({
-                    preferredReminderTime: event.target.value,
+                    preferredReminderTime: toWireTime(event.target.value),
                   })
                 }
               />

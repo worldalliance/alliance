@@ -34,12 +34,18 @@ export class Participant {
   id: number;
 
   @ManyToOne(() => Conversation, (conversation) => conversation.participants, {
+    nullable: false,
     onDelete: 'CASCADE',
   })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   conversation: Relation<Conversation>;
 
-  @ManyToOne(() => User, (user) => user.participants, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.participants, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'userId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column({ type: 'enum', enum: ParticipantRole, enumName: 'ParticipantRole' })

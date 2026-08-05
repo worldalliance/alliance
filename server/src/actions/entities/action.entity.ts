@@ -128,6 +128,7 @@ export class Action {
   @Column({ nullable: true })
   @ApiPropertyOptional({ description: 'Image URL for the action' })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   image?: string;
 
   @Column({ nullable: true })
@@ -135,6 +136,7 @@ export class Action {
     description: 'Square thumbnail image URL for the action',
   })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   squareThumbnailImage?: string;
 
   @Column({ nullable: true })
@@ -142,6 +144,7 @@ export class Action {
     description: 'Square thumbnail image alt for the action',
   })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   squareThumbnailImageAlt?: string;
 
   @Column({ default: 500, nullable: true })
@@ -149,6 +152,7 @@ export class Action {
     description: 'Suggested donation amount (cents)',
   })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   donationAmount?: number;
 
   @Column()
@@ -161,16 +165,19 @@ export class Action {
     description: 'markdown contents for activity task card (instructions)',
   })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   taskContents?: string;
 
   @Column({ nullable: true })
   @ApiProperty({ description: 'Short description shown in cards' })
   @Allow()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   shortDescription: string;
 
   @Column({ nullable: true })
   @ApiPropertyOptional({ description: 'Time estimate in minutes' })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   timeEstimate?: number;
 
   @Column({
@@ -189,6 +196,7 @@ export class Action {
   @Column({ nullable: true })
   @ApiPropertyOptional({ description: 'Form associated with the action' })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   taskFormId?: number;
 
   @CreateDateColumnTz()
@@ -210,6 +218,7 @@ export class Action {
   })
   @IsOptional()
   @Type(() => Object)
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   cohortExpression?: unknown;
 
   @Column({ default: false })
@@ -304,6 +313,7 @@ export class Action {
       'When set, takes precedence over any forum validator on the task form.',
   })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   forumParticipationPostId?: number;
 
   @Column({ default: false })
@@ -312,6 +322,7 @@ export class Action {
       'When using forumParticipationPostId, also count replies to nested child posts',
   })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   forumParticipationIncludeChildren?: boolean;
 
   @Column({ type: 'timestamptz', nullable: true })
@@ -320,27 +331,32 @@ export class Action {
   })
   @IsOptional()
   @Type(() => Date)
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   computedAutocompleteAt?: Date;
 
   @Column({ type: 'enum', enum: CustomActionStat, nullable: true })
   @Type(() => String)
   @ApiPropertyOptional({ enum: CustomActionStat, enumName: 'CustomActionStat' })
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   customStatType?: CustomActionStat;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   customStatLabel?: string;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   customStatValue?: number;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   customStatGoal?: number;
 
   // Relations
@@ -354,6 +370,7 @@ export class Action {
   @Allow()
   @IsArray()
   @Type(() => ActionEvent)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   events: Relation<ActionEvent>[];
 
   @OneToMany(() => ActionActivity, (activity) => activity.action)
@@ -365,6 +382,7 @@ export class Action {
   @Allow()
   @IsArray()
   @Type(() => ActionActivity)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   activities: Relation<ActionActivity>[];
 
   @OneToMany(() => ActionUpdate, (update) => update.action)
@@ -374,6 +392,7 @@ export class Action {
   })
   @Allow()
   @Type(() => ActionUpdate)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   updates: Relation<ActionUpdate>[];
 
   @OneToMany(() => FollowUpForm, (followUpForm) => followUpForm.action)
@@ -383,6 +402,7 @@ export class Action {
   })
   @Allow()
   @Type(() => FollowUpForm)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   followUpForms: Relation<FollowUpForm>[];
 
   @OneToMany(() => ActionFormVariant, (variant) => variant.action)
@@ -392,6 +412,7 @@ export class Action {
   })
   @Allow()
   @Type(() => ActionFormVariant)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   formVariants: Relation<ActionFormVariant>[];
 
   @ManyToOne(() => ActionSuite, (suite) => suite.actions, { nullable: true })

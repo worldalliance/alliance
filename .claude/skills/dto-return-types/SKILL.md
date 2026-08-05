@@ -70,6 +70,39 @@ class MaybeFormResponseDto {
 
 NestJS serializes a `null` return as a **200 with empty body** (not JSON `null`). The hey-api fetch client parses the empty body as `{}`, which is truthy and passes `value ?? fallback` — callers expecting `null` get a malformed empty DTO and crash downstream.
 
+## Update DTOs
+
+A `PartialType(...)` update DTO has two kinds of absence, and they mean different things:
+
+- `undefined` — field absent from the request, **leave the column unchanged**
+- `null` — field explicitly cleared, **write NULL**
+
+So a nullable column's update field is `?: T | null` — not `?: T` (unclearable) and not `: T | null` (every request must send it).
+
+```ts
+export class UpdateProfileDto extends PartialType(PickType(User, [...])) {
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  cityId?: number | null;
+}
+```
+
+`PartialType(PickType(Entity, [...]))` already yields that shape for a `T | null` column, so only hand-write the field when it needs its own validators or transform.
+
+Services applying an update must branch on `!== undefined`, not truthiness:
+
+```ts
+// ✅
+if (data.cityId !== undefined) {
+  user.city = data.cityId === null ? null : await this.resolveCity(data.cityId);
+}
+
+// ❌ — an empty/0/false value silently means "unchanged", so it can never be cleared
+if (!data.field) data.field = undefined;
+```
+
+Never route a clear through `repository.update()` as `undefined` — TypeORM skips undefined keys and the column keeps its old value. Pass `null`.
+
 ## Constructors
 
 Response DTOs take a single `input` parameter. Assign each field manually to prevent leakage — no `Object.assign`.

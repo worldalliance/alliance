@@ -48,11 +48,13 @@ export class Community {
   @Column({ nullable: true })
   @ApiProperty()
   @Allow()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   description: string;
 
   @Column({ nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   photo?: string;
 
   @CreateDateColumnTz()
@@ -92,6 +94,7 @@ export class Community {
   @JoinTable()
   @Type(() => User)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   users: Relation<User>[];
 
   @ManyToMany(() => User, (user) => user.leaderOf)
@@ -117,5 +120,6 @@ export class Community {
   @ApiProperty({ type: () => CommunityInvite, isArray: true })
   @Type(() => CommunityInvite)
   @IsDefined()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   internalInvites: Relation<CommunityInvite>[];
 }

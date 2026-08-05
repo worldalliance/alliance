@@ -24,14 +24,8 @@ export default tseslint.config([
     files: ['**/*.ts'],
     rules: {
       '@darraghor/nestjs-typed/controllers-should-supply-api-tags': 'off',
-      // `checkLazyOptional` is off while the un-migrated entities are drained.
-      // Drain them with
-      // `eslint --rule '{"local-rules/relation-optionality":"error"}' --fix`,
-      // then flip it on and delete the option.
-      'local-rules/relation-optionality': [
-        'error',
-        { checkLazyOptional: false },
-      ],
+      'local-rules/relation-optionality': 'error',
+      'local-rules/column-optionality': 'error',
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {
@@ -39,5 +33,8 @@ export default tseslint.config([
         },
       ],
     },
+  },
+  {
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
   },
 ]);

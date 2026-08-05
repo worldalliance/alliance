@@ -44,6 +44,7 @@ export class Form {
   @JoinColumn({ name: 'formSnapshotId' })
   @Type(() => FormSnapshot)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   formSnapshot: Relation<FormSnapshot>;
 
   @ManyToMany(() => FormSnapshot)
@@ -54,6 +55,7 @@ export class Form {
   })
   @Type(() => FormSnapshot)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   historicalFormSnapshots: Relation<FormSnapshot>[];
 
   @CreateDateColumnTz()
@@ -71,5 +73,6 @@ export class Form {
   @OneToMany(() => FormResponse, (r: FormResponse) => r.form)
   @Type(() => FormResponse)
   @IsArray()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   responses: Relation<FormResponse>[];
 }

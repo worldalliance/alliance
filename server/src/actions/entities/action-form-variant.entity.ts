@@ -36,6 +36,7 @@ export class ActionFormVariant {
   @JoinColumn({ name: 'actionId' })
   @Type(() => Action)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   action: Relation<Action>;
 
   @Column()
@@ -47,6 +48,7 @@ export class ActionFormVariant {
   @JoinColumn({ name: 'formId' })
   @Type(() => Form)
   @Allow()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   form: Relation<Form>;
 
   @Column({ type: 'text' })

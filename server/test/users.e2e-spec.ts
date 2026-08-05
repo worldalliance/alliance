@@ -1,5 +1,6 @@
 import { toE164 } from '@alliance/common/phone';
 import { R } from '@alliance/common/result';
+import { Temporal } from '@js-temporal/polyfill';
 import { AuthService } from 'src/auth/auth.service';
 import { ContractService } from 'src/contract/contract.service';
 import {
@@ -247,6 +248,176 @@ describe('Users (e2e)', () => {
 
       expect(res.status).toBe(400);
       expect(JSON.stringify(res.body)).toContain('E.164');
+    });
+  });
+
+  describe('profile picture on /user/update', () => {
+    const pictureOf = async (id: number) =>
+      (await userRepo.findOneByOrFail({ id })).profilePicture;
+
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post('/user/update')
+        .send(body)
+        .set('Authorization', `Bearer ${userAToken}`);
+
+    it('stores a key it is given', async () => {
+      const res = await update({ profilePicture: 'some/uploaded/key.jpg' });
+
+      expect(res.status).toBe(201);
+      expect(await pictureOf(userAId)).toBe('some/uploaded/key.jpg');
+    });
+
+    it('stores blank input as null, not as an empty string', async () => {
+      for (const blank of ['', '   ']) {
+        await update({ profilePicture: 'some/uploaded/key.jpg' });
+
+        const res = await update({ profilePicture: blank });
+
+        expect(res.status).toBe(201);
+        expect(await pictureOf(userAId)).toBeNull();
+      }
+    });
+
+    it('rejects a non-string picture instead of storing it', async () => {
+      await update({ profilePicture: 'some/uploaded/key.jpg' });
+
+      const res = await update({ profilePicture: 42 });
+
+      expect(res.status).toBe(400);
+      expect(await pictureOf(userAId)).toBe('some/uploaded/key.jpg');
+    });
+
+    it('leaves the picture alone when the field is absent', async () => {
+      await update({ profilePicture: 'some/uploaded/key.jpg' });
+
+      const res = await update({ profileDescription: 'unrelated edit' });
+
+      expect(res.status).toBe(201);
+      expect(await pictureOf(userAId)).toBe('some/uploaded/key.jpg');
+    });
+
+    it('serializes a cleared picture as null rather than omitting it', async () => {
+      await update({ profilePicture: null });
+
+      const res = await request(ctx.app.getHttpServer())
+        .get('/user/me')
+        .set('Authorization', `Bearer ${userAToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('profilePicture');
+      expect(res.body.profilePicture).toBeNull();
+    });
+  });
+
+  describe('blank text fields on /user/update', () => {
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post('/user/update')
+        .send(body)
+        .set('Authorization', `Bearer ${userAToken}`);
+
+    it.each(['profileDescription', 'customCityString'] as const)(
+      'stores blank %s as null, not as an empty string',
+      async (field) => {
+        for (const blank of ['', '   ']) {
+          await update({ [field]: 'something' });
+
+          const res = await update({ [field]: blank });
+
+          expect(res.status).toBe(201);
+          expect(
+            (await userRepo.findOneByOrFail({ id: userAId }))[field],
+          ).toBeNull();
+        }
+      },
+    );
+  });
+
+  describe('preferred reminder time on /user/update', () => {
+    const reminderTimeOf = async (id: number) =>
+      (
+        await userRepo.findOneByOrFail({ id })
+      ).preferredReminderTime?.toString() ?? null;
+
+    const update = (body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .post('/user/update')
+        .send(body)
+        .set('Authorization', `Bearer ${userAToken}`);
+
+    it('stores a time it is given, as the type the column claims', async () => {
+      const res = await update({ preferredReminderTime: '09:30:00' });
+
+      expect(res.status).toBe(201);
+      const { preferredReminderTime } = await userRepo.findOneByOrFail({
+        id: userAId,
+      });
+      expect(preferredReminderTime).toBeInstanceOf(Temporal.PlainTime);
+      expect(preferredReminderTime?.toString()).toBe('09:30:00');
+    });
+
+    // The settings pages read the time off `/auth/me` and put it straight into
+    // an input, so it has to stay a string on the wire even though the column
+    // now hands back a `PlainTime`.
+    it('still serializes the time as a plain string', async () => {
+      await update({ preferredReminderTime: '09:30:00' });
+
+      const res = await request(ctx.app.getHttpServer())
+        .get('/auth/me')
+        .set('Authorization', `Bearer ${userAToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.preferredReminderTime).toBe('09:30:00');
+    });
+
+    // The settings pages send the raw input value, so clearing the field
+    // arrives as a blank string rather than as null.
+    it('clears the time on blank input instead of keeping the old one', async () => {
+      for (const blank of ['', '   ', null]) {
+        await update({ preferredReminderTime: '09:30:00' });
+
+        const res = await update({ preferredReminderTime: blank });
+
+        expect(res.status).toBe(201);
+        expect(await reminderTimeOf(userAId)).toBeNull();
+      }
+    });
+
+    it('leaves the time alone when the field is absent', async () => {
+      await update({ preferredReminderTime: '09:30:00' });
+
+      const res = await update({ profileDescription: 'unrelated edit' });
+
+      expect(res.status).toBe(201);
+      expect(await reminderTimeOf(userAId)).toBe('09:30:00');
+    });
+
+    // The mobile settings screen is a free-text input, so unparseable times are
+    // ordinary user input rather than a malformed request.
+    it.each(['9am', '25:00', '10:75', '2026-01-01', 42, {}])(
+      'rejects %p instead of failing on the write',
+      async (invalid) => {
+        await update({ preferredReminderTime: '09:30:00' });
+
+        const res = await update({ preferredReminderTime: invalid });
+
+        expect(res.status).toBe(400);
+        expect(await reminderTimeOf(userAId)).toBe('09:30:00');
+      },
+    );
+
+    it.each([
+      ['09:30', '09:30:00'],
+      ['  09:30  ', '09:30:00'],
+      ['9:30', '09:30:00'],
+    ])('normalizes %p to %p before storing it', async (input, stored) => {
+      await update({ preferredReminderTime: null });
+
+      const res = await update({ preferredReminderTime: input });
+
+      expect(res.status).toBe(201);
+      expect(await reminderTimeOf(userAId)).toBe(stored);
     });
   });
 
@@ -1247,7 +1418,7 @@ describe('Users (e2e)', () => {
       });
 
       // Suspend contract (this should set pendingCommunity)
-      await contractService.suspendContract(user.id);
+      await contractService.suspendContract({ userId: user.id });
 
       // Set pendingCommunity manually to simulate the suspend flow
       const userWithPending = await userRepo.findOne({
@@ -1321,7 +1492,7 @@ describe('Users (e2e)', () => {
         signedName: 'Test Name',
         contractId: ctx.defaultContractId,
       });
-      await contractService.suspendContract(user.id);
+      await contractService.suspendContract({ userId: user.id });
 
       // Stand in for the suspend flow, and clear the queue flag the first
       // signing set so the assertion below can only come from the re-signing.
@@ -1388,7 +1559,7 @@ describe('Users (e2e)', () => {
       });
 
       // Suspend contract
-      await contractService.suspendContract(member.id);
+      await contractService.suspendContract({ userId: member.id });
 
       const updatedMember = await userRepo.findOne({
         where: { id: member.id },
@@ -1429,7 +1600,7 @@ describe('Users (e2e)', () => {
       });
 
       // Suspend contract
-      await contractService.suspendContract(leader.id);
+      await contractService.suspendContract({ userId: leader.id });
 
       const updatedLeader = await userRepo.findOne({
         where: { id: leader.id },
@@ -1485,7 +1656,7 @@ describe('Users (e2e)', () => {
         signedName: 'Test Name',
         contractId: ctx.defaultContractId,
       });
-      await contractService.suspendContract(member.id);
+      await contractService.suspendContract({ userId: member.id });
 
       const notifRepo = ctx.dataSource.getRepository(Notification);
       const leader1Notifs = await notifRepo.find({
@@ -1564,7 +1735,7 @@ describe('Users (e2e)', () => {
         signedName: 'Test Name',
         contractId: ctx.defaultContractId,
       });
-      await contractService.suspendContract(member.id);
+      await contractService.suspendContract({ userId: member.id });
 
       const updatedMember = await userRepo.findOne({
         where: { id: member.id },

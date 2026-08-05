@@ -32,6 +32,7 @@ import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
 import { StoredInviteAssignmentKind } from 'src/share-urls/invite-assignment-kind';
 import { findLeast } from 'src/utils/filter';
 import { phoneNumberTransformer } from 'src/utils/phone';
+import { plainTimeTransformer } from 'src/utils/plain-time';
 import type { Relation } from 'src/utils/Repository';
 import {
   BeforeInsert,
@@ -140,12 +141,13 @@ export class User {
   @ApiProperty()
   emailVerified: boolean;
 
-  @Column({ type: 'time', nullable: true })
-  @ApiPropertyOptional({ type: 'string' })
-  preferredReminderTime?: Temporal.PlainTime;
+  @Column({ type: 'time', nullable: true, transformer: plainTimeTransformer })
+  @ApiProperty({ type: 'string', nullable: true })
+  preferredReminderTime: Temporal.PlainTime | null;
 
   @Column({ type: 'text', nullable: true })
   @ApiPropertyOptional({ type: 'string' })
+  // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   timeZone?: Temporal.TimeZoneLike;
 
   // @Column({
@@ -241,37 +243,37 @@ export class User {
   @ApiProperty()
   ambassador: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   @ApiProperty({ nullable: true })
-  profilePicture: string;
+  profilePicture: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   @ApiProperty({ nullable: true })
-  profileDescription: string;
+  profileDescription: string | null;
 
-  @Column({ nullable: true })
-  @ApiProperty({ nullable: true })
+  @Column()
+  @ApiProperty()
   referralCode: string;
 
-  @Column({ nullable: true, unique: true })
+  @Column({ type: 'varchar', nullable: true, unique: true })
   @ApiProperty({ nullable: true })
   @Allow()
-  stripeCustomerId: string;
+  stripeCustomerId: string | null;
 
   @Column({ default: false })
   @ApiProperty()
   @Allow()
   isNotSignedUpPartialProfile: boolean;
 
-  @Column({ nullable: true })
-  @ApiPropertyOptional({ nullable: true })
-  @Allow()
-  customCityString?: string;
-
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   @ApiProperty({ nullable: true })
   @Allow()
-  over18: boolean;
+  customCityString: string | null;
+
+  @Column({ type: 'boolean', nullable: true })
+  @ApiProperty({ nullable: true })
+  @Allow()
+  over18: boolean | null;
 
   @Column({ default: false })
   @ApiProperty()
@@ -338,7 +340,6 @@ export class User {
 
   @OneToMany(() => ContractEvent, (event) => event.user, { cascade: true })
   @Type(() => ContractEvent)
-  @ApiPropertyOptional({ type: () => ContractEvent, isArray: true })
   contractEvents?: Relation<ContractEvent>[];
 
   @OneToMany(() => ActionActivity, (activity) => activity.user)
@@ -354,6 +355,7 @@ export class User {
   receivedFriendRequests?: Relation<Friend>[];
 
   @OneToMany(() => Notification, (notification) => notification.user)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   notifications: Relation<Notification>[];
 
   @ManyToOne(() => User, (user) => user.referredUsers, {
@@ -369,6 +371,7 @@ export class User {
   })
   @JoinColumn()
   @Type(() => OnetimeInvite)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   referredByInvite: Relation<OnetimeInvite> | null;
 
   @ManyToOne(() => ShareUrl, { nullable: true, onDelete: 'SET NULL' })
@@ -422,18 +425,22 @@ export class User {
   city?: Relation<City> | null;
 
   @OneToMany(() => ActionEventNotif, (notif) => notif.user)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   actionEventNotifs: Relation<ActionEventNotif>[];
 
   @OneToMany(() => UserAwayRange, (awayRange) => awayRange.user)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   awayRanges: Relation<UserAwayRange>[];
 
   @OneToOne(() => Mail, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'welcomeMailId' })
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   welcomeMail: Relation<Mail> | null;
 
   @ManyToMany(() => Tag, (tag) => tag.users, { onDelete: 'CASCADE' })
   @ApiProperty({ type: () => Tag, isArray: true })
   @Type(() => Tag)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   tags: Relation<Tag>[];
 
   @ManyToOne(() => Community, (community) => community.pendingUsers)
@@ -452,12 +459,14 @@ export class User {
   })
   @ApiProperty({ type: () => Community, isArray: true })
   @Type(() => Community)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   communities: Relation<Community>[];
 
   @ManyToMany(() => Community, (community) => community.leaders, {
     onDelete: 'CASCADE',
   })
   @Type(() => Community)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   leaderOf: Relation<Community>[];
 
   @RelationId((user: User) => user.leaderOf)
@@ -468,11 +477,13 @@ export class User {
   @ApiProperty({ type: () => CommunityInvite, isArray: true })
   @Type(() => CommunityInvite)
   @IsDefined()
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   invitedCommunities: Relation<CommunityInvite>[];
 
   @OneToMany(() => Participant, (participant) => participant.user)
   @ApiProperty({ type: () => Participant, isArray: true })
   @Type(() => Participant)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   participants: Relation<Participant>[];
 
   @ManyToMany(() => Action, (action) => action.authors)
@@ -481,6 +492,7 @@ export class User {
   authoredActions?: Relation<Action>[];
 
   @OneToMany(() => UserDevice, (device) => device.user)
+  // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   devices: Relation<UserDevice>[];
 
   @ManyToOne(() => Cluster, (cluster) => cluster.members, {

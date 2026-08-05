@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PickType } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
+import { randomUUID } from 'node:crypto';
 import { UserDevice } from 'src/user/entities/user-device.entity';
 import {
   In,
@@ -27,11 +28,11 @@ export class CreatePushMessage extends PickType(Push, [
   'expoPushToken',
   'body',
   'idempotencyKey',
-  'screen',
   'notification',
   'unreadContent',
 ]) {
   userId: number;
+  screen?: string;
 }
 
 @Injectable()
@@ -54,6 +55,7 @@ export class PushService {
       userId,
       expoPushToken: token,
       body,
+      idempotencyKey: randomUUID(),
     };
     return (await this.sendMessages([message]))[0];
   }
@@ -150,7 +152,7 @@ export class PushService {
         pushEntities[i].receiptStatus = 'pending';
       } else {
         // https://docs.expo.io/push-notifications/sending-notifications/#individual-errors
-        pushEntities[i].errorCode = ticket.details?.error;
+        pushEntities[i].errorCode = ticket.details?.error ?? null;
         pushEntities[i].errorMessage = ticket.message;
         console.error(`expo push error: ${ticket.details?.error}`);
         console.error(`expo push error: ${ticket.message}`);
@@ -210,7 +212,7 @@ export class PushService {
             console.error(
               `There was an error sending a notification: ${receipt.message}`,
             );
-            push.errorCode = receipt.details?.error;
+            push.errorCode = receipt.details?.error ?? null;
             push.errorMessage = receipt.message;
 
             if (receipt.details && receipt.details.error) {
