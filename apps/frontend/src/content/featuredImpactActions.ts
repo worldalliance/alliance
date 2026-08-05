@@ -9,6 +9,18 @@ export type FeaturedImpactAction = {
 
 export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
   {
+    actionId: 132,
+    emphasis:
+      "7 libraries around the world put up posters on a fact of our choice",
+    rest: "after we voted on facts we wanted more people to know.",
+    imageSrc: "https://dj92mxbdjuclo.cloudfront.net/1785971888425.webp",
+  },
+  {
+    actionId: 91,
+    emphasis: "We shared input on AI child safety standards",
+    rest: "by partnering with an apgard, an AI safety certification organization.",
+  },
+  {
     actionId: 130,
     emphasis:
       "We helped 77% of members bring their privacy in line with their preferences",
@@ -39,8 +51,8 @@ export const FEATURED_IMPACT_ACTIONS: readonly FeaturedImpactAction[] = [
   },
   {
     actionId: 91,
-    emphasis: "We submitted public records requests to 100+ California cities",
-    rest: "to build a statewide map of police AI usage.",
+    emphasis: "We built a statewide map of police AI usage",
+    rest: "by submitting public records requests to 100+ California cities.",
   },
   {
     actionId: 76,
