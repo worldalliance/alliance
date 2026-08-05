@@ -50,6 +50,20 @@ const NEEDS_SPECIAL_HANDLING: Record<MyEnum, boolean> = {
 
 Apply this to any branch keyed on a closed set (enum, string-literal union, tagged union `kind`), even when there are only two variants today.
 
+## Function arguments
+
+At three or more parameters, take a single `params` or `input` object instead.
+
+```ts
+// ✅
+function myFunction(params: { foo: string; bar?: number; baz?: boolean }): void;
+
+// ❌ — `myFunction('hello world', undefined, true)` at the callsite
+function myFunction(foo: string, bar?: number, baz?: boolean): void;
+```
+
+One or two parameters are usually fine positionally, but it depends — for example, `slice(start, end)` reads well, but `move(sourceId, targetId)` doesn't. Two same-typed or boolean parameters are worth naming even at two.
+
 ## Comments
 
 Default to no comment. Add one only when it explains a non-obvious constraint, rationale, invariant, or edge case that the code cannot express clearly.

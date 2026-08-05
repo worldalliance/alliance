@@ -5,6 +5,10 @@ description: Generate and review TypeORM database migrations in server/ — migr
 
 # Migrations
 
+## Scope
+
+A migration must never carry load-bearing logic — anything the running app depends on at request time (SQL functions, triggers, stored procedures) is owned by the app and installed by it, not by a migration. Migrations are for auto-generated schema changes and one-time data changes only.
+
 ## Generate
 
 ```
@@ -21,9 +25,9 @@ The generator can get things wrong. Key pitfall:
 
 Always review the generated SQL and edit when needed before committing.
 
-## Raw-SQL / trigger-only migrations
+## Raw-SQL migrations
 
-For migrations with only raw SQL (triggers, functions) and no entity changes, `migration:generate` fails with "no changes". Use `migration:create`:
+For migrations with only raw SQL (one-time data changes) and no entity changes, `migration:generate` fails with "no changes". Use `migration:create`:
 
 ```
 cd server && bun migration:create -- migrations/{name}

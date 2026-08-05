@@ -5,12 +5,12 @@ description: NestJS endpoint return-type and DTO rules — explicit DTO return t
 
 # Endpoint Return Types
 
-Controller methods must declare an **explicit** return type — a single DTO class, or `Promise<void>` for no-content endpoints. No primitives, no `T | null`, no inferred returns.
+Controller methods must declare an explicit return type — a single DTO class, or `Promise<void>` for no-content endpoints.
 
 ```ts
 // ✅
 async getThing(): Promise<ThingDto> { ... }
-async deleteThing(): Promise<void> { ... }
+async doThing(): Promise<void> { ... }
 
 // ❌
 async isEligible(): Promise<boolean> { ... }
@@ -31,15 +31,22 @@ async getThing(): Promise<ThingDto> { ... }
 async getThing(): Promise<OtherDto> { ... }
 ```
 
-To return a primitive or optional value, **wrap it in a DTO**. The DTO's _fields_ can be optional or `| null` — the restriction only applies at the endpoint boundary.
+To return a primitive or optional value, wrap it in a DTO. The DTO's fields may be optional or `| null`.
 
 ```ts
+export type IsEligibleDtoParams = { eligible: boolean; reason?: string };
+
 class IsEligibleDto {
   @ApiProperty()
   eligible: boolean;
 
   @ApiPropertyOptional()
   reason?: string;
+
+  constructor(params: IsEligibleDtoParams) {
+    this.eligible = params.eligible;
+    this.reason = params.reason;
+  }
 }
 @ApiOkResponse({ type: IsEligibleDto })
 async isEligible(): Promise<IsEligibleDto> { ... }
@@ -47,7 +54,7 @@ async isEligible(): Promise<IsEligibleDto> { ... }
 
 ## Resource may not exist
 
-**Throw `NotFoundException`** when absence is exceptional:
+Throw `NotFoundException` when absence is exceptional:
 
 ```ts
 async getGuestFormResponse(...): Promise<FormResponseDto> {
@@ -57,7 +64,7 @@ async getGuestFormResponse(...): Promise<FormResponseDto> {
 }
 ```
 
-**Wrapper DTO** when absence is a normal state the caller branches on:
+Wrapper DTO when absence is a normal state the caller branches on:
 
 ```ts
 class MaybeFormResponseDto {
@@ -68,7 +75,28 @@ class MaybeFormResponseDto {
 
 ## Why
 
-NestJS serializes a `null` return as a **200 with empty body** (not JSON `null`). The hey-api fetch client parses the empty body as `{}`, which is truthy and passes `value ?? fallback` — callers expecting `null` get a malformed empty DTO and crash downstream.
+NestJS serializes a `null` return as a 200 with empty body (not JSON `null`). The hey-api fetch client parses the empty body as `{}`, which is truthy and passes `value ?? fallback` — callers expecting `null` get a malformed empty DTO and crash downstream.
+
+## Update DTOs
+
+A `PartialType(...)` update DTO has two kinds of absence, and they mean different things:
+
+- `undefined` (or absent) – leave the column unchanged
+- `null` – field explicitly cleared (write NULL)
+
+So a nullable column's update field should be `?: T | null` — not `?: T` (unclearable) and not `: T | null` (every request must send it).
+
+```ts
+export class UpdateEntityDto extends PartialType(PickType(Entity, [...])) {
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  description?: string | null;
+}
+```
+
+`PartialType(PickType(Entity, [...]))` already yields that shape for a `T | null` column, so only hand-write the field when it needs its own validators or transform.
+
+TypeORM also follows this convention in `repository.update()`: `undefined` to skip, `null` to clear.
 
 ## Update DTOs
 
@@ -105,23 +133,26 @@ Never route a clear through `repository.update()` as `undefined` — TypeORM ski
 
 ## Constructors
 
-Response DTOs take a single `input` parameter. Assign each field manually to prevent leakage — no `Object.assign`.
+Response DTO constructors take a single parameter named `input` or `params` . Assign each field manually to prevent leakage — no `Object.assign`.
 
 ```ts
 // ✅
-export class SuspensionPlanDto {
-  @ApiProperty({ type: Date }) date: Date;
-  @ApiProperty({ type: () => ProfileDto, isArray: true }) users: ProfileDto[];
+export class MyExampleDto {
+  @ApiProperty({ type: Date })
+  date: Date;
 
-  constructor(input: SuspensionPlan) {
+  @ApiProperty({ type: () => ProfileDto, isArray: true })
+  profiles: ProfileDto[];
+
+  constructor(input: MyExample) {
     this.date = input.date;
-    this.users = input.users.map((u) => new ProfileDto(u));
+    this.profiles = input.users.map((u) => new ProfileDto(u));
   }
 }
-export type SuspensionPlan = { date: Date; users: User[] };
+export type MyExample = { date: Date; users: User[] };
 
 // ❌ — Object.assign hides which fields are part of the response
-constructor(input: SuspensionPlan) {
+constructor(input: MyExample) {
   Object.assign(this, input);
 }
 ```
@@ -130,17 +161,17 @@ constructor(input: SuspensionPlan) {
 
 Pick the input type by this order:
 
-1. **Entity-backed DTO** — input type is the entity itself (`constructor(input: SuspensionPlan)` above is the entity case; the named-type case below is for non-entity DTOs).
+1. **Entity-backed DTO** — input type is the entity itself (`constructor(input: MyExample)` above is the entity case; the named-type case below is for non-entity DTOs).
 2. **Single primitive field** — take the value positionally.
 3. **Otherwise** — define a named type alongside the DTO. Never use an inline anonymous type. Name it:
-   - `<DtoName-without-Dto>` by default — e.g. `UploadImageResponseDto` → `UploadImageResponse`, `ConversationAdminSummaryDto` → `ConversationAdminSummary`.
-   - `<DtoName>Args` (keep the `Dto` suffix, append `Args`) only when the natural name would collide with an existing type — e.g. `ConversationDto` can't use `Conversation` (the entity), so use `ConversationDtoArgs`.
+   - `<DtoName-without-Dto>` by default — e.g. `FooDto` → `Foo`, `ExampleDto` → `Example`.
+   - `<DtoName>Args` (keep the `Dto` suffix, append `Args`) only when the natural name would collide with an existing type — e.g. `BarDto` can't use `Bar` (the entity), so use `BarDtoArgs`.
 
    Don't reach for `Input`/`Params`/etc. — pick one of the two above.
 
 ```ts
 // ✅ single primitive — positional
-export class DeleteImageResponseDto {
+export class DeleteEntityResponseDto {
   @ApiProperty() deleted: boolean;
   constructor(deleted: boolean) {
     this.deleted = deleted;
@@ -148,11 +179,11 @@ export class DeleteImageResponseDto {
 }
 
 // ✅ multi-field — named type
-export type UploadImageResponse = { url: string; key: string };
-export class UploadImageResponseDto {
+export type UploadEntityResponse = { url: string; key: string };
+export class UploadEntityResponseDto {
   @ApiProperty() url: string;
   @ApiProperty() key: string;
-  constructor(input: UploadImageResponse) {
+  constructor(input: UploadEntityResponse) {
     this.url = input.url;
     this.key = input.key;
   }
@@ -162,7 +193,24 @@ export class UploadImageResponseDto {
 constructor(input: { url: string; key: string }) { ... }
 ```
 
-**Inputs are raw data, never other DTOs.** The DTO is responsible for converting entities/raw values into its inner DTOs. Services return raw input shapes (`SuspensionPlan[]`, not `SuspensionPlanDto[]`); the controller calls `new XxxDto(...)`.
+**Inputs are raw data, never other DTOs.** The DTO is responsible for converting entities/raw values into its inner DTOs. Services return raw input shapes (`MyEntity[]`, not `MyEntityDto[]`); the controller calls `new XxxDto(...)`.
+
+```ts
+export class MyProfilesDto {
+  @ApiProperty({ type: ProfileDto, isArray: true })
+  profiles: ProfileDto[];
+
+  // ✅ — constructor takes entities and builds the inner DTOs itself
+  constructor(users: User[]) {
+    this.profiles = users.map((u) => new ProfileDto(u));
+  }
+
+  // ❌ — constructor takes DTOs, so the service has to build them
+  constructor(profiles: ProfileDto[]) {
+    this.profiles = profiles;
+  }
+}
+```
 
 Use `PickType` over `OmitType` — explicit field lists don't silently grow when the entity gains a column, except in specific cases.
 
