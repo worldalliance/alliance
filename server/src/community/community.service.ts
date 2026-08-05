@@ -672,6 +672,83 @@ export class CommunityService {
     });
   }
 
+  async moveUserBetweenCommunitiesAdmin(params: {
+    sourceCommunityId: number;
+    destinationCommunityId: number;
+    userId: number;
+  }): Promise<void> {
+    const { sourceCommunityId, destinationCommunityId, userId } = params;
+    if (sourceCommunityId === destinationCommunityId) {
+      throw new BadRequestException('Source and destination must be different');
+    }
+
+    const [sourceCommunity, destinationCommunity, user] = await Promise.all([
+      this.findOneOrFail(sourceCommunityId),
+      this.findOneOrFail(destinationCommunityId),
+      this.userRepository.findOneOrFail({ where: { id: userId } }),
+    ]);
+
+    if (!sourceCommunity.users.some((member) => member.id === userId)) {
+      throw new BadRequestException(
+        `${user.name} is not a member of ${sourceCommunity.name}`,
+      );
+    }
+    if (sourceCommunity.leaders?.some((leader) => leader.id === userId)) {
+      throw new BadRequestException(
+        'Group leaders cannot be moved without first removing their leader role',
+      );
+    }
+    if (destinationCommunity.users.some((member) => member.id === userId)) {
+      throw new BadRequestException(
+        `${user.name} is already a member of ${destinationCommunity.name}`,
+      );
+    }
+    if (!acceptsStaffAssignment(destinationCommunity)) {
+      throw new BadRequestException(
+        `Group ${destinationCommunity.name} is full or does not accept staff assignments`,
+      );
+    }
+
+    await this.assertUsersHaveActiveContracts([user]);
+    await this.addUsersToCommunityAndRefreshConversation({
+      user,
+      community: destinationCommunity,
+      notifForLeader: ({ leader }) => ({
+        user: leader,
+        category: NotificationCategory.MemberJoinedCommunity,
+        message: `Staff added ${user.name} to your group (${destinationCommunity.name})`,
+        webAppLocation: groupUrl({
+          tab: 'members',
+          communityId: destinationCommunity.id,
+        }),
+        associatedUsers: [user],
+      }),
+    });
+    await this.removeUserFromCommunityAndRefreshConversation({
+      user,
+      community: sourceCommunity,
+      removeAsLeader: false,
+      notifForLeader: ({ leader }) => ({
+        user: leader,
+        category: NotificationCategory.RemovedFromCommunityForLeader,
+        message: `Alliance staff removed ${user.name} from your group (${sourceCommunity.name})`,
+        webAppLocation: groupUrl({
+          tab: 'members',
+          communityId: sourceCommunity.id,
+        }),
+        associatedUsers: [user],
+      }),
+      saveAsPendingCommunity: false,
+    });
+    await this.notifsService.sendNotif({
+      user,
+      category: NotificationCategory.CommunityAssigned,
+      message: `Alliance staff moved you from ${sourceCommunity.name} to ${destinationCommunity.name}`,
+      webAppLocation: groupUrl({ communityId: destinationCommunity.id }),
+      associatedUsers: [],
+    });
+  }
+
   async addLeaderAdmin(
     communityId: number,
     userId: number,

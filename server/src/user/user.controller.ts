@@ -423,6 +423,8 @@ export class UserController {
       referredByShareUrl: true,
       city: true,
       tags: true,
+      communities: true,
+      leaderOf: true,
     });
     if (!user) {
       throw new NotFoundException('User not found');

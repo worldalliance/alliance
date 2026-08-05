@@ -61,3 +61,9 @@ export class CommunityMemberDto {
   @IsNumber()
   userId: number;
 }
+
+export class MoveCommunityMemberDto extends CommunityMemberDto {
+  @ApiProperty()
+  @IsNumber()
+  destinationCommunityId: number;
+}

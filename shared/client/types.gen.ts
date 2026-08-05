@@ -1518,6 +1518,11 @@ export type CommunityMemberDto = {
     userId: number;
 };
 
+export type MoveCommunityMemberDto = {
+    userId: number;
+    destinationCommunityId: number;
+};
+
 export type CommunityMemberContactInfoDto = {
     id: number;
     timeZone?: string;
@@ -6600,6 +6605,32 @@ export type CommunityRemoveMemberAdminResponses = {
 };
 
 export type CommunityRemoveMemberAdminResponse = CommunityRemoveMemberAdminResponses[keyof CommunityRemoveMemberAdminResponses];
+
+export type CommunityMoveMemberAdminData = {
+    body: MoveCommunityMemberDto;
+    path: {
+        communityId: number;
+    };
+    query?: never;
+    url: '/community/{communityId}/moveMember/admin';
+};
+
+export type CommunityMoveMemberAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type CommunityMoveMemberAdminError = CommunityMoveMemberAdminErrors[keyof CommunityMoveMemberAdminErrors];
+
+export type CommunityMoveMemberAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type CommunityMoveMemberAdminResponse = CommunityMoveMemberAdminResponses[keyof CommunityMoveMemberAdminResponses];
 
 export type CommunityLeaveData = {
     body?: never;

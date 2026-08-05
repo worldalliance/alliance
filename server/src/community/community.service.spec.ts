@@ -44,6 +44,7 @@ describe('CommunityService', () => {
       save: jest
         .fn()
         .mockImplementation((entity) => Promise.resolve({ ...entity })),
+      findOneOrFail: jest.fn(),
     } as unknown as jest.Mocked<Repository<Community>>;
 
     // The only query builder this service builds is the contract check, which
@@ -70,6 +71,7 @@ describe('CommunityService', () => {
 
     userRepository = {
       save: jest.fn().mockResolvedValue(undefined),
+      findOneOrFail: jest.fn(),
       createQueryBuilder: jest.fn(() => contractCheck),
     } as unknown as jest.Mocked<Repository<User>>;
 
@@ -78,6 +80,7 @@ describe('CommunityService', () => {
     } as unknown as jest.Mocked<ConversationService>;
 
     notifsService = {
+      sendNotif: jest.fn().mockResolvedValue(undefined),
       sendNotifs: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<NotifsService>;
 
@@ -361,6 +364,49 @@ describe('CommunityService', () => {
       });
 
       expect(userRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('moveUserBetweenCommunitiesAdmin', () => {
+    it('sends the member one notification describing the move', async () => {
+      const user = { id: 99, name: 'Moving Member' } as User;
+      const sourceCommunity = buildCommunity({
+        id: 1,
+        name: 'Old Group',
+        users: [leader1, user],
+        leaders: [leader1],
+      });
+      const destinationCommunity = buildCommunity({
+        id: 2,
+        name: 'New Group',
+        users: [leader2],
+        leaders: [leader2],
+        allowStaffAssignments: true,
+        maxCapacity: 10,
+      });
+      jest
+        .spyOn(service, 'findOneOrFail')
+        .mockImplementation((id) =>
+          Promise.resolve(
+            id === sourceCommunity.id ? sourceCommunity : destinationCommunity,
+          ),
+        );
+      userRepository.findOneOrFail.mockResolvedValue(user);
+
+      await service.moveUserBetweenCommunitiesAdmin({
+        sourceCommunityId: sourceCommunity.id,
+        destinationCommunityId: destinationCommunity.id,
+        userId: user.id,
+      });
+
+      expect(notifsService.sendNotif).toHaveBeenCalledTimes(1);
+      expect(notifsService.sendNotif).toHaveBeenCalledWith({
+        user,
+        category: NotificationCategory.CommunityAssigned,
+        message: 'Alliance staff moved you from Old Group to New Group',
+        webAppLocation: '/groups?communityId=2',
+        associatedUsers: [],
+      });
     });
   });
 });

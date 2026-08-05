@@ -29,6 +29,7 @@ import {
   CommunityDto,
   CommunityMemberDto,
   CreateCommunityDto,
+  MoveCommunityMemberDto,
   UpdateCommunityDto,
 } from './dto/community.dto';
 
@@ -169,6 +170,20 @@ export class CommunityController {
         body.userId,
       ),
     );
+  }
+
+  @Post(':communityId/moveMember/admin')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  async moveMemberAdmin(
+    @Param('communityId', ParseIntPipe) communityId: number,
+    @Body() body: MoveCommunityMemberDto,
+  ): Promise<void> {
+    await this.communityService.moveUserBetweenCommunitiesAdmin({
+      sourceCommunityId: communityId,
+      destinationCommunityId: body.destinationCommunityId,
+      userId: body.userId,
+    });
   }
 
   @Post(':communityId/leave')
