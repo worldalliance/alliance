@@ -76,6 +76,7 @@ import { ShareUrlsService } from 'src/share-urls/share-urls.service';
 import { UpdateProfileDto } from 'src/user/dto/user.dto';
 import { User } from 'src/user/entities/user.entity';
 import { UserService } from 'src/user/user.service';
+import { toPlainTime } from 'src/utils/plain-time';
 import { getVideoSource } from 'src/videos/videos.service';
 import { In, IsNull, type Repository } from 'typeorm';
 import {
@@ -764,10 +765,10 @@ export class TasksService {
     }
 
     if (preferredReminderTime) {
-      try {
-        const parsedTime = Temporal.PlainTime.from(preferredReminderTime);
+      const parsedTime = toPlainTime(preferredReminderTime);
+      if (parsedTime) {
         userUpdates.preferredReminderTime = parsedTime;
-      } catch {
+      } else {
         this.logger.warn(
           `Failed to parse preferred reminder time: ${preferredReminderTime}`,
         );

@@ -10,9 +10,9 @@ import type { ValueTransformer } from 'typeorm';
  * now send `HH:MM:SS`, but the mobile ones that shipped with a free-text field
  * are still installed, so keep padding.
  */
-function toPlainTime(value: string): Temporal.PlainTime | null {
+export function toPlainTime(value: string): Temporal.PlainTime | null {
   try {
-    return Temporal.PlainTime.from(value.replace(/^\d:/, '0$&'));
+    return Temporal.PlainTime.from(value.trim().replace(/^\d:/, '0$&'));
   } catch {
     return null;
   }
