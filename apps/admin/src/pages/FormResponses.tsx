@@ -90,6 +90,16 @@ const FormResponses: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // Memoised for its identity, not its cost: `FormResponsesView` keys a memo
+  // and an effect off this array, and a fresh literal each render re-runs both.
+  const snapshotTargets = useMemo(
+    () =>
+      isFormIdValid
+        ? [{ formId: numericFormId, name: form?.title ?? "This form" }]
+        : undefined,
+    [isFormIdValid, numericFormId, form?.title],
+  );
+
   return (
     <FormResponsesView
       title={form?.title ?? "Form Responses"}
@@ -101,7 +111,7 @@ const FormResponses: React.FC = () => {
       withdrawnUserMap={withdrawnUserMap}
       sidsToUserMap={sidsToUserMap}
       exportFileBase={form?.title || `form-${form?.id ?? numericFormId}`}
-      snapshotsFormId={isFormIdValid ? numericFormId : null}
+      snapshotTargets={snapshotTargets}
     />
   );
 };

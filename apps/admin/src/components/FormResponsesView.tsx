@@ -28,8 +28,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useNavigate, useSearchParams } from "react-router";
+import { useLocation, useNavigate, useSearchParams } from "react-router";
+import {
+  getDirectSnapshotTarget,
+  type ReturnToState,
+  type SnapshotMigrationTarget,
+} from "../lib/navigation";
 import FormResponseStatistics from "./FormResponseStatistics";
+import SnapshotTargetPicker from "./SnapshotTargetPicker";
 
 const WithdrawalBadge: React.FC<{ className?: string }> = ({ className }) => (
   <span
@@ -252,10 +258,12 @@ export type FormResponsesViewProps = {
   /** Base filename (without extension) for the CSV export. */
   exportFileBase: string;
   /**
-   * When set, shows a "Reassign snapshots" button targeting this form. Only
-   * meaningful in single-form mode.
+   * When non-empty, shows a "Reassign snapshots" button. It navigates straight
+   * to the migration page when the target is unambiguous — one target, or the
+   * variant filter already narrowed to one — and otherwise prompts for which
+   * form (i.e. which variant) to migrate.
    */
-  snapshotsFormId?: number | null;
+  snapshotTargets?: SnapshotMigrationTarget[];
   /**
    * When provided, enables the variant filter dropdown and per-response variant
    * labels. Each response is matched to a variant by its `formId`.
@@ -279,12 +287,25 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   withdrawnUserMap,
   sidsToUserMap,
   exportFileBase,
-  snapshotsFormId,
+  snapshotTargets,
   variantOptions,
   paramNamespace,
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [page, setPage] = useState(1);
+  const [pickingSnapshotTarget, setPickingSnapshotTarget] = useState(false);
+
+  const goToSnapshots = useCallback(
+    (formId: number) => {
+      navigate(`/forms/${formId}/snapshots`, {
+        state: {
+          returnTo: `${location.pathname}${location.search}`,
+        } satisfies ReturnToState,
+      });
+    },
+    [navigate, location.pathname, location.search],
+  );
 
   const [params, setParams] = useSearchParams();
 
@@ -330,6 +351,28 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     if (!variantOptions || !variantParam) return null;
     return variantOptions.find((option) => option.key === variantParam) ?? null;
   }, [variantOptions, variantParam]);
+
+  const directSnapshotTarget = useMemo(() => {
+    return getDirectSnapshotTarget({
+      targets: snapshotTargets,
+      selectedFormId: selectedVariant?.formId,
+    });
+  }, [snapshotTargets, selectedVariant]);
+
+  const snapshotPickerTargets =
+    pickingSnapshotTarget && !directSnapshotTarget && snapshotTargets?.length
+      ? snapshotTargets
+      : null;
+
+  // The picker's visibility is derived, so the request to open it has to be
+  // withdrawn once it's moot — otherwise a refresh that resolves the ambiguity
+  // only hides the modal, and a later one that reintroduces it reopens the
+  // modal with no user action.
+  useEffect(() => {
+    if (directSnapshotTarget || !snapshotTargets?.length) {
+      setPickingSnapshotTarget(false);
+    }
+  }, [directSnapshotTarget, snapshotTargets]);
 
   // Responses narrowed to the selected variant (or all, when none selected).
   const scopedResponses = useMemo(() => {
@@ -846,11 +889,15 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
               >
                 Refresh
               </Button>
-              {snapshotsFormId != null && (
+              {snapshotTargets && snapshotTargets.length > 0 && (
                 <Button
-                  onClick={() =>
-                    navigate(`/forms/${snapshotsFormId}/snapshots`)
-                  }
+                  onClick={() => {
+                    if (directSnapshotTarget) {
+                      goToSnapshots(directSnapshotTarget.formId);
+                    } else {
+                      setPickingSnapshotTarget(true);
+                    }
+                  }}
                   color={ButtonColor.White}
                   size="small"
                 >
@@ -1232,6 +1279,17 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {snapshotPickerTargets && (
+        <SnapshotTargetPicker
+          targets={snapshotPickerTargets}
+          onSelect={(target) => {
+            setPickingSnapshotTarget(false);
+            goToSnapshots(target.formId);
+          }}
+          onCancel={() => setPickingSnapshotTarget(false)}
+        />
       )}
     </div>
   );

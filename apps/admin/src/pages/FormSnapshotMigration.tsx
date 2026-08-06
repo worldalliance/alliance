@@ -11,7 +11,8 @@ import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
+import { getReturnTo } from "../lib/navigation";
 import { SchemaDiffView } from "../lib/schemaDiff";
 
 const formatRespondent = (response: SnapshotResponseSummaryDto): string => {
@@ -129,8 +130,14 @@ const SnapshotGroupCard: React.FC<{
 const FormSnapshotMigration: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const numericFormId = Number(formId);
   const isFormIdValid = !Number.isNaN(numericFormId);
+
+  const returnTo = useMemo(
+    () => getReturnTo(location.state, `/forms/${numericFormId}/responses`),
+    [location.state, numericFormId],
+  );
 
   const queryClient = useQueryClient();
   const queryKey = useMemo(
@@ -247,7 +254,7 @@ const FormSnapshotMigration: React.FC = () => {
         <Button
           color={ButtonColor.White}
           size="small"
-          onClick={() => navigate(`/forms/${numericFormId}/responses`)}
+          onClick={() => navigate(returnTo)}
         >
           Back to responses
         </Button>

@@ -204,6 +204,7 @@ const ActionMergedResponsesTab: React.FC<ActionMergedResponsesTabProps> = ({
       withdrawnUserMap={withdrawnUserMap}
       sidsToUserMap={sidsToUserMap}
       exportFileBase={exportFileBase}
+      snapshotTargets={variantOptions}
       variantOptions={hasVariants ? variantOptions : undefined}
       paramNamespace={paramNamespace}
     />

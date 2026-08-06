@@ -16,6 +16,10 @@ When reading, inspecting, modifying, or reviewing files under a subtree that has
 
 **Always typecheck with `bun run typecheck`** — it works in any package (`server`, `apps/{frontend,admin,mobile}`, `sharedweb`, `shared`, `common`) and resolves the correct config (e.g. `tsconfig.typecheck.json`, which pulls shared sources in directly). Do **not** substitute a bare `tsc` invocation, even with `--noEmit`.
 
+## Testing
+
+Run unit tests from the repo root with `bun run test`. Scope it by passing packages: `bun run test apps/admin sharedweb`. From inside a package, use a bare `bun test`.
+
 ## Dependencies
 
 Dependencies in `apps/admin/package.json` must also be declared in `apps/frontend/package.json`. The workspace setup is non-standard. Use the same version range across packages and run `bun install` after editing.

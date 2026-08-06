@@ -1,4 +1,12 @@
 # Classic hoisted node_modules (not isolated) so tsc/eslint resolve shared types
 # (e.g. @types/react) across workspace packages reliably.
+#
+# Every workspace member with its own bunfig.toml shadows this file — a member
+# bunfig replaces the root one rather than merging — so each repeats the
+# `[install]` block below and changes here need mirroring into all of them.
+# `ls */bunfig.toml apps/*/bunfig.toml` is the list; don't trust an enumeration
+# in a comment. Those copies also preload a DOM for their React tests, which is
+# why unit tests run per package: use `bun run test` (see scripts/test-all.sh),
+# not a bare `bun test` here.
 [install]
 linker = "hoisted"

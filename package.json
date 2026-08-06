@@ -21,6 +21,7 @@
     "admin:dev": "bun run --cwd apps/admin dev",
     "server:dev": "cd server && bun dev",
     "gen-api": "bun run --cwd shared gen-api",
+    "test": "./scripts/test-all.sh",
     "eas-build-pre-install": "bun install --frozen-lockfile"
   },
   "devDependencies": {

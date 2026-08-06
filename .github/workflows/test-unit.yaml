@@ -27,12 +27,7 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      # Runs through scripts/test-all.sh so the discovery/skip rule lives in one
+      # place and `bun run test` locally behaves identically to CI.
       - name: Run Unit Tests
-        working-directory: ${{ inputs.package }}
-        run: |
-          # Mirrors bun test's discovery glob: **{.test,.spec,_test_,_spec_}.{js,ts,jsx,tsx}
-          if find . -name node_modules -prune -o -type f -print | grep -Eq '(\.test|\.spec|_test_|_spec_)\.(js|ts|jsx|tsx)$'; then
-            bun test
-          else
-            echo "No test files in ${{ inputs.package }} — skipping."
-          fi
+        run: scripts/test-all.sh "${{ inputs.package }}"

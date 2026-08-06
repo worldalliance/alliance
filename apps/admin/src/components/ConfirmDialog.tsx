@@ -1,13 +1,17 @@
-import { cn } from "@alliance/shared/styles/util";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import React, { useCallback, useEffect } from "react";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import Modal, {
+  ModalActions,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from "@alliance/sharedweb/ui/Modal";
+import React from "react";
 
 interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
   message: string;
-  confirmText?: string;
-  cancelText?: string;
   onConfirm: () => void;
   onCancel: () => void;
   isLoading?: boolean;
@@ -17,80 +21,69 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isOpen,
   title,
   message,
-  confirmText = "Confirm",
-  cancelText = "Cancel",
   onConfirm,
   onCancel,
   isLoading = false,
 }) => {
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (!isOpen) return;
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        onConfirm();
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
-      }
-    },
-    [onConfirm, onCancel, isOpen],
-  );
-
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => {
-        document.addEventListener("keydown", handleKeyDown);
-      }, 10);
-    }
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, handleKeyDown]);
-
-  if (!isOpen) return null;
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // `e.repeat` guards the dialog's own opening keystroke: holding Enter on
+    // the trigger keeps delivering keydowns, and repeats retarget to whatever
+    // now has focus — by then, the panel.
+    if (isLoading || e.key !== "Enter" || e.shiftKey || e.repeat) return;
+    // Only while the panel shell itself holds focus. Once focus is on a control
+    // inside, that control owns the key: preventing its default would swallow
+    // its own activation and confirm instead — notably on Cancel.
+    if (e.target !== e.currentTarget) return;
+    e.preventDefault();
+    onConfirm();
+  };
 
   return (
-    <div
-      className={cn(
-        zIndex.modal,
-        "fixed inset-0 bg-black/50 flex items-center justify-center p-4",
-      )}
+    <Modal
+      open={isOpen}
+      onClose={onCancel}
+      onKeyDown={handleKeyDown}
+      dismissOnBackdrop={false}
+      dismissDisabled={isLoading}
+      showClose={false}
+      panelClassName="max-w-2xl max-h-[90vh] flex flex-col"
     >
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-        </div>
+      <ModalHeader className="p-6">
+        <ModalTitle
+          render={<h3 />}
+          className="text-lg font-medium text-gray-900"
+        >
+          {title}
+        </ModalTitle>
+      </ModalHeader>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="text-sm text-gray-600 whitespace-pre-wrap break-words">
-            {message}
-          </div>
-        </div>
-
-        {/* Fixed footer with buttons */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-lg">
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={onCancel}
-              disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-            >
-              {cancelText}
-            </button>
-            <button
-              onClick={onConfirm}
-              disabled={isLoading}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isLoading ? "Updating..." : confirmText}
-            </button>
-          </div>
-        </div>
+      <div className="flex-1 overflow-y-auto p-6">
+        <ModalDescription className="text-sm text-gray-600 whitespace-pre-wrap break-words">
+          {message}
+        </ModalDescription>
       </div>
-    </div>
+
+      <ModalFooter className="p-6">
+        <ModalActions>
+          <Button
+            color={ButtonColor.White}
+            size="small"
+            onClick={onCancel}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+          <Button
+            color={ButtonColor.Black}
+            size="small"
+            onClick={onConfirm}
+            disabled={isLoading}
+          >
+            {isLoading ? "Updating..." : "Confirm"}
+          </Button>
+        </ModalActions>
+      </ModalFooter>
+    </Modal>
   );
 };
 

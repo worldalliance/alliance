@@ -1,0 +1,9 @@
+# A bunfig in a workspace member shadows the root one rather than merging, so
+# the root's `[install]` block is repeated here. Keep the two in sync.
+[install]
+linker = "hoisted"
+
+# `bun test` ignores the package.json `test` script, so the DOM preload has to
+# live here for CI (which runs `bun test`) to pick it up.
+[test]
+preload = ["./test-setup.ts"]

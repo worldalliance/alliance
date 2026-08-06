@@ -24,6 +24,7 @@
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.11.1",
     "@hey-api/openapi-ts": "^0.67.3",
+    "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.3.2",
     "@types/jest": "^29.5.14",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -31,7 +32,6 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.typecheck.json && eslint .",
-    "test": "bun test",
     "gen-api": "bunx openapi-ts"
   }
 }
