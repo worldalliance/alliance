@@ -622,7 +622,7 @@ describe('Users (e2e)', () => {
     expect(typeof suspend.text === 'string' || suspend.body).toBeTruthy();
   });
 
-  it('counts one-time and reusable invite recruits after they sign the contract', async () => {
+  it('counts one-time, reusable invite, and referral-link recruits after they sign the contract', async () => {
     const ambassador = await userRepo.save(
       userRepo.create({
         name: 'Invite Goal Ambassador',
@@ -663,10 +663,19 @@ describe('Users (e2e)', () => {
         referralSource: ReferralSource.InviteShareLink,
       }),
     );
+    const referralLinkRecruit = await userRepo.save(
+      userRepo.create({
+        name: 'Referral Link Goal Recruit',
+        email: 'referral.link.goal.recruit@example.com',
+        password: 'Password123!',
+        referredBy: ambassador,
+        referralSource: ReferralSource.ReferralLink,
+      }),
+    );
     const now = new Date();
     const goal = await userService.createAmbassadorInviteGoal(
       {
-        targetSuccessfulRecruits: 2,
+        targetSuccessfulRecruits: 3,
         startAt: now.toISOString(),
         dueAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
       },
@@ -693,16 +702,33 @@ describe('Users (e2e)', () => {
       signedName: reusableInviteRecruit.name,
       contractId: ctx.defaultContractId,
     });
+    await contractService.signContract({
+      userId: referralLinkRecruit.id,
+      signedName: referralLinkRecruit.name,
+      contractId: ctx.defaultContractId,
+    });
 
     const afterSigning = await userService.getAmbassadorInviteDashboard(
       ambassador.id,
     );
-    expect(afterSigning.stats.totalSuccessfulRecruits).toBe(2);
+    expect(afterSigning.stats.totalSuccessfulRecruits).toBe(3);
     expect(
       afterSigning.goals.find(
         ({ goal: resultGoal }) => resultGoal.id === goal.id,
       )?.stats.goalSuccessfulRecruits,
-    ).toBe(2);
+    ).toBe(3);
+
+    await userService.upsertAmbassadorProgramMember({
+      userId: ambassador.id,
+      activeParticipant: true,
+    });
+    const programMember = (
+      await userService.getAmbassadorProgramDashboard()
+    ).members.find((member) => member.userId === ambassador.id);
+    expect(programMember?.inviteStats?.totals.totalSuccessfulRecruits).toBe(3);
+    expect(
+      programMember?.inviteStats?.currentGoal?.stats.goalSuccessfulRecruits,
+    ).toBe(3);
   });
 
   describe('signContract behavior', () => {

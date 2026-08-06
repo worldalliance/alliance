@@ -157,6 +157,19 @@ const AMBASSADOR_INVITES_URL = '/invites';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const AMBASSADOR_GOAL_NOTIFICATION_LOOKBACK_MS = 60 * 60 * 1000;
 const AMBASSADOR_PROJECTION_DAYS = [14, 30] as const;
+const AMBASSADOR_REFERRAL_SOURCE_ELIGIBILITY: Record<ReferralSource, boolean> =
+  {
+    [ReferralSource.ReferralLink]: true,
+    [ReferralSource.OnetimeInvite]: true,
+    [ReferralSource.ActionShareLink]: false,
+    [ReferralSource.ExternalShareLink]: false,
+    [ReferralSource.InviteShareLink]: true,
+    [ReferralSource.Campaign]: false,
+    [ReferralSource.None]: false,
+  };
+const AMBASSADOR_REFERRAL_SOURCES = Object.values(ReferralSource).filter(
+  (source) => AMBASSADOR_REFERRAL_SOURCE_ELIGIBILITY[source],
+);
 const EMPTY_AMBASSADOR_INVITE_STATS: AmbassadorInviteStats = {
   totalInvitesSent: 0,
   totalAcceptedInvites: 0,
@@ -2085,12 +2098,12 @@ export class UserService {
           FROM selected_users
           LEFT JOIN "user" invited_user
             ON invited_user."referredById" = selected_users."userId"
-            AND invited_user."referralSource" IN ($3, $4)
+            AND invited_user."referralSource"::text = ANY($3::text[])
           LEFT JOIN LATERAL (
             SELECT MIN(contract_event."date") AS "signedAt"
             FROM "contract_event" contract_event
             WHERE contract_event."userId" = invited_user."id"
-              AND contract_event."type" = $5
+              AND contract_event."type" = $4
           ) first_sign ON TRUE
           GROUP BY selected_users."userId"
         ),
@@ -2101,7 +2114,7 @@ export class UserService {
           FROM selected_users
           LEFT JOIN "share_url" share_invite
             ON share_invite."userId" = selected_users."userId"
-            AND share_invite."kind" = $6
+            AND share_invite."kind" = $5
             AND share_invite."duplicate" = TRUE
           GROUP BY selected_users."userId"
         )
@@ -2127,8 +2140,7 @@ export class UserService {
       [
         userIds,
         OnetimeInviteStatus.LINK_USED,
-        ReferralSource.OnetimeInvite,
-        ReferralSource.InviteShareLink,
+        AMBASSADOR_REFERRAL_SOURCES,
         ContractEventType.SIGNED,
         ShareUrlKind.Invite,
       ],
@@ -2192,12 +2204,12 @@ export class UserService {
           FROM selected_goals
           LEFT JOIN "user" invited_user
             ON invited_user."referredById" = selected_goals."userId"
-            AND invited_user."referralSource" IN ($6, $7)
+            AND invited_user."referralSource"::text = ANY($6::text[])
           LEFT JOIN LATERAL (
             SELECT MIN(contract_event."date") AS "signedAt"
             FROM "contract_event" contract_event
             WHERE contract_event."userId" = invited_user."id"
-              AND contract_event."type" = $8
+              AND contract_event."type" = $7
           ) first_sign ON TRUE
           GROUP BY selected_goals."goalId"
         ),
@@ -2208,7 +2220,7 @@ export class UserService {
           FROM selected_goals
           LEFT JOIN "share_url" share_invite
             ON share_invite."userId" = selected_goals."userId"
-            AND share_invite."kind" = $9
+            AND share_invite."kind" = $8
             AND share_invite."duplicate" = TRUE
             AND share_invite."createdAt" >= selected_goals."startAt"
             AND share_invite."createdAt" <= selected_goals."dueAt"
@@ -2240,8 +2252,7 @@ export class UserService {
         goals.map((goal) => goal.startAt),
         goals.map((goal) => goal.dueAt),
         OnetimeInviteStatus.LINK_USED,
-        ReferralSource.OnetimeInvite,
-        ReferralSource.InviteShareLink,
+        AMBASSADOR_REFERRAL_SOURCES,
         ContractEventType.SIGNED,
         ShareUrlKind.Invite,
       ],
@@ -2273,21 +2284,21 @@ export class UserService {
       `
         SELECT
           COUNT(*) FILTER (
-            WHERE ($5::timestamptz IS NULL OR invite."createdAt" >= $5::timestamptz)
-              AND ($6::timestamptz IS NULL OR invite."createdAt" <= $6::timestamptz)
+            WHERE ($4::timestamptz IS NULL OR invite."createdAt" >= $4::timestamptz)
+              AND ($5::timestamptz IS NULL OR invite."createdAt" <= $5::timestamptz)
           )::int + (
             SELECT COUNT(*)::int
             FROM "share_url" share_invite
             WHERE share_invite."userId" = $1
-              AND share_invite."kind" = $7
+              AND share_invite."kind" = $6
               AND share_invite."duplicate" = TRUE
-              AND ($5::timestamptz IS NULL OR share_invite."createdAt" >= $5::timestamptz)
-              AND ($6::timestamptz IS NULL OR share_invite."createdAt" <= $6::timestamptz)
+              AND ($4::timestamptz IS NULL OR share_invite."createdAt" >= $4::timestamptz)
+              AND ($5::timestamptz IS NULL OR share_invite."createdAt" <= $5::timestamptz)
           ) AS "totalInvitesSent",
           COUNT(*) FILTER (
             WHERE invite."status" = $2
-              AND ($5::timestamptz IS NULL OR invite."createdAt" >= $5::timestamptz)
-              AND ($6::timestamptz IS NULL OR invite."createdAt" <= $6::timestamptz)
+              AND ($4::timestamptz IS NULL OR invite."createdAt" >= $4::timestamptz)
+              AND ($5::timestamptz IS NULL OR invite."createdAt" <= $5::timestamptz)
           )::int AS "totalAcceptedInvites",
           (
             SELECT COUNT(*)::int
@@ -2296,13 +2307,13 @@ export class UserService {
               SELECT MIN(contract_event."date") AS "signedAt"
               FROM "contract_event" contract_event
               WHERE contract_event."userId" = invited_user."id"
-                AND contract_event."type" = $8
+                AND contract_event."type" = $7
             ) first_sign ON TRUE
             WHERE invited_user."referredById" = $1
-              AND invited_user."referralSource" IN ($3, $4)
+              AND invited_user."referralSource"::text = ANY($3::text[])
               AND first_sign."signedAt" IS NOT NULL
-              AND ($5::timestamptz IS NULL OR first_sign."signedAt" >= $5::timestamptz)
-              AND ($6::timestamptz IS NULL OR first_sign."signedAt" <= $6::timestamptz)
+              AND ($4::timestamptz IS NULL OR first_sign."signedAt" >= $4::timestamptz)
+              AND ($5::timestamptz IS NULL OR first_sign."signedAt" <= $5::timestamptz)
           ) AS "totalSuccessfulRecruits"
         FROM "onetime_invite" invite
         WHERE invite."invitingUserId" = $1
@@ -2311,8 +2322,7 @@ export class UserService {
       [
         userId,
         OnetimeInviteStatus.LINK_USED,
-        ReferralSource.OnetimeInvite,
-        ReferralSource.InviteShareLink,
+        AMBASSADOR_REFERRAL_SOURCES,
         goalStartAt,
         goalDueAt,
         ShareUrlKind.Invite,
