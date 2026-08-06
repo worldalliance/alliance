@@ -74,6 +74,12 @@ Do not narrate code, repeat names/types/control flow, add decorative headings, o
 
 Avoid `as` casts where possible — prefer fixing the types at the source, runtime validation (e.g. zod) at trust boundaries, or `satisfies`. If a cast is unavoidable, keep it narrow and comment why it's safe. `as const` is fine. Never `as any` or `x as unknown as T`.
 
+## UI affordances
+
+Prefer icons and direct interaction over words. A `lucide-react` icon button (`lucide-react-native` on mobile) beats a text button; an inline edit beats an "Edit" mode toggle. Text labels are a fallback for when no icon or gesture reads unambiguously — not the default.
+
+This isn't a license to ship mystery-meat UI. An icon-only control needs a tooltip or `aria-label`, and destructive or irreversible actions should still say what they do in words.
+
 ## Local database
 
 For querying the local Postgres database, see `.claude/skills/local-db/SKILL.md`.
