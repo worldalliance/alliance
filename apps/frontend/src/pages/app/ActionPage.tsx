@@ -208,7 +208,7 @@ export default function ActionPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="referral-invite-popup-title"
-            className="relative w-full max-w-xl rounded-3xl border border-white/70 bg-white p-6 shadow-2xl sm:p-8"
+            className="relative w-full max-w-xl rounded-xl border border-white/70 bg-white p-6 shadow-2xl sm:p-8"
           >
             <button
               type="button"
@@ -236,7 +236,7 @@ export default function ActionPage() {
             )}
             <h2
               id="referral-invite-popup-title"
-              className="pr-8 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl"
+              className="pr-8 text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl"
             >
               {guestCompleted
                 ? taskHeaders.actionPage.completed
@@ -246,7 +246,7 @@ export default function ActionPage() {
             </h2>
             {guestCompleted ? (
               <>
-                <p className="mt-1 text-base leading-7 text-zinc-700">
+                <p className="mt-1 text-base text-zinc-700">
                   {guestReferral.joinForMoreText}{" "}
                 </p>
                 <div className="mt-6">
@@ -254,13 +254,18 @@ export default function ActionPage() {
                 </div>
               </>
             ) : (
-              <button
-                type="button"
-                className="mt-6 inline-flex w-full justify-center rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
-                onClick={handleTryOutTask}
-              >
-                {guestReferral.tryOutTaskButton}
-              </button>
+              <>
+                <p className="mt-2 text-base text-zinc-700">
+                  {guestReferral.locateTaskText}
+                </p>
+                <button
+                  type="button"
+                  className="mt-4 inline-flex w-full justify-center rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
+                  onClick={handleTryOutTask}
+                >
+                  {guestReferral.tryOutTaskButton}
+                </button>
+              </>
             )}
           </div>
         </div>

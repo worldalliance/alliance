@@ -218,8 +218,10 @@ export const guestReferral = {
     `${firstName} invited you to try this task.`,
   defaultReferrerName: "Your friend",
   allianceIntro:
-    "The Alliance is a global group of people cooperating to improve the world. Join us to participate in actions like this every week.",
-  tryOutTaskButton: "Try out this task",
+    "The Alliance is a global group of people cooperating to improve the world. Join us to participate in actions like this once a week.",
+  locateTaskText:
+    "The task is available under the 'Task' section of this page.",
+  tryOutTaskButton: "Try it out",
   joinForMoreText: "Join us to take 15-minute actions like this, once a week.",
   createAccountToSubmit: "Create an account to submit",
 } as const;
