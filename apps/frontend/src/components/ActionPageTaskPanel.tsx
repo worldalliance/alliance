@@ -32,8 +32,8 @@ import { isRouteErrorResponse, Link, useOutletContext } from "react-router";
 import { Route } from "../../.react-router/types/src/components/+types/ActionPageTaskPanel";
 import { useAuth } from "../lib/AuthContext";
 import { isNonmemberOnPublicActionReferral } from "../lib/publicActionReferral";
-import AllianceSignupPitch from "./AllianceSignupPitch";
 import ActionTaskPanel from "./ActionTaskPanel";
+import AllianceSignupPitch from "./AllianceSignupPitch";
 import ShareButton from "./ShareButton";
 import StackedCard from "./system/StackedCard";
 
@@ -276,14 +276,8 @@ const ActionPageTaskPanel = () => {
                   >
                     {guestCompleted ? (
                       <>
-                        <p className="text-base leading-7 text-zinc-700">
-                          {guestReferral.completionIntegrityExplanation}
-                        </p>
-                        <p className="mt-1 text-base leading-7 text-zinc-700">
-                          {guestReferral.joinToCountContributionsLead}{" "}
-                          <strong className="font-semibold">
-                            join the Alliance.
-                          </strong>
+                        <p className="mt-1 text-base text-zinc-700">
+                          {guestReferral.joinForMoreText}
                         </p>
                         <div className="mt-5">
                           <AllianceSignupPitch signupHref={signupHref} />

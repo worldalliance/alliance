@@ -25,8 +25,8 @@ import {
 } from "react-router";
 import { ActionActivityDetailContext } from "../../components/ActionActivityDetail";
 import ActionActivityList from "../../components/ActionActivityList";
-import AllianceSignupPitch from "../../components/AllianceSignupPitch";
 import { TaskPanelContext } from "../../components/ActionPageTaskPanel";
+import AllianceSignupPitch from "../../components/AllianceSignupPitch";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 import { useAuth } from "../../lib/AuthContext";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
@@ -244,16 +244,10 @@ export default function ActionPage() {
                     sharePreview.firstName ?? guestReferral.defaultReferrerName,
                   )}
             </h2>
-            <p className="mt-4 text-base leading-7 text-zinc-700">
-              {guestCompleted
-                ? guestReferral.completionIntegrityExplanation
-                : guestReferral.allianceIntro}
-            </p>
             {guestCompleted ? (
               <>
                 <p className="mt-1 text-base leading-7 text-zinc-700">
-                  {guestReferral.joinToCountContributionsLead}{" "}
-                  <strong className="font-semibold">join the Alliance.</strong>
+                  {guestReferral.joinForMoreText}{" "}
                 </p>
                 <div className="mt-6">
                   <AllianceSignupPitch signupHref={signupHref} />

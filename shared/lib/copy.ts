@@ -220,9 +220,7 @@ export const guestReferral = {
   allianceIntro:
     "The Alliance is a global group of people cooperating to improve the world. Join us to participate in actions like this every week.",
   tryOutTaskButton: "Try out this task",
-  completionIntegrityExplanation: "Usually, actions are for members only.",
-  joinToCountContributionsLead:
-    "To participate in weekly 15-minute actions like this one,",
+  joinForMoreText: "Join us to take 15-minute actions like this, once a week.",
   createAccountToSubmit: "Create an account to submit",
 } as const;
 
