@@ -418,6 +418,7 @@ export class UserService {
     items: {
       id: number;
       staffTitle?: string | null;
+      staffLink?: string | null;
       staffDisplayOrder: number;
     }[],
   ): Promise<User[]> {
@@ -427,6 +428,9 @@ export class UserService {
           staffDisplayOrder: item.staffDisplayOrder,
           ...(item.staffTitle !== undefined
             ? { staffTitle: item.staffTitle }
+            : {}),
+          ...(item.staffLink !== undefined
+            ? { staffLink: item.staffLink }
             : {}),
         }),
       ),

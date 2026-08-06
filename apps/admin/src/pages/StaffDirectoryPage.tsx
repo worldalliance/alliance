@@ -26,6 +26,9 @@ const StaffDirectoryPage: React.FC = () => {
   const [originalTitles, setOriginalTitles] = useState<
     Map<number, string | null>
   >(() => new Map());
+  const [originalLinks, setOriginalLinks] = useState<
+    Map<number, string | null>
+  >(() => new Map());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,6 +81,9 @@ const StaffDirectoryPage: React.FC = () => {
     setOriginalOrder(new Map(data.map((item, index) => [item.id, index])));
     setOriginalTitles(
       new Map(data.map((item) => [item.id, item.staffTitle ?? null])),
+    );
+    setOriginalLinks(
+      new Map(data.map((item) => [item.id, item.staffLink ?? null])),
     );
   }, []);
 
@@ -177,15 +183,29 @@ const StaffDirectoryPage: React.FC = () => {
     return items.some((item, index) => {
       const originalIndex = originalOrder.get(item.id);
       const originalTitle = originalTitles.get(item.id) ?? null;
+      const originalLink = originalLinks.get(item.id) ?? null;
       const currentTitle = item.staffTitle ?? null;
-      return originalIndex !== index || originalTitle !== currentTitle;
+      const currentLink = item.staffLink ?? null;
+      return (
+        originalIndex !== index ||
+        originalTitle !== currentTitle ||
+        originalLink !== currentLink
+      );
     });
-  }, [items, originalOrder, originalTitles]);
+  }, [items, originalOrder, originalTitles, originalLinks]);
 
   const handleTitleChange = (id: number, staffTitle: string) => {
     setItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, staffTitle: staffTitle || null } : item,
+      ),
+    );
+  };
+
+  const handleLinkChange = (id: number, staffLink: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, staffLink: staffLink || null } : item,
       ),
     );
   };
@@ -198,6 +218,7 @@ const StaffDirectoryPage: React.FC = () => {
           items: items.map((item, index) => ({
             id: item.id,
             staffTitle: item.staffTitle ?? null,
+            staffLink: item.staffLink ?? null,
             staffDisplayOrder: index,
           })),
         },
@@ -230,7 +251,7 @@ const StaffDirectoryPage: React.FC = () => {
   }
 
   return (
-    <div className="p-5 space-y-4 max-w-3xl">
+    <div className="p-5 space-y-4 max-w-4xl">
       <title>Staff Directory - Admin</title>
       <div className="flex items-center justify-between gap-4">
         <h1 className="font-bold text-lg">Staff directory</h1>
@@ -245,8 +266,8 @@ const StaffDirectoryPage: React.FC = () => {
       </div>
       <p className="text-sm text-zinc-600">
         People with the staff flag, in the order they appear on the public
-        People page. Set a brief title for each person, then drag to rearrange.
-        Toggle staff on a{" "}
+        People page. Set a brief title and optional About link for each person,
+        then drag to rearrange. Toggle staff on a{" "}
         <Link to="/members" className="underline hover:text-zinc-900">
           member
         </Link>{" "}
@@ -302,25 +323,38 @@ const StaffDirectoryPage: React.FC = () => {
                 ) : (
                   <div className="w-8 h-8 rounded bg-zinc-200 shrink-0" />
                 )}
-                <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                <div className="flex-1 min-w-0 flex flex-col gap-1">
                   <Link
                     to={`/member/${item.id}`}
-                    className="text-sm font-medium text-zinc-900 hover:underline shrink-0 truncate"
+                    className="text-sm font-medium text-zinc-900 hover:underline truncate"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {item.displayName}
                   </Link>
-                  <input
-                    type="text"
-                    value={item.staffTitle ?? ""}
-                    onChange={(e) =>
-                      handleTitleChange(item.id, e.target.value)
-                    }
-                    placeholder="Brief title"
-                    className="flex-1 min-w-0 text-sm border border-zinc-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-zinc-400"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                  />
+                  <div className="flex flex-col sm:flex-row gap-1 sm:gap-2">
+                    <input
+                      type="text"
+                      value={item.staffTitle ?? ""}
+                      onChange={(e) =>
+                        handleTitleChange(item.id, e.target.value)
+                      }
+                      placeholder="Brief title"
+                      className="flex-1 min-w-0 text-sm border border-zinc-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <input
+                      type="text"
+                      value={item.staffLink ?? ""}
+                      onChange={(e) =>
+                        handleLinkChange(item.id, e.target.value)
+                      }
+                      placeholder="About link (optional)"
+                      className="flex-1 min-w-0 text-sm border border-zinc-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
                 </div>
               </li>
             );

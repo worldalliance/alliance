@@ -243,6 +243,10 @@ export class User {
   @ApiProperty({ nullable: true })
   staffTitle: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  staffLink: string | null;
+
   @Column({ default: 0 })
   @ApiProperty()
   staffDisplayOrder: number;

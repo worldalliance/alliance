@@ -178,7 +178,7 @@ const PeoplePage: React.FC = () => {
                 {staffProfiles.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center gap-3 md:gap-4"
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 md:gap-4"
                   >
                     <div className="hidden md:block">
                       <AvatarProfile
@@ -190,7 +190,8 @@ const PeoplePage: React.FC = () => {
                     <div className="block md:hidden">
                       <AvatarProfile
                         pfp={member.profilePicture ?? null}
-                        size="large"
+                        size="override"
+                        className="w-12 h-12 rounded"
                       />
                     </div>
                     <div className="flex-1">
@@ -201,6 +202,16 @@ const PeoplePage: React.FC = () => {
                         <p className="text-base text-zinc-500">
                           {member.staffTitle}
                         </p>
+                      )}
+                      {member.staffLink && (
+                        <a
+                          href={member.staffLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-base text-link"
+                        >
+                          About
+                        </a>
                       )}
                     </div>
                   </div>

@@ -41,6 +41,7 @@ export const testUser = new User({
   admin: false,
   staff: false,
   staffTitle: null,
+  staffLink: null,
   staffDisplayOrder: 0,
   ambassador: false,
   leaderOfIds: [],

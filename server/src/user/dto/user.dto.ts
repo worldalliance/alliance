@@ -558,6 +558,9 @@ export class StaffDirectoryEntryDto {
   @ApiProperty({ type: String, nullable: true })
   staffTitle: string | null;
 
+  @ApiProperty({ type: String, nullable: true })
+  staffLink: string | null;
+
   @ApiProperty()
   staffDisplayOrder: number;
 
@@ -569,6 +572,7 @@ export class StaffDirectoryEntryDto {
       | 'anonymous'
       | 'profilePicture'
       | 'staffTitle'
+      | 'staffLink'
       | 'staffDisplayOrder'
     >,
   ) {
@@ -578,6 +582,7 @@ export class StaffDirectoryEntryDto {
       ? getImageSource(user.profilePicture)
       : null;
     this.staffTitle = user.staffTitle;
+    this.staffLink = user.staffLink;
     this.staffDisplayOrder = user.staffDisplayOrder;
   }
 }
@@ -592,6 +597,12 @@ export class StaffDirectoryItemUpdateDto {
   @IsString()
   @Transform(trimToNull)
   staffTitle?: string | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @IsString()
+  @Transform(trimToNull)
+  staffLink?: string | null;
 
   @ApiProperty()
   @IsInt()

@@ -665,6 +665,7 @@ export type User = {
     admin: boolean;
     staff: boolean;
     staffTitle: string | null;
+    staffLink: string | null;
     staffDisplayOrder: number;
     ambassador: boolean;
     profilePicture: string | null;
@@ -964,12 +965,14 @@ export type StaffDirectoryEntryDto = {
     displayName: string;
     profilePicture: string | null;
     staffTitle: string | null;
+    staffLink: string | null;
     staffDisplayOrder: number;
 };
 
 export type StaffDirectoryItemUpdateDto = {
     id: number;
     staffTitle?: string | null;
+    staffLink?: string | null;
     staffDisplayOrder: number;
 };
 
