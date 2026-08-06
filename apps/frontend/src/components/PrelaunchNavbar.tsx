@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { Link, href, useNavigate } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 
@@ -35,8 +36,12 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
   showSignupButton = false,
   signupHref = href("/signup"),
 }: PrelaunchNavbarProps) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+
+  const profileUrl = user
+    ? href("/member/:id", { id: user.id.toString() })
+    : href("/profile");
 
   const destinations: Record<NavbarPage, string> = {
     [NavbarPage.People]: href("/people"),
@@ -85,20 +90,37 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
                     : "bg-black text-white hover:bg-zinc-800",
                 )}
               >
-                {link}
+                {isAuthenticated ? "My tasks" : "Log in"}
               </Link>
-              {showSignupButton && (
+              {isAuthenticated && user ? (
                 <Link
-                  to={signupHref}
-                  className={cn(
-                    "py-2 sm:py-2.5 px-3 sm:px-5 rounded-md whitespace-nowrap font-medium",
-                    transparent
-                      ? "bg-green text-white hover:bg-[#4d8c1d]"
-                      : "bg-green text-white hover:bg-[#4d8c1d]",
-                  )}
+                  to={profileUrl}
+                  aria-label="Go to profile"
+                  className="rounded-md focus:outline-none"
                 >
-                  Sign up
+                  <AvatarProfile
+                    pfp={user.profilePicture ?? null}
+                    size="large"
+                    className={cn(
+                      "ring-2",
+                      transparent ? "ring-white" : "ring-zinc-200",
+                    )}
+                  />
                 </Link>
+              ) : (
+                showSignupButton && (
+                  <Link
+                    to={signupHref}
+                    className={cn(
+                      "py-2 sm:py-2.5 px-3 sm:px-5 rounded-md whitespace-nowrap font-medium",
+                      transparent
+                        ? "bg-green text-white hover:bg-[#4d8c1d]"
+                        : "bg-green text-white hover:bg-[#4d8c1d]",
+                    )}
+                  >
+                    Sign up
+                  </Link>
+                )
               )}
             </div>
           ) : (
