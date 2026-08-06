@@ -664,6 +664,8 @@ export type User = {
     forumDigestPreference: ForumDigestPreference;
     admin: boolean;
     staff: boolean;
+    staffTitle: string | null;
+    staffDisplayOrder: number;
     ambassador: boolean;
     profilePicture: string | null;
     profileDescription: string | null;
@@ -953,7 +955,26 @@ export type UserAdminDetailDto = {
 };
 
 export type UpdateUserRolesAdminDto = {
+    staff?: boolean;
     ambassador?: boolean;
+};
+
+export type StaffDirectoryEntryDto = {
+    id: number;
+    displayName: string;
+    profilePicture: string | null;
+    staffTitle: string | null;
+    staffDisplayOrder: number;
+};
+
+export type StaffDirectoryItemUpdateDto = {
+    id: number;
+    staffTitle?: string | null;
+    staffDisplayOrder: number;
+};
+
+export type UpdateStaffDirectoryDto = {
+    items: Array<StaffDirectoryItemUpdateDto>;
 };
 
 export type ProfileDtoWithFriends = {
@@ -4542,6 +4563,72 @@ export type UserMembersPublicResponses = {
 };
 
 export type UserMembersPublicResponse = UserMembersPublicResponses[keyof UserMembersPublicResponses];
+
+export type UserStaffDirectoryData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/staff-directory';
+};
+
+export type UserStaffDirectoryErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserStaffDirectoryError = UserStaffDirectoryErrors[keyof UserStaffDirectoryErrors];
+
+export type UserStaffDirectoryResponses = {
+    200: Array<StaffDirectoryEntryDto>;
+};
+
+export type UserStaffDirectoryResponse = UserStaffDirectoryResponses[keyof UserStaffDirectoryResponses];
+
+export type UserStaffDirectoryAdminData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/user/staff-directory-admin';
+};
+
+export type UserStaffDirectoryAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserStaffDirectoryAdminError = UserStaffDirectoryAdminErrors[keyof UserStaffDirectoryAdminErrors];
+
+export type UserStaffDirectoryAdminResponses = {
+    200: Array<StaffDirectoryEntryDto>;
+};
+
+export type UserStaffDirectoryAdminResponse = UserStaffDirectoryAdminResponses[keyof UserStaffDirectoryAdminResponses];
+
+export type UserUpdateStaffDirectoryAdminData = {
+    body: UpdateStaffDirectoryDto;
+    path?: never;
+    query?: never;
+    url: '/user/staff-directory-admin';
+};
+
+export type UserUpdateStaffDirectoryAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserUpdateStaffDirectoryAdminError = UserUpdateStaffDirectoryAdminErrors[keyof UserUpdateStaffDirectoryAdminErrors];
+
+export type UserUpdateStaffDirectoryAdminResponses = {
+    200: Array<StaffDirectoryEntryDto>;
+};
+
+export type UserUpdateStaffDirectoryAdminResponse = UserUpdateStaffDirectoryAdminResponses[keyof UserUpdateStaffDirectoryAdminResponses];
 
 export type UserMembersWithFriendsData = {
     body?: never;

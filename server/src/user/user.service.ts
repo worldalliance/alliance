@@ -407,6 +407,33 @@ export class UserService {
     return users.filter((user) => user.hasActiveContract);
   }
 
+  async findStaffDirectory(): Promise<User[]> {
+    return this.userRepository.find({
+      where: { staff: true },
+      order: { staffDisplayOrder: 'ASC', id: 'ASC' },
+    });
+  }
+
+  async updateStaffDirectory(
+    items: {
+      id: number;
+      staffTitle?: string | null;
+      staffDisplayOrder: number;
+    }[],
+  ): Promise<User[]> {
+    await Promise.all(
+      items.map((item) =>
+        this.userRepository.update(item.id, {
+          staffDisplayOrder: item.staffDisplayOrder,
+          ...(item.staffTitle !== undefined
+            ? { staffTitle: item.staffTitle }
+            : {}),
+        }),
+      ),
+    );
+    return this.findStaffDirectory();
+  }
+
   findOne(id: number, relations?: Relations<User>): Promise<User | null> {
     return this.userRepository.findOne({
       where: { id },
@@ -564,7 +591,7 @@ export class UserService {
 
   async updateRolesAdmin(
     id: number,
-    roles: { ambassador?: boolean },
+    roles: { ambassador?: boolean; staff?: boolean },
   ): Promise<User> {
     await this.userRepository.update(id, roles);
     return this.findOneOrFail(id, {

@@ -1,10 +1,11 @@
 import {
   ProfileDto,
+  type StaffDirectoryEntryDto,
   userMembersPublic,
   userNmembers,
+  userStaffDirectory,
 } from "@alliance/shared/client";
 import { cn } from "@alliance/shared/styles/util";
-import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import React, { useEffect, useMemo, useState } from "react";
 import { useLoaderData } from "react-router";
@@ -28,20 +29,11 @@ export async function loader() {
 
 const PeoplePage: React.FC = () => {
   const nmembers = useLoaderData<typeof loader>();
-  const staffIds: Record<number, string> = useMemo(() => {
-    return {
-      10: "Mark Xu",
-      7: "Sidney Hough",
-      64: "Charles Lien",
-      11: "Grant Hough",
-      38: "Akash Borde",
-      270: "Gabi van der Velde-Kraft",
-      1038: "Esha Gupta",
-      1788: "Alex Dorey",
-    };
-  }, []);
 
-  const [staffProfiles, setStaffProfiles] = useState<ProfileDto[]>([]);
+  const [staffProfiles, setStaffProfiles] = useState<StaffDirectoryEntryDto[]>(
+    [],
+  );
+  const [staffLoading, setStaffLoading] = useState(true);
 
   const [members, setMembers] = useState<ProfileDto[]>([]);
 
@@ -141,29 +133,18 @@ const PeoplePage: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const membersRes = await userMembersPublic();
+      const [membersRes, staffRes] = await Promise.all([
+        userMembersPublic(),
+        userStaffDirectory(),
+      ]);
 
       setMembers(membersRes.data ?? []);
-
-      // sort staff by names alphabetically
-      setStaffProfiles(
-        membersRes.data
-          ?.filter((member) =>
-            Object.keys(staffIds).includes(member.id.toString()),
-          )
-          .sort((a, b) =>
-            (a.displayName ?? "").localeCompare(
-              b.displayName ?? "",
-              undefined,
-              { sensitivity: "base" },
-            ),
-          )
-          .reverse() ?? [],
-      );
+      setStaffProfiles(staffRes.data ?? []);
+      setStaffLoading(false);
     };
 
-    fetchData();
-  }, [staffIds]);
+    void fetchData();
+  }, []);
 
   const displayedMembers = useMemo(() => {
     return members.slice(0, displayCount);
@@ -183,23 +164,27 @@ const PeoplePage: React.FC = () => {
           id="office"
         >
           <div className={LANDING_WIDE_SECTION}>
-            <div className="flex flex-col gap-4 text-center mb-6">
+            <div className="flex flex-col gap-4 text-center">
               <p className={SECTION_TITLE_CLASS}>Office</p>
               <p className={SUBTITLE_CLASS}>
                 Our staff team plans actions, creates infrastructure, and
                 manages the Alliance.
               </p>
             </div>
-            <div className="grid grid-cols-1 gap-x-16 gap-y-8 sm:grid-cols-2">
-              {staffProfiles
-                .filter((member) => member.id !== undefined)
-                .map((member) => (
-                  <div key={member.id} className="flex gap-3 md:gap-4">
+            {staffLoading ? (
+              <p className="py-8 text-center text-zinc-500">Loading staff...</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-x-16 gap-y-8 md:grid-cols-3 lg:grid-cols-4">
+                {staffProfiles.map((member) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-3 md:gap-4"
+                  >
                     <div className="hidden md:block">
                       <AvatarProfile
                         pfp={member.profilePicture ?? null}
                         size="override"
-                        className="w-20 h-20 rounded"
+                        className="w-18 h-18 rounded"
                       />
                     </div>
                     <div className="block md:hidden">
@@ -212,15 +197,16 @@ const PeoplePage: React.FC = () => {
                       <p className="text-lg font-medium text-zinc-900 md:text-xl">
                         {member.displayName}
                       </p>
-                      <div className="text-base text-zinc-500 md:mt-1">
-                        <AppMarkdownWrapper
-                          markdownContent={member.profileDescription ?? ""}
-                        />
-                      </div>
+                      {member.staffTitle && (
+                        <p className="text-base text-zinc-500">
+                          {member.staffTitle}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
-            </div>
+              </div>
+            )}
           </div>
         </section>
 

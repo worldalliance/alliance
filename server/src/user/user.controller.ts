@@ -12,6 +12,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Put,
   Query,
   Request,
   UnauthorizedException,
@@ -78,7 +79,9 @@ import {
   ProfileDtoWithFriends,
   ReferrerProfileDto,
   SignupSocialProofDto,
+  StaffDirectoryEntryDto,
   UpdateProfileDto,
+  UpdateStaffDirectoryDto,
   UpdateUserRolesAdminDto,
   UserAdminDetailDto,
   UserCityCountDto,
@@ -469,6 +472,35 @@ export class UserController {
     return (await this.userService.findAllMembersPublic()).map(
       (user) => new ProfileDto(user),
     );
+  }
+
+  @Get('staff-directory')
+  @Public()
+  @ApiOkResponse({ type: [StaffDirectoryEntryDto] })
+  async staffDirectory(): Promise<StaffDirectoryEntryDto[]> {
+    return (await this.userService.findStaffDirectory()).map(
+      (user) => new StaffDirectoryEntryDto(user),
+    );
+  }
+
+  @Get('staff-directory-admin')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [StaffDirectoryEntryDto] })
+  async staffDirectoryAdmin(): Promise<StaffDirectoryEntryDto[]> {
+    return (await this.userService.findStaffDirectory()).map(
+      (user) => new StaffDirectoryEntryDto(user),
+    );
+  }
+
+  @Put('staff-directory-admin')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [StaffDirectoryEntryDto] })
+  async updateStaffDirectoryAdmin(
+    @Body() body: UpdateStaffDirectoryDto,
+  ): Promise<StaffDirectoryEntryDto[]> {
+    return (
+      await this.userService.updateStaffDirectory(body.items)
+    ).map((user) => new StaffDirectoryEntryDto(user));
   }
 
   @Get('membersWithFriends')

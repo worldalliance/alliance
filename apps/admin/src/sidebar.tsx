@@ -336,6 +336,11 @@ const Sidebar: React.FC = () => {
                     icon: <ListOrdered size={16} />,
                   },
                   {
+                    to: "/staff-directory",
+                    label: "Staff Directory",
+                    icon: <Users size={16} />,
+                  },
+                  {
                     to: "/member-map",
                     label: "Member Map",
                     icon: <Map size={16} />,

@@ -40,6 +40,8 @@ export const testUser = new User({
   password: '',
   admin: false,
   staff: false,
+  staffTitle: null,
+  staffDisplayOrder: 0,
   ambassador: false,
   leaderOfIds: [],
   profilePicture: null,

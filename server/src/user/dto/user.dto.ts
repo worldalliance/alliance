@@ -532,12 +532,78 @@ export class UpdateProfileDto extends PartialType(
 }
 
 export class UpdateUserRolesAdminDto extends PartialType(
-  PickType(User, ['ambassador']),
+  PickType(User, ['ambassador', 'staff']),
 ) {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
   ambassador?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  staff?: boolean;
+}
+
+export class StaffDirectoryEntryDto {
+  @ApiProperty()
+  id: number;
+
+  @ApiProperty()
+  displayName: string;
+
+  @ApiProperty({ type: String, nullable: true })
+  profilePicture: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  staffTitle: string | null;
+
+  @ApiProperty()
+  staffDisplayOrder: number;
+
+  constructor(
+    user: Pick<
+      User,
+      | 'id'
+      | 'name'
+      | 'anonymous'
+      | 'profilePicture'
+      | 'staffTitle'
+      | 'staffDisplayOrder'
+    >,
+  ) {
+    this.id = user.id;
+    this.displayName = user.anonymous ? 'Someone' : user.name;
+    this.profilePicture = user.profilePicture
+      ? getImageSource(user.profilePicture)
+      : null;
+    this.staffTitle = user.staffTitle;
+    this.staffDisplayOrder = user.staffDisplayOrder;
+  }
+}
+
+export class StaffDirectoryItemUpdateDto {
+  @ApiProperty()
+  @IsInt()
+  id: number;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @IsString()
+  @Transform(trimToNull)
+  staffTitle?: string | null;
+
+  @ApiProperty()
+  @IsInt()
+  staffDisplayOrder: number;
+}
+
+export class UpdateStaffDirectoryDto {
+  @ApiProperty({ type: () => StaffDirectoryItemUpdateDto, isArray: true })
+  @Type(() => StaffDirectoryItemUpdateDto)
+  @IsArray()
+  @ValidateNested({ each: true })
+  items: StaffDirectoryItemUpdateDto[];
 }
 
 export class ReferralDto {

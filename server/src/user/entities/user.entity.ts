@@ -239,6 +239,14 @@ export class User {
   @ApiProperty()
   staff: boolean;
 
+  @Column({ type: 'varchar', nullable: true })
+  @ApiProperty({ nullable: true })
+  staffTitle: string | null;
+
+  @Column({ default: 0 })
+  @ApiProperty()
+  staffDisplayOrder: number;
+
   @Column({ default: false })
   @ApiProperty()
   ambassador: boolean;

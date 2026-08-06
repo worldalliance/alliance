@@ -169,6 +169,7 @@ const UserDetailView: React.FC = () => {
   );
   const [tagMutationError, setTagMutationError] = useState<string | null>(null);
   const [isAmbassadorPending, setIsAmbassadorPending] = useState(false);
+  const [isStaffPending, setIsStaffPending] = useState(false);
   const [roleMutationError, setRoleMutationError] = useState<string | null>(
     null,
   );
@@ -412,6 +413,28 @@ const UserDetailView: React.FC = () => {
         setRoleMutationError("Failed to update role. Try again.");
       } finally {
         setIsAmbassadorPending(false);
+      }
+    },
+    [user.id],
+  );
+
+  const handleStaffToggle = useCallback(
+    async (nextChecked: boolean) => {
+      setIsStaffPending(true);
+      setRoleMutationError(null);
+      try {
+        const res = await userUpdateUserRolesAdmin({
+          path: { id: user.id },
+          body: { staff: nextChecked },
+        });
+        if (res.data) {
+          setUser(res.data);
+        }
+      } catch (error) {
+        console.error("Failed to update user role", error);
+        setRoleMutationError("Failed to update role. Try again.");
+      } finally {
+        setIsStaffPending(false);
       }
     },
     [user.id],
@@ -1115,6 +1138,25 @@ const UserDetailView: React.FC = () => {
               <p className="text-xs text-red-500 mb-2">{roleMutationError}</p>
             )}
             <div className="space-y-1">
+              <label
+                className={cn(
+                  "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
+                  isStaffPending && "opacity-50",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={user.staff}
+                  disabled={isStaffPending}
+                  onChange={(e) => handleStaffToggle(e.target.checked)}
+                  className="rounded"
+                />
+                <span
+                  className={user.staff ? "text-zinc-900" : "text-zinc-500"}
+                >
+                  Staff
+                </span>
+              </label>
               <label
                 className={cn(
                   "flex items-center gap-2 text-sm cursor-pointer hover:bg-zinc-50 px-1 py-0.5 rounded",
