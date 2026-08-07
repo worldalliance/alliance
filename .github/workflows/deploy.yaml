@@ -636,6 +636,7 @@ jobs:
             server/tsconfig.json \
             server/src \
             server/migrations \
+            misc/sync_prod_to_staging.sh \
             common/package.json \
             common/tsconfig.json \
             common/src \
@@ -748,6 +749,17 @@ jobs:
 
             sleep 10
             curl --silent --fail --show-error "https://${{vars.DOMAIN_NAME}}/api/" > /dev/null
+
+            # The prod → staging sync runs from this box, outside the app, so
+            # ship its script with the deploy. Staging only. Never fails the
+            # deploy
+            if [ "${{ github.ref_name }}" != 'production' ]; then
+              install -m 755 ~/nest-backend/misc/sync_prod_to_staging.sh \
+                ~/sync_prod_to_staging.sh.new \
+                && mv -f ~/sync_prod_to_staging.sh.new ~/sync_prod_to_staging.sh \
+                && echo "installed ~/sync_prod_to_staging.sh" \
+                || echo "WARNING: could not install sync_prod_to_staging.sh"
+            fi
 
   verify-deployment:
     needs:

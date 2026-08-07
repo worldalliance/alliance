@@ -4,15 +4,72 @@
 
 set -euo pipefail
 
+umask 077
+
 source /home/ec2-user/db-sync.env
 
+: "${PROD_DB_USER:?missing in db-sync.env}" \
+  "${PROD_DB_PASSWORD:?missing in db-sync.env}" \
+  "${PROD_DB_HOST:?missing in db-sync.env}" \
+  "${PROD_DB_NAME:?missing in db-sync.env}" \
+  "${STAGING_DB_USER:?missing in db-sync.env}" \
+  "${STAGING_DB_PASSWORD:?missing in db-sync.env}" \
+  "${STAGING_DB_HOST:?missing in db-sync.env}" \
+  "${STAGING_DB_NAME:?missing in db-sync.env}" \
+  "${STAGING_PASSWORD_HASH:?missing in db-sync.env}" \
+  "${PROD_ASSETS_BUCKET:?missing in db-sync.env}" \
+  "${STAGING_ASSETS_BUCKET:?missing in db-sync.env}"
+
+BCRYPT_PATTERN='^\$2[aby]\$[0-9]{2}\$[./A-Za-z0-9]{53}$'
+if [[ ! $STAGING_PASSWORD_HASH =~ $BCRYPT_PATTERN ]]; then
+  echo "STAGING_PASSWORD_HASH is not a bcrypt hash — single-quote it in" \
+    "db-sync.env so the shell doesn't expand the \$-delimited fields." >&2
+  exit 1
+fi
+
 PROD_URL="postgresql://${PROD_DB_USER}:${PROD_DB_PASSWORD}@${PROD_DB_HOST}:5432/${PROD_DB_NAME}"
-STAGING_URL="postgresql://${STAGING_DB_USER}:${STAGING_DB_PASSWORD}@${STAGING_DB_HOST}:5432/${STAGING_DB_NAME}"
 
 STAGING_ADMIN_URL="postgresql://${STAGING_DB_USER}:${STAGING_DB_PASSWORD}@${STAGING_DB_HOST}:5432/postgres"
 
+SCRATCH_DB="${STAGING_DB_NAME}_sync"
+SCRATCH_URL="postgresql://${STAGING_DB_USER}:${STAGING_DB_PASSWORD}@${STAGING_DB_HOST}:5432/${SCRATCH_DB}"
+
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 DUMP_FILE="/home/ec2-user/prod_dump_${TIMESTAMP}.pgcustom"
+
+SWAP_STARTED=0
+
+# The dump file and the scratch database both hold unanonymized prod data, so
+# every exit path has to take them with it — until the swap starts, after which
+# the (anonymized) scratch database may be the only surviving copy.
+cleanup() {
+  local status=$?
+
+  rm -f "$DUMP_FILE"
+
+  if [ "$SWAP_STARTED" -eq 0 ]; then
+    psql "$STAGING_ADMIN_URL" -q \
+      -c "DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);" >/dev/null 2>&1 \
+      || echo "[$(date)] ==> WARNING: could not drop ${SCRATCH_DB}; it may still" \
+        "hold unanonymized prod data."
+  fi
+
+  if [ "$status" -ne 0 ]; then
+    if [ "$SWAP_STARTED" -eq 1 ]; then
+      echo "[$(date)] ==> FAILED (exit ${status}) at or after the swap." \
+        "If ${STAGING_DB_NAME} no longer exists, recover with:" \
+        "ALTER DATABASE ${SCRATCH_DB} RENAME TO ${STAGING_DB_NAME};"
+    else
+      echo "[$(date)] ==> FAILED (exit ${status}). Staging still holds the data" \
+        "from its previous successful sync."
+    fi
+  fi
+}
+trap cleanup EXIT
+
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 
 echo "[$(date)] ==> Starting prod → staging sync"
 echo "[$(date)] ==> Dumping prod database to ${DUMP_FILE}..."
@@ -24,29 +81,26 @@ pg_dump \
   "$PROD_URL" \
   --file="$DUMP_FILE"
 
-echo "[$(date)] ==> Terminating existing connections & recreating staging database..."
+echo "[$(date)] ==> Recreating scratch database ${SCRATCH_DB}..."
 
 psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
-SELECT pg_terminate_backend(pid)
-FROM pg_stat_activity
-WHERE datname = '${STAGING_DB_NAME}'
-  AND pid <> pg_backend_pid();
-
-DROP DATABASE IF EXISTS ${STAGING_DB_NAME};
-CREATE DATABASE ${STAGING_DB_NAME} WITH TEMPLATE=template0 ENCODING='UTF8';
+DROP DATABASE IF EXISTS ${SCRATCH_DB} WITH (FORCE);
+CREATE DATABASE ${SCRATCH_DB} WITH TEMPLATE=template0 ENCODING='UTF8';
 SQL
 
-echo "[$(date)] ==> Restoring dump into staging database..."
+echo "[$(date)] ==> Restoring dump into ${SCRATCH_DB}..."
 
 pg_restore \
-  --clean \
-  --if-exists \
+  --exit-on-error \
   --no-owner \
   --no-privileges \
-  --dbname="$STAGING_URL" \
+  --dbname="$SCRATCH_URL" \
   "$DUMP_FILE"
 
-psql "$STAGING_URL" -v ON_ERROR_STOP=1 <<'SQL'
+echo "[$(date)] ==> Anonymizing ${SCRATCH_DB}..."
+
+psql "$SCRATCH_URL" -v ON_ERROR_STOP=1 --single-transaction \
+  -v password_hash="$STAGING_PASSWORD_HASH" <<'SQL'
 -- ============================================================================
 -- Anonymize members.
 --
@@ -87,7 +141,7 @@ SET
                     WHEN "phoneNumber" IS NULL THEN NULL
                     ELSE '+1555' || lpad(id::text, 7, '0')
                   END;
-UPDATE "user" SET "password" = 'pw';
+UPDATE "user" SET "password" = :'password_hash';
 
 -- ============================================================================
 -- Selectively redact text-based answers in form_response instead of wiping all
@@ -189,6 +243,19 @@ UPDATE "push" SET "expoPushToken" = 'pruned';
 
 SQL
 
+echo "[$(date)] ==> Swapping ${SCRATCH_DB} into place as ${STAGING_DB_NAME}..."
+
+SWAP_STARTED=1
+psql "$STAGING_ADMIN_URL" -v ON_ERROR_STOP=1 <<SQL
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname = '${SCRATCH_DB}'
+  AND pid <> pg_backend_pid();
+
+DROP DATABASE IF EXISTS ${STAGING_DB_NAME} WITH (FORCE);
+ALTER DATABASE ${SCRATCH_DB} RENAME TO ${STAGING_DB_NAME};
+SQL
+
 echo "[$(date)] ==> S3 sync s3://$PROD_ASSETS_BUCKET -> s3://$STAGING_ASSETS_BUCKET"
 
 aws s3 sync \
@@ -204,10 +271,5 @@ if [ $SYNC_EXIT -ne 0 ]; then
 fi
 
 echo "[$(date)] ==> S3 sync complete."
-
-if [ -f "$DUMP_FILE" ]; then
-  rm -f "$DUMP_FILE"
-  echo "[$(date)] ==> Removed temporary dump file: $DUMP_FILE"
-fi
 
 echo "[$(date)] ==> Sync completed successfully."
