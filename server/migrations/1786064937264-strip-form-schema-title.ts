@@ -2,6 +2,8 @@ import { createHash } from 'crypto';
 import jsonStableStringify from 'json-stable-stringify';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
+const BATCH_SIZE = 200;
+
 /**
  * Drops the root `title` from stored form schemas. It duplicated `form.title`
  * (the column every reader actually uses) and nothing read it, so the two were
@@ -15,13 +17,23 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * Verified against staging (a copy of production): 1344 rows change, 0
  * collisions.
  *
- * Rows are processed in id-keyset batches so the migration never loads the
- * whole table into memory (the app box and RDS instance are small).
+ * A row whose current hash equals some other row's *cleaned* hash necessarily
+ * has no `title` of its own, so it is never itself a candidate for rewriting —
+ * that's what makes a whole batch safe to update in one statement despite the
+ * unique index on `hash`.
+ *
+ * The first staging attempt of this migration blocked on a query and sat there
+ * until the deploy's SSH session was killed at its 10-minute limit — no error,
+ * so the deploy script's rollback trap never fired either. Hence the shape
+ * here: statement/lock timeouts so a block fails fast and rolls back, batched
+ * queries so the transaction holds its locks for seconds rather than minutes,
+ * and the `title` filter so a retry skips whatever a previous run finished.
  */
 export class StripFormSchemaTitle1786064937264 implements MigrationInterface {
-  private static readonly BATCH_SIZE = 200;
-
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`SET LOCAL lock_timeout = '15s'`);
+    await queryRunner.query(`SET LOCAL statement_timeout = '120s'`);
+
     let lastId = 0;
     let updated = 0;
     let merged = 0;
@@ -29,34 +41,58 @@ export class StripFormSchemaTitle1786064937264 implements MigrationInterface {
       const rows: { id: number; schema: Record<string, unknown> }[] =
         await queryRunner.query(
           `SELECT id, schema FROM form_snapshot
-           WHERE id > $1 ORDER BY id ASC LIMIT $2`,
-          [lastId, StripFormSchemaTitle1786064937264.BATCH_SIZE],
+           WHERE jsonb_exists(schema, 'title') AND id > $1
+           ORDER BY id ASC LIMIT $2`,
+          [lastId, BATCH_SIZE],
         );
       if (rows.length === 0) break;
+      lastId = rows[rows.length - 1].id;
 
-      for (const row of rows) {
-        lastId = row.id;
-        if (!(row.schema && 'title' in row.schema)) continue;
+      const cleaned = rows.map((row) => {
+        const schema = { ...row.schema };
+        delete schema.title;
+        return { id: row.id, hash: hashSchema(schema) };
+      });
 
-        const cleaned = { ...row.schema };
-        delete cleaned.title;
-        const hash = hashSchema(cleaned);
+      const existing: { id: number; hash: string }[] = await queryRunner.query(
+        `SELECT id, hash FROM form_snapshot
+         WHERE hash = ANY($1::text[]) AND NOT (id = ANY($2::int[]))`,
+        [cleaned.map((row) => row.hash), cleaned.map((row) => row.id)],
+      );
 
-        const existing: { id: number }[] = await queryRunner.query(
-          `SELECT id FROM form_snapshot WHERE hash = $1 AND id <> $2`,
-          [hash, row.id],
-        );
-        if (existing.length > 0) {
-          await mergeInto(queryRunner, row.id, existing[0].id);
-          merged++;
+      const survivorByHash = new Map(existing.map((row) => [row.hash, row.id]));
+      const updates: { id: number; hash: string }[] = [];
+      const duplicates: { duplicateId: number; survivorId: number }[] = [];
+      for (const row of cleaned) {
+        const survivorId = survivorByHash.get(row.hash);
+        if (survivorId !== undefined) {
+          duplicates.push({ duplicateId: row.id, survivorId });
           continue;
         }
+        survivorByHash.set(row.hash, row.id);
+        updates.push(row);
+      }
 
+      if (updates.length > 0) {
+        // `schema - 'title'` runs server-side so the schemas never travel back
+        // over the wire — the CLI logs every parameter, and these are large.
         await queryRunner.query(
-          `UPDATE form_snapshot SET schema = $1::jsonb, hash = $2 WHERE id = $3`,
-          [JSON.stringify(cleaned), hash, row.id],
+          `UPDATE form_snapshot fs
+           SET schema = fs.schema - 'title'::text, hash = v.hash
+           FROM unnest($1::int[], $2::text[]) AS v(id, hash)
+           WHERE fs.id = v.id`,
+          [updates.map((row) => row.id), updates.map((row) => row.hash)],
         );
-        updated++;
+        updated += updates.length;
+      }
+
+      for (const duplicate of duplicates) {
+        await mergeInto(
+          queryRunner,
+          duplicate.duplicateId,
+          duplicate.survivorId,
+        );
+        merged++;
       }
     }
     console.log(
