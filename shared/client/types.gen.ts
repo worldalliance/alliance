@@ -3305,10 +3305,10 @@ export type FormAggregateViewsDto = {
 };
 
 export type UpdateFormDto = {
-    title: string;
     schema: {
         [key: string]: unknown;
     };
+    title?: string;
     expectedFormSnapshotId?: number;
 };
 

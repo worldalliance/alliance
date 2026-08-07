@@ -6,7 +6,6 @@ import type { FormSchema } from "@alliance/common/forms/form-schema";
  * on a saved backend form record.
  */
 export const exampleMemberTaskFormSchema = {
-  title: "Example member task form",
   description: "",
   pages: [
     {

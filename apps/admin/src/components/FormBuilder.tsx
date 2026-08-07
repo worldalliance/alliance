@@ -691,11 +691,12 @@ export function FormBuilder(props: FormBuilderProps) {
     ? DISPLAY_ONLY_ELEMENTS
     : AVAILABLE_ELEMENTS;
 
+  const newFormTitle = actionName ? actionName + " form" : "Untitled Form";
+
   const buildInitialSchema = () =>
     initialSchema
       ? ensurePages(initialSchema)
       : {
-          title: !!actionName ? actionName + " form" : "Untitled Form",
           description: "",
           pages: [
             {
@@ -1723,7 +1724,6 @@ export function FormBuilder(props: FormBuilderProps) {
         response = await tasksUpdateFormAdmin({
           path: { formId },
           body: {
-            title: schemaForSave.title,
             schema: schemaForSave as unknown as Record<string, unknown>,
             expectedFormSnapshotId: baseFormSnapshotId ?? undefined,
           },
@@ -1731,7 +1731,7 @@ export function FormBuilder(props: FormBuilderProps) {
       } else {
         response = await tasksCreateFormAdmin({
           body: {
-            title: schemaForSave.title,
+            title: newFormTitle,
             schema: schemaForSave as unknown as Record<string, unknown>,
           },
         });
@@ -1797,6 +1797,7 @@ export function FormBuilder(props: FormBuilderProps) {
     formId,
     baseFormSnapshotId,
     lastSavedSchemaJSON,
+    newFormTitle,
     resolveCustomValidatorDrafts,
     schema,
     setFormId,
@@ -1850,7 +1851,6 @@ export function FormBuilder(props: FormBuilderProps) {
       const response = await tasksUpdateFormAdmin({
         path: { formId },
         body: {
-          title: conflict.mine.title,
           schema: conflict.mine as unknown as Record<string, unknown>,
           expectedFormSnapshotId: conflict.theirsSnapshotId,
         },

@@ -68,7 +68,6 @@ const outreachPartnerExampleAction = {
 };
 
 const outreachPartnerExampleFormSchema = {
-  title: "Reforestation website feedback",
   description: "",
   pages: [
     {

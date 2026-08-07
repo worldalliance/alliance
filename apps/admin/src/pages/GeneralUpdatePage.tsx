@@ -326,7 +326,7 @@ const GeneralUpdatePage: React.FC = () => {
         }
         setUpdate(latest.data);
         return R.failure({
-          theirs: displayOnlyToFormSchema(theirs, latest.data.name),
+          theirs: displayOnlyToFormSchema(theirs),
           theirsSnapshotId: latest.data.schemaSnapshotId,
         });
       }
@@ -661,10 +661,7 @@ const GeneralUpdatePage: React.FC = () => {
     return (
       <FormBuilder
         displayOnly
-        initialSchema={displayOnlyToFormSchema(
-          storedSchema,
-          generalUpdate.name,
-        )}
+        initialSchema={displayOnlyToFormSchema(storedSchema)}
         initialSnapshotId={generalUpdate.schemaSnapshotId}
         title={generalUpdate.name}
         setFormId={() => {}}

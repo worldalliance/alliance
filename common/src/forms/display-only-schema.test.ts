@@ -161,15 +161,14 @@ describe("form schema conversion", () => {
   };
 
   it("round-trips through the form builder's shape", () => {
-    const asForm = displayOnlyToFormSchema(schema, "Update");
-    expect(asForm.title).toBe("Update");
+    const asForm = displayOnlyToFormSchema(schema);
     expect(asForm.pages).toHaveLength(1);
     expect(asForm.outputViews).toEqual([]);
     expect(R.unwrap(formSchemaToDisplayOnly(asForm))).toEqual(schema);
   });
 
   it("rejects a form that picked up a question field", () => {
-    const asForm = displayOnlyToFormSchema(schema, "Update");
+    const asForm = displayOnlyToFormSchema(schema);
     const edited: FormSchema = {
       ...asForm,
       pages: [
@@ -187,7 +186,7 @@ describe("form schema conversion", () => {
 
   it("rejects a form that picked up conditional visibility", () => {
     const edited: FormSchema = {
-      ...displayOnlyToFormSchema(schema, "Update"),
+      ...displayOnlyToFormSchema(schema),
       pages: [
         {
           id: "page-1",
@@ -212,7 +211,7 @@ describe("form schema conversion", () => {
   });
 
   it("keeps blocks from a second page rather than dropping them", () => {
-    const asForm = displayOnlyToFormSchema(schema, "Update");
+    const asForm = displayOnlyToFormSchema(schema);
     const edited: FormSchema = {
       ...asForm,
       pages: [
@@ -228,7 +227,7 @@ describe("form schema conversion", () => {
 
   it("accepts the empty view arrays the builder always adds", () => {
     const edited: FormSchema = {
-      ...displayOnlyToFormSchema(schema, "Update"),
+      ...displayOnlyToFormSchema(schema),
       outputViews: [],
       aggregateViews: [],
     };
@@ -236,7 +235,7 @@ describe("form schema conversion", () => {
   });
 
   it("rejects page metadata rather than dropping it", () => {
-    const asForm = displayOnlyToFormSchema(schema, "Update");
+    const asForm = displayOnlyToFormSchema(schema);
     for (const extra of [
       { title: "Page 1" },
       { description: "About this page" },
@@ -258,7 +257,7 @@ describe("form schema conversion", () => {
   });
 
   it("rejects views that a display-only schema cannot carry", () => {
-    const asForm = displayOnlyToFormSchema(schema, "Update");
+    const asForm = displayOnlyToFormSchema(schema);
     const withOutputView: FormSchema = {
       ...asForm,
       outputViews: [{ type: "default", id: "v1", blocks: [] }],

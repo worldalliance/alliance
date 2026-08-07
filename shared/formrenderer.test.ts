@@ -76,7 +76,6 @@ describe("schemaNeedsVisibilityContext", () => {
   });
 
   const schemaWith = (fields: AnyField[]): FormSchema => ({
-    title: "t",
     pages: [{ id: "p1", fields }],
     outputViews: [],
   });
@@ -165,7 +164,6 @@ describe("findUnknownConditionKind", () => {
   });
 
   const schemaWith = (overrides: Partial<FormSchema>): FormSchema => ({
-    title: "t",
     pages: [{ id: "p1", fields: [textField("f1")] }],
     outputViews: [],
     ...overrides,

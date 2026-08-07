@@ -90,10 +90,8 @@ export const DISPLAY_ONLY_PAGE_ID = "page-1";
 
 export function displayOnlyToFormSchema(
   schema: DisplayOnlySchema,
-  title: string,
 ): FormSchema {
   return {
-    title,
     ...(schema.description !== undefined && {
       description: schema.description,
     }),
@@ -110,10 +108,8 @@ const displayOnlyPageSchema = z.strictObject({
   fields: z.array(displayOnlyBlockSchema),
 });
 
-// Reject page metadata and views that conversion would otherwise discard. The
-// title is deliberately dropped because the owning record stores it.
+// Reject page metadata and views that conversion would otherwise discard.
 const displayOnlyFormSchema = z.strictObject({
-  title: z.string(),
   description: z.string().optional(),
   pages: z.array(displayOnlyPageSchema),
   outputViews: unusableHere("output views"),

@@ -42,7 +42,6 @@ import type { Repository } from 'typeorm';
 import { createTestApp, TestContext } from './e2e-test-utils';
 
 const sampleSchema: FormSchema = {
-  title: 'Volunteer Signup',
   pages: [
     {
       id: 'page-1',
@@ -187,7 +186,7 @@ describe('Tasks (e2e)', () => {
       .post('/tasks/createForm')
       .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
       .send({
-        title: sampleSchema.title,
+        title: 'Volunteer Signup',
         schema: sampleSchema,
       })
       .expect(201);
@@ -319,14 +318,14 @@ describe('Tasks (e2e)', () => {
     const createResponse = await request(ctx.app.getHttpServer())
       .post('/tasks/createForm')
       .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-      .send({ title: sampleSchema.title, schema: sampleSchema })
+      .send({ title: 'Volunteer Signup', schema: sampleSchema })
       .expect(201);
 
     const concFormId = createResponse.body.id as number;
     const snapshot0 = createResponse.body.formSnapshotId as number;
 
     const schemaV1 = structuredClone(sampleSchema);
-    schemaV1.title = 'Concurrency V1';
+    schemaV1.description = 'Concurrency V1';
 
     const updateV1 = await request(ctx.app.getHttpServer())
       .put(`/tasks/updateForm/${concFormId}`)
@@ -342,7 +341,7 @@ describe('Tasks (e2e)', () => {
     expect(snapshot1).not.toBe(snapshot0);
 
     const schemaV2 = structuredClone(sampleSchema);
-    schemaV2.title = 'Concurrency V2';
+    schemaV2.description = 'Concurrency V2';
     await request(ctx.app.getHttpServer())
       .put(`/tasks/updateForm/${concFormId}`)
       .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
@@ -365,7 +364,7 @@ describe('Tasks (e2e)', () => {
     expect(updateV2.body.formSnapshotId).not.toBe(snapshot1);
 
     const schemaV3 = structuredClone(sampleSchema);
-    schemaV3.title = 'Concurrency V3';
+    schemaV3.description = 'Concurrency V3';
     await request(ctx.app.getHttpServer())
       .put(`/tasks/updateForm/${concFormId}`)
       .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
@@ -375,7 +374,6 @@ describe('Tasks (e2e)', () => {
 
   it('sums number field answers into aggregate views', async () => {
     const aggregateSchema: FormSchema = {
-      title: 'Aggregate Number Form',
       pages: [
         {
           id: 'page-1',
@@ -441,7 +439,7 @@ describe('Tasks (e2e)', () => {
       .post('/tasks/createForm')
       .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
       .send({
-        title: aggregateSchema.title,
+        title: 'Aggregate Number Form',
         schema: aggregateSchema,
       })
       .expect(201);
@@ -476,7 +474,6 @@ describe('Tasks (e2e)', () => {
 
   it('hides privateByDefault output fields in public output while keeping normal output fields visible', async () => {
     const outputSchema: FormSchema = {
-      title: 'Output Visibility',
       pages: [
         {
           id: 'page-1',
@@ -552,7 +549,7 @@ describe('Tasks (e2e)', () => {
       .post('/tasks/createForm')
       .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
       .send({
-        title: outputSchema.title,
+        title: 'Output Visibility',
         schema: outputSchema,
       })
       .expect(201);
@@ -1047,7 +1044,6 @@ describe('Tasks (e2e)', () => {
       );
 
       const visibilitySchema: FormSchema = {
-        title: 'Validator Visibility',
         pages: [
           {
             id: 'page-1',
@@ -1079,7 +1075,7 @@ describe('Tasks (e2e)', () => {
       const formOne = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: visibilitySchema.title, schema: visibilitySchema })
+        .send({ title: 'Validator Visibility', schema: visibilitySchema })
         .expect(201);
       await actionRepo.update(actionOne.id, {
         taskFormId: formOne.body.id as number,
@@ -1109,7 +1105,7 @@ describe('Tasks (e2e)', () => {
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
         .send({
-          title: `${visibilitySchema.title} 2`,
+          title: 'Validator Visibility 2',
           schema: visibilitySchema,
         })
         .expect(201);
@@ -1147,7 +1143,6 @@ describe('Tasks (e2e)', () => {
 
   describe('Conditional requiredness', () => {
     const requiredIfSchema: FormSchema = {
-      title: 'Conditional Requiredness',
       pages: [
         {
           id: 'page-1',
@@ -1182,7 +1177,6 @@ describe('Tasks (e2e)', () => {
     };
 
     const listRequiredIfSchema: FormSchema = {
-      title: 'Conditional Requiredness In List',
       pages: [
         {
           id: 'page-1',
@@ -1241,7 +1235,6 @@ describe('Tasks (e2e)', () => {
      * ranking-slot checks.
      */
     const listAndRankingRequiredIfSchema: FormSchema = {
-      title: 'Conditional Requiredness For List And Ranking',
       pages: [
         {
           id: 'page-1',
@@ -1530,8 +1523,7 @@ describe('Tasks (e2e)', () => {
    */
   describe('Account-derived condition visibility', () => {
     /** A form whose one required field is gated on a single account condition. */
-    const gatedSchema = (title: string, condition: Condition): FormSchema => ({
-      title,
+    const gatedSchema = (condition: Condition): FormSchema => ({
       pages: [
         {
           id: 'page-1',
@@ -1569,7 +1561,7 @@ describe('Tasks (e2e)', () => {
       const form = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: name, schema: gatedSchema(name, condition) })
+        .send({ title: name, schema: gatedSchema(condition) })
         .expect(201);
       await actionRepo.update(action.id, {
         taskFormId: form.body.id as number,
@@ -1658,7 +1650,7 @@ describe('Tasks (e2e)', () => {
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
         .send({
           title: name,
-          schema: gatedSchema(name, {
+          schema: gatedSchema({
             kind: 'completedActionCount',
             atLeast: 1,
           }),
@@ -1700,7 +1692,6 @@ describe('Tasks (e2e)', () => {
   describe('Cross-form conditional visibility', () => {
     it('hides required fields when sourceFormId condition is not met', async () => {
       const sourceSchema: FormSchema = {
-        title: 'Source Form',
         pages: [
           {
             id: 'page-1',
@@ -1726,7 +1717,7 @@ describe('Tasks (e2e)', () => {
       const sourceFormRes = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: sourceSchema.title, schema: sourceSchema })
+        .send({ title: 'Source Form', schema: sourceSchema })
         .expect(201);
       const sourceFormId = sourceFormRes.body.id as number;
       await actionRepo.update(sourceAction.id, { taskFormId: sourceFormId });
@@ -1743,7 +1734,6 @@ describe('Tasks (e2e)', () => {
         .expect(201);
 
       const dependentSchema: FormSchema = {
-        title: 'Dependent Form',
         pages: [
           {
             id: 'page-1',
@@ -1783,7 +1773,7 @@ describe('Tasks (e2e)', () => {
       const dependentFormRes = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: dependentSchema.title, schema: dependentSchema })
+        .send({ title: 'Dependent Form', schema: dependentSchema })
         .expect(201);
       const dependentFormId = dependentFormRes.body.id as number;
       await actionRepo.update(dependentAction.id, {
@@ -1805,7 +1795,6 @@ describe('Tasks (e2e)', () => {
 
     it('shows required fields when sourceFormId condition is met', async () => {
       const sourceSchema: FormSchema = {
-        title: 'Source Form 2',
         pages: [
           {
             id: 'page-1',
@@ -1831,7 +1820,7 @@ describe('Tasks (e2e)', () => {
       const sourceFormRes = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: sourceSchema.title, schema: sourceSchema })
+        .send({ title: 'Source Form 2', schema: sourceSchema })
         .expect(201);
       const sourceFormId = sourceFormRes.body.id as number;
       await actionRepo.update(sourceAction.id, { taskFormId: sourceFormId });
@@ -1848,7 +1837,6 @@ describe('Tasks (e2e)', () => {
         .expect(201);
 
       const dependentSchema: FormSchema = {
-        title: 'Dependent Form 2',
         pages: [
           {
             id: 'page-1',
@@ -1881,7 +1869,7 @@ describe('Tasks (e2e)', () => {
       const dependentFormRes = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: dependentSchema.title, schema: dependentSchema })
+        .send({ title: 'Dependent Form 2', schema: dependentSchema })
         .expect(201);
       const dependentFormId = dependentFormRes.body.id as number;
       await actionRepo.update(dependentAction.id, {
@@ -1915,7 +1903,6 @@ describe('Tasks (e2e)', () => {
 
     it('works with visibility formula and sourceFormId', async () => {
       const sourceSchema: FormSchema = {
-        title: 'Source Form 3',
         pages: [
           {
             id: 'page-1',
@@ -1941,7 +1928,7 @@ describe('Tasks (e2e)', () => {
       const sourceFormRes = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: sourceSchema.title, schema: sourceSchema })
+        .send({ title: 'Source Form 3', schema: sourceSchema })
         .expect(201);
       const sourceFormId = sourceFormRes.body.id as number;
       await actionRepo.update(sourceAction.id, { taskFormId: sourceFormId });
@@ -1958,7 +1945,6 @@ describe('Tasks (e2e)', () => {
         .expect(201);
 
       const dependentSchema: FormSchema = {
-        title: 'Dependent Form 3',
         pages: [
           {
             id: 'page-1',
@@ -1991,7 +1977,7 @@ describe('Tasks (e2e)', () => {
       const dependentFormRes = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: dependentSchema.title, schema: dependentSchema })
+        .send({ title: 'Dependent Form 3', schema: dependentSchema })
         .expect(201);
       const dependentFormId = dependentFormRes.body.id as number;
       await actionRepo.update(dependentAction.id, {
@@ -2051,7 +2037,6 @@ describe('Tasks (e2e)', () => {
         .send({
           title,
           schema: {
-            title,
             pages: [{ id: 'page-1', fields }],
             outputViews: [],
           } satisfies FormSchema,
@@ -2178,7 +2163,6 @@ describe('Tasks (e2e)', () => {
       });
 
       const extractionSchema: FormSchema = {
-        title: 'User Data Extraction Form',
         pages: [
           {
             id: 'page-1',
@@ -2222,7 +2206,7 @@ describe('Tasks (e2e)', () => {
       const formResponse = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: extractionSchema.title, schema: extractionSchema })
+        .send({ title: 'User Data Extraction Form', schema: extractionSchema })
         .expect(201);
 
       const testFormId = formResponse.body.id;
@@ -2262,7 +2246,6 @@ describe('Tasks (e2e)', () => {
       await userRepo.update(ctx.testUserId, { phoneNumber: null });
 
       const schema: FormSchema = {
-        title: 'Non-US Phone Form',
         pages: [
           {
             id: 'page-1',
@@ -2285,7 +2268,7 @@ describe('Tasks (e2e)', () => {
       const formResponse = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: schema.title, schema })
+        .send({ title: 'Non-US Phone Form', schema })
         .expect(201);
       await actionRepo.update(action.id, {
         taskFormId: formResponse.body.id as number,
@@ -2323,7 +2306,6 @@ describe('Tasks (e2e)', () => {
         });
 
         const timeSchema: FormSchema = {
-          title: 'Time Extraction Form',
           pages: [
             {
               id: 'page-1',
@@ -2346,7 +2328,7 @@ describe('Tasks (e2e)', () => {
         const formResponse = await request(ctx.app.getHttpServer())
           .post('/tasks/createForm')
           .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-          .send({ title: timeSchema.title, schema: timeSchema })
+          .send({ title: 'Time Extraction Form', schema: timeSchema })
           .expect(201);
         await actionRepo.update(action.id, {
           taskFormId: formResponse.body.id as number,
@@ -2384,7 +2366,6 @@ describe('Tasks (e2e)', () => {
       });
 
       const noExtractSchema: FormSchema = {
-        title: 'No Extraction Form',
         pages: [
           {
             id: 'page-1',
@@ -2412,7 +2393,7 @@ describe('Tasks (e2e)', () => {
       const formResponse = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: noExtractSchema.title, schema: noExtractSchema })
+        .send({ title: 'No Extraction Form', schema: noExtractSchema })
         .expect(201);
       await actionRepo.update(action.id, {
         taskFormId: formResponse.body.id as number,
@@ -2449,7 +2430,6 @@ describe('Tasks (e2e)', () => {
       });
 
       const phoneSchema: FormSchema = {
-        title: 'Invalid Phone Form',
         pages: [
           {
             id: 'page-1',
@@ -2472,7 +2452,7 @@ describe('Tasks (e2e)', () => {
       const formResponse = await request(ctx.app.getHttpServer())
         .post('/tasks/createForm')
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ title: phoneSchema.title, schema: phoneSchema })
+        .send({ title: 'Invalid Phone Form', schema: phoneSchema })
         .expect(201);
       await actionRepo.update(action.id, {
         taskFormId: formResponse.body.id as number,

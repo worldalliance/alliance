@@ -31,7 +31,6 @@ export interface ActionFollowUpFormsTabProps {
 }
 
 const emptyFormSchema: FormSchema = {
-  title: "Follow-up form",
   description: "",
   pages: [{ id: "page-1", title: "Page 1", fields: [] }],
   submit: { label: "Submit" },

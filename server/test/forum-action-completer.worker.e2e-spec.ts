@@ -140,7 +140,6 @@ describe('ForumActionCompleterWorker (e2e)', () => {
 
   const createFormWithValidator = async (validatorId: number) => {
     const schema: FormSchema = {
-      title: 'Forum Action Form',
       pages: [
         {
           id: 'page-1',

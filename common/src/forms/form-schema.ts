@@ -390,7 +390,6 @@ export const outputViewSchemaSchema = z.strictObject({
 export type OutputViewSchema = z.infer<typeof outputViewSchemaSchema>;
 
 export const formSchema = z.strictObject({
-  title: z.string(),
   description: z.string().optional(),
   pages: z.array(pageSchema),
   submit: z.strictObject({ label: z.string().optional() }).optional(),

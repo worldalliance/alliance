@@ -38,7 +38,12 @@ export class CreateFormDto extends PickType(Form, ['title']) {
   schema: Record<string, unknown>;
 }
 
-export class UpdateFormDto extends CreateFormDto {
+export class UpdateFormDto extends PickType(CreateFormDto, ['schema']) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  title?: string;
+
   /** Expected snapshot id; stale values return 409. */
   @ApiPropertyOptional()
   @IsOptional()

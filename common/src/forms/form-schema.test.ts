@@ -65,7 +65,6 @@ describe("forEachCondition", () => {
 
   /** Every slot a condition can hang on across an input schema. */
   const kitchenSink: FormSchema = {
-    title: "t",
     pages: [
       {
         id: "p1",
@@ -151,7 +150,6 @@ describe("forEachCondition", () => {
 
   it("tolerates a schema with no conditions", () => {
     const bare: FormSchema = {
-      title: "t",
       pages: [{ id: "p1", fields: [textField("f1")] }],
       outputViews: [],
     };
@@ -166,7 +164,6 @@ describe("forEachCondition", () => {
  */
 describe("forEachCondition as a predicate", () => {
   const schemaWith = (field: AnyField): FormSchema => ({
-    title: "t",
     pages: [{ id: "p1", fields: [field] }],
     outputViews: [],
   });
@@ -204,7 +201,6 @@ describe("forEachCondition as a predicate", () => {
 describe("collectSourceFormIds", () => {
   it("collects ids from visibleIfFormula and requiredIfFormula alike", () => {
     const schema: FormSchema = {
-      title: "t",
       pages: [
         {
           id: "p1",

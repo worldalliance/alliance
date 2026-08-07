@@ -50,7 +50,6 @@ const page = (id: string, fields: Array<AnyField | LabelBlock>): Page => ({
 });
 
 const baseSchema = (overrides: Partial<FormSchema> = {}): FormSchema => ({
-  title: "Test form",
   pages: [],
   outputViews: [],
   ...overrides,
