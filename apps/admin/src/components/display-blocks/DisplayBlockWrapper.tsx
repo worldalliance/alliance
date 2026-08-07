@@ -23,6 +23,7 @@ import {
   ConditionalVisibility,
   type OutputBlockOption,
 } from "../form-fields/CommonControls";
+import { usePerViewerOptionsAllowed } from "./PerViewerOptionsContext";
 
 type ManualUserListEntry = Pick<UserDto, "id" | "name" | "hasActiveContract">;
 
@@ -91,7 +92,8 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     ? MANUAL_IMPORT_FIELD_BY_KIND[block.kind]
     : null;
   const { success, error: toastError, confirm } = useToast();
-  const showConditional = Boolean(block && onUpdate);
+  const perViewerOptionsAllowed = usePerViewerOptionsAllowed();
+  const showConditional = Boolean(block && onUpdate && perViewerOptionsAllowed);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const optionsMenuRef = useRef<HTMLDivElement | null>(null);
   const hasAttemptedUserLoadRef = useRef(false);

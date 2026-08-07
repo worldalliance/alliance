@@ -535,7 +535,6 @@ export class ActionEventRecipientService {
   async findFilteredGroupLeads(
     event: Pick<ActionEvent, 'newStatus' | 'action' | 'date' | 'id'>,
     deadlineEvent: Pick<ActionEvent, 'newStatus' | 'action' | 'date'> | null,
-    type: ActionEventNotifType,
     suite?: ActionSuite,
     excludeOptionalActions?: boolean,
   ): Promise<User[]> {
@@ -606,7 +605,6 @@ export class ActionEventRecipientService {
         return await this.findFilteredGroupLeads(
           group.memberActionEvent,
           group.deadlineEvent ?? null,
-          ActionEventNotifType.PersonalReminder,
           group.actionSuite,
           group.excludeOptionalActions,
         );

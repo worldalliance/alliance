@@ -18,9 +18,9 @@
     "rootDirs": [".", "./.react-router/types", "../.."],
     "rootDir": "../..",
     /* Linting */
+    /* Unused locals/params are left to @typescript-eslint/no-unused-vars in
+       eslint/shared-rules.mjs, which honours the repo-wide `_` prefix. */
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
     // "noUncheckedSideEffectImports": true
   },

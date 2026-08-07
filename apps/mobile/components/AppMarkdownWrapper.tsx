@@ -341,7 +341,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
 
   const rules: RenderRules = useMemo(
     () => ({
-      heading1: (node, children, parent, styles) => (
+      heading1: (node, children, _parent, styles) => (
         <View
           key={node.key}
           style={[
@@ -355,7 +355,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           {children}
         </View>
       ),
-      heading2: (node, children, parent, styles) => (
+      heading2: (node, children, _parent, styles) => (
         <View
           key={node.key}
           style={[
@@ -369,7 +369,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           {children}
         </View>
       ),
-      heading3: (node, children, parent, styles) => (
+      heading3: (node, children, _parent, styles) => (
         <View
           key={node.key}
           style={[
@@ -402,7 +402,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           </View>
         );
       },
-      bullet_list: (node, children, parent, styles) => (
+      bullet_list: (node, children, _parent, styles) => (
         <View
           key={node.key}
           style={[
@@ -416,7 +416,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           {children}
         </View>
       ),
-      ordered_list: (node, children, parent, styles) => (
+      ordered_list: (node, children, _parent, styles) => (
         <View
           key={node.key}
           style={[
@@ -467,7 +467,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
         </View>
       ),
       // custom image rendering with URL transformation
-      image: (node, children, parent) => {
+      image: (node, _children, parent) => {
         const src = node.attributes?.src || "";
         const transformedSrc = transformImageUrl(src);
         const alt = node.attributes?.alt || "";
@@ -512,14 +512,14 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
         );
       },
       // Handle imgcap code blocks (custom image with caption syntax)
-      code_block: (node, children, parent) => {
+      code_block: (node, _children, parent) => {
         const language = node.attributes?.class?.replace("language-", "") || "";
         return language === "imgcap"
           ? renderImgcap(node, parent)
           : renderPlainCodeBlock(node, parent);
       },
-      body: (node, children) => <>{children}</>,
-      fence: (node, children, parent) => {
+      body: (_node, children) => <>{children}</>,
+      fence: (node, _children, parent) => {
         // The info string (language) for fenced code blocks can be in different properties
         const info =
           (node as { sourceInfo?: string }).sourceInfo ||
@@ -622,6 +622,5 @@ export {
   extractPathFromInternalUrl,
   getInternalRoute,
   transformImageUrl,
-  useHandleLinkPress
+  useHandleLinkPress,
 };
-

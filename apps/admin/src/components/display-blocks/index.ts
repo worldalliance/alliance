@@ -12,4 +12,5 @@ export { EditableSpacerBlock } from "./EditableSpacerBlock";
 export { EditableTextBlock } from "./EditableTextBlock";
 export { EditableUserLocationBlock } from "./EditableUserLocationBlock";
 export { EditableVideoBlock } from "./EditableVideoBlock";
+export { PerViewerOptions } from "./PerViewerOptionsContext";
 export type { BaseDisplayBlockProps } from "./types";

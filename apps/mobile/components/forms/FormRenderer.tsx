@@ -1535,7 +1535,7 @@ const FormRenderer = ({
               key={field.id}
               ref={(ref) => {
                 if (ref) {
-                  ref.measure((x, y, width, height, pageX, pageY) => {
+                  ref.measure((_x, _y, _width, _height, _pageX, pageY) => {
                     fieldScreenPositions.current[field.id] = pageY;
                   });
                 }

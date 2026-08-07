@@ -1,4 +1,10 @@
-import type { FormSchema } from "@alliance/common/forms/form-schema";
+import {
+  displayOnlyToFormSchema,
+  formSchemaToDisplayOnly,
+  readDisplayOnlySchema,
+  readDisplayOnlySchemaError,
+} from "@alliance/common/forms/display-only-schema";
+import { R } from "@alliance/common/result";
 import {
   actionsCreateGeneralUpdateAdmin,
   actionsFindOneGeneralUpdateAdmin,
@@ -16,7 +22,7 @@ import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import { FormBuilder } from "../components/FormBuilder";
+import { FormBuilder, type DisplayOnlySave } from "../components/FormBuilder";
 
 const FormSection: React.FC<{
   title: string;
@@ -34,7 +40,10 @@ const FormSection: React.FC<{
   </div>
 );
 
-type Tab = "details" | "form";
+type Tab = "details" | "content";
+
+const notDisplayOnlyMessage = (issues: string[]) =>
+  `General updates can only hold display-only content — ${issues.join("; ")}`;
 
 type GeneralUpdateForm = {
   name: string;
@@ -291,52 +300,80 @@ const GeneralUpdatePage: React.FC = () => {
     }));
   }, []);
 
-  const handleSaveSchema = useCallback(
-    async (schema: FormSchema) => {
-      if (id == null) return;
+  const handleSaveSchema = useCallback<DisplayOnlySave>(
+    async ({ schema, expectedSnapshotId }) => {
+      if (id == null) throw new Error("Missing general update id");
+      if (expectedSnapshotId === null) {
+        throw new Error("Missing the snapshot this edit was built on");
+      }
+      const converted = formSchemaToDisplayOnly(schema);
+      if (R.isFailure(converted)) {
+        throw new Error(notDisplayOnlyMessage(converted.error));
+      }
       const response = await actionsUpdateGeneralUpdateAdmin({
         path: { id },
         body: {
-          schema: schema as unknown as Record<string, unknown>,
+          schema: converted.value,
+          expectedSchemaSnapshotId: expectedSnapshotId,
         },
       });
-      if (response.data) setUpdate(response.data);
+
+      if (response.response.status === 409) {
+        const latest = await actionsFindOneGeneralUpdateAdmin({ path: { id } });
+        const theirs = latest.data && readDisplayOnlySchema(latest.data.schema);
+        if (!latest.data || !theirs) {
+          throw new Error("This update was changed by someone else");
+        }
+        setUpdate(latest.data);
+        return R.failure({
+          theirs: displayOnlyToFormSchema(theirs, latest.data.name),
+          theirsSnapshotId: latest.data.schemaSnapshotId,
+        });
+      }
+
+      if (!response.data) {
+        const rejected = readDisplayOnlySchemaError(response.error);
+        if (rejected) throw new Error(notDisplayOnlyMessage(rejected));
+        const message = response.error?.message;
+        throw new Error(
+          (Array.isArray(message) ? message.join("; ") : message) ??
+            "Failed to save content",
+        );
+      }
+      setUpdate(response.data);
+      return R.success({ snapshotId: response.data.schemaSnapshotId });
     },
     [id],
   );
 
   const formContent = (
     <>
-      <FormSection title="Content">
-        <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Title
-            </label>
-            <textarea
-              id="name"
-              value={form.name}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, name: e.target.value }))
-              }
-              rows={1}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
-            />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-700">Priority</p>
-            <a
-              href="/priority"
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              Manage priority
-            </a>
-          </div>
-        </div>
+      <FormSection
+        title="Title"
+        description="Shown to members at the top of the general update."
+      >
+        <label htmlFor="name" className="sr-only">
+          Title
+        </label>
+        <textarea
+          id="name"
+          value={form.name}
+          onChange={(e) =>
+            setForm((prev) => ({ ...prev, name: e.target.value }))
+          }
+          rows={1}
+          required
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+        />
+      </FormSection>
+
+      <FormSection title="Priority">
+        <a
+          href="/priority"
+          className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Manage priority
+        </a>
       </FormSection>
 
       <FormSection
@@ -603,6 +640,39 @@ const GeneralUpdatePage: React.FC = () => {
     ? "Create General Update"
     : (update?.name ?? "General Update");
 
+  const renderContentTab = (generalUpdate: GeneralUpdateAdminDto) => {
+    // Editing content this build can't parse would save back whatever the
+    // builder made of it, dropping the parts it didn't understand.
+    const storedSchema = readDisplayOnlySchema(generalUpdate.schema);
+    if (!storedSchema) {
+      return (
+        <div
+          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800"
+          role="alert"
+        >
+          <p className="font-medium">This update can&apos;t be edited here</p>
+          <p className="mt-1 text-sm">
+            Its content was saved by a newer version of the admin panel. Refresh
+            the page to pick that version up.
+          </p>
+        </div>
+      );
+    }
+    return (
+      <FormBuilder
+        displayOnly
+        initialSchema={displayOnlyToFormSchema(
+          storedSchema,
+          generalUpdate.name,
+        )}
+        initialSnapshotId={generalUpdate.schemaSnapshotId}
+        title={generalUpdate.name}
+        setFormId={() => {}}
+        onSave={handleSaveSchema}
+      />
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       <title>{pageTitle} - Admin</title>
@@ -638,15 +708,15 @@ const GeneralUpdatePage: React.FC = () => {
                 General Update Details
               </button>
               <button
-                onClick={() => onTabChange("form")}
+                onClick={() => onTabChange("content")}
                 className={cn(
                   "py-2 px-1 border-b-2 text-sm",
-                  selectedTab === "form"
+                  selectedTab === "content"
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300",
                 )}
               >
-                Form Builder
+                Content
               </button>
             </nav>
           </div>
@@ -659,14 +729,10 @@ const GeneralUpdatePage: React.FC = () => {
             </form>
           )}
 
-          {!isNew && selectedTab === "form" && update && (
-            <FormBuilder
-              generalUpdateName={update.name}
-              initialSchema={(update.schema ?? {}) as unknown as FormSchema}
-              setFormId={() => {}}
-              onSave={handleSaveSchema}
-            />
-          )}
+          {!isNew &&
+            selectedTab === "content" &&
+            update &&
+            renderContentTab(update)}
         </div>
       </div>
     </div>

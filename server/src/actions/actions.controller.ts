@@ -22,6 +22,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiQuery,
+  ApiResponse,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { AuthOptionalGuard } from 'src/auth/guards/authoptional.guard';
@@ -312,6 +313,11 @@ export class ActionsController {
   @Patch('generalUpdates/:id')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: GeneralUpdateAdminDto })
+  @ApiResponse({
+    status: 409,
+    description:
+      'The general update was changed by someone else since it was opened (optimistic-concurrency conflict).',
+  })
   async updateGeneralUpdateAdmin(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateGeneralUpdateDto,

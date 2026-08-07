@@ -413,15 +413,11 @@ const HomePage = () => {
                     {sortedGeneralUpdates.map((generalUpdate) => (
                       <LargeGeneralUpdateCard
                         key={generalUpdate.id}
-                        id={generalUpdate.id}
                         title={generalUpdate.name}
                         schema={generalUpdate.schema}
                         onDismiss={() =>
                           handleDismissGeneralUpdate(generalUpdate.id)
                         }
-                        userId={user?.id}
-                        user={user}
-                        loadCurrentUserLocation={!!user}
                       />
                     ))}
                   </div>
@@ -548,15 +544,11 @@ const HomePage = () => {
                 {sortedGeneralUpdates.map((generalUpdate) => (
                   <LargeGeneralUpdateCard
                     key={generalUpdate.id}
-                    id={generalUpdate.id}
                     title={generalUpdate.name}
                     schema={generalUpdate.schema}
                     onDismiss={() =>
                       handleDismissGeneralUpdate(generalUpdate.id)
                     }
-                    userId={user?.id}
-                    user={user}
-                    loadCurrentUserLocation={!!user}
                   />
                 ))}
               </div>

@@ -15,7 +15,10 @@ import { ForumModule } from 'src/forum/forum.module';
 import { NotifsModule } from 'src/notifs/notifs.module';
 import { PosthogModule } from 'src/posthog/posthog.module';
 import { Form } from 'src/tasks/entities/form.entity';
-import { FormSnapshot } from 'src/tasks/entities/formsnapshot.entity';
+import {
+  FormSnapshot,
+  SnapshotHistoryOwner,
+} from 'src/tasks/entities/formsnapshot.entity';
 import { FormSnapshotService } from 'src/tasks/formsnapshot.service';
 import {
   ContractEvent,
@@ -184,7 +187,11 @@ export async function attachFormSnapshot(
   formId: number,
   formSnapshotId: number,
 ): Promise<void> {
-  await snapshotService(dataSource).recordHistorical(formId, formSnapshotId);
+  await snapshotService(dataSource).recordHistorical({
+    owner: SnapshotHistoryOwner.Form,
+    ownerId: formId,
+    snapshotId: formSnapshotId,
+  });
 }
 
 export async function createFormWithSnapshot(

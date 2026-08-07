@@ -4,11 +4,17 @@ import { Allow, IsDefined, IsOptional } from 'class-validator';
 import {
   Column,
   Entity,
+  JoinColumn,
   JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import {
+  FormSnapshot,
+  GENERAL_UPDATE_SNAPSHOT_HISTORY_TABLE,
+} from 'src/tasks/entities/formsnapshot.entity';
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
@@ -32,11 +38,26 @@ export class GeneralUpdate {
   @IsDefined()
   name: string;
 
-  @Column({ type: 'jsonb' })
+  @Column()
   @ApiProperty()
-  @IsDefined()
-  @Type(() => Object)
-  schema!: Record<string, unknown>;
+  @Allow()
+  schemaSnapshotId: number;
+
+  @ManyToOne(() => FormSnapshot, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'schemaSnapshotId' })
+  @Type(() => FormSnapshot)
+  @IsOptional()
+  schemaSnapshot?: Relation<FormSnapshot>;
+
+  @ManyToMany(() => FormSnapshot)
+  @JoinTable({
+    name: GENERAL_UPDATE_SNAPSHOT_HISTORY_TABLE,
+    joinColumn: { name: 'generalUpdateId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'schemaSnapshotId', referencedColumnName: 'id' },
+  })
+  @Type(() => FormSnapshot)
+  @IsOptional()
+  historicalSchemaSnapshots?: Relation<FormSnapshot>[];
 
   @CreateDateColumnTz()
   @ApiProperty()

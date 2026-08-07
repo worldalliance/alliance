@@ -1,29 +1,47 @@
 import {
   ApiProperty,
   ApiPropertyOptional,
-  OmitType,
   PartialType,
   PickType,
 } from '@nestjs/swagger';
 import { GeneralUpdate } from '../entities/general-update.entity';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsUUID } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsUUID,
+  ValidateIf,
+} from 'class-validator';
 import { Tag } from 'src/user/entities/tag.entity';
 import { ActionSuite } from '../entities/action-suite.entity';
+
+function schemaOf(generalUpdate: GeneralUpdate): Record<string, unknown> {
+  if (!generalUpdate.schemaSnapshot) {
+    throw new Error(
+      `GeneralUpdate ${generalUpdate.id}: schemaSnapshot was not loaded — the query needs relations: { schemaSnapshot: true }`,
+    );
+  }
+  return generalUpdate.schemaSnapshot.schema;
+}
 
 export class GeneralUpdateDto extends PickType(GeneralUpdate, [
   'id',
   'name',
-  'schema',
   'startDate',
   'endDate',
   'priority',
 ]) {
+  @ApiProperty()
+  @Type(() => Object)
+  schema: Record<string, unknown>;
+
   constructor(generalUpdate: GeneralUpdate) {
     super();
     this.id = generalUpdate.id;
     this.name = generalUpdate.name;
-    this.schema = generalUpdate.schema;
+    this.schema = schemaOf(generalUpdate);
     this.startDate = generalUpdate.startDate;
     this.endDate = generalUpdate.endDate;
     this.priority = generalUpdate.priority;
@@ -33,7 +51,7 @@ export class GeneralUpdateDto extends PickType(GeneralUpdate, [
 export class GeneralUpdateAdminDto extends PickType(GeneralUpdate, [
   'id',
   'name',
-  'schema',
+  'schemaSnapshotId',
   'startDate',
   'endDate',
   'createdAt',
@@ -42,6 +60,10 @@ export class GeneralUpdateAdminDto extends PickType(GeneralUpdate, [
   'manualCohortUserIds',
   'priority',
 ]) {
+  @ApiProperty()
+  @Type(() => Object)
+  schema: Record<string, unknown>;
+
   @ApiProperty({ type: () => Tag, isArray: true })
   @Type(() => Tag)
   tags: Tag[];
@@ -54,7 +76,8 @@ export class GeneralUpdateAdminDto extends PickType(GeneralUpdate, [
     super();
     this.id = generalUpdate.id;
     this.name = generalUpdate.name;
-    this.schema = generalUpdate.schema;
+    this.schema = schemaOf(generalUpdate);
+    this.schemaSnapshotId = generalUpdate.schemaSnapshotId;
     this.startDate = generalUpdate.startDate;
     this.endDate = generalUpdate.endDate;
     this.createdAt = generalUpdate.createdAt;
@@ -67,15 +90,12 @@ export class GeneralUpdateAdminDto extends PickType(GeneralUpdate, [
   }
 }
 
-export class CreateGeneralUpdateDto extends OmitType(GeneralUpdate, [
-  'id',
-  'createdAt',
-  'updatedAt',
-  'activities',
-  'tags',
-  'suites',
-  'schema',
-  'priority',
+export class CreateGeneralUpdateDto extends PickType(GeneralUpdate, [
+  'name',
+  'startDate',
+  'endDate',
+  'useManualCohort',
+  'manualCohortUserIds',
 ]) {
   @ApiPropertyOptional({ type: String, isArray: true })
   @IsOptional()
@@ -91,16 +111,25 @@ export class CreateGeneralUpdateDto extends OmitType(GeneralUpdate, [
 }
 
 export class UpdateGeneralUpdateDto extends PartialType(
-  OmitType(GeneralUpdate, [
-    'id',
-    'createdAt',
-    'updatedAt',
-    'activities',
-    'tags',
-    'suites',
-    'priority',
+  PickType(GeneralUpdate, [
+    'name',
+    'startDate',
+    'endDate',
+    'useManualCohort',
+    'manualCohortUserIds',
   ]),
 ) {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  @Type(() => Object)
+  schema?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Number })
+  @ValidateIf((dto: UpdateGeneralUpdateDto) => dto.schema !== undefined)
+  @IsInt()
+  expectedSchemaSnapshotId?: number;
+
   @ApiPropertyOptional({ type: String, isArray: true })
   @IsOptional()
   @IsArray()

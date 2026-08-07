@@ -10,11 +10,17 @@ import {
   expressionReferencesTag,
   type CohortExpression,
 } from '@alliance/common/cohort-expression';
+import {
+  displayOnlySchema,
+  displayOnlySchemaError,
+  emptyDisplayOnlySchema,
+} from '@alliance/common/forms/display-only-schema';
 import type { FormSchema } from '@alliance/common/forms/form-schema';
 import { run } from '@alliance/common/run';
 import { Assert } from '@alliance/common/types';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   forwardRef,
   Inject,
@@ -38,6 +44,8 @@ import { EditableContent } from 'src/forum/entities/editablecontent.entity';
 import { Post } from 'src/forum/entities/post.entity';
 import { ForumService } from 'src/forum/forum.service';
 import { FacepileService } from 'src/likes/facepile.service';
+import { SnapshotHistoryOwner } from 'src/tasks/entities/formsnapshot.entity';
+import { FormSnapshotService } from 'src/tasks/formsnapshot.service';
 import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
 import {
   ActionEventReminderService,
@@ -86,6 +94,7 @@ import { startDatePriorityComparator } from 'src/utils/general-update';
 import type { IsRelation, Relations } from 'src/utils/Repository';
 import {
   DeepPartial,
+  EntityManager,
   ILike,
   In,
   IsNull,
@@ -283,6 +292,7 @@ export class ActionsService {
     @Inject(forwardRef(() => ActionFormVariantService))
     private readonly actionFormVariantService: ActionFormVariantService,
     private readonly facepileService: FacepileService,
+    private readonly formSnapshotService: FormSnapshotService,
   ) {}
 
   async applyAssignedFormIds(
@@ -1103,6 +1113,7 @@ export class ActionsService {
         where: {
           startDate: LessThan(now),
         },
+        relations: { schemaSnapshot: true },
       })
     ).sort(startDatePriorityComparator);
   }
@@ -1110,25 +1121,80 @@ export class ActionsService {
   async findAllGeneralUpdatesAdmin(): Promise<GeneralUpdate[]> {
     return (
       await this.generalUpdateRepository.find({
-        relations: { tags: true, suites: true },
+        relations: { schemaSnapshot: true, tags: true, suites: true },
       })
     ).sort(startDatePriorityComparator);
   }
 
-  async findOneGeneralUpdate(id: number): Promise<GeneralUpdate> {
-    return await this.generalUpdateRepository.findOneOrFail({
+  async findOneGeneralUpdate(
+    id: number,
+    em?: EntityManager,
+  ): Promise<GeneralUpdate> {
+    const manager = em ?? this.generalUpdateRepository.manager;
+    return await manager.findOneOrFail(GeneralUpdate, {
       where: { id },
-      relations: { tags: true, suites: true },
+      relations: { schemaSnapshot: true, tags: true, suites: true },
     });
+  }
+
+  private parseDisplayOnlySchemaOrThrow(
+    schema: unknown,
+  ): Record<string, unknown> {
+    const parsed = displayOnlySchema.safeParse(schema);
+    if (!parsed.success) {
+      throw new BadRequestException(displayOnlySchemaError(parsed.error));
+    }
+    return parsed.data;
+  }
+
+  // The expected snapshot id is required, not optional: an unguarded schema
+  // write is exactly the silent overwrite this path exists to reject.
+  private async writeSchemaOrThrow(params: {
+    id: number;
+    schema: unknown;
+    expectedSchemaSnapshotId: number;
+    em: EntityManager;
+  }): Promise<number> {
+    const { id, expectedSchemaSnapshotId, em } = params;
+    const schema = this.parseDisplayOnlySchemaOrThrow(params.schema);
+    const snapshot = await this.formSnapshotService.findOrCreate(schema, em);
+
+    const result = await em
+      .createQueryBuilder()
+      .update(GeneralUpdate)
+      .set({ schemaSnapshotId: snapshot.id })
+      .where('id = :id', { id })
+      .andWhere('"schemaSnapshotId" = :expectedSchemaSnapshotId', {
+        expectedSchemaSnapshotId,
+      })
+      .execute();
+
+    if (result.affected === 0) {
+      throw new ConflictException(
+        'This general update was changed by someone else since you opened it.',
+      );
+    }
+
+    await this.formSnapshotService.recordHistorical({
+      owner: SnapshotHistoryOwner.GeneralUpdate,
+      ownerId: id,
+      snapshotId: snapshot.id,
+      em,
+    });
+
+    return snapshot.id;
   }
 
   async createGeneralUpdate(
     dto: CreateGeneralUpdateDto,
   ): Promise<GeneralUpdate> {
     const { tagIds, suiteIds, ...rest } = dto;
+    const emptySnapshot = await this.formSnapshotService.findOrCreate(
+      emptyDisplayOnlySchema(),
+    );
     const generalUpdate = this.generalUpdateRepository.create({
       ...rest,
-      schema: {},
+      schemaSnapshotId: emptySnapshot.id,
     });
 
     if (tagIds && tagIds.length > 0) {
@@ -1145,6 +1211,12 @@ export class ActionsService {
 
     const saved = await this.generalUpdateRepository.save(generalUpdate);
 
+    await this.formSnapshotService.recordHistorical({
+      owner: SnapshotHistoryOwner.GeneralUpdate,
+      ownerId: saved.id,
+      snapshotId: emptySnapshot.id,
+    });
+
     await this.shiftPrioritiesAfterInsertion();
     if (generalUpdate.suites) {
       await this.syncGeneralUpdateDatesForSuites(
@@ -1152,41 +1224,82 @@ export class ActionsService {
       );
     }
 
-    return saved;
+    return this.findOneGeneralUpdate(saved.id);
   }
 
   async updateGeneralUpdate(
     id: number,
     dto: UpdateGeneralUpdateDto,
   ): Promise<GeneralUpdate> {
-    const generalUpdate = await this.findOneGeneralUpdate(id);
-    const { tagIds, suiteIds, ...rest } = dto;
+    const { tagIds, suiteIds, schema, expectedSchemaSnapshotId, ...rest } = dto;
 
-    Object.assign(generalUpdate, rest);
+    // Guards non-HTTP callers too, where the DTO's `@ValidateIf` never runs.
+    const schemaWrite = run(() => {
+      if (schema === undefined) return null;
+      if (expectedSchemaSnapshotId === undefined) {
+        throw new BadRequestException(
+          'expectedSchemaSnapshotId is required when writing schema',
+        );
+      }
+      return { schema, expectedSchemaSnapshotId };
+    });
 
-    if (tagIds !== undefined) {
-      generalUpdate.tags =
-        tagIds.length > 0
-          ? await this.tagRepository.findBy({ id: In(tagIds) })
-          : [];
-    }
+    // Keep the entity, relation, and guarded schema writes atomic. The row lock
+    // is taken before the read and covers metadata-only writes too: `save`
+    // below re-reads the row and writes back every column that differs from the
+    // entity loaded here, so an unlocked read-modify-write would revert a
+    // concurrent schema save. Locking here rather than in `writeSchemaOrThrow`
+    // is what makes that read current. (`findOneOrFail` can't take the lock
+    // itself — its `relations` become LEFT JOINs, and Postgres rejects FOR
+    // UPDATE on the nullable side of an outer join.)
+    const affectedSuiteIds =
+      await this.generalUpdateRepository.manager.transaction(async (em) => {
+        await em.query(
+          'SELECT id FROM general_update WHERE id = $1 FOR UPDATE',
+          [id],
+        );
+        const generalUpdate = await this.findOneGeneralUpdate(id, em);
 
-    if (suiteIds !== undefined) {
-      generalUpdate.suites =
-        suiteIds.length > 0
-          ? await this.actionSuiteRepository.findBy({ id: In(suiteIds) })
-          : [];
-    }
+        if (schemaWrite) {
+          generalUpdate.schemaSnapshotId = await this.writeSchemaOrThrow({
+            id,
+            ...schemaWrite,
+            em,
+          });
+          // The loaded relation still holds the previous snapshot, and TypeORM
+          // lets a relation object win over the FK column — leaving it set would
+          // make the `save` below write the old id straight back over the one
+          // just written.
+          generalUpdate.schemaSnapshot = undefined;
+        }
 
-    const update = await this.generalUpdateRepository.save(generalUpdate);
+        Object.assign(generalUpdate, rest);
 
-    if (generalUpdate.suites) {
-      await this.syncGeneralUpdateDatesForSuites(
-        generalUpdate.suites.map((suite) => suite.id),
-      );
-    }
+        if (tagIds !== undefined) {
+          generalUpdate.tags =
+            tagIds.length > 0 ? await em.findBy(Tag, { id: In(tagIds) }) : [];
+        }
 
-    return update;
+        if (suiteIds !== undefined) {
+          generalUpdate.suites =
+            suiteIds.length > 0
+              ? await em.findBy(ActionSuite, { id: In(suiteIds) })
+              : [];
+        }
+
+        await em.save(generalUpdate);
+
+        return generalUpdate.suites?.map((suite) => suite.id) ?? [];
+      });
+
+    // Deliberately after the commit: this rewrites every general update in the
+    // suite, and holding those rows alongside the one the transaction already
+    // locked lets two admins editing the same suite take the same locks in
+    // opposite orders and deadlock. The dates are derived from the suite's
+    // events, so they don't need to land atomically with the save.
+    await this.syncGeneralUpdateDatesForSuites(affectedSuiteIds);
+
+    return this.findOneGeneralUpdate(id);
   }
 
   async setPriorityOrder(dto: SetPriorityDto): Promise<void> {
@@ -1231,20 +1344,34 @@ export class ActionsService {
       },
     });
 
-    for (const generalUpdate of generalUpdates) {
-      if (generalUpdate.suites!.length === 0) {
-        continue;
-      }
+    const isDateChanged = (current?: Date, next?: Date): boolean =>
+      next !== undefined && current?.getTime() !== next.getTime();
 
+    const dateUpdates = generalUpdates.flatMap((generalUpdate) => {
       const action = generalUpdate.suites![0]?.actions![0];
       if (!action) {
-        continue;
+        return [];
       }
+      const startDate = action.memberActionPhase.event?.date;
+      const endDate = action.memberActionPhase.deadlineEvent?.date;
+      if (
+        !isDateChanged(generalUpdate.startDate, startDate) &&
+        !isDateChanged(generalUpdate.endDate, endDate)
+      ) {
+        return [];
+      }
+      return [{ id: generalUpdate.id, startDate, endDate }];
+    });
 
-      generalUpdate.startDate = action.memberActionPhase.event?.date;
-      generalUpdate.endDate = action.memberActionPhase.deadlineEvent?.date;
-    }
-    await this.generalUpdateRepository.save(generalUpdates);
+    // Writes only the two date columns rather than saving the whole entity: a
+    // concurrent editor may have replaced `schemaSnapshotId` since the read
+    // above, and `save` diffs against the entity loaded here, so it would write
+    // the stale id back over theirs.
+    await Promise.all(
+      dateUpdates.map(({ id, ...dates }) =>
+        this.generalUpdateRepository.update(id, dates),
+      ),
+    );
   }
 
   async findUnreadGeneralUpdates(params: {
@@ -1260,6 +1387,7 @@ export class ActionsService {
         ...(!allowExpired && { endDate: Or(IsNull(), MoreThan(now)) }),
       },
       relations: {
+        schemaSnapshot: true,
         activities: true,
         tags: true,
       },
@@ -2625,8 +2753,9 @@ export class ActionsService {
       relations: {
         actions: { events: true, activities: true },
         reminderGroups: { memberActionEvent: true, deadlineEvent: true },
-        generalUpdates: true,
+        generalUpdates: { schemaSnapshot: true },
       },
+      relationLoadStrategy: 'query',
     });
   }
 

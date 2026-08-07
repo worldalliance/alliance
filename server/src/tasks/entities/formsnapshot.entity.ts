@@ -5,8 +5,31 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { CreateDateColumnTz } from 'src/datasources/basecolumns';
 
 export const FORM_SNAPSHOT_HISTORY_TABLE = 'form_snapshot_history';
+export const GENERAL_UPDATE_SNAPSHOT_HISTORY_TABLE =
+  'general_update_snapshot_history';
 
-// Immutable snapshot of a form schema.
+export enum SnapshotHistoryOwner {
+  Form = 'form',
+  GeneralUpdate = 'generalUpdate',
+}
+
+export const SNAPSHOT_HISTORY_OWNERS = {
+  [SnapshotHistoryOwner.Form]: {
+    table: FORM_SNAPSHOT_HISTORY_TABLE,
+    ownerColumn: 'formId',
+    snapshotColumn: 'formSnapshotId',
+  },
+  [SnapshotHistoryOwner.GeneralUpdate]: {
+    table: GENERAL_UPDATE_SNAPSHOT_HISTORY_TABLE,
+    ownerColumn: 'generalUpdateId',
+    snapshotColumn: 'schemaSnapshotId',
+  },
+} as const satisfies Record<
+  SnapshotHistoryOwner,
+  { table: string; ownerColumn: string; snapshotColumn: string }
+>;
+
+// Immutable schema snapshot shared by forms and general updates.
 @Entity()
 @Index('IDX_form_snapshot_hash', ['hash'], { unique: true })
 export class FormSnapshot {

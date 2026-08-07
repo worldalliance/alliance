@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, In, QueryFailedError, Repository } from 'typeorm';
 import { Form } from 'src/tasks/entities/form.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
+import { SnapshotHistoryOwner } from 'src/tasks/entities/formsnapshot.entity';
 import { FormSnapshotService } from 'src/tasks/formsnapshot.service';
 import { User } from 'src/user/entities/user.entity';
 import { Action } from './entities/action.entity';
@@ -94,11 +95,12 @@ export class ActionFormVariantService {
           formSnapshot: sourceForm.formSnapshot,
         }),
       );
-      await this.formSnapshotService.recordHistorical(
-        newForm.id,
-        sourceForm.formSnapshotId,
+      await this.formSnapshotService.recordHistorical({
+        owner: SnapshotHistoryOwner.Form,
+        ownerId: newForm.id,
+        snapshotId: sourceForm.formSnapshotId,
         em,
-      );
+      });
       return variantTxRepo.save(
         variantTxRepo.create({
           actionId,

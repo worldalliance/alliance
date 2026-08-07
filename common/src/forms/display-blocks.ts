@@ -178,77 +178,77 @@ const baseBlockFields = {
     .optional(),
 };
 
-const headerBlockSchema = z.strictObject({
+export const headerBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("header"),
   ...headerContentSchema.shape,
 });
 export type HeaderBlock = z.infer<typeof headerBlockSchema>;
 
-const textBlockSchema = z.strictObject({
+export const textBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("text"),
   ...textContentSchema.shape,
 });
 export type TextBlock = z.infer<typeof textBlockSchema>;
 
-const quoteBlockSchema = z.strictObject({
+export const quoteBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("quote"),
   ...quoteContentSchema.shape,
 });
 export type QuoteBlock = z.infer<typeof quoteBlockSchema>;
 
-const labelBlockSchema = z.strictObject({
+export const labelBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("label"),
   ...labelContentSchema.shape,
 });
 export type LabelBlock = z.infer<typeof labelBlockSchema>;
 
-const dividerBlockSchema = z.strictObject({
+export const dividerBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("divider"),
   ...dividerContentSchema.shape,
 });
 export type DividerBlock = z.infer<typeof dividerBlockSchema>;
 
-const spacerBlockSchema = z.strictObject({
+export const spacerBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("spacer"),
   ...spacerContentSchema.shape,
 });
 export type SpacerBlock = z.infer<typeof spacerBlockSchema>;
 
-const htmlBlockSchema = z.strictObject({
+export const htmlBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("html"),
   ...htmlContentSchema.shape,
 });
 export type HtmlBlock = z.infer<typeof htmlBlockSchema>;
 
-const imageBlockSchema = z.strictObject({
+export const imageBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("image"),
   ...imageContentSchema.shape,
 });
 export type ImageBlock = z.infer<typeof imageBlockSchema>;
 
-const videoBlockSchema = z.strictObject({
+export const videoBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("video"),
   ...videoContentSchema.shape,
 });
 export type VideoBlock = z.infer<typeof videoBlockSchema>;
 
-const bigLinkBlockSchema = z.strictObject({
+export const bigLinkBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("biglink"),
   ...bigLinkContentSchema.shape,
 });
 export type BigLinkBlock = z.infer<typeof bigLinkBlockSchema>;
 
-const copyTextBlockSchema = z.strictObject({
+export const copyTextBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("copytext"),
   ...copyTextContentSchema.shape,
@@ -269,7 +269,7 @@ const userLocationBlockSchema = z.strictObject({
 });
 export type UserLocationBlock = z.infer<typeof userLocationBlockSchema>;
 
-const chatTranscriptBlockSchema = z.strictObject({
+export const chatTranscriptBlockSchema = z.strictObject({
   ...baseBlockFields,
   kind: z.literal("chatTranscript"),
   ...chatTranscriptContentSchema.shape,

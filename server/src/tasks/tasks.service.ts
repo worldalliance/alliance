@@ -93,7 +93,10 @@ import {
 } from './entities/customvalidator.entity';
 import { Form } from './entities/form.entity';
 import { FormResponse } from './entities/formresponse.entity';
-import { FormSnapshot } from './entities/formsnapshot.entity';
+import {
+  FormSnapshot,
+  SnapshotHistoryOwner,
+} from './entities/formsnapshot.entity';
 import {
   CreateFormDto,
   FormDto,
@@ -164,7 +167,11 @@ export class TasksService {
       formSnapshotId: snapshot.id,
       formSnapshot: snapshot,
     });
-    await this.formSnapshotService.recordHistorical(form.id, snapshot.id);
+    await this.formSnapshotService.recordHistorical({
+      owner: SnapshotHistoryOwner.Form,
+      ownerId: form.id,
+      snapshotId: snapshot.id,
+    });
     return form;
   }
 
@@ -620,7 +627,11 @@ export class TasksService {
     }
 
     if (snapshotChanged) {
-      await this.formSnapshotService.recordHistorical(formId, nextSnapshotId);
+      await this.formSnapshotService.recordHistorical({
+        owner: SnapshotHistoryOwner.Form,
+        ownerId: formId,
+        snapshotId: nextSnapshotId,
+      });
     }
 
     return this.getForm(formId);

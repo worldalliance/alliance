@@ -2811,6 +2811,132 @@ describe('Actions (e2e)', () => {
     });
   });
 
+  describe('General update schema concurrency', () => {
+    const displaySchema = (text: string) => ({
+      blocks: [{ type: 'display', kind: 'header', id: 'b1', text }],
+    });
+
+    const patch = (id: number, body: Record<string, unknown>) =>
+      request(ctx.app.getHttpServer())
+        .patch(`/actions/generalUpdates/${id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send(body);
+
+    it('rejects a save built on a snapshot someone else has replaced', async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post('/actions/generalUpdates/create')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: `Concurrency ${Date.now()}`, useManualCohort: false })
+        .expect(201);
+
+      const id = created.body.id as number;
+      const snapshot0 = created.body.schemaSnapshotId as number;
+
+      const v1 = await patch(id, {
+        schema: displaySchema('V1'),
+        expectedSchemaSnapshotId: snapshot0,
+      }).expect(200);
+      const snapshot1 = v1.body.schemaSnapshotId as number;
+      expect(snapshot1).not.toBe(snapshot0);
+
+      await patch(id, {
+        schema: displaySchema('V2'),
+        expectedSchemaSnapshotId: snapshot0,
+      }).expect(409);
+
+      const afterConflict = await request(ctx.app.getHttpServer())
+        .get(`/actions/generalUpdates/admin/${id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(afterConflict.body.schema).toEqual(displaySchema('V1'));
+
+      const v2 = await patch(id, {
+        schema: displaySchema('V2'),
+        expectedSchemaSnapshotId: snapshot1,
+      }).expect(200);
+      expect(v2.body.schema).toEqual(displaySchema('V2'));
+
+      const snapshot2 = v2.body.schemaSnapshotId as number;
+      await patch(id, { name: 'Renamed' }).expect(200);
+      const v3 = await patch(id, {
+        schema: displaySchema('V3'),
+        expectedSchemaSnapshotId: snapshot2,
+      }).expect(200);
+
+      const history = await ctx.dataSource.query<
+        { schemaSnapshotId: number }[]
+      >(
+        `SELECT "schemaSnapshotId" FROM general_update_snapshot_history WHERE "generalUpdateId" = $1`,
+        [id],
+      );
+      const recorded = history.map((row) => row.schemaSnapshotId);
+      expect(recorded).toEqual(
+        expect.arrayContaining([
+          snapshot0,
+          snapshot1,
+          snapshot2,
+          v3.body.schemaSnapshotId as number,
+        ]),
+      );
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/actions/generalUpdates/${id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+
+      const afterDelete = await ctx.dataSource.query<unknown[]>(
+        `SELECT 1 FROM general_update_snapshot_history WHERE "generalUpdateId" = $1`,
+        [id],
+      );
+      expect(afterDelete).toHaveLength(0);
+    });
+
+    it('rejects content a display-only schema cannot hold', async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post('/actions/generalUpdates/create')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: `Validation ${Date.now()}`, useManualCohort: false })
+        .expect(201);
+      const id = created.body.id as number;
+
+      await patch(id, {
+        schema: {
+          blocks: [
+            { type: 'input', kind: 'text', id: 'f1', label: 'Your name' },
+          ],
+        },
+        expectedSchemaSnapshotId: created.body.schemaSnapshotId as number,
+      }).expect(400);
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/actions/generalUpdates/${id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+    });
+
+    it('refuses a schema write with no snapshot to guard against', async () => {
+      const created = await request(ctx.app.getHttpServer())
+        .post('/actions/generalUpdates/create')
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: `Unguarded ${Date.now()}`, useManualCohort: false })
+        .expect(201);
+      const id = created.body.id as number;
+      const snapshot0 = created.body.schemaSnapshotId as number;
+
+      await patch(id, { schema: displaySchema('Unguarded') }).expect(400);
+
+      const after = await request(ctx.app.getHttpServer())
+        .get(`/actions/generalUpdates/admin/${id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(after.body.schemaSnapshotId).toBe(snapshot0);
+
+      await patch(id, { name: 'Renamed' }).expect(200);
+
+      await request(ctx.app.getHttpServer())
+        .delete(`/actions/generalUpdates/${id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+    });
+  });
+
   afterAll(async () => {
     await actionRepo.query('DELETE FROM action');
     await ctx.app.close();

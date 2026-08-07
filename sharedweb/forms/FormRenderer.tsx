@@ -123,16 +123,7 @@ type FormRendererProps = {
   loadCurrentUserLocation?: boolean;
   onSubmit: ((data: SubmitFormDto) => Promise<boolean>) | null; // null for admin preview
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
-} & (
-  | {
-      isGeneralUpdate?: false;
-      onDismiss?: undefined;
-    }
-  | {
-      isGeneralUpdate: true;
-      onDismiss?: () => void;
-    }
-);
+};
 
 export { computeFormStorageKey };
 
@@ -176,8 +167,6 @@ const FormRenderer = ({
   actionId,
   initialPageIndex,
   sessionReplayUrl,
-  isGeneralUpdate,
-  onDismiss,
   scrollContainerRef,
 }: FormRendererProps) => {
   // Compute schema and a namespaced storage key for persistence (if enabled)
@@ -1753,17 +1742,7 @@ const FormRenderer = ({
 
             {isLastPage && (
               <>
-                {isGeneralUpdate ? (
-                  onDismiss && (
-                    <BaseButton
-                      variant={BaseButtonVariant.LightHover}
-                      onClick={onDismiss}
-                      className="w-full"
-                    >
-                      Dismiss
-                    </BaseButton>
-                  )
-                ) : readOnly ? null : onSubmit ? (
+                {readOnly ? null : onSubmit ? (
                   <div className="w-full">
                     {createAccountHref ? (
                       <a

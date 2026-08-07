@@ -1,23 +1,15 @@
-import { actionsAllGeneralUpdates } from "@alliance/shared/client";
+import { useAllGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCard";
-import { useQuery } from "@tanstack/react-query";
 import { MoveLeft } from "lucide-react";
 import React from "react";
 import { Link, href } from "react-router";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
-import { useAuth } from "../../lib/AuthContext";
 
 const GeneralUpdatesPage: React.FC = () => {
   useWhiteBackground();
 
-  const { data: generalUpdates = [] } = useQuery({
-    queryKey: ["actionsAllGeneralUpdates"],
-    queryFn: () =>
-      actionsAllGeneralUpdates().then((response) => response.data ?? []),
-  });
-
-  const { user } = useAuth();
+  const { generalUpdates } = useAllGeneralUpdates();
 
   return (
     <CenterLayout>
@@ -33,12 +25,8 @@ const GeneralUpdatesPage: React.FC = () => {
           {generalUpdates.map((generalUpdate) => (
             <LargeGeneralUpdateCard
               key={generalUpdate.id}
-              id={generalUpdate.id}
               title={generalUpdate.name}
               schema={generalUpdate.schema}
-              userId={user?.id}
-              user={user}
-              loadCurrentUserLocation={!!user}
             />
           ))}
         </div>

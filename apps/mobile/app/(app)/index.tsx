@@ -1,9 +1,5 @@
-import type { FollowUpForm, GeneralUpdateDto } from "@alliance/shared/client";
-import {
-  actionsDismissAction,
-  actionsDismissGeneralUpdate,
-  actionsUnreadGeneralUpdates,
-} from "@alliance/shared/client";
+import type { FollowUpForm } from "@alliance/shared/client";
+import { actionsDismissAction } from "@alliance/shared/client";
 import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
 import {
   ActionWithAwayStatus,
@@ -11,12 +7,14 @@ import {
 } from "@alliance/shared/lib/actionUtils";
 import { noTasksToDoRightNow } from "@alliance/shared/lib/copy";
 import { ParsedHomeFeedItemDto } from "@alliance/shared/lib/feedHelpers";
+import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
 import { useHomePageActions } from "@alliance/shared/lib/homePage";
 import { getTaskDismissInfo } from "@alliance/shared/lib/largeActionCard";
 import { useBoundedIndex } from "@alliance/shared/lib/useBoundedIndex";
+import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
 import useHomeFeed, { resetHomeFeed } from "@alliance/shared/lib/useHomeFeed";
 import { LegendList, type LegendListRef } from "@legendapp/list";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Check } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -45,14 +43,8 @@ import { colors } from "../../lib/style/colors";
 
 type HomeScreenItem =
   | { kind: "action"; action: ActionWithAwayStatus }
-  | { kind: "generalUpdate"; generalUpdate: GeneralUpdateDto }
+  | { kind: "generalUpdate"; generalUpdate: ParsedGeneralUpdate }
   | { kind: "followUpForm"; followUpForm: FollowUpForm; actionId: number };
-
-const GENERAL_UPDATES_QUERY_KEY = [
-  "actions",
-  "generalUpdates",
-  "unread",
-] as const;
 
 // Stable identity — LegendList remounts its scroll view whenever this prop changes.
 const renderKeyboardAwareScrollComponent = (props: ScrollViewProps) => (
@@ -95,14 +87,11 @@ export default function HomeScreen() {
   });
 
   const {
-    data: generalUpdates,
+    generalUpdates,
     isPending: generalUpdatesPending,
     refetch: refetchGeneralUpdates,
-  } = useQuery({
-    queryKey: GENERAL_UPDATES_QUERY_KEY,
-    queryFn: () =>
-      actionsUnreadGeneralUpdates().then((response) => response.data ?? []),
-  });
+    dismissGeneralUpdate: handleDismissGeneralUpdate,
+  } = useUnreadGeneralUpdates();
 
   const handleDismissAction = useCallback(
     async (actionId: number) => {
@@ -118,19 +107,6 @@ export default function HomeScreen() {
       refetch();
     },
     [actions, refetch],
-  );
-
-  const handleDismissGeneralUpdate = useCallback(
-    async (generalUpdateId: number) => {
-      await actionsDismissGeneralUpdate({
-        path: { generalUpdateId },
-      });
-      queryClient.setQueryData<GeneralUpdateDto[]>(
-        GENERAL_UPDATES_QUERY_KEY,
-        (prev) => prev?.filter((u) => u.id !== generalUpdateId) ?? [],
-      );
-    },
-    [queryClient],
   );
 
   const loading = isPending || generalUpdatesPending;
@@ -151,7 +127,7 @@ export default function HomeScreen() {
   const allItems = useMemo<HomeScreenItem[]>(() => {
     const actionAndUpdateItems: HomeScreenItem[] = [
       ...todoActions.map((action) => ({ kind: "action", action }) as const),
-      ...(generalUpdates ?? []).map(
+      ...generalUpdates.map(
         (generalUpdate) => ({ kind: "generalUpdate", generalUpdate }) as const,
       ),
     ].sort((a, b) => {
@@ -354,9 +330,6 @@ export default function HomeScreen() {
               onDismiss={() =>
                 handleDismissGeneralUpdate(currentItem.generalUpdate.id)
               }
-              userId={user?.id}
-              user={user}
-              loadCurrentUserLocation={!!user}
             />
           </View>
         ),
@@ -412,7 +385,6 @@ export default function HomeScreen() {
   }, [
     currentItem,
     dismissProps,
-    user,
     handleDismissGeneralUpdate,
     queryClient,
     refetch,

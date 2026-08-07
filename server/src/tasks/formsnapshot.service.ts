@@ -7,6 +7,8 @@ import type { Repository } from 'src/utils/Repository';
 import {
   FORM_SNAPSHOT_HISTORY_TABLE,
   FormSnapshot,
+  SNAPSHOT_HISTORY_OWNERS,
+  SnapshotHistoryOwner,
 } from './entities/formsnapshot.entity';
 
 export function hashFormSchema(schema: Record<string, unknown>): string {
@@ -22,9 +24,13 @@ export class FormSnapshotService {
     private readonly snapshotRepository: Repository<FormSnapshot>,
   ) {}
 
-  async findOrCreate(schema: Record<string, unknown>): Promise<FormSnapshot> {
+  async findOrCreate(
+    schema: Record<string, unknown>,
+    em?: EntityManager,
+  ): Promise<FormSnapshot> {
     const hash = hashFormSchema(schema);
-    const rows = await this.snapshotRepository.query<{ id: number }[]>(
+    const runner = em ?? this.snapshotRepository.manager;
+    const rows = await runner.query<{ id: number }[]>(
       `INSERT INTO form_snapshot ("schema", "hash") VALUES ($1::jsonb, $2)
        ON CONFLICT ("hash") DO UPDATE SET "schema" = form_snapshot."schema"
        RETURNING id`,
@@ -33,20 +39,24 @@ export class FormSnapshotService {
     if (rows.length === 0) {
       throw new Error('FormSnapshot.findOrCreate: upsert returned no rows');
     }
-    return this.snapshotRepository.findOneByOrFail({ id: rows[0].id });
+    return runner.findOneByOrFail(FormSnapshot, { id: rows[0].id });
   }
 
-  async recordHistorical(
-    formId: number,
-    formSnapshotId: number,
-    em?: EntityManager,
-  ): Promise<void> {
-    const runner = em ?? this.snapshotRepository.manager;
+  // SQL identifiers come from the exhaustive owner table, never caller input.
+  async recordHistorical(params: {
+    owner: SnapshotHistoryOwner;
+    ownerId: number;
+    snapshotId: number;
+    em?: EntityManager;
+  }): Promise<void> {
+    const { table, ownerColumn, snapshotColumn } =
+      SNAPSHOT_HISTORY_OWNERS[params.owner];
+    const runner = params.em ?? this.snapshotRepository.manager;
     await runner.query(
-      `INSERT INTO "${FORM_SNAPSHOT_HISTORY_TABLE}" ("formId", "formSnapshotId")
+      `INSERT INTO "${table}" ("${ownerColumn}", "${snapshotColumn}")
        VALUES ($1, $2)
        ON CONFLICT DO NOTHING`,
-      [formId, formSnapshotId],
+      [params.ownerId, params.snapshotId],
     );
   }
 

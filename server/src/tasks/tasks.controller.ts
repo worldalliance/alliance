@@ -168,6 +168,11 @@ export class TasksController {
   @Patch('forms/:formId/responseSnapshots')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: MigrateResponseSnapshotsResultDto })
+  @ApiResponse({
+    status: 409,
+    description:
+      'The form snapshot changed since the migration was reviewed (optimistic-concurrency conflict).',
+  })
   async migrateResponseSnapshotsAdmin(
     @Param('formId', ParseIntPipe) formId: number,
     @Body() body: MigrateResponseSnapshotsDto,

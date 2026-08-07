@@ -204,9 +204,7 @@ export type ActionFormVariant = {
 export type GeneralUpdate = {
     id: number;
     name: string;
-    schema: {
-        [key: string]: unknown;
-    };
+    schemaSnapshotId: number;
     createdAt: string;
     updatedAt: string;
     startDate?: string;
@@ -2019,20 +2017,18 @@ export type ActionDto = {
 export type GeneralUpdateDto = {
     id: number;
     name: string;
-    schema: {
-        [key: string]: unknown;
-    };
     startDate?: string;
     endDate?: string;
     priority: number;
+    schema: {
+        [key: string]: unknown;
+    };
 };
 
 export type GeneralUpdateAdminDto = {
     id: number;
     name: string;
-    schema: {
-        [key: string]: unknown;
-    };
+    schemaSnapshotId: number;
     createdAt: string;
     updatedAt: string;
     startDate?: string;
@@ -2043,6 +2039,9 @@ export type GeneralUpdateAdminDto = {
      */
     manualCohortUserIds?: Array<number> | null;
     priority: number;
+    schema: {
+        [key: string]: unknown;
+    };
     tags: Array<Tag>;
     suites?: Array<ActionSuite>;
 };
@@ -2062,9 +2061,6 @@ export type CreateGeneralUpdateDto = {
 
 export type UpdateGeneralUpdateDto = {
     name?: string;
-    schema?: {
-        [key: string]: unknown;
-    };
     startDate?: string;
     endDate?: string;
     useManualCohort?: boolean;
@@ -2072,6 +2068,10 @@ export type UpdateGeneralUpdateDto = {
      * User IDs in the manual cohort
      */
     manualCohortUserIds?: Array<number> | null;
+    schema?: {
+        [key: string]: unknown;
+    };
+    expectedSchemaSnapshotId?: number;
     tagIds?: Array<string>;
     suiteIds?: Array<number>;
 };
@@ -8148,9 +8148,9 @@ export type ActionsUpdateGeneralUpdateAdminData = {
 
 export type ActionsUpdateGeneralUpdateAdminErrors = {
     /**
-     * Default error response for hey-api
+     * The general update was changed by someone else since it was opened (optimistic-concurrency conflict).
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type ActionsUpdateGeneralUpdateAdminError = ActionsUpdateGeneralUpdateAdminErrors[keyof ActionsUpdateGeneralUpdateAdminErrors];
@@ -11435,9 +11435,9 @@ export type TasksMigrateResponseSnapshotsAdminData = {
 
 export type TasksMigrateResponseSnapshotsAdminErrors = {
     /**
-     * Default error response for hey-api
+     * The form snapshot changed since the migration was reviewed (optimistic-concurrency conflict).
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type TasksMigrateResponseSnapshotsAdminError = TasksMigrateResponseSnapshotsAdminErrors[keyof TasksMigrateResponseSnapshotsAdminErrors];

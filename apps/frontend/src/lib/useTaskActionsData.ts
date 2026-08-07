@@ -1,29 +1,19 @@
-import type { GeneralUpdateDto } from "@alliance/shared/client";
-import {
-  ActionDto,
-  actionsDismissAction,
-  actionsDismissGeneralUpdate,
-  actionsUnreadGeneralUpdates,
-} from "@alliance/shared/client";
+import { ActionDto, actionsDismissAction } from "@alliance/shared/client";
 import { useActionsQuery } from "@alliance/shared/lib/actionsListPage";
 import {
   ActionWithAwayStatus,
   withOptimisticDismissal,
 } from "@alliance/shared/lib/actionUtils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type ParsedGeneralUpdate } from "@alliance/shared/lib/generalUpdates";
+import { useUnreadGeneralUpdates } from "@alliance/shared/lib/useGeneralUpdates";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
-
-const GENERAL_UPDATES_QUERY_KEY = [
-  "actions",
-  "generalUpdates",
-  "unread",
-] as const;
 
 export function useTaskActionsData(options?: {
   refetchInterval?: number | false;
 }): {
   actions: ActionWithAwayStatus[] | null;
-  generalUpdates: GeneralUpdateDto[] | null;
+  generalUpdates: ParsedGeneralUpdate[] | null;
   loading: boolean;
   handleDismissAction: (actionId: number) => Promise<void>;
   handleDismissGeneralUpdate: (generalUpdateId: number) => Promise<void>;
@@ -35,14 +25,11 @@ export function useTaskActionsData(options?: {
     isError: actionsError,
   } = useActionsQuery({ refetchInterval: options?.refetchInterval });
   const {
-    data: generalUpdatesData,
+    generalUpdates: generalUpdatesData,
     isLoading: generalUpdatesLoading,
     isError: generalUpdatesError,
-  } = useQuery({
-    queryKey: GENERAL_UPDATES_QUERY_KEY,
-    queryFn: () =>
-      actionsUnreadGeneralUpdates().then((response) => response.data ?? []),
-  });
+    dismissGeneralUpdate,
+  } = useUnreadGeneralUpdates();
 
   const loading = actionsLoading || generalUpdatesLoading;
 
@@ -57,11 +44,11 @@ export function useTaskActionsData(options?: {
     }));
   }, [actionsData, loading, actionsError]);
 
-  const generalUpdates = useMemo<GeneralUpdateDto[] | null>(() => {
+  const generalUpdates = useMemo<ParsedGeneralUpdate[] | null>(() => {
     if (loading || generalUpdatesError) {
       return null;
     }
-    return generalUpdatesData ?? [];
+    return generalUpdatesData;
   }, [generalUpdatesData, loading, generalUpdatesError]);
 
   const handleDismissAction = useCallback(
@@ -79,25 +66,11 @@ export function useTaskActionsData(options?: {
     [queryClient],
   );
 
-  const handleDismissGeneralUpdate = useCallback(
-    async (generalUpdateId: number) => {
-      await actionsDismissGeneralUpdate({
-        path: { generalUpdateId },
-      });
-
-      queryClient.setQueryData<GeneralUpdateDto[] | undefined>(
-        GENERAL_UPDATES_QUERY_KEY,
-        (prev) => prev?.filter((u) => u.id !== generalUpdateId) ?? [],
-      );
-    },
-    [queryClient],
-  );
-
   return {
     actions,
     generalUpdates,
     loading,
     handleDismissAction,
-    handleDismissGeneralUpdate,
+    handleDismissGeneralUpdate: dismissGeneralUpdate,
   };
 }

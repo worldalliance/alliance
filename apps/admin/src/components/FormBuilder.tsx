@@ -3,6 +3,7 @@ import {
   type DisplayBlock,
   type DisplayKind,
 } from "@alliance/common/forms/display-blocks";
+import { isDisplayOnlyBlockKind } from "@alliance/common/forms/display-only-schema";
 import {
   fieldHasOptions,
   isQuestionField,
@@ -19,6 +20,7 @@ import {
   type Condition,
   type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
+import { R, type Result } from "@alliance/common/result";
 import {
   tasksCreateCustomValidatorAdmin,
   tasksCreateFormAdmin,
@@ -31,11 +33,11 @@ import { cn } from "@alliance/shared/styles/util";
 import { customComponentRegistry } from "@alliance/sharedweb/forms/components";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import LargeGeneralUpdateCard from "@alliance/sharedweb/ui/LargeGeneralUpdateCard";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
+import { BLOCK_ELEMENTS } from "../lib/blockElements";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { AggregateBuilder } from "./AggregateBuilder";
@@ -53,8 +55,10 @@ import {
   EditableTextBlock,
   EditableUserLocationBlock,
   EditableVideoBlock,
+  PerViewerOptions,
 } from "./display-blocks";
 import { EditableQuoteBlock } from "./display-blocks/EditableQuoteBlock";
+import { DisplayOnlyPreview } from "./DisplayOnlyPreview";
 import { ElementSelect } from "./ElementSelect";
 import {
   EditableCheckboxField,
@@ -109,26 +113,6 @@ const FIELD_NAMES = {
   custom: "Custom Component Field",
 } as const satisfies Record<Exclude<FieldKind, "text">, string>;
 
-const BLOCK_NAMES = {
-  header: "Header Block",
-  "text-block": "Text Block",
-  label: "Label Block",
-  divider: "Divider Block",
-  spacer: "Spacer Block",
-  html: "HTML Block",
-  image: "Image Block",
-  video: "Video Block",
-  quote: "Quote Block",
-  biglink: "Big Link Block",
-  copytext: "Copy Text Block",
-  previousAnswer: "Previous Answer Block",
-  userLocation: "User Location Block",
-  chatTranscript: "Chat Transcript Block",
-} as const satisfies Record<
-  Exclude<DisplayKind, "text"> | "text-block",
-  string
->;
-
 type AvailableElement =
   | {
       [K in keyof typeof FIELD_NAMES]: {
@@ -138,12 +122,13 @@ type AvailableElement =
       };
     }[keyof typeof FIELD_NAMES]
   | {
-      [K in keyof typeof BLOCK_NAMES]: {
-        id: K;
-        name: (typeof BLOCK_NAMES)[K];
+      [K in DisplayKind]: {
+        id: (typeof BLOCK_ELEMENTS)[K]["id"];
+        name: (typeof BLOCK_ELEMENTS)[K]["name"];
         type: "block";
+        kind: K;
       };
-    }[keyof typeof BLOCK_NAMES]
+    }[DisplayKind]
   | { id: "copy-existing"; name: "Copy Existing Element"; type: "copy" };
 
 const AVAILABLE_ELEMENTS = [
@@ -152,13 +137,18 @@ const AVAILABLE_ELEMENTS = [
     name,
     type: "field",
   })),
-  ...Object.entries(BLOCK_NAMES).map(([id, name]) => ({
+  ...Object.entries(BLOCK_ELEMENTS).map(([kind, { id, name }]) => ({
     id,
     name,
     type: "block",
+    kind,
   })),
   { id: "copy-existing", name: "Copy Existing Element", type: "copy" },
 ] as AvailableElement[];
+
+const DISPLAY_ONLY_ELEMENTS = AVAILABLE_ELEMENTS.filter(
+  (element) => element.type === "block" && isDisplayOnlyBlockKind(element.kind),
+);
 
 const ELEMENT_TYPE_BADGES: Record<
   AvailableElement["type"],
@@ -169,14 +159,46 @@ const ELEMENT_TYPE_BADGES: Record<
   copy: { label: "Copy", className: "bg-purple-100 text-purple-800" },
 };
 
-interface FormBuilderProps {
-  onSave?: (schema: FormSchema) => Promise<void>;
+export type DisplayOnlySaveConflict = {
+  theirs: FormSchema;
+  theirsSnapshotId: number;
+};
+
+export type DisplayOnlySaveResult = Result<
+  { snapshotId: number },
+  DisplayOnlySaveConflict
+>;
+
+export type DisplayOnlySave = (params: {
+  schema: FormSchema;
+  expectedSnapshotId: number | null;
+}) => Promise<DisplayOnlySaveResult>;
+
+// The two editors save through entirely different paths, so the props each one
+// needs are spelled as a union rather than as independent optionals: a
+// display-only builder with no `onSave` would otherwise typecheck and then save
+// a general update's content as a new `Form`.
+type FormBuilderProps = {
   initialSchema?: FormSchema;
-  formId?: number;
   setFormId: (formId: number) => void;
-  actionName?: string;
-  generalUpdateName?: string;
-}
+} & (
+  | {
+      displayOnly: true;
+      onSave: DisplayOnlySave;
+      initialSnapshotId: number;
+      title: string;
+      formId?: undefined;
+      actionName?: undefined;
+    }
+  | {
+      displayOnly?: false;
+      onSave?: undefined;
+      initialSnapshotId?: undefined;
+      title?: undefined;
+      formId?: number;
+      actionName?: string;
+    }
+);
 
 const ensureSchemaViews = (schema: FormSchema): FormSchema => ({
   ...schema,
@@ -649,22 +671,26 @@ const describeCopyableElement = (element: AnyField | DisplayBlock): string => {
       ? `${typeName}: ${truncatePreview(element.label)}`
       : typeName;
   }
-  const typeName =
-    element.kind === "text"
-      ? BLOCK_NAMES["text-block"]
-      : BLOCK_NAMES[element.kind];
+  const typeName = BLOCK_ELEMENTS[element.kind].name;
   const preview = displayBlockPreview(element);
   return preview ? `${typeName}: ${truncatePreview(preview)}` : typeName;
 };
 
-export function FormBuilder({
-  onSave,
-  initialSchema,
-  formId,
-  setFormId,
-  actionName,
-  generalUpdateName,
-}: FormBuilderProps) {
+export function FormBuilder(props: FormBuilderProps) {
+  const { initialSchema, setFormId } = props;
+  // Destructuring the union would drop the correlation between these, so they
+  // are pulled off `props` while it is still narrowable.
+  const displayOnly = props.displayOnly ?? false;
+  const displayOnlySave = props.displayOnly ? props.onSave : null;
+  const initialSnapshotId = props.displayOnly ? props.initialSnapshotId : null;
+  const displayOnlyTitle = props.displayOnly ? props.title : "";
+  const formId = props.displayOnly ? undefined : props.formId;
+  const actionName = props.displayOnly ? undefined : props.actionName;
+
+  const availableElements = displayOnly
+    ? DISPLAY_ONLY_ELEMENTS
+    : AVAILABLE_ELEMENTS;
+
   const buildInitialSchema = () =>
     initialSchema
       ? ensurePages(initialSchema)
@@ -690,7 +716,7 @@ export function FormBuilder({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const [baseFormSnapshotId, setBaseFormSnapshotId] = useState<number | null>(
-    null,
+    initialSnapshotId,
   );
   const [conflict, setConflict] = useState<{
     base: FormSchema;
@@ -701,7 +727,9 @@ export function FormBuilder({
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const activeEditor = searchParams.get("editor") ?? "form";
+  const activeEditor = displayOnly
+    ? "form"
+    : (searchParams.get("editor") ?? "form");
 
   const setActiveEditor = useCallback(
     (editor: "form" | "shareable" | "outputs" | "aggregates") => {
@@ -859,14 +887,14 @@ export function FormBuilder({
   // Search functionality
   useEffect(() => {
     if (searchQuery.trim()) {
-      const filtered = AVAILABLE_ELEMENTS.filter((element) =>
+      const filtered = availableElements.filter((element) =>
         element.name.toLowerCase().includes(searchQuery.toLowerCase()),
       );
       setSearchResults(filtered);
     } else {
       setSearchResults([]);
     }
-  }, [searchQuery]);
+  }, [availableElements, searchQuery]);
 
   const handleSearchSelect = (
     element: AvailableElement,
@@ -876,12 +904,9 @@ export function FormBuilder({
       case "field":
         addField(element.id, insertIndex);
         break;
-      case "block": {
-        // Map text-block back to text for DisplayKind
-        const blockKind = element.id === "text-block" ? "text" : element.id;
-        addDisplayBlock(blockKind, insertIndex);
+      case "block":
+        addDisplayBlock(element.kind, insertIndex);
         break;
-      }
       case "copy":
         setCopyPickerIndex(insertIndex);
         break;
@@ -926,7 +951,7 @@ export function FormBuilder({
 
   // Load form data when formId changes
   useEffect(() => {
-    if (generalUpdateName || !formId || initialSchema) return;
+    if (displayOnly || !formId || initialSchema) return;
     setIsLoading(true);
     setLoadError(null);
 
@@ -959,7 +984,7 @@ export function FormBuilder({
       .finally(() => {
         setIsLoading(false);
       });
-  }, [formId, initialSchema, generalUpdateName]);
+  }, [displayOnly, formId, initialSchema]);
 
   const addField = (kind: FieldKind, insertIndex?: number) => {
     const fieldId = `field-${Date.now()}`;
@@ -1670,10 +1695,23 @@ export function FormBuilder({
         setSchema(schemaForSave);
       }
 
-      // displayBlocksOnly mode: save via onSave only (e.g. general update schema)
-      if (generalUpdateName && onSave) {
-        await onSave(schemaForSave);
+      if (displayOnlySave) {
+        const result = await displayOnlySave({
+          schema: schemaForSave,
+          expectedSnapshotId: baseFormSnapshotId,
+        });
+        if (R.isFailure(result)) {
+          setConflict({
+            base: JSON.parse(lastSavedSchemaJSON) as FormSchema,
+            mine: schemaForSave,
+            theirs: result.error.theirs,
+            theirsSnapshotId: result.error.theirsSnapshotId,
+          });
+          showErrorToast("This update was changed by someone else");
+          return;
+        }
         setLastSavedSchemaJSON(JSON.stringify(schemaForSave));
+        setBaseFormSnapshotId(result.value.snapshotId);
         setHasUnsavedChanges(false);
         showSuccessToast("Saved successfully");
         return;
@@ -1745,10 +1783,6 @@ export function FormBuilder({
         setSaveError(fallbackMessage);
         showErrorToast(fallbackMessage);
       }
-
-      if (onSave) {
-        await onSave(schemaForSave);
-      }
     } catch (error) {
       console.error("Failed to save form:", error);
       const errorMessage =
@@ -1759,11 +1793,10 @@ export function FormBuilder({
       setIsSaving(false);
     }
   }, [
-    generalUpdateName,
+    displayOnlySave,
     formId,
     baseFormSnapshotId,
     lastSavedSchemaJSON,
-    onSave,
     resolveCustomValidatorDrafts,
     schema,
     setFormId,
@@ -1775,7 +1808,42 @@ export function FormBuilder({
 
   // Overwrite only if their snapshot is still current.
   const handleKeepMine = useCallback(async () => {
-    if (!conflict || !formId) return;
+    if (!conflict) return;
+    if (displayOnlySave) {
+      setIsSaving(true);
+      setSaveError(null);
+      try {
+        const result = await displayOnlySave({
+          schema: conflict.mine,
+          expectedSnapshotId: conflict.theirsSnapshotId,
+        });
+        if (R.isFailure(result)) {
+          setConflict({
+            base: conflict.base,
+            mine: conflict.mine,
+            theirs: result.error.theirs,
+            theirsSnapshotId: result.error.theirsSnapshotId,
+          });
+          showErrorToast("Someone saved again — review the latest changes");
+          return;
+        }
+        setSchema(conflict.mine);
+        setLastSavedSchemaJSON(JSON.stringify(conflict.mine));
+        setBaseFormSnapshotId(result.value.snapshotId);
+        setHasUnsavedChanges(false);
+        setConflict(null);
+        showSuccessToast("Saved your version");
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Could not save";
+        setSaveError(message);
+        showErrorToast(message);
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+    if (!formId) return;
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -1825,7 +1893,7 @@ export function FormBuilder({
     } finally {
       setIsSaving(false);
     }
-  }, [conflict, formId, showErrorToast, showSuccessToast]);
+  }, [conflict, displayOnlySave, formId, showErrorToast, showSuccessToast]);
 
   const handleTakeTheirs = useCallback(() => {
     if (!conflict) return;
@@ -2611,7 +2679,7 @@ export function FormBuilder({
               setSearchResults([]);
               setCopyPickerIndex(currentPage.fields.length);
             }}
-            displayBlocksOnly={!!generalUpdateName}
+            displayOnly={displayOnly}
           />
         )}
 
@@ -2643,7 +2711,7 @@ export function FormBuilder({
                       : "No changes"}
                 </Button>
               </div>
-              {!generalUpdateName && (
+              {!displayOnly && (
                 <div className="inline-flex rounded-md bg-gray-200 p-0.5 text-sm font-medium text-gray-600">
                   <button
                     type="button"
@@ -2698,7 +2766,7 @@ export function FormBuilder({
             </div>
 
             {/* Page tabs - only show in edit mode */}
-            {!isPreviewMode && activeEditor === "form" && (
+            {!isPreviewMode && !displayOnly && activeEditor === "form" && (
               <div
                 className="flex space-x-1 mt-4 items-center"
                 onDragOver={(e) => {
@@ -2888,31 +2956,18 @@ export function FormBuilder({
             ref={contentScrollRef}
             className="flex-1 p-6 overflow-y-auto min-h-0"
           >
-            {activeEditor === "shareable" && !generalUpdateName ? (
+            {activeEditor === "shareable" ? (
               <ShareableTextBuilder
                 schema={schema}
                 onSchemaChange={updateSchema}
               />
-            ) : activeEditor === "outputs" && !generalUpdateName ? (
+            ) : activeEditor === "outputs" ? (
               <OutputBuilder schema={schema} onSchemaChange={updateSchema} />
-            ) : activeEditor === "aggregates" && !generalUpdateName ? (
+            ) : activeEditor === "aggregates" ? (
               <AggregateBuilder schema={schema} onSchemaChange={updateSchema} />
-            ) : isPreviewMode && generalUpdateName ? (
-              <div className="max-w-3xl mx-auto bg-white p-6">
-                <PreviewAsUserBar
-                  previewUserId={previewUserId}
-                  setPreviewUserId={setPreviewUserId}
-                  previewUsers={previewUsers}
-                  isLoadingPreviewUsers={isLoadingPreviewUsers}
-                  previewUserError={previewUserError}
-                />
-                <LargeGeneralUpdateCard
-                  title={generalUpdateName}
-                  schema={schema as unknown as Record<string, unknown>}
-                  userId={resolvedPreviewUserId}
-                  user={resolvedPreviewUser}
-                  onDismiss={() => {}}
-                />
+            ) : isPreviewMode && displayOnly ? (
+              <div className="max-w-3xl mx-auto p-6">
+                <DisplayOnlyPreview schema={schema} title={displayOnlyTitle} />
               </div>
             ) : isPreviewMode ? (
               <div className="max-w-3xl mx-auto bg-white p-6">
@@ -2941,176 +2996,173 @@ export function FormBuilder({
                 className="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 p-6 mb-8"
                 onClick={handleClickOutside}
               >
-                <div className="mb-6">
-                  <input
-                    type="text"
-                    value={currentPage.title || ""}
-                    onChange={(e) =>
-                      updateSchema({
-                        ...schema,
-                        pages: schema.pages.map((page, idx) =>
-                          idx === selectedPageIndex
-                            ? { ...page, title: e.target.value }
-                            : page,
-                        ),
-                      })
-                    }
-                    className="text-lg font-medium w-full border-none outline-none"
-                    placeholder="Page title"
-                  />
-                  {currentPage.description && (
-                    <p className="text-gray-600 mt-1">
-                      {currentPage.description}
-                    </p>
-                  )}
-                  <div className="mt-3">
-                    <label className="flex cursor-pointer items-center text-xs text-gray-700">
-                      <input
-                        type="checkbox"
-                        className="mr-2"
-                        checked={showPageVisibilityControl}
-                        onChange={(event) =>
-                          handlePageVisibilityToggle(event.target.checked)
-                        }
-                      />
-                      Use conditional visibility for this page
-                    </label>
-                    {showPageVisibilityControl && (
-                      <div className="mt-2">
-                        {selectedPageIndex === 0 && (
-                          <p className="mb-2 text-xs text-amber-600">
-                            Conditions on the first page can only reference
-                            other forms or validators, since no fields have been
-                            answered yet.
-                          </p>
-                        )}
-                        <ConditionalVisibility
-                          key={currentPage.id}
-                          field={currentPage}
-                          previousFields={pagePreviousFields}
-                          onChange={updateCurrentPageVisibility}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  {/* Search bar at the beginning if no fields */}
-                  {currentPage.fields.length === 0 && (
-                    <InsertPoint insertIndex={0} />
-                  )}
-
-                  {currentPage.fields.map((field, index) => (
-                    <div key={field.id || index}>
-                      {/* Search bar before each element (except first) */}
-                      {index > 0 && <InsertPoint insertIndex={index} />}
-                      {/* First element gets search at beginning */}
-                      {index === 0 && <InsertPoint insertIndex={0} />}
-
-                      {renderField(field, index)}
-
-                      {/* Search bar after last element */}
-                      {index === currentPage.fields.length - 1 && (
-                        <InsertPoint insertIndex={index + 1} />
-                      )}
-                    </div>
-                  ))}
-
-                  {/* Drop zone at the end of the list */}
-                  {draggedItem && currentPage.fields.length > 0 && (
-                    <div
-                      className="relative h-4 -mt-2"
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
-                        setDragOverIndex(currentPage.fields.length);
-                        setDropPosition("before");
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (
-                          !draggedItem ||
-                          draggedItem.pageIndex !== selectedPageIndex
-                        )
-                          return;
-
-                        const { index: dragIndex } = draggedItem;
-                        const insertionIndex =
-                          currentPage.fields.length -
-                          (dragIndex < currentPage.fields.length ? 1 : 0);
-
-                        if (dragIndex === insertionIndex) {
-                          setDraggedItem(null);
-                          setDragOverIndex(null);
-                          setDropPosition(null);
-                          return;
-                        }
-
-                        const currentFields = [...currentPage.fields];
-                        const [draggedField] = currentFields.splice(
-                          dragIndex,
-                          1,
-                        );
-                        currentFields.push(draggedField);
-
+                {!displayOnly && (
+                  <div className="mb-6">
+                    <input
+                      type="text"
+                      value={currentPage.title || ""}
+                      onChange={(e) =>
                         updateSchema({
                           ...schema,
                           pages: schema.pages.map((page, idx) =>
                             idx === selectedPageIndex
-                              ? { ...page, fields: currentFields }
+                              ? { ...page, title: e.target.value }
                               : page,
                           ),
-                        });
-
-                        setDraggedItem(null);
-                        setDragOverIndex(null);
-                        setDropPosition(null);
-                      }}
-                    >
-                      {dragOverIndex === currentPage.fields.length && (
-                        <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-                          <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {currentPage.fields.length === 0 && (
-                    <div
-                      className="text-center py-12 text-gray-500 relative"
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
-                        setDragOverIndex(0);
-                        setDropPosition("before");
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (
-                          !draggedItem ||
-                          draggedItem.pageIndex !== selectedPageIndex
-                        )
-                          return;
-
-                        // This shouldn't happen since we're on an empty page, but handle it gracefully
-                        setDraggedItem(null);
-                        setDragOverIndex(null);
-                        setDropPosition(null);
-                      }}
-                    >
-                      {draggedItem && dragOverIndex === 0 && (
-                        <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-                          <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                        </div>
-                      )}
-                      <p>
-                        No fields added yet. Use the sidebar to add fields and
-                        display blocks.
+                        })
+                      }
+                      className="text-lg font-medium w-full border-none outline-none"
+                      placeholder="Page title"
+                    />
+                    {currentPage.description && (
+                      <p className="text-gray-600 mt-1">
+                        {currentPage.description}
                       </p>
+                    )}
+                    <div className="mt-3">
+                      <label className="flex cursor-pointer items-center text-xs text-gray-700">
+                        <input
+                          type="checkbox"
+                          className="mr-2"
+                          checked={showPageVisibilityControl}
+                          onChange={(event) =>
+                            handlePageVisibilityToggle(event.target.checked)
+                          }
+                        />
+                        Use conditional visibility for this page
+                      </label>
+                      {showPageVisibilityControl && (
+                        <div className="mt-2">
+                          {selectedPageIndex === 0 && (
+                            <p className="mb-2 text-xs text-amber-600">
+                              Conditions on the first page can only reference
+                              other forms or validators, since no fields have
+                              been answered yet.
+                            </p>
+                          )}
+                          <ConditionalVisibility
+                            key={currentPage.id}
+                            field={currentPage}
+                            previousFields={pagePreviousFields}
+                            onChange={updateCurrentPageVisibility}
+                          />
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+                <PerViewerOptions allowed={!displayOnly}>
+                  <div className="space-y-4">
+                    {currentPage.fields.length === 0 && (
+                      <InsertPoint insertIndex={0} />
+                    )}
+
+                    {currentPage.fields.map((field, index) => (
+                      <div key={field.id || index}>
+                        {index > 0 && <InsertPoint insertIndex={index} />}
+                        {index === 0 && <InsertPoint insertIndex={0} />}
+
+                        {renderField(field, index)}
+
+                        {index === currentPage.fields.length - 1 && (
+                          <InsertPoint insertIndex={index + 1} />
+                        )}
+                      </div>
+                    ))}
+
+                    {draggedItem && currentPage.fields.length > 0 && (
+                      <div
+                        className="relative h-4 -mt-2"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          setDragOverIndex(currentPage.fields.length);
+                          setDropPosition("before");
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (
+                            !draggedItem ||
+                            draggedItem.pageIndex !== selectedPageIndex
+                          )
+                            return;
+
+                          const { index: dragIndex } = draggedItem;
+                          const insertionIndex =
+                            currentPage.fields.length -
+                            (dragIndex < currentPage.fields.length ? 1 : 0);
+
+                          if (dragIndex === insertionIndex) {
+                            setDraggedItem(null);
+                            setDragOverIndex(null);
+                            setDropPosition(null);
+                            return;
+                          }
+
+                          const currentFields = [...currentPage.fields];
+                          const [draggedField] = currentFields.splice(
+                            dragIndex,
+                            1,
+                          );
+                          currentFields.push(draggedField);
+
+                          updateSchema({
+                            ...schema,
+                            pages: schema.pages.map((page, idx) =>
+                              idx === selectedPageIndex
+                                ? { ...page, fields: currentFields }
+                                : page,
+                            ),
+                          });
+
+                          setDraggedItem(null);
+                          setDragOverIndex(null);
+                          setDropPosition(null);
+                        }}
+                      >
+                        {dragOverIndex === currentPage.fields.length && (
+                          <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
+                            <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {currentPage.fields.length === 0 && (
+                      <div
+                        className="text-center py-12 text-gray-500 relative"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          setDragOverIndex(0);
+                          setDropPosition("before");
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (
+                            !draggedItem ||
+                            draggedItem.pageIndex !== selectedPageIndex
+                          )
+                            return;
+
+                          setDraggedItem(null);
+                          setDragOverIndex(null);
+                          setDropPosition(null);
+                        }}
+                      >
+                        {draggedItem && dragOverIndex === 0 && (
+                          <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
+                            <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                          </div>
+                        )}
+                        <p>
+                          No fields added yet. Use the sidebar to add fields and
+                          display blocks.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </PerViewerOptions>
               </div>
             )}
           </div>
