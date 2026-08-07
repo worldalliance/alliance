@@ -54,11 +54,11 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
   return (
     <div
       className={cn(
-        "flex flex-col items-center",
-        "sm:flex-row md:gap-y-4 py-4 md:py-6 px-16",
+        "flex flex-col items-center gap-y-3",
+        "sm:flex-row sm:gap-y-0 md:gap-y-4 py-4 md:py-6 px-4 sm:px-8 md:px-16",
         "top-0 left-0 z-10 text-[14pt] transition-[padding,background-color] duration-300",
         absolute ? "absolute" : "relative",
-        "w-screen",
+        "w-full",
         showLogo ? "justify-between" : "justify-end",
         transparent ? "bg-transparent text-white" : "text-black bg-white",
       )}
@@ -77,7 +77,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
           THE ALLIANCE
         </h1>
       )}
-      <div className="flex flex-row items-center gap-x-5 sm:gap-x-10 text-base sm:text-lg md:text-xl ">
+      <div className="flex flex-row flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-x-10 text-base sm:text-lg md:text-xl">
         {links.map((link) =>
           link === NavbarPage.LogIn ? (
             <div key={link} className="flex flex-row items-center gap-x-3">
@@ -100,10 +100,14 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
                 >
                   <AvatarProfile
                     pfp={user.profilePicture ?? null}
-                    size="large"
+                    size="override"
                     className={cn(
-                      "ring-2",
-                      transparent ? "ring-white" : "ring-zinc-200",
+                      "h-10 w-10 sm:h-12 sm:w-12 rounded-md",
+                      !user.profilePicture &&
+                        cn(
+                          "ring-2",
+                          transparent ? "ring-white" : "ring-zinc-200",
+                        ),
                     )}
                   />
                 </Link>
