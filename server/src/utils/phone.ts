@@ -15,6 +15,25 @@ export const phoneNumberTransformer: ValueTransformer = {
   },
 };
 
+/**
+ * Values written by `misc/sync_prod_to_staging.sh` in place of real member
+ * numbers. `+1555…` is the current format; `15550100` is what it wrote before,
+ * and survives on staging until the next sync runs.
+ *
+ * Keep in sync with that script — it is the only writer of these.
+ */
+const ANONYMIZED_PHONE_PREFIXES = ['+1555', '15550100'] as const;
+
+/**
+ * The 555 area code is unassigned in the NANP, so these can never reach a
+ * handset; Twilio rejects them with error 21211. Short-circuit before the API
+ * call so a staging send fails quietly instead of logging a delivery failure
+ * for every member.
+ */
+export function isAnonymizedPhoneNumber(value: string): boolean {
+  return ANONYMIZED_PHONE_PREFIXES.some((prefix) => value.startsWith(prefix));
+}
+
 /** Accepts valid canonical E.164. Pair with `@IsOptional()` for nulls. */
 export function IsE164(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string): void {

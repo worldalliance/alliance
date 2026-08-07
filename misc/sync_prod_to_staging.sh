@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+#
+# This script runs in the staging host via cronjob
+
 set -euo pipefail
 
 source /home/ec2-user/db-sync.env
@@ -44,11 +47,46 @@ pg_restore \
   "$DUMP_FILE"
 
 psql "$STAGING_URL" -v ON_ERROR_STOP=1 <<'SQL'
--- Example: anonymize user emails and clear phone numbers
+-- ============================================================================
+-- Anonymize members.
+--
+-- Order matters. `mms` is rewritten first, while `user."phoneNumber"` still
+-- holds the original values it joins on.
+-- ============================================================================
+
+UPDATE "mms" m
+SET "to" = '+1555' || lpad(u.id::text, 7, '0')
+FROM "user" u
+WHERE m."to" = u."phoneNumber";
+
+UPDATE "mms" m
+SET "from" = '+1555' || lpad(u.id::text, 7, '0')
+FROM "user" u
+WHERE m."from" = u."phoneNumber";
+
+-- Our own Twilio number, and any row whose member no longer exists.
+UPDATE "mms" SET "to"   = '+15550000000' WHERE "to"   NOT LIKE '+1555%';
+UPDATE "mms" SET "from" = '+15550000000' WHERE "from" NOT LIKE '+1555%';
+
+-- Opt-out records keep both the number and the text the member replied with.
+UPDATE "mms_optout" o
+SET "phoneNumber" = '+1555' || lpad(u.id::text, 7, '0')
+FROM "user" u
+WHERE o."userId" = u.id;
+
+UPDATE "mms_optout"
+SET "phoneNumber" = '+15550000000'
+WHERE "phoneNumber" NOT LIKE '+1555%';
+
+-- `phoneNumber` is nullable; keep the NULLs so staging still exercises the
+-- "member has no phone number" branches.
 UPDATE "user"
 SET
-  "email"      = 'user'||id||'@example.com',
-  "phoneNumber" = '15550100';
+  "email"       = 'user'||id||'@example.com',
+  "phoneNumber" = CASE
+                    WHEN "phoneNumber" IS NULL THEN NULL
+                    ELSE '+1555' || lpad(id::text, 7, '0')
+                  END;
 UPDATE "user" SET "password" = 'pw';
 
 -- ============================================================================
@@ -141,8 +179,6 @@ BEGIN
 END $$;
 
 UPDATE "mail" SET "to" = 'user'||id||'@example.com';
-UPDATE "mms" SET "from" = 'pruned';
-UPDATE "mms" SET "to" = 'pruned';
 
 -- Clear push tokens so staging can never reach real devices
 UPDATE "user_device"

@@ -9,6 +9,7 @@ import { EventType } from 'src/eventlog/event-log.entity';
 import { EventLogService } from 'src/eventlog/eventlog.service';
 import Twilio from 'twilio';
 import type { Repository } from 'src/utils/Repository';
+import { isAnonymizedPhoneNumber } from 'src/utils/phone';
 import { Mms } from './mms.entity';
 
 @Injectable()
@@ -70,7 +71,7 @@ export class MmsService {
         process.env.NODE_ENV === 'production' ||
         process.env.SEND_DEV_NOTIFS === '1'
       ) ||
-      to === '15550100'
+      isAnonymizedPhoneNumber(to)
     ) {
       const mms = this.mmsRepository.create({
         to: to,
