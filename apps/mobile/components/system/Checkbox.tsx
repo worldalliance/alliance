@@ -1,8 +1,24 @@
-import React from "react";
-import { TouchableOpacity, View, StyleSheet } from "react-native";
-import Markdown from "react-native-markdown-display";
-import { Check } from "lucide-react-native";
 import { cn } from "@alliance/shared/styles/util";
+import { Check } from "lucide-react-native";
+import { TouchableOpacity, View } from "react-native";
+import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
+
+export enum CheckboxSize {
+  Small = "sm",
+  Medium = "md",
+}
+
+// `mt-0.5` centers the smaller box on the label's first line; `md` is tall
+// enough not to need it.
+const boxClasses: Record<CheckboxSize, string> = {
+  [CheckboxSize.Small]: "w-5 h-5 mt-0.5 mr-3",
+  [CheckboxSize.Medium]: "w-6 h-6 mr-2",
+};
+
+const iconSizes: Record<CheckboxSize, number> = {
+  [CheckboxSize.Small]: 14,
+  [CheckboxSize.Medium]: 16,
+};
 
 type CheckboxProps = {
   checked: boolean;
@@ -10,23 +26,8 @@ type CheckboxProps = {
   disabled?: boolean;
   label?: string | null;
   error?: boolean;
+  size?: CheckboxSize;
   className?: string;
-};
-
-const markdownStyles: StyleSheet.NamedStyles<any> = {
-  body: {
-    color: "#18181b",
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  strong: {
-    fontWeight: "600",
-  },
-  paragraph: {
-    marginTop: 0,
-    paddingBottom: 0,
-    marginBottom: 0,
-  },
 };
 
 export default function Checkbox({
@@ -35,12 +36,13 @@ export default function Checkbox({
   disabled,
   label,
   error,
+  size = CheckboxSize.Medium,
   className,
 }: CheckboxProps) {
-  const borderClass = error
-    ? "border-red-500"
-    : checked
-      ? "border-green-600"
+  const borderClass = checked
+    ? "border-green"
+    : error
+      ? "border-red-500"
       : "border-zinc-400";
 
   return (
@@ -48,23 +50,26 @@ export default function Checkbox({
       activeOpacity={0.7}
       disabled={disabled}
       onPress={() => onChange?.(!checked)}
-      className={cn("flex-row items-center", className)}
+      className={cn("flex-row items-start", className)}
       accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
+      accessibilityState={{ checked, disabled }}
     >
       <View
         className={cn(
-          "w-6 h-6 rounded border items-center justify-center mr-2",
+          "rounded border items-center justify-center",
+          boxClasses[size],
           borderClass,
           disabled && "opacity-60",
           checked ? "bg-green" : "bg-white",
         )}
       >
-        {checked && <Check size={16} color="#fff" strokeWidth={3} />}
+        {checked && (
+          <Check size={iconSizes[size]} color="#fff" strokeWidth={3} />
+        )}
       </View>
       {label ? (
-        <View className="flex-row flex-wrap items-center">
-          <Markdown style={markdownStyles}>{label}</Markdown>
+        <View className="flex-1">
+          <InlineLabelMarkdownWrapper>{label}</InlineLabelMarkdownWrapper>
         </View>
       ) : null}
     </TouchableOpacity>

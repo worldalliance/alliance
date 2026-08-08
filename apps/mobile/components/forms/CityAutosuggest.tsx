@@ -1,18 +1,13 @@
-import React, { useEffect } from "react";
-import {
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
 import type { CitySearchDto } from "@alliance/shared/client";
 import {
   formatCityDisplay,
   useCityAutosuggest,
 } from "@alliance/shared/forms/cityAutosuggest";
-import FormModal from "./FormModal";
 import { cn } from "@alliance/shared/styles/util";
+import { useEffect } from "react";
+import { ScrollView, TextInput, TouchableOpacity, View } from "react-native";
+import Text from "../system/Text";
+import FormModal from "./FormModal";
 
 type Props = {
   value?: string;

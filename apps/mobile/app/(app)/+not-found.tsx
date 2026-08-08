@@ -1,5 +1,6 @@
 import { Redirect, usePathname } from "expo-router";
-import { Text, View } from "react-native";
+import { View } from "react-native";
+import Text from "../../components/system/Text";
 
 export default function NotFound() {
   const pathname = usePathname();

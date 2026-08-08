@@ -91,6 +91,7 @@ import {
 } from "react-native";
 import AppMarkdownWrapper, { useHandleLinkPress } from "../AppMarkdownWrapper";
 import { ImageLightboxModal } from "../ImageLightbox";
+import { MARKDOWN_HUG_WIDTH_STYLE } from "../markdownStyles";
 import ProfileImage from "../ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Checkbox from "../system/Checkbox";
@@ -193,26 +194,9 @@ const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
   signature: Signature,
 };
 
-/**
- * The markdown library's default paragraph style forces width:'100%' (and the
- * wrapper's textgroup uses flex:1), which stretches auto-width chat bubbles to
- * their max width. Keep bubbles sized to their content.
- */
-const CHAT_BUBBLE_MARKDOWN_STYLE = {
-  // flexWrap:'wrap' (the library default) disables flexShrink in Yoga, which
-  // breaks text wrapping in shrink-to-fit bubbles; a paragraph is a single
-  // textgroup, so nowrap loses nothing.
-  paragraph: {
-    width: "auto" as const,
-    flexWrap: "nowrap" as const,
-    flexShrink: 1,
-  },
-  textgroup: { flexShrink: 1 },
-};
-
 /** Light-on-dark markdown styling for right-side (green) chat bubbles. */
 const CHAT_BUBBLE_INVERTED_MARKDOWN_STYLE = {
-  ...CHAT_BUBBLE_MARKDOWN_STYLE,
+  ...MARKDOWN_HUG_WIDTH_STYLE,
   body: { fontSize: 15, lineHeight: 22, color: "#ffffff" },
   heading1: { fontSize: 20, fontWeight: "600" as const, color: "#ffffff" },
   heading2: { fontSize: 18, fontWeight: "600" as const, color: "#ffffff" },
@@ -459,7 +443,7 @@ export function RenderDisplayBlockMobile({
                     style={
                       group.side === "right"
                         ? CHAT_BUBBLE_INVERTED_MARKDOWN_STYLE
-                        : CHAT_BUBBLE_MARKDOWN_STYLE
+                        : MARKDOWN_HUG_WIDTH_STYLE
                     }
                   >
                     {text}

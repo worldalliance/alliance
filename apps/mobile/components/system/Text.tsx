@@ -1,9 +1,10 @@
+import { cn } from "@alliance/shared/styles/util";
 import {
   Platform,
+  // eslint-disable-next-line no-restricted-imports -- this is that wrapper
   Text as RNText,
   TextProps as RNTextProps,
 } from "react-native";
-import { cn } from "@alliance/shared/styles/util";
 
 export enum TextStyle {
   Header = "header",
@@ -105,7 +106,16 @@ export default function Text({
 
   return (
     <RNText
-      className={cn(type ? typeClasses[type] : "text-base", className)}
+      // Yoga defaults flexShrink to 0 (web CSS defaults to 1), so text in a
+      // flex-row overflows and clips instead of wrapping. Default to shrinking;
+      // callers pass `shrink-0` to opt out (twMerge resolves the conflict).
+      // This acts on the parent's main axis, so it also lets text compress
+      // vertically inside a height-bounded column instead of overflowing it.
+      className={cn(
+        "shrink",
+        type ? typeClasses[type] : "text-base",
+        className,
+      )}
       style={[resolveFontFamily(resolvedFamily, resolvedWeight), style]}
       {...props}
     >

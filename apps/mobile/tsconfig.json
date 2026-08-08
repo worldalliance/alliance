@@ -2,11 +2,7 @@
   "extends": ["expo/tsconfig.base", "../../tsconfig.base.json"],
   "compilerOptions": {
     "strict": true,
-    "composite": true,
-    "baseUrl": "./src",
-    "paths": {
-      "@/*": ["./*"]
-    }
+    "composite": true
   },
   "references": [{ "path": "../../common" }, { "path": "../../shared" }],
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]

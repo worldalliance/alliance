@@ -15,6 +15,7 @@ import Markdown, {
 import { getApiUrl } from "../lib/config";
 import { colors } from "../lib/style/colors";
 import { ImageLightboxModal } from "./ImageLightbox";
+import { MARKDOWN_FILL_WIDTH_STYLE } from "./markdownStyles";
 import Text from "./system/Text";
 
 /**
@@ -556,9 +557,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
         color: "#18181b",
       },
       paragraph: {},
-      textgroup: {
-        flex: 1,
-      },
+      ...MARKDOWN_FILL_WIDTH_STYLE,
       strong: {
         fontWeight: "600" as const,
       },

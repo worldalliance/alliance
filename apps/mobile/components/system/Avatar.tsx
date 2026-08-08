@@ -1,7 +1,6 @@
-import React from "react";
-import { View, Image, ImageSourcePropType, ViewProps } from "react-native";
-import Text, { FontWeight } from "./Text";
 import { cn } from "@alliance/shared/styles/util";
+import { Image, ImageSourcePropType, View, ViewProps } from "react-native";
+import Text, { FontWeight } from "./Text";
 
 export enum AvatarSize {
   ExtraSmall = "xs",

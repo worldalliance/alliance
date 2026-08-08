@@ -34,7 +34,12 @@ export default defineConfig([
             {
               name: "react-native-keyboard-controller",
               importNames: ["KeyboardAwareScrollView"],
-              message: "Use @/components/KeyboardAwareScrollView instead.",
+              message: "Use components/KeyboardAwareScrollView instead.",
+            },
+            {
+              name: "react-native",
+              importNames: ["Text"],
+              message: "Use components/system/Text instead.",
             },
           ],
         },

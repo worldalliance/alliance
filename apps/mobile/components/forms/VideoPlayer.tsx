@@ -2,8 +2,9 @@ import { AnalyticsEvent } from "@alliance/common/analytics";
 import { captureEvent } from "@alliance/shared/lib/analytics";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Platform, Text, View } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import { getApiUrl } from "../../lib/config";
+import Text from "../system/Text";
 
 type VideoPlayerProps = {
   src: string;

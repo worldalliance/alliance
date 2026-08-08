@@ -1,7 +1,6 @@
-import React from "react";
+import { cn } from "@alliance/shared/styles/util";
 import { View, ViewProps } from "react-native";
 import Text, { FontWeight } from "./Text";
-import { cn } from "@alliance/shared/styles/util";
 
 export enum StatusType {
   Active = "active",

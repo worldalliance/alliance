@@ -18,7 +18,7 @@ import {
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
 import { launchImageLibraryAsync } from "expo-image-picker";
-import { Check, ChevronDown } from "lucide-react-native";
+import { ChevronDown } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   Image,
@@ -34,7 +34,7 @@ import BottomSheetOptionPicker from "../BottomSheetOptionPicker";
 import InlineLabelMarkdownWrapper from "../InlineLabelMarkdownWrapper";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Card, { CardStyle } from "../system/Card";
-import Checkbox from "../system/Checkbox";
+import Checkbox, { CheckboxSize } from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
 import CityAutosuggest from "./CityAutosuggest";
 import { getCustomComponentById } from "./customComponentRegistry";
@@ -538,46 +538,28 @@ export function RenderField({
               const checked = selections.includes(option.value);
               const disabledOption = disabled || (!checked && maxReached);
               return (
-                <TouchableOpacity
+                <Checkbox
                   key={optIndex}
-                  className="flex-row items-center py-2"
-                  onPress={() => {
-                    if (!onChange || disabledOption) return;
+                  checked={checked}
+                  disabled={disabledOption}
+                  error={hasError}
+                  label={option.label}
+                  size={CheckboxSize.Small}
+                  className="py-2"
+                  onChange={(next) => {
+                    if (!onChange) return;
                     const currentValues = Array.isArray(value)
                       ? value.filter(
                           (item): item is string => typeof item === "string",
                         )
                       : [];
-                    if (checked) {
-                      onChange(currentValues.filter((v) => v !== option.value));
-                    } else {
-                      onChange([...currentValues, option.value]);
-                    }
+                    onChange(
+                      next
+                        ? [...currentValues, option.value]
+                        : currentValues.filter((v) => v !== option.value),
+                    );
                   }}
-                  disabled={disabledOption}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    className={cn(
-                      "w-5 h-5 rounded border mr-3 items-center justify-center",
-                      checked
-                        ? "border-green bg-green"
-                        : hasError
-                          ? "border-red-500"
-                          : "border-zinc-400",
-                      disabledOption && "opacity-60",
-                    )}
-                  >
-                    {checked && (
-                      <Check size={14} color="#fff" strokeWidth={3} />
-                    )}
-                  </View>
-                  <View className="flex-1">
-                    <InlineLabelMarkdownWrapper>
-                      {option.label}
-                    </InlineLabelMarkdownWrapper>
-                  </View>
-                </TouchableOpacity>
+                />
               );
             })}
           </View>
