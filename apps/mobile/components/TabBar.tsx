@@ -93,7 +93,6 @@ export default function TabBar() {
   const { width: windowWidth } = useWindowDimensions();
   const compactTabBar = windowWidth <= 375;
   const iconSize = compactTabBar ? 22 : 26;
-  const labelClass = compactTabBar ? "text-[9px]" : "text-[10px]";
 
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -176,7 +175,7 @@ export default function TabBar() {
               strokeWidth={active ? 2.5 : 2}
             />
             <Text
-              className={labelClass}
+              className="text-2xs"
               style={{ color: active ? colors.green : colors.text.icon }}
               numberOfLines={1}
             >
@@ -193,10 +192,7 @@ export default function TabBar() {
                 style={{ backgroundColor: badgeBackgroundColor }}
               >
                 <Text
-                  className={cn(
-                    "text-white",
-                    compactTabBar ? "text-[9px]" : "text-[10px]",
-                  )}
+                  className="text-white text-2xs"
                   weight={FontWeight.Semibold}
                 >
                   {badgeLabel}

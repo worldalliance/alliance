@@ -1,21 +1,21 @@
-import { View, TouchableOpacity, ScrollView } from "react-native";
-import { usePathname, Route, useRouter } from "expo-router";
+import { Route, usePathname, useRouter } from "expo-router";
 import {
   BookText,
   FileText,
   Globe,
   Layers,
+  QrCode,
   Search,
   Settings,
-  X,
   User,
   UserPlus,
-  QrCode,
+  X,
 } from "lucide-react-native";
-import Text, { FontWeight } from "./system/Text";
-import { colors } from "../lib/style/colors";
+import { ScrollView, TouchableOpacity, View } from "react-native";
 import { useAppDrawer } from "../lib/AppDrawerContext";
 import { isPathActive } from "../lib/isPathActive";
+import { colors } from "../lib/style/colors";
+import Text, { FontWeight } from "./system/Text";
 
 type NavItem = {
   name: string;
@@ -131,7 +131,7 @@ export default function Sidebar() {
                   color={active ? colors.green : colors.text.icon}
                 />
                 <Text
-                  className="ml-3 text-[17px]"
+                  className="ml-3 text-lg"
                   weight={active ? FontWeight.Medium : undefined}
                   style={{ color: colors.text.primary }}
                 >

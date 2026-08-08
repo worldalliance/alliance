@@ -3,19 +3,28 @@ import React, { useCallback, useMemo, useState } from "react";
 import {
   Image,
   Linking,
+  StyleProp,
   StyleSheet,
+  TextStyle,
   TouchableOpacity,
   View,
+  ViewStyle,
 } from "react-native";
 import Markdown, {
   ASTNode,
-  RenderRules,
   renderRules as defaultRenderRules,
+  RenderRules,
 } from "react-native-markdown-display";
 import { getApiUrl } from "../lib/config";
-import { colors } from "../lib/style/colors";
 import { ImageLightboxModal } from "./ImageLightbox";
-import { MARKDOWN_FILL_WIDTH_STYLE } from "./markdownStyles";
+import {
+  MARKDOWN_FILL_WIDTH_STYLE,
+  MARKDOWN_PALETTES,
+  markdownBulletIconStyle,
+  MarkdownTone,
+  useMarkdownTextStyles,
+  type MarkdownLayoutStyle,
+} from "./markdownStyles";
 import Text from "./system/Text";
 
 /**
@@ -241,7 +250,12 @@ function isLastAmongSiblings(node: ASTNode, parentNodes: ASTNode[]): boolean {
   return node.index === parent.children.length - 1;
 }
 
-function renderPlainCodeBlock(node: ASTNode, parent: ASTNode[]) {
+function renderPlainCodeBlock(params: {
+  node: ASTNode;
+  parent: ASTNode[];
+  codeStyle: TextStyle;
+}) {
+  const { node, parent, codeStyle } = params;
   return (
     <View
       key={node.key}
@@ -253,19 +267,43 @@ function renderPlainCodeBlock(node: ASTNode, parent: ASTNode[]) {
         marginBottom: isLastAmongSiblings(node, parent) ? 0 : MD_SPACE_LIST_TOP,
       }}
     >
-      <Text style={{ fontFamily: "monospace", fontSize: 13 }}>
-        {node.content || ""}
-      </Text>
+      <Text style={codeStyle}>{node.content || ""}</Text>
     </View>
   );
 }
+
+function renderHeading(params: {
+  node: ASTNode;
+  children: React.ReactNode;
+  viewSafeStyle: StyleProp<ViewStyle>;
+}) {
+  const { node, children, viewSafeStyle } = params;
+  return (
+    <View
+      key={node.key}
+      style={[
+        viewSafeStyle,
+        {
+          marginTop: isFirstAmongSiblings(node) ? 0 : MD_SPACE_HEADING_TOP,
+          marginBottom: 0,
+        },
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
+const TRUNCATED_PREVIEW_LINES = 3;
 
 interface AppMarkdownWrapperProps {
   /** Prefer this name to match sharedweb `AppMarkdownWrapper` */
   markdownContent?: string;
   children?: string;
-  style?: object;
+  style?: MarkdownLayoutStyle;
   truncated?: boolean;
+  small?: boolean;
+  tone?: MarkdownTone;
 }
 
 const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
@@ -273,9 +311,13 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   children,
   style,
   truncated = false,
+  small = false,
+  tone = MarkdownTone.Default,
 }) => {
   const markdownSource = markdownContent ?? children ?? "";
   const handleLinkPress = useHandleLinkPress();
+  const textStyles = useMarkdownTextStyles();
+  const palette = MARKDOWN_PALETTES[tone];
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   const wrapImage = useCallback(
@@ -325,8 +367,8 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           {caption ? (
             <Text
               style={{
-                fontSize: 12,
-                color: "#6b7280",
+                ...textStyles.caption,
+                color: palette.caption,
                 marginTop: 8,
                 textAlign: "center",
               }}
@@ -337,53 +379,47 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
         </View>
       );
     },
-    [wrapImage],
+    [wrapImage, textStyles.caption, palette.caption],
   );
 
   const rules: RenderRules = useMemo(
     () => ({
-      heading1: (node, children, _parent, styles) => (
-        <View
-          key={node.key}
-          style={[
-            styles._VIEW_SAFE_heading1,
-            {
-              marginTop: isFirstAmongSiblings(node) ? 0 : MD_SPACE_HEADING_TOP,
-              marginBottom: 0,
-            },
-          ]}
-        >
-          {children}
-        </View>
-      ),
-      heading2: (node, children, _parent, styles) => (
-        <View
-          key={node.key}
-          style={[
-            styles._VIEW_SAFE_heading2,
-            {
-              marginTop: isFirstAmongSiblings(node) ? 0 : MD_SPACE_HEADING_TOP,
-              marginBottom: 0,
-            },
-          ]}
-        >
-          {children}
-        </View>
-      ),
-      heading3: (node, children, _parent, styles) => (
-        <View
-          key={node.key}
-          style={[
-            styles._VIEW_SAFE_heading3,
-            {
-              marginTop: isFirstAmongSiblings(node) ? 0 : MD_SPACE_HEADING_TOP,
-              marginBottom: 0,
-            },
-          ]}
-        >
-          {children}
-        </View>
-      ),
+      heading1: (node, children, _parent, styles) =>
+        renderHeading({
+          node,
+          children,
+          viewSafeStyle: styles._VIEW_SAFE_heading1,
+        }),
+      heading2: (node, children, _parent, styles) =>
+        renderHeading({
+          node,
+          children,
+          viewSafeStyle: styles._VIEW_SAFE_heading2,
+        }),
+      heading3: (node, children, _parent, styles) =>
+        renderHeading({
+          node,
+          children,
+          viewSafeStyle: styles._VIEW_SAFE_heading3,
+        }),
+      heading4: (node, children, _parent, styles) =>
+        renderHeading({
+          node,
+          children,
+          viewSafeStyle: styles._VIEW_SAFE_heading4,
+        }),
+      heading5: (node, children, _parent, styles) =>
+        renderHeading({
+          node,
+          children,
+          viewSafeStyle: styles._VIEW_SAFE_heading5,
+        }),
+      heading6: (node, children, _parent, styles) =>
+        renderHeading({
+          node,
+          children,
+          viewSafeStyle: styles._VIEW_SAFE_heading6,
+        }),
       paragraph: (node, children, parent, styles) => {
         const inListItem = parent[0]?.type === "list_item";
         const marginTop = inListItem
@@ -500,11 +536,11 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
         );
       },
       // Custom link rendering
-      link: (node, children) => {
+      link: (node, children, _parent, styles) => {
         const href = node.attributes?.href || "";
         return (
           <Text
-            style={{ color: colors.green, textDecorationLine: "underline" }}
+            style={styles.link}
             onPress={() => handleLinkPress(href)}
             key={node.key}
           >
@@ -517,7 +553,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
         const language = node.attributes?.class?.replace("language-", "") || "";
         return language === "imgcap"
           ? renderImgcap(node, parent)
-          : renderPlainCodeBlock(node, parent);
+          : renderPlainCodeBlock({ node, parent, codeStyle: textStyles.code });
       },
       body: (_node, children) => <>{children}</>,
       fence: (node, _children, parent) => {
@@ -528,74 +564,83 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           "";
         return info === "imgcap"
           ? renderImgcap(node, parent)
-          : renderPlainCodeBlock(node, parent);
+          : renderPlainCodeBlock({ node, parent, codeStyle: textStyles.code });
       },
     }),
-    [handleLinkPress, wrapImage, renderImgcap],
+    [handleLinkPress, wrapImage, renderImgcap, textStyles.code],
   );
+
+  const bodyStyle = small ? textStyles.bodySmall : textStyles.body;
 
   const markdownStyles = useMemo(
     () => ({
       body: {
-        fontSize: 15,
-        lineHeight: 22,
-        color: "#18181b",
+        ...bodyStyle,
+        color: palette.text,
       },
       heading1: {
-        fontSize: 20,
-        fontWeight: "600" as const,
-        color: "#18181b",
+        ...textStyles.heading1,
+        color: palette.text,
       },
       heading2: {
-        fontSize: 18,
-        fontWeight: "600" as const,
-        color: "#18181b",
+        ...textStyles.heading2,
+        color: palette.text,
       },
       heading3: {
-        fontSize: 16,
-        fontWeight: "600" as const,
-        color: "#18181b",
+        ...textStyles.heading3,
+        color: palette.text,
+      },
+      heading4: {
+        ...textStyles.heading4,
+        color: palette.text,
+      },
+      heading5: {
+        ...textStyles.heading5,
+        color: palette.text,
+      },
+      heading6: {
+        ...textStyles.heading6,
+        color: palette.text,
       },
       paragraph: {},
       ...MARKDOWN_FILL_WIDTH_STYLE,
-      strong: {
-        fontWeight: "600" as const,
-      },
+      strong: textStyles.strong,
       link: {
-        color: colors.green,
-        fontSize: 16,
+        color: palette.link,
         textDecorationLine: "underline" as const,
       },
       blockquote: {
         borderLeftWidth: 2,
-        borderLeftColor: "#d4d4d8",
+        borderLeftColor: palette.blockquoteBorder,
         paddingLeft: 12,
-        backgroundColor: "#fafafa",
+        backgroundColor: palette.blockquoteBackground,
       },
       bullet_list: {},
-      bullet_list_icon: {
-        fontSize: 35,
-        top: 7,
-      },
+      bullet_list_icon: markdownBulletIconStyle(bodyStyle),
       ordered_list: {},
       list_item: {},
       code_inline: {
-        backgroundColor: "#f4f4f5",
-        paddingHorizontal: 4,
-        paddingVertical: 2,
-        borderRadius: 2,
-        fontFamily: "monospace",
-        fontSize: 13,
+        ...textStyles.codeInline,
+        backgroundColor: palette.codeInlineBackground,
       },
       ...style,
     }),
-    [style],
+    [style, textStyles, bodyStyle, palette],
   );
+
+  // Undefined until the theme resolves, which leaves the preview unclamped for a
+  // frame rather than collapsing it to zero height.
+  const truncatedMaxHeight = bodyStyle.lineHeight
+    ? bodyStyle.lineHeight * TRUNCATED_PREVIEW_LINES
+    : undefined;
 
   return (
     <>
       {truncated ? (
-        <View className="max-h-20 overflow-hidden">
+        <View
+          className="overflow-hidden"
+          style={{ maxHeight: truncatedMaxHeight }}
+        >
           <Markdown style={markdownStyles} rules={rules} mergeStyle>
             {markdownSource}
           </Markdown>
@@ -616,10 +661,10 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
 export default AppMarkdownWrapper;
 
 export {
-  INTERNAL_DOMAINS,
-  INTERNAL_ROUTE_PATTERNS,
   extractPathFromInternalUrl,
   getInternalRoute,
+  INTERNAL_DOMAINS,
+  INTERNAL_ROUTE_PATTERNS,
   transformImageUrl,
   useHandleLinkPress,
 };

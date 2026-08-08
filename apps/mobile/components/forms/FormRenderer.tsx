@@ -10,6 +10,7 @@ import {
   CHAT_TRANSCRIPT_SIZE_UNIT_PX,
   groupChatTranscriptMessages,
   type BigLinkIcon,
+  type ChatTranscriptMessage,
   type DisplayBlock,
 } from "@alliance/common/forms/display-blocks";
 import {
@@ -91,7 +92,7 @@ import {
 } from "react-native";
 import AppMarkdownWrapper, { useHandleLinkPress } from "../AppMarkdownWrapper";
 import { ImageLightboxModal } from "../ImageLightbox";
-import { MARKDOWN_HUG_WIDTH_STYLE } from "../markdownStyles";
+import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
 import ProfileImage from "../ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Checkbox from "../system/Checkbox";
@@ -194,21 +195,9 @@ const bigLinkIcons: Record<BigLinkIcon, React.FC<{ size?: number }>> = {
   signature: Signature,
 };
 
-/** Light-on-dark markdown styling for right-side (green) chat bubbles. */
-const CHAT_BUBBLE_INVERTED_MARKDOWN_STYLE = {
-  ...MARKDOWN_HUG_WIDTH_STYLE,
-  body: { fontSize: 15, lineHeight: 22, color: "#ffffff" },
-  heading1: { fontSize: 20, fontWeight: "600" as const, color: "#ffffff" },
-  heading2: { fontSize: 18, fontWeight: "600" as const, color: "#ffffff" },
-  heading3: { fontSize: 16, fontWeight: "600" as const, color: "#ffffff" },
-  code_inline: {
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 2,
-    fontFamily: "monospace",
-    fontSize: 13,
-  },
+const CHAT_BUBBLE_TONE: Record<ChatTranscriptMessage["side"], MarkdownTone> = {
+  left: MarkdownTone.Default,
+  right: MarkdownTone.Inverted,
 };
 
 type RenderDisplayBlockMobileProps = {
@@ -440,11 +429,8 @@ export function RenderDisplayBlockMobile({
                   )}
                 >
                   <AppMarkdownWrapper
-                    style={
-                      group.side === "right"
-                        ? CHAT_BUBBLE_INVERTED_MARKDOWN_STYLE
-                        : MARKDOWN_HUG_WIDTH_STYLE
-                    }
+                    style={MARKDOWN_HUG_WIDTH_STYLE}
+                    tone={CHAT_BUBBLE_TONE[group.side]}
                   >
                     {text}
                   </AppMarkdownWrapper>

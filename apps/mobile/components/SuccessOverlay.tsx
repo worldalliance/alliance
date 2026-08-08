@@ -1,15 +1,15 @@
-import React, { useEffect } from "react";
-import { View, StyleSheet, Modal } from "react-native";
+import { Check } from "lucide-react-native";
+import { useEffect } from "react";
+import { Modal, StyleSheet, View } from "react-native";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  useSharedValue,
   withDelay,
+  withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { Check } from "lucide-react-native";
 import { scheduleOnRN } from "react-native-worklets";
-import Text from "./system/Text";
+import Text, { FontWeight } from "./system/Text";
 
 interface SuccessOverlayProps {
   visible: boolean;
@@ -117,7 +117,13 @@ const SuccessOverlay = ({
             </Animated.View>
           </Animated.View>
           <Animated.View style={textStyle}>
-            <Text style={styles.message}>{message}</Text>
+            <Text
+              className="text-2xl"
+              weight={FontWeight.Semibold}
+              style={styles.message}
+            >
+              {message}
+            </Text>
           </Animated.View>
         </View>
       </Animated.View>
@@ -150,8 +156,6 @@ const styles = StyleSheet.create({
   },
   message: {
     marginTop: 24,
-    fontSize: 24,
-    fontWeight: "600",
     color: "#18181b",
   },
 });

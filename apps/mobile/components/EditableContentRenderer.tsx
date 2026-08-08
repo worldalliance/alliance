@@ -1,10 +1,10 @@
+import { EditableContentDto } from "@alliance/shared/client";
+import { cn } from "@alliance/shared/styles/util";
 import React, { useMemo } from "react";
 import { View } from "react-native";
-import { EditableContentDto } from "@alliance/shared/client";
-import Text from "./system/Text";
 import AppMarkdownWrapper from "./AppMarkdownWrapper";
 import ImageLightbox from "./ImageLightbox";
-import { cn } from "@alliance/shared/styles/util";
+import Text from "./system/Text";
 
 interface EditableContentRendererProps {
   content: EditableContentDto;
@@ -54,19 +54,7 @@ const EditableContentRenderer: React.FC<EditableContentRendererProps> = ({
     }
 
     return (
-      <AppMarkdownWrapper
-        truncated={truncated}
-        style={
-          small
-            ? {
-                body: {
-                  fontSize: 14,
-                  lineHeight: 20,
-                },
-              }
-            : undefined
-        }
-      >
+      <AppMarkdownWrapper truncated={truncated} small={small}>
         {body}
       </AppMarkdownWrapper>
     );

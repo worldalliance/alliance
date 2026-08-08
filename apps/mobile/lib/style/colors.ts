@@ -1,7 +1,10 @@
+const green = "#62a124";
+const white = "#fff";
+
 export const colors = {
-  green: "#62a124",
+  green,
   blue: "#318dde",
-  white: "#fff",
+  white,
   grouplead: "#f2ae49",
   ambassador: "#bf5f45",
 
@@ -60,6 +63,25 @@ export const colors = {
     alert: "#e0f2fe",
     black: "#1c1917",
     green: "#c4d8bf",
+  },
+
+  markdown: {
+    default: {
+      text: "#18181b",
+      caption: "#6b7280",
+      link: green,
+      blockquoteBackground: "#fafafa",
+      blockquoteBorder: "#d4d4d8",
+      codeInlineBackground: "#f4f4f5",
+    },
+    inverted: {
+      text: white,
+      caption: "rgba(255, 255, 255, 0.7)",
+      link: white,
+      blockquoteBackground: "rgba(255, 255, 255, 0.1)",
+      blockquoteBorder: "rgba(255, 255, 255, 0.4)",
+      codeInlineBackground: "rgba(255, 255, 255, 0.2)",
+    },
   },
 
   // Status colors

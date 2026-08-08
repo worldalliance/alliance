@@ -12,9 +12,22 @@
   --color-grouplead: #f2ae49;
   --font-berlingske: "Berlingske";
 
+  --text-2xs: 11px;
+
+  --text-xs: 13px;
+  --text-sm: 15px;
+  --text-base: 17px;
+  --text-lg: 19px;
+  --text-xl: 21px;
+  --text-2xl: 26px;
+  --text-3xl: 32px;
+  --text-4xl: 39px;
+  --text-5xl: 52px;
+
   /* Strip lineHeight from font-size utilities — RN handles defaults well,
      and explicit lineHeight on TextInput causes bottom-clipping.
      Use leading-* utilities when explicit lineHeight is needed. */
+  --text-2xs--line-height: initial;
   --text-xs--line-height: initial;
   --text-sm--line-height: initial;
   --text-base--line-height: initial;

@@ -341,13 +341,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
             {formatTime(new Date(reply.createdAt), { addSuffix: true })}
           </Text>
           {hasChildren && isCollapsed && (
-            <Text
-              className={
-                shared.small
-                  ? "text-[11px] text-zinc-500"
-                  : "text-xs text-zinc-500"
-              }
-            >
+            <Text className={cn("text-zinc-500", metaTextClass)}>
               {reply.children?.length ?? 0}{" "}
               {reply.children?.length === 1 ? "reply" : "replies"} hidden
             </Text>
