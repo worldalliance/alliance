@@ -26,6 +26,8 @@ Dependencies in `apps/admin/package.json` must also be declared in `apps/fronten
 
 ## Enum branching
 
+Prefer enums over string-literal unions for closed sets of named variants.
+
 Don't switch on an enum (or union discriminator) with a ternary or an open `if`/`else` chain — adding a new variant later won't trigger a typecheck error and the missing branch ships silently. Use one of:
 
 - A `switch (kind)` with an exhaustive `default` that asserts `never`:
