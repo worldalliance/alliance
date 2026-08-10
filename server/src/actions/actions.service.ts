@@ -14,6 +14,7 @@ import {
   displayOnlySchema,
   displayOnlySchemaError,
   emptyDisplayOnlySchema,
+  type DisplayOnlySchema,
 } from '@alliance/common/forms/display-only-schema';
 import type { FormSchema } from '@alliance/common/forms/form-schema';
 import { run } from '@alliance/common/run';
@@ -35,7 +36,6 @@ import { Community } from 'src/community/entities/community.entity';
 import { EventType } from 'src/eventlog/event-log.entity';
 import { EventLogService } from 'src/eventlog/eventlog.service';
 import { CommentDto, CreateCommentDto } from 'src/forum/dto/comment.dto';
-import { EditableContentDto } from 'src/forum/dto/editablecontent.dto';
 import {
   Comment,
   CommentParentObject,
@@ -45,6 +45,12 @@ import { Post } from 'src/forum/entities/post.entity';
 import { ForumService } from 'src/forum/forum.service';
 import { FacepileService } from 'src/likes/facepile.service';
 import { SnapshotHistoryOwner } from 'src/tasks/entities/formsnapshot.entity';
+import { displayOnlySchemaOf } from 'src/tasks/display-only-snapshot';
+import {
+  isActionUpdatePublished,
+  publishedActionUpdateWhere,
+} from './action-update-visibility';
+import { SCHEMA_WRITE_TARGETS } from './schema-write-target';
 import { FormSnapshotService } from 'src/tasks/formsnapshot.service';
 import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
 import {
@@ -147,6 +153,7 @@ import {
   UpdateActionActivityDto,
   UpdateActionDto,
   UpdateActionEventDto,
+  UpdateActionUpdateDto,
   UserActionRelation,
 } from './dto/action.dto';
 import {
@@ -943,8 +950,19 @@ export class ActionsService {
     id: number;
     userId?: number;
     serverSide?: boolean;
+    /**
+     * Admin surfaces need the unpublished updates they are about to write —
+     * everything else gets the member-visible set, so a new caller is safe by
+     * default rather than by remembering to filter.
+     */
+    includeUnpublishedUpdates?: boolean;
   }): Promise<ParsedAction> {
-    const { id, userId, serverSide = false } = params;
+    const {
+      id,
+      userId,
+      serverSide = false,
+      includeUnpublishedUpdates = false,
+    } = params;
 
     const user = userId
       ? await this.userService.findOne(userId, {
@@ -958,13 +976,20 @@ export class ActionsService {
       relations: {
         events: true,
         activities: true,
-        updates: { content: true },
+        updates: { schemaSnapshot: true },
         suite: true,
         authors: true,
         followUpForms: { form: true },
       },
     });
     const action = fetched ? parseAction(fetched) : null;
+
+    if (action && !includeUnpublishedUpdates) {
+      const now = new Date();
+      action.updates = action.updates?.filter((update) =>
+        isActionUpdatePublished(update, now),
+      );
+    }
 
     if (action?.publicOnly) {
       return action;
@@ -1137,9 +1162,7 @@ export class ActionsService {
     });
   }
 
-  private parseDisplayOnlySchemaOrThrow(
-    schema: unknown,
-  ): Record<string, unknown> {
+  private parseDisplayOnlySchemaOrThrow(schema: unknown): DisplayOnlySchema {
     const parsed = displayOnlySchema.safeParse(schema);
     if (!parsed.success) {
       throw new BadRequestException(displayOnlySchemaError(parsed.error));
@@ -1150,18 +1173,23 @@ export class ActionsService {
   // The expected snapshot id is required, not optional: an unguarded schema
   // write is exactly the silent overwrite this path exists to reject.
   private async writeSchemaOrThrow(params: {
+    owner: SnapshotHistoryOwner;
     id: number;
     schema: unknown;
     expectedSchemaSnapshotId: number;
     em: EntityManager;
-  }): Promise<number> {
-    const { id, expectedSchemaSnapshotId, em } = params;
+  }): Promise<{ snapshotId: number; schema: DisplayOnlySchema }> {
+    const { owner, id, expectedSchemaSnapshotId, em } = params;
+    const target = SCHEMA_WRITE_TARGETS[owner];
+    if (!target) {
+      throw new Error(`${owner} has no editable display-only schema`);
+    }
     const schema = this.parseDisplayOnlySchemaOrThrow(params.schema);
     const snapshot = await this.formSnapshotService.findOrCreate(schema, em);
 
     const result = await em
       .createQueryBuilder()
-      .update(GeneralUpdate)
+      .update(target.entity)
       .set({ schemaSnapshotId: snapshot.id })
       .where('id = :id', { id })
       .andWhere('"schemaSnapshotId" = :expectedSchemaSnapshotId', {
@@ -1170,19 +1198,17 @@ export class ActionsService {
       .execute();
 
     if (result.affected === 0) {
-      throw new ConflictException(
-        'This general update was changed by someone else since you opened it.',
-      );
+      throw new ConflictException(target.conflictMessage);
     }
 
     await this.formSnapshotService.recordHistorical({
-      owner: SnapshotHistoryOwner.GeneralUpdate,
+      owner,
       ownerId: id,
       snapshotId: snapshot.id,
       em,
     });
 
-    return snapshot.id;
+    return { snapshotId: snapshot.id, schema };
   }
 
   async createGeneralUpdate(
@@ -1261,11 +1287,13 @@ export class ActionsService {
         const generalUpdate = await this.findOneGeneralUpdate(id, em);
 
         if (schemaWrite) {
-          generalUpdate.schemaSnapshotId = await this.writeSchemaOrThrow({
+          const written = await this.writeSchemaOrThrow({
+            owner: SnapshotHistoryOwner.GeneralUpdate,
             id,
             ...schemaWrite,
             em,
           });
+          generalUpdate.schemaSnapshotId = written.snapshotId;
           // The loaded relation still holds the previous snapshot, and TypeORM
           // lets a relation object win over the FK column — leaving it set would
           // make the `save` below write the old id straight back over the one
@@ -2626,14 +2654,12 @@ export class ActionsService {
     id: number,
     createActionUpdateDto: CreateActionUpdateDto,
   ): Promise<ActionUpdate> {
-    const content = this.editableContentRepository.create({
-      body: createActionUpdateDto.content.body,
-      attachments: createActionUpdateDto.content.attachments ?? [],
-    });
-    await this.editableContentRepository.save(content);
     const action = await this.actionRepository.findOneOrFail({
       where: { id },
     });
+    const emptySnapshot = await this.formSnapshotService.findOrCreate(
+      emptyDisplayOnlySchema(),
+    );
 
     let tag: Tag | undefined = undefined;
     if (createActionUpdateDto.tagId) {
@@ -2652,40 +2678,179 @@ export class ActionsService {
     const actionUpdate = await this.actionUpdateRepository.save(
       this.actionUpdateRepository.create({
         ...createActionUpdateDto,
-        content,
+        schemaSnapshotId: emptySnapshot.id,
+        visibleAt: null,
         action,
         tag,
         associatedEvent,
       }),
     );
 
-    if (createActionUpdateDto.notifyType !== ActionUpdateNotifyType.None) {
-      await this.generateNotifsForActionUpdate(actionUpdate);
+    await this.formSnapshotService.recordHistorical({
+      owner: SnapshotHistoryOwner.ActionUpdate,
+      ownerId: actionUpdate.id,
+      snapshotId: emptySnapshot.id,
+    });
+
+    // `notifyType` is only the plan here — the update is created empty, so
+    // dispatching now would notify members about a body nobody has written yet.
+    // It stays unpublished (`visibleAt` null) until the body is written, and
+    // `notifyActionUpdate` sends it from the editor after that.
+    return this.findOneActionUpdate(actionUpdate.id);
+  }
+
+  /**
+   * Sends the notification an update was created with, after its body exists.
+   * Once-only: the claim on `notifiedAt` is what makes a double-click, or two
+   * admins on the same update, send one notification rather than two.
+   */
+  async notifyActionUpdate(id: number): Promise<ActionUpdate> {
+    const actionUpdate = await this.findOneActionUpdate(id);
+    const schema = displayOnlySchemaOf({
+      owner: 'ActionUpdate',
+      ownerId: actionUpdate.id,
+      snapshot: actionUpdate.schemaSnapshot,
+    });
+
+    if (actionUpdate.notifyType === ActionUpdateNotifyType.None) {
+      throw new BadRequestException(
+        'This update has no notification audience set.',
+      );
+    }
+    if (schema.blocks.length === 0) {
+      throw new BadRequestException(
+        'Write the update body before sending the notification.',
+      );
+    }
+    if (actionUpdate.notifiedAt) {
+      throw new ConflictException(
+        'This update has already been notified about.',
+      );
     }
 
-    return actionUpdate;
+    // Resolve the audience before claiming: a failure here (a deleted tag, say)
+    // has sent nothing, and leaving the claim unset keeps the retry open.
+    const recipients = await this.findActionUpdateNotifRecipients(actionUpdate);
+
+    // The claim and the sends commit together. The claim is the only thing
+    // standing between a retry and a second notification, so committing it
+    // before the rows exist would let a crash partway through leave most of the
+    // audience unnotified and unreachable: the retry would see the claim and
+    // conflict.
+    await this.actionUpdateRepository.manager.transaction(async (em) => {
+      const claimed = await em
+        .createQueryBuilder()
+        .update(ActionUpdate)
+        .set({ notifiedAt: new Date() })
+        .where('id = :id', { id })
+        .andWhere('"notifiedAt" IS NULL')
+        .execute();
+
+      if (claimed.affected === 0) {
+        throw new ConflictException(
+          'This update has already been notified about.',
+        );
+      }
+
+      await this.notifsService.createActionUpdateNotifs({
+        actionUpdate,
+        users: recipients,
+        em,
+      });
+    });
+
+    return this.findOneActionUpdate(id);
+  }
+
+  async findOneActionUpdate(
+    id: number,
+    em?: EntityManager,
+  ): Promise<ActionUpdate> {
+    const manager = em ?? this.actionUpdateRepository.manager;
+    return manager.findOneOrFail(ActionUpdate, {
+      where: { id },
+      relations: {
+        schemaSnapshot: true,
+        action: true,
+        tag: true,
+        associatedEvent: true,
+      },
+    });
   }
 
   async updateActionUpdate(
     id: number,
-    createActionUpdateDto: CreateActionUpdateDto,
+    dto: UpdateActionUpdateDto,
   ): Promise<ActionUpdate> {
-    const actionUpdate = await this.actionUpdateRepository.findOneOrFail({
-      where: { id },
-      relations: { content: true },
+    const {
+      schema,
+      expectedSchemaSnapshotId,
+      tagId,
+      associatedEventId,
+      ...rest
+    } = dto;
+
+    // Guards non-HTTP callers too, where the DTO's `@ValidateIf` never runs.
+    const schemaWrite = run(() => {
+      if (schema === undefined) return null;
+      if (expectedSchemaSnapshotId === undefined) {
+        throw new BadRequestException(
+          'expectedSchemaSnapshotId is required when writing schema',
+        );
+      }
+      return { schema, expectedSchemaSnapshotId };
     });
 
-    const { content, ...fields } = createActionUpdateDto;
+    // Same locking rationale as `updateGeneralUpdate`: `save` writes back every
+    // column that differs from the entity read here, so an unlocked
+    // read-modify-write would revert a concurrent schema save.
+    await this.actionUpdateRepository.manager.transaction(async (em) => {
+      await em.query('SELECT id FROM action_update WHERE id = $1 FOR UPDATE', [
+        id,
+      ]);
+      const actionUpdate = await this.findOneActionUpdate(id, em);
 
-    return this.actionUpdateRepository.save({
-      ...actionUpdate,
-      ...fields,
-      content: {
-        ...actionUpdate.content,
-        body: content.body ?? actionUpdate.content!.body,
-        attachments: content.attachments ?? actionUpdate.content!.attachments,
-      },
+      if (schemaWrite) {
+        const written = await this.writeSchemaOrThrow({
+          owner: SnapshotHistoryOwner.ActionUpdate,
+          id,
+          ...schemaWrite,
+          em,
+        });
+        actionUpdate.schemaSnapshotId = written.snapshotId;
+        // The loaded relation still holds the previous snapshot, and TypeORM
+        // lets a relation object win over the FK column — leaving it set would
+        // make the `save` below write the old id straight back over the one
+        // just written.
+        actionUpdate.schemaSnapshot = undefined;
+
+        // Writing a body is what publishes the update. Emptying one again
+        // deliberately does not retract it: members may already have seen or
+        // been notified about it, so unpublishing is an explicit act, not a
+        // side effect of clearing the editor.
+        if (actionUpdate.visibleAt === null && written.schema.blocks.length) {
+          actionUpdate.visibleAt = new Date();
+        }
+      }
+
+      Object.assign(actionUpdate, rest);
+
+      if (tagId !== undefined) {
+        actionUpdate.tag =
+          tagId === null ? null : await em.findOneByOrFail(Tag, { id: tagId });
+      }
+
+      if (associatedEventId !== undefined) {
+        actionUpdate.associatedEvent =
+          associatedEventId === null
+            ? null
+            : await em.findOneByOrFail(ActionEvent, { id: associatedEventId });
+      }
+
+      await em.save(actionUpdate);
     });
+
+    return this.findOneActionUpdate(id);
   }
 
   async deleteActionUpdate(id: number) {
@@ -2699,8 +2864,9 @@ export class ActionsService {
   async getActionUpdates(limit?: number): Promise<ActionUpdate[]> {
     return this.actionUpdateRepository.find({
       take: limit,
+      where: publishedActionUpdateWhere(new Date()),
       order: { date: 'DESC' },
-      relations: { action: true, content: true },
+      relations: { action: true, schemaSnapshot: true },
       select: {
         action: {
           name: true,
@@ -2709,37 +2875,31 @@ export class ActionsService {
     });
   }
 
-  async generateNotifsForActionUpdate(actionUpdate: ActionUpdate) {
-    let users: User[] = [];
+  private async findActionUpdateNotifRecipients(
+    actionUpdate: ActionUpdate,
+  ): Promise<User[]> {
     switch (actionUpdate.notifyType) {
       case ActionUpdateNotifyType.None:
-        return;
+        return [];
       case ActionUpdateNotifyType.ActionCohort: {
         const userIds = await this.findParticipantIdsForActionById(
           actionUpdate.actionId,
         );
-        users = await this.userService.findByIds(userIds);
-        break;
+        return this.userService.findByIds(userIds);
       }
       case ActionUpdateNotifyType.Tag: {
         if (!actionUpdate.tag) {
           throw new BadRequestException('Tag is required');
         }
-        users = (await this.userService.findTagOrFail(actionUpdate.tag.id))
+        return (await this.userService.findTagOrFail(actionUpdate.tag.id))
           .users;
-        break;
       }
       case ActionUpdateNotifyType.AllMembers:
-        users = await this.userService.findAllUsers();
-        break;
+        return this.userService.findAllUsers();
       default:
         throw new Error(
           `unknown notifyType: ${actionUpdate.notifyType satisfies never}`,
         );
-    }
-
-    for (const user of users) {
-      await this.notifsService.createActionUpdateNotif(actionUpdate, user);
     }
   }
 
@@ -3998,21 +4158,28 @@ export class ActionsService {
       );
     }
 
+    // The recency window runs on `visibleAt`, not `date`: an update backdated to
+    // when its subject happened would fall outside a one-week window on the day
+    // it was published.
     const actionUpdates = await this.actionUpdateRepository.find({
       where: {
         visibleAt: MoreThan(oneWeekAgo),
       },
-      relations: { action: true, content: true },
+      relations: { action: true, schemaSnapshot: true },
       order: { date: 'DESC' },
       take: 10,
     });
 
     for (const update of actionUpdates) {
-      if (update.visibleAt <= now && update.content) {
+      if (isActionUpdatePublished(update, now) && update.schemaSnapshot) {
         const actionUpdateDto: GlobalFeedActionUpdateDto = {
           id: update.id,
           title: update.title,
-          content: new EditableContentDto(update.content),
+          schema: displayOnlySchemaOf({
+            owner: 'ActionUpdate',
+            ownerId: update.id,
+            snapshot: update.schemaSnapshot,
+          }),
           date: update.date,
           actionId: update.actionId,
           actionName: update.action?.name || 'Unknown Action',
@@ -4402,9 +4569,9 @@ export class ActionsService {
     });
 
     const actionUpdatesQuery = this.actionUpdateRepository.find({
-      relations: { action: true, content: true },
+      relations: { action: true, schemaSnapshot: true },
+      where: publishedActionUpdateWhere(now),
       order: { date: 'DESC' },
-      where: { visibleAt: LessThan(now) },
       take: 10,
     });
 

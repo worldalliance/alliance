@@ -1,10 +1,12 @@
-import { View } from "react-native";
-import { formatDistance } from "date-fns";
+import { readDisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
 import { ActionUpdateDto, NotificationDto } from "@alliance/shared/client";
-import Text, { FontWeight } from "./system/Text";
-import EditableContentRenderer from "./EditableContentRenderer";
 import { useMarkUnreadContentRead } from "@alliance/shared/lib/useUnreadContentRead";
 import { useQueryClient } from "@tanstack/react-query";
+import { formatDistance } from "date-fns";
+import { useMemo } from "react";
+import { View } from "react-native";
+import DisplayOnlyRenderer from "./DisplayOnlyRenderer";
+import Text, { FontWeight } from "./system/Text";
 
 export interface ActionUpdateCardProps {
   update: ActionUpdateDto;
@@ -52,8 +54,10 @@ export default function ActionUpdateCard({ update }: ActionUpdateCardProps) {
     },
   });
 
-  const hasContent =
-    !!update.content?.body || (update.content?.attachments?.length ?? 0) > 0;
+  const schema = useMemo(
+    () => readDisplayOnlySchema(update.schema),
+    [update.schema],
+  );
 
   return (
     <View className="flex flex-col border border-zinc-200 rounded-sm overflow-hidden">
@@ -74,9 +78,9 @@ export default function ActionUpdateCard({ update }: ActionUpdateCardProps) {
           </View>
         </View>
       </View>
-      {hasContent && (
+      {schema?.blocks.length !== 0 && (
         <View className="p-3 bg-white">
-          <EditableContentRenderer content={update.content} />
+          <DisplayOnlyRenderer schema={schema} />
         </View>
       )}
     </View>

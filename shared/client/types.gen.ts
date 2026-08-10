@@ -492,15 +492,22 @@ export type ActionUpdate = {
     action: Action;
     actionId: number;
     title: string;
-    content?: EditableContent;
+    schemaSnapshotId: number;
+    /**
+     * What the update is displayed and sorted by.
+     */
     date: string;
-    visibleAt: string;
+    /**
+     * When the update became visible to members; null while unpublished.
+     */
+    visibleAt: string | null;
     shortNotifString: string;
-    associatedEvent?: ActionEvent;
+    associatedEvent?: ActionEvent | null;
     associatedEventId?: number;
     notifyType: ActionUpdateNotifyType;
+    notifiedAt: string | null;
     notifs: Array<Notification>;
-    tag?: Tag;
+    tag?: Tag | null;
 };
 
 export type CommentParentObject = 'post' | 'action' | 'activity';
@@ -1843,14 +1850,24 @@ export type ActionUpdateDto = {
     id: number;
     actionId: number;
     title: string;
+    schemaSnapshotId: number;
+    /**
+     * What the update is displayed and sorted by.
+     */
     date: string;
-    visibleAt: string;
+    /**
+     * When the update became visible to members; null while unpublished.
+     */
+    visibleAt: string | null;
     shortNotifString: string;
-    associatedEvent?: ActionEvent;
+    associatedEvent?: ActionEvent | null;
     associatedEventId?: number;
     notifyType: ActionUpdateNotifyType;
-    tag?: Tag;
-    content: EditableContentDto;
+    notifiedAt: string | null;
+    tag?: Tag | null;
+    schema: {
+        [key: string]: unknown;
+    };
     actionName?: string;
 };
 
@@ -2091,7 +2108,9 @@ export type GlobalFeedActivityGroupDto = {
 export type GlobalFeedActionUpdateDto = {
     id: number;
     title: string;
-    content: EditableContentDto;
+    schema: {
+        [key: string]: unknown;
+    };
     date: string;
     actionId: number;
     actionName: string;
@@ -2633,13 +2652,30 @@ export type ReminderAnchorCandidateDto = {
 
 export type CreateActionUpdateDto = {
     title: string;
+    /**
+     * What the update is displayed and sorted by.
+     */
     date: string;
-    visibleAt: string;
     shortNotifString: string;
     notifyType: ActionUpdateNotifyType;
-    content: CreateEditableContentDto;
     associatedEventId?: number;
     tagId?: string;
+};
+
+export type UpdateActionUpdateDto = {
+    title?: string;
+    /**
+     * What the update is displayed and sorted by.
+     */
+    date?: string;
+    shortNotifString?: string;
+    notifyType?: ActionUpdateNotifyType;
+    associatedEventId?: number | null;
+    tagId?: string | null;
+    schema?: {
+        [key: string]: unknown;
+    };
+    expectedSchemaSnapshotId?: number;
 };
 
 export type ActionSuiteDto = {
@@ -9563,8 +9599,32 @@ export type ActionsCreateUpdateAdminResponses = {
 
 export type ActionsCreateUpdateAdminResponse = ActionsCreateUpdateAdminResponses[keyof ActionsCreateUpdateAdminResponses];
 
+export type ActionsFindOneUpdateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/admin/{id}';
+};
+
+export type ActionsFindOneUpdateAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type ActionsFindOneUpdateAdminError = ActionsFindOneUpdateAdminErrors[keyof ActionsFindOneUpdateAdminErrors];
+
+export type ActionsFindOneUpdateAdminResponses = {
+    200: ActionUpdateDto;
+};
+
+export type ActionsFindOneUpdateAdminResponse = ActionsFindOneUpdateAdminResponses[keyof ActionsFindOneUpdateAdminResponses];
+
 export type ActionsUpdateUpdateAdminData = {
-    body: CreateActionUpdateDto;
+    body: UpdateActionUpdateDto;
     path: {
         id: number;
     };
@@ -9574,9 +9634,9 @@ export type ActionsUpdateUpdateAdminData = {
 
 export type ActionsUpdateUpdateAdminErrors = {
     /**
-     * Default error response for hey-api
+     * The update was changed by someone else since the editor loaded it.
      */
-    default: HeyApiError;
+    409: HeyApiError;
 };
 
 export type ActionsUpdateUpdateAdminError = ActionsUpdateUpdateAdminErrors[keyof ActionsUpdateUpdateAdminErrors];
@@ -9586,6 +9646,30 @@ export type ActionsUpdateUpdateAdminResponses = {
 };
 
 export type ActionsUpdateUpdateAdminResponse = ActionsUpdateUpdateAdminResponses[keyof ActionsUpdateUpdateAdminResponses];
+
+export type ActionsNotifyUpdateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/{id}/notify';
+};
+
+export type ActionsNotifyUpdateAdminErrors = {
+    /**
+     * The update has already been notified about.
+     */
+    409: HeyApiError;
+};
+
+export type ActionsNotifyUpdateAdminError = ActionsNotifyUpdateAdminErrors[keyof ActionsNotifyUpdateAdminErrors];
+
+export type ActionsNotifyUpdateAdminResponses = {
+    200: ActionUpdateDto;
+};
+
+export type ActionsNotifyUpdateAdminResponse = ActionsNotifyUpdateAdminResponses[keyof ActionsNotifyUpdateAdminResponses];
 
 export type ActionsDeleteUpdateAdminData = {
     body?: never;

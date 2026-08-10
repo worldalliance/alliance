@@ -17,7 +17,14 @@ import { MmsService } from 'src/mms/mms.service';
 import { actionUrl, commentUrl } from 'src/search/approutes';
 import { ProfileDto } from 'src/user/dto/user.dto';
 import { User } from 'src/user/entities/user.entity';
-import { DeepPartial, In, IsNull, LessThan, type Repository } from 'typeorm';
+import {
+  DeepPartial,
+  EntityManager,
+  In,
+  IsNull,
+  LessThan,
+  type Repository,
+} from 'typeorm';
 import { NotifClickDto } from './dto/notifclick.dto';
 import {
   NotificationDto,
@@ -47,6 +54,12 @@ export type CreateUnreadContentParams = Required<
   Pick<DeepPartial<UnreadContent>, 'user' | 'contentType' | 'contentId'>
 > &
   DeepPartial<UnreadContent>;
+
+// TypeORM bulk-inserts a saved array as one statement, and Postgres caps a
+// statement at 65535 bind parameters. `UnreadContent` writes ~11 columns per
+// row, so an unchunked "notify all members" send would start failing outright
+// somewhere under 6k recipients.
+const UNREAD_CONTENT_INSERT_CHUNK = 1000;
 
 function getPreviewText(body: string) {
   const tree = remark().parse(body);
@@ -232,13 +245,25 @@ export class NotifsService {
     return false;
   }
 
-  async createActionUpdateNotif(actionUpdate: ActionUpdate, user: User) {
-    return this.sendUnreadContent({
-      user,
-      contentType: UnreadContentType.ActionUpdate,
-      contentId: actionUpdate.id,
-      sendTime: actionUpdate.date,
-    });
+  /**
+   * Takes the whole audience at once so the caller can send it in the same
+   * transaction as its own once-only guard.
+   */
+  async createActionUpdateNotifs(params: {
+    actionUpdate: ActionUpdate;
+    users: User[];
+    em?: EntityManager;
+  }) {
+    const { actionUpdate, users, em } = params;
+    return this.sendUnreadContents(
+      users.map((user) => ({
+        user,
+        contentType: UnreadContentType.ActionUpdate,
+        contentId: actionUpdate.id,
+        sendTime: actionUpdate.date,
+      })),
+      em,
+    );
   }
 
   async createForumReplyNotif(comment: Comment, user: User) {
@@ -289,9 +314,15 @@ export class NotifsService {
     );
   }
 
-  async sendUnreadContents(unreadContents: CreateUnreadContentParams[]) {
-    return this.unreadContentRepository.save(
+  async sendUnreadContents(
+    unreadContents: CreateUnreadContentParams[],
+    em?: EntityManager,
+  ) {
+    const manager = em ?? this.unreadContentRepository.manager;
+    return manager.save(
+      UnreadContent,
       unreadContents.map((content) => this.createUnreadContent(content)),
+      { chunk: UNREAD_CONTENT_INSERT_CHUNK },
     );
   }
 

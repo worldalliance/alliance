@@ -2,6 +2,8 @@ import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -11,7 +13,10 @@ import { Action } from './action.entity';
 import { Type } from 'class-transformer';
 import { Allow, IsNotEmpty, IsOptional } from 'class-validator';
 import { ActionEvent } from './action-event.entity';
-import { EditableContent } from 'src/forum/entities/editablecontent.entity';
+import {
+  ACTION_UPDATE_SNAPSHOT_HISTORY_TABLE,
+  FormSnapshot,
+} from 'src/tasks/entities/formsnapshot.entity';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Notification } from 'src/notifs/entities/notification.entity';
 import { Tag } from 'src/user/entities/tag.entity';
@@ -54,24 +59,48 @@ export class ActionUpdate {
   @ApiProperty()
   title: string;
 
-  @ManyToOne(() => EditableContent, { cascade: true, nullable: false })
-  @JoinColumn({ name: 'contentId' })
-  @Type(() => EditableContent)
+  @Column()
+  @ApiProperty()
+  @Allow()
+  schemaSnapshotId: number;
+
+  @ManyToOne(() => FormSnapshot, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'schemaSnapshotId' })
+  @Type(() => FormSnapshot)
   @IsOptional()
-  @ApiPropertyOptional({ type: () => EditableContent })
-  content?: Relation<EditableContent>;
+  schemaSnapshot?: Relation<FormSnapshot>;
+
+  @ManyToMany(() => FormSnapshot)
+  @JoinTable({
+    name: ACTION_UPDATE_SNAPSHOT_HISTORY_TABLE,
+    joinColumn: { name: 'actionUpdateId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'schemaSnapshotId', referencedColumnName: 'id' },
+  })
+  @Type(() => FormSnapshot)
+  @IsOptional()
+  historicalSchemaSnapshots?: Relation<FormSnapshot>[];
 
   @Column({ type: 'timestamptz' })
   @IsNotEmpty()
   @Type(() => Date)
-  @ApiProperty()
+  @ApiProperty({
+    description: 'What the update is displayed and sorted by.',
+  })
   date: Date;
 
-  @Column({ type: 'timestamptz' })
-  @IsNotEmpty()
+  // Null until an admin writes the body. Creating an update and authoring it
+  // are separate steps, so this is what keeps a titled, body-less update off
+  // the member-facing feeds while the editor is still open.
+  @Column({ type: 'timestamptz', nullable: true })
+  @ApiProperty({
+    type: Date,
+    nullable: true,
+    description:
+      'When the update became visible to members; null while unpublished.',
+  })
   @Type(() => Date)
-  @ApiProperty()
-  visibleAt: Date;
+  @IsOptional()
+  visibleAt: Date | null;
 
   @Column({ type: 'text' })
   @IsNotEmpty()
@@ -81,9 +110,9 @@ export class ActionUpdate {
   @ManyToOne(() => ActionEvent, (event) => event.updates, { nullable: true })
   @JoinColumn({ name: 'associatedEventId' })
   @Type(() => ActionEvent)
-  @ApiPropertyOptional({ type: () => ActionEvent })
+  @ApiPropertyOptional({ type: () => ActionEvent, nullable: true })
   @IsOptional()
-  associatedEvent?: Relation<ActionEvent>;
+  associatedEvent?: Relation<ActionEvent> | null;
 
   @RelationId((update: ActionUpdate) => update.associatedEvent)
   @Type(() => Number)
@@ -105,6 +134,14 @@ export class ActionUpdate {
   })
   notifyType: ActionUpdateNotifyType;
 
+  // The notification transaction claims this timestamp before inserting the
+  // audience rows, making delivery once-only across concurrent requests.
+  @Column({ type: 'timestamptz', nullable: true })
+  @ApiProperty({ type: Date, nullable: true })
+  @Type(() => Date)
+  @IsOptional()
+  notifiedAt: Date | null;
+
   @OneToMany(() => Notification, (notif) => notif.actionUpdate)
   @Type(() => Notification)
   @ApiProperty({ type: () => Notification, isArray: true })
@@ -115,7 +152,7 @@ export class ActionUpdate {
   @ManyToOne(() => Tag, { nullable: true })
   @JoinColumn({ name: 'tagId' })
   @Type(() => Tag)
-  @ApiPropertyOptional({ type: () => Tag })
+  @ApiPropertyOptional({ type: () => Tag, nullable: true })
   @IsOptional()
-  tag?: Relation<Tag>;
+  tag?: Relation<Tag> | null;
 }

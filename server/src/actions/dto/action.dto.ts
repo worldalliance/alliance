@@ -19,21 +19,23 @@ import {
   IsBoolean,
   IsDefined,
   IsEnum,
+  IsInt,
   IsNumber,
+  IsObject,
   IsOptional,
   IsString,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import type { DisplayOnlySchema } from '@alliance/common/forms/display-only-schema';
 import { CommentDto } from 'src/forum/dto/comment.dto';
-import {
-  CreateEditableContentDto,
-  EditableContentDto,
-} from 'src/forum/dto/editablecontent.dto';
+import { EditableContentDto } from 'src/forum/dto/editablecontent.dto';
 import type { Comment } from 'src/forum/entities/comment.entity';
 import type { ForumFeedComment } from 'src/forum/forum.service';
 import { getImageSource } from 'src/images/images.service';
 import { Form } from 'src/tasks/entities/form.entity';
 import { FormResponse } from 'src/tasks/entities/formresponse.entity';
+import { displayOnlySchemaOf } from 'src/tasks/display-only-snapshot';
 import { SubmitFormDto } from 'src/tasks/form.dto';
 import { UserActionRelationPillStatus } from 'src/user/dto/user-action-relations.dto';
 import { ProfileDto } from 'src/user/dto/user.dto';
@@ -746,15 +748,17 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
   'actionId',
   'visibleAt',
   'notifyType',
+  'notifiedAt',
   'shortNotifString',
   'associatedEvent',
   'associatedEventId',
+  'schemaSnapshotId',
   'tag',
 ]) {
-  @ApiProperty({ type: () => EditableContentDto })
-  @Type(() => EditableContentDto)
+  @ApiProperty()
+  @Type(() => Object)
   @Allow()
-  content: EditableContentDto;
+  schema: DisplayOnlySchema;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -769,13 +773,17 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
     this.actionId = actionUpdate.actionId;
     this.visibleAt = actionUpdate.visibleAt;
     this.notifyType = actionUpdate.notifyType;
+    this.notifiedAt = actionUpdate.notifiedAt;
     this.shortNotifString = actionUpdate.shortNotifString;
     this.associatedEvent = actionUpdate.associatedEvent;
     this.associatedEventId = actionUpdate.associatedEventId;
     this.tag = actionUpdate.tag;
-    this.content = actionUpdate.content
-      ? new EditableContentDto(actionUpdate.content)
-      : { body: '', attachments: [], id: -1 };
+    this.schema = displayOnlySchemaOf({
+      owner: 'ActionUpdate',
+      ownerId: actionUpdate.id,
+      snapshot: actionUpdate.schemaSnapshot,
+    });
+    this.schemaSnapshotId = actionUpdate.schemaSnapshotId;
     this.actionName = actionUpdate.action?.name;
   }
 }
@@ -783,15 +791,9 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
 export class CreateActionUpdateDto extends PickType(ActionUpdate, [
   'title',
   'date',
-  'visibleAt',
   'notifyType',
   'shortNotifString',
 ]) {
-  @ApiProperty({ type: () => CreateEditableContentDto })
-  @Type(() => CreateEditableContentDto)
-  @IsDefined()
-  content: CreateEditableContentDto;
-
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
   associatedEventId?: number;
@@ -799,6 +801,29 @@ export class CreateActionUpdateDto extends PickType(ActionUpdate, [
   @ApiPropertyOptional()
   @IsOptional()
   tagId?: string;
+}
+
+export class UpdateActionUpdateDto extends PartialType(
+  PickType(ActionUpdate, ['title', 'date', 'notifyType', 'shortNotifString']),
+) {
+  @ApiPropertyOptional({ type: Number, nullable: true })
+  @IsOptional()
+  associatedEventId?: number | null;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  tagId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  @Type(() => Object)
+  schema?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ type: Number })
+  @ValidateIf((dto: UpdateActionUpdateDto) => dto.schema !== undefined)
+  @IsInt()
+  expectedSchemaSnapshotId?: number;
 }
 
 export class CreateActionSuiteDto extends PickType(ActionSuite, ['name']) {}
@@ -1087,9 +1112,9 @@ export class GlobalFeedActionUpdateDto {
   @ApiProperty()
   title: string;
 
-  @ApiProperty({ type: () => EditableContentDto })
-  @Type(() => EditableContentDto)
-  content: EditableContentDto;
+  @ApiProperty()
+  @Type(() => Object)
+  schema: DisplayOnlySchema;
 
   @ApiProperty()
   date: Date;

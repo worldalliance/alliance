@@ -4,6 +4,8 @@ import {
   PartialType,
   PickType,
 } from '@nestjs/swagger';
+import type { DisplayOnlySchema } from '@alliance/common/forms/display-only-schema';
+import { displayOnlySchemaOf } from 'src/tasks/display-only-snapshot';
 import { GeneralUpdate } from '../entities/general-update.entity';
 import { Type } from 'class-transformer';
 import {
@@ -17,13 +19,12 @@ import {
 import { Tag } from 'src/user/entities/tag.entity';
 import { ActionSuite } from '../entities/action-suite.entity';
 
-function schemaOf(generalUpdate: GeneralUpdate): Record<string, unknown> {
-  if (!generalUpdate.schemaSnapshot) {
-    throw new Error(
-      `GeneralUpdate ${generalUpdate.id}: schemaSnapshot was not loaded — the query needs relations: { schemaSnapshot: true }`,
-    );
-  }
-  return generalUpdate.schemaSnapshot.schema;
+function schemaOf(generalUpdate: GeneralUpdate): DisplayOnlySchema {
+  return displayOnlySchemaOf({
+    owner: 'GeneralUpdate',
+    ownerId: generalUpdate.id,
+    snapshot: generalUpdate.schemaSnapshot,
+  });
 }
 
 export class GeneralUpdateDto extends PickType(GeneralUpdate, [
@@ -35,7 +36,7 @@ export class GeneralUpdateDto extends PickType(GeneralUpdate, [
 ]) {
   @ApiProperty()
   @Type(() => Object)
-  schema: Record<string, unknown>;
+  schema: DisplayOnlySchema;
 
   constructor(generalUpdate: GeneralUpdate) {
     super();
@@ -62,7 +63,7 @@ export class GeneralUpdateAdminDto extends PickType(GeneralUpdate, [
 ]) {
   @ApiProperty()
   @Type(() => Object)
-  schema: Record<string, unknown>;
+  schema: DisplayOnlySchema;
 
   @ApiProperty({ type: () => Tag, isArray: true })
   @Type(() => Tag)

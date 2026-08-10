@@ -11,6 +11,10 @@ export default [
       route("/groups/:id", "pages/GroupDetailPage.tsx"),
       route("/clusters", "pages/ClustersPage.tsx"),
       route("/actions/:actionId", "pages/ActionDashboard.tsx"),
+      route(
+        "/actions/:actionId/updates/:updateId",
+        "pages/ActionUpdatePage.tsx",
+      ),
       route("/scheduled", "pages/ScheduledPlansPage.tsx"),
       route("/suites/:suiteId", "pages/ActionSuitePage.tsx"),
       route("/new-suite", "pages/NewActionSuitePage.tsx"),

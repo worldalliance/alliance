@@ -1,10 +1,7 @@
 import {
   displayOnlyToFormSchema,
-  formSchemaToDisplayOnly,
   readDisplayOnlySchema,
-  readDisplayOnlySchemaError,
 } from "@alliance/common/forms/display-only-schema";
-import { R } from "@alliance/common/result";
 import {
   actionsCreateGeneralUpdateAdmin,
   actionsFindOneGeneralUpdateAdmin,
@@ -22,28 +19,14 @@ import UserSelect, { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
 import { X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import { FormBuilder, type DisplayOnlySave } from "../components/FormBuilder";
-
-const FormSection: React.FC<{
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}> = ({ title, description, children }) => (
-  <div className="border border-gray-200 rounded-lg bg-white">
-    <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-      <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-      {description && (
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
-      )}
-    </div>
-    <div className="p-4">{children}</div>
-  </div>
-);
+import { FormBuilder } from "../components/FormBuilder";
+import FormSection from "../components/FormSection";
+import {
+  useDisplayOnlySchemaSave,
+  type DisplayOnlySchemaSaveBody,
+} from "../lib/useDisplayOnlySchemaSave";
 
 type Tab = "details" | "content";
-
-const notDisplayOnlyMessage = (issues: string[]) =>
-  `General updates can only hold display-only content — ${issues.join("; ")}`;
 
 type GeneralUpdateForm = {
   name: string;
@@ -300,51 +283,25 @@ const GeneralUpdatePage: React.FC = () => {
     }));
   }, []);
 
-  const handleSaveSchema = useCallback<DisplayOnlySave>(
-    async ({ schema, expectedSnapshotId }) => {
+  const saveSchema = useCallback(
+    (body: DisplayOnlySchemaSaveBody) => {
       if (id == null) throw new Error("Missing general update id");
-      if (expectedSnapshotId === null) {
-        throw new Error("Missing the snapshot this edit was built on");
-      }
-      const converted = formSchemaToDisplayOnly(schema);
-      if (R.isFailure(converted)) {
-        throw new Error(notDisplayOnlyMessage(converted.error));
-      }
-      const response = await actionsUpdateGeneralUpdateAdmin({
-        path: { id },
-        body: {
-          schema: converted.value,
-          expectedSchemaSnapshotId: expectedSnapshotId,
-        },
-      });
-
-      if (response.response.status === 409) {
-        const latest = await actionsFindOneGeneralUpdateAdmin({ path: { id } });
-        const theirs = latest.data && readDisplayOnlySchema(latest.data.schema);
-        if (!latest.data || !theirs) {
-          throw new Error("This update was changed by someone else");
-        }
-        setUpdate(latest.data);
-        return R.failure({
-          theirs: displayOnlyToFormSchema(theirs),
-          theirsSnapshotId: latest.data.schemaSnapshotId,
-        });
-      }
-
-      if (!response.data) {
-        const rejected = readDisplayOnlySchemaError(response.error);
-        if (rejected) throw new Error(notDisplayOnlyMessage(rejected));
-        const message = response.error?.message;
-        throw new Error(
-          (Array.isArray(message) ? message.join("; ") : message) ??
-            "Failed to save content",
-        );
-      }
-      setUpdate(response.data);
-      return R.success({ snapshotId: response.data.schemaSnapshotId });
+      return actionsUpdateGeneralUpdateAdmin({ path: { id }, body });
     },
     [id],
   );
+
+  const refetchUpdate = useCallback(() => {
+    if (id == null) throw new Error("Missing general update id");
+    return actionsFindOneGeneralUpdateAdmin({ path: { id } });
+  }, [id]);
+
+  const handleSaveSchema = useDisplayOnlySchemaSave({
+    ownerLabel: "General updates",
+    save: saveSchema,
+    refetch: refetchUpdate,
+    onSaved: setUpdate,
+  });
 
   const formContent = (
     <>

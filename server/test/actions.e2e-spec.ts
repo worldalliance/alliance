@@ -6,6 +6,11 @@ import {
   Notification,
   NotificationCategory,
 } from 'src/notifs/entities/notification.entity';
+import {
+  UnreadContent,
+  UnreadContentType,
+} from 'src/notifs/entities/unread-content.entity';
+import { NotifsService } from 'src/notifs/notifs.service';
 import type { Form } from 'src/tasks/entities/form.entity';
 import type { FormResponse } from 'src/tasks/entities/formresponse.entity';
 import { ContractEventType } from 'src/user/entities/contract-event.entity';
@@ -51,6 +56,7 @@ describe('Actions (e2e)', () => {
   let contractService: ContractService;
   let userRepo: Repository<User>;
   let notifRepo: Repository<Notification>;
+  let unreadContentRepo: Repository<UnreadContent>;
   let activityRepo: Repository<ActionActivity>;
   let communityRepo: Repository<Community>;
   let formRepo: Repository<Form>;
@@ -101,6 +107,7 @@ describe('Actions (e2e)', () => {
     contractService = ctx.app.get(ContractService);
     userRepo = ctx.dataSource.getRepository(User);
     notifRepo = ctx.dataSource.getRepository(Notification);
+    unreadContentRepo = ctx.dataSource.getRepository(UnreadContent);
     activityRepo = ctx.dataSource.getRepository(
       'ActionActivity',
     ) as Repository<ActionActivity>;
@@ -2934,6 +2941,213 @@ describe('Actions (e2e)', () => {
       await request(ctx.app.getHttpServer())
         .delete(`/actions/generalUpdates/${id}`)
         .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+    });
+  });
+
+  describe('Action update notifications', () => {
+    const displaySchema = (text: string) => ({
+      blocks: [{ type: 'display', kind: 'header', id: 'b1', text }],
+    });
+
+    const createUpdate = async (body: Record<string, unknown>) => {
+      const now = new Date().toISOString();
+      const created = await request(ctx.app.getHttpServer())
+        .post(`/actions/createUpdate/${testAction.id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title: 'Notify test',
+          shortNotifString: 'something happened',
+          date: now,
+          notifyType: 'all_members',
+          ...body,
+        })
+        .expect(201);
+      return created.body as {
+        id: number;
+        notifiedAt: string | null;
+        schemaSnapshotId: number;
+      };
+    };
+
+    const notify = (id: number) =>
+      request(ctx.app.getHttpServer())
+        .post(`/actions/updates/${id}/notify`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+
+    const writeContent = (id: number, snapshotId: number) =>
+      request(ctx.app.getHttpServer())
+        .patch(`/actions/updateUpdate/${id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          schema: displaySchema('The body'),
+          expectedSchemaSnapshotId: snapshotId,
+        })
+        .expect(200);
+
+    const unreadCountFor = (id: number) =>
+      unreadContentRepo.count({
+        where: { contentType: UnreadContentType.ActionUpdate, contentId: id },
+      });
+
+    it('does not notify at creation time, when the update is still empty', async () => {
+      const update = await createUpdate({});
+
+      expect(update.notifiedAt).toBeNull();
+      expect(await unreadCountFor(update.id)).toBe(0);
+    });
+
+    it('refuses to notify until the body has been written', async () => {
+      const update = await createUpdate({});
+
+      await notify(update.id).expect(400);
+      expect(await unreadCountFor(update.id)).toBe(0);
+
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      const notified = await notify(update.id).expect(200);
+      expect(notified.body.notifiedAt).not.toBeNull();
+      expect(await unreadCountFor(update.id)).toBeGreaterThan(0);
+    });
+
+    it('sends once, so a second attempt conflicts instead of re-notifying', async () => {
+      const update = await createUpdate({});
+      await writeContent(update.id, update.schemaSnapshotId);
+      await notify(update.id).expect(200);
+
+      const sent = await unreadCountFor(update.id);
+
+      await notify(update.id).expect(409);
+      expect(await unreadCountFor(update.id)).toBe(sent);
+    });
+
+    it('refuses to notify an update with no audience', async () => {
+      const update = await createUpdate({ notifyType: 'none' });
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      await notify(update.id).expect(400);
+      expect(await unreadCountFor(update.id)).toBe(0);
+    });
+
+    it('rolls the claim back when the send fails, leaving the retry open', async () => {
+      const update = await createUpdate({});
+      await writeContent(update.id, update.schemaSnapshotId);
+
+      const send = jest
+        .spyOn(ctx.app.get(NotifsService), 'sendUnreadContents')
+        .mockRejectedValue(new Error('send failed'));
+      try {
+        await notify(update.id).expect(500);
+      } finally {
+        send.mockRestore();
+      }
+
+      expect(await unreadCountFor(update.id)).toBe(0);
+      const afterFailure = await request(ctx.app.getHttpServer())
+        .get(`/actions/updates/admin/${update.id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      expect(afterFailure.body.notifiedAt).toBeNull();
+
+      const notified = await notify(update.id).expect(200);
+      expect(notified.body.notifiedAt).not.toBeNull();
+      expect(await unreadCountFor(update.id)).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Action update visibility', () => {
+    const displaySchema = (text: string) => ({
+      blocks: [{ type: 'display', kind: 'header', id: 'b1', text }],
+    });
+
+    const createUpdate = async (title: string) => {
+      const created = await request(ctx.app.getHttpServer())
+        .post(`/actions/createUpdate/${testAction.id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          title,
+          shortNotifString: 'something happened',
+          date: new Date().toISOString(),
+          notifyType: 'none',
+        })
+        .expect(201);
+      return created.body as {
+        id: number;
+        visibleAt: string | null;
+        schemaSnapshotId: number;
+      };
+    };
+
+    const writeContent = (id: number, snapshotId: number) =>
+      request(ctx.app.getHttpServer())
+        .patch(`/actions/updateUpdate/${id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          schema: displaySchema('The body'),
+          expectedSchemaSnapshotId: snapshotId,
+        })
+        .expect(200);
+
+    const memberUpdateIds = async () => {
+      const response = await request(ctx.app.getHttpServer())
+        .get('/actions/updates')
+        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .expect(200);
+      return (response.body as { id: number }[]).map((update) => update.id);
+    };
+
+    const updateIdsOnActionPage = async (token: string, path: string) => {
+      const response = await request(ctx.app.getHttpServer())
+        .get(`/actions/${path}/${testAction.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(200);
+      return (response.body.updates as { id: number }[]).map(
+        (update) => update.id,
+      );
+    };
+
+    it('keeps an update with no body off the member-facing reads', async () => {
+      const update = await createUpdate('Still being written');
+
+      expect(update.visibleAt).toBeNull();
+      expect(await memberUpdateIds()).not.toContain(update.id);
+      expect(
+        await updateIdsOnActionPage(ctx.accessToken, 'slug'),
+      ).not.toContain(update.id);
+    });
+
+    it('still shows the draft to admins, who have to be able to finish it', async () => {
+      const update = await createUpdate('Draft visible to admin');
+
+      expect(
+        await updateIdsOnActionPage(ctx.adminAccessToken, 'adminslug'),
+      ).toContain(update.id);
+    });
+
+    it('publishes the update when its body is first written', async () => {
+      const update = await createUpdate('Ready to publish');
+      const written = await writeContent(update.id, update.schemaSnapshotId);
+
+      expect(written.body.visibleAt).not.toBeNull();
+      expect(await memberUpdateIds()).toContain(update.id);
+      expect(await updateIdsOnActionPage(ctx.accessToken, 'slug')).toContain(
+        update.id,
+      );
+    });
+
+    it('keeps the original publish time when the body is edited again', async () => {
+      const update = await createUpdate('Edited twice');
+      const first = await writeContent(update.id, update.schemaSnapshotId);
+
+      const second = await request(ctx.app.getHttpServer())
+        .patch(`/actions/updateUpdate/${update.id}`)
+        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          schema: displaySchema('A revised body'),
+          expectedSchemaSnapshotId: first.body.schemaSnapshotId,
+        })
+        .expect(200);
+
+      expect(second.body.visibleAt).toBe(first.body.visibleAt);
     });
   });
 

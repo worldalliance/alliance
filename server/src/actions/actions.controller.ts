@@ -6,6 +6,8 @@ import {
   DefaultValuePipe,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   ParseBoolPipe,
@@ -89,6 +91,7 @@ import {
   UpdateActionActivityDto,
   UpdateActionDto,
   UpdateActionEventDto,
+  UpdateActionUpdateDto,
   UserActionRelationDto,
 } from './dto/action.dto';
 import { CommunityCompletedActionsCountDto } from './dto/community-completed-actions-count.dto';
@@ -705,7 +708,11 @@ export class ActionsController {
     @Request() req: JwtRequest,
   ): Promise<ActionDto> {
     return new ActionDto(
-      await this.actionsService.findOneOrFail({ id, userId: req.user.sub }),
+      await this.actionsService.findOneOrFail({
+        id,
+        userId: req.user.sub,
+        includeUnpublishedUpdates: true,
+      }),
     );
   }
 
@@ -1166,15 +1173,47 @@ export class ActionsController {
     );
   }
 
+  @Get('updates/admin/:id')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: ActionUpdateDto })
+  async findOneUpdateAdmin(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ActionUpdateDto> {
+    return new ActionUpdateDto(
+      await this.actionsService.findOneActionUpdate(id),
+    );
+  }
+
   @Patch('updateUpdate/:id')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiResponse({
+    status: 409,
+    description:
+      'The update was changed by someone else since the editor loaded it.',
+  })
   async updateUpdateAdmin(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateActionUpdateDto: CreateActionUpdateDto,
+    @Body() updateActionUpdateDto: UpdateActionUpdateDto,
   ): Promise<ActionUpdateDto> {
     return new ActionUpdateDto(
       await this.actionsService.updateActionUpdate(id, updateActionUpdateDto),
+    );
+  }
+
+  @Post('updates/:id/notify')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiResponse({
+    status: 409,
+    description: 'The update has already been notified about.',
+  })
+  async notifyUpdateAdmin(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ActionUpdateDto> {
+    return new ActionUpdateDto(
+      await this.actionsService.notifyActionUpdate(id),
     );
   }
 

@@ -21,12 +21,14 @@ import {
   ActionUpdate,
   ActionUpdateNotifyType,
 } from 'src/actions/entities/action-update.entity';
+import { FormSnapshot } from 'src/tasks/entities/formsnapshot.entity';
 
 describe('Notifications (e2e)', () => {
   let ctx: TestContext;
   let notifRepo: Repository<Notification>;
   let unreadContentRepo: Repository<UnreadContent>;
   let editableContentRepo: Repository<EditableContent>;
+  let formSnapshotRepo: Repository<FormSnapshot>;
   let commentRepo: Repository<Comment>;
   let legacyNotifId: number;
   let unreadNotifId: number;
@@ -37,6 +39,7 @@ describe('Notifications (e2e)', () => {
     notifRepo = ctx.dataSource.getRepository(Notification);
     unreadContentRepo = ctx.dataSource.getRepository(UnreadContent);
     editableContentRepo = ctx.dataSource.getRepository(EditableContent);
+    formSnapshotRepo = ctx.dataSource.getRepository(FormSnapshot);
     commentRepo = ctx.dataSource.getRepository(Comment);
     const userRepo = ctx.dataSource.getRepository(User);
 
@@ -255,10 +258,10 @@ describe('Notifications (e2e)', () => {
       }),
     );
 
-    const content = await editableContentRepo.save(
-      editableContentRepo.create({
-        body: 'update content',
-        attachments: [],
+    const snapshot = await formSnapshotRepo.save(
+      formSnapshotRepo.create({
+        schema: { blocks: [{ type: 'display', kind: 'text', text: 'update' }] },
+        hash: 'notifs-e2e-action-update',
       }),
     );
 
@@ -267,11 +270,10 @@ describe('Notifications (e2e)', () => {
         action,
         title: 'Test Update',
         date: new Date(),
-        visibleAt: new Date(Date.now() - 1000),
         shortNotifString:
           '## Heading\n\nSome **bold** and *italic* text with a [link](https://example.com)',
         notifyType: ActionUpdateNotifyType.None,
-        content,
+        schemaSnapshotId: snapshot.id,
       }),
     );
 
