@@ -1,6 +1,6 @@
 ---
 name: local-db
-description: Query the local Postgres database — credentials via server/.env, psql one-liners, TypeORM table/column naming, dev vs test DB.
+description: How to query the local Postgres database
 ---
 
 # Local Database Access
@@ -21,6 +21,6 @@ PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USERNAME -d $DB_NAME
 - Column names: keep entity camelCase, must be double-quoted in SQL (`"newStatus"`).
 - Test DB (`server/.env.test`): password `postgres`, database `postgres` — don't mix up with dev DB.
 
-# Prod data
+## Prod data
 
 Running `misc/load_staging_data.sh` sets the local DB data to the staging data, which is a pii-pruned version of prod.

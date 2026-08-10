@@ -1,6 +1,6 @@
 ---
 name: migrations
-description: Generate and review TypeORM database migrations in server/ — migration:generate vs migration:create, and the column-rename DROP+ADD pitfall. Read before generating or writing any db migration.
+description: Information related to TypeORM database migrations in server/. Read before generating or writing any db migration.
 ---
 
 # Migrations
@@ -24,6 +24,12 @@ The generator can get things wrong. Key pitfall:
 - **Column renames generate `DROP` + `ADD`**, deleting data. Edit to `RENAME COLUMN` instead.
 
 Always review the generated SQL and edit when needed before committing.
+
+## Hand edits
+
+Hand edits should alter ordering and data handling, never the end state.
+
+Whenever you edit a migration by hand, tell the user which statements you changed and why. Also, ensure the resulting db schema is unchanged. One way to do this is by checking `migration:generate` reports `No changes in database schema were found`
 
 ## Raw-SQL migrations
 

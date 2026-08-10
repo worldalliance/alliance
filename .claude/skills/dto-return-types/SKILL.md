@@ -1,6 +1,6 @@
 ---
 name: dto-return-types
-description: NestJS endpoint return-type and DTO rules — explicit DTO return types, @ApiOkResponse matching, wrapper DTOs, constructor patterns, and the post-edit `bun run gen-api` step. Read before editing any *.dto.ts or *.controller.ts in server/.
+description: NestJS endpoint return-type and DTO rules. Read before editing any *.dto.ts or *.controller.ts in server/.
 ---
 
 # Endpoint Return Types

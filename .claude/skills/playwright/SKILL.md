@@ -1,6 +1,6 @@
 ---
 name: playwright
-description: Verify changes against the locally running apps — curl the API, drive the admin/frontend GUIs with Playwright
+description: Verify changes against the locally running apps
 ---
 
 # Playwright: verify driving the running apps locally
