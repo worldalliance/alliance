@@ -1,8 +1,11 @@
-import type {
-  AnyField,
-  FieldKind,
-  FormSchema,
-  Page,
+import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
+import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
+import {
+  isQuestionField,
+  type AnyField,
+  type FieldKind,
+  type FormSchema,
+  type Page,
 } from "@alliance/common/forms/form-schema";
 import type {
   ActionWithdrawalDto,
@@ -149,18 +152,8 @@ export type FormResponseFilter = {
   value?: string;
 };
 
-const isAnswerField = (
-  node: unknown,
-): node is { id: string; label: string } => {
-  if (!node || typeof node !== "object") return false;
-  const anyNode = node as { kind: string; id: string; label: string };
-  return (
-    typeof anyNode.kind === "string" &&
-    ANSWER_FIELD_KINDS.has(anyNode.kind as FieldKind) &&
-    typeof anyNode.id === "string" &&
-    typeof anyNode.label === "string"
-  );
-};
+const isAnswerField = (node: AnyField | DisplayBlock): node is AnyField =>
+  isQuestionField(node) && ANSWER_FIELD_KINDS.has(node.kind);
 
 const isResponseFilterOp = (value: string | null): value is ResponseFilterOp =>
   value === "equals" || value === "includes" || value === "no-response";
@@ -405,55 +398,22 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     };
   }, [filterFieldId, filterOpParam, filterValueParam]);
 
-  const fieldLabels = useMemo(() => {
-    const labels: Record<string, string> = {};
-    const schema = form?.schema as unknown as {
-      pages?: Array<{
-        fields?: Array<{ id?: string; label?: string; kind?: string }>;
-      }>;
-    };
-    schema?.pages?.forEach((p) => {
-      p.fields?.forEach((f) => {
-        if (isAnswerField(f)) {
-          labels[f.id] = f.label;
-        }
+  const { fieldLabels, orderedFieldIds } = useMemo(() => {
+    const labels = new Map<string, string>();
+    form?.schema?.pages?.forEach((page) => {
+      page.fields.forEach((field) => {
+        if (!isAnswerField(field) || labels.has(field.id)) return;
+        labels.set(field.id, elementInternalDescriptor(field));
       });
     });
-    return labels;
-  }, [form]);
-
-  const orderedFieldIds = useMemo(() => {
-    const ids: string[] = [];
-    const seen = new Set<string>();
-    const schema = form?.schema as unknown as {
-      pages?: Array<{
-        fields?: Array<{ id?: string; label?: string; kind?: string }>;
-      }>;
-    };
-    schema?.pages?.forEach((p) => {
-      p.fields?.forEach((f) => {
-        if (isAnswerField(f) && !seen.has(f.id)) {
-          seen.add(f.id);
-          ids.push(f.id);
-        }
-      });
-    });
-    return ids;
+    return { fieldLabels: labels, orderedFieldIds: [...labels.keys()] };
   }, [form]);
 
   const fieldsById = useMemo(() => {
-    const fields: Record<string, AnyField> = {};
+    const fields = new Map<string, AnyField>();
     form?.schema?.pages?.forEach((page) => {
       page.fields.forEach((field) => {
-        const candidate = field as AnyField;
-        if (
-          candidate &&
-          typeof candidate === "object" &&
-          typeof candidate.id === "string" &&
-          typeof candidate.kind === "string"
-        ) {
-          fields[candidate.id] = candidate;
-        }
+        if (isQuestionField(field)) fields.set(field.id, field);
       });
     });
     return fields;
@@ -461,7 +421,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
 
   const activeFilterField = useMemo(() => {
     if (!activeFilter) return null;
-    const field = fieldsById[activeFilter.fieldId];
+    const field = fieldsById.get(activeFilter.fieldId);
     if (!field || !FILTERABLE_FIELD_KINDS.has(field.kind)) return null;
     return field;
   }, [activeFilter, fieldsById]);
@@ -481,7 +441,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
   }, [questionFieldParam, orderedFieldIds]);
 
   const selectedQuestionField = useMemo(
-    () => fieldsById[selectedQuestionFieldId],
+    () => fieldsById.get(selectedQuestionFieldId),
     [fieldsById, selectedQuestionFieldId],
   );
 
@@ -512,7 +472,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
         continue;
       }
       const fieldId = detection.fieldPath.slice("answers.".length);
-      const field = fieldsById[fieldId];
+      const field = fieldsById.get(fieldId);
       if (!field || !AI_SCORE_FIELD_KINDS.has(field.kind)) {
         continue;
       }
@@ -535,7 +495,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
 
   const filterSummary = useMemo(() => {
     if (!activeFilter || !activeFilterField) return null;
-    const fieldLabel = activeFilterField.label?.trim() || "Untitled question";
+    const fieldLabel = elementInternalDescriptor(activeFilterField);
     if (activeFilter.op === "no-response") {
       return { fieldLabel, description: "No response" };
     }
@@ -682,7 +642,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
     if (variantOptions) metaHeaders.push("Variant");
     const used = new Set<string>();
     const questionHeaders = orderedFieldIds.map((id) => {
-      const base = fieldLabels[id] || id;
+      const base = fieldLabels.get(id) ?? id;
       let name = base;
       let i = 2;
       while (used.has(name)) {
@@ -1173,7 +1133,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
                 >
                   {orderedFieldIds.map((fieldId) => (
                     <option key={fieldId} value={fieldId}>
-                      {fieldLabels[fieldId] || fieldId}
+                      {fieldLabels.get(fieldId) ?? fieldId}
                     </option>
                   ))}
                 </select>

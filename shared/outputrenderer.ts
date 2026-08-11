@@ -1,5 +1,6 @@
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
+import { outputBlockLabelOverride } from "@alliance/common/forms/element-descriptors";
 import type {
   AnyField,
   CityFieldValue,
@@ -214,7 +215,9 @@ const buildOutputField = (
 ): AnyField => {
   const withLabel: AnyField = {
     ...field,
-    label: block.showLabel ? (block.labelOverride ?? field.label) : null,
+    label: block.showLabel
+      ? (outputBlockLabelOverride(block) ?? field.label)
+      : null,
     required: false,
   };
 
@@ -336,7 +339,8 @@ export const resolveOutputItems = ({
         block,
         field,
         renderField: field ? buildOutputField(field, block) : undefined,
-        label: block.labelOverride ?? field?.label ?? "Missing field",
+        label:
+          outputBlockLabelOverride(block) ?? field?.label ?? "Missing field",
         showLabel: block.showLabel ?? true,
         format: block.format ?? "field",
         value: answers[block.fieldId],

@@ -5,6 +5,13 @@ import {
 } from "@alliance/common/forms/display-blocks";
 import { isDisplayOnlyBlockKind } from "@alliance/common/forms/display-only-schema";
 import {
+  ADDABLE_FIELD_KINDS,
+  DISPLAY_KIND_NAMES,
+  DISPLAY_KINDS,
+  elementInternalDescriptor,
+  FIELD_KIND_NAMES,
+} from "@alliance/common/forms/element-descriptors";
+import {
   fieldHasOptions,
   isQuestionField,
   type AnyField,
@@ -37,7 +44,6 @@ import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
-import { BLOCK_ELEMENTS } from "../lib/blockElements";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { AggregateBuilder } from "./AggregateBuilder";
@@ -76,8 +82,8 @@ import {
   EditableRangeField,
   EditableRankingField,
   EditableSelectField,
-  EditableTextField,
   EditableTextareaField,
+  EditableTextField,
   EditableTimeField,
   EditableTimezoneField,
 } from "./form-fields";
@@ -92,59 +98,25 @@ import { OutputBuilder } from "./OutputBuilder";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
 
-const FIELD_NAMES = {
-  textarea: "Text Area Field",
-  email: "Email Field",
-  phone: "Phone Field",
-  number: "Number Field",
-  range: "Range Field",
-  checkbox: "Checkbox Field",
-  radio: "Radio Field",
-  select: "Select Field",
-  multiselect: "Multi-select Field",
-  ranking: "Ranking Field",
-  date: "Date Field",
-  time: "Time Field",
-  timezone: "Timezone Field",
-  city: "City Field",
-  file: "File Field",
-  contract: "Contract Field",
-  list: "List Field",
-  custom: "Custom Component Field",
-} as const satisfies Record<Exclude<FieldKind, "text">, string>;
-
 type AvailableElement =
-  | {
-      [K in keyof typeof FIELD_NAMES]: {
-        id: K;
-        name: (typeof FIELD_NAMES)[K];
-        type: "field";
-      };
-    }[keyof typeof FIELD_NAMES]
-  | {
-      [K in DisplayKind]: {
-        id: (typeof BLOCK_ELEMENTS)[K]["id"];
-        name: (typeof BLOCK_ELEMENTS)[K]["name"];
-        type: "block";
-        kind: K;
-      };
-    }[DisplayKind]
+  | { id: FieldKind; name: string; type: "field" }
+  | { id: DisplayKind; name: string; type: "block"; kind: DisplayKind }
   | { id: "copy-existing"; name: "Copy Existing Element"; type: "copy" };
 
-const AVAILABLE_ELEMENTS = [
-  ...Object.entries(FIELD_NAMES).map(([id, name]) => ({
-    id,
-    name,
-    type: "field",
+const AVAILABLE_ELEMENTS: AvailableElement[] = [
+  ...ADDABLE_FIELD_KINDS.map((kind) => ({
+    id: kind,
+    name: FIELD_KIND_NAMES[kind],
+    type: "field" as const,
   })),
-  ...Object.entries(BLOCK_ELEMENTS).map(([kind, { id, name }]) => ({
-    id,
-    name,
-    type: "block",
+  ...DISPLAY_KINDS.map((kind) => ({
+    id: kind,
+    name: DISPLAY_KIND_NAMES[kind],
+    type: "block" as const,
     kind,
   })),
   { id: "copy-existing", name: "Copy Existing Element", type: "copy" },
-] as AvailableElement[];
+];
 
 const DISPLAY_ONLY_ELEMENTS = AVAILABLE_ELEMENTS.filter(
   (element) => element.type === "block" && isDisplayOnlyBlockKind(element.kind),
@@ -628,53 +600,11 @@ const copyElementWithUniqueIds = (
   return { ...cloned, id: createUniqueFormBuilderId("block", usedIds) };
 };
 
-const displayBlockPreview = (block: DisplayBlock): string => {
-  switch (block.kind) {
-    case "header":
-    case "text":
-    case "label":
-    case "quote":
-    case "biglink":
-      return block.text;
-    case "copytext":
-      return block.title || block.text;
-    case "divider":
-      return block.thickness ?? "";
-    case "spacer":
-      return block.size ?? "";
-    case "html":
-      return block.html;
-    case "image":
-      return block.alt || block.src;
-    case "video":
-      return block.caption ?? block.src;
-    case "previousAnswer":
-      return block.title || block.sourceFieldId;
-    case "userLocation":
-      return block.title ?? "";
-    case "chatTranscript":
-      return `${block.messages.length} message${block.messages.length === 1 ? "" : "s"}`;
-    default:
-      block satisfies never;
-      return "";
-  }
-};
-
-const truncatePreview = (text: string, max = 40) =>
-  text.length > max ? `${text.slice(0, max - 1)}…` : text;
-
-const describeCopyableElement = (element: AnyField | DisplayBlock): string => {
-  if (isQuestionField(element)) {
-    const typeName =
-      element.kind === "text" ? "Text Field" : FIELD_NAMES[element.kind];
-    return element.label
-      ? `${typeName}: ${truncatePreview(element.label)}`
-      : typeName;
-  }
-  const typeName = BLOCK_ELEMENTS[element.kind].name;
-  const preview = displayBlockPreview(element);
-  return preview ? `${typeName}: ${truncatePreview(preview)}` : typeName;
-};
+const describeCopyableElement = (element: AnyField | DisplayBlock): string =>
+  elementInternalDescriptor(element, {
+    typeQualified: true,
+    maxTextLength: 40,
+  });
 
 export function FormBuilder(props: FormBuilderProps) {
   const { initialSchema, setFormId } = props;

@@ -20,6 +20,7 @@ import {
   type ListField,
   Page,
 } from '@alliance/common/forms/form-schema';
+import { elementInternalDescriptor } from '@alliance/common/forms/element-descriptors';
 import {
   type FormSchemaValidationError,
   validateFormSchema,
@@ -466,7 +467,9 @@ export class TasksService {
             isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
           ) {
             if (!this.hasRequiredValue(field, effectiveAnswers[field.id])) {
-              throw new BadRequestException(`Field ${field.label} is required`);
+              throw new BadRequestException(
+                `Field ${elementInternalDescriptor(field)} is required`,
+              );
             }
           }
           if (
@@ -478,7 +481,7 @@ export class TasksService {
             const answer = effectiveAnswers[field.id];
             if (Array.isArray(answer) && answer.length > field.maxSelections) {
               throw new BadRequestException(
-                `Field ${field.label} allows selecting up to ${field.maxSelections} options.`,
+                `Field ${elementInternalDescriptor(field)} allows selecting up to ${field.maxSelections} options.`,
               );
             }
           }
@@ -493,7 +496,7 @@ export class TasksService {
               !isValidRankingSelection(field, answer)
             ) {
               throw new BadRequestException(
-                `Field ${field.label} has an invalid ranking.`,
+                `Field ${elementInternalDescriptor(field)} has an invalid ranking.`,
               );
             }
             const slotCount = getRankingSlotCount(field);
@@ -502,7 +505,7 @@ export class TasksService {
               (!Array.isArray(answer) || answer.length < slotCount)
             ) {
               throw new BadRequestException(
-                `Field ${field.label} requires ranking ${slotCount} item${slotCount === 1 ? '' : 's'}.`,
+                `Field ${elementInternalDescriptor(field)} requires ranking ${slotCount} item${slotCount === 1 ? '' : 's'}.`,
               );
             }
           }
@@ -538,17 +541,17 @@ export class TasksService {
                 : Infinity;
             if (required && listValue.length === 0) {
               throw new BadRequestException(
-                `Field ${listField.label} requires at least one item.`,
+                `Field ${elementInternalDescriptor(listField)} requires at least one item.`,
               );
             }
             if (listValue.length < minCards) {
               throw new BadRequestException(
-                `Field ${listField.label}: add at least ${minCards} item${minCards === 1 ? '' : 's'}.`,
+                `Field ${elementInternalDescriptor(listField)}: add at least ${minCards} item${minCards === 1 ? '' : 's'}.`,
               );
             }
             if (listValue.length > maxCards) {
               throw new BadRequestException(
-                `Field ${listField.label}: add no more than ${maxCards} item${maxCards === 1 ? '' : 's'}.`,
+                `Field ${elementInternalDescriptor(listField)}: add no more than ${maxCards} item${maxCards === 1 ? '' : 's'}.`,
               );
             }
             const subFields = listField.fields ?? [];
@@ -573,7 +576,7 @@ export class TasksService {
                 const subValue = card[sub.id];
                 if (!this.hasRequiredValue(sub, subValue)) {
                   throw new BadRequestException(
-                    `Field ${listField.label} (item ${i + 1}): ${sub.label ?? sub.id} is required.`,
+                    `Field ${elementInternalDescriptor(listField)} (item ${i + 1}): ${elementInternalDescriptor(sub)} is required.`,
                   );
                 }
               }

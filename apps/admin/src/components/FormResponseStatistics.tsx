@@ -1,3 +1,4 @@
+import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import type {
   AnyField,
   FieldKind,
@@ -109,9 +110,6 @@ const toNumberValue = (value: unknown): number | null => {
   }
   return null;
 };
-
-const getFieldLabel = (field: AnyField): string =>
-  field.label?.trim() || "Untitled question";
 
 const buildNumberStats = (
   values: number[],
@@ -599,7 +597,7 @@ const FormResponseStatistics: React.FC<FormResponseStatisticsProps> = ({
         </Card>
       )}
       {statsData.map((stat) => {
-        const label = getFieldLabel(stat.field);
+        const label = elementInternalDescriptor(stat.field);
         return (
           <Card key={stat.field.id} className="gap-4">
             <div className="space-y-1">

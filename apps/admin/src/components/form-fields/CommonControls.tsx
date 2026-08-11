@@ -3,6 +3,7 @@ import {
   type DeviceVisibilityTarget,
 } from "@alliance/common/forms/device";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
+import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import {
   isQuestionField,
   type AnyField,
@@ -1252,7 +1253,7 @@ export function ConditionalVisibility({
           >
             {pool.map((f) => (
               <option key={f.id} value={f.id}>
-                {f.label}
+                {fieldPickerLabel(f)}
               </option>
             ))}
             {pool.length === 0 && (

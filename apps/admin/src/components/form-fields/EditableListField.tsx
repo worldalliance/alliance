@@ -1,3 +1,7 @@
+import {
+  elementInternalDescriptor,
+  fieldPickerLabel,
+} from "@alliance/common/forms/element-descriptors";
 import type {
   AnyField,
   FieldKind,
@@ -424,7 +428,7 @@ export function EditableListField({
                     }}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span>{sub.label || sub.id}</span>
+                  <span>{elementInternalDescriptor(sub)}</span>
                 </label>
               );
             })}
@@ -499,7 +503,7 @@ export function EditableListField({
                 <option value="">Select a list field...</option>
                 {prefillSourceListFields.map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.label} ({f.kind})
+                    {fieldPickerLabel(f)}
                   </option>
                 ))}
               </select>
@@ -531,7 +535,7 @@ export function EditableListField({
                   <option value="">Select a sub-field...</option>
                   {sourceSubFields.map((sf) => (
                     <option key={sf.id} value={sf.id}>
-                      {sf.label} ({sf.kind})
+                      {fieldPickerLabel(sf)}
                     </option>
                   ))}
                 </select>
@@ -559,7 +563,7 @@ export function EditableListField({
                 <option value="">Select a sub-field...</option>
                 {subFields.map((sf) => (
                   <option key={sf.id} value={sf.id}>
-                    {sf.label} ({sf.kind})
+                    {fieldPickerLabel(sf)}
                   </option>
                 ))}
               </select>

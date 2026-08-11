@@ -13,6 +13,7 @@ import {
   type MissedActionDeadlineCondition,
   type TagCondition,
 } from "@alliance/common/cohort-expression";
+import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
 import {
   fieldHasOptions,
@@ -251,7 +252,7 @@ const FormFieldEditor: React.FC<{
         <option value="">Select field...</option>
         {sourceFields.map((f) => (
           <option key={f.id} value={f.id}>
-            {f.label} ({f.kind}) — {f.id}
+            {fieldPickerLabel(f)}
           </option>
         ))}
       </select>

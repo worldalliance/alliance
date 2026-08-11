@@ -1,4 +1,5 @@
 import type { PreviousAnswerBlock } from "@alliance/common/forms/display-blocks";
+import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import type {
   AnyField,
   FormSchema,
@@ -170,7 +171,7 @@ export function EditablePreviousAnswerBlock({
                 <option value="">Select a field...</option>
                 {sourceFields.map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.label} ({f.kind})
+                    {fieldPickerLabel(f)}
                   </option>
                 ))}
               </select>
@@ -224,7 +225,7 @@ export function EditablePreviousAnswerBlock({
                         }}
                         className="h-4 w-4"
                       />
-                      {subField.label} ({subField.kind})
+                      {fieldPickerLabel(subField)}
                     </label>
                   );
                 })}

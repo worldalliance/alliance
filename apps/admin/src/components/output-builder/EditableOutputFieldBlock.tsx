@@ -1,4 +1,8 @@
 import {
+  elementInternalDescriptor,
+  fieldPickerLabel,
+} from "@alliance/common/forms/element-descriptors";
+import {
   type AnyField,
   type OutputFieldBlock,
 } from "@alliance/common/forms/form-schema";
@@ -121,7 +125,9 @@ export function EditableOutputFieldBlock({
       <div className="space-y-3 p-4 pt-8">
         <div>
           <p className="text-sm font-medium text-gray-900">
-            {selectedField?.label || "Select a field"}
+            {selectedField
+              ? elementInternalDescriptor(selectedField)
+              : "Select a field"}
           </p>
           <p className="text-xs text-gray-500">
             {selectedField
@@ -144,7 +150,7 @@ export function EditableOutputFieldBlock({
             )}
             {availableFields.map((field) => (
               <option key={field.id} value={field.id}>
-                ({field.id}) {field.label}
+                {fieldPickerLabel(field)}
               </option>
             ))}
           </select>

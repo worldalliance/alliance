@@ -2,6 +2,11 @@ import type {
   DisplayBlock,
   DisplayKind,
 } from "@alliance/common/forms/display-blocks";
+import {
+  DISPLAY_KIND_NAMES,
+  elementInternalDescriptor,
+  outputBlockInternalDescriptor,
+} from "@alliance/common/forms/element-descriptors";
 import type {
   AnyField,
   FormSchema,
@@ -42,18 +47,6 @@ const DISPLAY_BLOCK_KINDS = [
 ] as const satisfies DisplayKind[];
 
 type OutputDisplayBlockKind = (typeof DISPLAY_BLOCK_KINDS)[number];
-
-const DISPLAY_BLOCK_LABELS: Record<OutputDisplayBlockKind, string> = {
-  header: "Header block",
-  text: "Text block",
-  label: "Label block",
-  divider: "Divider block",
-  spacer: "Spacer block",
-  html: "HTML block",
-  image: "Image block",
-  quote: "Quote block",
-  userLocation: "User location block",
-};
 
 const createDisplayBlock = (kind: OutputDisplayBlockKind): DisplayBlock => {
   const blockId = `block-${Date.now()}-${Math.random()
@@ -182,7 +175,7 @@ const buildPreviewAnswers = (fields: AnyField[]): Record<string, FormValue> => {
         answers[field.id] = "+14155552671";
         break;
       default:
-        answers[field.id] = `${field.label} response`;
+        answers[field.id] = `${elementInternalDescriptor(field)} response`;
         break;
     }
   });
@@ -243,25 +236,16 @@ export function OutputBuilder({ schema, onSchemaChange }: OutputBuilderProps) {
   const outputBlocks = useMemo(() => {
     if (!selectedView) return [];
     const fieldLookup = new Map(outputFields.map((f) => [f.id, f]));
-    const truncate = (s: string, n = 30) =>
-      s.length > n ? `${s.slice(0, n)}…` : s;
     return selectedView.blocks
       .filter((b): b is OutputBlock & { id: string } => Boolean(b.id))
-      .map((b) => {
-        if ("kind" in b) {
-          const kindLabel = b.kind.charAt(0).toUpperCase() + b.kind.slice(1);
-          const text = "text" in b && b.text ? truncate(b.text) : undefined;
-          return {
-            id: b.id,
-            label: text ? `${kindLabel}: ${text}` : kindLabel,
-          };
-        }
-        return {
-          id: b.id,
-          label:
-            b.labelOverride ?? fieldLookup.get(b.fieldId)?.label ?? b.fieldId,
-        };
-      });
+      .map((b) => ({
+        id: b.id,
+        label: outputBlockInternalDescriptor({
+          block: b,
+          fieldLookup,
+          maxTextLength: 30,
+        }),
+      }));
   }, [selectedView, outputFields]);
 
   const updateViews = (views: OutputViewSchema[]) => {
@@ -564,7 +548,7 @@ export function OutputBuilder({ schema, onSchemaChange }: OutputBuilderProps) {
                   key={field.id}
                   className="px-3 py-2 bg-zinc-100 text-black text-sm rounded-sm border border-zinc-200"
                 >
-                  {field.label}
+                  {elementInternalDescriptor(field)}
                 </span>
               ))
             ) : (
@@ -668,7 +652,7 @@ export function OutputBuilder({ schema, onSchemaChange }: OutputBuilderProps) {
                       </option>
                       {DISPLAY_BLOCK_KINDS.map((kind) => (
                         <option key={kind} value={kind}>
-                          {DISPLAY_BLOCK_LABELS[kind]}
+                          {DISPLAY_KIND_NAMES[kind]}
                         </option>
                       ))}
                     </select>

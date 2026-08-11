@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import type {
   AggregateViewDisplayType,
   AggregateViewSchema,
@@ -6,9 +6,10 @@ import type {
   AnyField,
   FormSchema,
 } from "@alliance/common/forms/form-schema";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { cn } from "@alliance/shared/styles/util";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 const inputBase =
   "w-full border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500";
@@ -239,7 +240,7 @@ export function AggregateBuilder({
           {availableFields.length > 0 ? (
             availableFields.map((field) => (
               <option key={field.id} value={field.id}>
-                {field.label || field.id}
+                {fieldPickerLabel(field)}
               </option>
             ))
           ) : (
