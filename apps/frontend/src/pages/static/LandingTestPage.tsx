@@ -3,6 +3,10 @@ import { ArrowRightIcon } from "lucide-react";
 import React from "react";
 import { Link } from "react-router";
 
+import alliancePeople1280 from "../../assets/alliance_people-1280.webp";
+import alliancePeople640 from "../../assets/alliance_people-640.webp";
+import alliancePeople960 from "../../assets/alliance_people-960.webp";
+import alliancePeople from "../../assets/alliance_people.webp";
 import Footer from "../../components/Footer";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
@@ -12,8 +16,7 @@ import { LANDING_PAGE_STACK } from "./prelaunchLayout";
 export function meta() {
   return socialPreviewMeta({
     title: "The Alliance — Landing test",
-    description:
-      "A global community working together to improve the world through high-quality group projects.",
+    description: "A global community working together to improve the world.",
     image: "/og-home.png",
     url: "/landing-test",
   });
@@ -55,19 +58,21 @@ function PlaceholderImage({
 
 const EXAMPLE_PROJECTS = [
   {
-    title: "Example project A",
+    title: "Running a large-scale plant-based diet study",
     description:
-      "Short description of a high-quality, expert-reviewed project.",
+      "We ran a 2-week study with 274 participants to understand what is easy and difficult about adopting a plant-based diet.",
   },
   {
-    title: "Example project B",
+    title: "Creating a bring-your-own-cup coalition",
     description:
-      "Short description of a high-quality, expert-reviewed project.",
+      "We asked 11 cafe locations to adopt bring-your-own-cup policies, and in return we helped them attain media recognition.",
+    imgSrc: "https://worldalliance.org/api/images/1759964091349.webp",
   },
   {
-    title: "Example project C",
+    title: "Adjusting personal habits for collective donation",
     description:
-      "Short description of a high-quality, expert-reviewed project.",
+      "We raised $2,702 for Helen Keller International by avoiding small amounts of personal spending for a week.",
+    imgSrc: "https://dj92mxbdjuclo.cloudfront.net/1785969542083.webp",
   },
 ] as const;
 
@@ -101,8 +106,8 @@ const LandingTestPage: React.FC = () => {
             <div className={cn(CONTENT_COL, "flex flex-col gap-8")}>
               <div className={TITLE_SUBTITLE_GAP}>
                 <h1 className="font-sans text-4xl font-semibold text-zinc-900 sm:text-5xl lg:text-6xl max-w-5xl leading-17">
-                  We&apos;re the Alliance, a global community working together
-                  to improve the world.
+                  We&apos;re a global community working together to improve the
+                  world.
                 </h1>
                 <p className={SUBTITLE_CLASS}>
                   We are learning how to coordinate global action over the
@@ -118,16 +123,31 @@ const LandingTestPage: React.FC = () => {
                   Join us
                   <ArrowRightIcon className="size-4 sm:size-5" aria-hidden />
                 </Link>
-                <Link
+                {/* <Link
                   to="#join"
                   className="inline-flex items-center gap-1.5 text-base font-medium text-zinc-900 underline decoration-zinc-300 underline-offset-4 hover:decoration-zinc-900 sm:text-lg"
                 >
                   Project waitlist
-                </Link>
+                </Link> */}
               </div>
             </div>
             <div className={MEDIA_COL}>
-              <PlaceholderImage label="Hero image" />
+              <figure>
+                <img
+                  src={alliancePeople}
+                  srcSet={`${alliancePeople640} 640w, ${alliancePeople960} 960w, ${alliancePeople1280} 1280w, ${alliancePeople} 2000w`}
+                  sizes="(min-width: 1024px) 100rem, (min-width: 768px) 100vw, 100vw"
+                  alt="Alliance members at a meetup"
+                  width={2000}
+                  height={1333}
+                  loading="eager"
+                  decoding="async"
+                  className="w-full h-auto rounded-md"
+                />
+                <figcaption className="mt-3 text-center text-lg text-zinc-500">
+                  Members at a meetup in San Francisco, California
+                </figcaption>
+              </figure>
             </div>
           </div>
         </section>
@@ -139,8 +159,8 @@ const LandingTestPage: React.FC = () => {
                 We strive to run projects that are worth your time
               </h2>
               <p className={SUBTITLE_CLASS}>
-                We plan high-quality, researched projects that are likely to
-                produce measurable impact.
+                We plan high-quality, expert-informed projects that are likely
+                to produce measurable impact.
               </p>
             </div>
             <div
@@ -150,17 +170,27 @@ const LandingTestPage: React.FC = () => {
               )}
             >
               {EXAMPLE_PROJECTS.map((project) => (
-                <div key={project.title} className="flex flex-col gap-3">
-                  <PlaceholderImage
-                    label={project.title}
-                    className="aspect-[4/3]"
-                  />
-                  <p className="font-sans text-xl font-semibold text-zinc-900">
-                    {project.title}
-                  </p>
-                  <p className="text-base text-zinc-600 lg:text-lg">
-                    {project.description}
-                  </p>
+                <div key={project.title} className="flex flex-col gap-6">
+                  {project.imgSrc ? (
+                    <img
+                      src={project.imgSrc}
+                      alt={project.title}
+                      className="aspect-[4/3] object-cover"
+                    />
+                  ) : (
+                    <PlaceholderImage
+                      label={project.title}
+                      className="aspect-[4/3]"
+                    />
+                  )}
+                  <div className="flex flex-col gap-1">
+                    <p className="font-sans text-xl font-semibold text-zinc-900">
+                      {project.title}
+                    </p>
+                    <p className="text-base text-zinc-600 lg:text-lg">
+                      {project.description}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -172,15 +202,15 @@ const LandingTestPage: React.FC = () => {
             <div className={cn(CONTENT_COL, "flex flex-col gap-8")}>
               <div className={TITLE_SUBTITLE_GAP}>
                 <h2 className={TITLE_CLASS}>
-                  To deliver high-quality projects, we need commitment
+                  To plan projects, we need commitment
                 </h2>
                 <p className={SUBTITLE_CLASS}>
-                  In order to plan group projects, we need to know who we can
-                  count on. We ask members to show up consistently so that we
-                  can operate like a team.
+                  In order to design high-quality, impactful projects, we need
+                  to know who we can count on. We ask members to show up
+                  consistently so that we can operate like a team.
                 </p>
               </div>
-              <ul className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
+              {/* <ul className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
                 {COMMITMENT_POINTS.map((point) => (
                   <li
                     key={point}
@@ -189,7 +219,7 @@ const LandingTestPage: React.FC = () => {
                     {point}
                   </li>
                 ))}
-              </ul>
+              </ul> */}
             </div>
             <div className={MEDIA_COL}>
               <PlaceholderImage label="Commitment image" />
@@ -205,12 +235,12 @@ const LandingTestPage: React.FC = () => {
                   We&apos;re focused on big problems that affect everyone
                 </h2>
                 <p className={SUBTITLE_CLASS}>
-                  We are focused on urgent global crises that affect billions of
-                  people: global poverty, environmental destruction, democratic
-                  decline, and dangerous technological development.
+                  We develop projects that address urgent global crises: global
+                  poverty, environmental destruction, democratic decline, and
+                  dangerous technological development.
                 </p>
               </div>
-              <ul className="flex w-full max-w-3xl flex-col gap-3">
+              {/* <ul className="flex w-full max-w-3xl flex-col gap-3">
                 {BIG_PROBLEM_POINTS.map((point) => (
                   <li
                     key={point}
@@ -219,7 +249,7 @@ const LandingTestPage: React.FC = () => {
                     {point}
                   </li>
                 ))}
-              </ul>
+              </ul> */}
             </div>
             <div className={MEDIA_COL}>
               <PlaceholderImage label="Big problems image" />
