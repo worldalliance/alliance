@@ -155,9 +155,7 @@ const PeoplePage: React.FC = () => {
   return (
     <div className="flex flex-col bg-white">
       <div className={LANDING_PAGE_STACK}>
-        <section className={cn("relative w-full bg-white")}>
-          <PrelaunchNavbar transparent={false} absolute={false} />
-        </section>
+        <PrelaunchNavbar transparent={false} absolute={false} />
 
         <section
           className={cn("w-full bg-white mt-8", LANDING_SECTION_PB)}

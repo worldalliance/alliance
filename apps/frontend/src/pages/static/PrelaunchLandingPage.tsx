@@ -174,10 +174,10 @@ const PrelaunchLandingPage: React.FC = () => {
   return (
     <div className="flex flex-col bg-white">
       <div className={LANDING_PAGE_STACK}>
+        <PrelaunchNavbar transparent={false} absolute={false} />
         <section
           className={cn("relative w-full bg-white", "pb-12 md:pb-16 lg:pb-20")}
         >
-          <PrelaunchNavbar transparent={false} absolute={false} />
           <div
             className={cn(
               LANDING_QUOTES_COL,
