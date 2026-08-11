@@ -6,6 +6,12 @@ import {
   type ListField,
   type OutputViewSchema,
 } from "./form-schema";
+import { compileVariableExpression } from "./variable-expression";
+import {
+  FIELD_KIND_USABLE_AS_VARIABLE_INPUT,
+  VARIABLE_NAME_REGEX,
+  type FormVariable,
+} from "./variables";
 import {
   CONDITION_KIND_IS_ACCOUNT_DERIVED,
   type Condition,
@@ -52,6 +58,8 @@ export function validateFormSchema(
     }
   }
 
+  collectVariableErrors(schema, errors);
+
   for (const view of schema.outputViews ?? []) {
     const outputBlockIds = new Set<string>();
     for (const b of view.blocks) {
@@ -76,6 +84,96 @@ export function validateFormSchema(
   }
 
   return errors;
+}
+
+type VariableInputField = {
+  kind: AnyField["kind"];
+  // List sub-fields are collected so references to them are rejected as
+  // unsupported rather than missing.
+  insideList: boolean;
+};
+
+function collectFieldKinds(
+  schema: FormSchema,
+): Map<string, VariableInputField> {
+  const fields = new Map<string, VariableInputField>();
+  for (const page of schema.pages ?? []) {
+    for (const item of page.fields ?? []) {
+      if (!isQuestionField(item)) continue;
+      fields.set(item.id, { kind: item.kind, insideList: false });
+      if (item.kind === "list") {
+        for (const sub of (item as ListField).fields ?? []) {
+          fields.set(sub.id, { kind: sub.kind, insideList: true });
+        }
+      }
+    }
+  }
+  return fields;
+}
+
+function collectVariableErrors(
+  schema: FormSchema,
+  errors: FormSchemaValidationError[],
+): void {
+  const variables = schema.variables ?? [];
+  const fieldKinds = collectFieldKinds(schema);
+  const declared = new Set<string>();
+
+  for (const variable of variables) {
+    const blockId = `variable:${variable.name}`;
+    const push = (message: string) => errors.push({ blockId, message });
+
+    if (!VARIABLE_NAME_REGEX.test(variable.name)) {
+      push(
+        `Variable name "${variable.name}" may use only letters, numbers, underscores and dashes`,
+      );
+    }
+    if (declared.has(variable.name)) {
+      push(`Duplicate variable name "${variable.name}"`);
+    }
+    declared.add(variable.name);
+
+    checkVariableInputs(variable, fieldKinds, push);
+
+    const compiled = compileVariableExpression(
+      variable.formula,
+      new Set(Object.keys(variable.inputs)),
+    );
+    if (!compiled.ok) {
+      push(`Formula for "${variable.name}": ${compiled.error}`);
+    }
+  }
+}
+
+function checkVariableInputs(
+  variable: FormVariable,
+  fields: Map<string, VariableInputField>,
+  push: (message: string) => void,
+): void {
+  for (const [inputName, input] of Object.entries(variable.inputs)) {
+    // `field` is the only input kind today, so there is nothing for a
+    // `satisfies never` default to narrow. The resolver table in `variables.ts`
+    // is what makes adding a kind a compile error, at the point it has to be
+    // turned into a value; a kind unknown here is simply left unchecked.
+    if (input.kind !== "field") continue;
+
+    const field = fields.get(input.fieldId);
+    if (field === undefined) {
+      push(`Input "${inputName}" references missing field "${input.fieldId}"`);
+      continue;
+    }
+    if (field.insideList) {
+      push(
+        `Input "${inputName}" reads field "${input.fieldId}", which is inside a list — a list has one answer per row, so variables can't read it`,
+      );
+      continue;
+    }
+    if (!FIELD_KIND_USABLE_AS_VARIABLE_INPUT[field.kind]) {
+      push(
+        `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) has no numeric value`,
+      );
+    }
+  }
 }
 
 function collectCycleErrors(

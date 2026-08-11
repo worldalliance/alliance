@@ -1,4 +1,5 @@
 import type { UserLocationBlock } from "@alliance/common/forms/display-blocks";
+import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -28,12 +29,9 @@ export function EditableUserLocationBlock({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Title
             </label>
-            <input
-              type="text"
+            <VariableTextField
               value={activeBlock.title ?? ""}
-              onChange={(event) =>
-                handleUpdate({ title: event.target.value || undefined })
-              }
+              onChange={(title) => handleUpdate({ title: title || undefined })}
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Your location"
             />
@@ -42,11 +40,10 @@ export function EditableUserLocationBlock({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Empty state text
             </label>
-            <input
-              type="text"
+            <VariableTextField
               value={activeBlock.emptyText ?? ""}
-              onChange={(event) =>
-                handleUpdate({ emptyText: event.target.value || undefined })
+              onChange={(emptyText) =>
+                handleUpdate({ emptyText: emptyText || undefined })
               }
               className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="No location set"

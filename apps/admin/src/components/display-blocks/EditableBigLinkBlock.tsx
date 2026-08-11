@@ -2,18 +2,19 @@ import type {
   BigLinkBlock,
   BigLinkIcon,
 } from "@alliance/common/forms/display-blocks";
-import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
-import type { BaseDisplayBlockProps } from "./types";
+import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
-import { useState } from "react";
 import {
-  MessagesSquare,
   File,
-  FileText,
   FileCheck,
+  FileText,
+  MessagesSquare,
   Signature,
 } from "lucide-react";
-import { cn } from "@alliance/shared/styles/util";
+import { useState } from "react";
+import { VariableTextField } from "../VariableTextField";
+import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
+import type { BaseDisplayBlockProps } from "./types";
 
 const iconOptions: {
   value: BigLinkIcon;
@@ -50,10 +51,9 @@ export function EditableBigLinkBlock({
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-2">
-          <input
-            type="text"
+          <VariableTextField
             value={activeBlock.text}
-            onChange={(e) => handleUpdate({ text: e.target.value })}
+            onChange={(text) => handleUpdate({ text })}
             className="w-full text-gray-900 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="Link label"
           />

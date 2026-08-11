@@ -2,7 +2,7 @@ import type { QuoteBlock } from "@alliance/common/forms/display-blocks";
 import { userListAdmin, type UserDto } from "@alliance/shared/client";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useEffect, useMemo, useState } from "react";
-import FormTextarea from "../FormTextarea";
+import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -155,9 +155,10 @@ function QuoteBlockEditor({
           )}
         </div>
       )}
-      <FormTextarea
+      <VariableTextField
+        multiline
         value={activeBlock.text}
-        onChange={(e) => onUpdate({ text: e.target.value })}
+        onChange={(text) => onUpdate({ text })}
         className="w-full text-gray-900 border-none outline-none !bg-transparent resize-none whitespace-pre-wrap"
         placeholder="Enter quote text"
         rows={Math.max(2, activeBlock.text.split("\n").length)}

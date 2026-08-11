@@ -9,6 +9,7 @@ import {
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import { cn } from "@alliance/shared/styles/util";
 import { useEffect, useState } from "react";
+import { VariableTextField } from "../VariableTextField";
 import {
   ConditionalVisibility,
   type OutputBlockOption,
@@ -172,13 +173,10 @@ export function EditableOutputFieldBlock({
           <label className="block text-xs text-gray-700 mb-1">
             Label override (optional)
           </label>
-          <input
-            type="text"
+          <VariableTextField
             value={block.labelOverride || ""}
-            onChange={(event) =>
-              onUpdate({
-                labelOverride: event.target.value || undefined,
-              })
+            onChange={(labelOverride) =>
+              onUpdate({ labelOverride: labelOverride || undefined })
             }
             className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
             placeholder="Custom label to display"

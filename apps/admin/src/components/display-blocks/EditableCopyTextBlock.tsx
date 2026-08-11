@@ -1,4 +1,5 @@
 import type { CopyTextBlock } from "@alliance/common/forms/display-blocks";
+import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -23,28 +24,16 @@ export function EditableCopyTextBlock({
     >
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-2">
-          <input
-            type="text"
+          <VariableTextField
             value={activeBlock.title ?? ""}
-            onChange={(e) =>
-              handleUpdate({ title: e.target.value || undefined })
-            }
+            onChange={(title) => handleUpdate({ title: title || undefined })}
             className="w-full text-xs text-gray-500 border-none outline-none bg-transparent"
             placeholder="Title (optional)"
           />
-          <textarea
+          <VariableTextField
+            multiline
             value={activeBlock.text}
-            onChange={(e) => {
-              handleUpdate({ text: e.target.value });
-              e.target.style.height = "auto";
-              e.target.style.height = `${e.target.scrollHeight}px`;
-            }}
-            ref={(el) => {
-              if (el) {
-                el.style.height = "auto";
-                el.style.height = `${el.scrollHeight}px`;
-              }
-            }}
+            onChange={(text) => handleUpdate({ text })}
             className="w-full text-sm text-gray-900 border-none outline-none bg-transparent resize-none overflow-hidden"
             placeholder="Text to copy"
             rows={1}

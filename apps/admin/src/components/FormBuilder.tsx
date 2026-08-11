@@ -24,6 +24,10 @@ import {
 } from "@alliance/common/forms/form-schema";
 import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import {
+  collectUnresolvedVariableReferences,
+  type UnresolvedVariableReference,
+} from "@alliance/common/forms/variable-interpolation";
+import {
   type Condition,
   type VisibleIfFormula,
 } from "@alliance/common/forms/visible-if-formula";
@@ -47,6 +51,7 @@ import { useBeforeUnload, useBlocker, useSearchParams } from "react-router";
 import { mergeFormSchemas } from "../lib/formSchemaMerge";
 import { FORM_BUILDER_PREVIEW_USER } from "../lib/testData";
 import { AggregateBuilder } from "./AggregateBuilder";
+import ConfirmDialog from "./ConfirmDialog";
 import {
   EditableBigLinkBlock,
   EditableChatTranscriptBlock,
@@ -94,9 +99,33 @@ import {
   isDraftValidatorId,
 } from "./form-fields/customValidatorDrafts";
 import { FormConflictModal } from "./FormConflictModal";
+import { FormVariablesProvider } from "./FormVariablesContext";
 import { OutputBuilder } from "./OutputBuilder";
 import { PreviewAsUserBar } from "./PreviewAsUserBar";
 import { ShareableTextBuilder } from "./ShareableTextBuilder";
+import { VariableBuilder } from "./VariableBuilder";
+
+type FormEditorTab =
+  | "form"
+  | "shareable"
+  | "outputs"
+  | "aggregates"
+  | "variables";
+
+function describeUnresolvedReferences(
+  references: UnresolvedVariableReference[],
+): string {
+  const lines = references.map(
+    ({ name, locations }) => `#{${name}} — in ${locations.join(", ")}`,
+  );
+  return [
+    "These references don't match any variable on this form, so respondents will see them exactly as written:",
+    "",
+    ...lines,
+    "",
+    "Save anyway?",
+  ].join("\n");
+}
 
 type AvailableElement =
   | { id: FieldKind; name: string; type: "field" }
@@ -655,6 +684,8 @@ export function FormBuilder(props: FormBuilderProps) {
     theirs: FormSchema;
     theirsSnapshotId: number;
   } | null>(null);
+  const [confirmUnresolvedVariables, setConfirmUnresolvedVariables] =
+    useState(false);
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -663,7 +694,7 @@ export function FormBuilder(props: FormBuilderProps) {
     : (searchParams.get("editor") ?? "form");
 
   const setActiveEditor = useCallback(
-    (editor: "form" | "shareable" | "outputs" | "aggregates") => {
+    (editor: FormEditorTab) => {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.set("editor", editor);
@@ -1605,7 +1636,7 @@ export function FormBuilder(props: FormBuilderProps) {
     }
   };
 
-  const handleSaveForm = useCallback(async () => {
+  const saveForm = useCallback(async () => {
     setIsSaving(true);
     setSaveError(null);
 
@@ -1734,6 +1765,22 @@ export function FormBuilder(props: FormBuilderProps) {
     showErrorToast,
     showSuccessToast,
   ]);
+
+  // A dangling `#{name}` renders as written rather than breaking the form, so
+  // it is worth a confirmation but not a refusal — an admin renaming a variable
+  // would otherwise be unable to save until every reference was updated.
+  const unresolvedVariableReferences = useMemo(
+    () => collectUnresolvedVariableReferences(schema),
+    [schema],
+  );
+
+  const handleSaveForm = useCallback(() => {
+    if (unresolvedVariableReferences.length > 0) {
+      setConfirmUnresolvedVariables(true);
+      return;
+    }
+    void saveForm();
+  }, [saveForm, unresolvedVariableReferences]);
 
   const closeConflict = useCallback(() => setConflict(null), []);
 
@@ -2598,506 +2645,539 @@ export function FormBuilder(props: FormBuilderProps) {
           onCancel={closeConflict}
         />
       )}
-      <div className="flex h-[calc(100vh-40px)] bg-zinc-50">
-        {!isPreviewMode && activeEditor === "form" && (
-          <ElementSelect
-            onAddField={addField}
-            onAddDisplayBlock={addDisplayBlock}
-            onCopyExisting={() => {
-              setActiveSearchIndex(null);
-              setSearchQuery("");
-              setSearchResults([]);
-              setCopyPickerIndex(currentPage.fields.length);
-            }}
-            displayOnly={displayOnly}
-          />
-        )}
+      <ConfirmDialog
+        isOpen={confirmUnresolvedVariables}
+        title="Save with unmatched variable references?"
+        message={describeUnresolvedReferences(unresolvedVariableReferences)}
+        isLoading={isSaving}
+        onCancel={() => setConfirmUnresolvedVariables(false)}
+        onConfirm={() => {
+          setConfirmUnresolvedVariables(false);
+          void saveForm();
+        }}
+      />
+      <FormVariablesProvider variables={schema.variables}>
+        <div className="flex h-[calc(100vh-40px)] bg-zinc-50">
+          {!isPreviewMode && activeEditor === "form" && (
+            <ElementSelect
+              onAddField={addField}
+              onAddDisplayBlock={addDisplayBlock}
+              onCopyExisting={() => {
+                setActiveSearchIndex(null);
+                setSearchQuery("");
+                setSearchResults([]);
+                setCopyPickerIndex(currentPage.fields.length);
+              }}
+              displayOnly={displayOnly}
+            />
+          )}
 
-        {/* Main content area */}
-        <div className="flex-1 flex flex-col">
-          {/* Header */}
-          <div className="bg-white border-b border-gray-200 p-4">
-            <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
-              <div className="flex items-center space-x-2">
-                {activeEditor === "form" && (
+          <div className="flex-1 flex flex-col">
+            <div className="bg-white border-b border-gray-200 p-4">
+              <div className="flex items-center justify-end gap-4 flex-wrap xl:flex-nowrap">
+                <div className="flex items-center space-x-2">
+                  {activeEditor === "form" && (
+                    <Button
+                      onClick={() => setIsPreviewMode(!isPreviewMode)}
+                      color={ButtonColor.Stone}
+                      size="small"
+                    >
+                      {isPreviewMode ? "Edit" : "Preview"}
+                    </Button>
+                  )}
                   <Button
-                    onClick={() => setIsPreviewMode(!isPreviewMode)}
-                    color={ButtonColor.Stone}
+                    onClick={handleSaveForm}
+                    disabled={isSaving || isLoading || !hasUnsavedChanges}
+                    color={ButtonColor.Blue}
                     size="small"
                   >
-                    {isPreviewMode ? "Edit" : "Preview"}
+                    {isSaving
+                      ? "Saving..."
+                      : hasUnsavedChanges
+                        ? "Save Form"
+                        : "No changes"}
                   </Button>
-                )}
-                <Button
-                  onClick={handleSaveForm}
-                  disabled={isSaving || isLoading || !hasUnsavedChanges}
-                  color={ButtonColor.Blue}
-                  size="small"
-                >
-                  {isSaving
-                    ? "Saving..."
-                    : hasUnsavedChanges
-                      ? "Save Form"
-                      : "No changes"}
-                </Button>
-              </div>
-              {!displayOnly && (
-                <div className="inline-flex rounded-md bg-gray-200 p-0.5 text-sm font-medium text-gray-600">
-                  <button
-                    type="button"
-                    className={cn(
-                      "px-3 py-2 rounded-md text-nowrap",
-                      activeEditor === "form"
-                        ? "bg-white shadow text-gray-900"
-                        : "text-gray-600",
-                    )}
-                    onClick={() => setActiveEditor("form")}
-                  >
-                    Form Builder
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      "px-3 py-2 rounded-md text-nowrap",
-                      activeEditor === "shareable"
-                        ? "bg-white shadow text-gray-900"
-                        : "text-gray-600",
-                    )}
-                    onClick={() => setActiveEditor("shareable")}
-                  >
-                    Shareable Text
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      "px-3 py-2 rounded-md text-nowrap",
-                      activeEditor === "outputs"
-                        ? "bg-white shadow text-gray-900"
-                        : "text-gray-600",
-                    )}
-                    onClick={() => setActiveEditor("outputs")}
-                  >
-                    Output View
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(
-                      "px-3 py-2 rounded-md text-nowrap",
-                      activeEditor === "aggregates"
-                        ? "bg-white shadow text-gray-900"
-                        : "text-gray-600",
-                    )}
-                    onClick={() => setActiveEditor("aggregates")}
-                  >
-                    Aggregate Views
-                  </button>
                 </div>
-              )}
-            </div>
-
-            {/* Page tabs - only show in edit mode */}
-            {!isPreviewMode && !displayOnly && activeEditor === "form" && (
-              <div
-                className="flex space-x-1 mt-4 items-center"
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-
-                  if (
-                    draggedPageIndex === null ||
-                    pageDropPosition === null ||
-                    dragOverPageIndex === null
-                  ) {
-                    handlePageDragEnd();
-                    return;
-                  }
-
-                  // Use the last known drop position and target
-                  const dropIndex = dragOverPageIndex;
-                  let insertionIndex = dropIndex;
-                  if (pageDropPosition === "after") {
-                    insertionIndex = dropIndex + 1;
-                  }
-
-                  if (draggedPageIndex < insertionIndex) {
-                    insertionIndex -= 1;
-                  }
-
-                  if (draggedPageIndex === insertionIndex) {
-                    handlePageDragEnd();
-                    return;
-                  }
-
-                  const newPages = [...schema.pages];
-                  const [draggedPage] = newPages.splice(draggedPageIndex, 1);
-                  newPages.splice(insertionIndex, 0, draggedPage);
-
-                  let newSelectedPageIndex = selectedPageIndex;
-                  if (selectedPageIndex === draggedPageIndex) {
-                    newSelectedPageIndex = insertionIndex;
-                  } else if (
-                    selectedPageIndex > draggedPageIndex &&
-                    selectedPageIndex <= insertionIndex
-                  ) {
-                    newSelectedPageIndex = selectedPageIndex - 1;
-                  } else if (
-                    selectedPageIndex < draggedPageIndex &&
-                    selectedPageIndex >= insertionIndex
-                  ) {
-                    newSelectedPageIndex = selectedPageIndex + 1;
-                  }
-
-                  updateSchema({
-                    ...schema,
-                    pages: newPages,
-                  });
-
-                  setSelectedPageIndex(newSelectedPageIndex);
-                  handlePageDragEnd();
-                }}
-              >
-                {schema.pages.map((page, index) => {
-                  const isDragging = draggedPageIndex === index;
-                  const showInsertionBar =
-                    dragOverPageIndex === index &&
-                    pageDropPosition &&
-                    !isDragging;
-
-                  return (
-                    <div key={page.id} className="relative">
-                      {/* Insertion bar before */}
-                      {showInsertionBar && pageDropPosition === "before" && (
-                        <div className="absolute -left-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
-                          <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                        </div>
+                {!displayOnly && (
+                  <div className="inline-flex rounded-md bg-gray-200 p-0.5 text-sm font-medium text-gray-600">
+                    <button
+                      type="button"
+                      className={cn(
+                        "px-3 py-2 rounded-md text-nowrap",
+                        activeEditor === "form"
+                          ? "bg-white shadow text-gray-900"
+                          : "text-gray-600",
                       )}
+                      onClick={() => setActiveEditor("form")}
+                    >
+                      Form Builder
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        "px-3 py-2 rounded-md text-nowrap",
+                        activeEditor === "shareable"
+                          ? "bg-white shadow text-gray-900"
+                          : "text-gray-600",
+                      )}
+                      onClick={() => setActiveEditor("shareable")}
+                    >
+                      Shareable Text
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        "px-3 py-2 rounded-md text-nowrap",
+                        activeEditor === "outputs"
+                          ? "bg-white shadow text-gray-900"
+                          : "text-gray-600",
+                      )}
+                      onClick={() => setActiveEditor("outputs")}
+                    >
+                      Output View
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        "px-3 py-2 rounded-md text-nowrap",
+                        activeEditor === "aggregates"
+                          ? "bg-white shadow text-gray-900"
+                          : "text-gray-600",
+                      )}
+                      onClick={() => setActiveEditor("aggregates")}
+                    >
+                      Aggregate Views
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        "px-3 py-2 rounded-md text-nowrap",
+                        activeEditor === "variables"
+                          ? "bg-white shadow text-gray-900"
+                          : "text-gray-600",
+                      )}
+                      onClick={() => setActiveEditor("variables")}
+                    >
+                      Variables
+                      {(schema.variables?.length ?? 0) > 0 && (
+                        <span className="ml-1.5 rounded-full bg-gray-300 px-1.5 py-0.5 text-xs text-gray-700">
+                          {schema.variables?.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
 
-                      <div
-                        draggable
-                        onDragStart={handlePageDragStart(index)}
-                        onDragEnd={handlePageDragEnd}
-                        onDragOver={handlePageDragOver(index)}
-                        onDrop={handlePageDrop(index)}
-                        className={cn(
-                          "flex items-center rounded-md text-sm font-medium cursor-move pr-2 transition-all border",
-                          selectedPageIndex === index
-                            ? "bg-blue-100 text-blue-700 border-blue-200"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-transparent",
-                          isDragging && "opacity-50 scale-95",
+              {!isPreviewMode && !displayOnly && activeEditor === "form" && (
+                <div
+                  className="flex space-x-1 mt-4 items-center"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+
+                    if (
+                      draggedPageIndex === null ||
+                      pageDropPosition === null ||
+                      dragOverPageIndex === null
+                    ) {
+                      handlePageDragEnd();
+                      return;
+                    }
+
+                    const dropIndex = dragOverPageIndex;
+                    let insertionIndex = dropIndex;
+                    if (pageDropPosition === "after") {
+                      insertionIndex = dropIndex + 1;
+                    }
+
+                    if (draggedPageIndex < insertionIndex) {
+                      insertionIndex -= 1;
+                    }
+
+                    if (draggedPageIndex === insertionIndex) {
+                      handlePageDragEnd();
+                      return;
+                    }
+
+                    const newPages = [...schema.pages];
+                    const [draggedPage] = newPages.splice(draggedPageIndex, 1);
+                    newPages.splice(insertionIndex, 0, draggedPage);
+
+                    let newSelectedPageIndex = selectedPageIndex;
+                    if (selectedPageIndex === draggedPageIndex) {
+                      newSelectedPageIndex = insertionIndex;
+                    } else if (
+                      selectedPageIndex > draggedPageIndex &&
+                      selectedPageIndex <= insertionIndex
+                    ) {
+                      newSelectedPageIndex = selectedPageIndex - 1;
+                    } else if (
+                      selectedPageIndex < draggedPageIndex &&
+                      selectedPageIndex >= insertionIndex
+                    ) {
+                      newSelectedPageIndex = selectedPageIndex + 1;
+                    }
+
+                    updateSchema({
+                      ...schema,
+                      pages: newPages,
+                    });
+
+                    setSelectedPageIndex(newSelectedPageIndex);
+                    handlePageDragEnd();
+                  }}
+                >
+                  {schema.pages.map((page, index) => {
+                    const isDragging = draggedPageIndex === index;
+                    const showInsertionBar =
+                      dragOverPageIndex === index &&
+                      pageDropPosition &&
+                      !isDragging;
+
+                    return (
+                      <div key={page.id} className="relative">
+                        {showInsertionBar && pageDropPosition === "before" && (
+                          <div className="absolute -left-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
+                            <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                          </div>
                         )}
-                      >
-                        {/* Drag handle */}
+
                         <div
-                          className="px-2 py-2 text-gray-400 hover:text-gray-600 cursor-move"
-                          title="Drag to reorder"
+                          draggable
+                          onDragStart={handlePageDragStart(index)}
+                          onDragEnd={handlePageDragEnd}
+                          onDragOver={handlePageDragOver(index)}
+                          onDrop={handlePageDrop(index)}
+                          className={cn(
+                            "flex items-center rounded-md text-sm font-medium cursor-move pr-2 transition-all border",
+                            selectedPageIndex === index
+                              ? "bg-blue-100 text-blue-700 border-blue-200"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200 border-transparent",
+                            isDragging && "opacity-50 scale-95",
+                          )}
                         >
-                          <svg
-                            className="w-3 h-3"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
+                          <div
+                            className="px-2 py-2 text-gray-400 hover:text-gray-600 cursor-move"
+                            title="Drag to reorder"
                           >
-                            <path d="M10 6L6 10l4 4 4-4-4-4zM8 12l2-2 2 2H8z" />
-                            <path d="M7 2a1 1 0 000 2h6a1 1 0 100-2H7zM7 16a1 1 0 100 2h6a1 1 0 100-2H7z" />
-                          </svg>
-                        </div>
+                            <svg
+                              className="w-3 h-3"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path d="M10 6L6 10l4 4 4-4-4-4zM8 12l2-2 2 2H8z" />
+                              <path d="M7 2a1 1 0 000 2h6a1 1 0 100-2H7zM7 16a1 1 0 100 2h6a1 1 0 100-2H7z" />
+                            </svg>
+                          </div>
 
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPageIndex(index)}
-                          className="py-2 flex-1 text-left pr-2"
-                        >
-                          {page.title}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPageIndex(index)}
+                            className="py-2 flex-1 text-left pr-2"
+                          >
+                            {page.title}
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyPage(index);
-                          }}
-                          className="py-2 px-1 text-gray-400 hover:text-blue-600"
-                          title="Copy page"
-                          aria-label={`Copy ${page.title || "page"}`}
-                        >
-                          <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                        </button>
-
-                        {schema.pages.length > 1 && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              removePage(index);
+                              copyPage(index);
                             }}
-                            className="py-2 text-gray-400 hover:text-red-500"
+                            className="py-2 px-1 text-gray-400 hover:text-blue-600"
+                            title="Copy page"
+                            aria-label={`Copy ${page.title || "page"}`}
                           >
-                            ×
+                            <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                           </button>
-                        )}
-                      </div>
 
-                      {/* Insertion bar after */}
-                      {showInsertionBar && pageDropPosition === "after" && (
-                        <div className="absolute -right-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
-                          <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                <div
-                  onClick={addPage}
-                  color={ButtonColor.White}
-                  className="p-1 !h-6 !w-6 rounded-full hover:bg-gray-200 flex items-center justify-center cursor-pointer"
-                >
-                  <p className="-mt-px text-zinc-700">+</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Loading/Success/Error Messages */}
-          <div className="flex-shrink-0 mx-4 min-h-0 relative">
-            {isLoading && (
-              <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 mb-2">
-                <span className="block sm:inline">Loading form...</span>
-              </div>
-            )}
-            {loadError && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
-                <span className="block sm:inline">
-                  Error loading form: {loadError}
-                </span>
-              </div>
-            )}
-            {saveError && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
-                <span className="block sm:inline">
-                  Error saving form: {saveError}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div
-            ref={contentScrollRef}
-            className="flex-1 p-6 overflow-y-auto min-h-0"
-          >
-            {activeEditor === "shareable" ? (
-              <ShareableTextBuilder
-                schema={schema}
-                onSchemaChange={updateSchema}
-              />
-            ) : activeEditor === "outputs" ? (
-              <OutputBuilder schema={schema} onSchemaChange={updateSchema} />
-            ) : activeEditor === "aggregates" ? (
-              <AggregateBuilder schema={schema} onSchemaChange={updateSchema} />
-            ) : isPreviewMode && displayOnly ? (
-              <div className="max-w-3xl mx-auto p-6">
-                <DisplayOnlyPreview schema={schema} title={displayOnlyTitle} />
-              </div>
-            ) : isPreviewMode ? (
-              <div className="max-w-3xl mx-auto bg-white p-6">
-                <PreviewAsUserBar
-                  previewUserId={previewUserId}
-                  setPreviewUserId={setPreviewUserId}
-                  previewUsers={previewUsers}
-                  isLoadingPreviewUsers={isLoadingPreviewUsers}
-                  previewUserError={previewUserError}
-                />
-                <FormRenderer
-                  id={0}
-                  formSnapshotId={null}
-                  actionId={0}
-                  form={schema}
-                  onSubmit={null}
-                  renderFormAsCompleted={false}
-                  userId={resolvedPreviewUserId}
-                  user={resolvedPreviewUser}
-                  adminPreviewUserId={resolvedPreviewUserId}
-                  initialPageIndex={selectedPageIndex}
-                />
-              </div>
-            ) : (
-              <div
-                className="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 p-6 mb-8"
-                onClick={handleClickOutside}
-              >
-                {!displayOnly && (
-                  <div className="mb-6">
-                    <input
-                      type="text"
-                      value={currentPage.title || ""}
-                      onChange={(e) =>
-                        updateSchema({
-                          ...schema,
-                          pages: schema.pages.map((page, idx) =>
-                            idx === selectedPageIndex
-                              ? { ...page, title: e.target.value }
-                              : page,
-                          ),
-                        })
-                      }
-                      className="text-lg font-medium w-full border-none outline-none"
-                      placeholder="Page title"
-                    />
-                    {currentPage.description && (
-                      <p className="text-gray-600 mt-1">
-                        {currentPage.description}
-                      </p>
-                    )}
-                    <div className="mt-3">
-                      <label className="flex cursor-pointer items-center text-xs text-gray-700">
-                        <input
-                          type="checkbox"
-                          className="mr-2"
-                          checked={showPageVisibilityControl}
-                          onChange={(event) =>
-                            handlePageVisibilityToggle(event.target.checked)
-                          }
-                        />
-                        Use conditional visibility for this page
-                      </label>
-                      {showPageVisibilityControl && (
-                        <div className="mt-2">
-                          {selectedPageIndex === 0 && (
-                            <p className="mb-2 text-xs text-amber-600">
-                              Conditions on the first page can only reference
-                              other forms or validators, since no fields have
-                              been answered yet.
-                            </p>
+                          {schema.pages.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removePage(index);
+                              }}
+                              className="py-2 text-gray-400 hover:text-red-500"
+                            >
+                              ×
+                            </button>
                           )}
-                          <ConditionalVisibility
-                            key={currentPage.id}
-                            field={currentPage}
-                            previousFields={pagePreviousFields}
-                            onChange={updateCurrentPageVisibility}
-                          />
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <PerViewerOptions allowed={!displayOnly}>
-                  <div className="space-y-4">
-                    {currentPage.fields.length === 0 && (
-                      <InsertPoint insertIndex={0} />
-                    )}
 
-                    {currentPage.fields.map((field, index) => (
-                      <div key={field.id || index}>
-                        {index > 0 && <InsertPoint insertIndex={index} />}
-                        {index === 0 && <InsertPoint insertIndex={0} />}
-
-                        {renderField(field, index)}
-
-                        {index === currentPage.fields.length - 1 && (
-                          <InsertPoint insertIndex={index + 1} />
+                        {showInsertionBar && pageDropPosition === "after" && (
+                          <div className="absolute -right-0.5 top-0 bottom-0 w-0.5 bg-blue-500 rounded-full z-10">
+                            <div className="absolute -top-1 -left-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                          </div>
                         )}
                       </div>
-                    ))}
+                    );
+                  })}
+                  <div
+                    onClick={addPage}
+                    color={ButtonColor.White}
+                    className="p-1 !h-6 !w-6 rounded-full hover:bg-gray-200 flex items-center justify-center cursor-pointer"
+                  >
+                    <p className="-mt-px text-zinc-700">+</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
-                    {draggedItem && currentPage.fields.length > 0 && (
-                      <div
-                        className="relative h-4 -mt-2"
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                          setDragOverIndex(currentPage.fields.length);
-                          setDropPosition("before");
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (
-                            !draggedItem ||
-                            draggedItem.pageIndex !== selectedPageIndex
-                          )
-                            return;
+            <div className="flex-shrink-0 mx-4 min-h-0 relative">
+              {isLoading && (
+                <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 mb-2">
+                  <span className="block sm:inline">Loading form...</span>
+                </div>
+              )}
+              {loadError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
+                  <span className="block sm:inline">
+                    Error loading form: {loadError}
+                  </span>
+                </div>
+              )}
+              {saveError && (
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 mb-2">
+                  <span className="block sm:inline">
+                    Error saving form: {saveError}
+                  </span>
+                </div>
+              )}
+            </div>
 
-                          const { index: dragIndex } = draggedItem;
-                          const insertionIndex =
-                            currentPage.fields.length -
-                            (dragIndex < currentPage.fields.length ? 1 : 0);
-
-                          if (dragIndex === insertionIndex) {
-                            setDraggedItem(null);
-                            setDragOverIndex(null);
-                            setDropPosition(null);
-                            return;
-                          }
-
-                          const currentFields = [...currentPage.fields];
-                          const [draggedField] = currentFields.splice(
-                            dragIndex,
-                            1,
-                          );
-                          currentFields.push(draggedField);
-
+            <div
+              ref={contentScrollRef}
+              className="flex-1 p-6 overflow-y-auto min-h-0"
+            >
+              {activeEditor === "shareable" ? (
+                <ShareableTextBuilder
+                  schema={schema}
+                  onSchemaChange={updateSchema}
+                />
+              ) : activeEditor === "outputs" ? (
+                <OutputBuilder schema={schema} onSchemaChange={updateSchema} />
+              ) : activeEditor === "aggregates" ? (
+                <AggregateBuilder
+                  schema={schema}
+                  onSchemaChange={updateSchema}
+                />
+              ) : activeEditor === "variables" ? (
+                <VariableBuilder
+                  schema={schema}
+                  onSchemaChange={updateSchema}
+                />
+              ) : isPreviewMode && displayOnly ? (
+                <div className="max-w-3xl mx-auto p-6">
+                  <DisplayOnlyPreview
+                    schema={schema}
+                    title={displayOnlyTitle}
+                  />
+                </div>
+              ) : isPreviewMode ? (
+                <div className="max-w-3xl mx-auto bg-white p-6">
+                  <PreviewAsUserBar
+                    previewUserId={previewUserId}
+                    setPreviewUserId={setPreviewUserId}
+                    previewUsers={previewUsers}
+                    isLoadingPreviewUsers={isLoadingPreviewUsers}
+                    previewUserError={previewUserError}
+                  />
+                  <FormRenderer
+                    id={0}
+                    formSnapshotId={null}
+                    actionId={0}
+                    form={schema}
+                    onSubmit={null}
+                    renderFormAsCompleted={false}
+                    userId={resolvedPreviewUserId}
+                    user={resolvedPreviewUser}
+                    adminPreviewUserId={resolvedPreviewUserId}
+                    initialPageIndex={selectedPageIndex}
+                  />
+                </div>
+              ) : (
+                <div
+                  className="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 p-6 mb-8"
+                  onClick={handleClickOutside}
+                >
+                  {!displayOnly && (
+                    <div className="mb-6">
+                      <input
+                        type="text"
+                        value={currentPage.title || ""}
+                        onChange={(e) =>
                           updateSchema({
                             ...schema,
                             pages: schema.pages.map((page, idx) =>
                               idx === selectedPageIndex
-                                ? { ...page, fields: currentFields }
+                                ? { ...page, title: e.target.value }
                                 : page,
                             ),
-                          });
-
-                          setDraggedItem(null);
-                          setDragOverIndex(null);
-                          setDropPosition(null);
-                        }}
-                      >
-                        {dragOverIndex === currentPage.fields.length && (
-                          <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-                            <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {currentPage.fields.length === 0 && (
-                      <div
-                        className="text-center py-12 text-gray-500 relative"
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                          setDragOverIndex(0);
-                          setDropPosition("before");
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          if (
-                            !draggedItem ||
-                            draggedItem.pageIndex !== selectedPageIndex
-                          )
-                            return;
-
-                          setDraggedItem(null);
-                          setDragOverIndex(null);
-                          setDropPosition(null);
-                        }}
-                      >
-                        {draggedItem && dragOverIndex === 0 && (
-                          <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
-                            <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                          </div>
-                        )}
-                        <p>
-                          No fields added yet. Use the sidebar to add fields and
-                          display blocks.
+                          })
+                        }
+                        className="text-lg font-medium w-full border-none outline-none"
+                        placeholder="Page title"
+                      />
+                      {currentPage.description && (
+                        <p className="text-gray-600 mt-1">
+                          {currentPage.description}
                         </p>
+                      )}
+                      <div className="mt-3">
+                        <label className="flex cursor-pointer items-center text-xs text-gray-700">
+                          <input
+                            type="checkbox"
+                            className="mr-2"
+                            checked={showPageVisibilityControl}
+                            onChange={(event) =>
+                              handlePageVisibilityToggle(event.target.checked)
+                            }
+                          />
+                          Use conditional visibility for this page
+                        </label>
+                        {showPageVisibilityControl && (
+                          <div className="mt-2">
+                            {selectedPageIndex === 0 && (
+                              <p className="mb-2 text-xs text-amber-600">
+                                Conditions on the first page can only reference
+                                other forms or validators, since no fields have
+                                been answered yet.
+                              </p>
+                            )}
+                            <ConditionalVisibility
+                              key={currentPage.id}
+                              field={currentPage}
+                              previousFields={pagePreviousFields}
+                              onChange={updateCurrentPageVisibility}
+                            />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </PerViewerOptions>
-              </div>
-            )}
+                    </div>
+                  )}
+                  <PerViewerOptions allowed={!displayOnly}>
+                    <div className="space-y-4">
+                      {currentPage.fields.length === 0 && (
+                        <InsertPoint insertIndex={0} />
+                      )}
+
+                      {currentPage.fields.map((field, index) => (
+                        <div key={field.id || index}>
+                          {index > 0 && <InsertPoint insertIndex={index} />}
+                          {index === 0 && <InsertPoint insertIndex={0} />}
+
+                          {renderField(field, index)}
+
+                          {index === currentPage.fields.length - 1 && (
+                            <InsertPoint insertIndex={index + 1} />
+                          )}
+                        </div>
+                      ))}
+
+                      {draggedItem && currentPage.fields.length > 0 && (
+                        <div
+                          className="relative h-4 -mt-2"
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            setDragOverIndex(currentPage.fields.length);
+                            setDropPosition("before");
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (
+                              !draggedItem ||
+                              draggedItem.pageIndex !== selectedPageIndex
+                            )
+                              return;
+
+                            const { index: dragIndex } = draggedItem;
+                            const insertionIndex =
+                              currentPage.fields.length -
+                              (dragIndex < currentPage.fields.length ? 1 : 0);
+
+                            if (dragIndex === insertionIndex) {
+                              setDraggedItem(null);
+                              setDragOverIndex(null);
+                              setDropPosition(null);
+                              return;
+                            }
+
+                            const currentFields = [...currentPage.fields];
+                            const [draggedField] = currentFields.splice(
+                              dragIndex,
+                              1,
+                            );
+                            currentFields.push(draggedField);
+
+                            updateSchema({
+                              ...schema,
+                              pages: schema.pages.map((page, idx) =>
+                                idx === selectedPageIndex
+                                  ? { ...page, fields: currentFields }
+                                  : page,
+                              ),
+                            });
+
+                            setDraggedItem(null);
+                            setDragOverIndex(null);
+                            setDropPosition(null);
+                          }}
+                        >
+                          {dragOverIndex === currentPage.fields.length && (
+                            <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
+                              <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {currentPage.fields.length === 0 && (
+                        <div
+                          className="text-center py-12 text-gray-500 relative"
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                            setDragOverIndex(0);
+                            setDropPosition("before");
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (
+                              !draggedItem ||
+                              draggedItem.pageIndex !== selectedPageIndex
+                            )
+                              return;
+
+                            setDraggedItem(null);
+                            setDragOverIndex(null);
+                            setDropPosition(null);
+                          }}
+                        >
+                          {draggedItem && dragOverIndex === 0 && (
+                            <div className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full z-10">
+                              <div className="absolute -left-1 -top-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                            </div>
+                          )}
+                          <p>
+                            No fields added yet. Use the sidebar to add fields
+                            and display blocks.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </PerViewerOptions>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </FormVariablesProvider>
     </CustomValidatorDraftsContext.Provider>
   );
 }

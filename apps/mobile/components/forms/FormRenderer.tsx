@@ -22,6 +22,11 @@ import {
   type FormValue,
 } from "@alliance/common/forms/form-schema";
 import {
+  interpolateDisplayBlock,
+  interpolateFieldText,
+} from "@alliance/common/forms/variable-interpolation";
+import { resolveVariableValues } from "@alliance/common/forms/variables";
+import {
   isElementCurrentlyVisible as isElementCurrentlyVisibleShared,
   isFieldConditionallyRequired,
   stripHiddenAnswers,
@@ -1031,6 +1036,12 @@ const FormRenderer = ({
     [schema.pages, formData, visibilityExtrasReadOnly],
   );
 
+  const variableValues = useMemo(
+    () =>
+      resolveVariableValues(schema.variables, { answers: effectiveFormData }),
+    [schema.variables, effectiveFormData],
+  );
+
   const isElementCurrentlyVisible = useCallback(
     (
       element: AnyField | DisplayBlock,
@@ -1487,7 +1498,7 @@ const FormRenderer = ({
             return (
               <View key={resolvedBlock.id ?? `block-${idx}`}>
                 <RenderDisplayBlockMobile
-                  block={resolvedBlock}
+                  block={interpolateDisplayBlock(resolvedBlock, variableValues)}
                   previousAnswerData={previousAnswerData}
                   previousAnswerSchemas={previousAnswerSchemas}
                   hasRenderedNeighborAbove={hasRenderedNeighborAbove(idx)}
@@ -1512,7 +1523,7 @@ const FormRenderer = ({
               }}
             >
               <RenderField
-                field={field}
+                field={interpolateFieldText(field, variableValues)}
                 value={effectiveFormData[field.id]}
                 onChange={(value) => handleFieldChange(field.id, value)}
                 disabled={readOnly}

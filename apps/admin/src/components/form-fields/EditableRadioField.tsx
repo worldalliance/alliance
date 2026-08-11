@@ -1,5 +1,6 @@
 import type { RadioField } from "@alliance/common/forms/form-schema";
 import { cn } from "@alliance/shared/styles/util";
+import { VariableTextField } from "../VariableTextField";
 import {
   DuplicateOptionsWarning,
   RequiredToggle,
@@ -116,11 +117,11 @@ export function EditableRadioField({
                 />
                 <span>Default</span>
               </label>
-              <input
-                type="text"
+              <VariableTextField
                 value={option.label}
-                onChange={(e) => updateOption(index, { label: e.target.value })}
-                className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                onChange={(label) => updateOption(index, { label })}
+                containerClassName="flex-1"
+                className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Option label"
               />
               <input

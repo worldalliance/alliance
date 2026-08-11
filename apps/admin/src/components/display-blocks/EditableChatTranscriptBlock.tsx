@@ -6,7 +6,7 @@ import { cn } from "@alliance/shared/styles/util";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { ArrowDown, ArrowUp, Plus, X } from "lucide-react";
 import { useState } from "react";
-import FormTextarea from "../FormTextarea";
+import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -73,20 +73,18 @@ export function EditableChatTranscriptBlock({
         return (
           <div className="space-y-2">
             <div className="flex gap-2">
-              <input
-                type="text"
+              <VariableTextField
                 value={activeBlock.leftName ?? ""}
-                onChange={(e) =>
-                  handleUpdate({ leftName: e.target.value || undefined })
+                onChange={(leftName) =>
+                  handleUpdate({ leftName: leftName || undefined })
                 }
                 className="flex-1 text-gray-900 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Left user name"
               />
-              <input
-                type="text"
+              <VariableTextField
                 value={activeBlock.rightName ?? ""}
-                onChange={(e) =>
-                  handleUpdate({ rightName: e.target.value || undefined })
+                onChange={(rightName) =>
+                  handleUpdate({ rightName: rightName || undefined })
                 }
                 className="flex-1 text-gray-900 border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                 placeholder="Right user name"
@@ -125,11 +123,10 @@ export function EditableChatTranscriptBlock({
                     </button>
                   ))}
                 </div>
-                <FormTextarea
+                <VariableTextField
+                  multiline
                   value={message.text}
-                  onChange={(e) =>
-                    updateMessage(index, { text: e.target.value })
-                  }
+                  onChange={(text) => updateMessage(index, { text })}
                   minRows={1}
                   className="flex-1 text-gray-900 border border-gray-300 rounded-md px-3 py-1.5 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Markdown message text"

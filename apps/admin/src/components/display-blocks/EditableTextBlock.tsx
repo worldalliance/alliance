@@ -1,9 +1,9 @@
-import { useState } from "react";
 import type { TextBlock } from "@alliance/common/forms/display-blocks";
+import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
+import { useState } from "react";
+import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
-import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
-import FormTextarea from "../FormTextarea";
 
 export function EditableTextBlock(props: BaseDisplayBlockProps<TextBlock>) {
   const [showPreview, setShowPreview] = useState(false);
@@ -12,9 +12,10 @@ export function EditableTextBlock(props: BaseDisplayBlockProps<TextBlock>) {
     <DisplayBlockWrapper {...props}>
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-2">
-          <FormTextarea
+          <VariableTextField
+            multiline
             value={activeBlock.text}
-            onChange={(e) => handleUpdate({ text: e.target.value })}
+            onChange={(text) => handleUpdate({ text })}
             className="w-full text-gray-900 border-none outline-none bg-transparent resize-none whitespace-pre-wrap"
             placeholder="Enter text content"
             style={{ resize: "vertical" }}

@@ -13,6 +13,12 @@ import type {
 } from "@alliance/common/forms/form-schema";
 import { isQuestionField } from "@alliance/common/forms/form-schema";
 import { getRankingOptionLabel } from "@alliance/common/forms/ranking";
+import {
+  interpolateDisplayBlock,
+  interpolateFieldText,
+  interpolateOutputFieldBlock,
+} from "@alliance/common/forms/variable-interpolation";
+import { resolveVariableValues } from "@alliance/common/forms/variables";
 import { isElementCurrentlyVisible } from "@alliance/common/forms/visibility";
 
 export type ResolvedOutputDisplayItem = {
@@ -313,25 +319,38 @@ export const resolveOutputItems = ({
 
   for (const block of allBlocks) computeVisibility(block);
 
+  // Substituted here rather than in each renderer so every consumer of an item
+  // — label, override and field text alike — sees the same resolved values.
+  const variableValues = resolveVariableValues(schema.variables, { answers });
+
   const items = allBlocks
     .filter((block) =>
       block.id
         ? (outputBlockVisibility.get(block.id) ?? false)
         : evaluateBlockVisibility(block),
     )
-    .map((block, index): ResolvedOutputItem => {
+    .map((rawBlock, index): ResolvedOutputItem => {
       const key =
-        "kind" in block ? (block.id ?? `${block.kind}-${index}`) : block.id;
+        "kind" in rawBlock
+          ? (rawBlock.id ?? `${rawBlock.kind}-${index}`)
+          : rawBlock.id;
 
-      if ("kind" in block) {
+      if ("kind" in rawBlock) {
         return {
           type: "display",
           key,
-          block: block as DisplayBlock,
+          block: interpolateDisplayBlock(
+            rawBlock as DisplayBlock,
+            variableValues,
+          ),
         };
       }
 
-      const field = fieldLookup.get(block.fieldId);
+      const block = interpolateOutputFieldBlock(rawBlock, variableValues);
+      const schemaField = fieldLookup.get(block.fieldId);
+      const field = schemaField
+        ? interpolateFieldText(schemaField, variableValues)
+        : undefined;
 
       return {
         type: "field",

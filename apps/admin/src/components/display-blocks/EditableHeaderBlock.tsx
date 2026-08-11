@@ -1,7 +1,8 @@
 import type { HeaderBlock } from "@alliance/common/forms/display-blocks";
+import { cn } from "@alliance/shared/styles/util";
+import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
-import { cn } from "@alliance/shared/styles/util";
 
 export function EditableHeaderBlock(props: BaseDisplayBlockProps<HeaderBlock>) {
   return (
@@ -9,10 +10,9 @@ export function EditableHeaderBlock(props: BaseDisplayBlockProps<HeaderBlock>) {
       {({ block: activeBlock, onUpdate: handleUpdate }) => (
         <div className="space-y-2">
           {/* Inline editable header */}
-          <input
-            type="text"
+          <VariableTextField
             value={activeBlock.text}
-            onChange={(e) => handleUpdate({ text: e.target.value })}
+            onChange={(text) => handleUpdate({ text })}
             className={cn(
               "w-full font-bold text-gray-900 border-none outline-none bg-transparent resize-none",
               (activeBlock.level || 2) === 1

@@ -88,9 +88,7 @@ export function emptyDisplayOnlySchema(): DisplayOnlySchema {
 
 export const DISPLAY_ONLY_PAGE_ID = "page-1";
 
-export function displayOnlyToFormSchema(
-  schema: DisplayOnlySchema,
-): FormSchema {
+export function displayOnlyToFormSchema(schema: DisplayOnlySchema): FormSchema {
   return {
     ...(schema.description !== undefined && {
       description: schema.description,
@@ -108,12 +106,12 @@ const displayOnlyPageSchema = z.strictObject({
   fields: z.array(displayOnlyBlockSchema),
 });
 
-// Reject page metadata and views that conversion would otherwise discard.
 const displayOnlyFormSchema = z.strictObject({
   description: z.string().optional(),
   pages: z.array(displayOnlyPageSchema),
   outputViews: unusableHere("output views"),
   aggregateViews: unusableHere("aggregate views").optional(),
+  variables: unusableHere("variables").optional(),
 });
 
 function describeSchemaIssues(error: z.ZodError): string[] {

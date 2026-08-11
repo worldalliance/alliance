@@ -1,5 +1,9 @@
-import { useMemo } from "react";
-import { Image, View } from "react-native";
+import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
+import type {
+  AnyField,
+  FormSchema,
+  FormValue,
+} from "@alliance/common/forms/form-schema";
 import type {
   FormResponseDto,
   FormResponseOutputDto,
@@ -9,18 +13,14 @@ import {
   resolveOutputView,
   type ResolvedOutputFieldItem,
 } from "@alliance/shared/outputrenderer";
-import type {
-  AnyField,
-  FormSchema,
-  FormValue,
-} from "@alliance/common/forms/form-schema";
 import { cn } from "@alliance/shared/styles/util";
+import { useMemo } from "react";
+import { Image, View } from "react-native";
 import { getImageSource } from "../lib/config";
-import Card, { CardStyle } from "./system/Card";
-import Text, { FontWeight } from "./system/Text";
 import { RenderDisplayBlockMobile } from "./forms/FormRenderer";
 import { RenderField } from "./forms/RenderField";
-import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
+import Card, { CardStyle } from "./system/Card";
+import Text, { FontWeight } from "./system/Text";
 
 type OutputRendererProps = {
   schema?: FormSchema;

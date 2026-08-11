@@ -5,6 +5,7 @@ import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { getApiUrl } from "@alliance/sharedweb/lib/config";
 import React, { useEffect, useState } from "react";
 import { Link, href } from "react-router";
+import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
 
@@ -171,10 +172,9 @@ export function EditableVideoBlock({
             <label className="block text-xs font-medium text-gray-600">
               Caption
             </label>
-            <input
-              type="text"
+            <VariableTextField
               value={activeBlock.caption ?? ""}
-              onChange={(e) => handleUpdate({ caption: e.target.value })}
+              onChange={(caption) => handleUpdate({ caption })}
               placeholder="Add an optional caption"
               className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
             />

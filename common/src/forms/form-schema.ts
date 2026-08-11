@@ -4,6 +4,7 @@ import {
   displayBlockSchema,
   type ManualDisplayBlockContent,
 } from "./display-blocks";
+import { formVariableSchema } from "./variables";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
@@ -397,6 +398,8 @@ export const formSchema = z.strictObject({
   defaultShareableTextTemplate: z.string().optional(),
   outputViews: z.array(outputViewSchemaSchema),
   aggregateViews: z.array(aggregateViewSchemaSchema).optional(),
+  /** Computed values referenced as `#{name}` in display text and labels. */
+  variables: z.array(formVariableSchema).optional(),
 });
 export type FormSchema = z.infer<typeof formSchema>;
 

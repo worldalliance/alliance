@@ -1,4 +1,4 @@
-import FormTextarea from "../FormTextarea";
+import { VariableTextField } from "../VariableTextField";
 
 type FieldLabelEditorProps = {
   value: string | null;
@@ -18,10 +18,11 @@ export function FieldLabelEditor({
       <label className="block text-xs font-medium text-gray-700 mb-1">
         {label}
       </label>
-      <FormTextarea
+      <VariableTextField
+        multiline
         rows={1}
         value={value ?? ""}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
         placeholder={placeholder}
         className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 resize-y"
       />
