@@ -76,22 +76,22 @@ const EXAMPLE_PROJECTS = [
   },
 ] as const;
 
-const COMMITMENT_POINTS = [
-  "Agreement to participate in 15 minutes/week of action",
-  "Can withdraw from actions",
-  "Members guide us via feedback and formal oversight",
-] as const;
+// const COMMITMENT_POINTS = [
+//   "Agreement to participate in 15 minutes/week of action",
+//   "Can withdraw from actions",
+//   "Members guide us via feedback and formal oversight",
+// ] as const;
 
-const BIG_PROBLEM_POINTS = [
-  "Generally, expert consensus on the major problems and their solutions",
-  "Coordination problems — where working together consistently is key",
-  "Problems controlled by our collective action or inaction",
-] as const;
+// const BIG_PROBLEM_POINTS = [
+//   "Generally, expert consensus on the major problems and their solutions",
+//   "Coordination problems — where working together consistently is key",
+//   "Problems controlled by our collective action or inaction",
+// ] as const;
 
 const SCALE_EXAMPLES = [
   "Lifestyle changes at population scale",
-  "Corporate accountability campaigns",
-  "Coordinated policy and standards input",
+  "Customer coordination",
+  "Global preferences surveys",
 ] as const;
 
 const LandingTestPage: React.FC = () => {
@@ -171,7 +171,7 @@ const LandingTestPage: React.FC = () => {
             >
               {EXAMPLE_PROJECTS.map((project) => (
                 <div key={project.title} className="flex flex-col gap-6">
-                  {project.imgSrc ? (
+                  {"imgSrc" in project ? (
                     <img
                       src={project.imgSrc}
                       alt={project.title}
