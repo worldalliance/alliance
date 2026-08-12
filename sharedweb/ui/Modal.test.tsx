@@ -8,6 +8,8 @@ import {
 import { useState, type ReactElement } from "react";
 import Modal, {
   MODAL_CLOSE_GUTTER,
+  ModalAlign,
+  ModalBody,
   ModalDescription,
   ModalHeader,
   ModalTitle,
@@ -46,6 +48,14 @@ function modalHeader(): HTMLElement {
     .querySelector<HTMLElement>("[data-modal-header]");
   if (!header) throw new Error("modal header not found");
   return header;
+}
+
+function modalBody(): HTMLElement {
+  const body = screen
+    .getByRole("dialog")
+    .querySelector<HTMLElement>("[data-modal-body]");
+  if (!body) throw new Error("modal body not found");
+  return body;
 }
 
 describe("Modal", () => {
@@ -194,6 +204,28 @@ describe("Modal", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("pads the body to the same gutter as the header and footer", () => {
+    render(
+      <Modal onClose={() => {}} ariaLabel="Test dialog">
+        <ModalBody>Content</ModalBody>
+      </Modal>,
+    );
+
+    expect(modalBody().classList.contains("p-5")).toBe(true);
+  });
+
+  it("lets a full-bleed body drop its padding", () => {
+    render(
+      <Modal onClose={() => {}} ariaLabel="Test dialog">
+        <ModalBody className="p-0">Content</ModalBody>
+      </Modal>,
+    );
+
+    const body = modalBody();
+    expect(body.classList.contains("p-0")).toBe(true);
+    expect(body.classList.contains("p-5")).toBe(false);
+  });
+
   it("keeps the close button's gutter when the caller overrides padding", () => {
     render(
       <Modal onClose={() => {}} ariaLabel="Test dialog">
@@ -203,11 +235,26 @@ describe("Modal", () => {
       </Modal>,
     );
 
-    // tailwind-merge drops the gutter if `p-6` comes later, so retaining both
-    // proves the header applies its gutter after the caller's classes.
     const header = modalHeader();
     expect(header.classList.contains("p-6")).toBe(true);
     expect(header.classList.contains(MODAL_CLOSE_GUTTER)).toBe(true);
+  });
+
+  it("keeps the close button's gutter above responsive caller padding", () => {
+    render(
+      <Modal onClose={() => {}} ariaLabel="Test dialog">
+        <ModalHeader className="p-6 sm:p-8">
+          <ModalTitle>Confirm</ModalTitle>
+        </ModalHeader>
+      </Modal>,
+    );
+
+    // happy-dom has no Tailwind stylesheet, so assert `!important`; class order
+    // alone cannot beat a responsive padding shorthand such as `sm:p-8`.
+    const header = modalHeader();
+    expect(header.classList.contains("sm:p-8")).toBe(true);
+    expect(header.classList.contains(MODAL_CLOSE_GUTTER)).toBe(true);
+    expect(MODAL_CLOSE_GUTTER).toMatch(/!$/);
   });
 
   it("can prevent Escape dismissal", () => {
@@ -251,6 +298,114 @@ describe("Modal", () => {
     fireEvent.click(outsideDialog());
 
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("keeps its own presses away from the region that opened it", () => {
+    const onClose = jest.fn();
+    const behindClick = jest.fn();
+    render(
+      <div onClick={behindClick}>
+        <Modal onClose={onClose} ariaLabel="Test dialog">
+          <button>Inside</button>
+        </Modal>
+      </div>,
+    );
+
+    fireEvent.click(outsideDialog());
+    fireEvent.click(screen.getByRole("button", { name: "Inside" }));
+
+    expect(behindClick).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("centers the panel on every breakpoint by default", () => {
+    render(
+      <Modal onClose={jest.fn()} ariaLabel="Test dialog">
+        Content
+      </Modal>,
+    );
+
+    const wrapper = outsideDialog();
+    expect(wrapper.className).toContain("items-center");
+    expect(wrapper.className).not.toContain("items-end");
+  });
+
+  it("drops the panel to the bottom edge below sm when asked", () => {
+    render(
+      <Modal
+        onClose={jest.fn()}
+        ariaLabel="Test dialog"
+        align={ModalAlign.BottomSheetOnMobile}
+      >
+        Content
+      </Modal>,
+    );
+
+    const wrapper = outsideDialog();
+    expect(wrapper.className).toContain("items-end");
+    expect(wrapper.className).toContain("sm:items-center");
+    expect(wrapper.parentElement?.classList.contains("p-4")).toBe(false);
+  });
+
+  it("shapes the sheet's corners without the caller restating the alignment", () => {
+    render(
+      <Modal
+        onClose={jest.fn()}
+        ariaLabel="Test dialog"
+        align={ModalAlign.BottomSheetOnMobile}
+      >
+        Content
+      </Modal>,
+    );
+
+    const panel = screen.getByRole("dialog");
+    expect(panel.classList.contains("rounded-t-2xl")).toBe(true);
+    expect(panel.classList.contains("sm:rounded-2xl")).toBe(true);
+    expect(panel.classList.contains("rounded-2xl")).toBe(false);
+  });
+
+  it("rounds every corner of a centred panel", () => {
+    render(
+      <Modal onClose={jest.fn()} ariaLabel="Test dialog">
+        Content
+      </Modal>,
+    );
+
+    expect(screen.getByRole("dialog").classList.contains("rounded-2xl")).toBe(
+      true,
+    );
+  });
+
+  it("gives both alignments the same radius", () => {
+    const radius = (className: string) =>
+      className
+        .match(/(?:^|\s)(?:sm:)?rounded-[a-z0-9-]+/g)
+        ?.map((c) => c.trim());
+
+    render(
+      <Modal onClose={jest.fn()} ariaLabel="Centred">
+        Content
+      </Modal>,
+    );
+    expect(radius(screen.getByRole("dialog").className)).toEqual([
+      "rounded-2xl",
+    ]);
+
+    cleanup();
+
+    render(
+      <Modal
+        onClose={jest.fn()}
+        ariaLabel="Sheet"
+        align={ModalAlign.BottomSheetOnMobile}
+      >
+        Content
+      </Modal>,
+    );
+    expect(radius(screen.getByRole("dialog").className)).toEqual([
+      "rounded-t-2xl",
+      "sm:rounded-2xl",
+    ]);
   });
 
   it("restores focus after closing", async () => {

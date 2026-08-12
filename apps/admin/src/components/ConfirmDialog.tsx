@@ -1,6 +1,7 @@
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Modal, {
   ModalActions,
+  ModalBody,
   ModalDescription,
   ModalFooter,
   ModalHeader,
@@ -57,11 +58,11 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </ModalTitle>
       </ModalHeader>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <ModalBody className="flex-1 overflow-y-auto p-6">
         <ModalDescription className="text-sm text-gray-600 whitespace-pre-wrap break-words">
           {message}
         </ModalDescription>
-      </div>
+      </ModalBody>
 
       <ModalFooter className="p-6">
         <ModalActions>

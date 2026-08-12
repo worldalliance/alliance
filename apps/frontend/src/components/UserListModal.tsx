@@ -1,12 +1,13 @@
 import { ProfileDto } from "@alliance/shared/client";
 import { getSkeletonCount } from "@alliance/shared/lib/userList";
-import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import Modal, {
+  ModalBody,
+  ModalHeader,
+  ModalTitle,
+} from "@alliance/sharedweb/ui/Modal";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import { X } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { type ReactNode } from "react";
 import { Link, href } from "react-router";
 import LoadMoreButton from "./LoadMoreButton";
 
@@ -18,7 +19,6 @@ export interface UserListModalProps {
   children: ReactNode;
 }
 
-/** Portal shell for user-list modals. */
 const UserListModal = ({
   open,
   onClose,
@@ -26,48 +26,22 @@ const UserListModal = ({
   title,
   children,
 }: UserListModalProps) => {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
   if (!open) return null;
 
-  return createPortal(
-    <div
-      className={cn(
-        zIndex.modal,
-        "fixed inset-0 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]",
-      )}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClose();
-      }}
+  return (
+    <Modal
+      onClose={onClose}
+      panelClassName="flex max-h-[80vh] max-w-sm flex-col overflow-hidden shadow-2xl"
     >
-      <div
-        className="flex max-h-[80vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="relative flex items-center justify-center border-b border-zinc-100 px-4 py-3.5">
-          <div className="flex items-center gap-1.5">
-            {icon}
-            <h2 className="text-[15px] font-semibold text-zinc-900">{title}</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="absolute right-2 rounded-full p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
-        </div>
+      <ModalHeader className="flex shrink-0 items-center gap-1.5">
+        {icon}
+        <ModalTitle className="text-[15px] font-semibold text-zinc-900">
+          {title}
+        </ModalTitle>
+      </ModalHeader>
 
-        <div className="flex-1 overflow-y-auto">{children}</div>
-      </div>
-    </div>,
-    document.body,
+      <ModalBody className="flex-1 overflow-y-auto p-0">{children}</ModalBody>
+    </Modal>
   );
 };
 

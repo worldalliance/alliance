@@ -39,7 +39,6 @@
         "@react-router/express": "7.13.2",
         "@react-router/node": "7.13.2",
         "@react-router/serve": "7.13.2",
-        "@remixicon/react": "^4.6.0",
         "@tailwindcss/vite": "^4.1.4",
         "@tanstack/react-query": "^5.90.20",
         "chroma-js": "^2.4.2",
@@ -124,7 +123,6 @@
         "@react-router/express": "7.13.2",
         "@react-router/node": "7.13.2",
         "@react-router/serve": "7.13.2",
-        "@remixicon/react": "^4.6.0",
         "@storybook/manager-api": "^8.6.14",
         "@storybook/react": "^8.6.12",
         "@storybook/theming": "^8.6.14",
@@ -1433,8 +1431,6 @@
     "@react-router/serve": ["@react-router/serve@7.13.2", "", { "dependencies": { "@mjackson/node-fetch-server": "^0.2.0", "@react-router/express": "7.13.2", "@react-router/node": "7.13.2", "compression": "^1.8.1", "express": "^4.19.2", "get-port": "5.1.1", "morgan": "^1.10.1", "source-map-support": "^0.5.21" }, "peerDependencies": { "react-router": "7.13.2" }, "bin": { "react-router-serve": "bin.js" } }, "sha512-H/clM2tMw7daRd7bTM0kYYim4ZLrcWd30DY+R/xu8h2t2YvdfLAfHD0GfqGu3Ds8yAOrWFqH5Ly7BM7jk7fvCg=="],
 
     "@remix-run/node-fetch-server": ["@remix-run/node-fetch-server@0.13.0", "", {}, "sha512-1EsNo0ZpgXu/90AWoRZf/oE3RVTUS80tiTUpt+hv5pjtAkw7icN4WskDwz/KdAw5ARbJLMhZBrO1NqThmy/McA=="],
-
-    "@remixicon/react": ["@remixicon/react@4.9.0", "", { "peerDependencies": { "react": ">=18.2.0" } }, "sha512-5/jLDD4DtKxH2B4QVXTobvV1C2uL8ab9D5yAYNtFt+w80O0Ys1xFOrspqROL3fjrZi+7ElFUWE37hBfaAl6U+Q=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.0-beta.27", "", {}, "sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA=="],
 

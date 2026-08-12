@@ -7,11 +7,14 @@ import { guestReferral, taskHeaders } from "@alliance/shared/lib/copy";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
-import { cn } from "@alliance/shared/styles/util";
+import Modal, {
+  ModalBody,
+  ModalDescription,
+  ModalHeader,
+  ModalTitle,
+} from "@alliance/sharedweb/ui/Modal";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import { X } from "lucide-react";
 import { useCallback, useState } from "react";
 import {
   href,
@@ -123,6 +126,14 @@ export default function ActionPage() {
     setShowReferralTaskPanel(true);
     setReferralPanelAnimationNonce((prev) => prev + 1);
   }, []);
+  const dismissInvitePopup = useCallback(() => {
+    if (guestCompleted) {
+      setCompletedPopupDismissed(true);
+      setShowReferralTaskPanel(true);
+      return;
+    }
+    setInvitePopupDismissed(true);
+  }, [guestCompleted]);
   const handleGuestCompletionChange = useCallback((completed: boolean) => {
     setGuestCompleted(completed);
     if (completed) {
@@ -198,77 +209,43 @@ export default function ActionPage() {
         />
       )}
       {showInvitePopup && (
-        <div
-          className={cn(
-            zIndex.modal,
-            "fixed inset-0 flex items-center justify-center bg-black/45 px-4",
-          )}
+        <Modal
+          onClose={dismissInvitePopup}
+          panelClassName="max-w-xl border border-white/70 shadow-2xl"
         >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="referral-invite-popup-title"
-            className="relative w-full max-w-xl rounded-xl border border-white/70 bg-white p-6 shadow-2xl sm:p-8"
-          >
-            <button
-              type="button"
-              aria-label={
-                guestCompleted
-                  ? "Dismiss completion popup"
-                  : "Dismiss invitation popup"
-              }
-              className="absolute right-4 top-4 text-2xl leading-none text-zinc-400 transition hover:text-zinc-600"
-              onClick={() => {
-                if (guestCompleted) {
-                  setCompletedPopupDismissed(true);
-                  setShowReferralTaskPanel(true);
-                  return;
-                }
-                setInvitePopupDismissed(true);
-              }}
-            >
-              <X />
-            </button>
+          <ModalHeader className="border-b-0 p-6 pb-0 sm:p-8 sm:pb-0">
             {guestCompleted && (
               <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-green/10">
                 <CheckIcon size={28} />
               </div>
             )}
-            <h2
-              id="referral-invite-popup-title"
-              className="pr-8 text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl"
-            >
+            <ModalTitle className="text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">
               {guestCompleted
                 ? taskHeaders.actionPage.completed
                 : guestReferral.inviteToTryTask(
                     sharePreview.firstName ?? guestReferral.defaultReferrerName,
                   )}
-            </h2>
+            </ModalTitle>
+            <ModalDescription className="mt-2 text-base text-zinc-700">
+              {guestCompleted
+                ? guestReferral.joinForMoreText
+                : guestReferral.locateTaskText}
+            </ModalDescription>
+          </ModalHeader>
+          <ModalBody className="p-6 sm:p-8 sm:pt-6">
             {guestCompleted ? (
-              <>
-                <p className="mt-1 text-base text-zinc-700">
-                  {guestReferral.joinForMoreText}{" "}
-                </p>
-                <div className="mt-6">
-                  <AllianceSignupPitch signupHref={signupHref} />
-                </div>
-              </>
+              <AllianceSignupPitch signupHref={signupHref} />
             ) : (
-              <>
-                <p className="mt-2 text-base text-zinc-700">
-                  {guestReferral.locateTaskText}
-                </p>
-                <button
-                  type="button"
-                  className="mt-4 inline-flex w-full justify-center rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
-                  onClick={handleTryOutTask}
-                >
-                  {guestReferral.tryOutTaskButton}
-                </button>
-              </>
+              <button
+                type="button"
+                className="inline-flex w-full justify-center rounded-full bg-zinc-900 px-6 py-3 text-base font-medium text-white transition hover:bg-zinc-800"
+                onClick={handleTryOutTask}
+              >
+                {guestReferral.tryOutTaskButton}
+              </button>
             )}
-          </div>
-        </div>
+          </ModalBody>
+        </Modal>
       )}
       <div className="w-full flex flex-row justify-between py-10 px-4 md:px-8 xl:px-16 bg-white min-h-[calc(100vh-var(--navbar-top-bar-height))]">
         <div className="flex flex-col md:pr-4 xl:pr-12 max-w-2xl lg:max-w-3xl mx-auto w-full">

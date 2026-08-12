@@ -3,12 +3,19 @@ import { inviteDestination } from "@alliance/shared/lib/copy";
 import type { InviteNote } from "@alliance/shared/lib/inviteUtils";
 import { cn } from "@alliance/shared/styles/util";
 import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
+import Modal, {
+  ModalActions,
+  ModalAlign,
+  ModalBody,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from "@alliance/sharedweb/ui/Modal";
 import NewButton, { ButtonColor } from "@alliance/sharedweb/ui/NewButton";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import { Check, Copy as CopyIcon, Trash2, Users, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { Check, Copy as CopyIcon, Trash2, Users } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 
 /** A group they lead, or `null` for "wherever there is room". */
 type Destination = number | null;
@@ -68,12 +75,6 @@ const InviteSettingsModal = ({
   const [destination, setDestination] = useState<Destination | undefined>(
     target.destination.current,
   );
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const trimmedName = name.trim();
   const nameChanged = trimmedName !== target.name.value;
@@ -158,131 +159,114 @@ const InviteSettingsModal = ({
     [leaderCommunities, target.destination],
   );
 
-  return createPortal(
-    <div
-      className={cn(
-        zIndex.modal,
-        "fixed inset-0 flex items-end justify-center bg-black/50 backdrop-blur-[2px] sm:items-center sm:p-4",
-      )}
-      onClick={onClose}
+  return (
+    <Modal
+      onClose={onClose}
+      dismissDisabled={saving}
+      align={ModalAlign.BottomSheetOnMobile}
+      panelClassName="flex max-h-[90vh] flex-col overflow-hidden shadow-2xl"
     >
-      <div
-        className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Invite settings"
-      >
-        <div className="flex items-center justify-between gap-3 border-b border-zinc-100 px-5 py-4">
-          <div className="min-w-0">
-            <h2 className="truncate text-[15px] font-semibold text-zinc-900">
-              {target.title}
-            </h2>
-            <p className="text-xs text-zinc-500">{target.meta}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="-mr-1.5 shrink-0 rounded-full p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700"
-            aria-label="Close"
+      <ModalHeader className="shrink-0">
+        <ModalTitle className="truncate text-[15px] font-semibold text-zinc-900">
+          {target.title}
+        </ModalTitle>
+        <ModalDescription className="text-xs text-zinc-500">
+          {target.meta}
+        </ModalDescription>
+      </ModalHeader>
+
+      <ModalBody className="flex flex-1 flex-col gap-y-6 overflow-y-auto">
+        <div className="flex items-center gap-2 rounded-xl bg-zinc-50 p-1.5 pl-3.5">
+          <p className="min-w-0 flex-1 truncate font-mono text-xs text-zinc-500">
+            {target.url}
+          </p>
+          <NewButton
+            color={copied ? ButtonColor.Green : ButtonColor.White}
+            onClick={() => void handleCopy()}
+            disabled={copied}
+            iconLeft={!copied && CopyIcon}
+            className="shrink-0 whitespace-nowrap"
           >
-            <X size={18} />
-          </button>
+            {copied ? "Copied!" : "Copy"}
+          </NewButton>
         </div>
 
-        <div className="flex flex-1 flex-col gap-y-6 overflow-y-auto px-5 py-5">
-          <div className="flex items-center gap-2 rounded-xl bg-zinc-50 p-1.5 pl-3.5">
-            <p className="min-w-0 flex-1 truncate font-mono text-xs text-zinc-500">
-              {target.url}
+        <label className="flex flex-col gap-y-2">
+          <span className="text-sm font-semibold text-zinc-900">
+            {target.name.label}
+          </span>
+          <input
+            type="text"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={target.name.placeholder}
+            className="rounded-xl border border-zinc-200 px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900"
+          />
+          <span className="text-xs text-zinc-500">{target.name.helper}</span>
+        </label>
+
+        <div className="flex flex-col gap-y-2">
+          <span className="text-sm font-semibold text-zinc-900">
+            {inviteDestination.heading}
+          </span>
+          {target.destination.notes.map((note) => (
+            <p key={note.text} className={cn("text-xs", NOTE_CLASS[note.tone])}>
+              {note.text}
             </p>
-            <NewButton
-              color={copied ? ButtonColor.Green : ButtonColor.White}
-              onClick={() => void handleCopy()}
-              disabled={copied}
-              iconLeft={!copied && CopyIcon}
-              className="shrink-0 whitespace-nowrap"
-            >
-              {copied ? "Copied!" : "Copy"}
-            </NewButton>
-          </div>
-
-          <label className="flex flex-col gap-y-2">
-            <span className="text-sm font-semibold text-zinc-900">
-              {target.name.label}
-            </span>
-            <input
-              type="text"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={target.name.placeholder}
-              className="rounded-xl border border-zinc-200 px-3.5 py-2.5 text-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-zinc-900"
-            />
-            <span className="text-xs text-zinc-500">{target.name.helper}</span>
-          </label>
-
+          ))}
           <div className="flex flex-col gap-y-2">
-            <span className="text-sm font-semibold text-zinc-900">
-              {inviteDestination.heading}
-            </span>
-            {target.destination.notes.map((note) => (
-              <p
-                key={note.text}
-                className={cn("text-xs", NOTE_CLASS[note.tone])}
-              >
-                {note.text}
-              </p>
-            ))}
-            <div className="flex flex-col gap-y-2">
-              {options.map((option) => {
-                const selected = destination === option.value;
-                return (
-                  <button
-                    key={option.value ?? "open"}
-                    type="button"
-                    onClick={() => setDestination(option.value)}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors",
-                      selected
-                        ? "border-zinc-900 bg-zinc-900/[0.03]"
-                        : "border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50",
-                    )}
-                  >
-                    <Users
-                      size={16}
-                      className={selected ? "text-zinc-900" : "text-zinc-400"}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-zinc-900">
-                        {option.name}
-                      </span>
-                      <span className="block truncate text-xs text-zinc-500">
-                        {option.detail}
-                      </span>
+            {options.map((option) => {
+              const selected = destination === option.value;
+              return (
+                <button
+                  key={option.value ?? "open"}
+                  type="button"
+                  onClick={() => setDestination(option.value)}
+                  className={cn(
+                    "flex w-full items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-colors",
+                    selected
+                      ? "border-zinc-900 bg-zinc-900/[0.03]"
+                      : "border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50",
+                  )}
+                >
+                  <Users
+                    size={16}
+                    className={selected ? "text-zinc-900" : "text-zinc-400"}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-zinc-900">
+                      {option.name}
                     </span>
-                    {selected && (
-                      <Check size={16} className="shrink-0 text-zinc-900" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                    <span className="block truncate text-xs text-zinc-500">
+                      {option.detail}
+                    </span>
+                  </span>
+                  {selected && (
+                    <Check size={16} className="shrink-0 text-zinc-900" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
+      </ModalBody>
 
-        <div className="flex items-center justify-between gap-3 border-t border-zinc-100 px-5 py-4">
-          {target.delete.enabled ? (
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
-            >
-              <Trash2 size={15} />
-              Delete
-            </button>
-          ) : (
-            <span className="text-xs text-zinc-400">
-              {target.delete.disabledReason}
-            </span>
-          )}
+      <ModalFooter className="flex shrink-0 items-center justify-between gap-3">
+        {target.delete.enabled ? (
+          <button
+            type="button"
+            onClick={handleDelete}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-red-500 transition-colors hover:bg-red-50"
+          >
+            <Trash2 size={15} />
+            Delete
+          </button>
+        ) : (
+          <span className="text-xs text-zinc-400">
+            {target.delete.disabledReason}
+          </span>
+        )}
+        <ModalActions>
           <NewButton
             color={ButtonColor.Black}
             onClick={handleSave}
@@ -291,10 +275,9 @@ const InviteSettingsModal = ({
           >
             {saving ? "Saving..." : "Save changes"}
           </NewButton>
-        </div>
-      </div>
-    </div>,
-    document.body,
+        </ModalActions>
+      </ModalFooter>
+    </Modal>
   );
 };
 

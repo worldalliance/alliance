@@ -2,6 +2,7 @@ import { type FormSchema } from "@alliance/common/forms/form-schema";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Modal, {
   ModalActions,
+  ModalBody,
   ModalDescription,
   ModalFooter,
   ModalHeader,
@@ -66,7 +67,7 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
         </div>
       </ModalHeader>
 
-      <div className="grid grid-cols-1 gap-4 overflow-auto p-5 md:grid-cols-2">
+      <ModalBody className="grid grid-cols-1 gap-4 overflow-auto md:grid-cols-2">
         <div className="rounded border border-zinc-200 p-3">
           <p className="mb-2 text-xs font-semibold tracking-wide text-zinc-600 uppercase">
             Your changes
@@ -79,7 +80,7 @@ export const FormConflictModal: React.FC<FormConflictModalProps> = ({
           </p>
           <SchemaDiffView before={base} after={theirs} />
         </div>
-      </div>
+      </ModalBody>
 
       <ModalFooter className="p-4">
         {merge.ok ? (

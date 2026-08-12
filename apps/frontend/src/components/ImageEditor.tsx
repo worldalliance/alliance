@@ -1,8 +1,14 @@
 import { cn } from "@alliance/shared/styles/util";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import Modal, {
+  ModalActions,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+} from "@alliance/sharedweb/ui/Modal";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { zIndex } from "@alliance/sharedweb/ui/zIndex";
-import { RiArrowGoBackLine, RiArrowGoForwardLine } from "@remixicon/react";
+import { RotateCcw, RotateCw } from "lucide-react";
 import {
   type ChangeEventHandler,
   type FC,
@@ -294,7 +300,6 @@ const ImageEditor: FC<ImageEditorProps> = ({
   const lastGeneratedRef = useRef<string | null>(initialImageUrl);
   const lastSelectionRef = useRef<PixelCrop | null>(null);
   const isDraggingRef = useRef(false);
-  const dragJustEndedRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
 
   const rotatedDimensions = useMemo(() => {
@@ -552,11 +557,6 @@ const ImageEditor: FC<ImageEditorProps> = ({
       activePointerIdRef.current = null;
       if (isDraggingRef.current) {
         isDraggingRef.current = false;
-        dragJustEndedRef.current = true;
-        // Reset after the click event would fire
-        requestAnimationFrame(() => {
-          dragJustEndedRef.current = false;
-        });
         setCropCommitVersion((value) => value + 1);
       }
       dragStateRef.current = null;
@@ -777,34 +777,18 @@ const ImageEditor: FC<ImageEditorProps> = ({
       {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
 
       {hasCustomImage && isCropModalOpen && imageSrc && (
-        <div
-          className={cn(
-            zIndex.modal,
-            "fixed inset-0 flex items-center justify-center bg-black/60 px-2",
-          )}
-          onClick={() => {
-            if (!dragJustEndedRef.current) {
-              setIsCropModalOpen(false);
-            }
-          }}
+        <Modal
+          onClose={() => setIsCropModalOpen(false)}
+          dismissDisabled={isUploading}
+          panelClassName="max-w-[640px] shadow-2xl"
         >
-          <div
-            className="w-full max-w-[640px] rounded-2xl bg-white p-6 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-lg font-semibold text-zinc-900">
-                Adjust your photo
-              </p>
-              <Button
-                onClick={() => setIsCropModalOpen(false)}
-                disabled={isUploading}
-                color={ButtonColor.Black}
-              >
-                Done
-              </Button>
-            </div>
+          <ModalHeader>
+            <ModalTitle className="text-lg font-semibold text-zinc-900">
+              Adjust your photo
+            </ModalTitle>
+          </ModalHeader>
 
+          <ModalBody>
             <div
               ref={containerRef}
               className="relative aspect-square w-full select-none touch-none overflow-hidden rounded-xl bg-zinc-900"
@@ -866,40 +850,57 @@ const ImageEditor: FC<ImageEditorProps> = ({
                   ))}
                 </div>
               )}
-
-              <button
-                type="button"
-                className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/85 text-zinc-700 shadow disabled:opacity-40"
-                onClick={() => handleRotate("left")}
-                disabled={isPreviewProcessing || isUploading}
-              >
-                <RiArrowGoBackLine className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/85 text-zinc-700 shadow disabled:opacity-40"
-                onClick={() => handleRotate("right")}
-                disabled={isPreviewProcessing || isUploading}
-              >
-                <RiArrowGoForwardLine className="h-5 w-5" />
-              </button>
             </div>
 
-            <div className="mt-5 flex items-center justify-between text-sm text-zinc-600">
-              <p className="hidden sm:block">
+            <div className="mt-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="Rotate left"
+                  title="Rotate left"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent"
+                  onClick={() => handleRotate("left")}
+                  disabled={isPreviewProcessing || isUploading}
+                >
+                  <RotateCcw className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Rotate right"
+                  title="Rotate right"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-40 disabled:hover:bg-transparent"
+                  onClick={() => handleRotate("right")}
+                  disabled={isPreviewProcessing || isUploading}
+                >
+                  <RotateCw className="h-5 w-5" />
+                </button>
+              </div>
+              <p className="hidden text-sm text-zinc-500 sm:block">
                 Drag the corners or move the square to crop your picture.
               </p>
-              <button
-                type="button"
-                className="font-medium text-green hover:opacity-80 disabled:opacity-40"
-                onClick={triggerFileSelect}
-                disabled={isUploading}
-              >
-                Choose another photo
-              </button>
             </div>
-          </div>
-        </div>
+          </ModalBody>
+
+          <ModalFooter className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              className="font-medium text-green hover:opacity-80 disabled:opacity-40"
+              onClick={triggerFileSelect}
+              disabled={isUploading}
+            >
+              Choose another photo
+            </button>
+            <ModalActions>
+              <Button
+                onClick={() => setIsCropModalOpen(false)}
+                disabled={isUploading}
+                color={ButtonColor.Black}
+              >
+                Done
+              </Button>
+            </ModalActions>
+          </ModalFooter>
+        </Modal>
       )}
     </div>
   );

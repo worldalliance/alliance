@@ -14,10 +14,37 @@ import {
 } from "react";
 import { zIndex } from "./zIndex";
 
+export enum ModalAlign {
+  Center = "center",
+  /** Flush to the bottom edge below `sm`, centered from `sm` up. */
+  BottomSheetOnMobile = "bottomSheetOnMobile",
+}
+
+type AlignmentStyles = {
+  viewportPadding: string;
+  wrapperAlignment: string;
+  /** Bottom sheets keep square bottom corners so backdrop cannot show through. */
+  panelShape: string;
+};
+
+const ALIGNMENT: Record<ModalAlign, AlignmentStyles> = {
+  [ModalAlign.Center]: {
+    viewportPadding: "p-4",
+    wrapperAlignment: "items-center",
+    panelShape: "rounded-2xl",
+  },
+  [ModalAlign.BottomSheetOnMobile]: {
+    viewportPadding: "sm:p-4",
+    wrapperAlignment: "items-end sm:items-center",
+    panelShape: "rounded-t-2xl sm:rounded-2xl",
+  },
+};
+
 export type ModalProps = {
   open?: boolean;
   onClose: () => void;
   children: ReactNode;
+  align?: ModalAlign;
   /**
    * Panel classes. Sizing and internal layout stay with the caller; these merge
    * over the shell's defaults.
@@ -81,11 +108,10 @@ export type ModalHeaderProps = {
 };
 
 /**
- * Right padding holding the close button's corner clear of the header's
- * contents. Applied after the caller's classes so general padding cannot
- * override the gutter.
+ * `!important` keeps responsive padding shorthands such as `sm:p-8` from
+ * reclaiming the close button's gutter after Tailwind emits variants.
  */
-export const MODAL_CLOSE_GUTTER = "pr-14";
+export const MODAL_CLOSE_GUTTER = "pr-14!";
 
 export const ModalHeader: React.FC<ModalHeaderProps> = ({
   children,
@@ -107,6 +133,20 @@ export const ModalHeader: React.FC<ModalHeaderProps> = ({
     </div>
   );
 };
+
+export type ModalBodyProps = {
+  children: ReactNode;
+  className?: string;
+};
+
+export const ModalBody: React.FC<ModalBodyProps> = ({
+  children,
+  className,
+}) => (
+  <div data-modal-body="" className={cn("p-5", className)}>
+    {children}
+  </div>
+);
 
 export type ModalFooterProps = {
   children: ReactNode;
@@ -176,6 +216,7 @@ const Modal: React.FC<ModalProps> = ({
   onClose,
   children,
   panelClassName,
+  align = ModalAlign.Center,
   ariaLabel,
   onKeyDown,
   dismissOnBackdrop = true,
@@ -184,6 +225,7 @@ const Modal: React.FC<ModalProps> = ({
   dismissDisabled = false,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { viewportPadding, wrapperAlignment, panelShape } = ALIGNMENT[align];
 
   useAccessibleNameWarning(panelRef, open);
 
@@ -216,15 +258,24 @@ const Modal: React.FC<ModalProps> = ({
           className={cn(zIndex.modal, "fixed inset-0 bg-black/40")}
         />
         <Dialog.Viewport
-          className={cn(zIndex.modal, "fixed inset-0 overflow-y-auto p-4")}
+          // A portal's clicks still bubble the React tree, so a press anywhere
+          // in the dialog would reach whatever clickable region opened it.
+          onClick={(event) => event.stopPropagation()}
+          className={cn(
+            zIndex.modal,
+            "fixed inset-0 overflow-y-auto",
+            viewportPadding,
+          )}
         >
           {/*
-           * Scrolling lives on the viewport and centering on this wrapper:
+           * Scrolling lives on the viewport and alignment on this wrapper:
            * `items-center` on the scroll container itself would clip the top of
            * a panel taller than the screen, and page scroll is locked while a
            * modal is open, so clipped content would be unreachable.
            */}
-          <div className="flex min-h-full items-center justify-center">
+          <div
+            className={cn("flex min-h-full justify-center", wrapperAlignment)}
+          >
             <Dialog.Popup
               ref={panelRef}
               // Focus the panel rather than its first tabbable control, so
@@ -233,7 +284,8 @@ const Modal: React.FC<ModalProps> = ({
               onKeyDown={onKeyDown}
               aria-label={ariaLabel}
               className={cn(
-                "relative w-full max-w-md rounded-lg bg-white shadow-xl outline-none",
+                "relative w-full max-w-md bg-white shadow-xl outline-none",
+                panelShape,
                 panelClassName,
               )}
             >

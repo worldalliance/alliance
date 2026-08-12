@@ -1,4 +1,5 @@
 import Modal, {
+  ModalBody,
   ModalDescription,
   ModalHeader,
   ModalTitle,
@@ -28,7 +29,7 @@ export const SnapshotTargetPicker: React.FC<SnapshotTargetPickerProps> = ({
           responses you want to repoint at its current schema.
         </ModalDescription>
       </ModalHeader>
-      <div className="flex flex-col gap-2 p-5">
+      <ModalBody className="flex flex-col gap-2">
         {targets.map((target) => (
           <button
             key={target.formId}
@@ -39,7 +40,7 @@ export const SnapshotTargetPicker: React.FC<SnapshotTargetPickerProps> = ({
             <span className="text-xs text-zinc-500">form #{target.formId}</span>
           </button>
         ))}
-      </div>
+      </ModalBody>
     </Modal>
   );
 };
