@@ -1,0 +1,39 @@
+name: Slack mention
+description: Map a GitHub login to a Slack mention string.
+
+inputs:
+  github-username:
+    description: >-
+      GitHub login to look up. An empty or unmapped value yields an empty
+      mention.
+    required: false
+    default: ""
+
+outputs:
+  mention:
+    description: Slack mention (`<@Uxxxxxxxx>`), or empty string when unmapped.
+    value: ${{ steps.lookup.outputs.mention }}
+
+runs:
+  using: composite
+  steps:
+    - id: lookup
+      shell: bash
+      env:
+        GITHUB_USERNAME: ${{ inputs.github-username }}
+      run: |
+        set -euo pipefail
+
+        # Case-sensitive: GitHub payloads carry the canonical login casing.
+        case "$GITHUB_USERNAME" in
+          CaseyManning) mention="<@U08P0THG741>" ;;
+          charleslien)  mention="<@U0A0WQQM8HZ>" ;;
+          dorey)        mention="<@U0BLD70L7DY>" ;;
+          GrantHough)   mention="<@U0ACKHT60F4>" ;;
+          markzxu)      mention="<@U08P0TJ283T>" ;;
+          nuakashborde) mention="<@U0B2T057ZPU>" ;;
+          sidsquid)     mention="<@U08NU231VGS>" ;;
+          *)            mention="" ;;
+        esac
+
+        echo "mention=$mention" >> "$GITHUB_OUTPUT"

@@ -264,33 +264,9 @@ jobs:
 
       - name: Map GitHub actor to Slack mention
         id: actor_to_slack
-        run: |
-          actor="${{ github.actor }}"
-          mention=""
-          case "$actor" in
-            CaseyManning)
-              mention="<@U08P0THG741>"
-              ;;
-            sidsquid)
-              mention="<@U08NU231VGS>"
-              ;;
-            markzxu)
-              mention="<@U08P0TJ283T>"
-              ;;
-            charleslien)
-              mention="<@U0A0WQQM8HZ>"
-              ;;
-            GrantHough)
-              mention="<@U0ACKHT60F4>"
-              ;;
-            nuakashborde)
-              mention="<@U0B2T057ZPU>"
-              ;;
-            dorey)
-              mention="<@U0BLD70L7DY>"
-              ;;
-          esac
-          echo "mention=$mention" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/slack-mention
+        with:
+          github-username: ${{ github.actor }}
 
       # --- Build Slack payload from combined summary ---
 
