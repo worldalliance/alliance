@@ -1630,13 +1630,9 @@ const FormRenderer = ({
             </View>
           </View>
           {Object.keys(fieldErrors).length > 0 && (
-            <View className="flex-row gap-2">
-              {Object.entries(fieldErrors).map(([fieldId]) => (
-                <Text key={fieldId} className="text-red-500 text-base p-2">
-                  Your form has errors. Please fix before submitting.
-                </Text>
-              ))}
-            </View>
+            <Text className="text-red-500 text-base p-2">
+              Your form has errors. Please fix before submitting.
+            </Text>
           )}
         </View>
       )}
