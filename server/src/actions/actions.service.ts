@@ -2853,6 +2853,50 @@ export class ActionsService {
     return this.findOneActionUpdate(id);
   }
 
+  /**
+   * Hides a published update again until its displayed date. Publishing stamps
+   * `visibleAt` at the first body save, which is too early for an update
+   * written ahead of the date it is about; moving `visibleAt` up to `date`
+   * lets the `visibleAt <= now` gate republish it when that date arrives.
+   */
+  async unpublishActionUpdateUntilDate(id: number): Promise<ActionUpdate> {
+    const actionUpdate = await this.findOneActionUpdate(id);
+    const now = new Date();
+
+    if (actionUpdate.visibleAt === null) {
+      throw new BadRequestException('This update has not been published yet.');
+    }
+    if (actionUpdate.date <= now) {
+      throw new BadRequestException(
+        'The displayed date has already passed, so hiding the update until then would leave it visible.',
+      );
+    }
+
+    // A targeted column write rather than a `save` of the entity read above,
+    // so a concurrent schema save isn't written back over.
+    await this.actionUpdateRepository.update(id, {
+      visibleAt: actionUpdate.date,
+    });
+
+    return this.findOneActionUpdate(id);
+  }
+
+  /** Undoes `unpublishActionUpdateUntilDate` before the date it waits for. */
+  async publishActionUpdateNow(id: number): Promise<ActionUpdate> {
+    const actionUpdate = await this.findOneActionUpdate(id);
+    const now = new Date();
+
+    if (actionUpdate.visibleAt === null || actionUpdate.visibleAt <= now) {
+      throw new BadRequestException(
+        'This update is not waiting on a future date.',
+      );
+    }
+
+    await this.actionUpdateRepository.update(id, { visibleAt: now });
+
+    return this.findOneActionUpdate(id);
+  }
+
   async deleteActionUpdate(id: number) {
     const actionUpdate = await this.actionUpdateRepository.findOneOrFail({
       where: { id },

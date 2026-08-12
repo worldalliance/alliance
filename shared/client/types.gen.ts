@@ -9671,6 +9671,54 @@ export type ActionsNotifyUpdateAdminResponses = {
 
 export type ActionsNotifyUpdateAdminResponse = ActionsNotifyUpdateAdminResponses[keyof ActionsNotifyUpdateAdminResponses];
 
+export type ActionsUnpublishUpdateAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/{id}/unpublish';
+};
+
+export type ActionsUnpublishUpdateAdminErrors = {
+    /**
+     * The update is unpublished already, or its displayed date has passed.
+     */
+    400: HeyApiError;
+};
+
+export type ActionsUnpublishUpdateAdminError = ActionsUnpublishUpdateAdminErrors[keyof ActionsUnpublishUpdateAdminErrors];
+
+export type ActionsUnpublishUpdateAdminResponses = {
+    200: ActionUpdateDto;
+};
+
+export type ActionsUnpublishUpdateAdminResponse = ActionsUnpublishUpdateAdminResponses[keyof ActionsUnpublishUpdateAdminResponses];
+
+export type ActionsPublishUpdateNowAdminData = {
+    body?: never;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/actions/updates/{id}/publish-now';
+};
+
+export type ActionsPublishUpdateNowAdminErrors = {
+    /**
+     * The update is not waiting on a future date.
+     */
+    400: HeyApiError;
+};
+
+export type ActionsPublishUpdateNowAdminError = ActionsPublishUpdateNowAdminErrors[keyof ActionsPublishUpdateNowAdminErrors];
+
+export type ActionsPublishUpdateNowAdminResponses = {
+    200: ActionUpdateDto;
+};
+
+export type ActionsPublishUpdateNowAdminResponse = ActionsPublishUpdateNowAdminResponses[keyof ActionsPublishUpdateNowAdminResponses];
+
 export type ActionsDeleteUpdateAdminData = {
     body?: never;
     path: {

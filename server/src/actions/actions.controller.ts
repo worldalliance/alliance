@@ -1217,6 +1217,39 @@ export class ActionsController {
     );
   }
 
+  @Post('updates/:id/unpublish')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiResponse({
+    status: 400,
+    description:
+      'The update is unpublished already, or its displayed date has passed.',
+  })
+  async unpublishUpdateAdmin(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ActionUpdateDto> {
+    return new ActionUpdateDto(
+      await this.actionsService.unpublishActionUpdateUntilDate(id),
+    );
+  }
+
+  @Post('updates/:id/publish-now')
+  @UseGuards(AdminGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: ActionUpdateDto })
+  @ApiResponse({
+    status: 400,
+    description: 'The update is not waiting on a future date.',
+  })
+  async publishUpdateNowAdmin(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<ActionUpdateDto> {
+    return new ActionUpdateDto(
+      await this.actionsService.publishActionUpdateNow(id),
+    );
+  }
+
   @Delete('deleteUpdate/:id')
   @UseGuards(AdminGuard)
   @ApiOkResponse()

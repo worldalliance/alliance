@@ -7,6 +7,8 @@ import {
   actionsFindOneAdmin,
   actionsFindOneUpdateAdmin,
   actionsNotifyUpdateAdmin,
+  actionsPublishUpdateNowAdmin,
+  actionsUnpublishUpdateAdmin,
   actionsUpdateUpdateAdmin,
   ActionUpdateDto,
   ActionUpdateNotifyType,
@@ -16,7 +18,7 @@ import {
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import DateTimePicker from "@alliance/sharedweb/ui/DateTimePicker";
-import { EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { FormBuilder } from "../components/FormBuilder";
@@ -39,6 +41,26 @@ type ActionUpdateForm = {
   tagId: string;
   date: string;
   associatedEventId: string;
+};
+
+enum VisibilityState {
+  Unpublished = "unpublished",
+  Scheduled = "scheduled",
+  Published = "published",
+}
+
+type Visibility =
+  | { state: VisibilityState.Unpublished }
+  | { state: VisibilityState.Scheduled; visibleAt: Date }
+  | { state: VisibilityState.Published; visibleAt: Date };
+
+const visibilityOf = (update: ActionUpdateDto, now: number): Visibility => {
+  if (!update.visibleAt) return { state: VisibilityState.Unpublished };
+
+  const visibleAt = new Date(update.visibleAt);
+  return visibleAt.getTime() > now
+    ? { state: VisibilityState.Scheduled, visibleAt }
+    : { state: VisibilityState.Published, visibleAt };
 };
 
 const formOf = (update: ActionUpdateDto): ActionUpdateForm => ({
@@ -70,6 +92,7 @@ const ActionUpdatePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notifying, setNotifying] = useState(false);
+  const [changingVisibility, setChangingVisibility] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { tags: availableTags } = useTagsAdmin();
@@ -208,6 +231,52 @@ const ActionUpdatePage: React.FC = () => {
     [updateId],
   );
 
+  const changeVisibility = useCallback(
+    async (
+      call: () => ReturnType<typeof actionsUnpublishUpdateAdmin>,
+      fallbackError: string,
+    ) => {
+      setChangingVisibility(true);
+      setError(null);
+      try {
+        const response = await call();
+        if (!response.data) {
+          const message = response.error?.message;
+          throw new Error(
+            (Array.isArray(message) ? message.join("; ") : message) ??
+              fallbackError,
+          );
+        }
+        setUpdate(response.data);
+        setForm(formOf(response.data));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : fallbackError);
+        console.error(err);
+      } finally {
+        setChangingVisibility(false);
+      }
+    },
+    [],
+  );
+
+  const handleUnpublish = useCallback(
+    () =>
+      changeVisibility(
+        () => actionsUnpublishUpdateAdmin({ path: { id: updateId } }),
+        "Failed to unpublish the update",
+      ),
+    [changeVisibility, updateId],
+  );
+
+  const handlePublishNow = useCallback(
+    () =>
+      changeVisibility(
+        () => actionsPublishUpdateNowAdmin({ path: { id: updateId } }),
+        "Failed to publish the update",
+      ),
+    [changeVisibility, updateId],
+  );
+
   const saveSchema = useCallback(
     (body: DisplayOnlySchemaSaveBody) =>
       actionsUpdateUpdateAdmin({ path: { id: updateId }, body }),
@@ -251,6 +320,12 @@ const ActionUpdatePage: React.FC = () => {
   }
 
   const storedSchema = readDisplayOnlySchema(update.schema);
+  const hasUnsavedDetails =
+    JSON.stringify(form) !== JSON.stringify(formOf(update));
+
+  const now = Date.now();
+  const visibility = visibilityOf(update, now);
+  const displayDate = new Date(update.date);
 
   // The notification carries `shortNotifString` and goes to the saved audience,
   // so an unsaved edit to either would send something other than what's on
@@ -259,13 +334,100 @@ const ActionUpdatePage: React.FC = () => {
     if (update.notifyType === "none") {
       return "Pick an audience and save to enable sending.";
     }
-    if (JSON.stringify(form) !== JSON.stringify(formOf(update))) {
+    if (hasUnsavedDetails) {
       return "Save your changes before sending.";
     }
     if (!storedSchema || storedSchema.blocks.length === 0) {
       return "Write the update body on the Content tab first.";
     }
     return null;
+  });
+
+  // Unpublishing moves `visibleAt` to the saved date, so an unsaved edit to the
+  // picker would schedule the update for a different time than the one shown.
+  const unpublishBlockedReason = run(() => {
+    if (hasUnsavedDetails) {
+      return "Save your changes first.";
+    }
+    if (displayDate.getTime() <= now) {
+      return "The displayed date has already passed, so there's nothing to wait for.";
+    }
+    return null;
+  });
+
+  const hiddenBanner = run(() => {
+    switch (visibility.state) {
+      case VisibilityState.Unpublished:
+        return "Not visible to members yet — this update publishes the first time you save content on the Content tab.";
+      case VisibilityState.Scheduled:
+        return `Not visible to members yet — this update publishes ${visibility.visibleAt.toLocaleString()}.`;
+      case VisibilityState.Published:
+        return null;
+      default:
+        throw new Error(`unknown visibility: ${visibility satisfies never}`);
+    }
+  });
+
+  const visibilitySection = run(() => {
+    switch (visibility.state) {
+      case VisibilityState.Unpublished:
+        return (
+          <p className="text-sm text-gray-700">
+            Not published yet — this update publishes the first time you save
+            content on the Content tab.
+          </p>
+        );
+      case VisibilityState.Scheduled:
+        return (
+          <>
+            <p className="text-sm text-gray-700">
+              Hidden from members until {visibility.visibleAt.toLocaleString()},
+              when it publishes on its own.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handlePublishNow}
+                disabled={changingVisibility}
+                className="flex items-center gap-2 px-4 py-2 bg-green text-white rounded-md hover:scale-102 transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:hover:scale-100"
+              >
+                <Eye className="w-4 h-4" aria-hidden />
+                {changingVisibility ? "Publishing..." : "Publish now"}
+              </button>
+              <p className="text-xs text-gray-500">
+                Makes the update visible to members immediately.
+              </p>
+            </div>
+          </>
+        );
+      case VisibilityState.Published:
+        return (
+          <>
+            <p className="text-sm text-gray-700">
+              Visible to members since {visibility.visibleAt.toLocaleString()}.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleUnpublish}
+                disabled={changingVisibility || unpublishBlockedReason !== null}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50 disabled:hover:bg-white"
+              >
+                <EyeOff className="w-4 h-4" aria-hidden />
+                {changingVisibility
+                  ? "Unpublishing..."
+                  : "Unpublish until displayed date"}
+              </button>
+              <p className="text-xs text-gray-500">
+                {unpublishBlockedReason ??
+                  `Hides it from members until ${displayDate.toLocaleString()}.`}
+              </p>
+            </div>
+          </>
+        );
+      default:
+        throw new Error(`unknown visibility: ${visibility satisfies never}`);
+    }
   });
 
   const detailsTab = (
@@ -381,6 +543,8 @@ const ActionUpdatePage: React.FC = () => {
         />
       </FormSection>
 
+      <FormSection title="Member visibility">{visibilitySection}</FormSection>
+
       {events.length > 0 && (
         <FormSection
           title="Associated event"
@@ -452,13 +616,10 @@ const ActionUpdatePage: React.FC = () => {
         </button>
       </div>
 
-      {!update.visibleAt && (
+      {hiddenBanner && (
         <div className="mx-5 mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
           <EyeOff className="w-4 h-4 mt-0.5 shrink-0" aria-hidden />
-          <p className="text-sm">
-            Not visible to members yet — this update publishes the first time
-            you save content on the Content tab.
-          </p>
+          <p className="text-sm">{hiddenBanner}</p>
         </div>
       )}
 
