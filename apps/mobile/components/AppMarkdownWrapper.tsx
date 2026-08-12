@@ -4,23 +4,19 @@ import {
   Image,
   Linking,
   StyleProp,
-  StyleSheet,
   TextStyle,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   ViewStyle,
 } from "react-native";
-import Markdown, {
-  ASTNode,
-  renderRules as defaultRenderRules,
-  RenderRules,
-} from "react-native-markdown-display";
+import Markdown, { ASTNode, RenderRules } from "react-native-markdown-display";
 import { getApiUrl } from "../lib/config";
 import { ImageLightboxModal } from "./ImageLightbox";
+import { renderListItem } from "./markdownListItem";
 import {
   MARKDOWN_FILL_WIDTH_STYLE,
   MARKDOWN_PALETTES,
-  markdownBulletIconStyle,
   MarkdownTone,
   useMarkdownTextStyles,
   type MarkdownLayoutStyle,
@@ -318,6 +314,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
   const handleLinkPress = useHandleLinkPress();
   const textStyles = useMarkdownTextStyles();
   const palette = MARKDOWN_PALETTES[tone];
+  const { fontScale } = useWindowDimensions();
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
 
   const wrapImage = useCallback(
@@ -467,25 +464,15 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           {children}
         </View>
       ),
-      list_item: (node, children, parent, styles, inheritedStyles = {}) => {
-        const patchedStyles = {
-          ...styles,
-          list_item: StyleSheet.flatten([
-            styles.list_item,
-            {
-              marginTop: isFirstAmongSiblings(node) ? 0 : MD_SPACE_LIST_TOP,
-              marginBottom: 0,
-            },
-          ]),
-        };
-        return defaultRenderRules.list_item!(
+      list_item: (node, children, parent, _styles, inheritedStyles = {}) =>
+        renderListItem({
           node,
           children,
           parent,
-          patchedStyles,
           inheritedStyles,
-        );
-      },
+          fontScale,
+          marginTop: isFirstAmongSiblings(node) ? 0 : MD_SPACE_LIST_TOP,
+        }),
       blockquote: (node, children, parent, styles) => (
         <View
           key={node.key}
@@ -567,7 +554,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
           : renderPlainCodeBlock({ node, parent, codeStyle: textStyles.code });
       },
     }),
-    [handleLinkPress, wrapImage, renderImgcap, textStyles.code],
+    [handleLinkPress, wrapImage, renderImgcap, textStyles.code, fontScale],
   );
 
   const bodyStyle = small ? textStyles.bodySmall : textStyles.body;
@@ -616,9 +603,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
         backgroundColor: palette.blockquoteBackground,
       },
       bullet_list: {},
-      bullet_list_icon: markdownBulletIconStyle(bodyStyle),
       ordered_list: {},
-      list_item: {},
       code_inline: {
         ...textStyles.codeInline,
         backgroundColor: palette.codeInlineBackground,

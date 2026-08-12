@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Platform, TextStyle, ViewStyle } from "react-native";
+import { TextStyle, ViewStyle } from "react-native";
 import { useResolveClassNames } from "uniwind";
 import { colors } from "../lib/style/colors";
 import { FontFamily, FontWeight, resolveFontFamily } from "./system/Text";
@@ -23,9 +23,9 @@ const MONO_FONT = resolveFontFamily(FontFamily.Mono, FontWeight.Regular);
 
 /**
  * The only markdown styles a caller may override. Text sizing is deliberately
- * excluded: `bullet_list_icon` and the truncated-preview clamp are derived from
- * the body style, so a caller-supplied `body` would desync them. Size goes
- * through `small` and color through `tone`.
+ * excluded: the truncated-preview clamp reads the body style from this hook
+ * rather than the merged result, so a caller-supplied `body` would desync it.
+ * Size goes through `small` and color through `tone`.
  */
 export type MarkdownLayoutStyle = {
   paragraph?: ViewStyle;
@@ -74,20 +74,6 @@ export type MarkdownTextStyles = {
   code: TextStyle;
   codeInline: TextStyle;
 };
-
-// react-native-markdown-display uses a middle dot on iOS instead of a full
-// bullet. Scale and alignment stay relative to the rendered body style.
-const BULLET_GLYPH_IS_MIDDLE_DOT = Platform.OS === "ios";
-const MIDDLE_DOT_SCALE = 2.33;
-
-export function markdownBulletIconStyle(base: TextStyle): TextStyle {
-  if (!BULLET_GLYPH_IS_MIDDLE_DOT || !base.fontSize) return {};
-
-  return {
-    fontSize: Math.round(base.fontSize * MIDDLE_DOT_SCALE),
-    top: Math.round((base.lineHeight ?? base.fontSize * 1.5) / 3),
-  };
-}
 
 export function useMarkdownTextStyles(): MarkdownTextStyles {
   const body = useResolveClassNames("text-base leading-normal");
