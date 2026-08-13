@@ -1,3 +1,4 @@
+import { errorMessage } from "@alliance/common/errorMessage";
 import {
   imagesUploadImage,
   userDeleteUserAdmin,
@@ -100,7 +101,12 @@ export const DeleteAccountModal: React.FC<DeleteAccountModalProps> = ({
       onDeleted();
     } catch (deleteError) {
       console.error("Failed to delete account", deleteError);
-      setError("Failed to delete the account. Try again.");
+      setError(
+        errorMessage({
+          error: deleteError,
+          fallback: "Failed to delete the account.",
+        }),
+      );
       setIsDeleting(false);
     }
   }, [canDelete, confirmationEmail, onDeleted, reason, screenshotKey, userId]);
