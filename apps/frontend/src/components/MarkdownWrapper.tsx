@@ -46,17 +46,19 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
           ),
           ol: ({ ...props }) => (
             <ol
-              className="text-lg list-decimal list-inside first:!mt-0 !mt-2 md:!mt-5 pl-4"
+              className="text-lg list-decimal list-outside first:!mt-0 !mt-2 md:!mt-5 pl-6"
               {...props}
             />
           ),
           ul: ({ ...props }) => (
             <ul
-              className="text-lg list-disc list-inside first:!mt-0 !mt-2 md:!mt-5 pl-4"
+              className="text-lg list-disc list-outside first:!mt-0 !mt-2 md:!mt-5 pl-6"
               {...props}
             />
           ),
-          li: ({ ...props }) => <li className="first:!mt-0 !mt-2" {...props} />,
+          li: ({ ...props }) => (
+            <li className="first:!mt-0 !mt-2 [&>p]:my-0" {...props} />
+          ),
           a: ({ ...props }) => <ExternalLinkPreview {...props} />,
         }}
       >

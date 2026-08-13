@@ -51,18 +51,18 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
         ),
         ol: ({ ...props }) => (
           <ol
-            className={cn(textClass, "list-decimal list-inside pl-2")}
+            className={cn(textClass, "list-decimal list-outside pl-6")}
             {...props}
           />
         ),
         ul: ({ ...props }) => (
           <ul
-            className={cn(textClass, "list-disc list-inside pl-2")}
+            className={cn(textClass, "list-disc list-outside pl-6")}
             {...props}
           />
         ),
         li: ({ ...props }) => (
-          <li className={cn(textClass, "my-1")} {...props} />
+          <li className={cn(textClass, "my-1 [&>p]:my-0")} {...props} />
         ),
         // The ! on text-white is load-bearing: the link components apply
         // `text-link`, a raw unlayered CSS class (apps' index.css) that
