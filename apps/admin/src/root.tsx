@@ -1,3 +1,8 @@
+import { client } from "@alliance/shared/client/client.gen";
+import { getApiUrl } from "@alliance/sharedweb/lib/config";
+import { useNumberInputScrollGuard } from "@alliance/sharedweb/lib/useNumberInputScrollGuard";
+import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   isRouteErrorResponse,
   Links,
@@ -8,11 +13,7 @@ import {
 } from "react-router";
 import { Route } from "../.react-router/types/src/+types/root";
 import { AuthProvider } from "./lib/AuthContext";
-import { ToastProvider } from "@alliance/sharedweb/ui/ToastProvider";
-import { client } from "@alliance/shared/client/client.gen";
-import { getApiUrl } from "@alliance/sharedweb/lib/config";
 import { GroupAssignmentProvider } from "./lib/GroupAssignmentContext";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -64,6 +65,8 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  useNumberInputScrollGuard();
+
   return (
     <html lang="en">
       <head>
