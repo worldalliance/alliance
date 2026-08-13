@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'src/utils/Repository';
+import type { DeepPartial, EntityManager } from 'typeorm';
 import {
   EventLogDto,
   EventLogList,
@@ -11,6 +12,23 @@ import {
 import { EventLog, EventType, SEND_TO_SLACK } from './event-log.entity';
 import { EventLogEvents } from './eventlog.events';
 import { escapeSlackText } from './slack-format';
+
+export interface EventLogMessage {
+  type: EventType;
+  message: string;
+  slackMessage?: string;
+  blob: Record<string, unknown> | null;
+  userId: number | null;
+}
+
+function toEntity(data: EventLogMessage): DeepPartial<EventLog> {
+  return {
+    event: data.type,
+    message: data.message,
+    blob: data.blob,
+    userId: data.userId,
+  };
+}
 
 @Injectable()
 export class EventLogService {
@@ -65,6 +83,9 @@ export class EventLogService {
    * entry is saved, forwarding (the in-process created event and the Slack
    * copy) is best-effort and a failure there only logs.
    *
+   * When the entry must be atomic with the change it records rather than
+   * merely surfaced, use {@link sendMessageInTransaction}.
+   *
    * `message` is stored raw in the event log (and shown in the admin panel);
    * the Slack copy is `escapeSlackText(message)`, so interpolated user text
    * can't inject mentions or links. Pass `slackMessage` only when the Slack
@@ -72,23 +93,12 @@ export class EventLogService {
    * sent verbatim, so run any untrusted text interpolated into it through
    * `escapeSlackText` yourself.
    */
-  async sendMessage(data: {
-    type: EventType;
-    message: string;
-    slackMessage?: string;
-    blob: Record<string, unknown> | null;
-    userId: number | null;
-  }): Promise<Result<void, Error>> {
-    const { type, message, blob, userId } = data;
+  async sendMessage(data: EventLogMessage): Promise<Result<void, Error>> {
+    const { message } = data;
 
     const saved = await R.fromPromiseFn(() =>
       this.eventLogRepository.save(
-        this.eventLogRepository.create({
-          event: type,
-          message: message,
-          blob,
-          userId,
-        }),
+        this.eventLogRepository.create(toEntity(data)),
       ),
     );
     if (R.isFailure(saved)) {
@@ -99,26 +109,45 @@ export class EventLogService {
       return saved;
     }
 
-    const forwarded = await R.fromPromiseFn(() =>
-      this.forward(saved.value, data),
-    );
-    if (R.isFailure(forwarded)) {
-      this.logger.error(
-        `Failed to forward event log message: ${message}`,
-        forwarded.error,
-      );
-    }
+    await this.forwardBestEffort(saved.value, data);
     return R.success(undefined);
   }
 
-  private async forward(
+  /**
+   * Writes the entry through the caller's transaction, so it commits or rolls
+   * back with the change it records. Use this when the entry is the only
+   * remaining evidence of that change and so must not be able to go missing on
+   * its own — an admin account deletion, where the row the entry describes no
+   * longer exists to re-derive it from. Unlike {@link sendMessage} a failed
+   * write rejects, so the caller's transaction aborts with it.
+   *
+   * Forwarding is deferred to the returned callback, which the caller runs
+   * after committing: it makes a network call, which must not hold the
+   * transaction open, and it must not announce a change that then rolled back.
+   */
+  async sendMessageInTransaction(
+    manager: EntityManager,
+    data: EventLogMessage,
+  ): Promise<() => Promise<void>> {
+    const saved = await manager.save(manager.create(EventLog, toEntity(data)));
+
+    return () => this.forwardBestEffort(saved, data);
+  }
+
+  private async forwardBestEffort(
     saved: EventLog,
-    data: {
-      type: EventType;
-      message: string;
-      slackMessage?: string;
-    },
+    data: EventLogMessage,
   ): Promise<void> {
+    const forwarded = await R.fromPromiseFn(() => this.forward(saved, data));
+    if (R.isFailure(forwarded)) {
+      this.logger.error(
+        `Failed to forward event log message: ${data.message}`,
+        forwarded.error,
+      );
+    }
+  }
+
+  private async forward(saved: EventLog, data: EventLogMessage): Promise<void> {
     const { type, message } = data;
     const slackMessage = data.slackMessage ?? escapeSlackText(message);
 

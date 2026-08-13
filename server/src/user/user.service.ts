@@ -9,6 +9,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from '@nestjs/jwt';
@@ -25,8 +26,9 @@ import { Community } from 'src/community/entities/community.entity';
 import { ALL_MEMBERS_TAG_NAME } from 'src/constants';
 import { EventType } from 'src/eventlog/event-log.entity';
 import { EventLogService } from 'src/eventlog/eventlog.service';
+import { escapeSlackText } from 'src/eventlog/slack-format';
 import { City } from 'src/geo/city.entity';
-import { ImagesService } from 'src/images/images.service';
+import { getImageSource, ImagesService } from 'src/images/images.service';
 import { MailService } from 'src/mail/mail.service';
 import { NotificationCategory } from 'src/notifs/entities/notification.entity';
 import {
@@ -55,6 +57,7 @@ import type {
 } from 'src/utils/Repository';
 import {
   Brackets,
+  DataSource,
   DeepPartial,
   type FindOptionsWhere,
   ILike,
@@ -221,6 +224,7 @@ export class UserService {
   private readonly logger = new Logger(UserService.name);
 
   constructor(
+    private readonly dataSource: DataSource,
     @InjectRepository(User)
     private userRepository: Repository<User>,
     @InjectRepository(City)
@@ -3068,5 +3072,80 @@ export class UserService {
       userId: userId,
       blob: null,
     });
+  }
+
+  /**
+   * Hard-deletes a member. Everything keyed to them goes with the row: forum
+   * posts and comments, action activity (so completion counts drop), messages,
+   * notifications, and their own event-log history.
+   *
+   * The record of the deletion is therefore written with a null `userId` —
+   * `EventLog.user` cascades, so an entry attributed to the deleted member
+   * would delete itself along with everything else. It shares the deletion's
+   * transaction: once the row is gone that entry is the only evidence the
+   * account ever existed, so a failure to write it has to take the deletion
+   * with it rather than leave an unrecorded one behind.
+   */
+  async deleteUserAdmin(params: {
+    userId: number;
+    adminId: number;
+    reason: string;
+    confirmationEmail: string;
+    screenshotKey?: string | null;
+  }): Promise<void> {
+    const { userId, adminId, reason, confirmationEmail, screenshotKey } =
+      params;
+
+    const [user, admin] = await Promise.all([
+      this.userRepository.findOne({ where: { id: userId } }),
+      this.userRepository.findOne({ where: { id: adminId } }),
+    ]);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    if (!admin) {
+      throw new UnauthorizedException();
+    }
+    if (user.id === admin.id) {
+      throw new BadRequestException('You cannot delete your own account');
+    }
+    if (
+      confirmationEmail.trim().toLowerCase() !== user.email.trim().toLowerCase()
+    ) {
+      throw new BadRequestException(
+        "Confirmation does not match the member's email address",
+      );
+    }
+
+    const deleted = { id: user.id, name: user.name, email: user.email };
+    const screenshotUrl = screenshotKey ? getImageSource(screenshotKey) : null;
+
+    const summary = `Admin ${admin.name} deleted the account for ${deleted.name} (${deleted.email}, id ${deleted.id}). Reason: ${reason}`;
+    const screenshotLink = screenshotUrl
+      ? ` — <${screenshotUrl}|screenshot>`
+      : '';
+
+    const forwardAudit = await this.dataSource.transaction(async (manager) => {
+      await manager.delete(User, deleted.id);
+
+      return this.eventLogService.sendMessageInTransaction(manager, {
+        type: EventType.AccountDeleted,
+        message: screenshotUrl ? `${summary} (${screenshotUrl})` : summary,
+        slackMessage: `${escapeSlackText(summary)}${screenshotLink}`,
+        userId: null,
+        blob: {
+          deletedUserId: deleted.id,
+          deletedUserName: deleted.name,
+          deletedUserEmail: deleted.email,
+          adminId: admin.id,
+          adminName: admin.name,
+          reason,
+          screenshotUrl,
+        },
+      });
+    });
+
+    await forwardAudit();
   }
 }

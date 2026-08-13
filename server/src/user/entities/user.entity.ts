@@ -498,7 +498,9 @@ export class User {
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   participants: Relation<Participant>[];
 
-  @ManyToMany(() => Action, (action) => action.authors)
+  @ManyToMany(() => Action, (action) => action.authors, {
+    onDelete: 'CASCADE',
+  })
   @ApiPropertyOptional({ type: () => Action, isArray: true })
   @Type(() => Action)
   authoredActions?: Relation<Action>[];

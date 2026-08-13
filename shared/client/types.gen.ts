@@ -965,6 +965,18 @@ export type UpdateUserRolesAdminDto = {
     ambassador?: boolean;
 };
 
+export type DeleteUserAdminDto = {
+    /**
+     * Posted to Slack; not stored on the account
+     */
+    reason: string;
+    /**
+     * Must match the member's email address
+     */
+    confirmationEmail: string;
+    screenshotKey?: string | null;
+};
+
 export type StaffDirectoryEntryDto = {
     id: number;
     displayName: string;
@@ -1496,7 +1508,7 @@ export type NotifClickResponseDto = {
     mms: boolean;
 };
 
-export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested';
+export type EventType = 'account_created' | 'contract_signed' | 'contract_suspended' | 'sms_unsubscribe' | 'sms_resubscribe' | 'sms_inbound' | 'sms_failure' | 'forum_action_autocomplete' | 'action_comment' | 'forum_reply_notif_failure' | 'action_opt_out' | 'account_deletion_requested' | 'account_deleted';
 
 export type EventLogUserDto = {
     id: number;
@@ -4488,6 +4500,32 @@ export type UserCityCountsAdminResponses = {
 };
 
 export type UserCityCountsAdminResponse = UserCityCountsAdminResponses[keyof UserCityCountsAdminResponses];
+
+export type UserDeleteUserAdminData = {
+    body: DeleteUserAdminDto;
+    path: {
+        id: number;
+    };
+    query?: never;
+    url: '/user/userdetail/{id}';
+};
+
+export type UserDeleteUserAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type UserDeleteUserAdminError = UserDeleteUserAdminErrors[keyof UserDeleteUserAdminErrors];
+
+export type UserDeleteUserAdminResponses = {
+    200: {
+        [key: string]: never;
+    };
+};
+
+export type UserDeleteUserAdminResponse = UserDeleteUserAdminResponses[keyof UserDeleteUserAdminResponses];
 
 export type UserUserDetailAdminData = {
     body?: never;

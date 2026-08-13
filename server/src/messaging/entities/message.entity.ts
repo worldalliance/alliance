@@ -59,7 +59,9 @@ export class Message {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   deletedAt?: Date;
 
-  @ManyToOne(() => Message, (message) => message.replies)
+  @ManyToOne(() => Message, (message) => message.replies, {
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'replyToId' })
   @ApiProperty({ type: () => Message, required: false })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating

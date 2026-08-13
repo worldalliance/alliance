@@ -72,6 +72,7 @@ import {
 } from './dto/tag.dto';
 import {
   AssignGroupsDto,
+  DeleteUserAdminDto,
   FriendStatusDto,
   MyVisibilityContextDto,
   NMembersResponseDto,
@@ -447,6 +448,23 @@ export class UserController {
     );
   }
 
+  @Delete('userdetail/:id')
+  @UseGuards(AdminGuard)
+  @ApiOkResponse()
+  async deleteUserAdmin(
+    @Request() req: JwtRequest,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: DeleteUserAdminDto,
+  ): Promise<void> {
+    await this.userService.deleteUserAdmin({
+      userId: id,
+      adminId: req.user.sub,
+      reason: body.reason,
+      confirmationEmail: body.confirmationEmail,
+      screenshotKey: body.screenshotKey,
+    });
+  }
+
   @Get('list-public')
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: UserDto, isArray: true })
@@ -498,9 +516,9 @@ export class UserController {
   async updateStaffDirectoryAdmin(
     @Body() body: UpdateStaffDirectoryDto,
   ): Promise<StaffDirectoryEntryDto[]> {
-    return (
-      await this.userService.updateStaffDirectory(body.items)
-    ).map((user) => new StaffDirectoryEntryDto(user));
+    return (await this.userService.updateStaffDirectory(body.items)).map(
+      (user) => new StaffDirectoryEntryDto(user),
+    );
   }
 
   @Get('membersWithFriends')

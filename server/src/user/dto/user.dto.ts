@@ -11,6 +11,7 @@ import {
   IsArray,
   IsBoolean,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   ValidateNested,
@@ -18,7 +19,7 @@ import {
 import { getImageSource } from 'src/images/images.service';
 import { IsE164 } from 'src/utils/phone';
 import { IsPlainTime, trimToPlainTime } from 'src/utils/plain-time';
-import { trimToNull } from 'src/utils/transforms';
+import { trim, trimToNull } from 'src/utils/transforms';
 import { ClusterSummaryDto } from '../../cluster/dto/cluster.dto';
 import { Cluster } from '../../cluster/entities/cluster.entity';
 import { Campaign } from '../../campaign/entities/campaign.entity';
@@ -543,6 +544,31 @@ export class UpdateUserRolesAdminDto extends PartialType(
   @IsOptional()
   @IsBoolean()
   staff?: boolean;
+}
+
+export class DeleteUserAdminDto {
+  @ApiProperty({ description: 'Posted to Slack; not stored on the account' })
+  @IsString()
+  @IsNotEmpty()
+  @Transform(trim)
+  reason: string;
+
+  /**
+   * Typed by the admin and checked against the account being deleted, so the
+   * gesture names its own target — a fixed phrase would confirm equally well
+   * on whichever profile happened to be open.
+   */
+  @ApiProperty({ description: "Must match the member's email address" })
+  @IsString()
+  @IsNotEmpty()
+  @Transform(trim)
+  confirmationEmail: string;
+
+  @ApiPropertyOptional({ type: String, nullable: true })
+  @IsOptional()
+  @IsString()
+  @Transform(trimToNull)
+  screenshotKey?: string | null;
 }
 
 export class StaffDirectoryEntryDto {

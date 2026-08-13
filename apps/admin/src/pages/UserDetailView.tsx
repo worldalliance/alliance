@@ -59,6 +59,7 @@ import {
   MapPin,
   Pencil,
   Phone,
+  Trash2,
   UserPlus,
   X,
 } from "lucide-react";
@@ -66,6 +67,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLoaderData, useNavigate } from "react-router";
 import { Route } from "../../.react-router/types/src/pages/+types/UserDetailView";
 import CreateActivityControls from "../components/CreateActivityControls";
+import DeleteAccountModal from "../components/DeleteAccountModal";
 
 const AWAY_REASON_OPTIONS = [
   { value: "vacation", label: "Vacation" },
@@ -177,6 +179,7 @@ const UserDetailView: React.FC = () => {
   const [suspendMutationError, setSuspendMutationError] = useState<
     string | null
   >(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [expandedEmailId, setExpandedEmailId] = useState<number | null>(null);
   const [awayRangesState, setAwayRangesState] =
     useState<UserAwayRangeDto[]>(awayRanges);
@@ -658,6 +661,15 @@ const UserDetailView: React.FC = () => {
               }
             >
               {isSuspendPending ? "Suspending..." : "Suspend contract"}
+            </Button>
+            <Button
+              color={ButtonColor.Red}
+              onClick={() => setIsDeleteModalOpen(true)}
+              size="small"
+              title="Permanently delete this member's account"
+            >
+              <Trash2 size={14} className="inline mr-1" />
+              Delete account
             </Button>
           </div>
           {suspendMutationError && (
@@ -1503,6 +1515,19 @@ const UserDetailView: React.FC = () => {
           </section>
         </div>
       </div>
+      {isDeleteModalOpen && (
+        <DeleteAccountModal
+          userId={user.id}
+          userName={user.name}
+          userEmail={user.email}
+          onCancel={() => setIsDeleteModalOpen(false)}
+          onDeleted={() => {
+            setIsDeleteModalOpen(false);
+            success("Account deleted", user.name);
+            navigate("/members");
+          }}
+        />
+      )}
     </div>
   );
 };
