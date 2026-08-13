@@ -22,7 +22,9 @@ Run unit tests from the repo root with `bun run test`. Scope it by passing packa
 
 ## Dependencies
 
-Dependencies in `apps/admin/package.json` must also be declared in `apps/frontend/package.json`. The workspace setup is non-standard. Use the same version range across packages and run `bun install` after editing.
+Dependencies used in the admin app or frontend (e.g. including `apps/admin`, `common`, etc.) must be declared in `apps/frontend/package.json`. The workspace setup is non-standard and installs all web packages from `apps/frontend/package.json`. Use the same version range across packages and run `bun install` after editing.
+
+Don't hand-roll something a well-maintained npm package already solves (parsing, sanitization, date handling, retries, etc.) — adopt the established package instead of maintaining our own version. The same goes for code already in this repo: reuse or extract a shared utility rather than duplicating similar functionality.
 
 ## Enum branching
 
