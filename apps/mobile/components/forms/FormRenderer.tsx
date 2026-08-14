@@ -103,6 +103,7 @@ import Button, { ButtonColor, ButtonSize } from "../system/Button";
 import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
 import FormModal from "./FormModal";
+import HtmlBlock from "./HtmlBlock";
 import { RenderField } from "./RenderField";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
 import VideoPlayer from "./VideoPlayer";
@@ -333,6 +334,8 @@ export function RenderDisplayBlockMobile({
           <AppMarkdownWrapper>{block.text}</AppMarkdownWrapper>
         </View>
       );
+    case "html":
+      return <HtmlBlock html={block.html} />;
     case "image":
       return (
         <ImageBlock
@@ -475,6 +478,7 @@ export function RenderDisplayBlockMobile({
       );
     }
     default:
+      block satisfies never;
       return null;
   }
 }
