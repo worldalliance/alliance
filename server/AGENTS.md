@@ -18,6 +18,22 @@ On an entity, `undefined` means "not loaded". A column is always loaded, so a co
 bio: string | null;                                  // NULL
 ```
 
+### jsonb columns
+
+For a jsonb column with any real structure, define a zod schema, infer the type from it, and declare the column `unknown` or `unknown | null`:
+
+```ts
+export const videoProcessingInfoSchema = z.object({ encoder: z.string(), /* … */ });
+export type VideoProcessingInfo = z.infer<typeof videoProcessingInfoSchema>;
+
+@Column({ type: 'jsonb', nullable: true })
+processingInfo: unknown | null;
+```
+
+Then parse at the read boundary, once. Parse right after the fetch and pass the narrowed type down: `parseAction(action): ParsedAction` in `src/actions/entities/action.entity.ts`.
+
+Homogeneous scalar collections (`string[]`, `number[]`) are fine declared directly.
+
 ## Service methods
 
 Prefer fetch-then-compute: do all DB reads up top, then run pure logic on the fetched data. Keeps the IO surface visible and the logic easy to test.
