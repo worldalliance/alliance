@@ -57,7 +57,7 @@ export const defaultGroupLeadsEmailSubject = `#{nmembers} of your Alliance group
 
 export const defaultGroupLeadsEmailContents = `Hi #{firstname},
 
-#{nmembers} of your Alliance group members have not yet completed their upcoming task. You are responsible for ensuring that they do so over the next #{days}. Consider sending them a reminder.
+#{nmembers} of your Alliance group members have not yet completed their upcoming task. You are responsible for ensuring that they do so over the next #{days}. Please consider sending them a reminder.
 
 See the full list of members here: #{grouplink}
 `;
