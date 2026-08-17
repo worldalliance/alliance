@@ -99,3 +99,7 @@ Prefer the `Result<T, E>` type in `common/` for operations that can fail (parsin
 The full source:
 
 @common/src/result.ts
+
+## Working files
+
+Keep everything inside the repo. Don't write to `/tmp`, `~`, or any other location outside this directory — scratch files, notes, scripts, logs, dumps, and downloaded data all go in the repo. Same for reading: prefer files in the repo over things stashed elsewhere on the machine.
