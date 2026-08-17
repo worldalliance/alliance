@@ -691,8 +691,10 @@ export type User = {
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
+    referredById: number | null;
     referredByInvite: OnetimeInvite | null;
     referralSource: ReferralSource;
+    referredByCampaignId: number | null;
     referredByCampaign?: Campaign | null;
     tags: Array<Tag>;
     /**
@@ -760,14 +762,15 @@ export type UserDto = {
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
+    referredById: number | null;
     referralSource: ReferralSource;
+    referredByCampaignId: number | null;
     tags: Array<Tag>;
     communities: Array<Community>;
     leaderOfIds: Array<number>;
     clusterId: number | null;
     email: string;
     hasActiveContract: boolean;
-    referredById?: number;
     contractEvents?: Array<ContractEventDto>;
 };
 
@@ -947,14 +950,15 @@ export type UserAdminDetailDto = {
     undergoingGroupAssignment: boolean;
     remindAboutUncompletedGroupMembers: boolean;
     receiveReplyNotifications: boolean;
+    referredById: number | null;
     referralSource: ReferralSource;
+    referredByCampaignId: number | null;
     tags: Array<Tag>;
     communities: Array<Community>;
     leaderOfIds: Array<number>;
     clusterId: number | null;
     email: string;
     hasActiveContract: boolean;
-    referredById?: number;
     contractEvents?: Array<ContractEventDto>;
     location: UserAdminLocationDto;
     invitedBy: UserAdminInvitedByDto | null;

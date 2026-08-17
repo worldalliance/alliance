@@ -1,6 +1,8 @@
 import {
+  CampaignDto,
   OnetimeInviteEdgeDto,
   UserDto,
+  campaignFindAllAdmin,
   userGetOnetimeInviteGraphEdgesAdmin,
   userListForGraphAdmin,
 } from "@alliance/shared/client";
@@ -16,14 +18,25 @@ import {
   zoom,
   zoomIdentity,
 } from "d3";
+import { AlertTriangle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+enum NodeKind {
+  User = "user",
+  /**
+   * Hub every user with no referral attribution hangs off, so the graph stays
+   * one connected component instead of a scatter of free-floating trees.
+   */
+  Unattributed = "unattributed",
+  Campaign = "campaign",
+}
 
 interface GraphNode extends SimulationNodeDatum {
   id: string;
+  kind: NodeKind;
   userId?: number;
   displayName: string;
   profilePicture: string | null;
-  isCenter?: boolean;
 }
 
 interface GraphLink extends SimulationLinkDatum<GraphNode> {
@@ -44,14 +57,74 @@ interface GraphRefs {
 }
 
 const NODE_RADIUS = 20;
-const CENTER_RADIUS = 14;
+const HUB_RADIUS = 14;
+
+interface NodeStyle {
+  radius: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  /** Drawn inside the circle when the node has no picture. */
+  glyph: (node: GraphNode) => string;
+  glyphFontSize: number;
+  glyphColor: string;
+  /** How the display name is drawn under the circle; null draws no name. */
+  label: { color: string; weight: string } | null;
+}
+
+const NODE_STYLE: Record<NodeKind, NodeStyle> = {
+  [NodeKind.User]: {
+    radius: NODE_RADIUS,
+    fill: "#e5e7eb",
+    stroke: "#d1d5db",
+    strokeWidth: 1.5,
+    glyph: () => "?",
+    glyphFontSize: 16,
+    glyphColor: "#9ca3af",
+    label: { color: "#374151", weight: "normal" },
+  },
+  [NodeKind.Unattributed]: {
+    radius: HUB_RADIUS,
+    fill: "#f3f4f6",
+    stroke: "#9ca3af",
+    strokeWidth: 2,
+    glyph: () => "NONE",
+    glyphFontSize: 9,
+    glyphColor: "#6b7280",
+    label: null,
+  },
+  [NodeKind.Campaign]: {
+    radius: NODE_RADIUS,
+    fill: "#ede9fe",
+    stroke: "#8b5cf6",
+    strokeWidth: 2,
+    glyph: (node) => node.displayName.charAt(0).toUpperCase(),
+    glyphFontSize: 16,
+    glyphColor: "#6d28d9",
+    label: { color: "#6d28d9", weight: "bold" },
+  },
+};
+
+const LEGEND: { kind: NodeKind; label: string }[] = [
+  { kind: NodeKind.Campaign, label: "Campaign" },
+  { kind: NodeKind.Unattributed, label: "NONE = no attribution" },
+];
+
+/** Only user nodes are subject to the contract/role/community/tag filters. */
+const FILTERABLE: Record<NodeKind, boolean> = {
+  [NodeKind.User]: true,
+  [NodeKind.Unattributed]: false,
+  [NodeKind.Campaign]: false,
+};
 
 const InviteGraphPage = () => {
   const svgRef = useRef<SVGSVGElement>(null);
   const graphRef = useRef<GraphRefs | null>(null);
   const [users, setUsers] = useState<UserDto[]>([]);
   const [inviteEdges, setInviteEdges] = useState<OnetimeInviteEdgeDto[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Filters
   const [contractFilter, setContractFilter] =
@@ -65,11 +138,39 @@ const InviteGraphPage = () => {
     Promise.all([
       userListForGraphAdmin(),
       userGetOnetimeInviteGraphEdgesAdmin(),
-    ]).then(([usersRes, edgesRes]) => {
-      setUsers(usersRes.data ?? []);
-      setInviteEdges(edgesRes.data ?? []);
-      setLoading(false);
-    });
+      campaignFindAllAdmin(),
+    ])
+      .then(([usersRes, edgesRes, campaignsRes]) => {
+        setUsers(usersRes.data ?? []);
+        setInviteEdges(edgesRes.data ?? []);
+        setCampaigns(campaignsRes.data ?? []);
+
+        // A failed request leaves a whole class of edges out of the graph,
+        // which reads as "no attribution" rather than as a failure — so name
+        // what is missing instead of drawing a wrong graph.
+        const failed = [
+          { name: "users", error: usersRes.error },
+          { name: "used invites", error: edgesRes.error },
+          { name: "campaigns", error: campaignsRes.error },
+        ].filter((request) => request.error !== undefined);
+
+        for (const request of failed) {
+          console.error(
+            `Invite graph: could not load ${request.name}`,
+            request.error,
+          );
+        }
+
+        setLoadError(
+          failed.length > 0
+            ? `Could not load ${failed.map((request) => request.name).join(", ")}. The graph below is incomplete — attribution from the missing data shows as "no attribution".`
+            : null,
+        );
+      })
+      .catch(() =>
+        setLoadError("Could not load the graph data. Try reloading the page."),
+      )
+      .finally(() => setLoading(false));
   }, []);
 
   // Derive available communities and tags for dropdowns
@@ -144,39 +245,47 @@ const InviteGraphPage = () => {
     const width = svgRef.current.clientWidth;
     const height = svgRef.current.clientHeight;
 
-    // Users 7 and 10 are treated as the root node
-    const ROOT_USER_IDS = new Set([7, 10]);
-    const resolveNodeId = (userId: number) =>
-      ROOT_USER_IDS.has(userId) ? "center" : `user-${userId}`;
+    const UNATTRIBUTED_ID = "unattributed";
+    const userNodeId = (userId: number) => `user-${userId}`;
+    const campaignNodeId = (campaignId: number) => `campaign-${campaignId}`;
 
-    // Build nodes for all users (excluding root users, they become the center)
-    const nodes: GraphNode[] = users
-      .filter((u) => !ROOT_USER_IDS.has(u.id))
-      .map((u) => ({
-        id: `user-${u.id}`,
-        userId: u.id,
-        displayName: u.anonymous ? "Someone" : u.name,
-        profilePicture: u.profilePicture,
-      }));
+    const nodes: GraphNode[] = users.map((u) => ({
+      id: userNodeId(u.id),
+      kind: NodeKind.User,
+      userId: u.id,
+      displayName: u.anonymous ? "Someone" : u.name,
+      profilePicture: u.profilePicture,
+    }));
 
-    // Add center node (represents root users + uninvited)
-    const rootUsers = users.filter((u) => ROOT_USER_IDS.has(u.id));
-    const centerLabel =
-      rootUsers.map((u) => (u.anonymous ? "Someone" : u.name)).join(" & ") ||
-      "Root";
-    const centerNode: GraphNode = {
-      id: "center",
-      displayName: centerLabel,
-      profilePicture: null,
-      isCenter: true,
-    };
-    nodes.push(centerNode);
+    // A campaign gets a node only once someone is attributed to it
+    const attributedCampaignIds = new Set(
+      users
+        .map((u) => u.referredByCampaignId)
+        .filter((id): id is number => id != null),
+    );
+    const graphedCampaigns = campaigns.filter((c) =>
+      attributedCampaignIds.has(c.id),
+    );
+    const graphedCampaignIds = new Set(graphedCampaigns.map((c) => c.id));
+    for (const campaign of graphedCampaigns) {
+      nodes.push({
+        id: campaignNodeId(campaign.id),
+        kind: NodeKind.Campaign,
+        displayName: campaign.name,
+        profilePicture: campaign.picture,
+      });
+    }
 
-    // Build links from both invite system and referredBy, deduplicating
+    const nodeIds = new Set(nodes.map((n) => n.id));
+
+    // Build links from the invite system, referredBy and campaigns, deduplicating
     const linkSet = new Set<string>(); // "sourceId->targetId"
     const links: GraphLink[] = [];
 
+    // A link to a node we never built throws inside d3's force layout and takes
+    // the page down, so drop it — a partial load should draw a partial graph.
     const addLink = (sourceId: string, targetId: string) => {
+      if (!nodeIds.has(sourceId) || !nodeIds.has(targetId)) return;
       const key = `${sourceId}->${targetId}`;
       if (linkSet.has(key)) return;
       linkSet.add(key);
@@ -185,19 +294,19 @@ const InviteGraphPage = () => {
 
     // Links from OnetimeInvite data
     for (const edge of inviteEdges) {
-      const src = resolveNodeId(edge.invitingUserId);
-      const tgt = resolveNodeId(edge.invitedUserId);
-      if (src !== tgt) addLink(src, tgt);
+      if (edge.invitingUserId === edge.invitedUserId) continue;
+      addLink(userNodeId(edge.invitingUserId), userNodeId(edge.invitedUserId));
     }
 
-    // Links from referredBy relation
+    // Links from referredBy and referredByCampaign
     for (const u of users) {
-      if (ROOT_USER_IDS.has(u.id)) continue;
       const referredById = u.referredById;
-      if (referredById != null) {
-        const src = resolveNodeId(referredById);
-        const tgt = resolveNodeId(u.id);
-        if (src !== tgt) addLink(src, tgt);
+      if (referredById != null && referredById !== u.id) {
+        addLink(userNodeId(referredById), userNodeId(u.id));
+      }
+      const campaignId = u.referredByCampaignId;
+      if (campaignId != null && graphedCampaignIds.has(campaignId)) {
+        addLink(campaignNodeId(campaignId), userNodeId(u.id));
       }
     }
 
@@ -208,11 +317,21 @@ const InviteGraphPage = () => {
       linkedTargets.add(tgt);
     }
 
-    // Users without any incoming link go to center
-    for (const u of users) {
-      if (ROOT_USER_IDS.has(u.id)) continue;
-      if (!linkedTargets.has(`user-${u.id}`)) {
-        addLink("center", `user-${u.id}`);
+    // Whatever is left came from nowhere we can name — the earliest accounts
+    // included, so their trees read as their own rather than as one blob
+    const unattributedUsers = users.filter(
+      (u) => !linkedTargets.has(userNodeId(u.id)),
+    );
+    if (unattributedUsers.length > 0) {
+      nodes.push({
+        id: UNATTRIBUTED_ID,
+        kind: NodeKind.Unattributed,
+        displayName: `No attribution (${unattributedUsers.length})`,
+        profilePicture: null,
+      });
+      nodeIds.add(UNATTRIBUTED_ID);
+      for (const u of unattributedUsers) {
+        addLink(UNATTRIBUTED_ID, userNodeId(u.id));
       }
     }
 
@@ -256,25 +375,11 @@ const InviteGraphPage = () => {
       return result;
     }
 
-    // Create defs for clip paths and patterns
     const defs = svg.append("defs");
 
-    // Clip path for user nodes
-    defs
-      .append("clipPath")
-      .attr("id", "clip-node")
-      .append("circle")
-      .attr("r", NODE_RADIUS);
-
-    defs
-      .append("clipPath")
-      .attr("id", "clip-center")
-      .append("circle")
-      .attr("r", CENTER_RADIUS);
-
-    // Create image patterns for each user
+    // Image patterns for user profile pictures and campaign avatars
     for (const node of nodes) {
-      if (node.profilePicture && !node.isCenter) {
+      if (node.profilePicture) {
         defs
           .append("pattern")
           .attr("id", `pfp-${node.id}`)
@@ -376,47 +481,37 @@ const InviteGraphPage = () => {
       .join("g")
       .attr("cursor", "pointer");
 
-    // Background circle (fallback / border)
+    // Background circle (picture / fallback / border)
     node
       .append("circle")
-      .attr("r", (d) => (d.isCenter ? CENTER_RADIUS : NODE_RADIUS))
-      .attr("fill", (d) => {
-        if (d.isCenter) return "#e5e7eb";
-        if (d.profilePicture) return `url(#pfp-${d.id})`;
-        return "#e5e7eb";
-      })
-      .attr("stroke", (d) => (d.isCenter ? "#9ca3af" : "#d1d5db"))
-      .attr("stroke-width", (d) => (d.isCenter ? 2 : 1.5));
+      .attr("r", (d) => NODE_STYLE[d.kind].radius)
+      .attr("fill", (d) =>
+        d.profilePicture ? `url(#pfp-${d.id})` : NODE_STYLE[d.kind].fill,
+      )
+      .attr("stroke", (d) => NODE_STYLE[d.kind].stroke)
+      .attr("stroke-width", (d) => NODE_STYLE[d.kind].strokeWidth);
 
-    // Fallback icon for users without pfp (not center)
+    // Glyph inside the circle for nodes without a picture
     node
-      .filter((d) => !d.profilePicture && !d.isCenter)
+      .filter((d) => !d.profilePicture)
       .append("text")
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "central")
-      .attr("font-size", 16)
-      .attr("fill", "#9ca3af")
-      .text("?");
-
-    // Center node label
-    node
-      .filter((d) => !!d.isCenter)
-      .append("text")
-      .attr("text-anchor", "middle")
-      .attr("dominant-baseline", "central")
-      .attr("font-size", 9)
+      .attr("font-size", (d) => NODE_STYLE[d.kind].glyphFontSize)
       .attr("font-weight", "bold")
-      .attr("fill", "#6b7280")
-      .text("ROOT");
+      .attr("fill", (d) => NODE_STYLE[d.kind].glyphColor)
+      .text((d) => NODE_STYLE[d.kind].glyph(d));
 
     // Name labels
     node
+      .filter((d) => NODE_STYLE[d.kind].label !== null)
       .append("text")
       .attr("text-anchor", "middle")
-      .attr("dy", (d) => (d.isCenter ? CENTER_RADIUS + 14 : NODE_RADIUS + 14))
+      .attr("dy", (d) => NODE_STYLE[d.kind].radius + 14)
       .attr("font-size", 10)
-      .attr("fill", "#374151")
-      .text((d) => (d.isCenter ? "" : d.displayName));
+      .attr("font-weight", (d) => NODE_STYLE[d.kind].label?.weight ?? null)
+      .attr("fill", (d) => NODE_STYLE[d.kind].label?.color ?? null)
+      .text((d) => d.displayName);
 
     // Drag behavior
     const dragBehavior = drag<SVGGElement, GraphNode>()
@@ -500,7 +595,7 @@ const InviteGraphPage = () => {
       simulation.stop();
       graphRef.current = null;
     };
-  }, [loading, users, inviteEdges]);
+  }, [loading, users, inviteEdges, campaigns]);
 
   // Effect 2: Apply filter visuals (runs on filter changes without rebuilding graph)
   useEffect(() => {
@@ -510,8 +605,7 @@ const InviteGraphPage = () => {
     const { node, link, getDescendants, getAncestors } = graph;
 
     function nodePassesFilter(d: GraphNode): boolean {
-      if (d.isCenter) return true;
-      if (!d.userId) return true;
+      if (!FILTERABLE[d.kind] || !d.userId) return true;
       return filteredUserIds.has(d.userId);
     }
 
@@ -532,17 +626,17 @@ const InviteGraphPage = () => {
           return allHighlighted.has(d.id) ? 1 : 0.15;
         })
         .attr("stroke", (d: GraphNode) => {
-          if (!allHighlighted) return d.isCenter ? "#9ca3af" : "#d1d5db";
+          if (!allHighlighted) return NODE_STYLE[d.kind].stroke;
           if (d.id === sid) return "#3b82f6";
           if (ancestors.has(d.id)) return "#f59e0b";
           if (descendants.has(d.id)) return "#60a5fa";
-          return d.isCenter ? "#9ca3af" : "#d1d5db";
+          return NODE_STYLE[d.kind].stroke;
         })
         .attr("stroke-width", (d: GraphNode) => {
-          if (!allHighlighted) return d.isCenter ? 2 : 1.5;
+          if (!allHighlighted) return NODE_STYLE[d.kind].strokeWidth;
           if (d.id === sid) return 3;
           if (allHighlighted.has(d.id)) return 2.5;
-          return d.isCenter ? 2 : 1.5;
+          return NODE_STYLE[d.kind].strokeWidth;
         });
 
       node.selectAll("text").attr("opacity", (d: unknown) => {
@@ -611,6 +705,17 @@ const InviteGraphPage = () => {
     };
   }, [filteredUserIds, hasActiveFilters, isolateSubgraph]);
 
+  // Counts only the attributions the graph can draw: a campaign missing from
+  // the fetch has no node, so its users appear under "no attribution".
+  const campaignAttributedCount = useMemo(() => {
+    const campaignIds = new Set(campaigns.map((c) => c.id));
+    return users.filter(
+      (u) =>
+        u.referredByCampaignId != null &&
+        campaignIds.has(u.referredByCampaignId),
+    ).length;
+  }, [users, campaigns]);
+
   const matchCount = useMemo(() => {
     if (!hasActiveFilters) return null;
     return users.filter((u) => filteredUserIds.has(u.id)).length;
@@ -629,10 +734,18 @@ const InviteGraphPage = () => {
       <div className="p-4 border-b border-gray-200 shrink-0">
         <h2 className="text-lg font-bold">Invite Graph</h2>
         <p className="text-sm text-gray-500">
-          {users.length} users, {inviteEdges.length} used invites
+          {users.length} users, {inviteEdges.length} used invites,{" "}
+          {campaignAttributedCount} from campaigns
           {matchCount !== null && ` \u2014 ${matchCount} matching filters`}
         </p>
       </div>
+
+      {loadError && (
+        <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800 shrink-0">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+          <span>{loadError}</span>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="px-4 py-2 border-b border-gray-200 shrink-0 flex flex-wrap items-center gap-3 text-sm">
@@ -718,6 +831,21 @@ const InviteGraphPage = () => {
             Reset filters
           </button>
         )}
+
+        <div className="ml-auto flex items-center gap-3 text-xs text-gray-500">
+          {LEGEND.map((item) => (
+            <span key={item.kind} className="flex items-center gap-1">
+              <span
+                className="inline-block h-3 w-3 rounded-full border-2"
+                style={{
+                  backgroundColor: NODE_STYLE[item.kind].fill,
+                  borderColor: NODE_STYLE[item.kind].stroke,
+                }}
+              />
+              {item.label}
+            </span>
+          ))}
+        </div>
       </div>
 
       <svg ref={svgRef} className="flex-1 w-full min-h-0" />

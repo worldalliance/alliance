@@ -126,6 +126,8 @@ export const testAuthUser: UserDto = {
   admin: false,
   referralCode: "1234567890",
   referralSource: "onetime_invite",
+  referredById: null,
+  referredByCampaignId: null,
   anonymous: false,
   forumDigestPreference: "off",
   emailNotifsForActions: false,

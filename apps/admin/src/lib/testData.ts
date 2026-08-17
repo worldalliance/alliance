@@ -16,6 +16,8 @@ export const FORM_BUILDER_PREVIEW_USER: UserDto = {
   ambassador: false,
   pushesForMessages: true,
   referralSource: "onetime_invite",
+  referredById: null,
+  referredByCampaignId: null,
   shareEmailWithCommunityLead: true,
   sharePhoneNumberWithCommunityLead: true,
   profileDescription: "I am a preview user",

@@ -370,10 +370,15 @@ export class User {
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   notifications: Relation<Notification>[];
 
+  @Column({ nullable: true })
+  @ApiProperty({ type: Number, nullable: true })
+  referredById: number | null;
+
   @ManyToOne(() => User, (user) => user.referredUsers, {
     nullable: true,
     onDelete: 'SET NULL',
   })
+  @JoinColumn({ name: 'referredById' })
   referredBy?: Relation<User> | null;
 
   @OneToOne(() => OnetimeInvite, (invite) => invite.invitedUser)
@@ -421,6 +426,10 @@ export class User {
   })
   @ApiProperty({ enum: ReferralSource, enumName: 'ReferralSource' })
   referralSource: ReferralSource;
+
+  @Column({ nullable: true })
+  @ApiProperty({ type: Number, nullable: true })
+  referredByCampaignId: number | null;
 
   @ManyToOne(() => Campaign, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'referredByCampaignId' })

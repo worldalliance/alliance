@@ -219,6 +219,8 @@ export class UserDto extends PickType(User, [
   'turnedOffAllNotifs',
   'referralCode',
   'referralSource',
+  'referredById',
+  'referredByCampaignId',
   'anonymous',
   'pushesForLikes',
   'pushesForComments',
@@ -254,10 +256,6 @@ export class UserDto extends PickType(User, [
   @ApiProperty()
   @Allow()
   hasActiveContract: boolean;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  referredById?: number | null;
 
   @ApiPropertyOptional({ type: ContractEventDto, isArray: true })
   @IsOptional()
@@ -310,7 +308,8 @@ export class UserDto extends PickType(User, [
     this.profilePicture = user.profilePicture
       ? getImageSource(user.profilePicture)
       : null;
-    this.referredById = user.referredBy?.id ?? null;
+    this.referredById = user.referredById;
+    this.referredByCampaignId = user.referredByCampaignId;
     this.clusterId = user.clusterId;
   }
 }

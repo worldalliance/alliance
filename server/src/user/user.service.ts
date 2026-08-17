@@ -354,7 +354,7 @@ export class UserService {
    */
   async findAllForAdminList(): Promise<User[]> {
     const [users, latestEvents] = await Promise.all([
-      this.userRepository.find({ relations: { referredBy: true } }),
+      this.userRepository.find(),
       this.contractEventRepository
         .createQueryBuilder('event')
         .addSelect('event."userId"', 'event_user_id')

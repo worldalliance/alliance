@@ -397,7 +397,6 @@ export class UserController {
     return (
       await this.userService.findAll({
         contractEvents: true,
-        referredBy: true,
         communities: true,
         tags: true,
       })
