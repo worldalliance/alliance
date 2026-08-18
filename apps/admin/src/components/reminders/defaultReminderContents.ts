@@ -40,7 +40,7 @@ The deadline for the current task has passed and you have not completed it. If y
 
 The Alliance counts on every member. We plan precise actions based on the number of people we expect to participate.
 
-To learn more about our model, you can watch <a href="https://www.youtube.com/watch?v=VS6aFXXxtmY&t=125s">this video</a>.
+To learn more about our model, you can watch <a href="https://www.youtube.com/watch?v=fR7Upo0DlYs&t=125s">this video</a>.
 
 Please know that if you miss several actions in a row, we will suspend your contract and no longer assign you tasks.
 

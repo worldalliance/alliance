@@ -1,6 +1,6 @@
 import ReactPlayer from "react-player";
 
-const VIDEO_ID = "VS6aFXXxtmY";
+const VIDEO_ID = "fR7Upo0DlYs";
 const VIDEO_URL = `https://www.youtube.com/watch?v=${VIDEO_ID}`;
 const THUMBNAIL_URL = `https://i.ytimg.com/vi/${VIDEO_ID}/maxresdefault.jpg`;
 
