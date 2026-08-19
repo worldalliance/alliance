@@ -109,7 +109,7 @@ const InviteShareLink = () => {
   }
 
   return (
-    <div className="flex flex-col gap-y-4 pt-5">
+    <div className="flex flex-col gap-y-4">
       <div className="flex flex-col gap-y-1">
         <p className="font-semibold text-2xl">Your multi-use invites</p>
         <p className="text-zinc-500">

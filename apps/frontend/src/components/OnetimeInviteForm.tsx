@@ -8,6 +8,8 @@ type OnetimeInviteFormProps = {
   inviteeName: string;
   setInviteeName: (value: string) => void;
   onSubmit?: () => void;
+  onEnter?: () => void;
+  autoFocus?: boolean;
   submitText?: string;
   submittingText?: string;
   creatingInvite?: boolean;
@@ -20,6 +22,8 @@ const OnetimeInviteForm = ({
   inviteeName,
   setInviteeName,
   onSubmit,
+  onEnter,
+  autoFocus = false,
   submitText = "Create invite",
   submittingText = "Creating invite...",
   creatingInvite = false,
@@ -41,7 +45,15 @@ const OnetimeInviteForm = ({
           className="border border-zinc-300 rounded px-3 py-2 flex-1"
           placeholder={inviteePlaceholder}
           value={inviteeName}
+          autoFocus={autoFocus}
           onChange={(e) => setInviteeName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") {
+              return;
+            }
+            e.preventDefault();
+            onEnter?.();
+          }}
         />
         {onSubmit && (
           <Button

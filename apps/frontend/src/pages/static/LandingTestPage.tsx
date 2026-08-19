@@ -7,6 +7,8 @@ import alliancePeople1280 from "../../assets/alliance_people-1280.webp";
 import alliancePeople640 from "../../assets/alliance_people-640.webp";
 import alliancePeople960 from "../../assets/alliance_people-960.webp";
 import alliancePeople from "../../assets/alliance_people.webp";
+import officeImage from "../../assets/office.jpg";
+import rubyImage from "../../assets/ruby.jpg";
 import Footer from "../../components/Footer";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
@@ -221,8 +223,44 @@ const LandingTestPage: React.FC = () => {
                 ))}
               </ul> */}
             </div>
-            <div className={MEDIA_COL}>
-              <PlaceholderImage label="Commitment image" />
+            <div
+              className={cn(
+                MEDIA_COL,
+                "grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6",
+              )}
+            >
+              <div className="flex flex-col gap-6">
+                <img
+                  src={officeImage}
+                  alt="Office"
+                  className="w-full h-auto rounded-md"
+                />
+                <div className="flex flex-col gap-1">
+                  <p className="font-sans text-xl lg:text-2xl font-semibold text-zinc-900">
+                    Office
+                  </p>
+                  <p className="text-lg text-zinc-600 lg:text-xl">
+                    Our full-time team prepares projects and rigorously
+                    evaluates their costs and benefits.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col gap-6">
+                <img
+                  src={rubyImage}
+                  alt="Members"
+                  className="w-full h-auto rounded-md"
+                />
+                <div className="flex flex-col gap-1">
+                  <p className="font-sans text-xl lg:text-2xl font-semibold text-zinc-900">
+                    Members
+                  </p>
+                  <p className="text-lg text-zinc-600 lg:text-xl">
+                    Members spend 15 minutes per week on projects, and guide the
+                    office via feedback and formal oversight.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </section>

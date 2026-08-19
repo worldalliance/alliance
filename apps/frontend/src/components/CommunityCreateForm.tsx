@@ -8,7 +8,13 @@ import { groupSettings } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
 import { sharp_allowed_mime_types } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type RefObject,
+} from "react";
 import ImageEditor from "./ImageEditor";
 
 export type CommunityCreateFormProps = {
@@ -17,6 +23,8 @@ export type CommunityCreateFormProps = {
   createButtonTextOverride?: string;
   createDisabled?: boolean;
   fullWidthButtons?: boolean;
+  hideSubmitButton?: boolean;
+  submitRef?: RefObject<(() => Promise<void>) | null>;
   onCancel?: () => void;
   /** Awaited, so the submit state covers any follow-up work the caller does. */
   onSuccess: (community: CommunityDto) => void | Promise<void>;
@@ -28,6 +36,8 @@ const CommunityCreateForm = ({
   createButtonTextOverride,
   createDisabled,
   fullWidthButtons,
+  hideSubmitButton = false,
+  submitRef,
   onCancel,
   onSuccess,
 }: CommunityCreateFormProps) => {
@@ -92,6 +102,16 @@ const CommunityCreateForm = ({
       setIsSubmitting(false);
     }
   }, [useMaxCapacity, formValues, photoUrl, onSuccess]);
+
+  useEffect(() => {
+    if (!submitRef) {
+      return;
+    }
+    submitRef.current = handleSubmit;
+    return () => {
+      submitRef.current = null;
+    };
+  }, [handleSubmit, submitRef]);
 
   const isPhotoUploadPending = isSubmitting && photoUrl !== null;
 
@@ -244,29 +264,33 @@ const CommunityCreateForm = ({
           </div>
         )}
       </div>
-      <div className="flex flex-row justify-end">
-        <div className={cn("flex gap-x-1 mt-1", fullWidthButtons && "w-full")}>
-          {onCancel && (
+      {!hideSubmitButton && (
+        <div className="flex flex-row justify-end">
+          <div className={cn("flex gap-x-1 mt-1", fullWidthButtons && "w-full")}>
+            {onCancel && (
+              <Button
+                onClick={onCancel}
+                color={ButtonColor.Grey}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            )}
             <Button
-              onClick={onCancel}
-              color={ButtonColor.Grey}
+              onClick={handleSubmit}
+              color={ButtonColor.Black}
+              disabled={
+                isSubmitting || createDisabled || !formValues.name.trim()
+              }
               className="flex-1"
             >
-              Cancel
+              {isSubmitting
+                ? "Creating..."
+                : (createButtonTextOverride ?? "Create")}
             </Button>
-          )}
-          <Button
-            onClick={handleSubmit}
-            color={ButtonColor.Black}
-            disabled={isSubmitting || createDisabled || !formValues.name.trim()}
-            className="flex-1"
-          >
-            {isSubmitting
-              ? "Creating..."
-              : (createButtonTextOverride ?? "Create")}
-          </Button>
+          </div>
         </div>
-      </div>
+      )}
       {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
     </div>
   );
