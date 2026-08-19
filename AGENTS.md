@@ -8,102 +8,75 @@
 - `shared/` — shared by admin + frontend + mobile
 - `common/` — shared by all apps + server
 
-## Nested instructions
+## Nested AGENTS.md
 
-When reading, inspecting, modifying, or reviewing files under a subtree that has its own `AGENTS.md`, manually read that nested file first if it is not already in the current session context. For example, read `server/AGENTS.md` before working with `server/**`, and read `apps/AGENTS.md` before working with `apps/**`. (So far, these are the only two nested `AGENTS.md` files.)
+Read `server/AGENTS.md` before working under `server/**`, `apps/AGENTS.md` before `apps/**`. Those are the only nested ones.
+
+## Skills
+
+Read before the matching task:
+
+- `.claude/skills/local-db/SKILL.md` — querying the local Postgres db
+- `.claude/skills/playwright/SKILL.md` — driving the locally running apps
+- `.claude/skills/context-files/SKILL.md` — writing or editing any `SKILL.md`, `AGENTS.md`, `CLAUDE.md`
 
 ## Typechecking
 
-**Always typecheck with `bun run typecheck`** — it works in any package (`server`, `apps/{frontend,admin,mobile}`, `sharedweb`, `shared`, `common`) and resolves the correct config (e.g. `tsconfig.typecheck.json`, which pulls shared sources in directly). Do **not** substitute a bare `tsc` invocation, even with `--noEmit`.
+`bun run typecheck` — per-package, not at the repo root; resolves the right config per package (`tsconfig.typecheck.json` where shared sources need pulling in directly). Never bare `tsc`, even with `--noEmit`.
 
 ## Testing
 
-Run unit tests from the repo root with `bun run test`. Scope it by passing packages: `bun run test apps/admin sharedweb`. From inside a package, use a bare `bun test`.
+`bun run test` from the repo root; scope by package: `bun run test apps/admin sharedweb`. Bare `bun test` from inside a package.
 
 ## Dependencies
 
-Dependencies used in the admin app or frontend (e.g. including `apps/admin`, `common`, etc.) must be declared in `apps/frontend/package.json`. The workspace setup is non-standard and installs all web packages from `apps/frontend/package.json`. Use the same version range across packages and run `bun install` after editing.
+Non-standard workspace: every web package installs from `apps/frontend/package.json`. A dependency used in `apps/admin`, `sharedweb`, `common`, … must also be declared there, same version range. `bun install` after editing.
 
-Don't hand-roll something a well-maintained npm package already solves (parsing, sanitization, date handling, retries, etc.) — adopt the established package instead of maintaining our own version. The same goes for code already in this repo: reuse or extract a shared utility rather than duplicating similar functionality.
+Reach for a maintained npm package over hand-rolling parsing, sanitization, date handling, retries. Same inside the repo — reuse or extract a shared util instead of duplicating one.
 
 ## Enum branching
 
-Prefer enums over string-literal unions for closed sets of named variants.
+Enums over string-literal unions for closed sets of named variants.
 
-Don't switch on an enum (or union discriminator) with a ternary or an open `if`/`else` chain — adding a new variant later won't trigger a typecheck error and the missing branch ships silently. Use one of:
-
-- A `switch (kind)` with an exhaustive `default` that asserts `never`:
-
-  ```ts
-  switch (kind) {
-    case MyEnum.A: ...; break;
-    case MyEnum.B: ...; break;
-    default:
-      throw new Error(`unknown kind: ${kind satisfies never}`);
-  }
-  ```
-
-  `satisfies never` is the load-bearing part — it makes any unhandled variant a compile error (because `kind` is no longer narrowed to `never` in `default`). The runtime throw is optional; if you'd rather silently drop unknown variants (e.g. so an older client doesn't crash when the server adds a new type), `default: kind satisfies never; return null;` (or similar) is fine — just keep the `satisfies never`.
-
-- `const TABLE: Record<MyEnum, T> = { [MyEnum.A]: ..., [MyEnum.B]: ... }` and index in — `Record<MyEnum, T>` forces every variant to be listed.
-
-The same table pattern applies to **subsets** of a closed set. Declare a `Record<MyEnum, boolean>` and look up in it, so every new variant is a compile error until someone explicitly opts it in or out:
+Never branch on a closed set (enum, literal union, tagged `kind`) with a ternary or open `if`/`else` — a variant added later compiles fine and the missing branch ships silently. Use either an exhaustive `switch`:
 
 ```ts
-const NEEDS_SPECIAL_HANDLING: Record<MyEnum, boolean> = {
-  [MyEnum.A]: true,
-  [MyEnum.B]: false,
-};
+default:
+  throw new Error(`unknown kind: ${kind satisfies never}`);
 ```
 
-Apply this to any branch keyed on a closed set (enum, string-literal union, tagged union `kind`), even when there are only two variants today.
+`satisfies never` is the load-bearing part; the throw is optional (`default: kind satisfies never; return null;` is fine when an older client should ignore new variants).
+
+Or index into a `Record<MyEnum, T>`, which forces every variant to be listed. Same for subsets — a `Record<MyEnum, boolean>` lookup makes each new variant a compile error until someone opts it in or out. Applies at two variants too.
 
 ## Function arguments
 
-At three or more parameters, take a single `params` or `input` object instead.
-
-```ts
-// ✅
-function myFunction(params: { foo: string; bar?: number; baz?: boolean }): void;
-
-// ❌ — `myFunction('hello world', undefined, true)` at the callsite
-function myFunction(foo: string, bar?: number, baz?: boolean): void;
-```
-
-One or two parameters are usually fine positionally, but it depends — for example, `slice(start, end)` reads well, but `move(sourceId, targetId)` doesn't. Two same-typed or boolean parameters are worth naming even at two.
+Three or more parameters → a single `params`/`input` object. One or two are usually fine positionally, but name them when they're same-typed or boolean — `slice(start, end)` reads; `move(sourceId, targetId)` doesn't.
 
 ## Comments
 
-Default to no comment. Add one only when it explains a non-obvious constraint, rationale, invariant, or edge case that the code cannot express clearly.
-
-Do not narrate code, repeat names/types/control flow, add decorative headings, or describe past changes. Prefer clearer code over comments. Keep comments concise and natural.
+Default to none. Add one only for a non-obvious constraint, rationale, invariant, or edge case the code can't express. Never narrate code, restate names/types/control flow, add decorative headings, or describe past changes.
 
 ## Type casts
 
-Avoid `as` casts where possible — prefer fixing the types at the source, runtime validation (e.g. zod) at trust boundaries, or `satisfies`. If a cast is unavoidable, keep it narrow and comment why it's safe. `as const` is fine. Never `as any` or `x as unknown as T`.
-
-## UI affordances
-
-Prefer icons and direct interaction over words. A `lucide-react` icon button (`lucide-react-native` on mobile) beats a text button; an inline edit beats an "Edit" mode toggle. Text labels are a fallback for when no icon or gesture reads unambiguously — not the default.
-
-This isn't a license to ship mystery-meat UI. An icon-only control needs a tooltip or `aria-label`, and destructive or irreversible actions should still say what they do in words.
-
-## Local database
-
-For querying the local Postgres database, see `.claude/skills/local-db/SKILL.md`.
-
-## Context files
-
-Before writing or editing a `SKILL.md`, `AGENTS.md`, or `CLAUDE.md`, read `.claude/skills/context-files/SKILL.md`.
+Avoid `as` — fix types at the source, validate with zod at trust boundaries, or use `satisfies`. Unavoidable cast: keep it narrow, comment why it's safe. `as const` fine. Never `as any` or `x as unknown as T`.
 
 ## Result type
 
-Prefer the `Result<T, E>` type in `common/` for operations that can fail (parsing, validation, fallible I/O) instead of throwing or returning `null`/`undefined`. `Result<T, E>` is the type and `R` is the helper namespace — import them separately: `import { R, type Result } from "@alliance/common/result"`. Use the helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling `{ ok, ... }` objects or re-implementing this pattern. Sometimes throwing is required (e.g. NestJS controllers that rely on exception filters) — in those cases, obviously, we should throw.
+Operations that can fail (parsing, validation, fallible IO) return `Result<T, E>` from `common/src/result.ts` instead of throwing or returning `null`/`undefined`. Type and helper namespace import separately:
 
-The full source:
+```ts
+import { R, type Result } from "@alliance/common/result";
+```
 
-@common/src/result.ts
+Use the `R.*` helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling `{ ok, ... }`. Throwing is still right where the framework expects it — e.g. NestJS controllers behind exception filters.
+
+## UI affordances
+
+Icons and direct interaction over words: a `lucide-react` icon button (`lucide-react-native` on mobile) over a text button, an inline edit over an "Edit" mode toggle. Text labels only where nothing else reads unambiguously.
+
+Not a license for mystery meat — icon-only controls need a tooltip or `aria-label`, and destructive or irreversible actions still say what they do in words.
 
 ## Working files
 
-Keep everything inside the repo. Don't write to `/tmp`, `~`, or any other location outside this directory — scratch files, notes, scripts, logs, dumps, and downloaded data all go in the repo. Same for reading: prefer files in the repo over things stashed elsewhere on the machine.
+Everything stays inside the repo — scratch files, notes, scripts, logs, dumps, downloads. Never `/tmp` or `~`. Same when reading: prefer files in the repo over things stashed elsewhere on the machine.

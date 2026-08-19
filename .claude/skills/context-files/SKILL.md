@@ -10,6 +10,7 @@ Every token here competes with code the agent came to read. "Why use many token 
 - Always true subtree-wide → nearest `AGENTS.md`. Root one loads every turn: rules, not procedures
 - Only for one kind of task → skill. `description` is trigger, and only always-loaded part: "Read <when it's needed>", globs or action, nothing else. Reading it explains itself.
 - Skills auto-load in Claude only — other agents read `AGENTS.md` alone. Every skill also needs a one-line pointer from nearest `AGENTS.md`.
+- `CLAUDE.md` is `@AGENTS.md` and nothing else. Write below that line only for a Claude-only rule other agents don't need.
 
 ## Voice
 

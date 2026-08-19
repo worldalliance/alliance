@@ -5,9 +5,7 @@ description: Read before generating or writing a TypeORM migration in server/.
 
 # Migrations
 
-## Scope
-
-A migration must never carry load-bearing logic — anything the running app depends on at request time (SQL functions, triggers, stored procedures) is owned by the app and installed by it, not by a migration. Migrations are for auto-generated schema changes and one-time data changes only.
+Migrations carry auto-generated schema changes and one-time data changes only. Anything the running app depends on at request time — SQL functions, triggers, stored procedures — is owned and installed by the app.
 
 ## Generate
 
@@ -15,28 +13,12 @@ A migration must never carry load-bearing logic — anything the running app dep
 cd server && bun migration:generate -- migrations/{name}
 ```
 
-Never hand-write migrations from scratch — always start from a generated one.
+Never hand-write a schema migration from scratch; always start from a generated file. Raw-SQL-only migrations (one-time data changes, no entity change) make `migration:generate` fail with "no changes" — use `cd server && bun migration:create -- migrations/{name}` and write the SQL into the empty file.
 
 ## Review
 
-The generator can get things wrong. Key pitfall:
-
-- **Column renames generate `DROP` + `ADD`**, deleting data. Edit to `RENAME COLUMN` instead.
-
-Always review the generated SQL and edit when needed before committing.
+Always read the generated SQL before committing. The generator gets renames wrong: **a column rename comes out as `DROP` + `ADD`**, which deletes the data. Edit it to `RENAME COLUMN`.
 
 ## Hand edits
 
-Hand edits should alter ordering and data handling, never the end state.
-
-Whenever you edit a migration by hand, tell the user which statements you changed and why. Also, ensure the resulting db schema is unchanged. One way to do this is by checking `migration:generate` reports `No changes in database schema were found`
-
-## Raw-SQL migrations
-
-For migrations with only raw SQL (one-time data changes) and no entity changes, `migration:generate` fails with "no changes". Use `migration:create`:
-
-```
-cd server && bun migration:create -- migrations/{name}
-```
-
-Then write SQL in the empty file.
+Hand edits change ordering and data handling, never the end state — confirm by re-running `migration:generate` and seeing `No changes in database schema were found`. Tell the user which statements you changed and why.

@@ -3,24 +3,15 @@ name: local-db
 description: Read before querying the local Postgres database.
 ---
 
-# Local Database Access
+# Local database
 
-Local Postgres credentials in `server/.env`. **Do not read the entire file.**
-
-You _can_ grep for the lines containing the specific variables: `grep -E '^(DB_HOST|DB_PORT|DB_USERNAME|DB_PASSWORD|DB_NAME)' server/.env` (these variables are not sensitive).
-
-## Ad-hoc queries
+Credentials in `server/.env` — **don't read the whole file**, grep the five vars (not sensitive):
 
 ```bash
+export $(grep -E '^(DB_HOST|DB_PORT|DB_USERNAME|DB_PASSWORD|DB_NAME)' server/.env | xargs)
 PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USERNAME -d $DB_NAME -c "SELECT ..."
 ```
 
-## Notes
-
-- Table names: snake_case from TypeORM entity classes (`ReminderGroup` → `reminder_group`).
-- Column names: keep entity camelCase, must be double-quoted in SQL (`"newStatus"`).
-- Test DB (`server/.env.test`): password `postgres`, database `postgres` — don't mix up with dev DB.
-
-## Prod data
-
-Running `misc/load_staging_data.sh` sets the local DB data to the staging data, which is a pii-pruned version of prod.
+- Tables are snake_case from the TypeORM entity class (`ReminderGroup` → `reminder_group`); columns keep entity camelCase and must be double-quoted (`"newStatus"`).
+- Test db (`server/.env.test`) is user/database `postgres`, password `postgres` — easy to hit by mistake instead of dev.
+- `misc/load_staging_data.sh` overwrites the local db with staging data (pii-pruned prod).

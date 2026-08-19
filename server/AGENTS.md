@@ -1,16 +1,13 @@
-## Endpoints
+## Skills
 
-Before editing any `*.dto.ts` or `*.controller.ts`, read `../.claude/skills/dto-return-types/SKILL.md` — it covers constructor patterns, return-type rules, and the post-edit `bun run gen-api` step (run from the repo root with the dev server on port 3005, since `shared/client/` is consumed by frontend/admin/mobile).
+Read before the matching task:
 
-Every controller endpoint needs `@ApiOkResponse({ type: })` (or `@ApiResponse`) matching its return type (omit `type` for void).
-
-DTOs: use mapped types over entities, e.g. `SampleDto extends OmitType(SampleEntity, ['sample']) {}`.
-
-New endpoints need `@AuthGuard`, `@AdminGuard`, or `@CommunityLeaderGuard` depending on access level.
+- `../.claude/skills/dto-return-types/SKILL.md` — editing any `*.dto.ts` or `*.controller.ts`
+- `../.claude/skills/migrations/SKILL.md` — generating or writing a migration
 
 ## Entities
 
-On an entity, `undefined` means "not loaded". A column is always loaded, so a column property is never `?` — absence is spelled `null`, and only when the column is `nullable: true`. The TS type restates the DB constraint:
+`undefined` on an entity means "not loaded". A column is always loaded, so a column property is never `?` — absence is `null`, and only where the column is `nullable: true`. The TS type restates the DB constraint:
 
 ```ts
 @Column() name: string;                              // NOT NULL
@@ -18,34 +15,22 @@ On an entity, `undefined` means "not loaded". A column is always loaded, so a co
 bio: string | null;                                  // NULL
 ```
 
-### jsonb columns
-
-For a jsonb column with any real structure, define a zod schema, infer the type from it, and declare the column `unknown` or `unknown | null`:
+A jsonb column with real structure is declared `unknown` (or `unknown | null`) with a zod schema alongside it and the type inferred from that schema:
 
 ```ts
-export const videoProcessingInfoSchema = z.object({ encoder: z.string(), /* … */ });
+export const videoProcessingInfoSchema = z.object({ encoder: z.string() /* … */ });
 export type VideoProcessingInfo = z.infer<typeof videoProcessingInfoSchema>;
 
 @Column({ type: 'jsonb', nullable: true })
 processingInfo: unknown | null;
 ```
 
-Then parse at the read boundary, once. Parse right after the fetch and pass the narrowed type down: `parseAction(action): ParsedAction` in `src/actions/entities/action.entity.ts`.
-
-Homogeneous scalar collections (`string[]`, `number[]`) are fine declared directly.
+Parse once, right after the fetch, and pass the narrowed type down — `parseAction(action): ParsedAction` in `src/actions/entities/action.entity.ts`. Homogeneous scalar collections (`string[]`, `number[]`) are fine declared directly.
 
 ## Service methods
 
-Prefer fetch-then-compute: do all DB reads up top, then run pure logic on the fetched data. Keeps the IO surface visible and the logic easy to test.
-
-Sometimes you can't cleanly split — e.g. a later fetch depends on a value derived from earlier reads, or a fetch is conditional. Do your best; partial separation still beats fully interleaved IO and logic.
-
-Existing methods often don't follow this. Don't refactor just to fix shape, but if you're already editing one, move it toward this structure.
+Fetch-then-compute: DB reads up top, pure logic on the fetched data after. Keeps the IO surface visible and the logic testable. Where a later fetch depends on an earlier read, partial separation still beats interleaving. Existing methods mostly don't follow this — move one toward it when already editing it, not as its own refactor.
 
 ## Tests
 
 `(cd server && bun run test:e2e)` — end-to-end tests
-
-## Migrations
-
-**Before generating or writing a db migration, read `../.claude/skills/migrations/SKILL.md`.**
