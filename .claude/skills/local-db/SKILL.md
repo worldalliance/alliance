@@ -1,6 +1,6 @@
 ---
 name: local-db
-description: How to query the local Postgres database
+description: Read before querying the local Postgres database.
 ---
 
 # Local Database Access

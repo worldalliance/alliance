@@ -1,6 +1,6 @@
 ---
 name: dto-return-types
-description: NestJS endpoint return-type and DTO rules. Read before editing any *.dto.ts or *.controller.ts in server/.
+description: Read before editing any *.dto.ts or *.controller.ts in server/.
 ---
 
 # Endpoint Return Types

@@ -1,6 +1,6 @@
 ---
 name: migrations
-description: Information related to TypeORM database migrations in server/. Read before generating or writing any db migration.
+description: Read before generating or writing a TypeORM migration in server/.
 ---
 
 # Migrations

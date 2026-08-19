@@ -92,6 +92,10 @@ This isn't a license to ship mystery-meat UI. An icon-only control needs a toolt
 
 For querying the local Postgres database, see `.claude/skills/local-db/SKILL.md`.
 
+## Context files
+
+Before writing or editing a `SKILL.md`, `AGENTS.md`, or `CLAUDE.md`, read `.claude/skills/context-files/SKILL.md`.
+
 ## Result type
 
 Prefer the `Result<T, E>` type in `common/` for operations that can fail (parsing, validation, fallible I/O) instead of throwing or returning `null`/`undefined`. `Result<T, E>` is the type and `R` is the helper namespace — import them separately: `import { R, type Result } from "@alliance/common/result"`. Use the helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling `{ ok, ... }` objects or re-implementing this pattern. Sometimes throwing is required (e.g. NestJS controllers that rely on exception filters) — in those cases, obviously, we should throw.
