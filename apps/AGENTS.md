@@ -16,3 +16,7 @@ export function parseValue(input: RawValueDto): ParsedValue {
   return parsedValueSchema.parse(input);
 }
 ```
+
+## Web-mobile feature parity
+
+Any functionality added to the frontend should also be added to the mobile version (and vice versa). The UI/UX may be different; it should fit each platform separately.

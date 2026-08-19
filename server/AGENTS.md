@@ -2,8 +2,8 @@
 
 Read before the matching task:
 
-- `../.claude/skills/dto-return-types/SKILL.md` — editing any `*.dto.ts` or `*.controller.ts`
-- `../.claude/skills/migrations/SKILL.md` — generating or writing a migration
+- Editing any `*.dto.ts` or `*.controller.ts` → `(root)/skills/dto-return-types/SKILL.md`
+- Generating or writing a migration → `(root)/skills/migrations/SKILL.md`
 
 ## Entities
 
@@ -33,4 +33,4 @@ Fetch-then-compute: DB reads up top, pure logic on the fetched data after. Keeps
 
 ## Tests
 
-`(cd server && bun run test:e2e)` — end-to-end tests
+End-to-end: `(cd server && bun run test:e2e)`

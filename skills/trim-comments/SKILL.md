@@ -1,4 +1,10 @@
-Review comments affected by the supplied diff.
+---
+name: trim-comments
+description: Delete or redo the diff added that the code already says.
+disable-model-invocation: true
+---
+
+Review comments affected by the supplied diff. If none provided, use `git diff HEAD`.
 
 ## Scope
 
@@ -55,11 +61,11 @@ If the current code already makes that constraint clear, delete instead.
 
 ## Protected
 
-Never alter license or copyright notices, generated-code markers, tooling directives (formatter, linter, compiler, coverage, bundler), comments whose exact text is consumed by tooling, references required for a compatibility workaround, or a TODO/FIXME naming concrete unfinished work. A vague, obsolete, or already-done TODO is not protected.
+Leave these exactly as found: license or copyright notices, generated-code markers, tooling directives (formatter, linter, compiler, coverage, bundler), comments whose exact text is consumed by tooling, references required for a compatibility workaround, and a TODO/FIXME naming concrete unfinished work. A vague, obsolete, or already-done TODO is not protected.
 
 ## Stability
 
-A comment that passes the keep test is finished. Don't shorten, rephrase, reformat, relocate, or convert it because another valid version exists, and don't tighten comments further on a repeat run.
+A comment that passes the keep test is finished: leave its wording, format, and location exactly as they are, including on a repeat run.
 
 ## Completion
 

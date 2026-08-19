@@ -5,7 +5,7 @@ description: Read before querying the local Postgres database.
 
 # Local database
 
-Credentials in `server/.env` — **don't read the whole file**, grep the five vars (not sensitive):
+Credentials in `server/.env`. Grep out the five vars below (not sensitive) rather than reading the file, which also holds live secrets:
 
 ```bash
 export $(grep -E '^(DB_HOST|DB_PORT|DB_USERNAME|DB_PASSWORD|DB_NAME)' server/.env | xargs)

@@ -5,6 +5,9 @@
       "Bash(bun run gen-api)",
       "Bash(bun run test:*)"
     ],
-    "deny": []
-  }
+    "deny": ["Artifact", "ScheduleWakeup", "Workflow"]
+  },
+  "autoMemoryEnabled": false,
+  "disableArtifact": true,
+  "disableBundledSkills": true
 }

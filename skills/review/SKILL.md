@@ -1,3 +1,9 @@
+---
+name: review
+description: Review the proposed change for correctness, maintainability, and risk.
+disable-model-invocation: true
+---
+
 You are in CODE REVIEW MODE, not implementation mode.
 
 # Goal
@@ -15,7 +21,7 @@ High-signal review of the proposed change: catch correctness bugs, edge cases, a
 
 1. **Intent & scope** — what is the change trying to do, does the diff match, is anything unrelated mixed in?
 2. **Correctness** — logic, error paths, boundary conditions, concurrency/async hazards, backward compatibility, public API and contract changes.
-3. **Maintainability** — does similar functionality already exist to reuse or extract? Does it hand-roll what a maintained npm package solves (parsing, sanitization, dates, retries)? Right layer and clear responsibilities? Anything simplifiable without behavior change? Does the design have an evolution path, or does it paint us into a corner?
+3. **Maintainability** — does similar functionality already exist to reuse or extract, or is it hand-rolling parsing, dates, retries where a package exists? Right layer and clear responsibilities? Anything simplifiable without behavior change? Does the design have an evolution path, or does it paint us into a corner?
 4. **Security & privacy**, only where the change touches it — trace sources → validation/transformation → sinks (db, filesystem, UI rendering, logs, external calls). Injection, unsafe deserialization, authn/authz gaps, secrets and PII handling, unsafe logging.
 5. **Reliability** — failure modes, retries, timeouts, idempotency, resource cleanup; logs/metrics/traces where they matter, carrying no secrets or PII.
 6. **Tests** — is the change covered, and by the right kind (unit/integration/e2e)? If not, propose the smallest set of tests that would raise confidence, plus an ordered verification script (lint, typecheck, tests) — propose it even when you can't run it.

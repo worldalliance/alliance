@@ -10,15 +10,21 @@
 
 ## Nested AGENTS.md
 
-Read `server/AGENTS.md` before working under `server/**`, `apps/AGENTS.md` before `apps/**`. Those are the only nested ones.
+Working under `server/**` → read `server/AGENTS.md`; under `apps/**` → `apps/AGENTS.md`. Those are the only nested ones.
+
+## Git
+
+Ask before running a git command that writes. Read-only ones (`git diff`, `git status`, `git log`) need no permission.
 
 ## Skills
 
+Always read `(root)/skills/unslop/SKILL.md` and apply its rules to everything you write.
+
 Read before the matching task:
 
-- `.claude/skills/local-db/SKILL.md` — querying the local Postgres db
-- `.claude/skills/playwright/SKILL.md` — driving the locally running apps
-- `.claude/skills/context-files/SKILL.md` — writing or editing any `SKILL.md`, `AGENTS.md`, `CLAUDE.md`
+- Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
+- Verifying a change in the browser, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`
+- Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/skills/writing-for-agents/SKILL.md`
 
 ## Typechecking
 
@@ -38,16 +44,16 @@ Reach for a maintained npm package over hand-rolling parsing, sanitization, date
 
 Enums over string-literal unions for closed sets of named variants.
 
-Never branch on a closed set (enum, literal union, tagged `kind`) with a ternary or open `if`/`else` — a variant added later compiles fine and the missing branch ships silently. Use either an exhaustive `switch`:
+Branching on a closed set (enum, literal union, tagged `kind`) takes one of two forms, so a variant added later fails the build instead of shipping a silently missing branch. An exhaustive `switch`, where `satisfies never` is what forces exhaustiveness:
 
 ```ts
 default:
   throw new Error(`unknown kind: ${kind satisfies never}`);
 ```
 
-`satisfies never` is the load-bearing part; the throw is optional (`default: kind satisfies never; return null;` is fine when an older client should ignore new variants).
+The throw is optional: `default: kind satisfies never; return null;` is fine when an older client should ignore new variants.
 
-Or index into a `Record<MyEnum, T>`, which forces every variant to be listed. Same for subsets — a `Record<MyEnum, boolean>` lookup makes each new variant a compile error until someone opts it in or out. Applies at two variants too.
+Or a `Record<MyEnum, T>` lookup, which forces every variant to be listed. Applies at two variants, and to subsets, where a `Record<MyEnum, boolean>` makes each new variant a compile error until someone opts it in or out.
 
 ## Function arguments
 
@@ -55,7 +61,7 @@ Three or more parameters → a single `params`/`input` object. One or two are us
 
 ## Comments
 
-Default to none. Add one only for a non-obvious constraint, rationale, invariant, or edge case the code can't express. Never narrate code, restate names/types/control flow, add decorative headings, or describe past changes.
+Default to none. Add one only for a non-obvious constraint, rationale, invariant, or edge case the code can't express, stated in the present tense.
 
 ## Type casts
 
@@ -75,7 +81,7 @@ Use the `R.*` helpers (`R.fromPromise`, `R.match`, …) rather than hand-rolling
 
 Icons and direct interaction over words: a `lucide-react` icon button (`lucide-react-native` on mobile) over a text button, an inline edit over an "Edit" mode toggle. Text labels only where nothing else reads unambiguously.
 
-Not a license for mystery meat — icon-only controls need a tooltip or `aria-label`, and destructive or irreversible actions still say what they do in words.
+Icon-only controls carry a tooltip or `aria-label`, and destructive or irreversible actions say what they do in words.
 
 ## Working files
 
