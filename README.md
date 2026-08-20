@@ -6,9 +6,9 @@ The repo root is a **Bun** workspace (hoisted `node_modules`, see `bunfig.toml`)
 
 **to install frontend deps**
 
-In root dir: `bun install` (install [Bun](https://bun.sh) 1.3.x+ if missing; `packageManager` in root `package.json` pins `bun@1.3.6`)
+Install [Bun](https://bun.sh) 1.3.6: `curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"` 
 
-Set up the frontend env file: `cp apps/frontend/.env.example apps/frontend/.env.local`.
+In root dir: `bun install` 
 
 **server install:**
 
@@ -44,9 +44,6 @@ Start the admin panel: `cd apps/admin && bun dev` (or `bun run admin:dev` from r
 ### server
 
 #### First time only:
-
-Install bun 1.3.6: `curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.6"` (If
-you have done [Setup - to install frontend deps](#setup) then `bun` will have already been installed.)
 
 Run the migrations: `(cd server && bun migration:run)`
 
