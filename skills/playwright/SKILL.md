@@ -1,6 +1,6 @@
 ---
 name: playwright
-description: Read before driving the locally running apps: verifying a change in the browser, calling the API, or authenticating as an admin.
+description: Read before driving the locally running apps: verifying a change in the browser, calling the API, authenticating as an admin, or driving the mobile app.
 ---
 
 # Driving the local apps
@@ -12,6 +12,8 @@ description: Read before driving the locally running apps: verifying a change in
 - Frontend (vite): **http://localhost:5173**
 
 `lsof -iTCP -sTCP:LISTEN -P | grep -E "node|bun"` to confirm.
+
+Mobile is the exception. [`MOBILE.md`](MOBILE.md) has its start command, selectors, and auth.
 
 ## Authenticating as admin
 
@@ -25,3 +27,5 @@ Mint it in a bun script with `jsonwebtoken` from the root `node_modules`. Keep `
 ## Running playwright
 
 `bunx playwright` resolves the latest playwright, whose chromium isn't installed. Scripts live in the repo, so a bare `import { chromium } from "playwright"` picks up the repo's copy.
+
+`chromium.launch()` gets playwright's own browser. Attaching to the user's Chrome over CDP takes over their session.

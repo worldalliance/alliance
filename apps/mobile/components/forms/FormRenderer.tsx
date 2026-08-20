@@ -95,6 +95,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { getImageLoadSize } from "../../lib/imageLoadSize";
 import AppMarkdownWrapper, { useHandleLinkPress } from "../AppMarkdownWrapper";
 import { ImageLightboxModal } from "../ImageLightbox";
 import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
@@ -244,10 +245,10 @@ function ImageBlock({
         <Image
           source={{ uri: src }}
           accessibilityLabel={alt}
-          onLoad={({ nativeEvent: { source } }) =>
-            source.height > 0 &&
-            setMeasuredAspectRatio(source.width / source.height)
-          }
+          onLoad={(event) => {
+            const size = getImageLoadSize(event);
+            if (size) setMeasuredAspectRatio(size.width / size.height);
+          }}
           className="w-full bg-zinc-200 rounded-lg"
           style={aspectRatio ? { aspectRatio } : { height: 192 }}
           resizeMode="contain"

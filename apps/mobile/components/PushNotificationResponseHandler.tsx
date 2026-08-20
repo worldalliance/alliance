@@ -4,6 +4,10 @@ import {
   notifsSetRead,
   pushMarkOpened,
 } from "@alliance/shared/client";
+import {
+  getNotificationIdentityKey,
+  getNotificationReadRequest,
+} from "@alliance/shared/lib/notificationIdentity";
 import { QueryClient } from "@tanstack/react-query";
 import {
   addNotificationResponseReceivedListener,
@@ -13,12 +17,9 @@ import {
 } from "expo-notifications";
 import { RelativePathString, router } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
+import { Platform } from "react-native";
 import { useAuth } from "../lib/AuthContext";
 import { isVisualTestMode } from "../lib/visualTest";
-import {
-  getNotificationIdentityKey,
-  getNotificationReadRequest,
-} from "@alliance/shared/lib/notificationIdentity";
 
 type PushData = {
   cid?: number;
@@ -208,7 +209,7 @@ export default function PushNotificationResponseHandler({
   }, [handlePendingNotificationAction, isAuthenticated, isLoading]);
 
   useEffect(() => {
-    if (isVisualTestMode) {
+    if (isVisualTestMode || Platform.OS === "web") {
       return;
     }
 

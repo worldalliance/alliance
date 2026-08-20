@@ -23,7 +23,7 @@ Always read `(root)/skills/unslop/SKILL.md` and apply its rules to everything yo
 Read before the matching task:
 
 - Querying the local Postgres db → `(root)/skills/local-db/SKILL.md`
-- Verifying a change in the browser, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`
+- Verifying a change in the browser, driving the mobile app, calling the API, or authenticating as an admin → `(root)/skills/playwright/SKILL.md`
 - Writing or editing any doc an agent reads (`SKILL.md`, `AGENTS.md`, `CLAUDE.md`, docs those point at) → `(root)/skills/writing-for-agents/SKILL.md`
 
 ## Typechecking

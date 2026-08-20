@@ -5,6 +5,7 @@
   "packageManager": "bun@1.3.6",
   "scripts": {
     "start": "expo start --dev-client",
+    "web": "BROWSER=none expo start --web --port 8085",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo prebuild -p android && expo run:android",
     "ios": "expo prebuild -p ios && expo run:ios",

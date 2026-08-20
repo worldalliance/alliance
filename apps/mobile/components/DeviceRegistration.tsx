@@ -1,5 +1,6 @@
-import { useEffect, useCallback } from "react";
-import { Platform } from "react-native";
+import { userRegisterDevice } from "@alliance/shared/client";
+import Constants from "expo-constants";
+import { isDevice, modelId, modelName } from "expo-device";
 import {
   AndroidImportance,
   getExpoPushTokenAsync,
@@ -7,11 +8,10 @@ import {
   requestPermissionsAsync,
   setNotificationChannelAsync,
 } from "expo-notifications";
-import { isDevice, modelId, modelName } from "expo-device";
-import Constants from "expo-constants";
-import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
-import { userRegisterDevice } from "@alliance/shared/client";
+import { useCallback, useEffect } from "react";
+import { Platform } from "react-native";
 import { useAuth } from "../lib/AuthContext";
+import { SecureStorage, SecureStorageKey } from "../lib/SecureStorage";
 import { isVisualTestMode } from "../lib/visualTest";
 
 function handleRegistrationError(errorMessage: string) {
@@ -88,7 +88,7 @@ export default function DeviceRegistration() {
   }, []);
 
   useEffect(() => {
-    if (isVisualTestMode || !isAuthenticated) {
+    if (isVisualTestMode || Platform.OS === "web" || !isAuthenticated) {
       return;
     }
 
