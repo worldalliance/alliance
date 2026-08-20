@@ -150,6 +150,7 @@ jobs:
             apps/frontend,
             apps/admin,
             apps/mobile,
+            citesting,
           ]
     uses: ./.github/workflows/typecheck.yaml
     with:

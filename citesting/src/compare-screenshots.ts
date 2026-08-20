@@ -1,9 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
-
-/* eslint-disable @typescript-eslint/no-var-requires */
-const { PNG } = require("pngjs");
-const pixelmatch = require("pixelmatch");
+import pixelmatch from "pixelmatch";
+import { PNG } from "pngjs";
 
 const logPrefix = "[citesting:compare]";
 
@@ -12,7 +10,7 @@ const main = async () => {
 
   if (!baselineDir || !currentDir || !diffDir) {
     console.error(
-      `Usage: ts-node compare-screenshots.ts <baselineDir> <currentDir> <diffDir>`
+      `Usage: ts-node compare-screenshots.ts <baselineDir> <currentDir> <diffDir>`,
     );
     process.exit(1);
   }
@@ -20,7 +18,7 @@ const main = async () => {
   await fs.mkdir(diffDir, { recursive: true });
 
   const currentFiles = (await fs.readdir(currentDir)).filter((f) =>
-    f.endsWith(".png")
+    f.endsWith(".png"),
   );
 
   if (currentFiles.length === 0) {
@@ -29,9 +27,12 @@ const main = async () => {
   }
 
   let totalDiffs = 0;
-  const stats: Record<string, { diffPixels: number; totalPixels: number; pct: number }> = {};
+  const stats: Record<
+    string,
+    { diffPixels: number; totalPixels: number; pct: number }
+  > = {};
 
-  const padToSize = (img: any, w: number, h: number): any => {
+  const padToSize = (img: PNG, w: number, h: number): PNG => {
     if (img.width === w && img.height === h) return img;
     const padded = new PNG({ width: w, height: h, fill: true });
     for (let i = 0; i < padded.data.length; i += 4) {
@@ -74,7 +75,7 @@ const main = async () => {
       diff.data,
       width,
       height,
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     const totalPixels = width * height;
@@ -84,7 +85,7 @@ const main = async () => {
       const diffPath = path.join(diffDir, file);
       await fs.writeFile(diffPath, PNG.sync.write(diff));
       console.log(
-        `${logPrefix} [DIFF] ${file} — ${diffPixels} pixels (${pct}%)`
+        `${logPrefix} [DIFF] ${file} — ${diffPixels} pixels (${pct}%)`,
       );
       stats[file] = { diffPixels, totalPixels, pct };
       totalDiffs++;
@@ -98,7 +99,7 @@ const main = async () => {
   await fs.writeFile(statsPath, JSON.stringify(stats, null, 2));
 
   console.log(
-    `${logPrefix} Done. ${totalDiffs} of ${currentFiles.length} images have diffs.`
+    `${logPrefix} Done. ${totalDiffs} of ${currentFiles.length} images have diffs.`,
   );
   // Always exit 0 — the AI review step decides pass/fail
   process.exit(0);
