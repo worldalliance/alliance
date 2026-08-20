@@ -77,9 +77,13 @@ type PlacementSelection =
 
 type InviteFormProps = {
   onInviteCreated: (invite: OnetimeInviteDto) => void;
+  onReusableInviteCreated: () => void;
 };
 
-const InviteForm = ({ onInviteCreated }: InviteFormProps) => {
+const InviteForm = ({
+  onInviteCreated,
+  onReusableInviteCreated,
+}: InviteFormProps) => {
   const { user } = useAuth();
   const { error: errorToast, success: successToast } = useToast();
   const [step, setStep] = useState(InviteFormStep.Type);
@@ -259,13 +263,21 @@ const InviteForm = ({ onInviteCreated }: InviteFormProps) => {
               "Invite link created, but it could not be copied to the clipboard.",
             );
           }
+          onReusableInviteCreated();
           resetWizard();
         },
         (err: Error) =>
           errorToast(`Failed to create invite link: ${err.message}`),
       );
     },
-    [createReusableInvite, errorToast, inviteeName, resetWizard, successToast],
+    [
+      createReusableInvite,
+      errorToast,
+      inviteeName,
+      onReusableInviteCreated,
+      resetWizard,
+      successToast,
+    ],
   );
 
   /** Both branches report their own failures, so this settles rather than rejects. */

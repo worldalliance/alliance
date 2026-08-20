@@ -414,12 +414,17 @@ const InvitesPage = () => {
   const handleInviteCreated = useCallback(
     (invite: OnetimeInviteDto) => {
       upsertInvite(invite);
+      setInviteListTab(InviteListTab.Individual);
       if (user?.ambassador) {
         void refetchAmbassadorDashboard();
       }
     },
     [refetchAmbassadorDashboard, upsertInvite, user?.ambassador],
   );
+
+  const handleReusableInviteCreated = useCallback(() => {
+    setInviteListTab(InviteListTab.Group);
+  }, []);
 
   const handleDeleteGoal = useCallback(
     (event: MouseEvent<HTMLElement>) => {
@@ -901,7 +906,10 @@ const InvitesPage = () => {
         )}
 
         <div className="flex flex-col gap-y-6">
-          <InviteForm onInviteCreated={handleInviteCreated} />
+          <InviteForm
+            onInviteCreated={handleInviteCreated}
+            onReusableInviteCreated={handleReusableInviteCreated}
+          />
         </div>
 
         {(showInviteTypeTabs ||
