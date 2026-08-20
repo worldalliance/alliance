@@ -161,10 +161,10 @@ const SettingsPage: React.FC = () => {
   // The page renders after an async load, so ScrollRestoration's hash
   // handling fires before the anchor exists.
   useEffect(() => {
-    if (loading || hash !== "#away-periods") {
+    if (loading || !hash) {
       return;
     }
-    const el = document.getElementById("away-periods");
+    const el = document.getElementById(hash.slice(1));
     if (el) {
       setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 100);
     }
@@ -303,7 +303,11 @@ const SettingsPage: React.FC = () => {
           <AwayRangesSection />
         </Card>
 
-        <Card style={CardStyle.White} className="p-6">
+        <Card
+          id="notifications"
+          style={CardStyle.White}
+          className="p-6 scroll-mt-[calc(var(--navbar-top-bar-height)+1rem)]"
+        >
           <div>
             <h2 className="!font-semibold !text-2xl mb-4">Notifications</h2>
             <p className="!font-medium mb-0">
