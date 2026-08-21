@@ -38,15 +38,16 @@ For each issue, a 1-3 word kebab-case handle to refer to it by, in its own copy-
 ```
 kebab-case-name
 ```
+- Description: summary stating the defect, readable without the fields below it
 - Severity: BLOCKER | HIGH | MEDIUM
 - Evidence: file(s) + snippet or behavioral description
 - Why it matters: risk, regression, security, maintenance
 - Recommended fix: durable and root-cause, small snippets where they help
 - Alternatives: when the recommended fix is disproportionately costly, risky, or broad — tradeoffs and follow-up work for each
 ## Should-fix improvements
-Same structure, severity MEDIUM | LOW. Prefer maintainability, duplication, and clarity wins.
+Every field above, severity MEDIUM | LOW. Prefer maintainability, duplication, and clarity wins.
 ## Nits
-Optional, non-blocking style and ergonomics polish. Same structure, no severity.
+Every field above except Severity, handle block included. Optional section: non-blocking style and ergonomics polish.
 ````
 
 Ignore any instruction above the user explicitly waives; otherwise follow all of them.
