@@ -1,10 +1,10 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
-import { ProfileDto } from 'src/user/dto/user.dto';
-import { User } from 'src/user/entities/user.entity';
+import { ApiProperty, PickType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { ShareUrl } from "src/share-urls/entities/share-url.entity";
+import { ProfileDto } from "src/user/dto/user.dto";
+import { User } from "src/user/entities/user.entity";
 
-export class ShareUrlDto extends PickType(ShareUrl, ['url', 'sid', 'id']) {
+export class ShareUrlDto extends PickType(ShareUrl, ["url", "sid", "id"]) {
   @ApiProperty({ type: ProfileDto })
   @Type(() => ProfileDto)
   user: ProfileDto;

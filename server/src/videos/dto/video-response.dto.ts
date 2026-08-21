@@ -1,10 +1,10 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { Video } from '../entities/video.entity';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { Video } from "../entities/video.entity";
 
 export class UploadVideoResponseDto extends PickType(Video, [
-  'id',
-  'key',
-  'status',
+  "id",
+  "key",
+  "status",
 ]) {
   constructor(input: Video) {
     super();
@@ -15,10 +15,10 @@ export class UploadVideoResponseDto extends PickType(Video, [
 }
 
 export class VideoStatusResponseDto extends PickType(Video, [
-  'id',
-  'key',
-  'status',
-  'duration',
+  "id",
+  "key",
+  "status",
+  "duration",
 ]) {
   constructor(input: Video) {
     super();
@@ -39,13 +39,13 @@ export class DeleteVideoResponseDto {
 }
 
 export class VideoListItemDto extends PickType(Video, [
-  'id',
-  'key',
-  'originalFilename',
-  'mime',
-  'size',
-  'status',
-  'duration',
+  "id",
+  "key",
+  "originalFilename",
+  "mime",
+  "size",
+  "status",
+  "duration",
 ]) {
   @ApiProperty()
   dateCreated: Date;
@@ -155,13 +155,13 @@ export type VideoDetailResponse = {
 };
 
 export class VideoDetailResponseDto extends PickType(Video, [
-  'id',
-  'key',
-  'originalFilename',
-  'mime',
-  'size',
-  'status',
-  'duration',
+  "id",
+  "key",
+  "originalFilename",
+  "mime",
+  "size",
+  "status",
+  "duration",
 ]) {
   @ApiProperty({ isArray: true, type: VideoSegmentDto })
   segments: VideoSegmentDto[];
@@ -200,9 +200,9 @@ export class VideoDetailResponseDto extends PickType(Video, [
 }
 
 export class ReplaceVideoResponseDto extends PickType(Video, [
-  'id',
-  'key',
-  'status',
+  "id",
+  "key",
+  "status",
 ]) {
   constructor(input: Video) {
     super();

@@ -1,20 +1,20 @@
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  interpolate,
-  Extrapolation,
-} from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { Check, CheckCheck } from "lucide-react-native";
-import { scheduleOnRN } from "react-native-worklets";
-import { formatTime } from "@alliance/shared/lib/utils";
-import Text, { FontWeight } from "./system/Text";
-import ProfileImage from "./ProfileImage";
 import { NotificationDto } from "@alliance/shared/client";
-import { Pressable, TouchableOpacity, View } from "react-native";
-import { cn } from "@alliance/shared/styles/util";
 import { getNotificationTime } from "@alliance/shared/lib/notificationBucketing";
+import { formatTime } from "@alliance/shared/lib/utils";
+import { cn } from "@alliance/shared/styles/util";
+import { Check, CheckCheck } from "lucide-react-native";
+import { Pressable, TouchableOpacity, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
+import ProfileImage from "./ProfileImage";
+import Text, { FontWeight } from "./system/Text";
 
 const SWIPE_THRESHOLD = -80;
 

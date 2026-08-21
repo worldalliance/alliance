@@ -1,15 +1,15 @@
-import { applyDecorators, Injectable } from '@nestjs/common';
+import { applyDecorators, Injectable } from "@nestjs/common";
 import {
   SkipThrottle,
   Throttle,
   ThrottlerGuard,
   type ThrottlerOptions,
-} from '@nestjs/throttler';
+} from "@nestjs/throttler";
 import {
   ACTION_PARTNERSHIP_RESPONSE_THROTTLE,
   SIGNUP_THROTTLE,
-} from 'src/auth/signup-throttle.config';
-import { LINK_PREVIEW_THROTTLE } from 'src/link-preview/link-preview-throttle.config';
+} from "src/auth/signup-throttle.config";
+import { LINK_PREVIEW_THROTTLE } from "src/link-preview/link-preview-throttle.config";
 
 /**
  * Every named throttler in the app. `ThrottlerModule.forRoot` must be fed
@@ -48,7 +48,7 @@ export function OnlyThrottle(
   );
   if (unregistered.length > 0) {
     throw new Error(
-      `Throttle group not registered in ALL_THROTTLES: ${unregistered.join(', ')}`,
+      `Throttle group not registered in ALL_THROTTLES: ${unregistered.join(", ")}`,
     );
   }
   const others = Object.keys(ALL_THROTTLES).filter(
@@ -74,7 +74,7 @@ export class UserThrottlerGuard extends ThrottlerGuard {
     req: Record<string, unknown>,
   ): Promise<string> {
     const sub = (req.user as { sub?: unknown } | undefined)?.sub;
-    return typeof sub === 'number' || typeof sub === 'string'
+    return typeof sub === "number" || typeof sub === "string"
       ? `user:${sub}`
       : `ip:${String(req.ip)}`;
   }

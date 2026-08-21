@@ -1,6 +1,6 @@
 import { imagesUploadImage } from "@alliance/shared/client";
-import React, { forwardRef, useCallback, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
+import React, { forwardRef, useCallback, useRef, useState } from "react";
 
 export type MarkdownTextAreaProps =
   React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
@@ -32,7 +32,7 @@ export const MarkdownTextArea = forwardRef<
       onUploadError,
       ...rest
     },
-    ref
+    ref,
   ) => {
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -48,7 +48,7 @@ export const MarkdownTextArea = forwardRef<
           (ref as MutableRefObject<HTMLTextAreaElement | null>).current = node;
         }
       },
-      [ref]
+      [ref],
     );
 
     const readFileAsDataUrl = useCallback((file: File) => {
@@ -91,7 +91,7 @@ export const MarkdownTextArea = forwardRef<
     const containsImage = (event: React.DragEvent<HTMLTextAreaElement>) => {
       const items = Array.from(event.dataTransfer?.items ?? []);
       return items.some(
-        (item) => item.kind === "file" && item.type.startsWith("image/")
+        (item) => item.kind === "file" && item.type.startsWith("image/"),
       );
     };
 
@@ -107,7 +107,7 @@ export const MarkdownTextArea = forwardRef<
     };
 
     const handleDragEnter: React.DragEventHandler<HTMLTextAreaElement> = (
-      event
+      event,
     ) => {
       if (containsImage(event)) {
         event.preventDefault();
@@ -119,7 +119,7 @@ export const MarkdownTextArea = forwardRef<
     };
 
     const handleDragOver: React.DragEventHandler<HTMLTextAreaElement> = (
-      event
+      event,
     ) => {
       if (containsImage(event)) {
         event.preventDefault();
@@ -132,7 +132,7 @@ export const MarkdownTextArea = forwardRef<
     };
 
     const handleDragLeave: React.DragEventHandler<HTMLTextAreaElement> = (
-      event
+      event,
     ) => {
       if (containsImage(event)) {
         event.preventDefault();
@@ -142,11 +142,11 @@ export const MarkdownTextArea = forwardRef<
     };
 
     const handleDrop: React.DragEventHandler<HTMLTextAreaElement> = async (
-      event
+      event,
     ) => {
       const dtFiles = Array.from(event.dataTransfer?.files ?? []);
       const imageFiles = dtFiles.filter((file) =>
-        file.type.startsWith("image/")
+        file.type.startsWith("image/"),
       );
 
       if (!imageFiles.length) {
@@ -214,7 +214,7 @@ export const MarkdownTextArea = forwardRef<
         )}
       </div>
     );
-  }
+  },
 );
 
 MarkdownTextArea.displayName = "MarkdownTextArea";

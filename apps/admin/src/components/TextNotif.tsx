@@ -1,10 +1,10 @@
 import { ActionEventNotifDto, ProfileDto } from "@alliance/shared/client";
+import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
 import Badge from "@alliance/sharedweb/ui/Badge";
 import Card from "@alliance/sharedweb/ui/Card";
-import { CardStyle } from "@alliance/shared/styles/card";
 import React from "react";
 import { linkClickClasses } from "./EmailNotif";
-import { cn } from "@alliance/shared/styles/util";
 
 function statusClasses(status?: string) {
   const s = (status || "").toString().toLowerCase();
@@ -49,7 +49,7 @@ const TextNotif: React.FC<TextNotifProps> = ({ notif }) => {
             <Badge
               className={cn(
                 linkClickClasses(mms.clickedLink),
-                "!bg-zinc-100 !py-2 !px-3"
+                "!bg-zinc-100 !py-2 !px-3",
               )}
             >
               {mms.clickedLink ? "Link clicked" : "No link clicked"}

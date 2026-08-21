@@ -1,28 +1,28 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import request from 'supertest';
-import type { Repository } from 'typeorm';
-import { ActionsService } from '../src/actions/actions.service';
-import { ActionActivity } from '../src/actions/entities/action-activity.entity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import request from "supertest";
+import type { Repository } from "typeorm";
+import { ActionsService } from "../src/actions/actions.service";
+import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
   ActionStatus,
-} from '../src/actions/entities/action-event.entity';
-import { ActionSuite } from '../src/actions/entities/action-suite.entity';
+} from "../src/actions/entities/action-event.entity";
+import { ActionSuite } from "../src/actions/entities/action-suite.entity";
 import {
   Action,
   ActionTaskType,
   VisibilityMode,
-} from '../src/actions/entities/action.entity';
-import { ContractService } from '../src/contract/contract.service';
-import { ContractEventType } from '../src/user/entities/contract-event.entity';
-import { User } from '../src/user/entities/user.entity';
-import { UserService } from '../src/user/user.service';
-import { createTestApp, TestContext } from './e2e-test-utils';
+} from "../src/actions/entities/action.entity";
+import { ContractService } from "../src/contract/contract.service";
+import { ContractEventType } from "../src/user/entities/contract-event.entity";
+import { User } from "../src/user/entities/user.entity";
+import { UserService } from "../src/user/user.service";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
 const addDays = (date: Date, days: number) =>
   new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 
-describe('findUsersToSuspend (e2e)', () => {
+describe("findUsersToSuspend (e2e)", () => {
   let ctx: TestContext;
   let actionsService: ActionsService;
   let contractService: ContractService;
@@ -35,14 +35,14 @@ describe('findUsersToSuspend (e2e)', () => {
 
   let completingUser: User;
   let failingUser: User;
-  const now = new Date('2023-04-01T00:00:00Z');
+  const now = new Date("2023-04-01T00:00:00Z");
 
   const createCompletedSuiteAction = async (
     suiteName: string,
     actionName: string,
     baseDate: Date,
     options: {
-      cohortExpression?: Action['cohortExpression'];
+      cohortExpression?: Action["cohortExpression"];
       priority?: number;
       suite?: ActionSuite;
     } = {},
@@ -58,14 +58,14 @@ describe('findUsersToSuspend (e2e)', () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name: actionName,
-        category: 'Suspension Test',
-        body: 'Body',
-        taskContents: 'Tasks',
-        shortDescription: 'Short description',
+        category: "Suspension Test",
+        body: "Body",
+        taskContents: "Tasks",
+        shortDescription: "Short description",
         suite,
         visibilityMode: VisibilityMode.Public,
         cohortExpression: options.cohortExpression ?? {
-          type: 'Tag',
+          type: "Tag",
           tagId: ctx.defaultTag.id,
         },
         priority: options.priority,
@@ -77,21 +77,21 @@ describe('findUsersToSuspend (e2e)', () => {
     await eventRepo.save([
       eventRepo.create({
         title: `${actionName} office`,
-        description: 'Office phase',
+        description: "Office phase",
         newStatus: ActionStatus.OfficeAction,
         date: baseDate,
         action,
       }),
       eventRepo.create({
         title: `${actionName} member`,
-        description: 'Member phase',
+        description: "Member phase",
         newStatus: ActionStatus.MemberAction,
         date: addDays(baseDate, 1),
         action,
       }),
       eventRepo.create({
         title: `${actionName} done`,
-        description: 'Completed',
+        description: "Completed",
         newStatus: ActionStatus.Completed,
         date: addDays(baseDate, 2),
         action,
@@ -113,12 +113,12 @@ describe('findUsersToSuspend (e2e)', () => {
     activityRepo = ctx.dataSource.getRepository(ActionActivity);
     userRepo = ctx.dataSource.getRepository(User);
 
-    const contractSignedAt = new Date('2023-01-01T00:00:00Z');
+    const contractSignedAt = new Date("2023-01-01T00:00:00Z");
 
     completingUser = await userService.create({
-      email: 'suspension-complete@example.com',
-      password: 'Password123!',
-      name: 'Completing User',
+      email: "suspension-complete@example.com",
+      password: "Password123!",
+      name: "Completing User",
       tags: [ctx.defaultTag],
       contractEvents: [
         {
@@ -131,9 +131,9 @@ describe('findUsersToSuspend (e2e)', () => {
     });
 
     failingUser = await userService.create({
-      email: 'suspension-failing@example.com',
-      password: 'Password123!',
-      name: 'Failing User',
+      email: "suspension-failing@example.com",
+      password: "Password123!",
+      name: "Failing User",
       tags: [ctx.defaultTag],
       contractEvents: [
         {
@@ -147,19 +147,19 @@ describe('findUsersToSuspend (e2e)', () => {
 
     const actions = await Promise.all([
       createCompletedSuiteAction(
-        'Suite One',
-        'Action One',
-        new Date('2023-01-10T00:00:00Z'),
+        "Suite One",
+        "Action One",
+        new Date("2023-01-10T00:00:00Z"),
       ),
       createCompletedSuiteAction(
-        'Suite Two',
-        'Action Two',
-        new Date('2023-02-10T00:00:00Z'),
+        "Suite Two",
+        "Action Two",
+        new Date("2023-02-10T00:00:00Z"),
       ),
       createCompletedSuiteAction(
-        'Suite Three',
-        'Action Three',
-        new Date('2023-03-10T00:00:00Z'),
+        "Suite Three",
+        "Action Three",
+        new Date("2023-03-10T00:00:00Z"),
       ),
     ]);
 
@@ -179,13 +179,13 @@ describe('findUsersToSuspend (e2e)', () => {
     await ctx.app.close();
   });
 
-  it('returns suspension plans from the admin endpoint', async () => {
-    const rangeStart = new Date('2023-04-01T00:00:00Z');
-    const rangeEnd = new Date('2023-04-02T00:00:00Z');
+  it("returns suspension plans from the admin endpoint", async () => {
+    const rangeStart = new Date("2023-04-01T00:00:00Z");
+    const rangeEnd = new Date("2023-04-02T00:00:00Z");
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/actions/suspendPlans')
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .get("/actions/suspendPlans")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .query({
         rangeStart: rangeStart.toISOString(),
         rangeEnd: rangeEnd.toISOString(),
@@ -203,35 +203,35 @@ describe('findUsersToSuspend (e2e)', () => {
     expect(userIds).not.toContain(completingUser.id);
   });
 
-  it('does not count a suite as past while still in its member action window', async () => {
+  it("does not count a suite as past while still in its member action window", async () => {
     // Create a 4th suite whose member action has started but deadline is still
     // in the future relative to `now`. Even though the user has already failed
     // two earlier suites, this in-progress suite should not count, so the user
     // should not yet be eligible for suspension.
     const inProgressSuite = await suiteRepo.save(
-      suiteRepo.create({ name: 'Suite In-Progress' }),
+      suiteRepo.create({ name: "Suite In-Progress" }),
     );
     const inProgressAction = await actionRepo.save(
       actionRepo.create({
-        name: 'Action In-Progress',
-        category: 'Suspension Test',
-        body: 'Body',
-        taskContents: 'Tasks',
-        shortDescription: 'Short description',
+        name: "Action In-Progress",
+        category: "Suspension Test",
+        body: "Body",
+        taskContents: "Tasks",
+        shortDescription: "Short description",
         suite: inProgressSuite,
         visibilityMode: VisibilityMode.Public,
         priority: 0,
         preventCompletion: false,
         type: ActionTaskType.Activity,
-        cohortExpression: { type: 'Tag', tagId: ctx.defaultTag.id },
+        cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
       }),
     );
 
     // MemberAction started 1 day before `now`, deadline 5 days after `now`
     await eventRepo.save(
       eventRepo.create({
-        title: 'In-Progress member',
-        description: 'Member phase',
+        title: "In-Progress member",
+        description: "Member phase",
         newStatus: ActionStatus.MemberAction,
         date: addDays(now, -1),
         action: inProgressAction,
@@ -239,8 +239,8 @@ describe('findUsersToSuspend (e2e)', () => {
     );
     await eventRepo.save(
       eventRepo.create({
-        title: 'In-Progress done',
-        description: 'Completed',
+        title: "In-Progress done",
+        description: "Completed",
         newStatus: ActionStatus.Completed,
         date: addDays(now, 5),
         action: inProgressAction,
@@ -260,7 +260,7 @@ describe('findUsersToSuspend (e2e)', () => {
       // Instead, simulate by checking at a date before suite three's deadline:
       // Suite Three: MemberAction at 2023-03-11, Completed at 2023-03-12
       // Check at 2023-03-11T12:00:00Z — between member start and deadline
-      const midSuiteThree = new Date('2023-03-11T12:00:00Z');
+      const midSuiteThree = new Date("2023-03-11T12:00:00Z");
       const midResult = await actionsService.findUsersToSuspend(midSuiteThree);
       // Only 2 suites are fully past at this point, not enough for suspension
       expect(midResult).toHaveLength(0);
@@ -272,12 +272,12 @@ describe('findUsersToSuspend (e2e)', () => {
     }
   });
 
-  it('does not count optional actions toward the suspension streak', async () => {
+  it("does not count optional actions toward the suspension streak", async () => {
     // Remove Suite Three so failingUser only has 2 required failures, then add
     // an optional suite. If optional actions were counted this would hit the
     // 3-strike threshold — but they shouldn't be.
     const suiteThree = await suiteRepo.findOneOrFail({
-      where: { name: 'Suite Three' },
+      where: { name: "Suite Three" },
     });
     const actionThree = await actionRepo.findOneOrFail({
       where: { suite: { id: suiteThree.id } },
@@ -288,43 +288,43 @@ describe('findUsersToSuspend (e2e)', () => {
     await suiteRepo.delete(suiteThree.id);
 
     const optionalSuite = await suiteRepo.save(
-      suiteRepo.create({ name: 'Suite Optional' }),
+      suiteRepo.create({ name: "Suite Optional" }),
     );
     const optionalAction = await actionRepo.save(
       actionRepo.create({
-        name: 'Optional Action',
-        category: 'Suspension Test',
-        body: 'Body',
-        taskContents: 'Tasks',
-        shortDescription: 'Short description',
+        name: "Optional Action",
+        category: "Suspension Test",
+        body: "Body",
+        taskContents: "Tasks",
+        shortDescription: "Short description",
         suite: optionalSuite,
         visibilityMode: VisibilityMode.Public,
         preventCompletion: false,
         type: ActionTaskType.Activity,
         optional: true,
-        cohortExpression: { type: 'Tag', tagId: ctx.defaultTag.id },
+        cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
       }),
     );
     await eventRepo.save([
       eventRepo.create({
-        title: 'Optional office',
-        description: 'Office phase',
+        title: "Optional office",
+        description: "Office phase",
         newStatus: ActionStatus.OfficeAction,
-        date: new Date('2023-03-10T00:00:00Z'),
+        date: new Date("2023-03-10T00:00:00Z"),
         action: optionalAction,
       }),
       eventRepo.create({
-        title: 'Optional member',
-        description: 'Member phase',
+        title: "Optional member",
+        description: "Member phase",
         newStatus: ActionStatus.MemberAction,
-        date: new Date('2023-03-11T00:00:00Z'),
+        date: new Date("2023-03-11T00:00:00Z"),
         action: optionalAction,
       }),
       eventRepo.create({
-        title: 'Optional done',
-        description: 'Completed',
+        title: "Optional done",
+        description: "Completed",
         newStatus: ActionStatus.Completed,
-        date: new Date('2023-03-12T00:00:00Z'),
+        date: new Date("2023-03-12T00:00:00Z"),
         action: optionalAction,
       }),
     ]);
@@ -340,9 +340,9 @@ describe('findUsersToSuspend (e2e)', () => {
       await suiteRepo.delete(optionalSuite.id);
 
       const restoredAction = await createCompletedSuiteAction(
-        'Suite Three',
-        'Action Three',
-        new Date('2023-03-10T00:00:00Z'),
+        "Suite Three",
+        "Action Three",
+        new Date("2023-03-10T00:00:00Z"),
       );
       await activityRepo.save(
         activityRepo.create({
@@ -354,11 +354,11 @@ describe('findUsersToSuspend (e2e)', () => {
     }
   });
 
-  it('suspends users who fail three suites and does not re-suspend once inactive or re-signed', async () => {
+  it("suspends users who fail three suites and does not re-suspend once inactive or re-signed", async () => {
     const initialRun = await actionsService.findUsersToSuspend(now);
 
     expect(initialRun.map(({ user }) => user.id)).toEqual([failingUser.id]);
-    expect(initialRun[0].reasonKey).toContain('s-');
+    expect(initialRun[0].reasonKey).toContain("s-");
     expect(initialRun.some(({ user }) => user.id === completingUser.id)).toBe(
       false,
     );
@@ -366,7 +366,7 @@ describe('findUsersToSuspend (e2e)', () => {
     await contractService.suspendContract({
       userId: failingUser.id,
       automatic: true,
-      autoSuspendKey: 'test-auto-key',
+      autoSuspendKey: "test-auto-key",
     });
 
     const afterSuspension = await actionsService.findUsersToSuspend(now);
@@ -374,7 +374,7 @@ describe('findUsersToSuspend (e2e)', () => {
 
     await contractService.signContract({
       userId: failingUser.id,
-      signedName: 'Test Name',
+      signedName: "Test Name",
       contractId: ctx.defaultContractId,
     });
 
@@ -382,30 +382,30 @@ describe('findUsersToSuspend (e2e)', () => {
     expect(afterResigning).toHaveLength(0);
   });
 
-  it('counts a user as failing a suite only when they miss every assigned action', async () => {
+  it("counts a user as failing a suite only when they miss every assigned action", async () => {
     const multiActionFailingUser = await userService.create({
-      email: 'suspension-multi-action@example.com',
-      password: 'Password123!',
-      name: 'Multi-Action Failing User',
+      email: "suspension-multi-action@example.com",
+      password: "Password123!",
+      name: "Multi-Action Failing User",
       tags: [ctx.defaultTag],
       contractEvents: [
         {
           type: ContractEventType.SIGNED,
-          date: new Date('2023-03-15T00:00:00Z'),
+          date: new Date("2023-03-15T00:00:00Z"),
           automatic: false,
           contractId: ctx.defaultContractId,
         },
       ],
     });
     const multiActionCompletingUser = await userService.create({
-      email: 'suspension-multi-action-completing@example.com',
-      password: 'Password123!',
-      name: 'Multi-Action Completing User',
+      email: "suspension-multi-action-completing@example.com",
+      password: "Password123!",
+      name: "Multi-Action Completing User",
       tags: [ctx.defaultTag],
       contractEvents: [
         {
           type: ContractEventType.SIGNED,
-          date: new Date('2023-03-15T00:00:00Z'),
+          date: new Date("2023-03-15T00:00:00Z"),
           automatic: false,
           contractId: ctx.defaultContractId,
         },
@@ -413,27 +413,27 @@ describe('findUsersToSuspend (e2e)', () => {
     });
 
     const assignedTestUsers = {
-      type: 'Manual' as const,
+      type: "Manual" as const,
       userIds: [multiActionFailingUser.id, multiActionCompletingUser.id],
     };
     const onlyCompletingUser = {
-      type: 'Manual' as const,
+      type: "Manual" as const,
       userIds: [completingUser.id],
     };
 
     await createCompletedSuiteAction(
-      'Multi-Action Suite One',
-      'Multi-Action One',
-      new Date('2023-03-16T00:00:00Z'),
+      "Multi-Action Suite One",
+      "Multi-Action One",
+      new Date("2023-03-16T00:00:00Z"),
       { cohortExpression: assignedTestUsers },
     );
     const multiActionSuiteTwo = await suiteRepo.save(
-      suiteRepo.create({ name: 'Multi-Action Suite Two' }),
+      suiteRepo.create({ name: "Multi-Action Suite Two" }),
     );
     await createCompletedSuiteAction(
-      'Multi-Action Suite Two',
-      'Restricted First Action',
-      new Date('2023-03-20T00:00:00Z'),
+      "Multi-Action Suite Two",
+      "Restricted First Action",
+      new Date("2023-03-20T00:00:00Z"),
       {
         cohortExpression: onlyCompletingUser,
         priority: 0,
@@ -441,9 +441,9 @@ describe('findUsersToSuspend (e2e)', () => {
       },
     );
     const assignedSecondAction = await createCompletedSuiteAction(
-      'Multi-Action Suite Two',
-      'Assigned Second Action',
-      new Date('2023-03-20T00:00:00Z'),
+      "Multi-Action Suite Two",
+      "Assigned Second Action",
+      new Date("2023-03-20T00:00:00Z"),
       {
         cohortExpression: assignedTestUsers,
         priority: 1,
@@ -451,9 +451,9 @@ describe('findUsersToSuspend (e2e)', () => {
       },
     );
     await createCompletedSuiteAction(
-      'Multi-Action Suite Three',
-      'Multi-Action Three',
-      new Date('2023-03-24T00:00:00Z'),
+      "Multi-Action Suite Three",
+      "Multi-Action Three",
+      new Date("2023-03-24T00:00:00Z"),
       { cohortExpression: assignedTestUsers },
     );
     await activityRepo.save(

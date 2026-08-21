@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from '@alliance/common/analytics';
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import {
   Body,
   Controller,
@@ -9,13 +9,13 @@ import {
   Post,
   Request,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
-import type { JwtRequest } from 'src/auth/guards/jwtreq';
-import { PosthogService } from 'src/posthog/posthog.service';
-import { ContractService } from './contract.service';
+} from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
+import { AuthGuard } from "src/auth/guards/auth.guard";
+import type { JwtRequest } from "src/auth/guards/jwtreq";
+import { PosthogService } from "src/posthog/posthog.service";
+import { ContractService } from "./contract.service";
 import {
   ContractAdminDto,
   ContractDto,
@@ -23,16 +23,16 @@ import {
   CreateContractDto,
   SignContractDto,
   UpdateContractDto,
-} from './dto/contract.dto';
+} from "./dto/contract.dto";
 
-@Controller('contract')
+@Controller("contract")
 export class ContractController {
   constructor(
     private readonly contractService: ContractService,
     private readonly posthog: PosthogService,
   ) {}
 
-  @Get('current')
+  @Get("current")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ContractDto })
   async getCurrent(): Promise<ContractDto> {
@@ -41,7 +41,7 @@ export class ContractController {
     );
   }
 
-  @Get('admin')
+  @Get("admin")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [ContractAdminDto] })
   async allAdmin(): Promise<ContractAdminDto[]> {
@@ -50,29 +50,29 @@ export class ContractController {
     );
   }
 
-  @Get('admin/:id')
+  @Get("admin/:id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ContractAdminDto })
   async findOneAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
   ): Promise<ContractAdminDto> {
     return new ContractAdminDto(await this.contractService.findOne(id));
   }
 
-  @Get('detail/:id')
+  @Get("detail/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ContractDto })
-  async getById(@Param('id', ParseIntPipe) id: number): Promise<ContractDto> {
+  async getById(@Param("id", ParseIntPipe) id: number): Promise<ContractDto> {
     return new ContractDto(await this.contractService.findOne(id));
   }
 
-  @Post('sign/:id')
+  @Post("sign/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ContractEventDateDto })
   async signContract(
     @Request() req: JwtRequest,
     @Body() body: SignContractDto,
-    @Param('id', ParseIntPipe) contractId: number,
+    @Param("id", ParseIntPipe) contractId: number,
   ): Promise<ContractEventDateDto> {
     const date = await this.contractService.signContract({
       userId: req.user.sub,
@@ -89,7 +89,7 @@ export class ContractController {
     return new ContractEventDateDto(date);
   }
 
-  @Post('suspend')
+  @Post("suspend")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ContractEventDateDto })
   async suspendContract(
@@ -105,11 +105,11 @@ export class ContractController {
     return new ContractEventDateDto(date);
   }
 
-  @Post('admin/suspend/:userId')
+  @Post("admin/suspend/:userId")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ContractEventDateDto })
   async suspendContractAdmin(
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param("userId", ParseIntPipe) userId: number,
   ): Promise<ContractEventDateDto> {
     const date = await this.contractService.suspendContract({ userId });
     this.posthog.capture({
@@ -122,18 +122,18 @@ export class ContractController {
     return new ContractEventDateDto(date);
   }
 
-  @Post('create')
+  @Post("create")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ContractAdminDto })
   async createAdmin(@Body() dto: CreateContractDto): Promise<ContractAdminDto> {
     return new ContractAdminDto(await this.contractService.create(dto));
   }
 
-  @Patch('update/:id')
+  @Patch("update/:id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ContractAdminDto })
   async updateAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateContractDto,
   ): Promise<ContractAdminDto> {
     return new ContractAdminDto(await this.contractService.update(id, dto));

@@ -1,8 +1,8 @@
 import React from "react";
-import Globe from "../../components/Globe";
 import downArrow from "../../assets/icons8-expand-arrow-96.png";
-import LandingNavbar from "../../components/LandingNavbar";
 import Footer from "../../components/Footer";
+import Globe from "../../components/Globe";
+import LandingNavbar from "../../components/LandingNavbar";
 
 const LandingPage: React.FC = () => {
   return (

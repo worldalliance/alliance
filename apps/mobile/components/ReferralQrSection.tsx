@@ -1,6 +1,5 @@
-import React from "react";
-import { View } from "react-native";
 import { referralQrCopy } from "@alliance/shared/lib/copy";
+import { View } from "react-native";
 import QrCodeCard from "./system/QrCodeCard";
 
 export type ReferralQrSectionProps = {

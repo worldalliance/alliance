@@ -5,6 +5,6 @@
  * mid-cycle.
  */
 export enum StoredInviteAssignmentKind {
-  Community = 'community',
-  Open = 'open',
+  Community = "community",
+  Open = "open",
 }

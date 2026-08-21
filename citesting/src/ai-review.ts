@@ -40,7 +40,7 @@ const reviewPage = async (
   client: Anthropic,
   pageName: string,
   baselinePath: string,
-  currentPath: string
+  currentPath: string,
 ): Promise<ReviewResult> => {
   const [baselineB64, currentB64] = await Promise.all([
     toBase64(baselinePath),
@@ -140,7 +140,7 @@ Report "pass" for acceptable changes and "fail" for regressions.`,
 
 const runWithConcurrency = async <T>(
   tasks: (() => Promise<T>)[],
-  limit: number
+  limit: number,
 ): Promise<T[]> => {
   const results: T[] = [];
   let i = 0;
@@ -153,7 +153,7 @@ const runWithConcurrency = async <T>(
   };
 
   await Promise.all(
-    Array.from({ length: Math.min(limit, tasks.length) }, () => run())
+    Array.from({ length: Math.min(limit, tasks.length) }, () => run()),
   );
   return results;
 };
@@ -163,7 +163,7 @@ const main = async () => {
 
   if (!baselineDir || !currentDir || !diffDir) {
     console.error(
-      `Usage: ts-node ai-review.ts <baselineDir> <currentDir> <diffDir>`
+      `Usage: ts-node ai-review.ts <baselineDir> <currentDir> <diffDir>`,
     );
     process.exit(1);
   }
@@ -177,7 +177,7 @@ const main = async () => {
   const client = new Anthropic({ apiKey });
 
   const currentFiles = (await fs.readdir(currentDir)).filter((f) =>
-    f.endsWith(".png")
+    f.endsWith(".png"),
   );
 
   if (currentFiles.length === 0) {
@@ -229,7 +229,7 @@ const main = async () => {
     const stat = diffStats[file];
     if (stat && stat.pct < TRIVIAL_DIFF_THRESHOLD) {
       console.log(
-        `${logPrefix} [PASS] ${pageName} — trivial diff (${stat.pct}%), skipping AI`
+        `${logPrefix} [PASS] ${pageName} — trivial diff (${stat.pct}%), skipping AI`,
       );
       results.push({
         page: pageName,
@@ -244,7 +244,7 @@ const main = async () => {
     console.log(
       `${logPrefix} Queuing ${pageName} for AI review (${
         stat ? stat.pct + "%" : "unknown"
-      } diff)...`
+      } diff)...`,
     );
     apiTasks.push({
       file,
@@ -256,11 +256,11 @@ const main = async () => {
   // Run AI reviews in parallel
   if (apiTasks.length > 0) {
     console.log(
-      `${logPrefix} Sending ${apiTasks.length} pages for AI review (concurrency: ${CONCURRENCY})...`
+      `${logPrefix} Sending ${apiTasks.length} pages for AI review (concurrency: ${CONCURRENCY})...`,
     );
     const apiResults = await runWithConcurrency(
       apiTasks.map((t) => t.task),
-      CONCURRENCY
+      CONCURRENCY,
     );
 
     for (const result of apiResults) {
@@ -282,7 +282,7 @@ const main = async () => {
   console.log(
     `\n${logPrefix} === Summary: ${results.length - failures.length} passed, ${
       failures.length
-    } failed ===`
+    } failed ===`,
   );
 
   if (failures.length > 0) {

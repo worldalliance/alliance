@@ -1,7 +1,7 @@
-import React from "react";
 import { isNullReactNode, NullReactNode } from "@alliance/shared/lib/constants";
 import { cn } from "@alliance/shared/styles/util";
 import { LucideIcon } from "lucide-react";
+import React from "react";
 
 type ButtonProps = React.PropsWithChildren & {
   className?: string;
@@ -108,7 +108,7 @@ const Button: React.FC<ButtonProps> = ({
     size,
     disabled && "opacity-50 !cursor-not-allowed",
     color,
-    className
+    className,
   );
 
   const IconLeft = isNullReactNode(iconLeft)

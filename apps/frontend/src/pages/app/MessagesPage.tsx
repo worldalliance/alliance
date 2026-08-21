@@ -9,18 +9,6 @@ import {
   ProfileDto,
   userListMessageableUsers,
 } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import { Plus } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@alliance/shared/styles/util";
-import { useSearchParams } from "react-router";
-import ConversationDetailPanel from "../../components/ConversationDetailPanel";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
-import { useAuth } from "../../lib/AuthContext";
-import useLiveConvoMessages, { useConversations } from "./messages";
-import { useMediaQuery } from "../../lib/useMediaQuery";
 import {
   buildGroupConversationTitle,
   findMatchingConversation,
@@ -32,7 +20,19 @@ import {
   sortConversations,
   updateConversationsForLastMessage,
 } from "@alliance/shared/lib/messages";
+import { cn } from "@alliance/shared/styles/util";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { Plus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
+import ConversationDetailPanel from "../../components/ConversationDetailPanel";
+import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
+import { useAuth } from "../../lib/AuthContext";
 import { useNavbarOptions } from "../../lib/NavbarOptionsContext";
+import { useMediaQuery } from "../../lib/useMediaQuery";
+import useLiveConvoMessages, { useConversations } from "./messages";
 
 const MessagesPage = () => {
   useWhiteBackground();

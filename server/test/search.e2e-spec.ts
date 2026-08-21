@@ -1,18 +1,18 @@
-import type { Repository } from 'typeorm';
-import request from 'supertest';
-import { createTestApp, TestContext } from './e2e-test-utils';
-import { SearchModule } from 'src/search/search.module';
-import { User } from 'src/user/entities/user.entity';
-import { Action } from 'src/actions/entities/action.entity';
 import {
   ActionEvent,
   ActionStatus,
-} from 'src/actions/entities/action-event.entity';
-import { Post } from 'src/forum/entities/post.entity';
-import { RecentSearch } from 'src/search/recentsearch.entity';
-import { SearchItemType } from 'src/search/searchitem.dto';
+} from "src/actions/entities/action-event.entity";
+import { Action } from "src/actions/entities/action.entity";
+import { Post } from "src/forum/entities/post.entity";
+import { RecentSearch } from "src/search/recentsearch.entity";
+import { SearchModule } from "src/search/search.module";
+import { SearchItemType } from "src/search/searchitem.dto";
+import { User } from "src/user/entities/user.entity";
+import request from "supertest";
+import type { Repository } from "typeorm";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
-describe('Search (e2e)', () => {
+describe("Search (e2e)", () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
   let actionRepo: Repository<Action>;
@@ -34,27 +34,27 @@ describe('Search (e2e)', () => {
 
     targetUser = await userRepo.save(
       userRepo.create({
-        name: 'Target User',
-        email: 'target@example.com',
-        password: 'Password123!',
+        name: "Target User",
+        email: "target@example.com",
+        password: "Password123!",
         anonymous: false,
       }),
     );
 
     targetAction = await actionRepo.save(
       actionRepo.create({
-        name: 'Targeted Cleanup Action',
-        category: 'Environment',
-        body: 'Clean the neighbourhood park',
-        shortDescription: 'Cleanup day',
-        taskContents: 'Bring gloves',
+        name: "Targeted Cleanup Action",
+        category: "Environment",
+        body: "Clean the neighbourhood park",
+        shortDescription: "Cleanup day",
+        taskContents: "Bring gloves",
       }),
     );
 
     await eventRepo.save(
       eventRepo.create({
-        title: 'Launch',
-        description: 'Action is live',
+        title: "Launch",
+        description: "Action is live",
         newStatus: ActionStatus.MemberAction,
         date: new Date(Date.now() - 1000),
         action: targetAction,
@@ -63,9 +63,9 @@ describe('Search (e2e)', () => {
 
     targetPost = await postRepo.save(
       postRepo.create({
-        title: 'Target Post About Action',
+        title: "Target Post About Action",
         editableContent: {
-          body: 'Join us for the cleanup',
+          body: "Join us for the cleanup",
           attachments: [],
         },
         author: targetUser,
@@ -77,18 +77,18 @@ describe('Search (e2e)', () => {
   }, 50000);
 
   afterEach(async () => {
-    await recentSearchRepo.query('DELETE FROM recent_search');
+    await recentSearchRepo.query("DELETE FROM recent_search");
   });
 
   afterAll(async () => {
     await ctx.app.close();
   });
 
-  it('returns matching users, actions, and posts for a search query', async () => {
+  it("returns matching users, actions, and posts for a search query", async () => {
     const response = await request(ctx.app.getHttpServer())
-      .get('/search/all')
-      .query({ query: 'Target' })
-      .set('Authorization', `Bearer ${ctx.accessToken}`)
+      .get("/search/all")
+      .query({ query: "Target" })
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
       .expect(200);
 
     const ids = response.body.map((item) => item.id);
@@ -97,54 +97,54 @@ describe('Search (e2e)', () => {
     expect(ids).toContain(`p${targetPost.id}`);
   });
 
-  it('persists and returns recent selections when query is empty', async () => {
+  it("persists and returns recent selections when query is empty", async () => {
     await request(ctx.app.getHttpServer())
-      .post('/search/selected')
-      .set('Authorization', `Bearer ${ctx.accessToken}`)
+      .post("/search/selected")
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
       .send({
         id: `a${targetAction.id}`,
         name: targetAction.name,
-        webAppLocation: '/actions',
+        webAppLocation: "/actions",
         secondaryData: [],
         type: SearchItemType.Action,
       })
       .expect(201);
 
     const response = await request(ctx.app.getHttpServer())
-      .get('/search/all')
-      .query({ query: '' })
-      .set('Authorization', `Bearer ${ctx.accessToken}`)
+      .get("/search/all")
+      .query({ query: "" })
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
       .expect(200);
 
     expect(response.body.length).toBeGreaterThan(0);
     expect(response.body[0].id).toBe(`a${targetAction.id}`);
   });
 
-  it('deduplicates saved selections when the same item is stored again', async () => {
+  it("deduplicates saved selections when the same item is stored again", async () => {
     const payload = {
       id: `u${targetUser.id}`,
       name: targetUser.name,
-      webAppLocation: '/users',
+      webAppLocation: "/users",
       secondaryData: [],
       type: SearchItemType.User,
     };
 
     await request(ctx.app.getHttpServer())
-      .post('/search/selected')
-      .set('Authorization', `Bearer ${ctx.accessToken}`)
+      .post("/search/selected")
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
       .send(payload)
       .expect(201);
 
     await request(ctx.app.getHttpServer())
-      .post('/search/selected')
-      .set('Authorization', `Bearer ${ctx.accessToken}`)
+      .post("/search/selected")
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
       .send(payload)
       .expect(201);
 
     const response = await request(ctx.app.getHttpServer())
-      .get('/search/all')
-      .query({ query: '' })
-      .set('Authorization', `Bearer ${ctx.accessToken}`)
+      .get("/search/all")
+      .query({ query: "" })
+      .set("Authorization", `Bearer ${ctx.accessToken}`)
       .expect(200);
 
     const userItems = response.body.filter(

@@ -1,7 +1,7 @@
-import React, { ReactNode, useState } from "react";
-import { View, TextInput, TextInputProps } from "react-native";
-import Text, { FontWeight } from "./Text";
 import { cn } from "@alliance/shared/styles/util";
+import { ReactNode, useState } from "react";
+import { TextInput, TextInputProps, View } from "react-native";
+import Text, { FontWeight } from "./Text";
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -62,7 +62,9 @@ export default function Input({
           {...textInputProps}
         />
         {hasRightElement ? (
-          <View className={cn("ml-2", rightElementClassName)}>{rightElement}</View>
+          <View className={cn("ml-2", rightElementClassName)}>
+            {rightElement}
+          </View>
         ) : null}
       </View>
       {error && <Text className="text-xs text-red-500 mt-1">{error}</Text>}

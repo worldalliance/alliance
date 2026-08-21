@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { ApiProperty } from "@nestjs/swagger";
+import { Transform, Type } from "class-transformer";
 import {
   Allow,
   ArrayMaxSize,
@@ -11,15 +11,15 @@ import {
   IsUrl,
   MaxLength,
   ValidateIf,
-} from 'class-validator';
+} from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { trim, trimStringArray } from 'src/utils/transforms';
-import { ActionPartnershipNote } from './action-partnership-note.entity';
-import type { Relation } from 'src/utils/Repository';
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
+import { trim, trimStringArray } from "src/utils/transforms";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { ActionPartnershipNote } from "./action-partnership-note.entity";
 
 @Entity()
 export class ActionPartnershipResponse {
@@ -36,7 +36,7 @@ export class ActionPartnershipResponse {
   @MaxLength(300)
   organizationName: string;
 
-  @Column({ default: '' })
+  @Column({ default: "" })
   @ApiProperty()
   @Transform(trim)
   @IsString()
@@ -61,7 +61,7 @@ export class ActionPartnershipResponse {
   @MaxLength(500)
   contact: string;
 
-  @Column({ type: 'jsonb' })
+  @Column({ type: "jsonb" })
   @ApiProperty({ isArray: true, type: String })
   @Transform(trimStringArray)
   @IsArray()
@@ -72,11 +72,11 @@ export class ActionPartnershipResponse {
   @MaxLength(100, { each: true })
   outreachChannels: string[];
 
-  @Column({ type: 'text', default: '' })
+  @Column({ type: "text", default: "" })
   @ApiProperty()
   @Transform(trim)
   @ValidateIf((response: ActionPartnershipResponse) =>
-    response.outreachChannels?.includes('Other'),
+    response.outreachChannels?.includes("Other"),
   )
   @IsString()
   @IsNotEmpty()
@@ -91,7 +91,7 @@ export class ActionPartnershipResponse {
   @MaxLength(500)
   audienceSize: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   @ApiProperty()
   @Transform(trim)
   @IsString()
@@ -99,7 +99,7 @@ export class ActionPartnershipResponse {
   @MaxLength(5000)
   desiredCollaboration: string;
 
-  @Column({ type: 'text', default: '' })
+  @Column({ type: "text", default: "" })
   @ApiProperty()
   @Transform(trim)
   @IsString()

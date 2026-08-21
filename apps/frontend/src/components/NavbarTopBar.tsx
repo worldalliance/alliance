@@ -1,23 +1,23 @@
+import {
+  NAV_BAR_CONTAINER_HEIGHT,
+  NAV_BAR_ICON_HEIGHT,
+} from "@alliance/shared/lib/constants";
+import { cn } from "@alliance/shared/styles/util";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import { Menu, Search, X } from "lucide-react";
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
 import { useAuth } from "../lib/AuthContext";
+import { NavbarOptionsContext } from "../lib/NavbarOptionsContext";
 import NotificationsIcon from "./NotificationsIcon";
 import ProfileDropdown from "./ProfileDropdown";
 import SearchBar from "./SearchBar";
-import { cn } from "@alliance/shared/styles/util";
-import {
-  NAV_BAR_CONTAINER_HEIGHT,
-  NAV_BAR_ICON_HEIGHT,
-} from "@alliance/shared/lib/constants";
-import { useContext } from "react";
-import { NavbarOptionsContext } from "../lib/NavbarOptionsContext";
 
 export function NavbarTopBar({
   onMenuClick,
@@ -30,9 +30,7 @@ export function NavbarTopBar({
 }) {
   const navbarOptions = useContext(NavbarOptionsContext);
   const whiteBackground =
-    whiteBackgroundProp ??
-    navbarOptions?.options?.whiteBackground ??
-    false;
+    whiteBackgroundProp ?? navbarOptions?.options?.whiteBackground ?? false;
   const { isAuthenticated } = useAuth();
   const [searchExpanded, setSearchExpanded] = useState(false);
   const searchContainerRef = useOutsideClick(() => setSearchExpanded(false));

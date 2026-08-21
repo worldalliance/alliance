@@ -1,7 +1,7 @@
-import { Logger, OnModuleDestroy } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Logger, OnModuleDestroy } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { JwtService } from "@nestjs/jwt";
+import { InjectRepository } from "@nestjs/typeorm";
 import {
   ConnectedSocket,
   OnGatewayConnection,
@@ -9,16 +9,16 @@ import {
   OnGatewayInit,
   WebSocketGateway,
   WebSocketServer,
-} from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import type { JwtPayload } from 'src/auth/guards/jwtreq';
-import { DetachedWorkTracker } from 'src/utils/detached-work';
-import type { Repository } from 'typeorm';
-import { ConversationService } from './conversation.service';
-import { MessageDto } from './dto/messaging.dto';
-import { Participant } from './entities/participant.entity';
-import { extractTokenFromSocket } from './gateway.utils';
-import { MessagingEvents } from './messaging.events';
+} from "@nestjs/websockets";
+import { Server, Socket } from "socket.io";
+import type { JwtPayload } from "src/auth/guards/jwtreq";
+import { DetachedWorkTracker } from "src/utils/detached-work";
+import type { Repository } from "typeorm";
+import { ConversationService } from "./conversation.service";
+import { MessageDto } from "./dto/messaging.dto";
+import { Participant } from "./entities/participant.entity";
+import { extractTokenFromSocket } from "./gateway.utils";
+import { MessagingEvents } from "./messaging.events";
 
 interface MessageCreatedPayload {
   conversationId: number;
@@ -30,7 +30,7 @@ interface MessageCreatedPayload {
     origin: true,
     credentials: true,
   },
-  namespace: '/messaging/overview',
+  namespace: "/messaging/overview",
 })
 export class MessagingOverviewGateway
   implements
@@ -99,7 +99,7 @@ export class MessagingOverviewGateway
       try {
         const token = extractTokenFromSocket(socket);
         if (!token) {
-          return next(new Error('Unauthorized'));
+          return next(new Error("Unauthorized"));
         }
         const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
           secret: process.env.JWT_SECRET,
@@ -145,7 +145,7 @@ export class MessagingOverviewGateway
               userId,
             );
 
-          this.server.to(this.userRoom(userId)).emit('conversation:unread', {
+          this.server.to(this.userRoom(userId)).emit("conversation:unread", {
             conversationId: payload.conversationId,
             unreadCount: conversation.unreadCount,
             lastMessage: payload.message,
@@ -179,7 +179,7 @@ export class MessagingOverviewGateway
               userId,
             );
 
-          this.server.to(this.userRoom(userId)).emit('conversation:unread', {
+          this.server.to(this.userRoom(userId)).emit("conversation:unread", {
             conversationId: payload.conversationId,
             unreadCount: conversation.unreadCount,
             conversation,

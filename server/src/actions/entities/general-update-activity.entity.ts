@@ -1,20 +1,20 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow } from "class-validator";
+import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { CreateDateColumnTz } from 'src/datasources/basecolumns';
-import { User } from '../../user/entities/user.entity';
-import { GeneralUpdate } from './general-update.entity';
-import type { Relation } from 'src/utils/Repository';
+} from "typeorm";
+import { User } from "../../user/entities/user.entity";
+import { GeneralUpdate } from "./general-update.entity";
 
 export enum GeneralUpdateActivityType {
-  DISMISSED = 'dismissed',
+  DISMISSED = "dismissed",
 }
 
 @Entity()
@@ -26,11 +26,11 @@ export class GeneralUpdateActivity {
   @ApiProperty()
   id: number;
 
-  @Column({ type: 'enum', enum: GeneralUpdateActivityType })
+  @Column({ type: "enum", enum: GeneralUpdateActivityType })
   @ApiProperty({
-    description: 'Type of general update activity',
+    description: "Type of general update activity",
     enum: GeneralUpdateActivityType,
-    enumName: 'GeneralUpdateActivityType',
+    enumName: "GeneralUpdateActivityType",
   })
   @Allow()
   type: GeneralUpdateActivityType;
@@ -43,8 +43,8 @@ export class GeneralUpdateActivity {
 
   // Relations
 
-  @ManyToOne(() => GeneralUpdate, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'generalUpdateId' })
+  @ManyToOne(() => GeneralUpdate, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "generalUpdateId" })
   @Allow()
   @Type(() => GeneralUpdate)
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
@@ -55,8 +55,8 @@ export class GeneralUpdateActivity {
   @Allow()
   generalUpdateId: number;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
   @Allow()
   @Type(() => User)
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating

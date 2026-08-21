@@ -1,13 +1,13 @@
-import { PartialType, PickType } from '@nestjs/swagger';
-import { ExternalShareTarget } from '../entities/external-share-target.entity';
+import { PartialType, PickType } from "@nestjs/swagger";
+import { ExternalShareTarget } from "../entities/external-share-target.entity";
 
 export class ExternalShareTargetDto extends PickType(ExternalShareTarget, [
-  'id',
-  'name',
-  'url',
-  'paramName',
-  'createdAt',
-  'updatedAt',
+  "id",
+  "name",
+  "url",
+  "paramName",
+  "createdAt",
+  "updatedAt",
 ]) {
   constructor(target: ExternalShareTarget) {
     super();
@@ -22,9 +22,9 @@ export class ExternalShareTargetDto extends PickType(ExternalShareTarget, [
 
 export class CreateExternalShareTargetDto extends PickType(
   ExternalShareTarget,
-  ['name', 'url', 'paramName'],
+  ["name", "url", "paramName"],
 ) {}
 
 export class UpdateExternalShareTargetDto extends PartialType(
-  PickType(ExternalShareTarget, ['name', 'url', 'paramName']),
+  PickType(ExternalShareTarget, ["name", "url", "paramName"]),
 ) {}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
 import { useStripe } from "@stripe/react-stripe-js";
 import { PaymentIntent } from "@stripe/stripe-js";
+import { useEffect, useState } from "react";
 
 export const usePaymentStatus = () => {
   const stripe = useStripe();
@@ -14,7 +14,7 @@ export const usePaymentStatus = () => {
     // Retrieve the "payment_intent_client_secret" query parameter appended to
     // your return_url by Stripe.js
     const clientSecret = new URLSearchParams(window.location.search).get(
-      "payment_intent_client_secret"
+      "payment_intent_client_secret",
     );
 
     if (!clientSecret) {

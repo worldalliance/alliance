@@ -200,9 +200,7 @@ const PrelaunchNavbar: React.FC<PrelaunchNavbarProps> = ({
             key={link}
             className={cn(
               "hover:underline whitespace-nowrap",
-              transparent
-                ? "text-white/90 hover:text-white"
-                : "text-zinc-900",
+              transparent ? "text-white/90 hover:text-white" : "text-zinc-900",
             )}
           >
             {link}

@@ -1,6 +1,6 @@
-import { cva, type VariantProps } from "class-variance-authority";
-import { Button as BaseUIButton } from "@base-ui/react/button";
 import { cn } from "@alliance/shared/styles/util";
+import { Button as BaseUIButton } from "@base-ui/react/button";
+import { cva, type VariantProps } from "class-variance-authority";
 import { LucideIcon } from "lucide-react";
 
 export enum BaseButtonVariant {
@@ -76,7 +76,7 @@ const baseButtonVariants = cva(
       variant: BaseButtonVariant.White,
       size: BaseButtonSize.Medium,
     },
-  }
+  },
 );
 
 export type BaseButtonVariants = VariantProps<typeof baseButtonVariants>;
@@ -128,4 +128,4 @@ function BaseButton({
   );
 }
 
-export { BaseButton as default, baseButtonVariants };
+export { baseButtonVariants, BaseButton as default };

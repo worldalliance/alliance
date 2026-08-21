@@ -209,7 +209,10 @@ const InteractionForm: React.FC<{
   };
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-2 sm:grid-cols-[1fr_auto]">
+    <form
+      onSubmit={handleSubmit}
+      className="grid gap-2 sm:grid-cols-[1fr_auto]"
+    >
       <textarea
         value={text}
         onChange={(event) => setText(event.target.value)}
@@ -680,7 +683,8 @@ const AmbassadorProgramPage: React.FC = () => {
   const invited = filteredRecords.filter((member) => member.invited);
   const active = filteredRecords.filter((member) => member.activeParticipant);
   const invitedIds = useMemo(
-    () => new Set(records.filter((member) => member.invited).map((m) => m.userId)),
+    () =>
+      new Set(records.filter((member) => member.invited).map((m) => m.userId)),
     [records],
   );
   const activeIds = useMemo(
@@ -728,8 +732,11 @@ const AmbassadorProgramPage: React.FC = () => {
   };
 
   const error =
-    dashboardQuery.error || membersQuery.error || upsertMember.error ||
-    updateMember.error || createInteraction.error;
+    dashboardQuery.error ||
+    membersQuery.error ||
+    upsertMember.error ||
+    updateMember.error ||
+    createInteraction.error;
 
   return (
     <main className="min-h-screen bg-zinc-50 px-6 py-6 text-zinc-900">

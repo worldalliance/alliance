@@ -1,8 +1,9 @@
 import {
   ActionActivityType,
   withdrawalHasRequiredReason,
-} from '@alliance/common/actionActivity';
-import type { DeviceVisibilityTarget } from '@alliance/common/forms/device';
+} from "@alliance/common/actionActivity";
+import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
+import { elementInternalDescriptor } from "@alliance/common/forms/element-descriptors";
 import {
   type AggregateViewSchema,
   type AggregateViewValue,
@@ -19,31 +20,30 @@ import {
   isQuestionField,
   type ListField,
   Page,
-} from '@alliance/common/forms/form-schema';
-import { elementInternalDescriptor } from '@alliance/common/forms/element-descriptors';
+} from "@alliance/common/forms/form-schema";
 import {
   type FormSchemaValidationError,
   validateFormSchema,
-} from '@alliance/common/forms/form-schema-validate';
+} from "@alliance/common/forms/form-schema-validate";
 import {
   getRankingSlotCount,
   isValidRankingSelection,
-} from '@alliance/common/forms/ranking';
+} from "@alliance/common/forms/ranking";
 import {
   type ConditionExtras,
   isElementCurrentlyVisible,
   isFieldConditionallyRequired,
   isPageCurrentlyVisible,
   stripHiddenAnswers,
-} from '@alliance/common/forms/visibility';
+} from "@alliance/common/forms/visibility";
 import {
   type AccountDerivedConditionKind,
   isAccountDerivedConditionKind,
   isKnownConditionKind,
-} from '@alliance/common/forms/visible-if-formula';
-import { toE164 } from '@alliance/common/phone';
-import { R, type Result } from '@alliance/common/result';
-import { Temporal } from '@js-temporal/polyfill';
+} from "@alliance/common/forms/visible-if-formula";
+import { toE164 } from "@alliance/common/phone";
+import { R, type Result } from "@alliance/common/result";
+import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
   ConflictException,
@@ -52,52 +52,52 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ActionFormVariantService } from 'src/actions/action-form-variant.service';
-import { ActionsService } from 'src/actions/actions.service';
-import { ActionDto } from 'src/actions/dto/action.dto';
-import { Action } from 'src/actions/entities/action.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ActionFormVariantService } from "src/actions/action-form-variant.service";
+import { ActionsService } from "src/actions/actions.service";
+import { ActionDto } from "src/actions/dto/action.dto";
+import { Action } from "src/actions/entities/action.entity";
 import {
   FollowUpForm,
   parseFollowUpForm,
-} from 'src/actions/entities/follow-up-form.entity';
-import { AiDetectionQueryService } from 'src/ai-detection/ai-detection-query.service';
-import { AiDetectionQueueService } from 'src/ai-detection/ai-detection-queue.service';
-import { DetectableEntity } from 'src/ai-detection/entities/ai-detection-result.entity';
-import { ContractService } from 'src/contract/contract.service';
-import { ContractDto } from 'src/contract/dto/contract.dto';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { ForumService } from 'src/forum/forum.service';
-import { getImageSource } from 'src/images/images.service';
-import { MmsService } from 'src/mms/mms.service';
-import { welcomeMessage } from 'src/notifs/textnotifcontents';
-import { ShareUrlsService } from 'src/share-urls/share-urls.service';
-import { UpdateProfileDto } from 'src/user/dto/user.dto';
-import { User } from 'src/user/entities/user.entity';
-import { UserService } from 'src/user/user.service';
-import { toPlainTime } from 'src/utils/plain-time';
-import { getVideoSource } from 'src/videos/videos.service';
-import { In, IsNull, type Repository } from 'typeorm';
+} from "src/actions/entities/follow-up-form.entity";
+import { AiDetectionQueryService } from "src/ai-detection/ai-detection-query.service";
+import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
+import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
+import { ContractService } from "src/contract/contract.service";
+import { ContractDto } from "src/contract/dto/contract.dto";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import { ForumService } from "src/forum/forum.service";
+import { getImageSource } from "src/images/images.service";
+import { MmsService } from "src/mms/mms.service";
+import { welcomeMessage } from "src/notifs/textnotifcontents";
+import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { UpdateProfileDto } from "src/user/dto/user.dto";
+import { User } from "src/user/entities/user.entity";
+import { UserService } from "src/user/user.service";
+import { toPlainTime } from "src/utils/plain-time";
+import { getVideoSource } from "src/videos/videos.service";
+import { In, IsNull, type Repository } from "typeorm";
 import {
   CustomValidatorResponse,
   CustomValidatorTypeDtoArgs,
   TestCustomExpressionResponse,
-} from './customvalidator.dto';
+} from "./customvalidator.dto";
 import {
   CustomValidator,
   CustomValidatorType,
   typeName,
   typeUsableForVisibility,
   typeUsesIdArgument,
-} from './entities/customvalidator.entity';
-import { Form } from './entities/form.entity';
-import { FormResponse } from './entities/formresponse.entity';
+} from "./entities/customvalidator.entity";
+import { Form } from "./entities/form.entity";
+import { FormResponse } from "./entities/formresponse.entity";
 import {
   FormSnapshot,
   SnapshotHistoryOwner,
-} from './entities/formsnapshot.entity';
+} from "./entities/formsnapshot.entity";
 import {
   CreateFormDto,
   FormDto,
@@ -107,8 +107,8 @@ import {
   SubmitFollowUpFormDto,
   SubmitFormDto,
   UpdateFormDto,
-} from './form.dto';
-import { FormSnapshotService } from './formsnapshot.service';
+} from "./form.dto";
+import { FormSnapshotService } from "./formsnapshot.service";
 
 @Injectable()
 export class TasksService {
@@ -139,19 +139,19 @@ export class TasksService {
 
   /** Returns true if value satisfies required validation for the field. Used for both top-level and list sub-field validation. */
   private hasRequiredValue(field: AnyField, value: unknown): boolean {
-    if (field.kind === 'contract') {
+    if (field.kind === "contract") {
       return value !== undefined;
     }
     if (value === undefined || value === null) {
       return false;
     }
-    if (field.kind === 'number' || field.kind === 'range') {
-      return typeof value === 'number' && Number.isFinite(value);
+    if (field.kind === "number" || field.kind === "range") {
+      return typeof value === "number" && Number.isFinite(value);
     }
-    if (field.kind === 'checkbox') {
+    if (field.kind === "checkbox") {
       return value === true;
     }
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       return value.trim().length > 0;
     }
     if (Array.isArray(value)) {
@@ -183,7 +183,7 @@ export class TasksService {
     if (!parsed.success) {
       return R.failure(
         parsed.error.issues.map((issue) => ({
-          blockId: issue.path.join('.') || '<root>',
+          blockId: issue.path.join(".") || "<root>",
           message: issue.message,
         })),
       );
@@ -199,7 +199,7 @@ export class TasksService {
     const validated = this.validateSchema(schema);
     if (!validated.ok) {
       throw new BadRequestException({
-        message: 'Invalid form schema',
+        message: "Invalid form schema",
         errors: validated.error,
       });
     }
@@ -212,7 +212,7 @@ export class TasksService {
       relations: { formSnapshot: true },
     });
     if (!form) {
-      throw new NotFoundException('Form not found');
+      throw new NotFoundException("Form not found");
     }
 
     return this.transformImageUrls(await this.transformContractFields(form));
@@ -222,7 +222,7 @@ export class TasksService {
     value: AggregateViewValue,
     totalsByFieldId: Map<string, number>,
   ): number {
-    if (value.type === 'number') {
+    if (value.type === "number") {
       return value.value;
     }
     return totalsByFieldId.get(value.fieldId) ?? 0;
@@ -242,14 +242,14 @@ export class TasksService {
 
     const responses = await this.formResponseRepository.find({
       where: { formId },
-      select: ['answers'],
+      select: ["answers"],
     });
 
     const totalsByFieldId = new Map<string, number>();
     for (const response of responses) {
       const answers = (response.answers ?? {}) as Record<string, FormValue>;
       for (const [fieldId, answer] of Object.entries(answers)) {
-        if (typeof answer === 'number' && Number.isFinite(answer)) {
+        if (typeof answer === "number" && Number.isFinite(answer)) {
           totalsByFieldId.set(
             fieldId,
             (totalsByFieldId.get(fieldId) ?? 0) + answer,
@@ -283,10 +283,10 @@ export class TasksService {
     const pages = schema.pages as Page[];
     for (const page of pages) {
       for (const field of page.fields) {
-        if (field.kind === 'image') {
+        if (field.kind === "image") {
           field.src = getImageSource(field.src);
         }
-        if (field.kind === 'video') {
+        if (field.kind === "video") {
           field.src = getVideoSource(field.src);
         }
       }
@@ -303,7 +303,7 @@ export class TasksService {
     const pages = schema.pages as Page[];
     for (const page of pages) {
       for (const field of page.fields) {
-        if (field.kind === 'contract' && field.contractId) {
+        if (field.kind === "contract" && field.contractId) {
           field.contract = new ContractDto(
             await this.contractService.findOne(field.contractId),
           );
@@ -361,7 +361,7 @@ export class TasksService {
     this.assertConditionKindsSupported(schema);
 
     forEachCondition(schema, (condition) => {
-      if (condition.kind === 'validator') {
+      if (condition.kind === "validator") {
         validatorIds.add(condition.validatorId);
       }
       if (isAccountDerivedConditionKind(condition.kind)) {
@@ -398,7 +398,7 @@ export class TasksService {
           try {
             const response = await this.formResponseRepository.findOne({
               where: { formId, user: { id: userId } },
-              order: { createdAt: 'DESC' },
+              order: { createdAt: "DESC" },
             });
             if (response?.answers) {
               return [formId, response.answers] as const;
@@ -473,8 +473,8 @@ export class TasksService {
             }
           }
           if (
-            field.kind === 'multiselect' &&
-            typeof field.maxSelections === 'number' &&
+            field.kind === "multiselect" &&
+            typeof field.maxSelections === "number" &&
             field.maxSelections > 0 &&
             isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
           ) {
@@ -486,7 +486,7 @@ export class TasksService {
             }
           }
           if (
-            field.kind === 'ranking' &&
+            field.kind === "ranking" &&
             isElementCurrentlyVisible(field, effectiveAnswers, visibilityExtras)
           ) {
             const answer = effectiveAnswers[field.id];
@@ -505,11 +505,11 @@ export class TasksService {
               (!Array.isArray(answer) || answer.length < slotCount)
             ) {
               throw new BadRequestException(
-                `Field ${elementInternalDescriptor(field)} requires ranking ${slotCount} item${slotCount === 1 ? '' : 's'}.`,
+                `Field ${elementInternalDescriptor(field)} requires ranking ${slotCount} item${slotCount === 1 ? "" : "s"}.`,
               );
             }
           }
-          if (field.kind === 'list') {
+          if (field.kind === "list") {
             const listField = field as ListField;
             if (
               !isElementCurrentlyVisible(
@@ -527,7 +527,7 @@ export class TasksService {
               ? (rawList as unknown[]).filter(
                   (item): item is Record<string, FormValue> =>
                     item !== null &&
-                    typeof item === 'object' &&
+                    typeof item === "object" &&
                     !Array.isArray(item),
                 )
               : [];
@@ -536,7 +536,7 @@ export class TasksService {
               Math.floor(Number(listField.min ?? 0)),
             );
             const maxCards =
-              typeof listField.max === 'number' && listField.max >= 0
+              typeof listField.max === "number" && listField.max >= 0
                 ? Math.floor(listField.max)
                 : Infinity;
             if (required && listValue.length === 0) {
@@ -546,12 +546,12 @@ export class TasksService {
             }
             if (listValue.length < minCards) {
               throw new BadRequestException(
-                `Field ${elementInternalDescriptor(listField)}: add at least ${minCards} item${minCards === 1 ? '' : 's'}.`,
+                `Field ${elementInternalDescriptor(listField)}: add at least ${minCards} item${minCards === 1 ? "" : "s"}.`,
               );
             }
             if (listValue.length > maxCards) {
               throw new BadRequestException(
-                `Field ${elementInternalDescriptor(listField)}: add no more than ${maxCards} item${maxCards === 1 ? '' : 's'}.`,
+                `Field ${elementInternalDescriptor(listField)}: add no more than ${maxCards} item${maxCards === 1 ? "" : "s"}.`,
               );
             }
             const subFields = listField.fields ?? [];
@@ -616,16 +616,16 @@ export class TasksService {
       .createQueryBuilder()
       .update(Form)
       .set({ title: nextTitle, formSnapshotId: nextSnapshotId })
-      .where('id = :formId', { formId })
+      .where("id = :formId", { formId })
       .andWhere(
-        expected === undefined ? '1 = 1' : '"formSnapshotId" = :expected',
+        expected === undefined ? "1 = 1" : '"formSnapshotId" = :expected',
         expected === undefined ? {} : { expected },
       )
       .execute();
 
     if (result.affected === 0) {
       throw new ConflictException(
-        'This form was changed by someone else since you opened it.',
+        "This form was changed by someone else since you opened it.",
       );
     }
 
@@ -644,11 +644,11 @@ export class TasksService {
     for (const page of schema.pages ?? []) {
       for (const field of page.fields) {
         if (
-          typeof field === 'object' &&
+          typeof field === "object" &&
           field !== null &&
-          'kind' in field &&
-          (field as { kind?: string }).kind === 'contract' &&
-          'contract' in field
+          "kind" in field &&
+          (field as { kind?: string }).kind === "contract" &&
+          "contract" in field
         ) {
           delete (field as { contract?: unknown }).contract;
         }
@@ -673,7 +673,7 @@ export class TasksService {
     });
     if (!valid) {
       throw new ForbiddenException(
-        'This form is not the variant assigned to you for this action',
+        "This form is not the variant assigned to you for this action",
       );
     }
 
@@ -694,7 +694,7 @@ export class TasksService {
       },
     });
     if (existingFormResponse) {
-      throw new BadRequestException('Form already submitted');
+      throw new BadRequestException("Form already submitted");
     }
 
     const submittedSnapshot = await this.resolveSubmissionSnapshot(
@@ -713,23 +713,23 @@ export class TasksService {
     const phoneNumber = this.getFirstAutoExtractAnswer(
       submittedSchema,
       effectiveAnswers,
-      'phone',
+      "phone",
     );
     const preferredReminderTime = this.getFirstAutoExtractAnswer(
       submittedSchema,
       effectiveAnswers,
-      'time',
+      "time",
     );
     const timeZone = this.getFirstAutoExtractAnswer(
       submittedSchema,
       effectiveAnswers,
-      'timezone',
+      "timezone",
     );
 
     const city = this.getFirstAutoExtractAnswer(
       submittedSchema,
       effectiveAnswers,
-      'city',
+      "city",
     );
 
     const userUpdates: Partial<UpdateProfileDto> = {};
@@ -755,7 +755,7 @@ export class TasksService {
           if (mms) {
             await this.userService.setOptInMms(user.id, mms.id);
           } else {
-            if (process.env.NODE_ENV === 'production') {
+            if (process.env.NODE_ENV === "production") {
               await this.eventLogService.sendMessage({
                 type: EventType.SmsFailure,
                 message: `Failed to send opt-in MMS to ${normalized}`,
@@ -812,7 +812,7 @@ export class TasksService {
     const shareInfoPublicly = this.getCheckboxExtractionValue(
       submittedSchema,
       effectiveAnswers,
-      'shareInfoPublicly',
+      "shareInfoPublicly",
     );
     if (shareInfoPublicly !== null) {
       userUpdates.shareInfoPublicly = shareInfoPublicly;
@@ -871,14 +871,14 @@ export class TasksService {
       },
     });
     if (!fetchedFollowUpForm?.form) {
-      throw new NotFoundException('Follow-up form not found');
+      throw new NotFoundException("Follow-up form not found");
     }
     const followUpForm = parseFollowUpForm(fetchedFollowUpForm);
     if (
       !followUpForm.startDate ||
       (followUpForm.endDate && followUpForm.endDate < new Date())
     ) {
-      throw new BadRequestException('Follow-up form is not active');
+      throw new BadRequestException("Follow-up form is not active");
     }
     const inCohort =
       !!followUpForm.cohortExpression &&
@@ -892,7 +892,7 @@ export class TasksService {
       }));
     if (!inCohort) {
       throw new ForbiddenException(
-        'User is not in the target cohort for this follow-up form',
+        "User is not in the target cohort for this follow-up form",
       );
     }
     const form = followUpForm.form;
@@ -944,7 +944,7 @@ export class TasksService {
         where: { formId, guest: { id: guestId } },
       });
       if (existing) {
-        throw new BadRequestException('Form already submitted');
+        throw new BadRequestException("Form already submitted");
       }
     }
 
@@ -965,7 +965,7 @@ export class TasksService {
     partialFormData: SubmitFormDto,
   ) {
     if (!withdrawalHasRequiredReason(withdrawal)) {
-      throw new BadRequestException('A withdrawal reason is required');
+      throw new BadRequestException("A withdrawal reason is required");
     }
     const form = await this.getForm(formId);
     const user = await this.userService.findOneOrFail(userId);
@@ -1067,7 +1067,7 @@ export class TasksService {
     }
     if (!dto.schemaSnapshot) {
       throw new BadRequestException(
-        'Form submission missing both formSnapshotId and schemaSnapshot',
+        "Form submission missing both formSnapshotId and schemaSnapshot",
       );
     }
     return this.formSnapshotService.findHistoricalBySchemaOrThrow(
@@ -1079,20 +1079,20 @@ export class TasksService {
   private getFirstAutoExtractAnswer(
     schema: FormSchema,
     answers: Record<string, unknown>,
-    kind: 'phone' | 'time' | 'timezone' | 'city',
+    kind: "phone" | "time" | "timezone" | "city",
   ): string | null {
     for (const page of schema.pages ?? []) {
       if (!page.fields) {
         continue;
       }
       for (const field of page.fields) {
-        if (kind === 'city' && field.kind === 'city') {
+        if (kind === "city" && field.kind === "city") {
           const answer = answers[field.id];
           if (
             answer &&
-            typeof answer === 'object' &&
-            'id' in (answer as CityFieldValue) &&
-            typeof (answer as CityFieldValue).id === 'number' &&
+            typeof answer === "object" &&
+            "id" in (answer as CityFieldValue) &&
+            typeof (answer as CityFieldValue).id === "number" &&
             Number.isFinite((answer as CityFieldValue).id)
           ) {
             return (answer as CityFieldValue).id.toString();
@@ -1102,7 +1102,7 @@ export class TasksService {
         if (
           field.kind === kind &&
           field.autoExtractUserData &&
-          typeof answers[field.id] === 'string'
+          typeof answers[field.id] === "string"
         ) {
           const value = (answers[field.id] as string).trim();
           if (value) {
@@ -1127,7 +1127,7 @@ export class TasksService {
       }
       for (const field of page.fields) {
         if (
-          (field as { kind?: string }).kind === 'contract' &&
+          (field as { kind?: string }).kind === "contract" &&
           (field as { contractId?: number }).contractId &&
           answers[(field as { id: string }).id] === true
         ) {
@@ -1149,7 +1149,7 @@ export class TasksService {
         continue;
       }
       for (const field of page.fields) {
-        if (field.kind !== 'checkbox' && field.kind !== 'custom') {
+        if (field.kind !== "checkbox" && field.kind !== "custom") {
           continue;
         }
         const extractField = field as CheckboxField | CustomComponentField;
@@ -1157,15 +1157,15 @@ export class TasksService {
           continue;
         }
         const answer = answers[field.id];
-        if (typeof answer === 'boolean') {
+        if (typeof answer === "boolean") {
           return answer;
         }
-        if (typeof answer === 'string') {
+        if (typeof answer === "string") {
           const normalized = answer.trim().toLowerCase();
-          if (normalized === 'true') {
+          if (normalized === "true") {
             return true;
           }
-          if (normalized === 'false') {
+          if (normalized === "false") {
             return false;
           }
         }
@@ -1234,7 +1234,7 @@ export class TasksService {
     const responses = await this.formResponseRepository.find({
       where: { formId },
       relations: { formSnapshot: true, user: true },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
 
     const groupsBySnapshotId = new Map<number, SnapshotResponseGroup>();
@@ -1268,7 +1268,7 @@ export class TasksService {
     const form = await this.getForm(formId);
     if (form.formSnapshotId !== targetSnapshotId) {
       throw new ConflictException(
-        'Form snapshot has changed since you loaded this page; refresh and re-review.',
+        "Form snapshot has changed since you loaded this page; refresh and re-review.",
       );
     }
     const matching = await this.formResponseRepository.find({
@@ -1279,15 +1279,15 @@ export class TasksService {
       const matchingIds = new Set(matching.map((r) => r.id));
       const unknownIds = responseIds.filter((id) => !matchingIds.has(id));
       throw new BadRequestException(
-        `Response ids do not belong to form ${formId}: ${unknownIds.join(', ')}`,
+        `Response ids do not belong to form ${formId}: ${unknownIds.join(", ")}`,
       );
     }
     const result = await this.formResponseRepository
       .createQueryBuilder()
       .update(FormResponse)
       .set({ formSnapshotId: targetSnapshotId })
-      .where('formId = :formId', { formId })
-      .andWhere('id IN (:...responseIds)', { responseIds })
+      .where("formId = :formId", { formId })
+      .andWhere("id IN (:...responseIds)", { responseIds })
       .execute();
     return result.affected ?? 0;
   }
@@ -1299,10 +1299,10 @@ export class TasksService {
     const response = await this.formResponseRepository.findOne({
       where: { formId, user: { id: userId } },
       relations: { formSnapshot: true, user: true },
-      order: { createdAt: 'DESC', id: 'DESC' },
+      order: { createdAt: "DESC", id: "DESC" },
     });
     if (!response) {
-      throw new NotFoundException('Form response not found');
+      throw new NotFoundException("Form response not found");
     }
     return response;
   }
@@ -1314,7 +1314,7 @@ export class TasksService {
     const response = await this.formResponseRepository.findOne({
       where: { formId, guest: { id: guestId, linkedUser: IsNull() } },
       relations: { formSnapshot: true },
-      order: { createdAt: 'DESC', id: 'DESC' },
+      order: { createdAt: "DESC", id: "DESC" },
     });
     return response;
   }
@@ -1334,7 +1334,7 @@ export class TasksService {
     const draft = await this.formResponseRepository.findOne({
       where: { formId, guest: { linkedUser: { id: userId } } },
       relations: { formSnapshot: true },
-      order: { createdAt: 'DESC', id: 'DESC' },
+      order: { createdAt: "DESC", id: "DESC" },
     });
     return draft;
   }
@@ -1382,7 +1382,7 @@ export class TasksService {
     userId?: number,
   ): Promise<TestCustomExpressionResponse> {
     if (!expression?.trim()) {
-      throw new BadRequestException('Expression is empty');
+      throw new BadRequestException("Expression is empty");
     }
 
     let expressionFn: (user: User) => unknown;
@@ -1394,8 +1394,8 @@ export class TasksService {
       );
     }
 
-    if (typeof expressionFn !== 'function') {
-      throw new BadRequestException('Expression must evaluate to a function');
+    if (typeof expressionFn !== "function") {
+      throw new BadRequestException("Expression must evaluate to a function");
     }
 
     const runForUser = (user: User): boolean => {
@@ -1407,7 +1407,7 @@ export class TasksService {
           `Expression failed for user ${user.id}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
-      if (typeof result !== 'boolean') {
+      if (typeof result !== "boolean") {
         throw new BadRequestException(
           `Expression must return a boolean (user ${user.id}).`,
         );
@@ -1416,7 +1416,7 @@ export class TasksService {
     };
 
     let selectedUserResult: boolean | undefined;
-    if (typeof userId === 'number') {
+    if (typeof userId === "number") {
       const selectedUser = await this.userService.findOneOrFail(userId, {
         tags: true,
         communities: true,
@@ -1424,7 +1424,7 @@ export class TasksService {
       });
       if (!selectedUser.hasActiveContract) {
         throw new BadRequestException(
-          'Selected user does not have an active contract',
+          "Selected user does not have an active contract",
         );
       }
       selectedUserResult = runForUser(selectedUser);
@@ -1483,7 +1483,7 @@ export class TasksService {
         if (!user.profilePicture) {
           return {
             isValid: false,
-            message: 'You have not uploaded a profile picture yet',
+            message: "You have not uploaded a profile picture yet",
           };
         }
         break;
@@ -1491,7 +1491,7 @@ export class TasksService {
         if (!user.hasActiveContract) {
           return {
             isValid: false,
-            message: 'You have not signed the contract yet',
+            message: "You have not signed the contract yet",
           };
         }
         break;
@@ -1499,13 +1499,13 @@ export class TasksService {
         if (!user.profileDescription) {
           return {
             isValid: false,
-            message: 'You have not added a profile description yet',
+            message: "You have not added a profile description yet",
           };
         }
         break;
       case CustomValidatorType.RepliedToForumPost:
         if (!validator.idArgument) {
-          throw new BadRequestException('Validator has no id argument');
+          throw new BadRequestException("Validator has no id argument");
         }
         const replies = await this.forumService.findCommentsForPost(
           Number(validator.idArgument),
@@ -1516,13 +1516,13 @@ export class TasksService {
           return {
             isValid: false,
             message:
-              'You have not replied to the discussion yet - please do that now.',
+              "You have not replied to the discussion yet - please do that now.",
           };
         }
         break;
       case CustomValidatorType.RepliedToForumPostOrChild:
         if (!validator.idArgument) {
-          throw new BadRequestException('Validator has no id argument');
+          throw new BadRequestException("Validator has no id argument");
         }
         const replies2 = await this.forumService.findCommentsForPostRaw(
           Number(validator.idArgument),
@@ -1531,7 +1531,7 @@ export class TasksService {
           return {
             isValid: false,
             message:
-              'You have not replied to the discussion yet - please do that now.',
+              "You have not replied to the discussion yet - please do that now.",
           };
         }
         break;
@@ -1541,7 +1541,7 @@ export class TasksService {
           return {
             isValid: false,
             message:
-              'You have not added a phone number yet - please do that now.',
+              "You have not added a phone number yet - please do that now.",
           };
         }
         break;
@@ -1550,7 +1550,7 @@ export class TasksService {
           return {
             isValid: false,
             message:
-              'You have not entered a phone number yet - please do that now.',
+              "You have not entered a phone number yet - please do that now.",
           };
         }
         return R.isSuccess(toE164(fieldValue))
@@ -1558,11 +1558,11 @@ export class TasksService {
           : {
               isValid: false,
               message:
-                'Could not read that as a phone number. If it is not a US number, include the country code, e.g. +44 20 7946 0958.',
+                "Could not read that as a phone number. If it is not a US number, include the country code, e.g. +44 20 7946 0958.",
             };
       case CustomValidatorType.MemberTag:
         if (!validator.idArgument) {
-          throw new BadRequestException('Validator has no id argument');
+          throw new BadRequestException("Validator has no id argument");
         }
         if (user.tags.some((tag) => tag.id === validator.idArgument)) {
           return {
@@ -1573,7 +1573,7 @@ export class TasksService {
         }
       case CustomValidatorType.MemberCommunity:
         if (!validator.idArgument) {
-          throw new BadRequestException('Validator has no id argument');
+          throw new BadRequestException("Validator has no id argument");
         }
         if (
           user.communities.some(
@@ -1591,7 +1591,7 @@ export class TasksService {
         return { isValid: true };
       case CustomValidatorType.CustomExpression:
         if (!validator.expression) {
-          throw new BadRequestException('Validator has no expression');
+          throw new BadRequestException("Validator has no expression");
         }
         const expressionFn = eval(validator.expression) as (
           user: User,

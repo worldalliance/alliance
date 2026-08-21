@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { AiDetectionProcessor } from './ai-detection.processor';
-import { AiDetectionJobData } from './ai-detection.types';
+import { Injectable, Logger } from "@nestjs/common";
+import { AiDetectionProcessor } from "./ai-detection.processor";
+import { AiDetectionJobData } from "./ai-detection.types";
 
 @Injectable()
 export class AiDetectionQueueService {
@@ -10,7 +10,7 @@ export class AiDetectionQueueService {
 
   async addDetectJob(job: AiDetectionJobData): Promise<void> {
     if (
-      process.env.NODE_ENV !== 'production' &&
+      process.env.NODE_ENV !== "production" &&
       !process.env.USE_DEV_AI_DETECTION
     ) {
       return;

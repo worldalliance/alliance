@@ -1,10 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { PickType } from '@nestjs/swagger';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Expo, ExpoPushMessage, ExpoPushTicket } from 'expo-server-sdk';
-import { randomUUID } from 'node:crypto';
-import { UserDevice } from 'src/user/entities/user-device.entity';
+import { Inject, Injectable } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { PickType } from "@nestjs/swagger";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Expo, ExpoPushMessage, ExpoPushTicket } from "expo-server-sdk";
+import { randomUUID } from "node:crypto";
+import { UserDevice } from "src/user/entities/user-device.entity";
 import {
   In,
   IsNull,
@@ -14,10 +14,10 @@ import {
   Or,
   QueryFailedError,
   type Repository,
-} from 'typeorm';
-import { Push } from './push.entity';
+} from "typeorm";
+import { Push } from "./push.entity";
 
-export const EXPO_CLIENT = Symbol('EXPO_CLIENT');
+export const EXPO_CLIENT = Symbol("EXPO_CLIENT");
 
 // Expo discards receipts ~24h after delivery, so a pending push older than
 // this will never get a receipt and must stop being re-checked. 48h = 24h
@@ -25,11 +25,11 @@ export const EXPO_CLIENT = Symbol('EXPO_CLIENT');
 const RECEIPT_MAX_AGE_MS = 1000 * 60 * 60 * 48;
 
 export class CreatePushMessage extends PickType(Push, [
-  'expoPushToken',
-  'body',
-  'idempotencyKey',
-  'notification',
-  'unreadContent',
+  "expoPushToken",
+  "body",
+  "idempotencyKey",
+  "notification",
+  "unreadContent",
 ]) {
   userId: number;
   screen?: string;
@@ -62,7 +62,7 @@ export class PushService {
 
   async getPushForAllUserDevices(
     userId: number,
-    message: Omit<CreatePushMessage, 'expoPushToken'>,
+    message: Omit<CreatePushMessage, "expoPushToken">,
     notifCreatedAt?: Date,
   ): Promise<CreatePushMessage[]> {
     const devices = await this.userDeviceRepository.find({
@@ -108,16 +108,16 @@ export class PushService {
       // Construct a message (see https://docs.expo.io/push-notifications/sending-notifications/)
       expoMessages.push({
         to: message.expoPushToken,
-        sound: 'default',
+        sound: "default",
         body: message.body,
         data: {
           cid: pushEntity.id,
           screen: message.screen,
           notificationId: message.notification?.id ?? message.unreadContent?.id,
           notificationSourceType: message.notification
-            ? 'notification'
+            ? "notification"
             : message.unreadContent
-              ? 'unread_content'
+              ? "unread_content"
               : undefined,
         },
       });
@@ -147,16 +147,16 @@ export class PushService {
       const ticket = tickets[i];
       pushEntities[i].ticketStatus = ticket.status;
 
-      if (ticket.status === 'ok') {
+      if (ticket.status === "ok") {
         pushEntities[i].receiptId = ticket.id;
-        pushEntities[i].receiptStatus = 'pending';
+        pushEntities[i].receiptStatus = "pending";
       } else {
         // https://docs.expo.io/push-notifications/sending-notifications/#individual-errors
         pushEntities[i].errorCode = ticket.details?.error ?? null;
         pushEntities[i].errorMessage = ticket.message;
         console.error(`expo push error: ${ticket.details?.error}`);
         console.error(`expo push error: ${ticket.message}`);
-        if (ticket.details?.error === 'DeviceNotRegistered') {
+        if (ticket.details?.error === "DeviceNotRegistered") {
           const userDevice = await this.userDeviceRepository.findOne({
             where: { expoPushToken: pushEntities[i].expoPushToken },
           });
@@ -174,7 +174,7 @@ export class PushService {
   async queryExpoStatuses() {
     const pendingPushes = await this.pushRepository.find({
       where: {
-        receiptStatus: 'pending',
+        receiptStatus: "pending",
         lastCheckedStatusAt: Or(
           IsNull(),
           LessThan(
@@ -203,12 +203,12 @@ export class PushService {
         for (const receiptId in receipts) {
           const receipt = receipts[receiptId];
           const push = pendingPushes[idToPushIdx.get(receiptId)!];
-          console.log('updating push status', receipt.status);
+          console.log("updating push status", receipt.status);
           push.receiptStatus = receipt.status;
           resolvedPushes.add(push);
-          if (receipt.status === 'ok') {
+          if (receipt.status === "ok") {
             continue;
-          } else if (receipt.status === 'error') {
+          } else if (receipt.status === "error") {
             console.error(
               `There was an error sending a notification: ${receipt.message}`,
             );
@@ -246,11 +246,11 @@ export class PushService {
 
     await this.pushRepository.update(
       {
-        receiptStatus: 'pending',
+        receiptStatus: "pending",
         receiptId: Not(IsNull()),
         createdAt: LessThan(new Date(Date.now() - RECEIPT_MAX_AGE_MS)),
       },
-      { receiptStatus: 'expired' },
+      { receiptStatus: "expired" },
     );
 
     return saved;

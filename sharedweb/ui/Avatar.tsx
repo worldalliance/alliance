@@ -1,6 +1,6 @@
-import type React from "react";
-import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
 import { cn } from "@alliance/shared/styles/util";
+import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar";
+import type React from "react";
 
 const DEFAULT_USER_ICON_SRC = "/noun-user-icon.svg";
 

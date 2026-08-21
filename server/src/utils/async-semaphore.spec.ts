@@ -1,8 +1,8 @@
-import { R } from '@alliance/common/result';
-import { AsyncSemaphore, SemaphoreRejection } from './async-semaphore';
+import { R } from "@alliance/common/result";
+import { AsyncSemaphore, SemaphoreRejection } from "./async-semaphore";
 
-describe('AsyncSemaphore', () => {
-  it('runs up to maxActive tasks and queues the rest', async () => {
+describe("AsyncSemaphore", () => {
+  it("runs up to maxActive tasks and queues the rest", async () => {
     const semaphore = new AsyncSemaphore(2, 10);
     let running = 0;
     let peak = 0;
@@ -32,7 +32,7 @@ describe('AsyncSemaphore', () => {
     expect(peak).toBe(2);
   });
 
-  it('fails with queue-overflow once the queue is full', async () => {
+  it("fails with queue-overflow once the queue is full", async () => {
     const semaphore = new AsyncSemaphore(1, 1);
     let release!: () => void;
     const gate = new Promise<void>((resolve) => (release = resolve));

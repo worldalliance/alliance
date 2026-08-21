@@ -1,7 +1,12 @@
 // src/forms/form.entity.ts
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsArray, IsDefined } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsArray, IsDefined } from "class-validator";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -11,17 +16,12 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { FormResponse } from './formresponse.entity';
+} from "typeorm";
+import { FormResponse } from "./formresponse.entity";
 import {
   FORM_SNAPSHOT_HISTORY_TABLE,
   FormSnapshot,
-} from './formsnapshot.entity';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
+} from "./formsnapshot.entity";
 
 @Entity()
 export class Form {
@@ -30,7 +30,7 @@ export class Form {
   @Allow()
   id: number;
 
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   @ApiProperty()
   @IsDefined()
   title: string;
@@ -40,8 +40,8 @@ export class Form {
   @Allow()
   formSnapshotId: number;
 
-  @ManyToOne(() => FormSnapshot, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'formSnapshotId' })
+  @ManyToOne(() => FormSnapshot, { onDelete: "RESTRICT" })
+  @JoinColumn({ name: "formSnapshotId" })
   @Type(() => FormSnapshot)
   @Allow()
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
@@ -50,8 +50,8 @@ export class Form {
   @ManyToMany(() => FormSnapshot)
   @JoinTable({
     name: FORM_SNAPSHOT_HISTORY_TABLE,
-    joinColumn: { name: 'formId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'formSnapshotId', referencedColumnName: 'id' },
+    joinColumn: { name: "formId", referencedColumnName: "id" },
+    inverseJoinColumn: { name: "formSnapshotId", referencedColumnName: "id" },
   })
   @Type(() => FormSnapshot)
   @Allow()

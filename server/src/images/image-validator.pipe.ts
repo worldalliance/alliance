@@ -1,4 +1,4 @@
-import { FileValidator } from '@nestjs/common';
+import { FileValidator } from "@nestjs/common";
 
 export class ImageMimeTypeValidator extends FileValidator {
   constructor(private validTypes: string[]) {
@@ -10,6 +10,6 @@ export class ImageMimeTypeValidator extends FileValidator {
   }
 
   buildErrorMessage(): string {
-    return `File must be one of the following types: ${this.validTypes.join(', ')}`;
+    return `File must be one of the following types: ${this.validTypes.join(", ")}`;
   }
 }

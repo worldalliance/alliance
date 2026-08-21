@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import {
   Allow,
   IsDefined,
@@ -8,8 +8,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-} from 'class-validator';
-import type { TokenMode } from './signin.dto';
+} from "class-validator";
+import type { TokenMode } from "./signin.dto";
 
 export class SignUpDto {
   @IsDefined()
@@ -30,8 +30,8 @@ export class SignUpDto {
   readonly password: string;
 
   @Allow()
-  @IsEnum(['cookie', 'header'])
-  @ApiProperty({ enum: ['cookie', 'header'], enumName: 'TokenMode' })
+  @IsEnum(["cookie", "header"])
+  @ApiProperty({ enum: ["cookie", "header"], enumName: "TokenMode" })
   mode: TokenMode;
 
   @IsOptional()

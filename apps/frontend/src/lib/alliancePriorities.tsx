@@ -63,10 +63,10 @@ export const alliancePriorities: AlliancePriority[] = [
         are: the clearing and degradation of forests, wetlands, grasslands,
         coastal ecosystems, and other land for development and agriculture;
         overexploitation of wild plants and animals from legal and illegal
-        harvesting; ecosystem disruptions from rising temperatures and
-        changing weather patterns; pollution from agricultural, commercial,
-        and industrial waste; and the introduction and spread of invasive
-        species. The global rate of species extinction is at least{" "}
+        harvesting; ecosystem disruptions from rising temperatures and changing
+        weather patterns; pollution from agricultural, commercial, and
+        industrial waste; and the introduction and spread of invasive species.
+        The global rate of species extinction is at least{" "}
         <Link to="https://zenodo.org/records/5517457" className="text-link">
           tens to hundreds of times higher
         </Link>{" "}
@@ -94,10 +94,9 @@ export const alliancePriorities: AlliancePriority[] = [
         >
           19 consecutive years
         </Link>
-        , with political rights assessed as decreasing for over 3 billion
-        people in 2024. These declines typically involve the erosion of
-        judicial independence, freedom of the press, and civil liberties,
-        including{" "}
+        , with political rights assessed as decreasing for over 3 billion people
+        in 2024. These declines typically involve the erosion of judicial
+        independence, freedom of the press, and civil liberties, including{" "}
         <Link
           to="https://www.tandfonline.com/doi/full/10.1080/14754835.2023.2295878"
           className="text-link"

@@ -2,21 +2,21 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { toString as mdastToString } from 'mdast-util-to-string';
-import { remark } from 'remark';
-import { ActionActivity } from 'src/actions/entities/action-activity.entity';
-import { ActionUpdate } from 'src/actions/entities/action-update.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { toString as mdastToString } from "mdast-util-to-string";
+import { remark } from "remark";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { ActionUpdate } from "src/actions/entities/action-update.entity";
 import {
   Comment,
   CommentParentObject,
-} from 'src/forum/entities/comment.entity';
-import { MailService } from 'src/mail/mail.service';
-import { MmsService } from 'src/mms/mms.service';
-import { actionUrl, commentUrl } from 'src/search/approutes';
-import { ProfileDto } from 'src/user/dto/user.dto';
-import { User } from 'src/user/entities/user.entity';
+} from "src/forum/entities/comment.entity";
+import { MailService } from "src/mail/mail.service";
+import { MmsService } from "src/mms/mms.service";
+import { actionUrl, commentUrl } from "src/search/approutes";
+import { ProfileDto } from "src/user/dto/user.dto";
+import { User } from "src/user/entities/user.entity";
 import {
   DeepPartial,
   EntityManager,
@@ -24,34 +24,34 @@ import {
   IsNull,
   LessThan,
   type Repository,
-} from 'typeorm';
-import { NotifClickDto } from './dto/notifclick.dto';
+} from "typeorm";
+import { NotifClickDto } from "./dto/notifclick.dto";
 import {
   NotificationDto,
   NotificationSourceType,
-} from './dto/notification.dto';
-import { MarkUnreadContentReadDto } from './dto/unread-content.dto';
-import { ActionEventNotif } from './entities/action-event-notif.entity';
+} from "./dto/notification.dto";
+import { MarkUnreadContentReadDto } from "./dto/unread-content.dto";
+import { ActionEventNotif } from "./entities/action-event-notif.entity";
 import {
   NOTIFICATION_CATEGORY_PRIORITIES,
   Notification,
   NotificationCategory,
-} from './entities/notification.entity';
+} from "./entities/notification.entity";
 import {
   UnreadContent,
   UnreadContentType,
-} from './entities/unread-content.entity';
+} from "./entities/unread-content.entity";
 
 export type CreateNotifParams = Required<
   Pick<
     DeepPartial<Notification>,
-    'user' | 'category' | 'message' | 'webAppLocation' | 'associatedUsers'
+    "user" | "category" | "message" | "webAppLocation" | "associatedUsers"
   >
 > &
   DeepPartial<Notification>;
 
 export type CreateUnreadContentParams = Required<
-  Pick<DeepPartial<UnreadContent>, 'user' | 'contentType' | 'contentId'>
+  Pick<DeepPartial<UnreadContent>, "user" | "contentType" | "contentId">
 > &
   DeepPartial<UnreadContent>;
 
@@ -63,7 +63,7 @@ const UNREAD_CONTENT_INSERT_CHUNK = 1000;
 
 function getPreviewText(body: string) {
   const tree = remark().parse(body);
-  const plainText = mdastToString(tree).replace(/\s+/g, ' ').trim();
+  const plainText = mdastToString(tree).replace(/\s+/g, " ").trim();
 
   return plainText.length > 140
     ? `${plainText.slice(0, 137).trimEnd()}...`
@@ -97,7 +97,7 @@ export class NotifsService {
       }),
       this.unreadContentRepository.find({
         where: { user: { id: userId }, sendTime: LessThan(new Date()) },
-        order: { sendTime: 'DESC', createdAt: 'DESC' },
+        order: { sendTime: "DESC", createdAt: "DESC" },
       }),
     ]);
 
@@ -165,7 +165,7 @@ export class NotifsService {
     }
 
     if (sourceType === NotificationSourceType.Notification) {
-      throw new NotFoundException('Notif not found');
+      throw new NotFoundException("Notif not found");
     }
 
     const unreadContent = await this.unreadContentRepository.findOne({
@@ -173,7 +173,7 @@ export class NotifsService {
       relations: { user: true },
     });
     if (!unreadContent) {
-      throw new NotFoundException('Notif not found');
+      throw new NotFoundException("Notif not found");
     }
     if (unreadContent.user.id !== userId) {
       throw new BadRequestException();
@@ -330,7 +330,7 @@ export class NotifsService {
     const unreadContents = await this.unreadContentRepository.find({
       where: { id: In(ids) },
       relations: { user: true },
-      order: { sendTime: 'ASC' },
+      order: { sendTime: "ASC" },
     });
 
     const dtos = await this.hydrateUnreadContentDtos(unreadContents);

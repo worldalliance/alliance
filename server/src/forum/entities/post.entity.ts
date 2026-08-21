@@ -1,11 +1,11 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsNotEmpty, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsNotEmpty, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -16,10 +16,10 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
   RelationId,
-} from 'typeorm';
-import { Action } from '../../actions/entities/action.entity';
-import { User } from '../../user/entities/user.entity';
-import { EditableContent } from './editablecontent.entity';
+} from "typeorm";
+import { Action } from "../../actions/entities/action.entity";
+import { User } from "../../user/entities/user.entity";
+import { EditableContent } from "./editablecontent.entity";
 
 @Entity()
 export class Post {
@@ -36,7 +36,7 @@ export class Post {
   @OneToOne(() => EditableContent, {
     cascade: true,
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @JoinColumn()
   @ApiPropertyOptional({ type: () => EditableContent })
@@ -44,7 +44,7 @@ export class Post {
   @Type(() => EditableContent)
   editableContent?: Relation<EditableContent>;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn()
   @ApiPropertyOptional()
   @IsOptional()
@@ -56,7 +56,7 @@ export class Post {
   @Allow()
   authorId: number;
 
-  @ManyToOne(() => Action, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Action, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn()
   @ApiPropertyOptional({ type: () => Action })
   @IsOptional()
@@ -87,7 +87,7 @@ export class Post {
   @Type(() => Date)
   updatedAt: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @ApiPropertyOptional()
   @IsOptional()
   @Type(() => Date)
@@ -100,7 +100,7 @@ export class Post {
   @Allow()
   deleted: boolean;
 
-  @ManyToMany(() => User, { onDelete: 'CASCADE' })
+  @ManyToMany(() => User, { onDelete: "CASCADE" })
   @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
   @IsOptional()
@@ -124,7 +124,7 @@ export class Post {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   expertLabel?: string;
 
-  @ManyToMany(() => User, { onDelete: 'CASCADE' })
+  @ManyToMany(() => User, { onDelete: "CASCADE" })
   @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
   @IsOptional()
@@ -136,7 +136,7 @@ export class Post {
   @Allow()
   expertIds: number[];
 
-  @ManyToMany(() => User, { onDelete: 'CASCADE' })
+  @ManyToMany(() => User, { onDelete: "CASCADE" })
   @ApiPropertyOptional({ type: () => User, isArray: true })
   @JoinTable()
   @IsOptional()

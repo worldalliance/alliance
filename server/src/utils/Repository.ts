@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 import {
-  ObjectLiteral,
-  type Repository as TypeOrmRepository,
   FindManyOptions,
   FindOneOptions,
   FindOptionsWhere,
-} from 'typeorm';
+  ObjectLiteral,
+  type Repository as TypeOrmRepository,
+} from "typeorm";
 
 declare const relationBrand: unique symbol;
 export type RelationBrand = typeof relationBrand;
@@ -165,20 +165,20 @@ export type EntityShape<Entity> = [EntityShapeViolations<Entity>] extends [
 ]
   ? true
   : {
-      [K in EntityShapeViolations<Entity>]: 'must be optional if and only if it is a relation';
+      [K in EntityShapeViolations<Entity>]: "must be optional if and only if it is a relation";
     };
 
 type ShapedRepository<Entity extends ObjectLiteral> = Omit<
   TypeOrmRepository<Entity>,
-  | 'find'
-  | 'findOne'
-  | 'findOneOrFail'
-  | 'findBy'
-  | 'findOneBy'
-  | 'findOneByOrFail'
-  | 'findAndCount'
-  | 'findAndCountBy'
-  | 'findByIds'
+  | "find"
+  | "findOne"
+  | "findOneOrFail"
+  | "findBy"
+  | "findOneBy"
+  | "findOneByOrFail"
+  | "findAndCount"
+  | "findAndCountBy"
+  | "findByIds"
 > & {
   find<R extends Relations<Entity> = {}>(
     options?: FindManyOptions<Entity> & { relations?: R },

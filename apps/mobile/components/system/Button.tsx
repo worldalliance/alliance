@@ -1,11 +1,11 @@
+import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import {
-  TouchableOpacity,
   ActivityIndicator,
+  TouchableOpacity,
   TouchableOpacityProps,
 } from "react-native";
 import Text, { FontWeight } from "./Text";
-import { cn } from "@alliance/shared/styles/util";
 
 export enum ButtonColor {
   Black = "black",

@@ -1,7 +1,7 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { getImageSource } from 'src/images/images.service';
-import { Campaign } from '../entities/campaign.entity';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { getImageSource } from "src/images/images.service";
+import { Campaign } from "../entities/campaign.entity";
 
 export class CampaignDto {
   @ApiProperty()
@@ -39,7 +39,7 @@ export class CreateCampaignDto {
   name: string;
 
   @ApiPropertyOptional({
-    description: 'Image key (from POST /images/uploadImage) for the avatar.',
+    description: "Image key (from POST /images/uploadImage) for the avatar.",
   })
   @IsOptional()
   @IsString()

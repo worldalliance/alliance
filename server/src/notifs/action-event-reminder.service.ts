@@ -1,54 +1,54 @@
-import { Temporal } from '@js-temporal/polyfill';
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { collectCohortDependencies } from 'src/actions/cohort-expression.evaluator';
+import { Temporal } from "@js-temporal/polyfill";
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { collectCohortDependencies } from "src/actions/cohort-expression.evaluator";
 import {
   CreateReminderGroupDto,
   PreviewEmailHtmlDto,
   PreviewEmailHtmlResponse,
   PreviewTextDto,
   ReminderAnchorCandidate,
-} from 'src/actions/dto/action.dto';
-import { NotificationScheduleEntryDto } from 'src/actions/dto/notification-schedule.dto';
-import { ActionFormVariant } from 'src/actions/entities/action-form-variant.entity';
-import { ActionSuite } from 'src/actions/entities/action-suite.entity';
-import { Action, parseAction } from 'src/actions/entities/action.entity';
-import { FollowUpForm } from 'src/actions/entities/follow-up-form.entity';
+} from "src/actions/dto/action.dto";
+import { NotificationScheduleEntryDto } from "src/actions/dto/notification-schedule.dto";
+import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
+import { ActionSuite } from "src/actions/entities/action-suite.entity";
+import { Action, parseAction } from "src/actions/entities/action.entity";
+import { FollowUpForm } from "src/actions/entities/follow-up-form.entity";
 import {
   cohortNotifiesRecipientPersonally,
   getGroupSendTimeForUser,
   ReminderCohortType,
   ReminderGroup,
   ReminderGroupTimingMode,
-} from 'src/actions/entities/reminder-group.entity';
-import { EmailType } from 'src/mail/mail.entity';
-import { MailService, processKeywordReplacements } from 'src/mail/mail.service';
-import { Tag } from 'src/user/entities/tag.entity';
-import { UserService } from 'src/user/user.service';
+} from "src/actions/entities/reminder-group.entity";
+import { EmailType } from "src/mail/mail.entity";
+import { MailService, processKeywordReplacements } from "src/mail/mail.service";
+import { Tag } from "src/user/entities/tag.entity";
+import { UserService } from "src/user/user.service";
 import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_push,
   userActionNotifsEnabled_text,
-} from 'src/user/user.utils';
-import { Brackets, In, type Repository } from 'typeorm';
+} from "src/user/user.utils";
+import { Brackets, In, type Repository } from "typeorm";
 import {
   ActionEvent,
   ActionStatus,
-} from '../actions/entities/action-event.entity';
-import { memberActionPhase } from '../actions/utils/action-event';
-import { DEFAULT_TIME_ZONE, User } from '../user/entities/user.entity';
-import { ActionEventRecipientService } from './action-event-recipient.service';
+} from "../actions/entities/action-event.entity";
+import { memberActionPhase } from "../actions/utils/action-event";
+import { DEFAULT_TIME_ZONE, User } from "../user/entities/user.entity";
+import { ActionEventRecipientService } from "./action-event-recipient.service";
 import {
   NotificationPlan,
   PreviewNotificationPlanDto,
-} from './dto/notification-plan.dto';
-import { ActionEventNotifDto } from './entities/action-event-notif.dto';
+} from "./dto/notification-plan.dto";
+import { ActionEventNotifDto } from "./entities/action-event-notif.dto";
 import {
   ActionEventNotif,
   ActionEventNotifType,
-} from './entities/action-event-notif.entity';
-import { generateCIDForNotif, NotificationChannel } from './notif-utils';
-import { testUser } from './test-users';
+} from "./entities/action-event-notif.entity";
+import { generateCIDForNotif, NotificationChannel } from "./notif-utils";
+import { testUser } from "./test-users";
 
 export interface MissedDeadlineCandidate {
   actionId: number;
@@ -136,22 +136,22 @@ export class ActionEventReminderService {
   ): Promise<Set<number>> {
     if (!group.excludePreviouslyNotified) {
       const rows = await this.actionEventNotifRepository
-        .createQueryBuilder('notif')
-        .where('notif.sent = true')
+        .createQueryBuilder("notif")
+        .where("notif.sent = true")
         .andWhere('notif."reminderGroupId" = :groupId', { groupId: group.id })
-        .select('DISTINCT notif."userId"', 'userId')
+        .select('DISTINCT notif."userId"', "userId")
         .getRawMany<{ userId: number }>();
       return new Set(rows.map((row) => Number(row.userId)));
     }
 
     const rows = await this.actionEventNotifRepository
-      .createQueryBuilder('notif')
-      .where('notif.sent = true')
+      .createQueryBuilder("notif")
+      .where("notif.sent = true")
       .andWhere('notif."memberActionEventId" = :eventId', {
         eventId: group.memberActionEvent.id,
       })
-      .select('notif."userId"', 'userId')
-      .addSelect('notif."notifiedActionIds"', 'notifiedActionIds')
+      .select('notif."userId"', "userId")
+      .addSelect('notif."notifiedActionIds"', "notifiedActionIds")
       .getRawMany<{ userId: number; notifiedActionIds: number[] | null }>();
 
     const scopeActionIds = groupTaskScopeActionIds(group);
@@ -220,10 +220,10 @@ export class ActionEventReminderService {
     const start = new Date(windowStart);
     const end = new Date(windowEnd);
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      throw new Error('Invalid schedule window');
+      throw new Error("Invalid schedule window");
     }
     if (end.getTime() < start.getTime()) {
-      throw new Error('windowEnd must not be before windowStart');
+      throw new Error("windowEnd must not be before windowStart");
     }
 
     const plans: NotificationPlan[] = [];
@@ -281,10 +281,10 @@ export class ActionEventReminderService {
     windowEnd: Date,
   ) {
     const idRows = await repo
-      .createQueryBuilder('rg')
-      .leftJoin('rg.memberActionEvent', 'event')
-      .leftJoin('rg.deadlineEvent', 'deadline')
-      .leftJoin('rg.timingAnchorEvent', 'anchor')
+      .createQueryBuilder("rg")
+      .leftJoin("rg.memberActionEvent", "event")
+      .leftJoin("rg.deadlineEvent", "deadline")
+      .leftJoin("rg.timingAnchorEvent", "anchor")
       .where('rg."allSent" = false')
       .andWhere(
         new Brackets((qb) => {
@@ -324,7 +324,7 @@ export class ActionEventReminderService {
         ws: windowStart,
         we: windowEnd,
       })
-      .select('rg.id', 'id')
+      .select("rg.id", "id")
       .distinct(true)
       .getRawMany<{ id: number }>();
 
@@ -335,19 +335,19 @@ export class ActionEventReminderService {
     }
 
     return repo
-      .createQueryBuilder('rg')
-      .leftJoinAndSelect('rg.memberActionEvent', 'event')
-      .leftJoinAndSelect('event.action', 'eventAction')
-      .leftJoinAndSelect('eventAction.events', 'eventActionEvents')
-      .leftJoinAndSelect('rg.deadlineEvent', 'deadline')
-      .leftJoinAndSelect('rg.timingAnchorEvent', 'anchor')
-      .leftJoinAndSelect('rg.users', 'users')
-      .leftJoinAndSelect('users.tags', 'userTags')
-      .leftJoinAndSelect('users.contractEvents', 'contractEvents')
-      .leftJoinAndSelect('rg.userTag', 'userTag')
-      .leftJoinAndSelect('rg.actionSuite', 'actionSuite')
-      .leftJoinAndSelect('actionSuite.actions', 'actionSuiteActions')
-      .where('rg.id IN (:...ids)', { ids })
+      .createQueryBuilder("rg")
+      .leftJoinAndSelect("rg.memberActionEvent", "event")
+      .leftJoinAndSelect("event.action", "eventAction")
+      .leftJoinAndSelect("eventAction.events", "eventActionEvents")
+      .leftJoinAndSelect("rg.deadlineEvent", "deadline")
+      .leftJoinAndSelect("rg.timingAnchorEvent", "anchor")
+      .leftJoinAndSelect("rg.users", "users")
+      .leftJoinAndSelect("users.tags", "userTags")
+      .leftJoinAndSelect("users.contractEvents", "contractEvents")
+      .leftJoinAndSelect("rg.userTag", "userTag")
+      .leftJoinAndSelect("rg.actionSuite", "actionSuite")
+      .leftJoinAndSelect("actionSuite.actions", "actionSuiteActions")
+      .where("rg.id IN (:...ids)", { ids })
       .getMany();
   }
 
@@ -356,7 +356,7 @@ export class ActionEventReminderService {
     day: Temporal.PlainDate,
   ): Promise<Temporal.ZonedDateTime> {
     const defaultSendTime: Temporal.PlainTime =
-      Temporal.PlainTime.from('19:00:00');
+      Temporal.PlainTime.from("19:00:00");
 
     const timeOfDay: Temporal.PlainTime =
       user.preferredReminderTime ?? defaultSendTime;
@@ -526,7 +526,7 @@ export class ActionEventReminderService {
       dto.timingMode !== ReminderGroupTimingMode.WithinRelativeRange
     ) {
       throw new BadRequestException(
-        'timingAnchorEventId is only valid for from_deadline and within_relative_range timing modes',
+        "timingAnchorEventId is only valid for from_deadline and within_relative_range timing modes",
       );
     }
     const candidates = await this.findAnchorCandidatesForAction(
@@ -538,7 +538,7 @@ export class ActionEventReminderService {
       )
     ) {
       throw new BadRequestException(
-        'Timing anchor event must be the deadline of a cohort dependency of the action or its suite',
+        "Timing anchor event must be the deadline of a cohort dependency of the action or its suite",
       );
     }
     return this.eventRepository.findOneOrFail({
@@ -556,7 +556,7 @@ export class ActionEventReminderService {
       relations: { action: true },
     });
     if (event.newStatus !== ActionStatus.MemberAction) {
-      throw new BadRequestException('Event is not a member action event');
+      throw new BadRequestException("Event is not a member action event");
     }
 
     let userTag: Tag | undefined = undefined;
@@ -707,8 +707,8 @@ export class ActionEventReminderService {
       user: testUser,
       cid: await generateCIDForNotif(),
       uncompletedTasksCount: dto.taskCount,
-      uncompletedTasksTime: dto.taskCount * 5 + ' minutes',
-      uncompletedTasksNames: ['Task 1', 'Task 2', 'Task 3'].slice(
+      uncompletedTasksTime: dto.taskCount * 5 + " minutes",
+      uncompletedTasksNames: ["Task 1", "Task 2", "Task 3"].slice(
         0,
         dto.taskCount,
       ),
@@ -740,7 +740,7 @@ export class ActionEventReminderService {
     const html = await this.mailService.renderHtml(
       EmailType.CustomActionReminder,
       {
-        customMessage: replacedMessage.replace(/\n/g, '<br>'),
+        customMessage: replacedMessage.replace(/\n/g, "<br>"),
       },
     );
 
@@ -773,14 +773,14 @@ export class ActionEventReminderService {
  * notified about their own task still needs nudges about other members').
  */
 export function assertExcludePreviouslyNotifiedAllowed(
-  dto: Pick<CreateReminderGroupDto, 'cohortType' | 'excludePreviouslyNotified'>,
+  dto: Pick<CreateReminderGroupDto, "cohortType" | "excludePreviouslyNotified">,
 ): void {
   if (
     dto.excludePreviouslyNotified &&
     !cohortNotifiesRecipientPersonally(dto.cohortType)
   ) {
     throw new BadRequestException(
-      'excludePreviouslyNotified is not supported for group-leads cohorts',
+      "excludePreviouslyNotified is not supported for group-leads cohorts",
     );
   }
 }

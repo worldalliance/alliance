@@ -1,8 +1,8 @@
 import type { HtmlBlock } from "@alliance/common/forms/display-blocks";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
+import FormTextarea from "../FormTextarea";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
-import FormTextarea from "../FormTextarea";
 
 export function EditableHtmlBlock(props: BaseDisplayBlockProps<HtmlBlock>) {
   return (

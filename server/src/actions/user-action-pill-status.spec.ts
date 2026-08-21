@@ -1,9 +1,9 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import { UserActionRelationPillStatus } from '../user/dto/user-action-relations.dto';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
 import {
   resolveUserActionPillStatus,
   UserActionPillStatusInput,
-} from './user-action-pill-status';
+} from "./user-action-pill-status";
 
 function input(
   overrides: Partial<UserActionPillStatusInput> = {},
@@ -46,18 +46,18 @@ function foldActivities(
   return status;
 }
 
-describe('foldActivities', () => {
-  it('is null with no activities', () => {
+describe("foldActivities", () => {
+  it("is null with no activities", () => {
     expect(foldActivities()).toBeNull();
   });
 
-  it('takes the status of a single terminal activity', () => {
+  it("takes the status of a single terminal activity", () => {
     expect(foldActivities(ActionActivityType.USER_COMPLETED)).toBe(
       UserActionRelationPillStatus.Completed,
     );
   });
 
-  it('is null when the only activities are non-terminal', () => {
+  it("is null when the only activities are non-terminal", () => {
     expect(
       foldActivities(
         ActionActivityType.USER_DISMISSED,
@@ -66,7 +66,7 @@ describe('foldActivities', () => {
     ).toBeNull();
   });
 
-  it('keeps completed when a follow-up form is submitted afterwards', () => {
+  it("keeps completed when a follow-up form is submitted afterwards", () => {
     expect(
       foldActivities(
         ActionActivityType.USER_COMPLETED,
@@ -75,7 +75,7 @@ describe('foldActivities', () => {
     ).toBe(UserActionRelationPillStatus.Completed);
   });
 
-  it('keeps completed when the action is dismissed afterwards', () => {
+  it("keeps completed when the action is dismissed afterwards", () => {
     expect(
       foldActivities(
         ActionActivityType.USER_COMPLETED,
@@ -84,7 +84,7 @@ describe('foldActivities', () => {
     ).toBe(UserActionRelationPillStatus.Completed);
   });
 
-  it('lets a later terminal activity override an earlier one', () => {
+  it("lets a later terminal activity override an earlier one", () => {
     expect(
       foldActivities(
         ActionActivityType.USER_COMPLETED,
@@ -94,21 +94,21 @@ describe('foldActivities', () => {
   });
 });
 
-describe('resolveUserActionPillStatus', () => {
-  it('defaults to not_required for a user who is neither joined, away, nor active', () => {
+describe("resolveUserActionPillStatus", () => {
+  it("defaults to not_required for a user who is neither joined, away, nor active", () => {
     expect(resolveUserActionPillStatus(input())).toBe(
       UserActionRelationPillStatus.NotRequired,
     );
   });
 
-  describe('joined task status', () => {
-    it('is todo for a joined, non-optional, not-yet-due action', () => {
+  describe("joined task status", () => {
+    it("is todo for a joined, non-optional, not-yet-due action", () => {
       expect(resolveUserActionPillStatus(input({ isJoined: true }))).toBe(
         UserActionRelationPillStatus.Todo,
       );
     });
 
-    it('is missed_deadline for a joined, non-optional, past-due action', () => {
+    it("is missed_deadline for a joined, non-optional, past-due action", () => {
       expect(
         resolveUserActionPillStatus(
           input({ isJoined: true, deadlinePassed: true }),
@@ -116,13 +116,13 @@ describe('resolveUserActionPillStatus', () => {
       ).toBe(UserActionRelationPillStatus.MissedDeadline);
     });
 
-    it('is optional_task for a joined optional action', () => {
+    it("is optional_task for a joined optional action", () => {
       expect(
         resolveUserActionPillStatus(input({ isJoined: true, optional: true })),
       ).toBe(UserActionRelationPillStatus.OptionalTask);
     });
 
-    it('prefers optional_task over missed_deadline when an optional action is also past due', () => {
+    it("prefers optional_task over missed_deadline when an optional action is also past due", () => {
       expect(
         resolveUserActionPillStatus(
           input({ isJoined: true, optional: true, deadlinePassed: true }),
@@ -131,22 +131,22 @@ describe('resolveUserActionPillStatus', () => {
     });
   });
 
-  describe('away', () => {
-    it('shows away over a joined task status', () => {
+  describe("away", () => {
+    it("shows away over a joined task status", () => {
       expect(
         resolveUserActionPillStatus(input({ isJoined: true, isAway: true })),
       ).toBe(UserActionRelationPillStatus.Away);
     });
 
-    it('shows away even when the user is away but not joined', () => {
+    it("shows away even when the user is away but not joined", () => {
       expect(
         resolveUserActionPillStatus(input({ isJoined: false, isAway: true })),
       ).toBe(UserActionRelationPillStatus.Away);
     });
   });
 
-  describe('terminal activity wins', () => {
-    it('completed overrides away', () => {
+  describe("terminal activity wins", () => {
+    it("completed overrides away", () => {
       expect(
         resolveUserActionPillStatus(
           input({
@@ -158,7 +158,7 @@ describe('resolveUserActionPillStatus', () => {
       ).toBe(UserActionRelationPillStatus.Completed);
     });
 
-    it('wont_complete overrides a joined task status', () => {
+    it("wont_complete overrides a joined task status", () => {
       expect(
         resolveUserActionPillStatus(
           input({
@@ -171,7 +171,7 @@ describe('resolveUserActionPillStatus', () => {
       ).toBe(UserActionRelationPillStatus.WontComplete);
     });
 
-    it('completed applies even to a user who is not joined', () => {
+    it("completed applies even to a user who is not joined", () => {
       expect(
         resolveUserActionPillStatus(
           input({
@@ -181,7 +181,7 @@ describe('resolveUserActionPillStatus', () => {
       ).toBe(UserActionRelationPillStatus.Completed);
     });
 
-    it('stays completed when a follow-up form is submitted after completion', () => {
+    it("stays completed when a follow-up form is submitted after completion", () => {
       expect(
         resolveUserActionPillStatus(
           input({
@@ -196,8 +196,8 @@ describe('resolveUserActionPillStatus', () => {
     });
   });
 
-  describe('non-terminal activity falls through to underlying status', () => {
-    it('a dismissal on a joined action still shows todo', () => {
+  describe("non-terminal activity falls through to underlying status", () => {
+    it("a dismissal on a joined action still shows todo", () => {
       expect(
         resolveUserActionPillStatus(
           input({
@@ -208,7 +208,7 @@ describe('resolveUserActionPillStatus', () => {
       ).toBe(UserActionRelationPillStatus.Todo);
     });
 
-    it('a follow-up submission while away still shows away', () => {
+    it("a follow-up submission while away still shows away", () => {
       expect(
         resolveUserActionPillStatus(
           input({

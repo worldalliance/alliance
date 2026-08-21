@@ -1,7 +1,7 @@
-import Card from "@alliance/sharedweb/ui/Card";
 import { CardStyle } from "@alliance/shared/styles/card";
-import React from "react";
 import { cn } from "@alliance/shared/styles/util";
+import Card from "@alliance/sharedweb/ui/Card";
+import React from "react";
 
 interface LandingPageActionCardProps {
   title: string;

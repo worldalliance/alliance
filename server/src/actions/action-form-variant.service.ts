@@ -3,17 +3,17 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, In, QueryFailedError, Repository } from 'typeorm';
-import { Form } from 'src/tasks/entities/form.entity';
-import { FormResponse } from 'src/tasks/entities/formresponse.entity';
-import { SnapshotHistoryOwner } from 'src/tasks/entities/formsnapshot.entity';
-import { FormSnapshotService } from 'src/tasks/formsnapshot.service';
-import { User } from 'src/user/entities/user.entity';
-import { Action } from './entities/action.entity';
-import { ActionFormAssignment } from './entities/action-form-assignment.entity';
-import { ActionFormVariant } from './entities/action-form-variant.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Form } from "src/tasks/entities/form.entity";
+import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
+import { FormSnapshotService } from "src/tasks/formsnapshot.service";
+import { User } from "src/user/entities/user.entity";
+import { EntityManager, In, QueryFailedError, Repository } from "typeorm";
+import { ActionFormAssignment } from "./entities/action-form-assignment.entity";
+import { ActionFormVariant } from "./entities/action-form-variant.entity";
+import { Action } from "./entities/action.entity";
 
 export interface CreateVariantInput {
   name: string;
@@ -54,7 +54,7 @@ export class ActionFormVariantService {
   async listForAction(actionId: number): Promise<ActionFormVariant[]> {
     return this.variantRepo.find({
       where: { actionId },
-      order: { id: 'ASC' },
+      order: { id: "ASC" },
     });
   }
 
@@ -65,19 +65,19 @@ export class ActionFormVariantService {
     this.assertSplitValid(input.splitValue);
 
     const action = await this.actionRepo.findOne({ where: { id: actionId } });
-    if (!action) throw new NotFoundException('Action not found');
+    if (!action) throw new NotFoundException("Action not found");
 
     const sourceFormId = input.sourceFormId ?? action.taskFormId ?? null;
     if (sourceFormId == null) {
       throw new BadRequestException(
-        'Action has no form to clone. Set the action form first or pass sourceFormId.',
+        "Action has no form to clone. Set the action form first or pass sourceFormId.",
       );
     }
     const sourceForm = await this.formRepo.findOne({
       where: { id: sourceFormId },
       relations: { formSnapshot: true },
     });
-    if (!sourceForm) throw new NotFoundException('Source form not found');
+    if (!sourceForm) throw new NotFoundException("Source form not found");
 
     return this.variantRepo.manager.transaction(async (em) => {
       await this.lockActionRow(em, actionId);
@@ -119,7 +119,7 @@ export class ActionFormVariantService {
     const variant = await this.variantRepo.findOne({
       where: { id: variantId },
     });
-    if (!variant) throw new NotFoundException('Variant not found');
+    if (!variant) throw new NotFoundException("Variant not found");
 
     const nextValue = input.splitValue ?? variant.splitValue;
     this.assertSplitValid(nextValue);
@@ -155,7 +155,7 @@ export class ActionFormVariantService {
     }
     const result = await this.variantRepo.delete({ id: variantId });
     if (result.affected === 0) {
-      throw new NotFoundException('Variant not found');
+      throw new NotFoundException("Variant not found");
     }
   }
 
@@ -187,7 +187,7 @@ export class ActionFormVariantService {
     } catch (err) {
       if (
         !(err instanceof QueryFailedError) ||
-        (err as { code?: string }).code !== '23505'
+        (err as { code?: string }).code !== "23505"
       ) {
         throw err;
       }
@@ -196,7 +196,7 @@ export class ActionFormVariantService {
       });
       if (!fresh) {
         throw new InternalServerErrorException(
-          'Assignment lookup failed after unique-violation race',
+          "Assignment lookup failed after unique-violation race",
         );
       }
       if (fresh.variantId === null) return null;
@@ -218,7 +218,7 @@ export class ActionFormVariantService {
     const [allVariants, existingAssignments] = await Promise.all([
       this.variantRepo.find({
         where: { actionId: In(actionIds) },
-        order: { id: 'ASC' },
+        order: { id: "ASC" },
       }),
       this.assignmentRepo.find({
         where: { actionId: In(actionIds), userId },
@@ -301,16 +301,16 @@ export class ActionFormVariantService {
 
   async getStatsForAction(actionId: number): Promise<VariantStats[]> {
     const action = await this.actionRepo.findOne({ where: { id: actionId } });
-    if (!action) throw new NotFoundException('Action not found');
+    if (!action) throw new NotFoundException("Action not found");
 
     const variants = await this.listForAction(actionId);
 
     const assignmentCounts = (await this.assignmentRepo
-      .createQueryBuilder('a')
-      .select('a.variantId', 'variantId')
-      .addSelect('COUNT(*)::int', 'count')
-      .where('a.actionId = :actionId', { actionId })
-      .groupBy('a.variantId')
+      .createQueryBuilder("a")
+      .select("a.variantId", "variantId")
+      .addSelect("COUNT(*)::int", "count")
+      .where("a.actionId = :actionId", { actionId })
+      .groupBy("a.variantId")
       .getRawMany()) as { variantId: number | null; count: number }[];
     const assignedByVariant = new Map<number | null, number>();
     for (const row of assignmentCounts) {
@@ -318,18 +318,18 @@ export class ActionFormVariantService {
     }
 
     const submittedRaw = (await this.assignmentRepo
-      .createQueryBuilder('a')
-      .leftJoin(ActionFormVariant, 'v', 'v.id = a.variantId')
+      .createQueryBuilder("a")
+      .leftJoin(ActionFormVariant, "v", "v.id = a.variantId")
       .innerJoin(
         FormResponse,
-        'r',
+        "r",
         'r."userId" = a."userId" AND r."formId" = COALESCE(v."formId", :defaultFormId)',
         { defaultFormId: action.taskFormId ?? -1 },
       )
-      .select('a.variantId', 'variantId')
-      .addSelect('COUNT(*)::int', 'count')
-      .where('a.actionId = :actionId', { actionId })
-      .groupBy('a.variantId')
+      .select("a.variantId", "variantId")
+      .addSelect("COUNT(*)::int", "count")
+      .where("a.actionId = :actionId", { actionId })
+      .groupBy("a.variantId")
       .getRawMany()) as { variantId: number | null; count: number }[];
     const submittedByVariant = new Map<number | null, number>();
     for (const row of submittedRaw) {
@@ -339,7 +339,7 @@ export class ActionFormVariantService {
     const stats: VariantStats[] = [];
     stats.push({
       variantId: null,
-      name: 'Default',
+      name: "Default",
       formId: action.taskFormId ?? null,
       splitValue: null,
       assigned: assignedByVariant.get(null) ?? 0,
@@ -397,13 +397,13 @@ export class ActionFormVariantService {
 
   private assertSplitValid(splitValue: number): void {
     if (
-      typeof splitValue !== 'number' ||
+      typeof splitValue !== "number" ||
       !Number.isFinite(splitValue) ||
       splitValue < 0 ||
       splitValue > 1
     ) {
       throw new BadRequestException(
-        'splitValue must be a number between 0 and 1',
+        "splitValue must be a number between 0 and 1",
       );
     }
   }
@@ -414,9 +414,9 @@ export class ActionFormVariantService {
   ): Promise<void> {
     await em
       .getRepository(Action)
-      .createQueryBuilder('a')
-      .setLock('pessimistic_write')
-      .where('a.id = :id', { id: actionId })
+      .createQueryBuilder("a")
+      .setLock("pessimistic_write")
+      .where("a.id = :id", { id: actionId })
       .getOne();
   }
 

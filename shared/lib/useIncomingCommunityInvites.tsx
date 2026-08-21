@@ -1,18 +1,18 @@
 import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  ReactNode,
-  useCallback,
-  useMemo,
-} from "react";
-import {
   communityAcceptCommunityInvite,
   communityGetIncomingCommunityInvitesForUser,
   CommunityInviteDto,
   communityRejectCommunityInvite,
 } from "@alliance/shared/client";
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 type IncomingCommunityInvitesContext = {
   incomingCommunityInvitesById: Map<number, CommunityInviteDto>;
@@ -41,7 +41,7 @@ export const IncomingCommunityInvitesProvider = ({
 
   const incomingCommunityInvitesById = useMemo(() => {
     return new Map<number, CommunityInviteDto>(
-      invites.map((invite) => [invite.id, invite])
+      invites.map((invite) => [invite.id, invite]),
     );
   }, [invites]);
 
@@ -59,11 +59,11 @@ export const IncomingCommunityInvitesProvider = ({
           prev.map((invite) => ({
             ...invite,
             ...(invite.id === inviteId && { status: "invitee_accepted" }),
-          }))
+          })),
         );
       }
     },
-    [setInvites]
+    [setInvites],
   );
 
   const declineCommunityInvite = useCallback(
@@ -76,11 +76,11 @@ export const IncomingCommunityInvitesProvider = ({
           prev.map((invite) => ({
             ...invite,
             ...(invite.id === inviteId && { status: "invitee_rejected" }),
-          }))
+          })),
         );
       }
     },
-    [setInvites]
+    [setInvites],
   );
 
   return (
@@ -101,7 +101,7 @@ const useIncomingCommunityInvites = (): IncomingCommunityInvitesContext => {
   const ctx = useContext(IncomingCommunityInvitesContext);
   if (!ctx) {
     throw new Error(
-      "useCommunityInvites must be used within CommunityInvitesProvider"
+      "useCommunityInvites must be used within CommunityInvitesProvider",
     );
   }
   return ctx;

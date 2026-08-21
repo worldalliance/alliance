@@ -7,10 +7,10 @@ import client from "prom-client";
 const viteDevServer = ["production", "staging"].includes(process.env.NODE_ENV)
   ? undefined
   : await import("vite").then((vite) =>
-    vite.createServer({
-      server: { middlewareMode: true },
-    })
-  );
+      vite.createServer({
+        server: { middlewareMode: true },
+      }),
+    );
 
 const reactRouterHandler = createRequestHandler({
   build: await import("./build/server/index.js"),
@@ -45,7 +45,7 @@ if (viteDevServer) {
   // Vite fingerprints its assets so we can cache forever.
   app.use(
     "/assets",
-    express.static("build/client/assets", { immutable: true, maxAge: "1y" })
+    express.static("build/client/assets", { immutable: true, maxAge: "1y" }),
   );
 }
 
@@ -73,7 +73,7 @@ app.use((req, res, next) => {
 
 // Everything else (like favicon.ico) is cached for an hour. You may want to be
 // more aggressive with this caching.
-app.use(express.static("build/client", { maxAge: "1h", }));
+app.use(express.static("build/client", { maxAge: "1h" }));
 
 app.use(morgan("tiny"));
 
@@ -83,6 +83,6 @@ app.all("{*splat}", reactRouterHandler);
 const port = process.env.PORT || 3000;
 app.listen(port, () =>
   console.log(
-    `Express server listening at http://localhost:${port} NODE_ENV: ${process.env.NODE_ENV}`
-  )
+    `Express server listening at http://localhost:${port} NODE_ENV: ${process.env.NODE_ENV}`,
+  ),
 );

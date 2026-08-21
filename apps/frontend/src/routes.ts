@@ -22,10 +22,7 @@ export default [
   route("/terms", "pages/static/TermsPage.tsx"),
   route("/error", "TestError.tsx"),
   route("/progress", "pages/static/ProgressListPage.tsx"),
-  route(
-    "/progress/projects/:slug",
-    "pages/static/ProgressProjectPage.tsx",
-  ),
+  route("/progress/projects/:slug", "pages/static/ProgressProjectPage.tsx"),
   route("/progress/:slug", "pages/static/ProgressPostPage.tsx"),
 
   route("/utensilinitiative", "pages/static/oneoff/UtensilWastePage.tsx"),

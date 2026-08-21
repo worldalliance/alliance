@@ -1,5 +1,5 @@
-import { PropsWithChildren } from "react";
 import { cn } from "@alliance/shared/styles/util";
+import { PropsWithChildren } from "react";
 
 interface BadgeProps extends PropsWithChildren {
   className?: string;
@@ -18,7 +18,7 @@ const Badge: React.FC<BadgeProps> = ({
         "self-start font-medium whitespace-nowrap flex items-center justify-center bg-zinc-200 text-gray-800",
         size === "sm"
           ? "text-xs py-1 px-3 rounded-sm"
-          : "py-2 px-3 text-sm rounded-md"
+          : "py-2 px-3 text-sm rounded-md",
       )}
     >
       {children}

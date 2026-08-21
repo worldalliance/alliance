@@ -1,22 +1,22 @@
+import { ApiProperty } from "@nestjs/swagger";
+import { Expose, Type } from "class-transformer";
+import { Allow } from "class-validator";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
   ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { Action } from './action.entity';
-import { ApiProperty } from '@nestjs/swagger';
-import { Allow } from 'class-validator';
-import { Expose, Type } from 'class-transformer';
-import { ReminderGroup } from './reminder-group.entity';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { ActionEvent } from './action-event.entity';
-import type { Relation } from 'src/utils/Repository';
-import { GeneralUpdate } from './general-update.entity';
+} from "typeorm";
+import { ActionEvent } from "./action-event.entity";
+import { Action } from "./action.entity";
+import { GeneralUpdate } from "./general-update.entity";
+import { ReminderGroup } from "./reminder-group.entity";
 
 @Entity()
 export class ActionSuite {

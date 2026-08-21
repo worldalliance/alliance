@@ -1,5 +1,12 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Allow, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsOptional } from "class-validator";
+import { GeneralUpdate } from "src/actions/entities/general-update.entity";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -7,22 +14,15 @@ import {
   ManyToMany,
   PrimaryGeneratedColumn,
   Unique,
-} from 'typeorm';
-import { User } from './user.entity';
-import { Type } from 'class-transformer';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
-import { GeneralUpdate } from 'src/actions/entities/general-update.entity';
+} from "typeorm";
+import { User } from "./user.entity";
 
 @Entity()
-@Unique(['name'])
+@Unique(["name"])
 export class Tag {
   // Fields
 
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   @ApiProperty()
   @Allow()
   id: string;
@@ -58,7 +58,7 @@ export class Tag {
   // Relations
 
   @ManyToMany(() => User, (user) => user.tags, {
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @ApiProperty({ type: () => User, isArray: true })
   @Allow()

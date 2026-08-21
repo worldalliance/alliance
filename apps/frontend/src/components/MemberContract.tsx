@@ -1,8 +1,8 @@
-import Card from "@alliance/sharedweb/ui/Card";
+import { PLACEHOLDER_CONTRACT_MARKDOWN } from "@alliance/shared/lib/contract";
 import { CardStyle } from "@alliance/shared/styles/card";
 import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
+import Card from "@alliance/sharedweb/ui/Card";
 import { useContract } from "../lib/useContract";
-import { PLACEHOLDER_CONTRACT_MARKDOWN } from "@alliance/shared/lib/contract";
 
 interface MemberContractProps {
   id?: string;

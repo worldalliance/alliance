@@ -1,4 +1,4 @@
-import { UserActionRelationPillStatus } from '../user/dto/user-action-relations.dto';
+import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
 
 export type UserActionPillStatusInput = {
   isJoined: boolean;

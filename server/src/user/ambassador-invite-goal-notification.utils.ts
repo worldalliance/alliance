@@ -1,18 +1,18 @@
-import { Temporal } from '@js-temporal/polyfill';
-import { DEFAULT_TIME_ZONE, type User } from './entities/user.entity';
+import { Temporal } from "@js-temporal/polyfill";
+import { DEFAULT_TIME_ZONE, type User } from "./entities/user.entity";
 
 type GoalWindow = {
   startAt: Date;
   dueAt: Date;
 };
 
-type GoalProgress = Pick<GoalWindow, 'dueAt'> & {
+type GoalProgress = Pick<GoalWindow, "dueAt"> & {
   targetSuccessfulRecruits: number;
 };
 
-type ReminderTimingUser = Pick<User, 'preferredReminderTime' | 'timeZone'>;
+type ReminderTimingUser = Pick<User, "preferredReminderTime" | "timeZone">;
 
-const DEFAULT_REMINDER_TIME = Temporal.PlainTime.from('19:00:00');
+const DEFAULT_REMINDER_TIME = Temporal.PlainTime.from("19:00:00");
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -68,11 +68,11 @@ export function getAmbassadorGoalHalfwayNotificationMessage(
     goal.targetSuccessfulRecruits - successfulRecruits,
     0,
   );
-  const daysLabel = `${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'}`;
+  const daysLabel = `${daysRemaining} ${daysRemaining === 1 ? "day" : "days"}`;
 
   if (remainingRecruits === 0) {
-    return `You have ${daysLabel} left, and you've already reached your goal of successfully inviting ${goal.targetSuccessfulRecruits} ${goal.targetSuccessfulRecruits === 1 ? 'person' : 'people'}.`;
+    return `You have ${daysLabel} left, and you've already reached your goal of successfully inviting ${goal.targetSuccessfulRecruits} ${goal.targetSuccessfulRecruits === 1 ? "person" : "people"}.`;
   }
 
-  return `You have ${daysLabel} left to successfully invite ${remainingRecruits} more ${remainingRecruits === 1 ? 'person' : 'people'} and reach your goal of ${goal.targetSuccessfulRecruits}.`;
+  return `You have ${daysLabel} left to successfully invite ${remainingRecruits} more ${remainingRecruits === 1 ? "person" : "people"} and reach your goal of ${goal.targetSuccessfulRecruits}.`;
 }

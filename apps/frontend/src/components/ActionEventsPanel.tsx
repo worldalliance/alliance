@@ -1,13 +1,13 @@
 import { ActionDto } from "@alliance/shared/client";
 import {
-  processActionTimeline,
   isActionEvent,
+  processActionTimeline,
 } from "@alliance/shared/lib/actionEventsPanel";
+import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
 import { formatDistance } from "date-fns";
+import { Fragment } from "react";
 import Timeline from "./system/Timeline";
 import TimelineItem from "./system/TimelineItem";
-import { Fragment } from "react";
-import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
 
 export interface ActionEventsPanelProps {
   action: ActionDto;

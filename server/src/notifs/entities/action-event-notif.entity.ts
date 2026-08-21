@@ -1,13 +1,13 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { ActionEvent } from 'src/actions/entities/action-event.entity';
-import { ReminderGroup } from 'src/actions/entities/reminder-group.entity';
-import { CreateDateColumnTz } from 'src/datasources/basecolumns';
-import { Mail } from 'src/mail/mail.entity';
-import { Mms } from 'src/mms/mms.entity';
-import { Push } from 'src/push/push.entity';
-import { User } from 'src/user/entities/user.entity';
-import type { Relation } from 'src/utils/Repository';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { ActionEvent } from "src/actions/entities/action-event.entity";
+import { ReminderGroup } from "src/actions/entities/reminder-group.entity";
+import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { Mail } from "src/mail/mail.entity";
+import { Mms } from "src/mms/mms.entity";
+import { Push } from "src/push/push.entity";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -17,19 +17,19 @@ import {
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
+} from "typeorm";
 
 export enum ActionEventNotifType {
-  Announcement = 'announcement',
-  MissedDeadline = 'misseddeadline',
-  Reminder = 'reminder',
-  PersonalReminder = 'personalreminder',
+  Announcement = "announcement",
+  MissedDeadline = "misseddeadline",
+  Reminder = "reminder",
+  PersonalReminder = "personalreminder",
 }
 
 @Entity()
-@Index(['idempotency_key'], {
+@Index(["idempotency_key"], {
   unique: true,
-  where: 'idempotency_key IS NOT NULL',
+  where: "idempotency_key IS NOT NULL",
 })
 export class ActionEventNotif {
   @PrimaryGeneratedColumn()
@@ -37,23 +37,23 @@ export class ActionEventNotif {
   id: number;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: ActionEventNotifType,
-    enumName: 'ActionEventNotifType',
+    enumName: "ActionEventNotifType",
     default: ActionEventNotifType.Announcement,
   })
-  @ApiProperty({ enum: ActionEventNotifType, enumName: 'ActionEventNotifType' })
+  @ApiProperty({ enum: ActionEventNotifType, enumName: "ActionEventNotifType" })
   type: ActionEventNotifType;
 
   @ApiProperty({ type: Mail, nullable: true })
   @OneToOne(() => Mail, { nullable: true })
-  @JoinColumn({ name: 'mailId' })
+  @JoinColumn({ name: "mailId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   mail: Relation<Mail> | null;
 
   @ApiProperty({ type: Mms, nullable: true })
   @OneToOne(() => Mms, { nullable: true })
-  @JoinColumn({ name: 'mmsId' })
+  @JoinColumn({ name: "mmsId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   mms: Relation<Mms> | null;
 
@@ -66,11 +66,11 @@ export class ActionEventNotif {
     () => ReminderGroup,
     (reminderGroup) => reminderGroup.notifications,
     {
-      onDelete: 'SET NULL',
+      onDelete: "SET NULL",
       nullable: true,
     },
   )
-  @JoinColumn({ name: 'reminderGroupId' })
+  @JoinColumn({ name: "reminderGroupId" })
   @ApiPropertyOptional({ type: () => ReminderGroup })
   @Type(() => ReminderGroup)
   reminderGroup?: Relation<ReminderGroup>;
@@ -83,8 +83,8 @@ export class ActionEventNotif {
    * are about other users' tasks, see `cohortNotifiesRecipientPersonally`)
    * and on rows whose group was deleted before this column existed.
    */
-  @ManyToOne(() => ActionEvent, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'memberActionEventId' })
+  @ManyToOne(() => ActionEvent, { onDelete: "SET NULL", nullable: true })
+  @JoinColumn({ name: "memberActionEventId" })
   @Index()
   @ApiPropertyOptional({ type: () => ActionEvent })
   @Type(() => ActionEvent)
@@ -98,25 +98,25 @@ export class ActionEventNotif {
    * `memberActionEvent` stamp is treated as having covered every task, the
    * pre-column behavior.
    */
-  @Column('integer', { array: true, nullable: true })
+  @Column("integer", { array: true, nullable: true })
   @ApiProperty({ type: [Number], nullable: true })
   notifiedActionIds: number[] | null;
 
   @ManyToOne(() => User, (user) => user.actionEventNotifs, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: "userId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column({ default: false })
   @ApiProperty({
-    description: 'Indicates whether the notification has been sent',
+    description: "Indicates whether the notification has been sent",
   })
   sent: boolean;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   @ApiProperty({ type: String, nullable: true })
   idempotency_key: string | null;
 

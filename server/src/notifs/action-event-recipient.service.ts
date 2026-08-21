@@ -1,41 +1,41 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import type { CohortExpression } from '@alliance/common/cohort-expression';
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import type { CohortExpression } from "@alliance/common/cohort-expression";
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import {
   answerMatchesFormField,
   evaluateCohortExpression,
   type CohortEvaluationContext,
-} from 'src/actions/cohort-expression.evaluator';
-import { ActionSuite } from 'src/actions/entities/action-suite.entity';
+} from "src/actions/cohort-expression.evaluator";
+import { ActionSuite } from "src/actions/entities/action-suite.entity";
 import {
   ReminderCohortType,
   ReminderGroup,
-} from 'src/actions/entities/reminder-group.entity';
-import { CommunityService } from 'src/community/community.service';
-import { Community } from 'src/community/entities/community.entity';
-import { FormResponse } from 'src/tasks/entities/formresponse.entity';
-import { Tag } from 'src/user/entities/tag.entity';
-import { computeIsAssignedAndPresent } from 'src/utils/action-user';
-import { yieldToEventLoop } from 'src/utils/event-loop';
-import { In, type Repository } from 'typeorm';
-import { ActionActivity } from '../actions/entities/action-activity.entity';
+} from "src/actions/entities/reminder-group.entity";
+import { CommunityService } from "src/community/community.service";
+import { Community } from "src/community/entities/community.entity";
+import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { Tag } from "src/user/entities/tag.entity";
+import { computeIsAssignedAndPresent } from "src/utils/action-user";
+import { yieldToEventLoop } from "src/utils/event-loop";
+import { In, type Repository } from "typeorm";
+import { ActionActivity } from "../actions/entities/action-activity.entity";
 import {
   ActionEvent,
   ActionStatus,
-} from '../actions/entities/action-event.entity';
+} from "../actions/entities/action-event.entity";
 import {
   Action,
   parseAction,
   type ParsedAction,
-} from '../actions/entities/action.entity';
-import { User } from '../user/entities/user.entity';
-import { UserService } from '../user/user.service';
+} from "../actions/entities/action.entity";
+import { User } from "../user/entities/user.entity";
+import { UserService } from "../user/user.service";
 import {
   CohortResolutionSession,
   type FormResponseAnswerRow,
-} from './cohort-resolution-session';
-import { ActionEventNotifType } from './entities/action-event-notif.entity';
+} from "./cohort-resolution-session";
+import { ActionEventNotifType } from "./entities/action-event-notif.entity";
 
 @Injectable()
 export class ActionEventRecipientService {
@@ -75,7 +75,7 @@ export class ActionEventRecipientService {
     // Memo key includes the chain: a sub-resolution reached through an
     // action-referencing leaf must not await a pending ancestor resolution
     // of the same expression (self-deadlock on cycles).
-    const chainKey = [...resolvingActionIds].sort((a, b) => a - b).join(',');
+    const chainKey = [...resolvingActionIds].sort((a, b) => a - b).join(",");
     const key = `${chainKey}|${JSON.stringify(expression)}`;
     let pending = session.expressionMemberIds.get(key);
     if (!pending) {
@@ -99,10 +99,10 @@ export class ActionEventRecipientService {
         let pending = session.tagUserIds.get(tagId);
         if (!pending) {
           pending = this.tagRepository
-            .createQueryBuilder('tag')
-            .innerJoin('tag.users', 'user')
-            .select('user.id', 'userId')
-            .where('tag.id = :tagId', { tagId })
+            .createQueryBuilder("tag")
+            .innerJoin("tag.users", "user")
+            .select("user.id", "userId")
+            .where("tag.id = :tagId", { tagId })
             .getRawMany<{ userId: number }>()
             .then((rows) => new Set(rows.map((row) => Number(row.userId))));
           session.tagUserIds.set(tagId, pending);
@@ -166,11 +166,11 @@ export class ActionEventRecipientService {
         let rows = session.formResponsesByFormId.get(params.formId);
         if (!rows) {
           rows = this.formResponseRepository
-            .createQueryBuilder('response')
-            .leftJoin('response.user', 'user')
-            .select('response.answers', 'answers')
-            .addSelect('user.id', 'userId')
-            .where('response.formId = :formId', { formId: params.formId })
+            .createQueryBuilder("response")
+            .leftJoin("response.user", "user")
+            .select("response.answers", "answers")
+            .addSelect("user.id", "userId")
+            .where("response.formId = :formId", { formId: params.formId })
             .getRawMany<FormResponseAnswerRow>();
           session.formResponsesByFormId.set(params.formId, rows);
         }
@@ -180,14 +180,14 @@ export class ActionEventRecipientService {
         return new Set(
           matching
             .map((row) => row.userId)
-            .filter((id): id is number => typeof id === 'number'),
+            .filter((id): id is number => typeof id === "number"),
         );
       },
       getGroupLeadUserIds: () =>
         (session.groupLeadUserIds ??= this.communityRepository
-          .createQueryBuilder('community')
-          .innerJoin('community.leaders', 'leader')
-          .select('leader.id', 'userId')
+          .createQueryBuilder("community")
+          .innerJoin("community.leaders", "leader")
+          .select("leader.id", "userId")
           .getRawMany<{ userId: number }>()
           .then((rows) => new Set(rows.map((row) => Number(row.userId))))),
       // getActiveUsers primes candidateUserIds from its snapshot, so this
@@ -434,8 +434,8 @@ export class ActionEventRecipientService {
 
   async filterForShouldRemind(
     users: User[],
-    event: Pick<ActionEvent, 'newStatus' | 'action' | 'date'>,
-    deadlineEvent: Pick<ActionEvent, 'newStatus' | 'action' | 'date'> | null,
+    event: Pick<ActionEvent, "newStatus" | "action" | "date">,
+    deadlineEvent: Pick<ActionEvent, "newStatus" | "action" | "date"> | null,
     actionSuite?: ActionSuite,
     excludeOptionalActions?: boolean,
   ): Promise<User[]> {
@@ -533,8 +533,8 @@ export class ActionEventRecipientService {
   }
 
   async findFilteredGroupLeads(
-    event: Pick<ActionEvent, 'newStatus' | 'action' | 'date' | 'id'>,
-    deadlineEvent: Pick<ActionEvent, 'newStatus' | 'action' | 'date'> | null,
+    event: Pick<ActionEvent, "newStatus" | "action" | "date" | "id">,
+    deadlineEvent: Pick<ActionEvent, "newStatus" | "action" | "date"> | null,
     suite?: ActionSuite,
     excludeOptionalActions?: boolean,
   ): Promise<User[]> {
@@ -559,8 +559,8 @@ export class ActionEventRecipientService {
   }
 
   async findFilteredUsersForEvent(
-    event: Pick<ActionEvent, 'newStatus' | 'action' | 'date' | 'id'>,
-    deadlineEvent: Pick<ActionEvent, 'newStatus' | 'action' | 'date'> | null,
+    event: Pick<ActionEvent, "newStatus" | "action" | "date" | "id">,
+    deadlineEvent: Pick<ActionEvent, "newStatus" | "action" | "date"> | null,
     type: ActionEventNotifType,
     suite?: ActionSuite,
     excludeOptionalActions?: boolean,
@@ -588,7 +588,7 @@ export class ActionEventRecipientService {
     switch (group.cohortType) {
       case ReminderCohortType.Custom:
         if (!group.users) {
-          throw new Error('Custom cohort type requires users');
+          throw new Error("Custom cohort type requires users");
         }
         users = group.users;
         break;
@@ -610,7 +610,7 @@ export class ActionEventRecipientService {
         );
       case ReminderCohortType.Tag:
         if (!group.userTag) {
-          throw new Error('Group cohort type requires user tag');
+          throw new Error("Group cohort type requires user tag");
         }
         const userTag = await this.userService.findTagOrFail(group.userTag.id);
         users = userTag.users;

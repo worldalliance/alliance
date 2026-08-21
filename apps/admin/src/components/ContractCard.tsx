@@ -27,8 +27,7 @@ export interface ContractCardProps {
 
 const ContractCard = ({ contract, navigate }: ContractCardProps) => {
   const preview =
-    contract.markdown.slice(0, 80) +
-    (contract.markdown.length > 80 ? "…" : "");
+    contract.markdown.slice(0, 80) + (contract.markdown.length > 80 ? "…" : "");
   return (
     <div
       className="p-4 cursor-pointer hover:bg-zinc-50 transition-colors"

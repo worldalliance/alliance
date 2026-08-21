@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsBoolean,
   IsInt,
@@ -8,14 +8,14 @@ import {
   MaxLength,
   Min,
   ValidateIf,
-} from 'class-validator';
-import { ShareUrlKind } from '../entities/share-url.entity';
+} from "class-validator";
+import { ShareUrlKind } from "../entities/share-url.entity";
 import {
   InviteAssignmentKind,
   type StoredInviteAssignment,
   StoredInviteAssignmentKind,
-} from '../invite-assignment';
-import type { ShareUrlMine, ShareUrlWithSignupCount } from '../share-url-views';
+} from "../invite-assignment";
+import type { ShareUrlMine, ShareUrlWithSignupCount } from "../share-url-views";
 
 type InviteAssignmentDetails = {
   assignmentKind: InviteAssignmentKind;
@@ -62,7 +62,7 @@ export class GetShareLinkDto {
 
   @ApiPropertyOptional({
     description:
-      'Set true for an invite link to the signup page. Provide exactly one of actionId, externalTargetId, or invite.',
+      "Set true for an invite link to the signup page. Provide exactly one of actionId, externalTargetId, or invite.",
   })
   @IsOptional()
   @IsBoolean()
@@ -71,7 +71,7 @@ export class GetShareLinkDto {
 
 export class CreateDuplicateShareLinkDto {
   @ApiPropertyOptional({
-    description: 'Owning user. Provide exactly one of userId or campaignId.',
+    description: "Owning user. Provide exactly one of userId or campaignId.",
   })
   @IsOptional()
   @IsInt()
@@ -79,7 +79,7 @@ export class CreateDuplicateShareLinkDto {
 
   @ApiPropertyOptional({
     description:
-      'Owning campaign. Provide exactly one of userId or campaignId.',
+      "Owning campaign. Provide exactly one of userId or campaignId.",
   })
   @IsOptional()
   @IsInt()
@@ -97,14 +97,14 @@ export class CreateDuplicateShareLinkDto {
 
   @ApiPropertyOptional({
     description:
-      'Set true for an invite link to the signup page. Provide exactly one of actionId, externalTargetId, or invite.',
+      "Set true for an invite link to the signup page. Provide exactly one of actionId, externalTargetId, or invite.",
   })
   @IsOptional()
   @IsBoolean()
   invite?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Optional label to distinguish this duplicate at a glance.',
+    description: "Optional label to distinguish this duplicate at a glance.",
   })
   @IsOptional()
   @IsString()
@@ -115,7 +115,7 @@ export class CreateDuplicateShareLinkDto {
 export class UpdateShareLinkLabelDto {
   @ApiPropertyOptional({
     description:
-      'New label for the share URL. Send an empty string or omit to clear.',
+      "New label for the share URL. Send an empty string or omit to clear.",
   })
   @IsOptional()
   @IsString()
@@ -124,7 +124,7 @@ export class UpdateShareLinkLabelDto {
 
 export class CreateInviteDuplicateDto {
   @ApiPropertyOptional({
-    description: 'Optional label to distinguish this duplicate at a glance.',
+    description: "Optional label to distinguish this duplicate at a glance.",
   })
   @IsOptional()
   @IsString()
@@ -141,7 +141,7 @@ export class CreateInviteDuplicateDto {
 export class UpdateInviteDto {
   @ApiPropertyOptional({
     description:
-      'Omit to leave the label as it is; send an empty string to clear it.',
+      "Omit to leave the label as it is; send an empty string to clear it.",
   })
   // Not `@IsOptional()`, which also waves through an explicit null and leaves
   // the declared `string` lying to everything downstream.
@@ -154,7 +154,7 @@ export class UpdateInviteDto {
     type: Number,
     nullable: true,
     description:
-      'Group future signups join: a group you lead, or null for any open group. Omit to leave the destination as it is.',
+      "Group future signups join: a group you lead, or null for any open group. Omit to leave the destination as it is.",
   })
   @ValidateIf((_object, value) => value !== null && value !== undefined)
   @IsInt()
@@ -186,7 +186,7 @@ export class ShareUrlMineDto {
 
   @ApiProperty({
     enum: InviteAssignmentKind,
-    enumName: 'InviteAssignmentKind',
+    enumName: "InviteAssignmentKind",
   })
   assignmentKind: InviteAssignmentKind;
 
@@ -244,7 +244,7 @@ export class ShareUrlAdminDto {
   @ApiProperty()
   id: string;
 
-  @ApiProperty({ enum: ShareUrlKind, enumName: 'ShareUrlKind' })
+  @ApiProperty({ enum: ShareUrlKind, enumName: "ShareUrlKind" })
   kind: ShareUrlKind;
 
   @ApiPropertyOptional()

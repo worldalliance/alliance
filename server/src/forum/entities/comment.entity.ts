@@ -1,6 +1,11 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsNotEmpty, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsNotEmpty, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -11,20 +16,15 @@ import {
   OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { Notification } from '../../notifs/entities/notification.entity';
-import { User } from '../../user/entities/user.entity';
-import { EditableContent } from './editablecontent.entity';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
+} from "typeorm";
+import { Notification } from "../../notifs/entities/notification.entity";
+import { User } from "../../user/entities/user.entity";
+import { EditableContent } from "./editablecontent.entity";
 
 export enum CommentParentObject {
-  Post = 'post',
-  Action = 'action',
-  Activity = 'activity',
+  Post = "post",
+  Action = "action",
+  Activity = "activity",
 }
 
 @Entity()
@@ -37,7 +37,7 @@ export class Comment {
   @OneToOne(() => EditableContent, {
     cascade: true,
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @JoinColumn()
   @ApiPropertyOptional({ type: () => EditableContent })
@@ -45,7 +45,7 @@ export class Comment {
   @Type(() => EditableContent)
   editableContent?: Relation<EditableContent>;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn()
   @ApiProperty()
   @Allow()
@@ -58,10 +58,10 @@ export class Comment {
   @Allow()
   authorId: number;
 
-  @Column({ type: 'enum', enum: CommentParentObject })
+  @Column({ type: "enum", enum: CommentParentObject })
   @ApiProperty({
     enum: CommentParentObject,
-    enumName: 'CommentParentObject',
+    enumName: "CommentParentObject",
   })
   @Allow()
   parentObjectType: CommentParentObject;
@@ -90,7 +90,7 @@ export class Comment {
 
   @ManyToOne(() => Comment, (comment) => comment.children, {
     nullable: true,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @JoinColumn()
   @ApiProperty({ type: () => Comment, required: false })
@@ -123,7 +123,7 @@ export class Comment {
   @Allow()
   pinned: boolean;
 
-  @ManyToMany(() => User, { onDelete: 'CASCADE' })
+  @ManyToMany(() => User, { onDelete: "CASCADE" })
   @ApiProperty({ type: () => User, isArray: true })
   @JoinTable()
   @Allow()

@@ -1,28 +1,28 @@
-import request from 'supertest';
-import { In, Not, type Repository } from 'typeorm';
-import { User } from '../src/user/entities/user.entity';
-import { Community } from '../src/community/entities/community.entity';
-import {
-  CommunityInvite,
-  CommunityInviteStatus,
-} from '../src/community/entities/community-invite.entity';
+import request from "supertest";
+import { In, Not, type Repository } from "typeorm";
+import { CommunityService } from "../src/community/community.service";
 import {
   CommunityDto,
   CreateCommunityDto,
-} from '../src/community/dto/community.dto';
-import { CommunityService } from '../src/community/community.service';
-import { ConversationService } from '../src/messaging/conversation.service';
-import { Conversation } from '../src/messaging/entities/conversation.entity';
-import { Participant } from '../src/messaging/entities/participant.entity';
+} from "../src/community/dto/community.dto";
+import {
+  CommunityInvite,
+  CommunityInviteStatus,
+} from "../src/community/entities/community-invite.entity";
+import { Community } from "../src/community/entities/community.entity";
+import { ConversationService } from "../src/messaging/conversation.service";
+import { Conversation } from "../src/messaging/entities/conversation.entity";
+import { Participant } from "../src/messaging/entities/participant.entity";
+import { User } from "../src/user/entities/user.entity";
 import {
   createTestApp,
   giveActiveContract,
   TestContext,
-} from './e2e-test-utils';
+} from "./e2e-test-utils";
 
 const defaultCreateDto: Pick<
   CreateCommunityDto,
-  'public' | 'allowMemberInvites' | 'allowStaffAssignments' | 'maxCapacity'
+  "public" | "allowMemberInvites" | "allowStaffAssignments" | "maxCapacity"
 > = {
   public: false,
   allowMemberInvites: true,
@@ -36,7 +36,7 @@ function createDto(
   return { ...defaultCreateDto, ...overrides } as CreateCommunityDto;
 }
 
-describe('Community (e2e)', () => {
+describe("Community (e2e)", () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
   let communityRepo: Repository<Community>;
@@ -64,9 +64,9 @@ describe('Community (e2e)', () => {
   beforeEach(async () => {
     testUser = await userRepo.save(
       userRepo.create({
-        name: 'Community Test User',
-        email: 'community.test@example.com',
-        password: 'Password123!',
+        name: "Community Test User",
+        email: "community.test@example.com",
+        password: "Password123!",
       }),
     );
     testUserToken = ctx.jwtService.sign(
@@ -76,9 +76,9 @@ describe('Community (e2e)', () => {
 
     secondUser = await userRepo.save(
       userRepo.create({
-        name: 'Community Second User',
-        email: 'community.second@example.com',
-        password: 'Password123!',
+        name: "Community Second User",
+        email: "community.second@example.com",
+        password: "Password123!",
       }),
     );
     secondUserToken = ctx.jwtService.sign(
@@ -94,8 +94,8 @@ describe('Community (e2e)', () => {
   });
 
   afterEach(async () => {
-    await communityInviteRepo.createQueryBuilder('ci').delete().execute();
-    await communityRepo.createQueryBuilder('community').delete().execute();
+    await communityInviteRepo.createQueryBuilder("ci").delete().execute();
+    await communityRepo.createQueryBuilder("community").delete().execute();
     await userRepo.delete({
       id: Not(In([ctx.testUserId, ctx.adminUserId])),
     });
@@ -105,100 +105,100 @@ describe('Community (e2e)', () => {
     await ctx.app.close();
   });
 
-  it('POST /community/create creates community when authenticated', async () => {
+  it("POST /community/create creates community when authenticated", async () => {
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/create')
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .post("/community/create")
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({
-        name: 'HTTP Created Community',
-        description: 'Via controller',
+        name: "HTTP Created Community",
+        description: "Via controller",
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.name).toBe('HTTP Created Community');
-    expect(res.body.description).toBe('Via controller');
+    expect(res.body.name).toBe("HTTP Created Community");
+    expect(res.body.description).toBe("Via controller");
     expect(res.body.id).toBeDefined();
   });
 
-  it('POST /community/create rejects empty name with 400', async () => {
+  it("POST /community/create rejects empty name with 400", async () => {
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/create')
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .post("/community/create")
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({
-        name: '',
-        description: 'Empty name',
+        name: "",
+        description: "Empty name",
       });
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/create returns 401 when unauthenticated', async () => {
+  it("POST /community/create returns 401 when unauthenticated", async () => {
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/create')
+      .post("/community/create")
       .send({
-        name: 'No Auth',
-        description: 'Should fail',
+        name: "No Auth",
+        description: "Should fail",
       });
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/create/admin creates community when admin', async () => {
+  it("POST /community/create/admin creates community when admin", async () => {
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/create/admin')
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .post("/community/create/admin")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send({
-        name: 'Admin HTTP Community',
-        description: 'Via admin endpoint',
+        name: "Admin HTTP Community",
+        description: "Via admin endpoint",
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.name).toBe('Admin HTTP Community');
+    expect(res.body.name).toBe("Admin HTTP Community");
     expect(res.body.id).toBeDefined();
   });
 
-  it('POST /community/create/admin returns 401 when not admin', async () => {
+  it("POST /community/create/admin returns 401 when not admin", async () => {
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/create/admin')
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .post("/community/create/admin")
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({
-        name: 'Non-Admin Tries Admin',
-        description: 'Should fail',
+        name: "Non-Admin Tries Admin",
+        description: "Should fail",
       });
 
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/list returns communities when admin', async () => {
+  it("GET /community/list returns communities when admin", async () => {
     // Ensure at least one community exists
     await communityService.createCommunityAdmin(
-      createDto({ name: 'Listed Community', description: 'For list test' }),
+      createDto({ name: "Listed Community", description: "For list test" }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/list')
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+      .get("/community/list")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThanOrEqual(1);
     const names = res.body.map((c: CommunityDto) => c.name);
-    expect(names).toContain('Listed Community');
+    expect(names).toContain("Listed Community");
   });
 
-  it('GET /community/list returns communities sorted by name', async () => {
-    const alphaName = 'E2E List Alpha Group';
-    const zuluName = 'E2E List Zulu Group';
+  it("GET /community/list returns communities sorted by name", async () => {
+    const alphaName = "E2E List Alpha Group";
+    const zuluName = "E2E List Zulu Group";
     await communityService.createCommunityAdmin(
-      createDto({ name: zuluName, description: 'z' }),
+      createDto({ name: zuluName, description: "z" }),
     );
     await communityService.createCommunityAdmin(
-      createDto({ name: alphaName, description: 'a' }),
+      createDto({ name: alphaName, description: "a" }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/list')
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+      .get("/community/list")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
     expect(res.status).toBe(200);
     const names = res.body.map((c: { name: string }) => c.name);
@@ -209,32 +209,32 @@ describe('Community (e2e)', () => {
     expect(alphaIdx).toBeLessThan(zuluIdx);
   });
 
-  it('GET /community/list returns 401 when not admin', async () => {
+  it("GET /community/list returns 401 when not admin", async () => {
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/list')
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .get("/community/list")
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/list returns 401 when unauthenticated', async () => {
-    const res = await request(ctx.app.getHttpServer()).get('/community/list');
+  it("GET /community/list returns 401 when unauthenticated", async () => {
+    const res = await request(ctx.app.getHttpServer()).get("/community/list");
 
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/list/my returns communities for authenticated user', async () => {
+  it("GET /community/list/my returns communities for authenticated user", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP My Community',
+        name: "E2E HTTP My Community",
         leaders: [testUser],
         users: [testUser],
       }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/list/my')
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .get("/community/list/my")
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -242,25 +242,25 @@ describe('Community (e2e)', () => {
     expect(ids).toContain(community.id);
   });
 
-  it('GET /community/list/my returns leader communities before non-leader communities', async () => {
+  it("GET /community/list/my returns leader communities before non-leader communities", async () => {
     const leaderCommunity = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP My Leader Community',
+        name: "E2E HTTP My Leader Community",
         leaders: [testUser],
         users: [testUser],
       }),
     );
     const memberCommunity = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP My Member Only Community',
+        name: "E2E HTTP My Member Only Community",
         leaders: [secondUser],
         users: [testUser, secondUser],
       }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/list/my')
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .get("/community/list/my")
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     const ids = res.body.map((c: CommunityDto) => c.id);
@@ -271,27 +271,27 @@ describe('Community (e2e)', () => {
     expect(leaderIdx).toBeLessThan(memberIdx);
   });
 
-  it('GET /community/list/my returns 401 when unauthenticated', async () => {
+  it("GET /community/list/my returns 401 when unauthenticated", async () => {
     const res = await request(ctx.app.getHttpServer()).get(
-      '/community/list/my',
+      "/community/list/my",
     );
 
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/list/public returns only public communities when authenticated', async () => {
-    const publicName = 'E2E HTTP Public Group';
-    const privateName = 'E2E HTTP Private Group';
+  it("GET /community/list/public returns only public communities when authenticated", async () => {
+    const publicName = "E2E HTTP Public Group";
+    const privateName = "E2E HTTP Private Group";
     await communityService.createCommunityAdmin(
-      createDto({ name: publicName, description: 'public', public: true }),
+      createDto({ name: publicName, description: "public", public: true }),
     );
     await communityService.createCommunityAdmin(
-      createDto({ name: privateName, description: 'private', public: false }),
+      createDto({ name: privateName, description: "private", public: false }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/list/public')
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .get("/community/list/public")
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -300,19 +300,19 @@ describe('Community (e2e)', () => {
     expect(names).not.toContain(privateName);
   });
 
-  it('GET /community/list/public returns communities sorted by name', async () => {
-    const alphaName = 'E2E ListPub Alpha';
-    const zuluName = 'E2E ListPub Zulu';
+  it("GET /community/list/public returns communities sorted by name", async () => {
+    const alphaName = "E2E ListPub Alpha";
+    const zuluName = "E2E ListPub Zulu";
     await communityService.createCommunityAdmin(
-      createDto({ name: zuluName, description: 'z', public: true }),
+      createDto({ name: zuluName, description: "z", public: true }),
     );
     await communityService.createCommunityAdmin(
-      createDto({ name: alphaName, description: 'a', public: true }),
+      createDto({ name: alphaName, description: "a", public: true }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/list/public')
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .get("/community/list/public")
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     const names = res.body.map((c: { name: string }) => c.name);
@@ -323,18 +323,18 @@ describe('Community (e2e)', () => {
     expect(alphaIdx).toBeLessThan(zuluIdx);
   });
 
-  it('GET /community/list/public returns 401 when unauthenticated', async () => {
+  it("GET /community/list/public returns 401 when unauthenticated", async () => {
     const res = await request(ctx.app.getHttpServer()).get(
-      '/community/list/public',
+      "/community/list/public",
     );
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/join joins public community when authenticated', async () => {
+  it("POST /community/:communityId/join joins public community when authenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Join Public',
+        name: "E2E HTTP Join Public",
         public: true,
         allowMemberInvites: true,
         allowStaffAssignments: true,
@@ -346,17 +346,17 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/join`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(201);
     expect(res.body.id).toBe(community.id);
-    expect(res.body.name).toBe('E2E HTTP Join Public');
+    expect(res.body.name).toBe("E2E HTTP Join Public");
   });
 
-  it('POST /community/:communityId/join returns 401 when unauthenticated', async () => {
+  it("POST /community/:communityId/join returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Join NoAuth',
+        name: "E2E HTTP Join NoAuth",
         public: true,
         allowMemberInvites: true,
         allowStaffAssignments: true,
@@ -373,10 +373,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/join returns 400 when already a member', async () => {
+  it("POST /community/:communityId/join returns 400 when already a member", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Join AlreadyMember',
+        name: "E2E HTTP Join AlreadyMember",
         public: true,
         allowMemberInvites: true,
         allowStaffAssignments: true,
@@ -389,21 +389,21 @@ describe('Community (e2e)', () => {
     // Join first time
     await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/join`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     // Try joining again
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/join`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('PATCH /community/:communityId updates community when authenticated as leader', async () => {
+  it("PATCH /community/:communityId updates community when authenticated as leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Update',
-        description: 'Before update',
+        name: "E2E HTTP Update",
+        description: "Before update",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -411,21 +411,21 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .patch(`/community/${community.id}`)
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({
-        name: 'E2E HTTP Updated',
-        description: 'After update',
+        name: "E2E HTTP Updated",
+        description: "After update",
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.name).toBe('E2E HTTP Updated');
-    expect(res.body.description).toBe('After update');
+    expect(res.body.name).toBe("E2E HTTP Updated");
+    expect(res.body.description).toBe("After update");
   });
 
-  it('PATCH /community/:communityId returns 401 when unauthenticated', async () => {
+  it("PATCH /community/:communityId returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Update NoAuth',
+        name: "E2E HTTP Update NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -433,15 +433,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .patch(`/community/${community.id}`)
-      .send({ name: 'Should Fail' });
+      .send({ name: "Should Fail" });
 
     expect(res.status).toBe(401);
   });
 
-  it('PATCH /community/:communityId returns 401 when user is not a leader', async () => {
+  it("PATCH /community/:communityId returns 401 when user is not a leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Update NonLeader',
+        name: "E2E HTTP Update NonLeader",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -449,16 +449,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .patch(`/community/${community.id}`)
-      .set('Authorization', `Bearer ${secondUserToken}`)
-      .send({ name: 'Should Fail' });
+      .set("Authorization", `Bearer ${secondUserToken}`)
+      .send({ name: "Should Fail" });
 
     expect(res.status).toBe(401);
   });
 
-  it('PATCH /community/:communityId returns 400 when name is empty', async () => {
+  it("PATCH /community/:communityId returns 400 when name is empty", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Update EmptyName',
+        name: "E2E HTTP Update EmptyName",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -466,16 +466,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .patch(`/community/${community.id}`)
-      .set('Authorization', `Bearer ${testUserToken}`)
-      .send({ name: '' });
+      .set("Authorization", `Bearer ${testUserToken}`)
+      .send({ name: "" });
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/:communityId/removeMember removes member when authenticated as leader', async () => {
+  it("POST /community/:communityId/removeMember removes member when authenticated as leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Remove Member',
+        name: "E2E HTTP Remove Member",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -483,7 +483,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/removeMember`)
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ userId: secondUser.id });
 
     expect(res.status).toBe(201);
@@ -496,10 +496,10 @@ describe('Community (e2e)', () => {
     expect(memberIds).not.toContain(secondUser.id);
   });
 
-  it('POST /community/:communityId/removeMember returns 400 when not a leader', async () => {
+  it("POST /community/:communityId/removeMember returns 400 when not a leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Remove Member NotLeader',
+        name: "E2E HTTP Remove Member NotLeader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -507,16 +507,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/removeMember`)
-      .set('Authorization', `Bearer ${secondUserToken}`)
+      .set("Authorization", `Bearer ${secondUserToken}`)
       .send({ userId: testUser.id });
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/:communityId/removeMember returns 400 when leader tries to remove themselves', async () => {
+  it("POST /community/:communityId/removeMember returns 400 when leader tries to remove themselves", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Remove Self',
+        name: "E2E HTTP Remove Self",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -524,16 +524,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/removeMember`)
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ userId: testUser.id });
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/:communityId/removeMember returns 401 when unauthenticated', async () => {
+  it("POST /community/:communityId/removeMember returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Remove Member NoAuth',
+        name: "E2E HTTP Remove Member NoAuth",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -546,10 +546,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/removeMember/admin removes member when admin', async () => {
+  it("POST /community/:communityId/removeMember/admin removes member when admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Remove Member',
+        name: "E2E HTTP Admin Remove Member",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -557,7 +557,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/removeMember/admin`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send({ userId: secondUser.id });
 
     expect(res.status).toBe(201);
@@ -570,10 +570,10 @@ describe('Community (e2e)', () => {
     expect(memberIds).not.toContain(secondUser.id);
   });
 
-  it('POST /community/:communityId/removeMember/admin returns 401 when not admin', async () => {
+  it("POST /community/:communityId/removeMember/admin returns 401 when not admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Remove NotAdmin',
+        name: "E2E HTTP Admin Remove NotAdmin",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -581,16 +581,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/removeMember/admin`)
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ userId: secondUser.id });
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/removeMember/admin returns 401 when unauthenticated', async () => {
+  it("POST /community/:communityId/removeMember/admin returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Remove NoAuth',
+        name: "E2E HTTP Admin Remove NoAuth",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -603,10 +603,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/leave removes member from community when authenticated', async () => {
+  it("POST /community/:communityId/leave removes member from community when authenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Leave Community',
+        name: "E2E HTTP Leave Community",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -614,7 +614,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/leave`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(200);
     const refreshed = await communityRepo.findOneOrFail({
@@ -626,10 +626,10 @@ describe('Community (e2e)', () => {
     expect(memberIds).toContain(testUser.id);
   });
 
-  it('POST /community/:communityId/leave returns 401 when unauthenticated', async () => {
+  it("POST /community/:communityId/leave returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Leave NoAuth',
+        name: "E2E HTTP Leave NoAuth",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -642,10 +642,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/leave returns 400 when user is not a member', async () => {
+  it("POST /community/:communityId/leave returns 400 when user is not a member", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Leave NotMember',
+        name: "E2E HTTP Leave NotMember",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -653,15 +653,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/leave`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/:communityId/leave returns 400 when user is the last leader', async () => {
+  it("POST /community/:communityId/leave returns 400 when user is the last leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Leave LastLeader',
+        name: "E2E HTTP Leave LastLeader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -669,15 +669,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/leave`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/:communityId/leave allows leader to leave when another leader exists', async () => {
+  it("POST /community/:communityId/leave allows leader to leave when another leader exists", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Leave CoLeader',
+        name: "E2E HTTP Leave CoLeader",
         leaders: [testUser, secondUser],
         users: [testUser, secondUser],
       }),
@@ -685,7 +685,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/leave`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     const refreshed = await communityRepo.findOneOrFail({
@@ -699,10 +699,10 @@ describe('Community (e2e)', () => {
     expect(leaderIds).not.toContain(testUser.id);
   });
 
-  it('POST /community/:communityId/join returns error for non-public community', async () => {
+  it("POST /community/:communityId/join returns error for non-public community", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Join Private',
+        name: "E2E HTTP Join Private",
         public: false,
         allowMemberInvites: true,
         allowStaffAssignments: true,
@@ -714,15 +714,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/join`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
-  it('DELETE /community/:communityId deletes community when authenticated as leader and sole member', async () => {
+  it("DELETE /community/:communityId deletes community when authenticated as leader and sole member", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Delete Solo',
+        name: "E2E HTTP Delete Solo",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -730,7 +730,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .delete(`/community/${community.id}`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     const found = await communityRepo.findOne({
@@ -739,10 +739,10 @@ describe('Community (e2e)', () => {
     expect(found).toBeNull();
   });
 
-  it('DELETE /community/:communityId returns 400 when community has other members', async () => {
+  it("DELETE /community/:communityId returns 400 when community has other members", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Delete HasMembers',
+        name: "E2E HTTP Delete HasMembers",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -750,15 +750,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .delete(`/community/${community.id}`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('DELETE /community/:communityId returns 400 when user is not a leader', async () => {
+  it("DELETE /community/:communityId returns 400 when user is not a leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Delete NotLeader',
+        name: "E2E HTTP Delete NotLeader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -766,15 +766,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .delete(`/community/${community.id}`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('DELETE /community/:communityId returns 401 when unauthenticated', async () => {
+  it("DELETE /community/:communityId returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Delete NoAuth',
+        name: "E2E HTTP Delete NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -787,10 +787,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('DELETE /community/:communityId/admin deletes community when admin', async () => {
+  it("DELETE /community/:communityId/admin deletes community when admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Delete',
+        name: "E2E HTTP Admin Delete",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -798,7 +798,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .delete(`/community/${community.id}/admin`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
     expect(res.status).toBe(200);
     const found = await communityRepo.findOne({
@@ -807,10 +807,10 @@ describe('Community (e2e)', () => {
     expect(found).toBeNull();
   });
 
-  it('DELETE /community/:communityId/admin returns 401 when not admin', async () => {
+  it("DELETE /community/:communityId/admin returns 401 when not admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Delete NotAdmin',
+        name: "E2E HTTP Admin Delete NotAdmin",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -818,15 +818,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .delete(`/community/${community.id}/admin`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(401);
   });
 
-  it('DELETE /community/:communityId/admin returns 401 when unauthenticated', async () => {
+  it("DELETE /community/:communityId/admin returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Delete NoAuth',
+        name: "E2E HTTP Admin Delete NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -839,10 +839,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/addMember/admin adds member when admin', async () => {
+  it("POST /community/:communityId/addMember/admin adds member when admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Add Member',
+        name: "E2E HTTP Admin Add Member",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -850,7 +850,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/addMember/admin`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send({ userId: secondUser.id });
 
     expect(res.status).toBe(201);
@@ -863,10 +863,10 @@ describe('Community (e2e)', () => {
     expect(memberIds).toContain(secondUser.id);
   });
 
-  it('POST /community/:communityId/addMember/admin returns 401 when not admin', async () => {
+  it("POST /community/:communityId/addMember/admin returns 401 when not admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Add NotAdmin',
+        name: "E2E HTTP Admin Add NotAdmin",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -874,16 +874,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/addMember/admin`)
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ userId: secondUser.id });
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/addMember/admin returns 401 when unauthenticated', async () => {
+  it("POST /community/:communityId/addMember/admin returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Add NoAuth',
+        name: "E2E HTTP Admin Add NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -896,10 +896,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/addLeader/admin adds leader when admin', async () => {
+  it("POST /community/:communityId/addLeader/admin adds leader when admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Add Leader',
+        name: "E2E HTTP Admin Add Leader",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -907,7 +907,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/addLeader/admin`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send({ userId: secondUser.id });
 
     expect(res.status).toBe(201);
@@ -922,10 +922,10 @@ describe('Community (e2e)', () => {
     expect(leaderIds).toContain(secondUser.id);
   });
 
-  it('POST /community/:communityId/addLeader/admin returns 401 when not admin', async () => {
+  it("POST /community/:communityId/addLeader/admin returns 401 when not admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Add Leader NotAdmin',
+        name: "E2E HTTP Admin Add Leader NotAdmin",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -933,16 +933,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/addLeader/admin`)
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ userId: secondUser.id });
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/addLeader/admin returns 401 when unauthenticated', async () => {
+  it("POST /community/:communityId/addLeader/admin returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Add Leader NoAuth',
+        name: "E2E HTTP Admin Add Leader NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -955,10 +955,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/removeLeader/admin removes leader when admin', async () => {
+  it("POST /community/:communityId/removeLeader/admin removes leader when admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Remove Leader',
+        name: "E2E HTTP Admin Remove Leader",
         leaders: [testUser, secondUser],
         users: [testUser, secondUser],
       }),
@@ -966,7 +966,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/removeLeader/admin`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send({ userId: secondUser.id });
 
     expect(res.status).toBe(201);
@@ -982,10 +982,10 @@ describe('Community (e2e)', () => {
     expect(memberIds).toContain(secondUser.id);
   });
 
-  it('POST /community/:communityId/removeLeader/admin returns 401 when not admin', async () => {
+  it("POST /community/:communityId/removeLeader/admin returns 401 when not admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Remove Leader NotAdmin',
+        name: "E2E HTTP Admin Remove Leader NotAdmin",
         leaders: [testUser, secondUser],
         users: [testUser, secondUser],
       }),
@@ -993,16 +993,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/${community.id}/removeLeader/admin`)
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ userId: secondUser.id });
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/:communityId/removeLeader/admin returns 401 when unauthenticated', async () => {
+  it("POST /community/:communityId/removeLeader/admin returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP Admin Remove Leader NoAuth',
+        name: "E2E HTTP Admin Remove Leader NoAuth",
         leaders: [testUser, secondUser],
         users: [testUser, secondUser],
       }),
@@ -1015,10 +1015,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/memberContactInfo/:communityId returns contact info when authenticated as leader', async () => {
+  it("GET /community/memberContactInfo/:communityId returns contact info when authenticated as leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetContactInfo Leader',
+        name: "E2E HTTP GetContactInfo Leader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1026,7 +1026,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .get(`/community/memberContactInfo/${community.id}`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -1036,10 +1036,10 @@ describe('Community (e2e)', () => {
     expect(ids).toContain(secondUser.id);
   });
 
-  it('GET /community/memberContactInfo/:communityId returns 401 when unauthenticated', async () => {
+  it("GET /community/memberContactInfo/:communityId returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetContactInfo NoAuth',
+        name: "E2E HTTP GetContactInfo NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1052,10 +1052,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/memberContactInfo/:communityId/admin returns contact info when admin', async () => {
+  it("GET /community/memberContactInfo/:communityId/admin returns contact info when admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetContactInfo Admin',
+        name: "E2E HTTP GetContactInfo Admin",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1063,17 +1063,17 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .get(`/community/memberContactInfo/${community.id}/admin`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(2);
   });
 
-  it('GET /community/memberContactInfo/:communityId/admin returns 401 when not admin', async () => {
+  it("GET /community/memberContactInfo/:communityId/admin returns 401 when not admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetContactInfo Admin NotAdmin',
+        name: "E2E HTTP GetContactInfo Admin NotAdmin",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1081,15 +1081,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .get(`/community/memberContactInfo/${community.id}/admin`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/memberContactInfo/:communityId/admin returns 401 when unauthenticated', async () => {
+  it("GET /community/memberContactInfo/:communityId/admin returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetContactInfo Admin NoAuth',
+        name: "E2E HTTP GetContactInfo Admin NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1102,36 +1102,36 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/memberContactInfo returns all contact info when admin', async () => {
+  it("GET /community/memberContactInfo returns all contact info when admin", async () => {
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/memberContactInfo')
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+      .get("/community/memberContactInfo")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('GET /community/memberContactInfo returns 401 when not admin', async () => {
+  it("GET /community/memberContactInfo returns 401 when not admin", async () => {
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/memberContactInfo')
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .get("/community/memberContactInfo")
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/memberContactInfo returns 401 when unauthenticated', async () => {
+  it("GET /community/memberContactInfo returns 401 when unauthenticated", async () => {
     const res = await request(ctx.app.getHttpServer()).get(
-      '/community/memberContactInfo',
+      "/community/memberContactInfo",
     );
 
     expect(res.status).toBe(401);
   });
 
-  it('DELETE /community/communityInvites/:inviteId deletes invite when authenticated as leader and inviter', async () => {
+  it("DELETE /community/communityInvites/:inviteId deletes invite when authenticated as leader and inviter", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP DeleteInvite Leader',
+        name: "E2E HTTP DeleteInvite Leader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1147,7 +1147,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .delete(`/community/communityInvites/${invite.id}`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     const found = await communityInviteRepo.findOneOrFail({
@@ -1156,10 +1156,10 @@ describe('Community (e2e)', () => {
     expect(found.deletedAt).not.toBeNull();
   });
 
-  it('DELETE /community/communityInvites/:inviteId deletes invite when authenticated as admin', async () => {
+  it("DELETE /community/communityInvites/:inviteId deletes invite when authenticated as admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP DeleteInvite Admin',
+        name: "E2E HTTP DeleteInvite Admin",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1175,7 +1175,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .delete(`/community/communityInvites/${invite.id}`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
     expect(res.status).toBe(200);
     const found = await communityInviteRepo.findOneOrFail({
@@ -1184,10 +1184,10 @@ describe('Community (e2e)', () => {
     expect(found.deletedAt).not.toBeNull();
   });
 
-  it('DELETE /community/communityInvites/:inviteId returns 401 when unauthenticated', async () => {
+  it("DELETE /community/communityInvites/:inviteId returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP DeleteInvite NoAuth',
+        name: "E2E HTTP DeleteInvite NoAuth",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1208,18 +1208,18 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/create creates invite when authenticated as leader', async () => {
+  it("POST /community/communityInvites/create creates invite when authenticated as leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP CreateInvite Leader',
+        name: "E2E HTTP CreateInvite Leader",
         leaders: [testUser],
         users: [testUser],
       }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/communityInvites/create')
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .post("/community/communityInvites/create")
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ invitedUserId: secondUser.id, communityId: community.id });
 
     expect(res.status).toBe(201);
@@ -1227,44 +1227,44 @@ describe('Community (e2e)', () => {
     expect(res.body.invitedUser.id).toBe(secondUser.id);
   });
 
-  it('POST /community/communityInvites/create returns 401 when unauthenticated', async () => {
+  it("POST /community/communityInvites/create returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP CreateInvite NoAuth',
+        name: "E2E HTTP CreateInvite NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/communityInvites/create')
+      .post("/community/communityInvites/create")
       .send({ invitedUserId: secondUser.id, communityId: community.id });
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/create returns 401 when user is not a leader', async () => {
+  it("POST /community/communityInvites/create returns 401 when user is not a leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP CreateInvite NotLeader',
+        name: "E2E HTTP CreateInvite NotLeader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/communityInvites/create')
-      .set('Authorization', `Bearer ${secondUserToken}`)
+      .post("/community/communityInvites/create")
+      .set("Authorization", `Bearer ${secondUserToken}`)
       .send({ invitedUserId: testUser.id, communityId: community.id });
 
     // CommunityLeaderGuard rejects non-leaders with 401
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/create returns 400 when pending invite already exists', async () => {
+  it("POST /community/communityInvites/create returns 400 when pending invite already exists", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP CreateInvite Duplicate',
+        name: "E2E HTTP CreateInvite Duplicate",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1279,25 +1279,25 @@ describe('Community (e2e)', () => {
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/communityInvites/create')
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .post("/community/communityInvites/create")
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ invitedUserId: secondUser.id, communityId: community.id });
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/communityInvites/request creates request invite when authenticated as community member', async () => {
+  it("POST /community/communityInvites/request creates request invite when authenticated as community member", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RequestInvite Member',
+        name: "E2E HTTP RequestInvite Member",
         leaders: [testUser],
         users: [testUser],
       }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/communityInvites/request')
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .post("/community/communityInvites/request")
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ communityId: community.id, invitedUserId: secondUser.id });
 
     expect(res.status).toBe(201);
@@ -1306,43 +1306,43 @@ describe('Community (e2e)', () => {
     expect(res.body.status).toBe(CommunityInviteStatus.RequestPending);
   });
 
-  it('POST /community/communityInvites/request returns 401 when unauthenticated', async () => {
+  it("POST /community/communityInvites/request returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RequestInvite NoAuth',
+        name: "E2E HTTP RequestInvite NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/communityInvites/request')
+      .post("/community/communityInvites/request")
       .send({ communityId: community.id, invitedUserId: secondUser.id });
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/request returns 400 when invited user is already a member', async () => {
+  it("POST /community/communityInvites/request returns 400 when invited user is already a member", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RequestInvite AlreadyMember',
+        name: "E2E HTTP RequestInvite AlreadyMember",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/communityInvites/request')
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .post("/community/communityInvites/request")
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ communityId: community.id, invitedUserId: secondUser.id });
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/communityInvites/request returns 400 when pending invite already exists', async () => {
+  it("POST /community/communityInvites/request returns 400 when pending invite already exists", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RequestInvite Duplicate',
+        name: "E2E HTTP RequestInvite Duplicate",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1357,34 +1357,34 @@ describe('Community (e2e)', () => {
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/communityInvites/request')
-      .set('Authorization', `Bearer ${testUserToken}`)
+      .post("/community/communityInvites/request")
+      .set("Authorization", `Bearer ${testUserToken}`)
       .send({ communityId: community.id, invitedUserId: secondUser.id });
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/communityInvites/request returns error when inviting user is not a community member', async () => {
+  it("POST /community/communityInvites/request returns error when inviting user is not a community member", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RequestInvite NotMember',
+        name: "E2E HTTP RequestInvite NotMember",
         leaders: [testUser],
         users: [testUser],
       }),
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .post('/community/communityInvites/request')
-      .set('Authorization', `Bearer ${secondUserToken}`)
+      .post("/community/communityInvites/request")
+      .set("Authorization", `Bearer ${secondUserToken}`)
       .send({ communityId: community.id, invitedUserId: testUser.id });
 
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
-  it('POST /community/communityInvites/:inviteId/approveRequest approves request when authenticated as leader', async () => {
+  it("POST /community/communityInvites/:inviteId/approveRequest approves request when authenticated as leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP ApproveRequest Leader',
+        name: "E2E HTTP ApproveRequest Leader",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1400,17 +1400,17 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/approveRequest`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(201);
     expect(res.body.status).toBe(CommunityInviteStatus.InviteePending);
     expect(res.body.id).toBe(invite.id);
   });
 
-  it('POST /community/communityInvites/:inviteId/approveRequest returns 401 when unauthenticated', async () => {
+  it("POST /community/communityInvites/:inviteId/approveRequest returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP ApproveRequest NoAuth',
+        name: "E2E HTTP ApproveRequest NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1431,10 +1431,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/:inviteId/approveRequest returns 401 when user is not a leader', async () => {
+  it("POST /community/communityInvites/:inviteId/approveRequest returns 401 when user is not a leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP ApproveRequest NotLeader',
+        name: "E2E HTTP ApproveRequest NotLeader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1450,16 +1450,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/approveRequest`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     // CommunityLeaderGuard rejects non-leaders with 401
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/:inviteId/approveRequest returns 400 when invite is not RequestPending', async () => {
+  it("POST /community/communityInvites/:inviteId/approveRequest returns 400 when invite is not RequestPending", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP ApproveRequest WrongStatus',
+        name: "E2E HTTP ApproveRequest WrongStatus",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1475,15 +1475,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/approveRequest`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/communityInvites/:inviteId/rejectRequest rejects request when authenticated as leader', async () => {
+  it("POST /community/communityInvites/:inviteId/rejectRequest rejects request when authenticated as leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RejectRequest Leader',
+        name: "E2E HTTP RejectRequest Leader",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1499,7 +1499,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/rejectRequest`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(201);
     const updated = await communityInviteRepo.findOneOrFail({
@@ -1508,10 +1508,10 @@ describe('Community (e2e)', () => {
     expect(updated.status).toBe(CommunityInviteStatus.RequestRejected);
   });
 
-  it('POST /community/communityInvites/:inviteId/rejectRequest returns 401 when unauthenticated', async () => {
+  it("POST /community/communityInvites/:inviteId/rejectRequest returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RejectRequest NoAuth',
+        name: "E2E HTTP RejectRequest NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1532,10 +1532,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/:inviteId/rejectRequest returns 401 when user is not a leader', async () => {
+  it("POST /community/communityInvites/:inviteId/rejectRequest returns 401 when user is not a leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RejectRequest NotLeader',
+        name: "E2E HTTP RejectRequest NotLeader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1551,16 +1551,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/rejectRequest`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     // CommunityLeaderGuard rejects non-leaders with 401
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/:inviteId/rejectRequest returns 400 when invite is not RequestPending', async () => {
+  it("POST /community/communityInvites/:inviteId/rejectRequest returns 400 when invite is not RequestPending", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RejectRequest WrongStatus',
+        name: "E2E HTTP RejectRequest WrongStatus",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1576,15 +1576,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/rejectRequest`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('DELETE /community/communityInvites/:inviteId returns 401 when user is not a leader or admin', async () => {
+  it("DELETE /community/communityInvites/:inviteId returns 401 when user is not a leader or admin", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP DeleteInvite NotLeader',
+        name: "E2E HTTP DeleteInvite NotLeader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1600,16 +1600,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .delete(`/community/communityInvites/${invite.id}`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     // CommunityLeaderGuard rejects non-leaders with 401
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/communityInvites/community/:communityId returns invites when authenticated as leader', async () => {
+  it("GET /community/communityInvites/community/:communityId returns invites when authenticated as leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetCommunityInvites Leader',
+        name: "E2E HTTP GetCommunityInvites Leader",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1625,7 +1625,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .get(`/community/communityInvites/community/${community.id}`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -1634,10 +1634,10 @@ describe('Community (e2e)', () => {
     expect(res.body[0].community.id).toBe(community.id);
   });
 
-  it('GET /community/communityInvites/community/:communityId excludes deleted invites', async () => {
+  it("GET /community/communityInvites/community/:communityId excludes deleted invites", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetCommunityInvites ExcludeDeleted',
+        name: "E2E HTTP GetCommunityInvites ExcludeDeleted",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1654,17 +1654,17 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .get(`/community/communityInvites/community/${community.id}`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(0);
   });
 
-  it('GET /community/communityInvites/community/:communityId returns empty array when no invites exist', async () => {
+  it("GET /community/communityInvites/community/:communityId returns empty array when no invites exist", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetCommunityInvites Empty',
+        name: "E2E HTTP GetCommunityInvites Empty",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1672,17 +1672,17 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .get(`/community/communityInvites/community/${community.id}`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(0);
   });
 
-  it('GET /community/communityInvites/community/:communityId returns 401 when unauthenticated', async () => {
+  it("GET /community/communityInvites/community/:communityId returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetCommunityInvites NoAuth',
+        name: "E2E HTTP GetCommunityInvites NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1695,10 +1695,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/communityInvites/community/:communityId returns 401 when user is not a leader', async () => {
+  it("GET /community/communityInvites/community/:communityId returns 401 when user is not a leader", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetCommunityInvites NotLeader',
+        name: "E2E HTTP GetCommunityInvites NotLeader",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1706,16 +1706,16 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .get(`/community/communityInvites/community/${community.id}`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     // CommunityLeaderGuard rejects non-leaders with 401
     expect(res.status).toBe(401);
   });
 
-  it('GET /community/communityInvites returns incoming invites for authenticated user', async () => {
+  it("GET /community/communityInvites returns incoming invites for authenticated user", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetIncomingInvites',
+        name: "E2E HTTP GetIncomingInvites",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1730,8 +1730,8 @@ describe('Community (e2e)', () => {
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/communityInvites')
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .get("/community/communityInvites")
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -1740,10 +1740,10 @@ describe('Community (e2e)', () => {
     expect(res.body[0].community.id).toBe(community.id);
   });
 
-  it('GET /community/communityInvites excludes deleted invites', async () => {
+  it("GET /community/communityInvites excludes deleted invites", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP GetIncomingInvites ExcludeDeleted',
+        name: "E2E HTTP GetIncomingInvites ExcludeDeleted",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1759,36 +1759,36 @@ describe('Community (e2e)', () => {
     );
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/communityInvites')
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .get("/community/communityInvites")
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(0);
   });
 
-  it('GET /community/communityInvites returns empty array when no invites exist', async () => {
+  it("GET /community/communityInvites returns empty array when no invites exist", async () => {
     const res = await request(ctx.app.getHttpServer())
-      .get('/community/communityInvites')
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .get("/community/communityInvites")
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(0);
   });
 
-  it('GET /community/communityInvites returns 401 when unauthenticated', async () => {
+  it("GET /community/communityInvites returns 401 when unauthenticated", async () => {
     const res = await request(ctx.app.getHttpServer()).get(
-      '/community/communityInvites',
+      "/community/communityInvites",
     );
 
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/:inviteId/accept accepts invite when authenticated as invited user', async () => {
+  it("POST /community/communityInvites/:inviteId/accept accepts invite when authenticated as invited user", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP AcceptInvite',
+        name: "E2E HTTP AcceptInvite",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1804,7 +1804,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/accept`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(201);
     const updatedInvite = await communityInviteRepo.findOneOrFail({
@@ -1819,10 +1819,10 @@ describe('Community (e2e)', () => {
     expect(memberIds).toContain(secondUser.id);
   });
 
-  it('POST /community/communityInvites/:inviteId/accept returns 401 when unauthenticated', async () => {
+  it("POST /community/communityInvites/:inviteId/accept returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP AcceptInvite NoAuth',
+        name: "E2E HTTP AcceptInvite NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1843,10 +1843,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/:inviteId/accept returns 400 when user is not the invited user', async () => {
+  it("POST /community/communityInvites/:inviteId/accept returns 400 when user is not the invited user", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP AcceptInvite WrongUser',
+        name: "E2E HTTP AcceptInvite WrongUser",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1862,15 +1862,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/accept`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/communityInvites/:inviteId/accept returns 400 when invite is not InviteePending', async () => {
+  it("POST /community/communityInvites/:inviteId/accept returns 400 when invite is not InviteePending", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP AcceptInvite WrongStatus',
+        name: "E2E HTTP AcceptInvite WrongStatus",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1886,15 +1886,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/accept`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/communityInvites/:inviteId/accept returns 400 when user is already a member', async () => {
+  it("POST /community/communityInvites/:inviteId/accept returns 400 when user is already a member", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP AcceptInvite AlreadyMember',
+        name: "E2E HTTP AcceptInvite AlreadyMember",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
@@ -1910,22 +1910,22 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/accept`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/communityInvites/:inviteId/accept removes user from non-leader communities', async () => {
+  it("POST /community/communityInvites/:inviteId/accept removes user from non-leader communities", async () => {
     const oldCommunity = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP AcceptInvite OldGroup',
+        name: "E2E HTTP AcceptInvite OldGroup",
         leaders: [testUser],
         users: [testUser, secondUser],
       }),
     );
     const newCommunity = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP AcceptInvite NewGroup',
+        name: "E2E HTTP AcceptInvite NewGroup",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1941,7 +1941,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/accept`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(201);
     // User should be added to new community
@@ -1960,10 +1960,10 @@ describe('Community (e2e)', () => {
     );
   });
 
-  it('POST /community/communityInvites/:inviteId/reject rejects invite when authenticated as invited user', async () => {
+  it("POST /community/communityInvites/:inviteId/reject rejects invite when authenticated as invited user", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RejectInvite',
+        name: "E2E HTTP RejectInvite",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -1979,7 +1979,7 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/reject`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(201);
     const updatedInvite = await communityInviteRepo.findOneOrFail({
@@ -1988,10 +1988,10 @@ describe('Community (e2e)', () => {
     expect(updatedInvite.status).toBe(CommunityInviteStatus.InviteeRejected);
   });
 
-  it('POST /community/communityInvites/:inviteId/reject returns 401 when unauthenticated', async () => {
+  it("POST /community/communityInvites/:inviteId/reject returns 401 when unauthenticated", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RejectInvite NoAuth',
+        name: "E2E HTTP RejectInvite NoAuth",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -2012,10 +2012,10 @@ describe('Community (e2e)', () => {
     expect(res.status).toBe(401);
   });
 
-  it('POST /community/communityInvites/:inviteId/reject returns 400 when user is not the invited user', async () => {
+  it("POST /community/communityInvites/:inviteId/reject returns 400 when user is not the invited user", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RejectInvite WrongUser',
+        name: "E2E HTTP RejectInvite WrongUser",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -2031,15 +2031,15 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/reject`)
-      .set('Authorization', `Bearer ${testUserToken}`);
+      .set("Authorization", `Bearer ${testUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  it('POST /community/communityInvites/:inviteId/reject returns 400 when invite is not InviteePending', async () => {
+  it("POST /community/communityInvites/:inviteId/reject returns 400 when invite is not InviteePending", async () => {
     const community = await communityRepo.save(
       communityRepo.create({
-        name: 'E2E HTTP RejectInvite WrongStatus',
+        name: "E2E HTTP RejectInvite WrongStatus",
         leaders: [testUser],
         users: [testUser],
       }),
@@ -2055,22 +2055,22 @@ describe('Community (e2e)', () => {
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/community/communityInvites/${invite.id}/reject`)
-      .set('Authorization', `Bearer ${secondUserToken}`);
+      .set("Authorization", `Bearer ${secondUserToken}`);
 
     expect(res.status).toBe(400);
   });
 
-  describe('POST /community/:communityId/addMember/admin', () => {
+  describe("POST /community/:communityId/addMember/admin", () => {
     const addMember = (communityId: number, userId: number) =>
       request(ctx.app.getHttpServer())
         .post(`/community/${communityId}/addMember/admin`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ userId });
 
-    it('adds a member to a group that accepts staff assignments', async () => {
+    it("adds a member to a group that accepts staff assignments", async () => {
       const community = await communityRepo.save(
         communityRepo.create({
-          name: 'Staff Assignable Group',
+          name: "Staff Assignable Group",
           leaders: [testUser],
           users: [testUser],
           allowStaffAssignments: true,
@@ -2087,10 +2087,10 @@ describe('Community (e2e)', () => {
       expect(updated.users.map((u) => u.id)).toContain(secondUser.id);
     });
 
-    it('refuses a group that has opted out of staff assignments', async () => {
+    it("refuses a group that has opted out of staff assignments", async () => {
       const community = await communityRepo.save(
         communityRepo.create({
-          name: 'No Staff Assignments Group',
+          name: "No Staff Assignments Group",
           leaders: [testUser],
           users: [testUser],
           public: false,
@@ -2109,17 +2109,17 @@ describe('Community (e2e)', () => {
       expect(updated.users.map((u) => u.id)).not.toContain(secondUser.id);
     });
 
-    it('refuses a group that is already at capacity', async () => {
+    it("refuses a group that is already at capacity", async () => {
       const existingMember = await userRepo.save(
         userRepo.create({
-          name: 'Capacity Filler',
-          email: 'capacity.filler@example.com',
-          password: 'Password123!',
+          name: "Capacity Filler",
+          email: "capacity.filler@example.com",
+          password: "Password123!",
         }),
       );
       const community = await communityRepo.save(
         communityRepo.create({
-          name: 'Full Staff Assignable Group',
+          name: "Full Staff Assignable Group",
           leaders: [testUser],
           users: [testUser, existingMember],
           allowStaffAssignments: true,
@@ -2136,18 +2136,18 @@ describe('Community (e2e)', () => {
       expect(updated.users.map((u) => u.id)).not.toContain(secondUser.id);
     });
 
-    it('allows only one concurrent assignment into the final available slot', async () => {
+    it("allows only one concurrent assignment into the final available slot", async () => {
       const competingMember = await userRepo.save(
         userRepo.create({
-          name: 'Competing Assigned Member',
-          email: 'competing.assigned.member@example.com',
-          password: 'Password123!',
+          name: "Competing Assigned Member",
+          email: "competing.assigned.member@example.com",
+          password: "Password123!",
         }),
       );
       await giveActiveContract(ctx, competingMember.id);
       const community = await communityRepo.save(
         communityRepo.create({
-          name: 'Final Staff Assignment Slot',
+          name: "Final Staff Assignment Slot",
           leaders: [testUser],
           users: [testUser],
           allowStaffAssignments: true,
@@ -2171,7 +2171,7 @@ describe('Community (e2e)', () => {
     });
   });
 
-  describe('POST /community/:communityId/moveMember/admin', () => {
+  describe("POST /community/:communityId/moveMember/admin", () => {
     const setUpGroups = async (
       destinationOverrides?: Partial<Community>,
     ): Promise<{
@@ -2180,15 +2180,15 @@ describe('Community (e2e)', () => {
     }> => {
       const destinationLeader = await userRepo.save(
         userRepo.create({
-          name: 'Destination Leader',
-          email: 'destination.leader@example.com',
-          password: 'Password123!',
+          name: "Destination Leader",
+          email: "destination.leader@example.com",
+          password: "Password123!",
         }),
       );
       const [source, destination] = await Promise.all([
         communityRepo.save(
           communityRepo.create({
-            name: 'Source Group',
+            name: "Source Group",
             leaders: [testUser],
             users: [testUser, secondUser],
             allowStaffAssignments: true,
@@ -2197,7 +2197,7 @@ describe('Community (e2e)', () => {
         ),
         communityRepo.save(
           communityRepo.create({
-            name: 'Destination Group',
+            name: "Destination Group",
             leaders: [destinationLeader],
             users: [destinationLeader],
             allowStaffAssignments: true,
@@ -2216,7 +2216,7 @@ describe('Community (e2e)', () => {
     }) =>
       request(ctx.app.getHttpServer())
         .post(`/community/${params.from.id}/moveMember/admin`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ userId: params.userId, destinationCommunityId: params.to.id });
 
     const memberIds = async (community: Community): Promise<number[]> => {
@@ -2227,7 +2227,7 @@ describe('Community (e2e)', () => {
       return refreshed.users.map((member) => member.id);
     };
 
-    it('moves the member out of the source group and into the destination', async () => {
+    it("moves the member out of the source group and into the destination", async () => {
       const { source, destination } = await setUpGroups();
 
       await moveMember({
@@ -2240,7 +2240,7 @@ describe('Community (e2e)', () => {
       expect(await memberIds(destination)).toContain(secondUser.id);
     });
 
-    it('updates participant authorization even when post-commit sync fails', async () => {
+    it("updates participant authorization even when post-commit sync fails", async () => {
       const { source, destination } = await setUpGroups();
       await Promise.all([
         conversationService.syncCommunityConversationMembers(source.id),
@@ -2255,8 +2255,8 @@ describe('Community (e2e)', () => {
         }),
       ]);
       const sync = jest
-        .spyOn(conversationService, 'syncCommunityConversationMembers')
-        .mockRejectedValue(new Error('sync failed'));
+        .spyOn(conversationService, "syncCommunityConversationMembers")
+        .mockRejectedValue(new Error("sync failed"));
 
       try {
         await moveMember({
@@ -2286,19 +2286,19 @@ describe('Community (e2e)', () => {
       ).toBe(true);
     });
 
-    it('allows only one concurrent move into the final available slot', async () => {
+    it("allows only one concurrent move into the final available slot", async () => {
       const { source, destination } = await setUpGroups({ maxCapacity: 1 });
       const competingMember = await userRepo.save(
         userRepo.create({
-          name: 'Competing Member',
-          email: 'competing.member@example.com',
-          password: 'Password123!',
+          name: "Competing Member",
+          email: "competing.member@example.com",
+          password: "Password123!",
         }),
       );
       await giveActiveContract(ctx, competingMember.id);
       const competingSource = await communityRepo.save(
         communityRepo.create({
-          name: 'Competing Source Group',
+          name: "Competing Source Group",
           leaders: [testUser],
           users: [testUser, competingMember],
           allowStaffAssignments: true,
@@ -2339,13 +2339,13 @@ describe('Community (e2e)', () => {
       });
     });
 
-    it('coordinates a concurrent assignment and move into the final slot', async () => {
+    it("coordinates a concurrent assignment and move into the final slot", async () => {
       const { source, destination } = await setUpGroups({ maxCapacity: 1 });
       const competingMember = await userRepo.save(
         userRepo.create({
-          name: 'Competing Unassigned Member',
-          email: 'competing.unassigned.member@example.com',
-          password: 'Password123!',
+          name: "Competing Unassigned Member",
+          email: "competing.unassigned.member@example.com",
+          password: "Password123!",
         }),
       );
       await giveActiveContract(ctx, competingMember.id);
@@ -2358,7 +2358,7 @@ describe('Community (e2e)', () => {
         }),
         request(ctx.app.getHttpServer())
           .post(`/community/${destination.id}/addMember/admin`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
           .send({ userId: competingMember.id }),
       ]);
 

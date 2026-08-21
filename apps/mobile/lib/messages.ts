@@ -1,3 +1,5 @@
+import { authRefreshTokens } from "@alliance/shared/client";
+import { client } from "@alliance/shared/client/client.gen";
 import {
   buildGroupConversationTitle,
   createMessagingHooks,
@@ -13,8 +15,6 @@ import {
 } from "@alliance/shared/lib/messages";
 import { getWebSocketUrl } from "./config";
 import { SecureStorage, SecureStorageKey } from "./SecureStorage";
-import { client } from "@alliance/shared/client/client.gen";
-import { authRefreshTokens } from "@alliance/shared/client";
 
 const getAuthToken = () => SecureStorage.getItem(SecureStorageKey.ACCESS_TOKEN);
 

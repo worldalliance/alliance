@@ -1,14 +1,14 @@
-import React, { useState } from "react";
-import { View, Alert, Pressable } from "react-native";
-import { useRouter } from "expo-router";
 import { authForgotPassword } from "@alliance/shared/client";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
-import { useAuth } from "../../lib/AuthContext";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Alert, Pressable, View } from "react-native";
 import Button from "../../components/system/Button";
+import Card, { CardStyle } from "../../components/system/Card";
 import Input from "../../components/system/Input";
 import PasswordVisibilityToggle from "../../components/system/PasswordVisibilityToggle";
 import Text, { FontWeight } from "../../components/system/Text";
-import Card, { CardStyle } from "../../components/system/Card";
+import { useAuth } from "../../lib/AuthContext";
 
 const LoginScreen = () => {
   const router = useRouter();

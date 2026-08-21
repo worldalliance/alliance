@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { NotificationDto } from "@alliance/shared/client";
 import {
   getNotificationTime,
   getUnreadLikesCount,
@@ -8,8 +7,9 @@ import {
 import { getNotificationIdentityKey } from "@alliance/shared/lib/notificationIdentity";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
-import { NotificationDto } from "@alliance/shared/client";
 import { CheckCheck, ChevronDown, ChevronUp, Heart } from "lucide-react-native";
+import { useState } from "react";
+import { TouchableOpacity, View } from "react-native";
 import ProfileImage from "./ProfileImage";
 import Text, { FontWeight } from "./system/Text";
 

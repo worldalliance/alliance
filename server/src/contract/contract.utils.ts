@@ -2,12 +2,12 @@ import {
   acceptsAutomatedMember,
   getMemberCount,
   isCommunityLedBy,
-} from 'src/community/community.utils';
-import { Community } from 'src/community/entities/community.entity';
-import { NotificationCategory } from 'src/notifs/entities/notification.entity';
-import type { CreateNotifParams } from 'src/notifs/notifs.service';
-import { groupUrl, profileUrl } from 'src/search/approutes';
-import { ReferralSource, User } from 'src/user/entities/user.entity';
+} from "src/community/community.utils";
+import { Community } from "src/community/entities/community.entity";
+import { NotificationCategory } from "src/notifs/entities/notification.entity";
+import type { CreateNotifParams } from "src/notifs/notifs.service";
+import { groupUrl, profileUrl } from "src/search/approutes";
+import { ReferralSource, User } from "src/user/entities/user.entity";
 
 /**
  * Ordering only: prefer the leader's roomiest group. An uncapped group sorts
@@ -71,7 +71,7 @@ export function memberJoinedCommunityNotif(
     user: leader,
     category: NotificationCategory.MemberJoinedCommunity,
     message,
-    webAppLocation: groupUrl({ tab: 'members', communityId: community.id }),
+    webAppLocation: groupUrl({ tab: "members", communityId: community.id }),
     associatedUsers,
   };
 }

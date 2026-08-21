@@ -1,16 +1,16 @@
-import { R, type Result } from '@alliance/common/result';
+import { R, type Result } from "@alliance/common/result";
 import {
   Inject,
   Injectable,
   Logger,
   type OnModuleDestroy,
   Optional,
-} from '@nestjs/common';
-import * as cheerio from 'cheerio';
-import sniffHtmlEncoding from 'html-encoding-sniffer';
-import iconv from 'iconv-lite';
-import sharp from 'sharp';
-import { AsyncSemaphore } from 'src/utils/async-semaphore';
+} from "@nestjs/common";
+import * as cheerio from "cheerio";
+import sniffHtmlEncoding from "html-encoding-sniffer";
+import iconv from "iconv-lite";
+import sharp from "sharp";
+import { AsyncSemaphore } from "src/utils/async-semaphore";
 import {
   decodedBodyStream,
   defaultSafeHttpTransport,
@@ -21,15 +21,15 @@ import {
   readBodyCapped,
   type SafeHttpTransport,
   type UnfetchableUrl,
-} from 'src/utils/safe-http';
-import { LinkPreview } from './link-preview.dto';
+} from "src/utils/safe-http";
+import { LinkPreview } from "./link-preview.dto";
 
 // Hard ceiling on one preview lookup end-to-end (all redirect hops, all
 // address attempts, page + favicon bodies). Without it, a crafted domain
 // with many black-holed addresses could pin a fetch slot for minutes.
 const OVERALL_DEADLINE_MS = 10_000;
 const MAX_HTML_BYTES = 512 * 1024;
-const FAVICON_ACCEPT = 'image/webp,image/png,image/svg+xml,image/*';
+const FAVICON_ACCEPT = "image/webp,image/png,image/svg+xml,image/*";
 // Favicons over this size are dropped (not truncated — a cut-off image is
 // garbage), keeping the JSON response and the per-origin cache small.
 const MAX_FAVICON_BYTES = 32 * 1024;
@@ -61,7 +61,7 @@ const CACHE_SWEEP_INTERVAL_MS = 10 * 60 * 1000;
 
 /** The lookup was never attempted: the fetch queue was full (load shed). */
 export enum PreviewUnavailable {
-  Overloaded = 'overloaded',
+  Overloaded = "overloaded",
 }
 
 export type LinkPreviewError = UnfetchableUrl | PreviewUnavailable;
@@ -93,7 +93,7 @@ type FaviconCacheEntry = {
  * runs with no real network. Optional and unprovided in production, where
  * the service falls back to {@link defaultSafeHttpTransport}.
  */
-export const LINK_PREVIEW_TRANSPORT = Symbol('LINK_PREVIEW_TRANSPORT');
+export const LINK_PREVIEW_TRANSPORT = Symbol("LINK_PREVIEW_TRANSPORT");
 
 @Injectable()
 export class LinkPreviewService implements OnModuleDestroy {
@@ -152,7 +152,7 @@ export class LinkPreviewService implements OnModuleDestroy {
     // URLs differing only by fragment are the same page — strip it before
     // keying, or each anchor link would burn a fetch, a cache entry, and a
     // slice of the user's rate-limit budget for identical bytes.
-    url.hash = '';
+    url.hash = "";
 
     const key = url.href;
     const cached = this.cache.get(key);
@@ -256,10 +256,10 @@ export class LinkPreviewService implements OnModuleDestroy {
     }
 
     const { response, finalUrl } = fetched.value;
-    const contentType = getHeader(response.headers, 'content-type');
+    const contentType = getHeader(response.headers, "content-type");
     if (
-      !contentType?.includes('text/html') &&
-      !contentType?.includes('application/xhtml')
+      !contentType?.includes("text/html") &&
+      !contentType?.includes("application/xhtml")
     ) {
       response.body.destroy();
       // "Not an HTML page" is a durable verdict, not a transient failure —
@@ -273,7 +273,7 @@ export class LinkPreviewService implements OnModuleDestroy {
     const bytes = await readBodyCapped(
       decodedBodyStream(
         response.body,
-        getHeader(response.headers, 'content-encoding'),
+        getHeader(response.headers, "content-encoding"),
       ),
       MAX_HTML_BYTES,
     );
@@ -403,12 +403,12 @@ export function decodeHtmlBody(
   const encoding = sniffHtmlEncoding(bytes, {
     transportLayerEncodingLabel:
       charsetFromContentType(contentTypeHeader) ?? undefined,
-    defaultEncoding: 'UTF-8',
+    defaultEncoding: "UTF-8",
   });
   if (iconv.encodingExists(encoding)) {
     return iconv.decode(bytes, encoding);
   }
-  return bytes.toString('utf-8');
+  return bytes.toString("utf-8");
 }
 
 export function charsetFromContentType(
@@ -437,20 +437,20 @@ const MAX_SITE_NAME_CHARS = 100;
 export function parsePreview(
   $: cheerio.CheerioAPI,
   requestedUrl: string,
-): Omit<LinkPreview, 'faviconDataUri'> {
+): Omit<LinkPreview, "faviconDataUri"> {
   return {
     url: requestedUrl,
     title: truncate(
-      metaContent($, ['og:title', 'twitter:title']) ??
-        blankToNull($('head title').first().text()),
+      metaContent($, ["og:title", "twitter:title"]) ??
+        blankToNull($("head title").first().text()),
       MAX_TITLE_CHARS,
     ),
     description: truncate(
-      metaContent($, ['og:description', 'twitter:description', 'description']),
+      metaContent($, ["og:description", "twitter:description", "description"]),
       MAX_DESCRIPTION_CHARS,
     ),
     siteName: truncate(
-      metaContent($, ['og:site_name', 'application-name']),
+      metaContent($, ["og:site_name", "application-name"]),
       MAX_SITE_NAME_CHARS,
     ),
   };
@@ -475,7 +475,7 @@ function truncate(value: string | null, maxChars: number): string | null {
 function metaContent($: cheerio.CheerioAPI, keys: string[]): string | null {
   for (const key of keys) {
     const value = blankToNull(
-      $(`meta[property="${key}"], meta[name="${key}"]`).attr('content'),
+      $(`meta[property="${key}"], meta[name="${key}"]`).attr("content"),
     );
     if (value) return value;
   }
@@ -484,7 +484,7 @@ function metaContent($: cheerio.CheerioAPI, keys: string[]): string | null {
 
 /** Collapses runs of whitespace (multi-line `<title>`s are common). */
 function blankToNull(value: string | undefined): string | null {
-  const normalized = value?.replace(/\s+/g, ' ').trim();
+  const normalized = value?.replace(/\s+/g, " ").trim();
   return normalized ? normalized : null;
 }
 
@@ -514,7 +514,7 @@ export function extractFaviconUrls($: cheerio.CheerioAPI, baseUrl: URL): URL[] {
   const urls = new Map<string, URL>();
   for (const link of candidates) {
     if (urls.size >= MAX_DECLARED_FAVICON_CANDIDATES) break;
-    const href = link.attr('href');
+    const href = link.attr("href");
     if (!href) continue;
     // toNullable: which parse rule disqualified a candidate doesn't matter,
     // only that the next one gets a turn.
@@ -522,7 +522,7 @@ export function extractFaviconUrls($: cheerio.CheerioAPI, baseUrl: URL): URL[] {
     if (url) urls.set(url.href, url);
   }
 
-  const fallback = R.toNullable(parseHttpUrl('/favicon.ico', baseUrl));
+  const fallback = R.toNullable(parseHttpUrl("/favicon.ico", baseUrl));
   if (fallback) urls.set(fallback.href, fallback);
   return [...urls.values()];
 }
@@ -559,7 +559,7 @@ async function fetchFaviconCandidate(
     const bytes = await readBodyCapped(
       decodedBodyStream(
         fetched.value.response.body,
-        getHeader(fetched.value.response.headers, 'content-encoding'),
+        getHeader(fetched.value.response.headers, "content-encoding"),
       ),
       MAX_FAVICON_BYTES + 1,
     );
@@ -569,13 +569,13 @@ async function fetchFaviconCandidate(
 
     const mime = sniffImageMime(bytes);
     if (mime) {
-      return R.success(`data:${mime};base64,${bytes.toString('base64')}`);
+      return R.success(`data:${mime};base64,${bytes.toString("base64")}`);
     }
     if (isSvgDocument(bytes)) {
       return await rasterizeSvgFavicon(bytes);
     }
     return R.failure(
-      'bytes are neither an allow-listed raster format nor a rasterizable SVG',
+      "bytes are neither an allow-listed raster format nor a rasterizable SVG",
     );
   } catch (error) {
     return R.failure(String(error));
@@ -592,13 +592,13 @@ async function fetchFaviconCandidate(
  */
 export function sniffImageMime(bytes: Buffer): string | null {
   if (bytes.length >= 4 && bytes.readUInt32BE(0) === 0x00000100) {
-    return 'image/x-icon';
+    return "image/x-icon";
   }
   if (bytes.length >= 8 && bytes.subarray(0, 4).equals(PNG_MAGIC)) {
-    return 'image/png';
+    return "image/png";
   }
-  if (bytes.length >= 4 && bytes.subarray(0, 4).toString('latin1') === 'GIF8') {
-    return 'image/gif';
+  if (bytes.length >= 4 && bytes.subarray(0, 4).toString("latin1") === "GIF8") {
+    return "image/gif";
   }
   if (
     bytes.length >= 3 &&
@@ -606,14 +606,14 @@ export function sniffImageMime(bytes: Buffer): string | null {
     bytes[1] === 0xd8 &&
     bytes[2] === 0xff
   ) {
-    return 'image/jpeg';
+    return "image/jpeg";
   }
   if (
     bytes.length >= 12 &&
-    bytes.subarray(0, 4).toString('latin1') === 'RIFF' &&
-    bytes.subarray(8, 12).toString('latin1') === 'WEBP'
+    bytes.subarray(0, 4).toString("latin1") === "RIFF" &&
+    bytes.subarray(8, 12).toString("latin1") === "WEBP"
   ) {
-    return 'image/webp';
+    return "image/webp";
   }
   return null;
 }
@@ -629,24 +629,24 @@ const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
  */
 export function isSvgDocument(bytes: Buffer): boolean {
   // Only the prolog and root tag need inspecting.
-  let text = bytes.subarray(0, 1024).toString('utf-8');
+  let text = bytes.subarray(0, 1024).toString("utf-8");
   if (text.charCodeAt(0) === 0xfeff) {
     text = text.slice(1);
   }
   for (;;) {
     text = text.trimStart();
-    if (text.startsWith('<?')) {
-      const end = text.indexOf('?>');
+    if (text.startsWith("<?")) {
+      const end = text.indexOf("?>");
       if (end === -1) return false;
       text = text.slice(end + 2);
-    } else if (text.startsWith('<!--')) {
-      const end = text.indexOf('-->');
+    } else if (text.startsWith("<!--")) {
+      const end = text.indexOf("-->");
       if (end === -1) return false;
       text = text.slice(end + 3);
     } else if (/^<!doctype/i.test(text)) {
-      const end = text.indexOf('>');
+      const end = text.indexOf(">");
       if (end === -1) return false;
-      if (text.slice(0, end).includes('[')) return false;
+      if (text.slice(0, end).includes("[")) return false;
       text = text.slice(end + 1);
     } else {
       return /^<svg[\s>/]/.test(text);
@@ -680,10 +680,10 @@ async function rasterizeSvgFavicon(
       limitInputPixels: SVG_RASTER_INPUT_PIXEL_LIMIT,
     })
       .timeout({ seconds: SVG_RASTERIZE_TIMEOUT_SECONDS })
-      .resize(FAVICON_RASTER_SIZE, FAVICON_RASTER_SIZE, { fit: 'inside' })
+      .resize(FAVICON_RASTER_SIZE, FAVICON_RASTER_SIZE, { fit: "inside" })
       .png()
       .toBuffer();
-    return R.success(`data:image/png;base64,${png.toString('base64')}`);
+    return R.success(`data:image/png;base64,${png.toString("base64")}`);
   } catch (error) {
     return R.failure(`SVG rasterization failed: ${String(error)}`);
   }

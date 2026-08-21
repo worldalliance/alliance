@@ -1,7 +1,7 @@
+import { cn } from "@alliance/shared/styles/util";
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useOutsideClick } from "../../sharedweb/lib/useOutsideClick";
-import { ChevronDown } from "lucide-react";
-import { cn } from "@alliance/shared/styles/util";
 
 type EnumType = Record<string, string | number>;
 

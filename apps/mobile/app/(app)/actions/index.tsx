@@ -1,24 +1,24 @@
-import {
-  View,
-  TouchableOpacity,
-  Modal,
-  Pressable,
-  RefreshControl,
-  ActivityIndicator,
-} from "react-native";
-import { useCallback, useMemo, useState } from "react";
-import { router } from "expo-router";
 import { FilterMode } from "@alliance/shared/lib/actionUtils";
 import {
   filterActions,
   useActionsQuery,
 } from "@alliance/shared/lib/actionsListPage";
-import Text, { FontFamily } from "../../../components/system/Text";
-import { ChevronDown } from "lucide-react-native";
-import ActionItemCard from "../../../components/ActionItemCard";
 import { LegendList } from "@legendapp/list";
-import { colors } from "../../../lib/style/colors";
+import { router } from "expo-router";
+import { ChevronDown } from "lucide-react-native";
+import { useCallback, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  RefreshControl,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import ActionItemCard from "../../../components/ActionItemCard";
 import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
+import Text, { FontFamily } from "../../../components/system/Text";
+import { colors } from "../../../lib/style/colors";
 
 export default function ActionsScreen() {
   const [filterMode, setFilterMode] = useState<FilterMode>(FilterMode.All);

@@ -1,26 +1,26 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import type { ActionActivity } from 'src/actions/entities/action-activity.entity';
-import { ContractService } from 'src/contract/contract.service';
-import { CommentParentObject } from 'src/forum/entities/comment.entity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import type { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { ContractService } from "src/contract/contract.service";
+import { CommentParentObject } from "src/forum/entities/comment.entity";
 import {
   Notification,
   NotificationCategory,
-} from 'src/notifs/entities/notification.entity';
+} from "src/notifs/entities/notification.entity";
 import {
   UnreadContent,
   UnreadContentType,
-} from 'src/notifs/entities/unread-content.entity';
-import { NotifsService } from 'src/notifs/notifs.service';
-import type { Form } from 'src/tasks/entities/form.entity';
-import type { FormResponse } from 'src/tasks/entities/formresponse.entity';
-import { ContractEventType } from 'src/user/entities/contract-event.entity';
+} from "src/notifs/entities/unread-content.entity";
+import { NotifsService } from "src/notifs/notifs.service";
+import type { Form } from "src/tasks/entities/form.entity";
+import type { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { ContractEventType } from "src/user/entities/contract-event.entity";
 import {
   UserAwayRange,
   UserAwayRangeReason,
-} from 'src/user/entities/user-away-range.entity';
-import { UserService } from 'src/user/user.service';
-import request from 'supertest';
-import type { Repository } from 'typeorm';
+} from "src/user/entities/user-away-range.entity";
+import { UserService } from "src/user/user.service";
+import request from "supertest";
+import type { Repository } from "typeorm";
 import {
   ActionDto,
   ActionEventDto,
@@ -28,25 +28,25 @@ import {
   CreateActionEventDto,
   GlobalFeedItemType,
   UserActionRelation,
-} from '../src/actions/dto/action.dto';
+} from "../src/actions/dto/action.dto";
 import {
   ActionEvent,
   ActionStatus,
-} from '../src/actions/entities/action-event.entity';
+} from "../src/actions/entities/action-event.entity";
 import {
   Action,
   ActionTaskType,
   VisibilityMode,
-} from '../src/actions/entities/action.entity';
-import type { Community } from '../src/community/entities/community.entity';
-import { User } from '../src/user/entities/user.entity';
+} from "../src/actions/entities/action.entity";
+import type { Community } from "../src/community/entities/community.entity";
+import { User } from "../src/user/entities/user.entity";
 import {
   createFormWithSnapshot,
   createTestApp,
   TestContext,
-} from './e2e-test-utils';
+} from "./e2e-test-utils";
 
-describe('Actions (e2e)', () => {
+describe("Actions (e2e)", () => {
   let ctx: TestContext;
   let testAction: Action;
   let testDraftAction: Action;
@@ -73,13 +73,13 @@ describe('Actions (e2e)', () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name,
-        category: 'Test',
-        body: 'Body copy',
-        taskContents: 'Task copy',
+        category: "Test",
+        body: "Body copy",
+        taskContents: "Task copy",
         shortDescription: `${name} short description`,
         visibilityMode: VisibilityMode.Public,
         cohortExpression: {
-          type: 'Tag',
+          type: "Tag",
           tagId: ctx.defaultTag.id,
         },
         ...options.actionOverrides,
@@ -89,7 +89,7 @@ describe('Actions (e2e)', () => {
     const event = await eventRepo.save(
       eventRepo.create({
         title: `${name} launch`,
-        description: 'Action live',
+        description: "Action live",
         newStatus: options.status ?? ActionStatus.MemberAction,
         date: new Date(Date.now() - 1000),
         action,
@@ -109,36 +109,36 @@ describe('Actions (e2e)', () => {
     notifRepo = ctx.dataSource.getRepository(Notification);
     unreadContentRepo = ctx.dataSource.getRepository(UnreadContent);
     activityRepo = ctx.dataSource.getRepository(
-      'ActionActivity',
+      "ActionActivity",
     ) as Repository<ActionActivity>;
     communityRepo = ctx.dataSource.getRepository(
-      'Community',
+      "Community",
     ) as Repository<Community>;
-    formRepo = ctx.dataSource.getRepository('Form') as Repository<Form>;
+    formRepo = ctx.dataSource.getRepository("Form") as Repository<Form>;
     formResponseRepo = ctx.dataSource.getRepository(
-      'FormResponse',
+      "FormResponse",
     ) as Repository<FormResponse>;
 
     // Create test action with MemberAction status
     testAction = actionRepo.create({
-      name: 'Test Action',
-      category: 'Test',
-      body: 'Test action for forum tests',
-      taskContents: 'Test action for forum tests',
+      name: "Test Action",
+      category: "Test",
+      body: "Test action for forum tests",
+      taskContents: "Test action for forum tests",
       visibilityMode: VisibilityMode.Public,
       cohortExpression: {
-        type: 'Tag',
+        type: "Tag",
         tagId: ctx.defaultTag.id,
       },
     });
 
     testDraftAction = actionRepo.create({
-      name: 'Test Draft Action',
-      category: 'Test',
-      body: 'Test action for forum tests',
+      name: "Test Draft Action",
+      category: "Test",
+      body: "Test action for forum tests",
       visibilityMode: VisibilityMode.Public,
       cohortExpression: {
-        type: 'Tag',
+        type: "Tag",
         tagId: ctx.defaultTag.id,
       },
     });
@@ -148,8 +148,8 @@ describe('Actions (e2e)', () => {
 
     // Create event to set status for testAction to MemberAction
     const gatheringEvent = eventRepo.create({
-      title: 'Action Started',
-      description: 'Action is now in gathering commitments phase',
+      title: "Action Started",
+      description: "Action is now in gathering commitments phase",
       newStatus: ActionStatus.MemberAction,
       date: new Date(Date.now() - 1000 * 60 * 60), // 1 hour ago
       action: testAction,
@@ -163,15 +163,15 @@ describe('Actions (e2e)', () => {
     });
     await contractService.signContract({
       userId: defaultUser.id,
-      signedName: 'Test Name',
+      signedName: "Test Name",
       contractId: ctx.defaultContractId,
     });
 
     const outsider = await userRepo.save(
       userRepo.create({
-        email: 'outsider@example.com',
-        password: 'pass',
-        name: 'Outsider',
+        email: "outsider@example.com",
+        password: "pass",
+        name: "Outsider",
       }),
     );
 
@@ -180,38 +180,38 @@ describe('Actions (e2e)', () => {
       { secret: process.env.JWT_SECRET },
     );
 
-    await createPublishedAction('Group Restricted Action', {
+    await createPublishedAction("Group Restricted Action", {
       status: ActionStatus.MemberAction,
       actionOverrides: {
         visibilityMode: VisibilityMode.Public,
         cohortExpression: {
-          type: 'Tag',
+          type: "Tag",
           tagId: ctx.defaultTag.id,
         },
       },
     });
 
-    await createPublishedAction('Group Restricted Hidden Action', {
+    await createPublishedAction("Group Restricted Hidden Action", {
       status: ActionStatus.MemberAction,
       actionOverrides: {
         visibilityMode: VisibilityMode.ParticipatingGroups,
         cohortExpression: {
-          type: 'Tag',
+          type: "Tag",
           tagId: ctx.defaultTag.id,
         },
       },
     });
   }, 50000);
 
-  describe('Actions', () => {
-    it('admin can create a valid action', async () => {
+  describe("Actions", () => {
+    it("admin can create a valid action", async () => {
       const newAction: CreateActionDto = {
-        name: 'Test Action',
-        body: 'Do something important',
-        category: 'category',
-        image: '',
+        name: "Test Action",
+        body: "Do something important",
+        category: "category",
+        image: "",
         timeEstimate: 5,
-        shortDescription: 'Do something important',
+        shortDescription: "Do something important",
         visibilityMode: VisibilityMode.Public,
         type: ActionTaskType.Activity,
         isContractSigningAction: false,
@@ -225,36 +225,36 @@ describe('Actions (e2e)', () => {
       };
 
       const res = await request(ctx.app.getHttpServer())
-        .post('/actions/create')
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .post("/actions/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send(newAction);
 
       expect(res.status).toBe(201);
-      expect(res.body.name).toBe('Test Action');
+      expect(res.body.name).toBe("Test Action");
 
-      await actionRepo.query('DELETE FROM action WHERE id = $1', [res.body.id]);
+      await actionRepo.query("DELETE FROM action WHERE id = $1", [res.body.id]);
     });
 
-    it('action creation with missing data rejected', async () => {
+    it("action creation with missing data rejected", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .post('/actions/create')
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .post("/actions/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
-          name: 'Test Action',
-          description: 'Do something important',
+          name: "Test Action",
+          description: "Do something important",
         });
 
       expect(res.status).toBe(400);
     });
 
-    it('action creation with malformed cohortExpression rejected', async () => {
+    it("action creation with malformed cohortExpression rejected", async () => {
       const base: CreateActionDto = {
-        name: 'Bad Cohort Action',
-        body: 'Body',
-        category: 'category',
-        image: '',
+        name: "Bad Cohort Action",
+        body: "Body",
+        category: "category",
+        image: "",
         timeEstimate: 5,
-        shortDescription: 'Short',
+        shortDescription: "Short",
         visibilityMode: VisibilityMode.Public,
         type: ActionTaskType.Activity,
         isContractSigningAction: false,
@@ -269,45 +269,45 @@ describe('Actions (e2e)', () => {
 
       const malformedExpressions = [
         // Tag condition missing its tagId
-        { type: 'Tag' },
+        { type: "Tag" },
         // unknown discriminator
-        { type: 'NotARealCondition', tagId: 'x' },
+        { type: "NotARealCondition", tagId: "x" },
         // operator with malformed child
         {
-          type: 'AND',
-          children: [{ type: 'Manual', userIds: ['not-a-number'] }],
+          type: "AND",
+          children: [{ type: "Manual", userIds: ["not-a-number"] }],
         },
         // responseAny would shadow responseEqualTo
         {
-          type: 'FormFieldValue',
+          type: "FormFieldValue",
           formId: 1,
-          fieldId: 'f1',
-          responseEqualTo: 'yes',
+          fieldId: "f1",
+          responseEqualTo: "yes",
           responseAny: true,
         },
       ];
 
       for (const cohortExpression of malformedExpressions) {
         const res = await request(ctx.app.getHttpServer())
-          .post('/actions/create')
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .post("/actions/create")
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
           .send({ ...base, cohortExpression });
 
         expect(res.status).toBe(400);
       }
     });
 
-    it('explicit null cohortExpression clears a stored one', async () => {
+    it("explicit null cohortExpression clears a stored one", async () => {
       const createRes = await request(ctx.app.getHttpServer())
-        .post('/actions/create')
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .post("/actions/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
-          name: 'Clearable Cohort Action',
-          body: 'Body',
-          category: 'category',
-          image: '',
+          name: "Clearable Cohort Action",
+          body: "Body",
+          category: "category",
+          image: "",
           timeEstimate: 5,
-          shortDescription: 'Short',
+          shortDescription: "Short",
           visibilityMode: VisibilityMode.Public,
           type: ActionTaskType.Activity,
           isContractSigningAction: false,
@@ -318,14 +318,14 @@ describe('Actions (e2e)', () => {
           publicOnly: false,
           onboarding: false,
           followUpForms: [],
-          cohortExpression: { type: 'Manual', userIds: [1] },
+          cohortExpression: { type: "Manual", userIds: [1] },
         } satisfies CreateActionDto & { cohortExpression: unknown });
       expect(createRes.status).toBe(201);
       const actionId = createRes.body.id as number;
 
       const updateRes = await request(ctx.app.getHttpServer())
         .patch(`/actions/${actionId}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ cohortExpression: null });
       expect(updateRes.status).toBe(200);
 
@@ -335,69 +335,69 @@ describe('Actions (e2e)', () => {
       // Omitting the field must leave the stored expression untouched.
       const restoreRes = await request(ctx.app.getHttpServer())
         .patch(`/actions/${actionId}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ cohortExpression: { type: 'GroupLead' } });
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ cohortExpression: { type: "GroupLead" } });
       expect(restoreRes.status).toBe(200);
       const untouchedRes = await request(ctx.app.getHttpServer())
         .patch(`/actions/${actionId}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-        .send({ name: 'Clearable Cohort Action (renamed)' });
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ name: "Clearable Cohort Action (renamed)" });
       expect(untouchedRes.status).toBe(200);
       const untouched = await actionRepo.findOneByOrFail({ id: actionId });
-      expect(untouched.cohortExpression).toEqual({ type: 'GroupLead' });
+      expect(untouched.cohortExpression).toEqual({ type: "GroupLead" });
     });
 
-    it('user is shown their own relation to an action', async () => {
+    it("user is shown their own relation to an action", async () => {
       const action = await actionRepo.findOneBy({
-        name: 'Test Action',
+        name: "Test Action",
       });
 
       const res = await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${action!.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`);
+        .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(201);
 
       const res2 = await request(ctx.app.getHttpServer())
         .get(`/actions/myStatus/${action!.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`);
+        .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res2.status).toBe(200);
       expect(res2.body.relation).toBe(UserActionRelation.Completed);
     });
 
-    it('user can see their action activities', async () => {
+    it("user can see their action activities", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/myActivity')
-        .set('Authorization', `Bearer ${ctx.accessToken}`);
+        .get("/actions/myActivity")
+        .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body[0].type).toBe(ActionActivityType.USER_COMPLETED);
     });
 
-    it('can fetch all actions with status', async () => {
+    it("can fetch all actions with status", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions')
-        .set('Authorization', `Bearer ${ctx.accessToken}`);
+        .get("/actions")
+        .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body)).toBe(true);
-      expect(res.body[0]).toHaveProperty('status');
+      expect(res.body[0]).toHaveProperty("status");
     });
 
-    it('can see completed actions for a user', async () => {
+    it("can see completed actions for a user", async () => {
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/completed/${ctx.testUserId}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`);
+        .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.length).toBe(1);
     });
 
-    it('user cannot see draft actions', async () => {
+    it("user cannot see draft actions", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions')
-        .set('Authorization', `Bearer ${ctx.accessToken}`);
+        .get("/actions")
+        .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
 
@@ -408,10 +408,10 @@ describe('Actions (e2e)', () => {
       ).toBe(false);
     });
 
-    it('admin can see draft actions', async () => {
+    it("admin can see draft actions", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/all')
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+        .get("/actions/all")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.length).toBeGreaterThan(0);
@@ -422,7 +422,7 @@ describe('Actions (e2e)', () => {
       ).toBe(true);
     });
 
-    it('unauthenticated user cannot access individual draft action', async () => {
+    it("unauthenticated user cannot access individual draft action", async () => {
       const res = await request(ctx.app.getHttpServer()).get(
         `/actions/slug/${testDraftAction.id}`,
       );
@@ -430,26 +430,26 @@ describe('Actions (e2e)', () => {
       expect(res.status).toBe(404);
     });
 
-    it('authenticated non-admin user cannot access individual draft action', async () => {
+    it("authenticated non-admin user cannot access individual draft action", async () => {
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/slug/${testDraftAction.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`);
+        .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(404);
     });
 
-    it('admin can access individual draft action', async () => {
+    it("admin can access individual draft action", async () => {
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/slug/${testDraftAction.id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe(ActionStatus.Draft);
-      expect(res.body.name).toBe('Test Draft Action');
+      expect(res.body.name).toBe("Test Draft Action");
     });
 
-    it('unauthenticated user can see actions', async () => {
-      const res = await request(ctx.app.getHttpServer()).get('/actions');
+    it("unauthenticated user can see actions", async () => {
+      const res = await request(ctx.app.getHttpServer()).get("/actions");
 
       expect(res.status).toBe(200);
       expect(res.body.length).toBeGreaterThan(1);
@@ -461,59 +461,59 @@ describe('Actions (e2e)', () => {
       ).toBe(false);
     });
 
-    it('shows actions to outsider if showToNonparticipating is true', async () => {
+    it("shows actions to outsider if showToNonparticipating is true", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions')
-        .set('Authorization', `Bearer ${outsiderToken}`);
+        .get("/actions")
+        .set("Authorization", `Bearer ${outsiderToken}`);
 
       expect(res.status).toBe(200);
       expect(
         res.body.some(
-          (action: ActionDto) => action.name === 'Group Restricted Action',
+          (action: ActionDto) => action.name === "Group Restricted Action",
         ),
       ).toBe(true);
     });
 
-    it('does not show actions to non-participating groups if showToNonparticipating is false', async () => {
+    it("does not show actions to non-participating groups if showToNonparticipating is false", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions')
-        .set('Authorization', `Bearer ${outsiderToken}`);
+        .get("/actions")
+        .set("Authorization", `Bearer ${outsiderToken}`);
 
       expect(res.status).toBe(200);
       expect(
         res.body.some(
           (action: ActionDto) =>
-            action.name === 'Group Restricted Hidden Action',
+            action.name === "Group Restricted Hidden Action",
         ),
       ).toBe(false);
     });
 
-    it('returns canParticipate=true for manual cohort members and false otherwise', async () => {
+    it("returns canParticipate=true for manual cohort members and false otherwise", async () => {
       const cohortMember = await userService.create({
         email: `cohort-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Cohort Member',
+        password: "Password123!",
+        name: "Cohort Member",
       });
 
       const nonCohortUser = await userService.create({
         email: `noncohort-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Non Cohort User',
+        password: "Password123!",
+        name: "Non Cohort User",
       });
 
       const manualAction = await actionRepo.save(
         actionRepo.create({
           name: `Manual Cohort Action ${Date.now()}`,
-          category: 'Test',
-          body: 'Manual cohort body',
-          shortDescription: 'Manual cohort short description',
-          taskContents: 'Manual cohort task',
+          category: "Test",
+          body: "Manual cohort body",
+          shortDescription: "Manual cohort short description",
+          taskContents: "Manual cohort task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            type: 'Manual',
+            type: "Manual",
             userIds: [cohortMember.id],
           },
         }),
@@ -521,8 +521,8 @@ describe('Actions (e2e)', () => {
 
       const manualActionEvent = await eventRepo.save(
         eventRepo.create({
-          title: 'Manual cohort launch',
-          description: 'Manual cohort action live',
+          title: "Manual cohort launch",
+          description: "Manual cohort action live",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000),
           action: manualAction,
@@ -549,12 +549,12 @@ describe('Actions (e2e)', () => {
 
       const [cohortRes, nonCohortRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${cohortToken}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${cohortToken}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${nonCohortToken}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${nonCohortToken}`)
           .expect(200),
       ]);
 
@@ -577,23 +577,23 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(nonCohortUser.id);
     });
 
-    it('populates shouldParticipate and awayStatus on the single-action endpoint', async () => {
+    it("populates shouldParticipate and awayStatus on the single-action endpoint", async () => {
       const cohortMember = await userService.create({
         email: `single-cohort-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Single Cohort Member',
+        password: "Password123!",
+        name: "Single Cohort Member",
       });
 
       const nonCohortUser = await userService.create({
         email: `single-noncohort-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Single Non Cohort User',
+        password: "Password123!",
+        name: "Single Non Cohort User",
       });
 
       const awayMember = await userService.create({
         email: `single-away-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Single Away Member',
+        password: "Password123!",
+        name: "Single Away Member",
       });
       await ctx.dataSource.getRepository(UserAwayRange).save({
         userId: awayMember.id,
@@ -605,16 +605,16 @@ describe('Actions (e2e)', () => {
       const manualAction = await actionRepo.save(
         actionRepo.create({
           name: `Single Manual Cohort Action ${Date.now()}`,
-          category: 'Test',
-          body: 'Manual cohort body',
-          shortDescription: 'Manual cohort short description',
-          taskContents: 'Manual cohort task',
+          category: "Test",
+          body: "Manual cohort body",
+          shortDescription: "Manual cohort short description",
+          taskContents: "Manual cohort task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            type: 'Manual',
+            type: "Manual",
             userIds: [cohortMember.id, awayMember.id],
           },
         }),
@@ -622,8 +622,8 @@ describe('Actions (e2e)', () => {
 
       const manualActionEvent = await eventRepo.save(
         eventRepo.create({
-          title: 'Manual cohort launch',
-          description: 'Manual cohort action live',
+          title: "Manual cohort launch",
+          description: "Manual cohort action live",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000),
           action: manualAction,
@@ -639,44 +639,44 @@ describe('Actions (e2e)', () => {
       const [cohortRes, nonCohortRes, awayRes] = await Promise.all([
         request(ctx.app.getHttpServer())
           .get(`/actions/slug/${manualAction.id}`)
-          .set('Authorization', `Bearer ${signToken(cohortMember)}`)
+          .set("Authorization", `Bearer ${signToken(cohortMember)}`)
           .expect(200),
         request(ctx.app.getHttpServer())
           .get(`/actions/slug/${manualAction.id}`)
-          .set('Authorization', `Bearer ${signToken(nonCohortUser)}`)
+          .set("Authorization", `Bearer ${signToken(nonCohortUser)}`)
           .expect(200),
         request(ctx.app.getHttpServer())
           .get(`/actions/slug/${manualAction.id}`)
-          .set('Authorization', `Bearer ${signToken(awayMember)}`)
+          .set("Authorization", `Bearer ${signToken(awayMember)}`)
           .expect(200),
       ]);
 
       expect(cohortRes.body.shouldParticipate).toBe(true);
       expect(cohortRes.body.canParticipate).toBe(true);
-      expect(cohortRes.body.awayStatus).toBe('not_away');
+      expect(cohortRes.body.awayStatus).toBe("not_away");
       expect(nonCohortRes.body.shouldParticipate).toBe(false);
       expect(nonCohortRes.body.canParticipate).toBe(false);
-      expect(nonCohortRes.body.awayStatus).toBe('not_away');
+      expect(nonCohortRes.body.awayStatus).toBe("not_away");
 
       expect(cohortRes.body.viewer).toMatchObject({
         assigned: true,
         canComplete: true,
-        relation: 'none',
+        relation: "none",
         dismissed: false,
-        away: 'not_away',
+        away: "not_away",
         deadlinePassed: false,
-        display: 'todo',
+        display: "todo",
       });
       expect(nonCohortRes.body.viewer).toMatchObject({
         assigned: false,
         canComplete: false,
-        display: 'not_required',
+        display: "not_required",
       });
       // Away is an overlay, not part of assignment: the away member is still
       // assigned, and their away range must surface as away_currently (this
       // fails if the user fetch drops the awayRanges relation).
       expect(awayRes.body.shouldParticipate).toBe(true);
-      expect(awayRes.body.awayStatus).toBe('away_currently');
+      expect(awayRes.body.awayStatus).toBe("away_currently");
 
       await eventRepo.delete(manualActionEvent.id);
       await actionRepo.delete(manualAction.id);
@@ -685,26 +685,26 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(awayMember.id);
     });
 
-    it('keeps canParticipate and viewer.canComplete consistent before the member-action phase is scheduled', async () => {
+    it("keeps canParticipate and viewer.canComplete consistent before the member-action phase is scheduled", async () => {
       const cohortMember = await userService.create({
         email: `phaseless-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Phaseless Cohort Member',
+        password: "Password123!",
+        name: "Phaseless Cohort Member",
       });
 
       const plannedAction = await actionRepo.save(
         actionRepo.create({
           name: `Phaseless Action ${Date.now()}`,
-          category: 'Test',
-          body: 'Phaseless body',
-          shortDescription: 'Phaseless short description',
-          taskContents: 'Phaseless task',
+          category: "Test",
+          body: "Phaseless body",
+          shortDescription: "Phaseless short description",
+          taskContents: "Phaseless task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: false,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            type: 'Manual',
+            type: "Manual",
             userIds: [cohortMember.id],
           },
         }),
@@ -712,8 +712,8 @@ describe('Actions (e2e)', () => {
 
       const plannedEvent = await eventRepo.save(
         eventRepo.create({
-          title: 'Planned',
-          description: 'Member action not scheduled yet',
+          title: "Planned",
+          description: "Member action not scheduled yet",
           newStatus: ActionStatus.Planned,
           date: new Date(Date.now() - 1000),
           action: plannedAction,
@@ -731,7 +731,7 @@ describe('Actions (e2e)', () => {
 
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/slug/${plannedAction.id}`)
-        .set('Authorization', `Bearer ${token}`)
+        .set("Authorization", `Bearer ${token}`)
         .expect(200);
 
       // The completion rule has no phase gate; the legacy field and the
@@ -746,28 +746,28 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(cohortMember.id);
     });
 
-    it('evaluates CompletedAction cohort expression against real activity data', async () => {
+    it("evaluates CompletedAction cohort expression against real activity data", async () => {
       // Create a prerequisite action that users will "complete"
       const prerequisiteAction = await actionRepo.save(
         actionRepo.create({
           name: `Prerequisite Action ${Date.now()}`,
-          category: 'Test',
-          body: 'Prerequisite body',
-          taskContents: 'Prerequisite task',
+          category: "Test",
+          body: "Prerequisite body",
+          taskContents: "Prerequisite task",
           visibilityMode: VisibilityMode.Public,
         }),
       );
 
       const completedUser = await userService.create({
         email: `completed-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Completed User',
+        password: "Password123!",
+        name: "Completed User",
       });
 
       const incompleteUser = await userService.create({
         email: `incomplete-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Incomplete User',
+        password: "Password123!",
+        name: "Incomplete User",
       });
 
       // Create activity records: completedUser completed the prerequisite
@@ -784,15 +784,15 @@ describe('Actions (e2e)', () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `CompletedAction Cohort ${Date.now()}`,
-          category: 'Test',
-          body: 'Body',
-          taskContents: 'Task',
+          category: "Test",
+          body: "Body",
+          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            type: 'CompletedAction',
+            type: "CompletedAction",
             actionId: prerequisiteAction.id,
           },
         }),
@@ -800,8 +800,8 @@ describe('Actions (e2e)', () => {
 
       const targetEvent = await eventRepo.save(
         eventRepo.create({
-          title: 'Launch',
-          description: 'Go',
+          title: "Launch",
+          description: "Go",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000),
           action: targetAction,
@@ -827,12 +827,12 @@ describe('Actions (e2e)', () => {
 
       const [completedRes, incompleteRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${completedToken}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${completedToken}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${incompleteToken}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${incompleteToken}`)
           .expect(200),
       ]);
 
@@ -853,24 +853,24 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(incompleteUser.id);
     });
 
-    it('evaluates InProgressAction cohort expression against real activity data', async () => {
+    it("evaluates InProgressAction cohort expression against real activity data", async () => {
       const prerequisiteAction = await actionRepo.save(
         actionRepo.create({
           name: `InProgress Prereq ${Date.now()}`,
-          category: 'Test',
-          body: 'Body',
-          taskContents: 'Task',
+          category: "Test",
+          body: "Body",
+          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           cohortExpression: {
-            type: 'Tag',
+            type: "Tag",
             tagId: ctx.defaultTag.id,
           },
         }),
       );
       await eventRepo.save(
         eventRepo.create({
-          title: 'Prerequisite Launch',
-          description: 'Prerequisite',
+          title: "Prerequisite Launch",
+          description: "Prerequisite",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000),
           action: prerequisiteAction,
@@ -879,22 +879,22 @@ describe('Actions (e2e)', () => {
 
       const inProgressUser = await userService.create({
         email: `inprogress-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'In Progress User',
+        password: "Password123!",
+        name: "In Progress User",
         tags: [ctx.defaultTag],
       });
 
       const doneUser = await userService.create({
         email: `done-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Done User',
+        password: "Password123!",
+        name: "Done User",
         tags: [ctx.defaultTag],
       });
 
       const neverJoinedUser = await userService.create({
         email: `neverjoined-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Never Joined User',
+        password: "Password123!",
+        name: "Never Joined User",
       });
 
       // inProgressUser is in the cohort (has defaultTag) but has NOT completed
@@ -912,15 +912,15 @@ describe('Actions (e2e)', () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `InProgressAction Cohort ${Date.now()}`,
-          category: 'Test',
-          body: 'Body',
-          taskContents: 'Task',
+          category: "Test",
+          body: "Body",
+          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            type: 'InProgressAction',
+            type: "InProgressAction",
             actionId: prerequisiteAction.id,
           },
         }),
@@ -928,8 +928,8 @@ describe('Actions (e2e)', () => {
 
       const targetEvent = await eventRepo.save(
         eventRepo.create({
-          title: 'Launch',
-          description: 'Go',
+          title: "Launch",
+          description: "Go",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000),
           action: targetAction,
@@ -944,16 +944,16 @@ describe('Actions (e2e)', () => {
 
       const [inProgressRes, doneRes, neverJoinedRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(inProgressUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(inProgressUser)}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(doneUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(doneUser)}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(neverJoinedUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(neverJoinedUser)}`)
           .expect(200),
       ]);
 
@@ -978,17 +978,17 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(neverJoinedUser.id);
     });
 
-    it('evaluates GroupLead cohort expression against real community data', async () => {
+    it("evaluates GroupLead cohort expression against real community data", async () => {
       const leaderUser = await userService.create({
         email: `leader-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Leader User',
+        password: "Password123!",
+        name: "Leader User",
       });
 
       const nonLeaderUser = await userService.create({
         email: `nonleader-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Non Leader User',
+        password: "Password123!",
+        name: "Non Leader User",
       });
 
       const community = await communityRepo.save(
@@ -1002,23 +1002,23 @@ describe('Actions (e2e)', () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `GroupLead Cohort ${Date.now()}`,
-          category: 'Test',
-          body: 'Body',
-          taskContents: 'Task',
+          category: "Test",
+          body: "Body",
+          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            type: 'GroupLead',
+            type: "GroupLead",
           },
         }),
       );
 
       const targetEvent = await eventRepo.save(
         eventRepo.create({
-          title: 'Launch',
-          description: 'Go',
+          title: "Launch",
+          description: "Go",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000),
           action: targetAction,
@@ -1033,12 +1033,12 @@ describe('Actions (e2e)', () => {
 
       const [leaderRes, nonLeaderRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(leaderUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(leaderUser)}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(nonLeaderUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(nonLeaderUser)}`)
           .expect(200),
       ]);
 
@@ -1058,39 +1058,39 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(nonLeaderUser.id);
     });
 
-    it('evaluates FormFieldValue cohort expression against real form response data', async () => {
+    it("evaluates FormFieldValue cohort expression against real form response data", async () => {
       const respondedUser = await userService.create({
         email: `responded-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Responded User',
+        password: "Password123!",
+        name: "Responded User",
       });
 
       const wrongAnswerUser = await userService.create({
         email: `wronganswer-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Wrong Answer User',
+        password: "Password123!",
+        name: "Wrong Answer User",
       });
 
       const noResponseUser = await userService.create({
         email: `noresponse-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'No Response User',
+        password: "Password123!",
+        name: "No Response User",
       });
 
       // Create a form
       const { form, snapshot } = await createFormWithSnapshot(ctx.dataSource, {
-        title: 'Cohort Test Form',
+        title: "Cohort Test Form",
         schema: {
-          title: 'Cohort Test Form',
+          title: "Cohort Test Form",
           pages: [
             {
-              id: 'page-1',
+              id: "page-1",
               fields: [
                 {
-                  id: 'favorite-color',
-                  type: 'input',
-                  kind: 'text',
-                  label: 'Favorite Color',
+                  id: "favorite-color",
+                  type: "input",
+                  kind: "text",
+                  label: "Favorite Color",
                   required: true,
                 },
               ],
@@ -1105,7 +1105,7 @@ describe('Actions (e2e)', () => {
         formResponseRepo.create({
           formId: form.id,
           user: respondedUser,
-          answers: { 'favorite-color': 'blue' },
+          answers: { "favorite-color": "blue" },
           formSnapshotId: snapshot.id,
         }),
       );
@@ -1115,7 +1115,7 @@ describe('Actions (e2e)', () => {
         formResponseRepo.create({
           formId: form.id,
           user: wrongAnswerUser,
-          answers: { 'favorite-color': 'red' },
+          answers: { "favorite-color": "red" },
           formSnapshotId: snapshot.id,
         }),
       );
@@ -1124,26 +1124,26 @@ describe('Actions (e2e)', () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `FormField Cohort ${Date.now()}`,
-          category: 'Test',
-          body: 'Body',
-          taskContents: 'Task',
+          category: "Test",
+          body: "Body",
+          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            type: 'FormFieldValue',
+            type: "FormFieldValue",
             formId: form.id,
-            fieldId: 'favorite-color',
-            responseEqualTo: 'blue',
+            fieldId: "favorite-color",
+            responseEqualTo: "blue",
           },
         }),
       );
 
       const targetEvent = await eventRepo.save(
         eventRepo.create({
-          title: 'Launch',
-          description: 'Go',
+          title: "Launch",
+          description: "Go",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000),
           action: targetAction,
@@ -1158,16 +1158,16 @@ describe('Actions (e2e)', () => {
 
       const [respondedRes, wrongRes, noResponseRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(respondedUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(respondedUser)}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(wrongAnswerUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(wrongAnswerUser)}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(noResponseUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(noResponseUser)}`)
           .expect(200),
       ]);
 
@@ -1192,34 +1192,34 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(noResponseUser.id);
     });
 
-    it('evaluates FormFieldValue with responseAny=true matches any response', async () => {
+    it("evaluates FormFieldValue with responseAny=true matches any response", async () => {
       const respondedUser = await userService.create({
         email: `anyresp-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Any Response User',
+        password: "Password123!",
+        name: "Any Response User",
       });
 
       const noResponseUser = await userService.create({
         email: `noresp2-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'No Response User 2',
+        password: "Password123!",
+        name: "No Response User 2",
       });
 
       const { form, snapshot: anySnapshot } = await createFormWithSnapshot(
         ctx.dataSource,
         {
-          title: 'Any Response Test',
+          title: "Any Response Test",
           schema: {
-            title: 'Any Response Test',
+            title: "Any Response Test",
             pages: [
               {
-                id: 'page-1',
+                id: "page-1",
                 fields: [
                   {
-                    id: 'field-1',
-                    type: 'input',
-                    kind: 'text',
-                    label: 'Field 1',
+                    id: "field-1",
+                    type: "input",
+                    kind: "text",
+                    label: "Field 1",
                     required: true,
                   },
                 ],
@@ -1234,7 +1234,7 @@ describe('Actions (e2e)', () => {
         formResponseRepo.create({
           formId: form.id,
           user: respondedUser,
-          answers: { 'field-1': 'anything' },
+          answers: { "field-1": "anything" },
           formSnapshotId: anySnapshot.id,
         }),
       );
@@ -1242,17 +1242,17 @@ describe('Actions (e2e)', () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `FormField Any Cohort ${Date.now()}`,
-          category: 'Test',
-          body: 'Body',
-          taskContents: 'Task',
+          category: "Test",
+          body: "Body",
+          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            type: 'FormFieldValue',
+            type: "FormFieldValue",
             formId: form.id,
-            fieldId: 'field-1',
+            fieldId: "field-1",
             responseAny: true,
           },
         }),
@@ -1260,8 +1260,8 @@ describe('Actions (e2e)', () => {
 
       const targetEvent = await eventRepo.save(
         eventRepo.create({
-          title: 'Launch',
-          description: 'Go',
+          title: "Launch",
+          description: "Go",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000),
           action: targetAction,
@@ -1276,12 +1276,12 @@ describe('Actions (e2e)', () => {
 
       const [respondedRes, noResponseRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(respondedUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(respondedUser)}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(noResponseUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(noResponseUser)}`)
           .expect(200),
       ]);
 
@@ -1300,26 +1300,26 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(noResponseUser.id);
     });
 
-    it('evaluates AND cohort expression combining multiple conditions', async () => {
+    it("evaluates AND cohort expression combining multiple conditions", async () => {
       // Create a user who is both a leader AND completed an action
       const bothUser = await userService.create({
         email: `both-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Both Conditions User',
+        password: "Password123!",
+        name: "Both Conditions User",
       });
 
       const leaderOnlyUser = await userService.create({
         email: `leaderonly-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Leader Only User',
+        password: "Password123!",
+        name: "Leader Only User",
       });
 
       const prerequisiteAction = await actionRepo.save(
         actionRepo.create({
           name: `AND Prereq ${Date.now()}`,
-          category: 'Test',
-          body: 'Body',
-          taskContents: 'Task',
+          category: "Test",
+          body: "Body",
+          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
         }),
       );
@@ -1345,18 +1345,18 @@ describe('Actions (e2e)', () => {
       const targetAction = await actionRepo.save(
         actionRepo.create({
           name: `AND Cohort ${Date.now()}`,
-          category: 'Test',
-          body: 'Body',
-          taskContents: 'Task',
+          category: "Test",
+          body: "Body",
+          taskContents: "Task",
           visibilityMode: VisibilityMode.Public,
           preventCompletion: false,
           onboarding: true,
           type: ActionTaskType.Activity,
           cohortExpression: {
-            type: 'AND',
+            type: "AND",
             children: [
-              { type: 'GroupLead' },
-              { type: 'CompletedAction', actionId: prerequisiteAction.id },
+              { type: "GroupLead" },
+              { type: "CompletedAction", actionId: prerequisiteAction.id },
             ],
           },
         }),
@@ -1364,8 +1364,8 @@ describe('Actions (e2e)', () => {
 
       const targetEvent = await eventRepo.save(
         eventRepo.create({
-          title: 'Launch',
-          description: 'Go',
+          title: "Launch",
+          description: "Go",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000),
           action: targetAction,
@@ -1380,12 +1380,12 @@ describe('Actions (e2e)', () => {
 
       const [bothRes, leaderOnlyRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(bothUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(bothUser)}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${makeToken(leaderOnlyUser)}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${makeToken(leaderOnlyUser)}`)
           .expect(200),
       ]);
 
@@ -1407,9 +1407,9 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(leaderOnlyUser.id);
     });
 
-    it('excludes shouldComplete flag for users without eligible contracts when not an onboarding action', async () => {
+    it("excludes shouldComplete flag for users without eligible contracts when not an onboarding action", async () => {
       const { action, event } = await createPublishedAction(
-        'Contract Restricted Action',
+        "Contract Restricted Action",
         {
           status: ActionStatus.MemberAction,
           actionOverrides: {},
@@ -1418,15 +1418,15 @@ describe('Actions (e2e)', () => {
 
       const unsignedUser = await userService.create({
         email: `unsigned-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Unsigned User',
+        password: "Password123!",
+        name: "Unsigned User",
         tags: [ctx.defaultTag],
       });
 
       const lateSigner = await userService.create({
         email: `late-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Late Signer',
+        password: "Password123!",
+        name: "Late Signer",
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
@@ -1440,8 +1440,8 @@ describe('Actions (e2e)', () => {
 
       const eligibleUser = await userService.create({
         email: `eligible-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Eligible User',
+        password: "Password123!",
+        name: "Eligible User",
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
@@ -1482,16 +1482,16 @@ describe('Actions (e2e)', () => {
 
       const [unsignedRes, lateRes, eligibleRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get('/actions')
-          .set('Authorization', `Bearer ${unsignedToken}`)
+          .get("/actions")
+          .set("Authorization", `Bearer ${unsignedToken}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions')
-          .set('Authorization', `Bearer ${lateToken}`)
+          .get("/actions")
+          .set("Authorization", `Bearer ${lateToken}`)
           .expect(200),
         request(ctx.app.getHttpServer())
-          .get('/actions')
-          .set('Authorization', `Bearer ${eligibleToken}`)
+          .get("/actions")
+          .set("Authorization", `Bearer ${eligibleToken}`)
           .expect(200),
       ]);
 
@@ -1515,8 +1515,8 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(eligibleUser.id);
     });
 
-    it('shows onboarding actions to users without contracts', async () => {
-      const { action } = await createPublishedAction('Onboarding Action', {
+    it("shows onboarding actions to users without contracts", async () => {
+      const { action } = await createPublishedAction("Onboarding Action", {
         status: ActionStatus.MemberAction,
         actionOverrides: {
           onboarding: true,
@@ -1525,8 +1525,8 @@ describe('Actions (e2e)', () => {
 
       const contractlessUser = await userService.create({
         email: `contractless-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Contractless User',
+        password: "Password123!",
+        name: "Contractless User",
         tags: [ctx.defaultTag],
       });
 
@@ -1540,8 +1540,8 @@ describe('Actions (e2e)', () => {
       );
 
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions')
-        .set('Authorization', `Bearer ${contractlessToken}`)
+        .get("/actions")
+        .set("Authorization", `Bearer ${contractlessToken}`)
         .expect(200);
 
       const targetAction = res.body.find((a: ActionDto) => a.id === action.id);
@@ -1553,56 +1553,56 @@ describe('Actions (e2e)', () => {
       await userRepo.delete(contractlessUser.id);
     });
 
-    it('admin can add an event to an action', async () => {
+    it("admin can add an event to an action", async () => {
       const action = await actionRepo.findOneBy({
-        name: 'Test Action',
+        name: "Test Action",
       });
 
       const newEvent: CreateActionEventDto = {
-        title: 'Test Event',
-        description: 'Test Event',
+        title: "Test Event",
+        description: "Test Event",
         newStatus: ActionStatus.Resolution,
         date: new Date(),
       };
 
       const res = await request(ctx.app.getHttpServer())
         .post(`/actions/${action!.id}/events`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send(newEvent);
 
       expect(res.status).toBe(201);
-      expect(res.body.title).toBe('Test Event');
+      expect(res.body.title).toBe("Test Event");
     });
 
-    it('events are included in action details', async () => {
+    it("events are included in action details", async () => {
       const action = await actionRepo.findOneBy({
-        name: 'Test Action',
+        name: "Test Action",
       });
 
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/slug/${action!.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`);
+        .set("Authorization", `Bearer ${ctx.accessToken}`);
 
       expect(res.status).toBe(200);
       expect(res.body.events.length).toBe(2);
       expect(res.body.events.map((e: ActionEventDto) => e.title)).toContain(
-        'Test Event',
+        "Test Event",
       );
     });
 
-    describe('Computed Status Tests', () => {
-      it('new action with no events should have Draft status', async () => {
+    describe("Computed Status Tests", () => {
+      it("new action with no events should have Draft status", async () => {
         const newAction = actionRepo.create({
-          name: 'Status Test Action',
-          category: 'Test',
-          body: 'Test action for status computation',
+          name: "Status Test Action",
+          category: "Test",
+          body: "Test action for status computation",
         });
         await actionRepo.save(newAction);
 
         // Use admin token to access draft action
         const res = await request(ctx.app.getHttpServer())
           .get(`/actions/slug/${newAction.id}`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
         expect(res.status).toBe(200);
         expect(res.body.status).toBe(ActionStatus.Draft);
@@ -1612,38 +1612,38 @@ describe('Actions (e2e)', () => {
         await actionRepo.delete(newAction.id);
       });
 
-      it('adding first event should change status from Draft to new status', async () => {
+      it("adding first event should change status from Draft to new status", async () => {
         const newAction = actionRepo.create({
-          name: 'Status Transition Test',
-          category: 'Test',
-          body: 'Test action for status transitions',
-          taskContents: 'Test action for status transitions',
+          name: "Status Transition Test",
+          category: "Test",
+          body: "Test action for status transitions",
+          taskContents: "Test action for status transitions",
         });
         await actionRepo.save(newAction);
 
         // Verify initial draft status using admin token
         let res = await request(ctx.app.getHttpServer())
           .get(`/actions/slug/${newAction.id}`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
         expect(res.body.status).toBe(ActionStatus.Draft);
 
         // Add event to change status
         const newEvent: CreateActionEventDto = {
-          title: 'Launch Event',
-          description: 'Action is now gathering commitments',
+          title: "Launch Event",
+          description: "Action is now gathering commitments",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1000), // 1 second ago
         };
 
         res = await request(ctx.app.getHttpServer())
           .post(`/actions/${newAction.id}/events`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
           .send(newEvent);
 
         const getRes = await request(ctx.app.getHttpServer())
           .get(`/actions/slug/${newAction.id}`)
-          .set('Authorization', `Bearer ${ctx.accessToken}`);
+          .set("Authorization", `Bearer ${ctx.accessToken}`);
 
         expect(getRes.status).toBe(200);
         expect(getRes.body.status).toBe(ActionStatus.MemberAction);
@@ -1653,44 +1653,44 @@ describe('Actions (e2e)', () => {
         await actionRepo.delete(newAction.id);
       });
 
-      it('status should reflect most recent past event when multiple events exist', async () => {
+      it("status should reflect most recent past event when multiple events exist", async () => {
         const newAction = actionRepo.create({
-          name: 'Multi Event Test',
-          category: 'Test',
-          body: 'Test action for multiple events',
-          taskContents: 'Test action for multiple events',
+          name: "Multi Event Test",
+          category: "Test",
+          body: "Test action for multiple events",
+          taskContents: "Test action for multiple events",
         });
         await actionRepo.save(newAction);
 
         // Add first event (older)
         const firstEvent: CreateActionEventDto = {
-          title: 'Launch',
-          description: 'Action launched',
+          title: "Launch",
+          description: "Action launched",
           newStatus: ActionStatus.OfficeAction,
           date: new Date(Date.now() - 3600000), // 1 hour ago
         };
 
         await request(ctx.app.getHttpServer())
           .post(`/actions/${newAction.id}/events`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
           .send(firstEvent);
 
         // Add second event (more recent)
         const secondEvent: CreateActionEventDto = {
-          title: 'Commitments Reached',
-          description: 'Action now in member action phase',
+          title: "Commitments Reached",
+          description: "Action now in member action phase",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 1800000), // 30 minutes ago
         };
 
         await request(ctx.app.getHttpServer())
           .post(`/actions/${newAction.id}/events`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
           .send(secondEvent);
 
         const getRes = await request(ctx.app.getHttpServer())
           .get(`/actions/slug/${newAction.id}`)
-          .set('Authorization', `Bearer ${ctx.accessToken}`);
+          .set("Authorization", `Bearer ${ctx.accessToken}`);
 
         expect(getRes.status).toBe(200);
         expect(getRes.body.status).toBe(ActionStatus.MemberAction);
@@ -1700,44 +1700,44 @@ describe('Actions (e2e)', () => {
         await actionRepo.delete(newAction.id);
       });
 
-      it('future events should not affect current status', async () => {
+      it("future events should not affect current status", async () => {
         const newAction = actionRepo.create({
-          name: 'Future Event Test',
-          category: 'Test',
-          body: 'Test action for future events',
-          taskContents: 'Test action for future events',
+          name: "Future Event Test",
+          category: "Test",
+          body: "Test action for future events",
+          taskContents: "Test action for future events",
         });
         await actionRepo.save(newAction);
 
         // Add past event
         const pastEvent: CreateActionEventDto = {
-          title: 'Launch',
-          description: 'Action launched',
+          title: "Launch",
+          description: "Action launched",
           newStatus: ActionStatus.MemberAction,
           date: new Date(Date.now() - 3600000), // 1 hour ago
         };
 
         await request(ctx.app.getHttpServer())
           .post(`/actions/${newAction.id}/events`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
           .send(pastEvent);
 
         // Add future event
         const futureEvent: CreateActionEventDto = {
-          title: 'Future Completion',
-          description: 'Action will be completed',
+          title: "Future Completion",
+          description: "Action will be completed",
           newStatus: ActionStatus.Completed,
           date: new Date(Date.now() + 3600000), // 1 hour from now
         };
 
         await request(ctx.app.getHttpServer())
           .post(`/actions/${newAction.id}/events`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
           .send(futureEvent);
 
         const getRes = await request(ctx.app.getHttpServer())
           .get(`/actions/slug/${newAction.id}`)
-          .set('Authorization', `Bearer ${ctx.accessToken}`);
+          .set("Authorization", `Bearer ${ctx.accessToken}`);
 
         expect(getRes.status).toBe(200);
         expect(getRes.body.status).toBe(ActionStatus.MemberAction); // Should still be the past event's status
@@ -1794,11 +1794,11 @@ describe('Actions (e2e)', () => {
       //     await actionRepo.delete(newAction.id);
       //   });
 
-      it('status computation should handle complex timeline scenarios', async () => {
+      it("status computation should handle complex timeline scenarios", async () => {
         const newAction = actionRepo.create({
-          name: 'Complex Timeline Test',
-          category: 'Test',
-          body: 'Test action for complex status timeline',
+          name: "Complex Timeline Test",
+          category: "Test",
+          body: "Test action for complex status timeline",
         });
         await actionRepo.save(newAction);
 
@@ -1807,22 +1807,22 @@ describe('Actions (e2e)', () => {
         // Add events in non-chronological order to test sorting
         const events = [
           {
-            title: 'Future Resolution',
+            title: "Future Resolution",
             newStatus: ActionStatus.Resolution,
             date: new Date(now + 7200000), // 2 hours from now
           },
           {
-            title: 'Launch',
+            title: "Launch",
             newStatus: ActionStatus.MemberAction,
             date: new Date(now - 14400000), // 4 hours ago
           },
           {
-            title: 'Office Action Start',
+            title: "Office Action Start",
             newStatus: ActionStatus.OfficeAction,
             date: new Date(now - 3600000), // 1 hour ago (most recent past)
           },
           {
-            title: 'Planned Phase',
+            title: "Planned Phase",
             newStatus: ActionStatus.Planned,
             date: new Date(now - 7200000), // 2 hours ago
           },
@@ -1838,14 +1838,14 @@ describe('Actions (e2e)', () => {
 
           await request(ctx.app.getHttpServer())
             .post(`/actions/${newAction.id}/events`)
-            .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+            .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
             .send(eventDto);
         }
 
         // Get final action state
         const res = await request(ctx.app.getHttpServer())
           .get(`/actions/slug/${newAction.id}`)
-          .set('Authorization', `Bearer ${ctx.accessToken}`);
+          .set("Authorization", `Bearer ${ctx.accessToken}`);
 
         expect(res.status).toBe(200);
         expect(res.body.status).toBe(ActionStatus.OfficeAction); // Most recent past event
@@ -1856,34 +1856,34 @@ describe('Actions (e2e)', () => {
       });
     });
   });
-  it('admin cannot add an event to an action with missing data', async () => {
+  it("admin cannot add an event to an action with missing data", async () => {
     const action = await actionRepo.findOneBy({
-      name: 'Test Action',
+      name: "Test Action",
     });
 
     const incompleteEvent: Partial<ActionEventDto> = {
-      title: 'Incomplete Event',
+      title: "Incomplete Event",
     };
 
     const res = await request(ctx.app.getHttpServer())
       .post(`/actions/${action!.id}/events`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .send(incompleteEvent);
 
     expect(res.status).toBe(400);
   });
 
-  describe('Additional endpoints', () => {
-    it('allows a user to opt out of completing an action', async () => {
-      const { action } = await createPublishedAction('Optout Scenario', {
+  describe("Additional endpoints", () => {
+    it("allows a user to opt out of completing an action", async () => {
+      const { action } = await createPublishedAction("Optout Scenario", {
         status: ActionStatus.MemberAction,
       });
 
       const optout = await request(ctx.app.getHttpServer())
         .post(`/actions/optout/${action.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
-          reason: 'Out of time',
+          reason: "Out of time",
           outOfTime: true,
           isMoral: false,
           actionId: action.id,
@@ -1894,20 +1894,20 @@ describe('Actions (e2e)', () => {
       await actionRepo.delete(action.id);
     });
 
-    it('records a completion activity for a user', async () => {
-      const { action } = await createPublishedAction('Completion Scenario', {
+    it("records a completion activity for a user", async () => {
+      const { action } = await createPublishedAction("Completion Scenario", {
         status: ActionStatus.MemberAction,
       });
 
       const complete = await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${action.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(201);
 
       expect(complete.body.type).toBe(ActionActivityType.USER_COMPLETED);
 
       const feed = await request(ctx.app.getHttpServer())
-        .get('/actions/activities/feed')
+        .get("/actions/activities/feed")
         .query({ limit: 5 })
         .expect(200);
 
@@ -1918,35 +1918,35 @@ describe('Actions (e2e)', () => {
       await actionRepo.delete(action.id);
     });
 
-    it('rejects invalid before cursor when fetching the activity feed', async () => {
+    it("rejects invalid before cursor when fetching the activity feed", async () => {
       await request(ctx.app.getHttpServer())
-        .get('/actions/activities/feed')
-        .query({ before: 'not-a-date' })
+        .get("/actions/activities/feed")
+        .query({ before: "not-a-date" })
         .expect(400);
     });
 
-    it('exposes per-action activities and individual activity details', async () => {
-      const { action } = await createPublishedAction('Activities Scenario', {
+    it("exposes per-action activities and individual activity details", async () => {
+      const { action } = await createPublishedAction("Activities Scenario", {
         status: ActionStatus.MemberAction,
       });
 
       const completion = await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${action.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(201);
 
       const activityId = completion.body.id;
 
       const activities = await request(ctx.app.getHttpServer())
         .get(`/actions/${action.id}/activities`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       expect(activities.body.length).toBeGreaterThan(0);
 
       const single = await request(ctx.app.getHttpServer())
         .get(`/actions/activities/${activityId}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       expect(single.body.id).toBe(activityId);
@@ -1965,10 +1965,10 @@ describe('Actions (e2e)', () => {
       await actionRepo.delete(action.id);
     });
 
-    it('shows draft actions to admins', async () => {
+    it("shows draft actions to admins", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/all')
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .get("/actions/all")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .expect(200);
 
       const hasDraft = res.body.some(
@@ -1977,15 +1977,15 @@ describe('Actions (e2e)', () => {
       expect(hasDraft).toBe(true);
     });
 
-    it('returns friend activity for accepted relationships', async () => {
+    it("returns friend activity for accepted relationships", async () => {
       const { action } = await createPublishedAction(
-        'Friend Activity Scenario',
+        "Friend Activity Scenario",
         { status: ActionStatus.MemberAction },
       );
       const friend = await userService.create({
-        name: 'Friend User',
+        name: "Friend User",
         email: `friend-${Date.now()}@example.com`,
-        password: 'Password123!',
+        password: "Password123!",
         tags: [ctx.defaultTag],
       });
 
@@ -1999,12 +1999,12 @@ describe('Actions (e2e)', () => {
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${action.id}`)
-        .set('Authorization', `Bearer ${friendToken}`)
+        .set("Authorization", `Bearer ${friendToken}`)
         .expect(201);
 
       const friendActivity = await request(ctx.app.getHttpServer())
-        .get('/actions/friendActivity')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/actions/friendActivity")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       expect(friendActivity.body.length).toBeGreaterThan(0);
@@ -2013,31 +2013,31 @@ describe('Actions (e2e)', () => {
       await actionRepo.delete(action.id);
     });
 
-    it('supports liking, unliking, and commenting on activities', async () => {
+    it("supports liking, unliking, and commenting on activities", async () => {
       const { action } = await createPublishedAction(
-        'Activity Reactions Scenario',
+        "Activity Reactions Scenario",
         { status: ActionStatus.MemberAction },
       );
 
       const completion = await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${action.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(201);
 
       const activityId = completion.body.id;
 
       const like = await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(201);
 
       expect(like.body.likes.length).toBe(1);
 
       const comment = await request(ctx.app.getHttpServer())
         .post(`/actions/addActivityComment/${activityId}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
-          editableContent: { body: 'Great job', attachments: [] },
+          editableContent: { body: "Great job", attachments: [] },
           parentObjectId: activityId,
           parentObjectType: CommentParentObject.Activity,
         })
@@ -2047,17 +2047,17 @@ describe('Actions (e2e)', () => {
 
       const update = await request(ctx.app.getHttpServer())
         .post(`/actions/updateActivity/${activityId}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
-          editableContent: { body: 'Updated note', attachments: [] },
+          editableContent: { body: "Updated note", attachments: [] },
         })
         .expect(201);
 
-      expect(update.body.editableContent.body).toBe('Updated note');
+      expect(update.body.editableContent.body).toBe("Updated note");
 
       const unlike = await request(ctx.app.getHttpServer())
         .post(`/actions/unlikeActivity/${activityId}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(201);
 
       expect(unlike.body.likes.length).toBe(0);
@@ -2065,21 +2065,21 @@ describe('Actions (e2e)', () => {
       await actionRepo.delete(action.id);
     });
 
-    it('notifies activity owners when their updates receive likes', async () => {
-      const { action } = await createPublishedAction('Activity Like Notice', {
+    it("notifies activity owners when their updates receive likes", async () => {
+      const { action } = await createPublishedAction("Activity Like Notice", {
         status: ActionStatus.MemberAction,
       });
 
       const completion = await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${action.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(201);
 
       const activityId = completion.body.id;
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .expect(201);
 
       const likeNotifs = await notifRepo.find({
@@ -2092,7 +2092,7 @@ describe('Actions (e2e)', () => {
 
       expect(likeNotifs).toHaveLength(1);
       expect(likeNotifs[0].message).toBe(
-        'Test Admin liked your completion of: Activity Like Notice',
+        "Test Admin liked your completion of: Activity Like Notice",
       );
       expect(likeNotifs[0].webAppLocation).toBe(
         `/actions/${action.id}/activity/${activityId}`,
@@ -2101,26 +2101,26 @@ describe('Actions (e2e)', () => {
       await actionRepo.delete(action.id);
     });
 
-    it('removes the like notification when the sole liker unlikes', async () => {
-      const { action } = await createPublishedAction('Activity Sole Unlike', {
+    it("removes the like notification when the sole liker unlikes", async () => {
+      const { action } = await createPublishedAction("Activity Sole Unlike", {
         status: ActionStatus.MemberAction,
       });
 
       const completion = await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${action.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(201);
 
       const activityId = completion.body.id;
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .expect(201);
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/unlikeActivity/${activityId}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .expect(201);
 
       const likeNotifs = await notifRepo.find({
@@ -2136,23 +2136,23 @@ describe('Actions (e2e)', () => {
       await actionRepo.delete(action.id);
     });
 
-    it('decrements the like notification when one of multiple likers unlikes', async () => {
+    it("decrements the like notification when one of multiple likers unlikes", async () => {
       const { action } = await createPublishedAction(
-        'Activity Partial Unlike',
+        "Activity Partial Unlike",
         { status: ActionStatus.MemberAction },
       );
 
       const completion = await request(ctx.app.getHttpServer())
         .post(`/actions/complete/${action.id}`)
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(201);
 
       const activityId = completion.body.id;
 
       const secondLiker = await userService.create({
         email: `second-liker-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Second Liker',
+        password: "Password123!",
+        name: "Second Liker",
         tags: [ctx.defaultTag],
       });
       const secondLikerToken = ctx.jwtService.sign(
@@ -2166,17 +2166,17 @@ describe('Actions (e2e)', () => {
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .expect(201);
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/likeActivity/${activityId}`)
-        .set('Authorization', `Bearer ${secondLikerToken}`)
+        .set("Authorization", `Bearer ${secondLikerToken}`)
         .expect(201);
 
       await request(ctx.app.getHttpServer())
         .post(`/actions/unlikeActivity/${activityId}`)
-        .set('Authorization', `Bearer ${secondLikerToken}`)
+        .set("Authorization", `Bearer ${secondLikerToken}`)
         .expect(201);
 
       const likeNotifs = await notifRepo.find({
@@ -2193,7 +2193,7 @@ describe('Actions (e2e)', () => {
       expect(likeNotifs[0].associatedUsers).toHaveLength(1);
       expect(likeNotifs[0].associatedUsers?.[0].id).toBe(ctx.adminUserId);
       expect(likeNotifs[0].message).toBe(
-        'Test Admin liked your completion of: Activity Partial Unlike',
+        "Test Admin liked your completion of: Activity Partial Unlike",
       );
 
       await userRepo.delete(secondLiker.id);
@@ -2201,7 +2201,7 @@ describe('Actions (e2e)', () => {
     });
   });
 
-  describe('Global feed', () => {
+  describe("Global feed", () => {
     let activeUser: User | null = null;
     let suspendedUser: User | null = null;
 
@@ -2216,13 +2216,13 @@ describe('Actions (e2e)', () => {
       }
     });
 
-    it('excludes suspended members from new member feed items', async () => {
+    it("excludes suspended members from new member feed items", async () => {
       const now = Date.now();
 
       activeUser = await userService.create({
         email: `active-${now}@example.com`,
-        password: 'Password123!',
-        name: 'Active Member',
+        password: "Password123!",
+        name: "Active Member",
         tags: [ctx.defaultTag],
         contractEvents: [
           {
@@ -2236,8 +2236,8 @@ describe('Actions (e2e)', () => {
 
       suspendedUser = await userService.create({
         email: `suspended-${now}@example.com`,
-        password: 'Password123!',
-        name: 'Suspended Member',
+        password: "Password123!",
+        name: "Suspended Member",
         tags: [ctx.defaultTag],
         contractEvents: [
           {
@@ -2255,7 +2255,7 @@ describe('Actions (e2e)', () => {
       });
 
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/globalFeed')
+        .get("/actions/globalFeed")
         .query({ limit: 20 })
         .expect(200);
 
@@ -2273,7 +2273,7 @@ describe('Actions (e2e)', () => {
     });
   });
 
-  describe('Action Ordering in /actions/loggedIn', () => {
+  describe("Action Ordering in /actions/loggedIn", () => {
     let orderingActions: Action[] = [];
 
     afterEach(async () => {
@@ -2293,9 +2293,9 @@ describe('Actions (e2e)', () => {
       const action = await actionRepo.save(
         actionRepo.create({
           name,
-          category: 'Test',
-          body: 'Ordering test action',
-          taskContents: 'Ordering test task',
+          category: "Test",
+          body: "Ordering test action",
+          taskContents: "Ordering test task",
           shortDescription: `${name} short description`,
           visibilityMode: VisibilityMode.Public,
           priority: options.priority ?? 0,
@@ -2308,7 +2308,7 @@ describe('Actions (e2e)', () => {
           await eventRepo.save(
             eventRepo.create({
               title: `${name} - ${evt.status}`,
-              description: 'Event for ordering test',
+              description: "Event for ordering test",
               newStatus: evt.status,
               date: evt.date,
               action,
@@ -2328,18 +2328,18 @@ describe('Actions (e2e)', () => {
       return allActionIds.filter((id) => testActionIds.includes(id));
     };
 
-    it('orders actions with deadlines before actions without deadlines', async () => {
+    it("orders actions with deadlines before actions without deadlines", async () => {
       const now = Date.now();
 
       // Action with no deadline (only past MemberAction, no event after it)
-      const noDeadlineAction = await createOrderingAction('No Deadline', {
+      const noDeadlineAction = await createOrderingAction("No Deadline", {
         events: [
           { status: ActionStatus.MemberAction, date: new Date(now - 3600000) },
         ],
       });
 
       // Action with a deadline (MemberAction + Resolution event after it)
-      const hasDeadlineAction = await createOrderingAction('Has Deadline', {
+      const hasDeadlineAction = await createOrderingAction("Has Deadline", {
         events: [
           { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
           { status: ActionStatus.Resolution, date: new Date(now + 3600000) }, // future deadline
@@ -2347,8 +2347,8 @@ describe('Actions (e2e)', () => {
       });
 
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/loggedIn?sorted=true')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/actions/loggedIn?sorted=true")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       const actionIds = res.body.map((a: ActionDto) => a.id);
@@ -2363,11 +2363,11 @@ describe('Actions (e2e)', () => {
       );
     });
 
-    it('orders actions by soonest deadline first', async () => {
+    it("orders actions by soonest deadline first", async () => {
       const now = Date.now();
 
       // Action with later deadline
-      const laterDeadlineAction = await createOrderingAction('Later Deadline', {
+      const laterDeadlineAction = await createOrderingAction("Later Deadline", {
         events: [
           { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
           { status: ActionStatus.Resolution, date: new Date(now + 7200000) }, // deadline 2 hours from now
@@ -2376,7 +2376,7 @@ describe('Actions (e2e)', () => {
 
       // Action with sooner deadline
       const soonerDeadlineAction = await createOrderingAction(
-        'Sooner Deadline',
+        "Sooner Deadline",
         {
           events: [
             {
@@ -2389,8 +2389,8 @@ describe('Actions (e2e)', () => {
       );
 
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/loggedIn?sorted=true')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/actions/loggedIn?sorted=true")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       const actionIds = res.body.map((a: ActionDto) => a.id);
@@ -2405,12 +2405,12 @@ describe('Actions (e2e)', () => {
       );
     });
 
-    it('orders actions with past member action events before actions without them (when no future events)', async () => {
+    it("orders actions with past member action events before actions without them (when no future events)", async () => {
       const now = Date.now();
 
       // Action with past OfficeAction only (no MemberAction)
       const noMemberActionAction = await createOrderingAction(
-        'No Member Action',
+        "No Member Action",
         {
           events: [
             {
@@ -2423,7 +2423,7 @@ describe('Actions (e2e)', () => {
 
       // Action with past member action event
       const memberActionAction = await createOrderingAction(
-        'Past Member Action',
+        "Past Member Action",
         {
           events: [
             {
@@ -2435,8 +2435,8 @@ describe('Actions (e2e)', () => {
       );
 
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/loggedIn?sorted=true')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/actions/loggedIn?sorted=true")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       const actionIds = res.body.map((a: ActionDto) => a.id);
@@ -2451,26 +2451,26 @@ describe('Actions (e2e)', () => {
       );
     });
 
-    it('orders actions by most recent past member action event first', async () => {
+    it("orders actions by most recent past member action event first", async () => {
       const now = Date.now();
 
       // Action with older member action event
-      const olderAction = await createOrderingAction('Older Member Action', {
+      const olderAction = await createOrderingAction("Older Member Action", {
         events: [
           { status: ActionStatus.MemberAction, date: new Date(now - 7200000) }, // 2 hours ago
         ],
       });
 
       // Action with more recent member action event
-      const newerAction = await createOrderingAction('Newer Member Action', {
+      const newerAction = await createOrderingAction("Newer Member Action", {
         events: [
           { status: ActionStatus.MemberAction, date: new Date(now - 1800000) }, // 30 min ago
         ],
       });
 
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/loggedIn?sorted=true')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/actions/loggedIn?sorted=true")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       const actionIds = res.body.map((a: ActionDto) => a.id);
@@ -2485,25 +2485,25 @@ describe('Actions (e2e)', () => {
       );
     });
 
-    it('uses priority as final tiebreaker (lower number = higher priority)', async () => {
+    it("uses priority as final tiebreaker (lower number = higher priority)", async () => {
       const now = Date.now();
       const sameEventDate = new Date(now - 3600000);
 
       // Lower priority (higher number)
-      const lowPriorityAction = await createOrderingAction('Low Priority', {
+      const lowPriorityAction = await createOrderingAction("Low Priority", {
         events: [{ status: ActionStatus.MemberAction, date: sameEventDate }],
         priority: 10,
       });
 
       // Higher priority (lower number)
-      const highPriorityAction = await createOrderingAction('High Priority', {
+      const highPriorityAction = await createOrderingAction("High Priority", {
         events: [{ status: ActionStatus.MemberAction, date: sameEventDate }],
         priority: 1,
       });
 
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/loggedIn?sorted=true')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/actions/loggedIn?sorted=true")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       const actionIds = res.body.map((a: ActionDto) => a.id);
@@ -2518,11 +2518,11 @@ describe('Actions (e2e)', () => {
       );
     });
 
-    it('maintains correct ordering with mixed deadlines, past member actions, and priority', async () => {
+    it("maintains correct ordering with mixed deadlines, past member actions, and priority", async () => {
       const now = Date.now();
 
       // 1. Action with soonest deadline (should be first)
-      const soonestDeadline = await createOrderingAction('Soonest Deadline', {
+      const soonestDeadline = await createOrderingAction("Soonest Deadline", {
         events: [
           { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
           { status: ActionStatus.Resolution, date: new Date(now + 1800000) }, // deadline 30 min from now
@@ -2531,7 +2531,7 @@ describe('Actions (e2e)', () => {
       });
 
       // 2. Action with later deadline (should be second)
-      const laterDeadline = await createOrderingAction('Later Deadline', {
+      const laterDeadline = await createOrderingAction("Later Deadline", {
         events: [
           { status: ActionStatus.MemberAction, date: new Date(now - 3600000) }, // past MemberAction
           { status: ActionStatus.Resolution, date: new Date(now + 3600000) }, // deadline 1 hour from now
@@ -2541,7 +2541,7 @@ describe('Actions (e2e)', () => {
 
       // 3. Action with recent past member action but no deadline (should be third)
       const recentPastNoDeadline = await createOrderingAction(
-        'Recent Past No Deadline',
+        "Recent Past No Deadline",
         {
           events: [
             {
@@ -2555,7 +2555,7 @@ describe('Actions (e2e)', () => {
 
       // 4. Action with older past member action but no deadline (should be fourth)
       const olderPastNoDeadline = await createOrderingAction(
-        'Older Past No Deadline',
+        "Older Past No Deadline",
         {
           events: [
             {
@@ -2568,8 +2568,8 @@ describe('Actions (e2e)', () => {
       );
 
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/loggedIn?sorted=true')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/actions/loggedIn?sorted=true")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       const actionIds = res.body.map((a: ActionDto) => a.id);
@@ -2599,12 +2599,12 @@ describe('Actions (e2e)', () => {
       expect(recentPastIdx).toBeLessThan(olderPastIdx);
     });
 
-    it('correctly sorts by MemberAction date when neither action has a deadline', async () => {
+    it("correctly sorts by MemberAction date when neither action has a deadline", async () => {
       const now = Date.now();
 
       // Action with older MemberAction (no deadline - Resolution is in the past)
       const olderMemberAction = await createOrderingAction(
-        'Older MemberAction',
+        "Older MemberAction",
         {
           events: [
             {
@@ -2618,7 +2618,7 @@ describe('Actions (e2e)', () => {
 
       // Action with more recent MemberAction (no deadline)
       const newerMemberAction = await createOrderingAction(
-        'Newer MemberAction',
+        "Newer MemberAction",
         {
           events: [
             {
@@ -2630,8 +2630,8 @@ describe('Actions (e2e)', () => {
       );
 
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/loggedIn?sorted=true')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/actions/loggedIn?sorted=true")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       const actionIds = res.body.map((a: ActionDto) => a.id);
@@ -2647,7 +2647,7 @@ describe('Actions (e2e)', () => {
     });
   });
 
-  describe('Onboarding action canParticipate', () => {
+  describe("Onboarding action canParticipate", () => {
     let onboardingAction: Action;
     let existingUser: User;
     let newUser: User;
@@ -2660,17 +2660,17 @@ describe('Actions (e2e)', () => {
       onboardingAction = await actionRepo.save(
         actionRepo.create({
           name: `Onboarding Eligibility Test ${Date.now()}`,
-          category: 'Test',
-          body: 'Onboarding action body',
-          shortDescription: 'Onboarding short desc',
-          taskContents: 'Onboarding task',
+          category: "Test",
+          body: "Onboarding action body",
+          shortDescription: "Onboarding short desc",
+          taskContents: "Onboarding task",
           visibilityMode: VisibilityMode.Public,
           priority: 0,
           preventCompletion: false,
           type: ActionTaskType.Activity,
           onboarding: true,
           cohortExpression: {
-            type: 'Tag',
+            type: "Tag",
             tagId: ctx.defaultTag.id,
           },
         }),
@@ -2678,8 +2678,8 @@ describe('Actions (e2e)', () => {
 
       await eventRepo.save(
         eventRepo.create({
-          title: 'Onboarding launch',
-          description: 'Onboarding action live',
+          title: "Onboarding launch",
+          description: "Onboarding action live",
           newStatus: ActionStatus.MemberAction,
           date: actionEventDate,
           action: onboardingAction,
@@ -2689,8 +2689,8 @@ describe('Actions (e2e)', () => {
       // Existing user: signed contract BEFORE the action event
       existingUser = await userService.create({
         email: `existing-onboard-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'Existing User',
+        password: "Password123!",
+        name: "Existing User",
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
@@ -2705,8 +2705,8 @@ describe('Actions (e2e)', () => {
       // New user: signed contract AFTER the action event
       newUser = await userService.create({
         email: `new-onboard-${Date.now()}@example.com`,
-        password: 'Password123!',
-        name: 'New User',
+        password: "Password123!",
+        name: "New User",
         contractEvents: [
           {
             type: ContractEventType.SIGNED,
@@ -2743,10 +2743,10 @@ describe('Actions (e2e)', () => {
       if (newUser?.id) await userRepo.delete(newUser.id);
     });
 
-    it('loggedIn endpoint returns canParticipate=false for existing users on onboarding actions', async () => {
+    it("loggedIn endpoint returns canParticipate=false for existing users on onboarding actions", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/loggedIn')
-        .set('Authorization', `Bearer ${existingUserToken}`)
+        .get("/actions/loggedIn")
+        .set("Authorization", `Bearer ${existingUserToken}`)
         .expect(200);
 
       const action = res.body.find(
@@ -2756,10 +2756,10 @@ describe('Actions (e2e)', () => {
       expect(action.canParticipate).toBe(false);
     });
 
-    it('loggedIn endpoint returns canParticipate=true for new users on onboarding actions', async () => {
+    it("loggedIn endpoint returns canParticipate=true for new users on onboarding actions", async () => {
       const res = await request(ctx.app.getHttpServer())
-        .get('/actions/loggedIn')
-        .set('Authorization', `Bearer ${newUserToken}`)
+        .get("/actions/loggedIn")
+        .set("Authorization", `Bearer ${newUserToken}`)
         .expect(200);
 
       const action = res.body.find(
@@ -2769,27 +2769,27 @@ describe('Actions (e2e)', () => {
       expect(action.canParticipate).toBe(true);
     });
 
-    it('individual action endpoint returns canParticipate=false for existing users on onboarding actions', async () => {
+    it("individual action endpoint returns canParticipate=false for existing users on onboarding actions", async () => {
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/slug/${onboardingAction.id}`)
-        .set('Authorization', `Bearer ${existingUserToken}`)
+        .set("Authorization", `Bearer ${existingUserToken}`)
         .expect(200);
 
       expect(res.body.canParticipate).toBe(false);
     });
 
-    it('individual action endpoint returns canParticipate=true for new users on onboarding actions', async () => {
+    it("individual action endpoint returns canParticipate=true for new users on onboarding actions", async () => {
       const res = await request(ctx.app.getHttpServer())
         .get(`/actions/slug/${onboardingAction.id}`)
-        .set('Authorization', `Bearer ${newUserToken}`)
+        .set("Authorization", `Bearer ${newUserToken}`)
         .expect(200);
 
       expect(res.body.canParticipate).toBe(true);
     });
 
-    it('non-onboarding action still returns canParticipate=true for existing users', async () => {
+    it("non-onboarding action still returns canParticipate=true for existing users", async () => {
       const { action: normalAction } = await createPublishedAction(
-        'Normal Action For Onboarding Check',
+        "Normal Action For Onboarding Check",
         {
           status: ActionStatus.MemberAction,
           actionOverrides: { onboarding: false },
@@ -2798,12 +2798,12 @@ describe('Actions (e2e)', () => {
 
       const [loggedInRes, slugRes] = await Promise.all([
         request(ctx.app.getHttpServer())
-          .get('/actions/loggedIn')
-          .set('Authorization', `Bearer ${existingUserToken}`)
+          .get("/actions/loggedIn")
+          .set("Authorization", `Bearer ${existingUserToken}`)
           .expect(200),
         request(ctx.app.getHttpServer())
           .get(`/actions/slug/${normalAction.id}`)
-          .set('Authorization', `Bearer ${existingUserToken}`)
+          .set("Authorization", `Bearer ${existingUserToken}`)
           .expect(200),
       ]);
 
@@ -2818,21 +2818,21 @@ describe('Actions (e2e)', () => {
     });
   });
 
-  describe('General update schema concurrency', () => {
+  describe("General update schema concurrency", () => {
     const displaySchema = (text: string) => ({
-      blocks: [{ type: 'display', kind: 'header', id: 'b1', text }],
+      blocks: [{ type: "display", kind: "header", id: "b1", text }],
     });
 
     const patch = (id: number, body: Record<string, unknown>) =>
       request(ctx.app.getHttpServer())
         .patch(`/actions/generalUpdates/${id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send(body);
 
-    it('rejects a save built on a snapshot someone else has replaced', async () => {
+    it("rejects a save built on a snapshot someone else has replaced", async () => {
       const created = await request(ctx.app.getHttpServer())
-        .post('/actions/generalUpdates/create')
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .post("/actions/generalUpdates/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ name: `Concurrency ${Date.now()}`, useManualCohort: false })
         .expect(201);
 
@@ -2840,33 +2840,33 @@ describe('Actions (e2e)', () => {
       const snapshot0 = created.body.schemaSnapshotId as number;
 
       const v1 = await patch(id, {
-        schema: displaySchema('V1'),
+        schema: displaySchema("V1"),
         expectedSchemaSnapshotId: snapshot0,
       }).expect(200);
       const snapshot1 = v1.body.schemaSnapshotId as number;
       expect(snapshot1).not.toBe(snapshot0);
 
       await patch(id, {
-        schema: displaySchema('V2'),
+        schema: displaySchema("V2"),
         expectedSchemaSnapshotId: snapshot0,
       }).expect(409);
 
       const afterConflict = await request(ctx.app.getHttpServer())
         .get(`/actions/generalUpdates/admin/${id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .expect(200);
-      expect(afterConflict.body.schema).toEqual(displaySchema('V1'));
+      expect(afterConflict.body.schema).toEqual(displaySchema("V1"));
 
       const v2 = await patch(id, {
-        schema: displaySchema('V2'),
+        schema: displaySchema("V2"),
         expectedSchemaSnapshotId: snapshot1,
       }).expect(200);
-      expect(v2.body.schema).toEqual(displaySchema('V2'));
+      expect(v2.body.schema).toEqual(displaySchema("V2"));
 
       const snapshot2 = v2.body.schemaSnapshotId as number;
-      await patch(id, { name: 'Renamed' }).expect(200);
+      await patch(id, { name: "Renamed" }).expect(200);
       const v3 = await patch(id, {
-        schema: displaySchema('V3'),
+        schema: displaySchema("V3"),
         expectedSchemaSnapshotId: snapshot2,
       }).expect(200);
 
@@ -2888,7 +2888,7 @@ describe('Actions (e2e)', () => {
 
       await request(ctx.app.getHttpServer())
         .delete(`/actions/generalUpdates/${id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
       const afterDelete = await ctx.dataSource.query<unknown[]>(
         `SELECT 1 FROM general_update_snapshot_history WHERE "generalUpdateId" = $1`,
@@ -2897,10 +2897,10 @@ describe('Actions (e2e)', () => {
       expect(afterDelete).toHaveLength(0);
     });
 
-    it('rejects content a display-only schema cannot hold', async () => {
+    it("rejects content a display-only schema cannot hold", async () => {
       const created = await request(ctx.app.getHttpServer())
-        .post('/actions/generalUpdates/create')
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .post("/actions/generalUpdates/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ name: `Validation ${Date.now()}`, useManualCohort: false })
         .expect(201);
       const id = created.body.id as number;
@@ -2908,7 +2908,7 @@ describe('Actions (e2e)', () => {
       await patch(id, {
         schema: {
           blocks: [
-            { type: 'input', kind: 'text', id: 'f1', label: 'Your name' },
+            { type: "input", kind: "text", id: "f1", label: "Your name" },
           ],
         },
         expectedSchemaSnapshotId: created.body.schemaSnapshotId as number,
@@ -2916,49 +2916,49 @@ describe('Actions (e2e)', () => {
 
       await request(ctx.app.getHttpServer())
         .delete(`/actions/generalUpdates/${id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
     });
 
-    it('refuses a schema write with no snapshot to guard against', async () => {
+    it("refuses a schema write with no snapshot to guard against", async () => {
       const created = await request(ctx.app.getHttpServer())
-        .post('/actions/generalUpdates/create')
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .post("/actions/generalUpdates/create")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({ name: `Unguarded ${Date.now()}`, useManualCohort: false })
         .expect(201);
       const id = created.body.id as number;
       const snapshot0 = created.body.schemaSnapshotId as number;
 
-      await patch(id, { schema: displaySchema('Unguarded') }).expect(400);
+      await patch(id, { schema: displaySchema("Unguarded") }).expect(400);
 
       const after = await request(ctx.app.getHttpServer())
         .get(`/actions/generalUpdates/admin/${id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .expect(200);
       expect(after.body.schemaSnapshotId).toBe(snapshot0);
 
-      await patch(id, { name: 'Renamed' }).expect(200);
+      await patch(id, { name: "Renamed" }).expect(200);
 
       await request(ctx.app.getHttpServer())
         .delete(`/actions/generalUpdates/${id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
     });
   });
 
-  describe('Action update notifications', () => {
+  describe("Action update notifications", () => {
     const displaySchema = (text: string) => ({
-      blocks: [{ type: 'display', kind: 'header', id: 'b1', text }],
+      blocks: [{ type: "display", kind: "header", id: "b1", text }],
     });
 
     const createUpdate = async (body: Record<string, unknown>) => {
       const now = new Date().toISOString();
       const created = await request(ctx.app.getHttpServer())
         .post(`/actions/createUpdate/${testAction.id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
-          title: 'Notify test',
-          shortNotifString: 'something happened',
+          title: "Notify test",
+          shortNotifString: "something happened",
           date: now,
-          notifyType: 'all_members',
+          notifyType: "all_members",
           ...body,
         })
         .expect(201);
@@ -2972,14 +2972,14 @@ describe('Actions (e2e)', () => {
     const notify = (id: number) =>
       request(ctx.app.getHttpServer())
         .post(`/actions/updates/${id}/notify`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
     const writeContent = (id: number, snapshotId: number) =>
       request(ctx.app.getHttpServer())
         .patch(`/actions/updateUpdate/${id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
-          schema: displaySchema('The body'),
+          schema: displaySchema("The body"),
           expectedSchemaSnapshotId: snapshotId,
         })
         .expect(200);
@@ -2989,14 +2989,14 @@ describe('Actions (e2e)', () => {
         where: { contentType: UnreadContentType.ActionUpdate, contentId: id },
       });
 
-    it('does not notify at creation time, when the update is still empty', async () => {
+    it("does not notify at creation time, when the update is still empty", async () => {
       const update = await createUpdate({});
 
       expect(update.notifiedAt).toBeNull();
       expect(await unreadCountFor(update.id)).toBe(0);
     });
 
-    it('refuses to notify until the body has been written', async () => {
+    it("refuses to notify until the body has been written", async () => {
       const update = await createUpdate({});
 
       await notify(update.id).expect(400);
@@ -3009,7 +3009,7 @@ describe('Actions (e2e)', () => {
       expect(await unreadCountFor(update.id)).toBeGreaterThan(0);
     });
 
-    it('sends once, so a second attempt conflicts instead of re-notifying', async () => {
+    it("sends once, so a second attempt conflicts instead of re-notifying", async () => {
       const update = await createUpdate({});
       await writeContent(update.id, update.schemaSnapshotId);
       await notify(update.id).expect(200);
@@ -3020,21 +3020,21 @@ describe('Actions (e2e)', () => {
       expect(await unreadCountFor(update.id)).toBe(sent);
     });
 
-    it('refuses to notify an update with no audience', async () => {
-      const update = await createUpdate({ notifyType: 'none' });
+    it("refuses to notify an update with no audience", async () => {
+      const update = await createUpdate({ notifyType: "none" });
       await writeContent(update.id, update.schemaSnapshotId);
 
       await notify(update.id).expect(400);
       expect(await unreadCountFor(update.id)).toBe(0);
     });
 
-    it('rolls the claim back when the send fails, leaving the retry open', async () => {
+    it("rolls the claim back when the send fails, leaving the retry open", async () => {
       const update = await createUpdate({});
       await writeContent(update.id, update.schemaSnapshotId);
 
       const send = jest
-        .spyOn(ctx.app.get(NotifsService), 'sendUnreadContents')
-        .mockRejectedValue(new Error('send failed'));
+        .spyOn(ctx.app.get(NotifsService), "sendUnreadContents")
+        .mockRejectedValue(new Error("send failed"));
       try {
         await notify(update.id).expect(500);
       } finally {
@@ -3044,7 +3044,7 @@ describe('Actions (e2e)', () => {
       expect(await unreadCountFor(update.id)).toBe(0);
       const afterFailure = await request(ctx.app.getHttpServer())
         .get(`/actions/updates/admin/${update.id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .expect(200);
       expect(afterFailure.body.notifiedAt).toBeNull();
 
@@ -3054,20 +3054,20 @@ describe('Actions (e2e)', () => {
     });
   });
 
-  describe('Action update visibility', () => {
+  describe("Action update visibility", () => {
     const displaySchema = (text: string) => ({
-      blocks: [{ type: 'display', kind: 'header', id: 'b1', text }],
+      blocks: [{ type: "display", kind: "header", id: "b1", text }],
     });
 
     const createUpdate = async (title: string) => {
       const created = await request(ctx.app.getHttpServer())
         .post(`/actions/createUpdate/${testAction.id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
           title,
-          shortNotifString: 'something happened',
+          shortNotifString: "something happened",
           date: new Date().toISOString(),
-          notifyType: 'none',
+          notifyType: "none",
         })
         .expect(201);
       return created.body as {
@@ -3080,17 +3080,17 @@ describe('Actions (e2e)', () => {
     const writeContent = (id: number, snapshotId: number) =>
       request(ctx.app.getHttpServer())
         .patch(`/actions/updateUpdate/${id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
-          schema: displaySchema('The body'),
+          schema: displaySchema("The body"),
           expectedSchemaSnapshotId: snapshotId,
         })
         .expect(200);
 
     const memberUpdateIds = async () => {
       const response = await request(ctx.app.getHttpServer())
-        .get('/actions/updates')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/actions/updates")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
       return (response.body as { id: number }[]).map((update) => update.id);
     };
@@ -3098,51 +3098,51 @@ describe('Actions (e2e)', () => {
     const updateIdsOnActionPage = async (token: string, path: string) => {
       const response = await request(ctx.app.getHttpServer())
         .get(`/actions/${path}/${testAction.id}`)
-        .set('Authorization', `Bearer ${token}`)
+        .set("Authorization", `Bearer ${token}`)
         .expect(200);
       return (response.body.updates as { id: number }[]).map(
         (update) => update.id,
       );
     };
 
-    it('keeps an update with no body off the member-facing reads', async () => {
-      const update = await createUpdate('Still being written');
+    it("keeps an update with no body off the member-facing reads", async () => {
+      const update = await createUpdate("Still being written");
 
       expect(update.visibleAt).toBeNull();
       expect(await memberUpdateIds()).not.toContain(update.id);
       expect(
-        await updateIdsOnActionPage(ctx.accessToken, 'slug'),
+        await updateIdsOnActionPage(ctx.accessToken, "slug"),
       ).not.toContain(update.id);
     });
 
-    it('still shows the draft to admins, who have to be able to finish it', async () => {
-      const update = await createUpdate('Draft visible to admin');
+    it("still shows the draft to admins, who have to be able to finish it", async () => {
+      const update = await createUpdate("Draft visible to admin");
 
       expect(
-        await updateIdsOnActionPage(ctx.adminAccessToken, 'adminslug'),
+        await updateIdsOnActionPage(ctx.adminAccessToken, "adminslug"),
       ).toContain(update.id);
     });
 
-    it('publishes the update when its body is first written', async () => {
-      const update = await createUpdate('Ready to publish');
+    it("publishes the update when its body is first written", async () => {
+      const update = await createUpdate("Ready to publish");
       const written = await writeContent(update.id, update.schemaSnapshotId);
 
       expect(written.body.visibleAt).not.toBeNull();
       expect(await memberUpdateIds()).toContain(update.id);
-      expect(await updateIdsOnActionPage(ctx.accessToken, 'slug')).toContain(
+      expect(await updateIdsOnActionPage(ctx.accessToken, "slug")).toContain(
         update.id,
       );
     });
 
-    it('keeps the original publish time when the body is edited again', async () => {
-      const update = await createUpdate('Edited twice');
+    it("keeps the original publish time when the body is edited again", async () => {
+      const update = await createUpdate("Edited twice");
       const first = await writeContent(update.id, update.schemaSnapshotId);
 
       const second = await request(ctx.app.getHttpServer())
         .patch(`/actions/updateUpdate/${update.id}`)
-        .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
         .send({
-          schema: displaySchema('A revised body'),
+          schema: displaySchema("A revised body"),
           expectedSchemaSnapshotId: first.body.schemaSnapshotId,
         })
         .expect(200);
@@ -3150,23 +3150,23 @@ describe('Actions (e2e)', () => {
       expect(second.body.visibleAt).toBe(first.body.visibleAt);
     });
 
-    describe('unpublishing until the displayed date', () => {
+    describe("unpublishing until the displayed date", () => {
       const setDate = (id: number, date: Date) =>
         request(ctx.app.getHttpServer())
           .patch(`/actions/updateUpdate/${id}`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
           .send({ date: date.toISOString() })
           .expect(200);
 
       const unpublish = (id: number) =>
         request(ctx.app.getHttpServer())
           .post(`/actions/updates/${id}/unpublish`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
       const publishNow = (id: number) =>
         request(ctx.app.getHttpServer())
           .post(`/actions/updates/${id}/publish-now`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`);
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`);
 
       const futureDate = () => new Date(Date.now() + 60 * 60 * 1000);
 
@@ -3177,8 +3177,8 @@ describe('Actions (e2e)', () => {
         return dated.body as { id: number; date: string; visibleAt: string };
       };
 
-      it('hides the update from members until its displayed date', async () => {
-        const update = await publishedWithFutureDate('Published too early');
+      it("hides the update from members until its displayed date", async () => {
+        const update = await publishedWithFutureDate("Published too early");
         expect(await memberUpdateIds()).toContain(update.id);
 
         const unpublished = await unpublish(update.id).expect(200);
@@ -3186,36 +3186,36 @@ describe('Actions (e2e)', () => {
         expect(unpublished.body.visibleAt).toBe(update.date);
         expect(await memberUpdateIds()).not.toContain(update.id);
         expect(
-          await updateIdsOnActionPage(ctx.accessToken, 'slug'),
+          await updateIdsOnActionPage(ctx.accessToken, "slug"),
         ).not.toContain(update.id);
       });
 
-      it('still shows the scheduled update to admins', async () => {
-        const update = await publishedWithFutureDate('Scheduled but editable');
+      it("still shows the scheduled update to admins", async () => {
+        const update = await publishedWithFutureDate("Scheduled but editable");
         await unpublish(update.id).expect(200);
 
         expect(
-          await updateIdsOnActionPage(ctx.adminAccessToken, 'adminslug'),
+          await updateIdsOnActionPage(ctx.adminAccessToken, "adminslug"),
         ).toContain(update.id);
       });
 
-      it('rejects unpublishing when the displayed date has passed', async () => {
-        const update = await createUpdate('Already due');
+      it("rejects unpublishing when the displayed date has passed", async () => {
+        const update = await createUpdate("Already due");
         await writeContent(update.id, update.schemaSnapshotId);
 
         await unpublish(update.id).expect(400);
         expect(await memberUpdateIds()).toContain(update.id);
       });
 
-      it('rejects unpublishing an update that was never published', async () => {
-        const update = await createUpdate('Never published');
+      it("rejects unpublishing an update that was never published", async () => {
+        const update = await createUpdate("Never published");
         await setDate(update.id, futureDate());
 
         await unpublish(update.id).expect(400);
       });
 
-      it('republishes a scheduled update on request', async () => {
-        const update = await publishedWithFutureDate('Scheduled by mistake');
+      it("republishes a scheduled update on request", async () => {
+        const update = await publishedWithFutureDate("Scheduled by mistake");
         await unpublish(update.id).expect(200);
 
         const republished = await publishNow(update.id).expect(200);
@@ -3224,21 +3224,21 @@ describe('Actions (e2e)', () => {
         expect(await memberUpdateIds()).toContain(update.id);
       });
 
-      it('rejects republishing an update that is already visible', async () => {
-        const update = await publishedWithFutureDate('Already visible');
+      it("rejects republishing an update that is already visible", async () => {
+        const update = await publishedWithFutureDate("Already visible");
 
         await publishNow(update.id).expect(400);
       });
 
-      it('keeps the scheduled date when the body is edited again', async () => {
-        const update = await publishedWithFutureDate('Edited while scheduled');
+      it("keeps the scheduled date when the body is edited again", async () => {
+        const update = await publishedWithFutureDate("Edited while scheduled");
         const unpublished = await unpublish(update.id).expect(200);
 
         const rewritten = await request(ctx.app.getHttpServer())
           .patch(`/actions/updateUpdate/${update.id}`)
-          .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+          .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
           .send({
-            schema: displaySchema('A revised body'),
+            schema: displaySchema("A revised body"),
             expectedSchemaSnapshotId: unpublished.body.schemaSnapshotId,
           })
           .expect(200);
@@ -3249,7 +3249,7 @@ describe('Actions (e2e)', () => {
   });
 
   afterAll(async () => {
-    await actionRepo.query('DELETE FROM action');
+    await actionRepo.query("DELETE FROM action");
     await ctx.app.close();
   });
 });

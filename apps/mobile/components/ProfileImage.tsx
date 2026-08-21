@@ -1,8 +1,8 @@
-import { Image, View } from "react-native";
-import { User } from "lucide-react-native";
-import { colors } from "../lib/style/colors";
-import { getApiUrl, getImageSource } from "../lib/config";
 import { cn } from "@alliance/shared/styles/util";
+import { User } from "lucide-react-native";
+import { Image, View } from "react-native";
+import { getApiUrl, getImageSource } from "../lib/config";
+import { colors } from "../lib/style/colors";
 
 type ProfileImageSize =
   | "mini"

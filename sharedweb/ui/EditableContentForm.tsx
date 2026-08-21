@@ -1,7 +1,7 @@
 import { CreateEditableContentDto } from "@alliance/shared/client";
+import { cn } from "@alliance/shared/styles/util";
 import React, { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
-import { cn } from "@alliance/shared/styles/util";
 import { htmlToMarkdownFromDocs } from "../lib/htmlToMarkdown";
 
 interface EditableContentFormProps {
@@ -99,7 +99,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
     if (clearDraftSignal !== undefined) {
       saveTimer.current = window.setTimeout(
         doSave,
-        autosaveMs
+        autosaveMs,
       ) as unknown as number;
     }
 
@@ -130,7 +130,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = reject;
           reader.readAsDataURL(file);
-        })
+        }),
       );
     }
     return Promise.all(readers);
@@ -240,7 +240,7 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
         ref={textareaRef}
         className={cn(
           "w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-transparent border-none",
-          !expanded && "resize-none"
+          !expanded && "resize-none",
         )}
         minRows={expanded ? 2 : 1}
         value={value.body}

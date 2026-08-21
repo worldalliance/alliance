@@ -1,9 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export class TimeToChurnSampleDto {
   @ApiProperty({
     description:
-      'Days between signing and the last completed action for churned members.',
+      "Days between signing and the last completed action for churned members.",
   })
   daysToChurn: number;
 

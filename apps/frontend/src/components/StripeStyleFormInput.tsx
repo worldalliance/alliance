@@ -36,7 +36,7 @@ const StripeStyleFormInput: React.FC<FormInputProps> = ({
           disabled
             ? "bg-white text-zinc-500 cursor-not-allowed"
             : "hover:border-gray-400",
-          error ? "focus:border-red-500" : "focus:border-blue-500"
+          error ? "focus:border-red-500" : "focus:border-blue-500",
         )}
         autoComplete={autoComplete}
       />

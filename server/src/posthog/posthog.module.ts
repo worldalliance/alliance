@@ -1,5 +1,5 @@
-import { Global, Module } from '@nestjs/common';
-import { PosthogService } from './posthog.service';
+import { Global, Module } from "@nestjs/common";
+import { PosthogService } from "./posthog.service";
 
 @Global()
 @Module({

@@ -1,17 +1,17 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { ProfileDto } from 'src/user/dto/user.dto';
-import { User } from 'src/user/entities/user.entity';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { ProfileDto } from "src/user/dto/user.dto";
+import { User } from "src/user/entities/user.entity";
 import {
-  NOTIFICATION_CATEGORY_PRIORITIES,
   Notification,
+  NOTIFICATION_CATEGORY_PRIORITIES,
   NotificationCategory,
   NotifPriority,
-} from '../entities/notification.entity';
-import { UnreadContentType } from '../entities/unread-content.entity';
+} from "../entities/notification.entity";
+import { UnreadContentType } from "../entities/unread-content.entity";
 
 export enum NotificationSourceType {
-  Notification = 'notification',
-  UnreadContent = 'unread_content',
+  Notification = "notification",
+  UnreadContent = "unread_content",
 }
 
 export type NotificationDtoArgs = {
@@ -32,29 +32,29 @@ export type NotificationDtoArgs = {
 };
 
 export class NotificationDto extends PickType(Notification, [
-  'id',
-  'category',
-  'message',
-  'priority',
-  'webAppLocation',
-  'mobileAppLocation',
-  'readAt',
-  'createdAt',
-  'updatedAt',
-  'sendTime',
+  "id",
+  "category",
+  "message",
+  "priority",
+  "webAppLocation",
+  "mobileAppLocation",
+  "readAt",
+  "createdAt",
+  "updatedAt",
+  "sendTime",
 ]) {
   @ApiProperty({ type: ProfileDto, isArray: true })
   associatedUsers: ProfileDto[];
 
   @ApiProperty({
     enum: NotificationSourceType,
-    enumName: 'NotificationSourceType',
+    enumName: "NotificationSourceType",
   })
   sourceType: NotificationSourceType;
 
   @ApiPropertyOptional({
     enum: UnreadContentType,
-    enumName: 'UnreadContentType',
+    enumName: "UnreadContentType",
   })
   contentType?: UnreadContentType;
 

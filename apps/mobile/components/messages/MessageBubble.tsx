@@ -1,8 +1,10 @@
 import { MessageDto } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
+import { cn } from "@alliance/shared/styles/util";
 import { Reply } from "lucide-react-native";
 import { useMemo } from "react";
 import { TouchableOpacity, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -10,14 +12,12 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { scheduleOnRN } from "react-native-worklets";
 import { getImageSource } from "../../lib/config";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import ImageLightbox from "../ImageLightbox";
 import ProfileImage from "../ProfileImage";
 import Text, { FontWeight } from "../system/Text";
-import { cn } from "@alliance/shared/styles/util";
 
 interface MessageBubbleProps {
   message: MessageDto;

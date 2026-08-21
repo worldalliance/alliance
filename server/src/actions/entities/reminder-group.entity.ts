@@ -1,11 +1,11 @@
-import { Temporal } from '@js-temporal/polyfill';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsDefined, IsOptional } from 'class-validator';
-import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
-import { Tag } from 'src/user/entities/tag.entity';
-import { DEFAULT_TIME_ZONE, User } from 'src/user/entities/user.entity';
-import type { Relation } from 'src/utils/Repository';
+import { Temporal } from "@js-temporal/polyfill";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsDefined, IsOptional } from "class-validator";
+import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { Tag } from "src/user/entities/tag.entity";
+import { DEFAULT_TIME_ZONE, User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Check,
   Column,
@@ -15,23 +15,23 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { ActionEvent } from './action-event.entity';
-import { ActionSuite } from './action-suite.entity';
+} from "typeorm";
+import { ActionEvent } from "./action-event.entity";
+import { ActionSuite } from "./action-suite.entity";
 
 export enum ReminderGroupTimingMode {
-  Absolute = 'absolute',
-  FromDeadline = 'from_deadline',
-  WithinRange = 'within_range',
-  WithinRelativeRange = 'within_relative_range',
-  EventLaunch = 'event_launch',
+  Absolute = "absolute",
+  FromDeadline = "from_deadline",
+  WithinRange = "within_range",
+  WithinRelativeRange = "within_relative_range",
+  EventLaunch = "event_launch",
 }
 
 export enum ReminderCohortType {
-  AllUncompleted = 'all_uncompleted',
-  GroupLeadsWithUncompleted = 'group_leads_with_uncompleted',
-  Tag = 'tag',
-  Custom = 'custom',
+  AllUncompleted = "all_uncompleted",
+  GroupLeadsWithUncompleted = "group_leads_with_uncompleted",
+  Tag = "tag",
+  Custom = "custom",
 }
 
 /**
@@ -82,10 +82,10 @@ export class ReminderGroup {
 
   @ApiProperty({
     enum: ReminderGroupTimingMode,
-    enumName: 'ReminderGroupTimingMode',
+    enumName: "ReminderGroupTimingMode",
   })
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: ReminderGroupTimingMode,
     default: ReminderGroupTimingMode.WithinRange,
   })
@@ -94,14 +94,14 @@ export class ReminderGroup {
 
   @ManyToOne(() => ActionSuite, (suite) => suite.reminderGroups, {
     nullable: true,
-    onDelete: 'SET NULL',
+    onDelete: "SET NULL",
   })
   @ApiPropertyOptional({ type: () => ActionSuite })
   @Type(() => ActionSuite)
   @IsOptional()
   actionSuite?: Relation<ActionSuite>;
 
-  @ManyToOne(() => ActionEvent, { nullable: false, onDelete: 'CASCADE' })
+  @ManyToOne(() => ActionEvent, { nullable: false, onDelete: "CASCADE" })
   @ApiProperty({ type: () => ActionEvent })
   @Type(() => ActionEvent)
   @IsDefined()
@@ -110,9 +110,9 @@ export class ReminderGroup {
 
   @ApiProperty({
     enum: ReminderCohortType,
-    enumName: 'ReminderCohortType',
+    enumName: "ReminderCohortType",
   })
-  @Column({ type: 'enum', enum: ReminderCohortType, nullable: true })
+  @Column({ type: "enum", enum: ReminderCohortType, nullable: true })
   @Allow()
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   cohortType: ReminderCohortType;
@@ -125,29 +125,29 @@ export class ReminderGroup {
 
   // for custom cohort
   @ManyToMany(() => User)
-  @JoinTable({ name: 'reminder_group_users' })
+  @JoinTable({ name: "reminder_group_users" })
   @ApiPropertyOptional({ type: () => User, isArray: true })
   @Type(() => User)
   @IsOptional()
   users?: Relation<User>[];
 
   @ApiProperty({ type: String })
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   @IsDefined()
   emailMessage: string;
 
   @ApiProperty({ type: String })
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   @IsDefined()
   emailSubject: string;
 
   @ApiProperty({ type: String })
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   @IsDefined()
   textMessage: string;
 
   @ApiProperty({ type: String })
-  @Column({ type: 'text', default: '' })
+  @Column({ type: "text", default: "" })
   @IsDefined()
   pushMessage: string;
 
@@ -162,48 +162,48 @@ export class ReminderGroup {
   notifications: Relation<ActionEventNotif>[];
 
   @ApiPropertyOptional({ type: Date })
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @Type(() => Date)
   @IsOptional()
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   send_range_start?: Date;
 
   @ApiPropertyOptional({ type: Date })
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @Type(() => Date)
   @IsOptional()
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   send_range_end?: Date;
 
   @ApiPropertyOptional({ type: Date })
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @Type(() => Date)
   @IsOptional()
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   sendAtAbsolute?: Date;
 
   @ApiPropertyOptional({ type: Number })
-  @Column({ type: 'integer', nullable: true })
+  @Column({ type: "integer", nullable: true })
   @IsOptional()
   @Type(() => Number)
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   sendAtSecondsFromDeadline?: number;
 
   @ApiPropertyOptional({ type: Number })
-  @Column({ type: 'integer', nullable: true })
+  @Column({ type: "integer", nullable: true })
   @IsOptional()
   @Type(() => Number)
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   relative_range_start_seconds_from_deadline?: number;
 
   @ApiPropertyOptional({ type: Number })
-  @Column({ type: 'integer', nullable: true })
+  @Column({ type: "integer", nullable: true })
   @IsOptional()
   @Type(() => Number)
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   relative_range_end_seconds_from_deadline?: number;
 
-  @ManyToOne(() => ActionEvent, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => ActionEvent, { nullable: true, onDelete: "SET NULL" })
   @ApiPropertyOptional({ type: () => ActionEvent })
   @Type(() => ActionEvent)
   @IsOptional()
@@ -216,26 +216,26 @@ export class ReminderGroup {
    * response. Read only by send-time computation; `deadlineEvent` keeps its
    * assignment-window and message-keyword semantics.
    */
-  @ManyToOne(() => ActionEvent, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => ActionEvent, { nullable: true, onDelete: "SET NULL" })
   @ApiPropertyOptional({ type: () => ActionEvent })
   @Type(() => ActionEvent)
   @IsOptional()
   timingAnchorEvent?: Relation<ActionEvent> | null;
 
   @ApiProperty()
-  @Column({ type: 'boolean', default: true })
+  @Column({ type: "boolean", default: true })
   @IsDefined()
   @Allow()
   useSuiteTaskCount: boolean;
 
   @ApiProperty()
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: "boolean", default: false })
   @IsDefined()
   @Allow()
   allSent: boolean;
 
   @ApiProperty()
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: "boolean", default: false })
   @IsDefined()
   @Allow()
   excludeOptionalActions: boolean;
@@ -247,7 +247,7 @@ export class ReminderGroup {
    * tasks, and users with no such tasks are skipped entirely.
    */
   @ApiProperty()
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: "boolean", default: false })
   @IsDefined()
   @Allow()
   excludePreviouslyNotified: boolean;
@@ -260,7 +260,7 @@ export function firstOccurrenceInRange(
   rangeEnd: Temporal.Instant,
 ): Date | null {
   if (Temporal.Instant.compare(rangeStart, rangeEnd) > 0) {
-    throw new RangeError('rangeStart must be <= rangeEnd');
+    throw new RangeError("rangeStart must be <= rangeEnd");
   }
 
   let date = rangeStart.toZonedDateTimeISO(tz).toPlainDate();
@@ -296,7 +296,7 @@ export function getGroupSendTimeForUser(
     case ReminderGroupTimingMode.FromDeadline:
       if (!referenceEvent) {
         throw new Error(
-          'Deadline or anchor event is required for from_deadline timing mode',
+          "Deadline or anchor event is required for from_deadline timing mode",
         );
       }
       return offsetTimeFromSeconds(
@@ -306,7 +306,7 @@ export function getGroupSendTimeForUser(
     case ReminderGroupTimingMode.WithinRange:
       return firstOccurrenceInRange(
         user.timeZone ?? DEFAULT_TIME_ZONE,
-        user.preferredReminderTime ?? Temporal.PlainTime.from('19:00:00'),
+        user.preferredReminderTime ?? Temporal.PlainTime.from("19:00:00"),
         Temporal.Instant.fromEpochMilliseconds(
           group.send_range_start!.getTime(),
         ),
@@ -315,7 +315,7 @@ export function getGroupSendTimeForUser(
     case ReminderGroupTimingMode.WithinRelativeRange:
       if (!referenceEvent) {
         throw new Error(
-          'Deadline or anchor event is required for within_relative_range timing mode',
+          "Deadline or anchor event is required for within_relative_range timing mode",
         );
       }
       const start = offsetTimeFromSeconds(
@@ -328,7 +328,7 @@ export function getGroupSendTimeForUser(
       );
       return firstOccurrenceInRange(
         user.timeZone ?? DEFAULT_TIME_ZONE,
-        user.preferredReminderTime ?? Temporal.PlainTime.from('19:00:00'),
+        user.preferredReminderTime ?? Temporal.PlainTime.from("19:00:00"),
         Temporal.Instant.fromEpochMilliseconds(start.getTime()),
         Temporal.Instant.fromEpochMilliseconds(end.getTime()),
       );

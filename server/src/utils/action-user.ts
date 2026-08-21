@@ -1,15 +1,15 @@
 /** @fileoverview Utils for relationships between actions and users */
-import type { ActionActivity } from 'src/actions/entities/action-activity.entity';
+import type { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionStatus,
   type ActionEvent,
-} from 'src/actions/entities/action-event.entity';
-import { Action } from 'src/actions/entities/action.entity';
-import type { Community } from 'src/community/entities/community.entity';
-import type { FormResponse } from 'src/tasks/entities/formresponse.entity';
-import { User } from 'src/user/entities/user.entity';
-import { findLeast } from 'src/utils/filter';
-import type { Repository } from 'typeorm';
+} from "src/actions/entities/action-event.entity";
+import { Action } from "src/actions/entities/action.entity";
+import type { Community } from "src/community/entities/community.entity";
+import type { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { User } from "src/user/entities/user.entity";
+import { findLeast } from "src/utils/filter";
+import type { Repository } from "typeorm";
 
 /**
  * Onboarding "joined in time?" gate. Targets *new* members, so a user qualifies
@@ -26,7 +26,7 @@ import type { Repository } from 'typeorm';
  * wire field).
  */
 export function computeContractSignedAfterOnboardingStart(params: {
-  user: Pick<User, 'contractEvents'>;
+  user: Pick<User, "contractEvents">;
   memberActionPhaseStart: Date | null;
 }): boolean {
   const { user, memberActionPhaseStart } = params;
@@ -62,7 +62,7 @@ function computeIsAssignedCore(params: {
   inCohort: boolean;
   dismissed: boolean;
   onboarding: boolean;
-  user: Pick<User, 'contractEvents' | 'hasActiveContractInFullRange'>;
+  user: Pick<User, "contractEvents" | "hasActiveContractInFullRange">;
   /**
    * Skip the contract-lapse exclusion (analytics wants the historical base
    * set and handles contract state itself).
@@ -114,8 +114,8 @@ function computeIsAssignedCore(params: {
  * cohort evaluation runs. Both delegate to {@link computeIsAssignedCore}.
  */
 export function computeIsAssignedToAction(params: {
-  action: Pick<Action, 'events' | 'memberActionPhase' | 'onboarding'>;
-  user: Pick<User, 'contractEvents' | 'hasActiveContractInFullRange'> | null;
+  action: Pick<Action, "events" | "memberActionPhase" | "onboarding">;
+  user: Pick<User, "contractEvents" | "hasActiveContractInFullRange"> | null;
   inCohort: boolean;
   dismissed: boolean;
 }): boolean {
@@ -146,8 +146,8 @@ export function computeIsAssignedToAction(params: {
  * 4-valued status the UI renders. Two different questions; don't conflate them.
  */
 export function computeIsAwayDuringWindow(params: {
-  action: Pick<Action, 'events' | 'memberActionPhase'>;
-  user: Pick<User, 'awayRanges' | 'isAwayAtAnyPointInRange'>;
+  action: Pick<Action, "events" | "memberActionPhase">;
+  user: Pick<User, "awayRanges" | "isAwayAtAnyPointInRange">;
 }): boolean {
   const { action, user } = params;
 
@@ -175,10 +175,10 @@ export function computeIsAwayDuringWindow(params: {
  * boolean for rosters/counters).
  */
 export enum TaskAwayStatus {
-  AwayPreviously = 'away_previously',
-  AwayCurrently = 'away_currently',
-  AwayLater = 'away_later',
-  NotAway = 'not_away',
+  AwayPreviously = "away_previously",
+  AwayCurrently = "away_currently",
+  AwayLater = "away_later",
+  NotAway = "not_away",
 }
 
 function findActionEventWindowAt(
@@ -197,7 +197,7 @@ function findActionEventWindowAt(
  * re-scheduled action whose earlier phase already ran still reads started.
  */
 export function findStartedMemberActionEvent<
-  E extends Pick<ActionEvent, 'date' | 'newStatus'>,
+  E extends Pick<ActionEvent, "date" | "newStatus">,
 >(events: E[], now: Date): E | undefined {
   return events.find(
     (event) =>
@@ -207,15 +207,15 @@ export function findStartedMemberActionEvent<
 
 /** Has a member-action phase opened? See {@link findStartedMemberActionEvent}. */
 export function hasMemberActionStarted(
-  events: Pick<ActionEvent, 'date' | 'newStatus'>[],
+  events: Pick<ActionEvent, "date" | "newStatus">[],
   now: Date,
 ): boolean {
   return findStartedMemberActionEvent(events, now) !== undefined;
 }
 
 export function computeMemberActionAwayStatus(params: {
-  action: Pick<Action, 'events'>;
-  user: Pick<User, 'awayRanges'>;
+  action: Pick<Action, "events">;
+  user: Pick<User, "awayRanges">;
   now: Date;
 }): TaskAwayStatus {
   const { action, user, now } = params;
@@ -282,7 +282,7 @@ export function computeIsTaggedOrInManualCohortAction(params: {
 }
 
 export function computeIsTaggedOrInManualCohort(params: {
-  user: Pick<User, 'id' | 'tags' | 'hasActiveContractInFullRange'>;
+  user: Pick<User, "id" | "tags" | "hasActiveContractInFullRange">;
   useManualCohort: boolean;
   manualCohortUserIdSet: Set<number> | null;
   participatingTagIdSet: Set<string>;

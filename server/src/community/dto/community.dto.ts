@@ -1,19 +1,19 @@
-import { ApiProperty, PartialType, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsNumber } from 'class-validator';
-import { Community } from 'src/community/entities/community.entity';
-import { getImageSource } from 'src/images/images.service';
-import { ProfileDto } from 'src/user/dto/user.dto';
+import { ApiProperty, PartialType, PickType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsNumber } from "class-validator";
+import { Community } from "src/community/entities/community.entity";
+import { getImageSource } from "src/images/images.service";
+import { ProfileDto } from "src/user/dto/user.dto";
 
 export class CommunityDto extends PickType(Community, [
-  'id',
-  'name',
-  'description',
-  'photo',
-  'public',
-  'allowMemberInvites',
-  'allowStaffAssignments',
-  'maxCapacity',
+  "id",
+  "name",
+  "description",
+  "photo",
+  "public",
+  "allowMemberInvites",
+  "allowStaffAssignments",
+  "maxCapacity",
 ] as const) {
   @ApiProperty({ type: ProfileDto, isArray: true })
   @Allow()
@@ -45,13 +45,13 @@ export class CommunityDto extends PickType(Community, [
 }
 
 export class CreateCommunityDto extends PickType(CommunityDto, [
-  'name',
-  'description',
-  'photo',
-  'public',
-  'allowMemberInvites',
-  'allowStaffAssignments',
-  'maxCapacity',
+  "name",
+  "description",
+  "photo",
+  "public",
+  "allowMemberInvites",
+  "allowStaffAssignments",
+  "maxCapacity",
 ]) {}
 
 export class UpdateCommunityDto extends PartialType(CreateCommunityDto) {}

@@ -1,9 +1,9 @@
 /* eslint-disable @darraghor/nestjs-typed/all-properties-have-explicit-defined */
 /* eslint-disable @darraghor/nestjs-typed/all-properties-are-whitelisted */
-import { Temporal } from '@js-temporal/polyfill';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import bcrypt from 'bcryptjs';
-import { Exclude, Expose, Type } from 'class-transformer';
+import { Temporal } from "@js-temporal/polyfill";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import bcrypt from "bcryptjs";
+import { Exclude, Expose, Type } from "class-transformer";
 import {
   Allow,
   IsDefined,
@@ -11,29 +11,29 @@ import {
   IsEnum,
   IsNotEmpty,
   IsOptional,
-} from 'class-validator';
-import { ActionActivity } from 'src/actions/entities/action-activity.entity';
-import { Action } from 'src/actions/entities/action.entity';
-import { GeneralUpdateActivity } from 'src/actions/entities/general-update-activity.entity';
-import { Campaign } from 'src/campaign/entities/campaign.entity';
-import { Cluster } from 'src/cluster/entities/cluster.entity';
-import { CommunityInvite } from 'src/community/entities/community-invite.entity';
-import { Community } from 'src/community/entities/community.entity';
+} from "class-validator";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { Action } from "src/actions/entities/action.entity";
+import { GeneralUpdateActivity } from "src/actions/entities/general-update-activity.entity";
+import { Campaign } from "src/campaign/entities/campaign.entity";
+import { Cluster } from "src/cluster/entities/cluster.entity";
+import { CommunityInvite } from "src/community/entities/community-invite.entity";
+import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { City } from 'src/geo/city.entity';
-import { Mail } from 'src/mail/mail.entity';
-import { Participant } from 'src/messaging/entities/participant.entity';
-import { Mms } from 'src/mms/mms.entity';
-import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
-import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
-import { StoredInviteAssignmentKind } from 'src/share-urls/invite-assignment-kind';
-import { findLeast } from 'src/utils/filter';
-import { phoneNumberTransformer } from 'src/utils/phone';
-import { plainTimeTransformer } from 'src/utils/plain-time';
-import type { Relation } from 'src/utils/Repository';
+} from "src/datasources/basecolumns";
+import { City } from "src/geo/city.entity";
+import { Mail } from "src/mail/mail.entity";
+import { Participant } from "src/messaging/entities/participant.entity";
+import { Mms } from "src/mms/mms.entity";
+import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { ShareUrl } from "src/share-urls/entities/share-url.entity";
+import { StoredInviteAssignmentKind } from "src/share-urls/invite-assignment-kind";
+import { findLeast } from "src/utils/filter";
+import { phoneNumberTransformer } from "src/utils/phone";
+import { plainTimeTransformer } from "src/utils/plain-time";
+import type { Relation } from "src/utils/Repository";
 import {
   BeforeInsert,
   BeforeUpdate,
@@ -48,61 +48,61 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
   RelationId,
-} from 'typeorm';
-import { Notification } from '../../notifs/entities/notification.entity';
+} from "typeorm";
+import { Notification } from "../../notifs/entities/notification.entity";
 import {
   compareContractEventsNewestFirst,
   ContractEvent,
   ContractEventType,
   getEffectiveContractEventsInRange,
-} from './contract-event.entity';
-import { Friend, FriendStatus } from './friend.entity';
-import { OnetimeInvite } from './onetime-invite.entity';
-import { Tag } from './tag.entity';
-import { UserAwayRange } from './user-away-range.entity';
-import { UserDevice } from './user-device.entity';
+} from "./contract-event.entity";
+import { Friend, FriendStatus } from "./friend.entity";
+import { OnetimeInvite } from "./onetime-invite.entity";
+import { Tag } from "./tag.entity";
+import { UserAwayRange } from "./user-away-range.entity";
+import { UserDevice } from "./user-device.entity";
 
-export const DEFAULT_TIME_ZONE = 'America/Los_Angeles';
+export const DEFAULT_TIME_ZONE = "America/Los_Angeles";
 
 export enum NotificationPreference {
-  All = 'all',
-  Digest = 'digest',
-  None = 'none',
+  All = "all",
+  Digest = "digest",
+  None = "none",
 }
 
 export enum ForumDigestPreference {
-  Off = 'off',
-  Daily = 'daily',
-  Weekly = 'weekly',
+  Off = "off",
+  Daily = "daily",
+  Weekly = "weekly",
 }
 
 export enum PublicFormResponseDefault {
-  Public = 'public',
-  Private = 'private',
+  Public = "public",
+  Private = "private",
 }
 
 export enum ReferralSource {
-  ReferralLink = 'referral_link',
-  OnetimeInvite = 'onetime_invite',
-  ActionShareLink = 'action_share_link',
-  ExternalShareLink = 'external_share_link',
-  InviteShareLink = 'invite_share_link',
-  Campaign = 'campaign',
-  None = 'none',
+  ReferralLink = "referral_link",
+  OnetimeInvite = "onetime_invite",
+  ActionShareLink = "action_share_link",
+  ExternalShareLink = "external_share_link",
+  InviteShareLink = "invite_share_link",
+  Campaign = "campaign",
+  None = "none",
 }
 
 @Check(
-  'CHK_user_referral_fields',
+  "CHK_user_referral_fields",
   `("referredByCampaignId" IS NULL OR "referralSource" = 'campaign')
    AND ("referredById" IS NULL OR "referralSource" IN ('referral_link', 'onetime_invite', 'action_share_link', 'external_share_link', 'invite_share_link'))
    AND ("referredByInviteId" IS NULL OR "referralSource" = 'onetime_invite')`,
 )
 @Check(
-  'CHK_user_invite_assignment',
+  "CHK_user_invite_assignment",
   `"inviteAssignmentCommunityId" IS NULL
    OR "inviteAssignmentKind" IS NOT DISTINCT FROM 'community'`,
 )
-@Index(['referredByShareUrl'])
+@Index(["referredByShareUrl"])
 @Entity()
 export class User {
   // Fields
@@ -122,9 +122,9 @@ export class User {
   email: string;
 
   @Column({
-    type: 'varchar',
+    type: "varchar",
     nullable: true,
-    comment: 'E.164 format (+15551234567)',
+    comment: "E.164 format (+15551234567)",
     transformer: phoneNumberTransformer,
   })
   @ApiProperty({ type: String, nullable: true })
@@ -134,19 +134,19 @@ export class User {
   phoneNumberUnsubscribed: boolean;
 
   @OneToOne(() => Mms, { nullable: true })
-  @JoinColumn({ name: 'optInMmsId' })
+  @JoinColumn({ name: "optInMmsId" })
   optInMms?: Relation<Mms>;
 
   @Column({ default: false })
   @ApiProperty()
   emailVerified: boolean;
 
-  @Column({ type: 'time', nullable: true, transformer: plainTimeTransformer })
-  @ApiProperty({ type: 'string', nullable: true })
+  @Column({ type: "time", nullable: true, transformer: plainTimeTransformer })
+  @ApiProperty({ type: "string", nullable: true })
   preferredReminderTime: Temporal.PlainTime | null;
 
-  @Column({ type: 'text', nullable: true })
-  @ApiPropertyOptional({ type: 'string' })
+  @Column({ type: "text", nullable: true })
+  @ApiPropertyOptional({ type: "string" })
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   timeZone?: Temporal.TimeZoneLike;
 
@@ -194,13 +194,13 @@ export class User {
   sharePhoneNumberWithCommunityLead: boolean;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: NotificationPreference,
     default: NotificationPreference.All,
   })
   @ApiProperty({
     enum: NotificationPreference,
-    enumName: 'NotificationPreference',
+    enumName: "NotificationPreference",
   })
   @IsOptional()
   @IsEnum(NotificationPreference)
@@ -211,13 +211,13 @@ export class User {
   turnedOffAllNotifs: boolean;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: ForumDigestPreference,
     default: ForumDigestPreference.Off,
   })
   @ApiProperty({
     enum: ForumDigestPreference,
-    enumName: 'ForumDigestPreference',
+    enumName: "ForumDigestPreference",
   })
   forumDigestPreference: ForumDigestPreference;
 
@@ -239,11 +239,11 @@ export class User {
   @ApiProperty()
   staff: boolean;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   staffTitle: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   staffLink: string | null;
 
@@ -255,11 +255,11 @@ export class User {
   @ApiProperty()
   ambassador: boolean;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   profilePicture: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   profileDescription: string | null;
 
@@ -267,7 +267,7 @@ export class User {
   @ApiProperty()
   referralCode: string;
 
-  @Column({ type: 'varchar', nullable: true, unique: true })
+  @Column({ type: "varchar", nullable: true, unique: true })
   @ApiProperty({ nullable: true })
   @Allow()
   stripeCustomerId: string | null;
@@ -277,12 +277,12 @@ export class User {
   @Allow()
   isNotSignedUpPartialProfile: boolean;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   @Allow()
   customCityString: string | null;
 
-  @Column({ type: 'boolean', nullable: true })
+  @Column({ type: "boolean", nullable: true })
   @ApiProperty({ nullable: true })
   @Allow()
   over18: boolean | null;
@@ -298,13 +298,13 @@ export class User {
   shareInfoPublicly: boolean;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: PublicFormResponseDefault,
     default: PublicFormResponseDefault.Public,
   })
   @ApiProperty({
     enum: PublicFormResponseDefault,
-    enumName: 'PublicFormResponseDefault',
+    enumName: "PublicFormResponseDefault",
   })
   formDataPreference: PublicFormResponseDefault;
 
@@ -376,9 +376,9 @@ export class User {
 
   @ManyToOne(() => User, (user) => user.referredUsers, {
     nullable: true,
-    onDelete: 'SET NULL',
+    onDelete: "SET NULL",
   })
-  @JoinColumn({ name: 'referredById' })
+  @JoinColumn({ name: "referredById" })
   referredBy?: Relation<User> | null;
 
   @OneToOne(() => OnetimeInvite, (invite) => invite.invitedUser)
@@ -391,8 +391,8 @@ export class User {
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   referredByInvite: Relation<OnetimeInvite> | null;
 
-  @ManyToOne(() => ShareUrl, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'referredByShareUrlId' })
+  @ManyToOne(() => ShareUrl, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "referredByShareUrlId" })
   referredByShareUrl?: Relation<ShareUrl> | null;
 
   /**
@@ -401,7 +401,7 @@ export class User {
    * their contract, so placement must not be read back off the link.
    */
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: StoredInviteAssignmentKind,
     nullable: true,
   })
@@ -415,24 +415,24 @@ export class User {
   @Column({ nullable: true })
   inviteAssignmentCommunityId: number | null;
 
-  @ManyToOne(() => Community, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'inviteAssignmentCommunityId' })
+  @ManyToOne(() => Community, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "inviteAssignmentCommunityId" })
   inviteAssignmentCommunity?: Relation<Community> | null;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: ReferralSource,
     default: ReferralSource.None,
   })
-  @ApiProperty({ enum: ReferralSource, enumName: 'ReferralSource' })
+  @ApiProperty({ enum: ReferralSource, enumName: "ReferralSource" })
   referralSource: ReferralSource;
 
   @Column({ nullable: true })
   @ApiProperty({ type: Number, nullable: true })
   referredByCampaignId: number | null;
 
-  @ManyToOne(() => Campaign, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'referredByCampaignId' })
+  @ManyToOne(() => Campaign, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "referredByCampaignId" })
   @Type(() => Campaign)
   @ApiPropertyOptional({ type: () => Campaign, nullable: true })
   referredByCampaign?: Relation<Campaign> | null;
@@ -440,7 +440,7 @@ export class User {
   @OneToMany(() => User, (user) => user.referredBy)
   referredUsers?: Relation<User>[];
 
-  @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => City, { nullable: true, onDelete: "SET NULL" })
   @IsOptional()
   @Type(() => City)
   city?: Relation<City> | null;
@@ -453,12 +453,12 @@ export class User {
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   awayRanges: Relation<UserAwayRange>[];
 
-  @OneToOne(() => Mail, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'welcomeMailId' })
+  @OneToOne(() => Mail, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "welcomeMailId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   welcomeMail: Relation<Mail> | null;
 
-  @ManyToMany(() => Tag, (tag) => tag.users, { onDelete: 'CASCADE' })
+  @ManyToMany(() => Tag, (tag) => tag.users, { onDelete: "CASCADE" })
   @ApiProperty({ type: () => Tag, isArray: true })
   @Type(() => Tag)
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
@@ -469,14 +469,14 @@ export class User {
     type: () => Community,
     nullable: true,
     description:
-      'The community that the user will join when they sign the contract',
+      "The community that the user will join when they sign the contract",
   })
   @Type(() => Community)
   @IsOptional()
   pendingCommunity?: Relation<Community> | null;
 
   @ManyToMany(() => Community, (community) => community.users, {
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @ApiProperty({ type: () => Community, isArray: true })
   @Type(() => Community)
@@ -484,7 +484,7 @@ export class User {
   communities: Relation<Community>[];
 
   @ManyToMany(() => Community, (community) => community.leaders, {
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @Type(() => Community)
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
@@ -508,7 +508,7 @@ export class User {
   participants: Relation<Participant>[];
 
   @ManyToMany(() => Action, (action) => action.authors, {
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @ApiPropertyOptional({ type: () => Action, isArray: true })
   @Type(() => Action)
@@ -520,7 +520,7 @@ export class User {
 
   @ManyToOne(() => Cluster, (cluster) => cluster.members, {
     nullable: true,
-    onDelete: 'SET NULL',
+    onDelete: "SET NULL",
   })
   @ApiPropertyOptional({ type: () => Cluster, nullable: true })
   @Type(() => Cluster)
@@ -713,7 +713,7 @@ export class User {
  */
 export function sqlUserHasActiveContractAt(
   userIdExpr: string,
-  contractAtExpr = ':contractAt',
+  contractAtExpr = ":contractAt",
 ): string {
   return `(
     SELECT ce."type" FROM "contract_event" ce

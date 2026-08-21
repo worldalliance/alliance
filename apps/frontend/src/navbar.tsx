@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { Outlet, useNavigation } from "react-router";
-import { cn } from "@alliance/shared/styles/util";
-import NavbarTopBar from "./components/NavbarTopBar";
-import NavbarVertical from "./components/NavbarVertical";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
-import { NotificationsProvider } from "@alliance/shared/lib/useNotifications";
 import { showActionInSidebarList } from "@alliance/shared/lib/actionUtils";
 import { IncomingCommunityInvitesProvider } from "@alliance/shared/lib/useIncomingCommunityInvites";
-import { useTaskActionsData } from "./lib/useTaskActionsData";
+import { NotificationsProvider } from "@alliance/shared/lib/useNotifications";
+import { cn } from "@alliance/shared/styles/util";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { useEffect, useMemo, useState } from "react";
+import { Outlet, useNavigation } from "react-router";
+import NavbarTopBar from "./components/NavbarTopBar";
+import NavbarVertical from "./components/NavbarVertical";
 import { NavbarOptionsProvider } from "./lib/NavbarOptionsContext";
+import { useTaskActionsData } from "./lib/useTaskActionsData";
 
 function Navbar() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);

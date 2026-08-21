@@ -1,6 +1,6 @@
+import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import Button, { ButtonColor } from "./Button";
-import { cn } from "@alliance/shared/styles/util";
 
 type YesNoToggleProps = {
   value?: boolean | null;

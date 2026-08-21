@@ -1,7 +1,7 @@
+import { ImageZoom } from "@likashefqet/react-native-image-zoom";
 import { useState } from "react";
 import { Image, Modal, Pressable, TouchableOpacity } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { ImageZoom } from "@likashefqet/react-native-image-zoom";
 
 interface ImageLightboxModalProps {
   uri: string | null;

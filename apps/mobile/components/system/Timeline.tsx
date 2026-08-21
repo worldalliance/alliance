@@ -1,6 +1,6 @@
-import React, { ReactNode, Children } from "react";
-import { View, ViewProps } from "react-native";
 import { cn } from "@alliance/shared/styles/util";
+import { Children, ReactNode } from "react";
+import { View, ViewProps } from "react-native";
 
 interface TimelineProps extends ViewProps {
   children: ReactNode[];
@@ -25,7 +25,7 @@ export default function Timeline({
             <View
               className={cn(
                 "absolute left-[-11px] top-1 w-[18px] h-[18px] rounded-full border-[3px] border-white",
-                index === currentIdx ? "bg-green" : "bg-zinc-200"
+                index === currentIdx ? "bg-green" : "bg-zinc-200",
               )}
             />
             <View className="pl-3">{child}</View>

@@ -1,1 +1,1 @@
-export const ALL_MEMBERS_TAG_NAME = 'All Members';
+export const ALL_MEMBERS_TAG_NAME = "All Members";

@@ -1,16 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { MailService } from 'src/mail/mail.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { MailService } from "src/mail/mail.service";
 import {
   Notification,
   NotificationCategory,
-} from 'src/notifs/entities/notification.entity';
-import { generateCIDForNotif } from 'src/notifs/notif-utils';
-import { withCid } from 'src/search/approutes';
-import { ForumDigestPreference, User } from 'src/user/entities/user.entity';
-import type { Repository } from 'typeorm';
-import { ForumDigestLog } from './entities/forum-digest-log.entity';
+} from "src/notifs/entities/notification.entity";
+import { generateCIDForNotif } from "src/notifs/notif-utils";
+import { withCid } from "src/search/approutes";
+import { ForumDigestPreference, User } from "src/user/entities/user.entity";
+import type { Repository } from "typeorm";
+import { ForumDigestLog } from "./entities/forum-digest-log.entity";
 
 @Injectable()
 export class ForumDigestService {
@@ -30,16 +30,16 @@ export class ForumDigestService {
     const shouldSendWeeklyToday = this.shouldSendWeekly(now);
 
     const notifications = await this.notificationRepository
-      .createQueryBuilder('notification')
-      .innerJoinAndSelect('notification.user', 'user')
-      .where('notification.category = :category', {
+      .createQueryBuilder("notification")
+      .innerJoinAndSelect("notification.user", "user")
+      .where("notification.category = :category", {
         category: NotificationCategory.ForumReply,
       })
-      .andWhere('notification.readAt IS NULL')
-      .andWhere('user.forumDigestPreference != :off', {
+      .andWhere("notification.readAt IS NULL")
+      .andWhere("user.forumDigestPreference != :off", {
         off: ForumDigestPreference.Off,
       })
-      .orderBy('notification.createdAt', 'ASC')
+      .orderBy("notification.createdAt", "ASC")
       .getMany();
 
     console.log(
@@ -142,12 +142,12 @@ export class ForumDigestService {
   }
 
   private formatTimestamp(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      timeZone: 'UTC',
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "UTC",
     }).format(date);
   }
 
@@ -156,10 +156,10 @@ export class ForumDigestService {
   }
 
   private getAbsoluteUrl(path: string): string {
-    if (path.startsWith('http://') || path.startsWith('https://')) {
+    if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
     }
-    const appUrl = process.env.APP_URL ?? '';
+    const appUrl = process.env.APP_URL ?? "";
     return `${appUrl}${path}`;
   }
 }

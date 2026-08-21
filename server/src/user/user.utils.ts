@@ -1,10 +1,10 @@
-import { isCanonicalE164 } from '@alliance/common/phone';
-import { User } from './entities/user.entity';
+import { isCanonicalE164 } from "@alliance/common/phone";
+import { User } from "./entities/user.entity";
 
 export function userActionNotifsEnabled_email(
   user: Pick<
     User,
-    'emailNotifsForActions' | 'turnedOffAllNotifs' | 'hasActiveContract'
+    "emailNotifsForActions" | "turnedOffAllNotifs" | "hasActiveContract"
   >,
 ): boolean {
   return (
@@ -17,11 +17,11 @@ export function userActionNotifsEnabled_email(
 export function userActionNotifsEnabled_text(
   user: Pick<
     User,
-    | 'textNotifsForActions'
-    | 'turnedOffAllNotifs'
-    | 'phoneNumber'
-    | 'hasActiveContract'
-    | 'phoneNumberUnsubscribed'
+    | "textNotifsForActions"
+    | "turnedOffAllNotifs"
+    | "phoneNumber"
+    | "hasActiveContract"
+    | "phoneNumberUnsubscribed"
   >,
 ): boolean {
   return Boolean(
@@ -35,13 +35,13 @@ export function userActionNotifsEnabled_text(
 }
 
 export function userActionNotifsEnabled_push(
-  user: Pick<User, 'turnedOffAllNotifs' | 'pushNotifsForActions'>,
+  user: Pick<User, "turnedOffAllNotifs" | "pushNotifsForActions">,
 ): boolean {
   return !user.turnedOffAllNotifs && user.pushNotifsForActions;
 }
 
 export function referralLabel(
-  user: Pick<User, 'referredBy' | 'referredByCampaign'>,
+  user: Pick<User, "referredBy" | "referredByCampaign">,
 ): string {
   if (user.referredBy?.name) {
     return `(invited by ${user.referredBy.name})`;
@@ -49,5 +49,5 @@ export function referralLabel(
   if (user.referredByCampaign?.name) {
     return `(via campaign ${user.referredByCampaign.name})`;
   }
-  return '';
+  return "";
 }

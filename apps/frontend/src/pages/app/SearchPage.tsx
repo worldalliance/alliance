@@ -1,6 +1,6 @@
-import SearchBar from "../../components/SearchBar";
-import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
+import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
+import SearchBar from "../../components/SearchBar";
 
 const SearchPage = () => {
   useWhiteBackground();

@@ -123,11 +123,15 @@ export function formatNowTimeInTz(tz: string, hour12: boolean = true): string {
 
 export function getOffsetMinutes(tz: string): number | null {
   try {
-    const parts = getCachedFormatter(`offset:${tz}`, {
-      timeZone: tz,
-      timeZoneName: "shortOffset",
-      hour: "2-digit",
-    }, "en").formatToParts(new Date());
+    const parts = getCachedFormatter(
+      `offset:${tz}`,
+      {
+        timeZone: tz,
+        timeZoneName: "shortOffset",
+        hour: "2-digit",
+      },
+      "en",
+    ).formatToParts(new Date());
 
     const off = parts.find((p) => p.type === "timeZoneName")?.value ?? "";
     const m = off.match(/([+-])(\d{1,2})(?::?(\d{2}))?/i);
@@ -142,10 +146,14 @@ export function getOffsetMinutes(tz: string): number | null {
 }
 
 export function getGenericLabelFromIntl(tz: string): string | null {
-  const parts = getCachedFormatter(`generic:${tz}`, {
-    timeZone: tz,
-    timeZoneName: "longGeneric",
-  }, "en-US").formatToParts(new Date());
+  const parts = getCachedFormatter(
+    `generic:${tz}`,
+    {
+      timeZone: tz,
+      timeZoneName: "longGeneric",
+    },
+    "en-US",
+  ).formatToParts(new Date());
   return parts.find((p) => p.type === "timeZoneName")?.value ?? null;
 }
 
@@ -193,7 +201,7 @@ function baseItems(): Omit<TimeZoneSelectItem, "timeLabel">[] {
   items.sort(
     (a, b) =>
       (a.offsetMins ?? 0) - (b.offsetMins ?? 0) ||
-      a.labelLeft.localeCompare(b.labelLeft)
+      a.labelLeft.localeCompare(b.labelLeft),
   );
 
   return items;
@@ -218,7 +226,7 @@ export function useTimeZoneSelect({
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const [internalValue, setInternalValue] = useState<string>(
-    value ?? defaultValue
+    value ?? defaultValue,
   );
 
   const [tick, forceTick] = useState(0);

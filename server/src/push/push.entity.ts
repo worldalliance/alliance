@@ -1,13 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
-import { Notification } from 'src/notifs/entities/notification.entity';
-import { UnreadContent } from 'src/notifs/entities/unread-content.entity';
-import { User } from 'src/user/entities/user.entity';
-import type { Relation } from 'src/utils/Repository';
+} from "src/datasources/basecolumns";
+import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { Notification } from "src/notifs/entities/notification.entity";
+import { UnreadContent } from "src/notifs/entities/unread-content.entity";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -15,13 +15,13 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
+} from "typeorm";
 
 @Entity()
-@Index(['idempotencyKey'], { unique: true })
+@Index(["idempotencyKey"], { unique: true })
 // Serves the every-minute receipt cron: both its expiry UPDATE and its
 // pending-pushes SELECT filter on this predicate, keeping the index tiny.
-@Index(['createdAt'], {
+@Index(["createdAt"], {
   where: `"receiptStatus" = 'pending' AND "receiptId" IS NOT NULL`,
 })
 export class Push {
@@ -29,8 +29,8 @@ export class Push {
   @ApiProperty()
   id: number;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
@@ -46,7 +46,7 @@ export class Push {
   @ApiProperty()
   body: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   screen: string | null;
 
@@ -54,46 +54,46 @@ export class Push {
   @ApiProperty()
   updatedAt: Date;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   receiptId: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   ticketStatus: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   receiptStatus: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   errorCode: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   errorMessage: string | null;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   lastCheckedStatusAt: Date | null;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: "varchar" })
   @ApiProperty()
   idempotencyKey: string;
 
   @ManyToOne(() => Notification, (notification) => notification.pushes, {
     nullable: true,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
-  @JoinColumn({ name: 'notificationId' })
+  @JoinColumn({ name: "notificationId" })
   notification?: Relation<Notification>;
 
   @ManyToOne(() => UnreadContent, {
     nullable: true,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
-  @JoinColumn({ name: 'unreadContentId' })
+  @JoinColumn({ name: "unreadContentId" })
   unreadContent?: Relation<UnreadContent>;
 
   @ManyToOne(
@@ -101,13 +101,13 @@ export class Push {
     (actionEventNotif) => actionEventNotif.pushes,
     {
       nullable: true,
-      onDelete: 'CASCADE',
+      onDelete: "CASCADE",
     },
   )
-  @JoinColumn({ name: 'actionEventNotifId' })
+  @JoinColumn({ name: "actionEventNotifId" })
   actionEventNotif?: Relation<ActionEventNotif>;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   openedAt: Date | null;
 }

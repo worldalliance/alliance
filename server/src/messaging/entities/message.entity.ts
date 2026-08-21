@@ -1,4 +1,10 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -6,18 +12,12 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { Conversation } from './conversation.entity';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { User } from 'src/user/entities/user.entity';
-import type { Relation } from 'src/utils/Repository';
+} from "typeorm";
+import { Conversation } from "./conversation.entity";
 
 @Entity()
 export class Message {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   @ApiProperty()
   id: string;
 
@@ -25,15 +25,15 @@ export class Message {
   @ApiProperty()
   body: string;
 
-  @Column({ type: 'jsonb', default: [] })
+  @Column({ type: "jsonb", default: [] })
   @ApiProperty({
     type: String,
     isArray: true,
-    description: 'Image keys attached to the content',
+    description: "Image keys attached to the content",
   })
   attachments: string[];
 
-  @ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
   @JoinColumn()
   @ApiProperty({ type: () => User })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
@@ -41,9 +41,9 @@ export class Message {
 
   @ManyToOne(() => Conversation, (conversation) => conversation.messages, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
-  @JoinColumn({ name: 'conversationId' })
+  @JoinColumn({ name: "conversationId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   conversation: Relation<Conversation>;
 
@@ -54,15 +54,15 @@ export class Message {
   @UpdateDateColumnTz()
   updatedAt: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @ApiPropertyOptional({ type: Date })
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   deletedAt?: Date;
 
   @ManyToOne(() => Message, (message) => message.replies, {
-    onDelete: 'SET NULL',
+    onDelete: "SET NULL",
   })
-  @JoinColumn({ name: 'replyToId' })
+  @JoinColumn({ name: "replyToId" })
   @ApiProperty({ type: () => Message, required: false })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   replyTo: Relation<Message>;

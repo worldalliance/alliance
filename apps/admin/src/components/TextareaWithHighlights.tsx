@@ -79,14 +79,14 @@ export default function TextareaWithHighlight({
     const afterHashPipe = highlightHashPipeSyntax
       ? safe.replace(
           HASH_PIPE_SYNTAX_REGEX,
-          '<span class="bg-amber-400/20 text-transparent">$&</span>'
+          '<span class="bg-amber-400/20 text-transparent">$&</span>',
         )
       : safe;
 
     if (!highlightRegex) return afterHashPipe;
     return afterHashPipe.replace(
       highlightRegex,
-      `<span class="bg-green/20 text-transparent">$1</span>`
+      `<span class="bg-green/20 text-transparent">$1</span>`,
     );
   }, [value, highlightRegex, highlightHashPipeSyntax]);
 
@@ -178,7 +178,7 @@ export default function TextareaWithHighlight({
           "break-words",
           "text-transparent",
           "will-change-transform -mx-[0.5px]",
-          "rounded-lg"
+          "rounded-lg",
         )}
         dangerouslySetInnerHTML={{
           __html: highlightedHtml + (value?.endsWith("\n") ? "\n" : ""),
@@ -203,7 +203,7 @@ export default function TextareaWithHighlight({
           "overflow-auto",
           "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
           !editable && "!border-0 !resize-none",
-          textareaClassName
+          textareaClassName,
         )}
         spellCheck={false}
         autoComplete="off"

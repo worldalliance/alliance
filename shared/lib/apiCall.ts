@@ -3,21 +3,23 @@ import { useEffect, useMemo, useState } from "react";
 
 type AnyFn = (...args: any[]) => any;
 
-type ExtractData<F extends AnyFn> = Awaited<ReturnType<F>> extends {
-  data: infer D;
-}
-  ? D
-  : unknown;
+type ExtractData<F extends AnyFn> =
+  Awaited<ReturnType<F>> extends {
+    data: infer D;
+  }
+    ? D
+    : unknown;
 
-type ExtractError<F extends AnyFn> = Awaited<ReturnType<F>> extends {
-  error: infer E;
-}
-  ? E
-  : unknown;
+type ExtractError<F extends AnyFn> =
+  Awaited<ReturnType<F>> extends {
+    error: infer E;
+  }
+    ? E
+    : unknown;
 
 export function useApiCall<F extends AnyFn>(
   fetcher: F,
-  options: Parameters<F>[0]
+  options: Parameters<F>[0],
 ): {
   data: ExtractData<F> | null;
   loading: boolean;

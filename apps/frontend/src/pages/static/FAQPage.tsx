@@ -1,11 +1,11 @@
 import React from "react";
-import Footer from "../../components/Footer";
 import { Link, useSearchParams } from "react-router";
+import Footer from "../../components/Footer";
 
-import PrelaunchNavbar from "../../components/PrelaunchNavbar";
+import ExampleActionCardList from "../../components/ExampleActionCardList";
 import FAQExpandable from "../../components/FAQExpandable";
 import MemberContract from "../../components/MemberContract";
-import ExampleActionCardList from "../../components/ExampleActionCardList";
+import PrelaunchNavbar from "../../components/PrelaunchNavbar";
 
 const FAQPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -235,8 +235,8 @@ const FAQPage: React.FC = () => {
 
               <p>
                 Otherwise, a member who misses all assigned non-optional actions
-                for 3 weeks in a row will have their contract suspended and
-                will be unable to participate in Alliance governance.
+                for 3 weeks in a row will have their contract suspended and will
+                be unable to participate in Alliance governance.
               </p>
 
               <p>

@@ -1,4 +1,13 @@
-import { Allow, IsDefined, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsDefined, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Check,
   Column,
@@ -7,17 +16,8 @@ import {
   ManyToMany,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { User } from 'src/user/entities/user.entity';
-import { Type } from 'class-transformer';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
-import type { Relation } from 'src/utils/Repository';
-import { CommunityInvite } from './community-invite.entity';
+} from "typeorm";
+import { CommunityInvite } from "./community-invite.entity";
 
 @Entity()
 @Check(
@@ -25,11 +25,11 @@ import { CommunityInvite } from './community-invite.entity';
   '("public" = false AND "allowMemberInvites" = false AND "allowStaffAssignments" = false) OR ("maxCapacity" IS NOT NULL)',
 )
 @Check(
-  'chk_public_requires_member_invites',
+  "chk_public_requires_member_invites",
   '("public" = false) OR ("allowMemberInvites" = true)',
 )
 @Check(
-  'chk_public_requires_staff_assignments',
+  "chk_public_requires_staff_assignments",
   '("public" = false) OR ("allowStaffAssignments" = true)',
 )
 export class Community {
@@ -82,7 +82,7 @@ export class Community {
   @Allow()
   allowStaffAssignments: boolean;
 
-  @Column({ type: 'int', nullable: true, default: 10 })
+  @Column({ type: "int", nullable: true, default: 10 })
   @ApiProperty({ type: Number, nullable: true, default: 10 })
   @IsOptional()
   maxCapacity: number | null;

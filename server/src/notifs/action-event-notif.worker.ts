@@ -1,36 +1,36 @@
 // action-event-notif.worker.ts
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ActionsService } from 'src/actions/actions.service';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ActionsService } from "src/actions/actions.service";
 import {
   cohortNotifiesRecipientPersonally,
   ReminderCohortType,
-} from 'src/actions/entities/reminder-group.entity';
-import { EmailStatus } from 'src/mail/mail.entity';
-import { MailService, processKeywordReplacements } from 'src/mail/mail.service';
-import { MmsService } from 'src/mms/mms.service';
-import { PushService } from 'src/push/push.service';
+} from "src/actions/entities/reminder-group.entity";
+import { EmailStatus } from "src/mail/mail.entity";
+import { MailService, processKeywordReplacements } from "src/mail/mail.service";
+import { MmsService } from "src/mms/mms.service";
+import { PushService } from "src/push/push.service";
 import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_push,
   userActionNotifsEnabled_text,
-} from 'src/user/user.utils';
-import { DataSource, QueryFailedError, type Repository } from 'typeorm';
+} from "src/user/user.utils";
+import { DataSource, QueryFailedError, type Repository } from "typeorm";
 import {
   ActionEventReminderService,
   groupTaskScopeActionIds,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
   tasksNotYetNotified,
-} from './action-event-reminder.service';
-import { NotificationPlan } from './dto/notification-plan.dto';
+} from "./action-event-reminder.service";
+import { NotificationPlan } from "./dto/notification-plan.dto";
 import {
   ActionEventNotif,
   ActionEventNotifType,
-} from './entities/action-event-notif.entity';
-import { LOCK_KEYS } from './lock-keys';
-import { withPgAdvisoryLock } from './lock-utils';
-import { generateCIDForNotif } from './notif-utils';
+} from "./entities/action-event-notif.entity";
+import { LOCK_KEYS } from "./lock-keys";
+import { withPgAdvisoryLock } from "./lock-utils";
+import { generateCIDForNotif } from "./notif-utils";
 
 export type UncompletedTaskSummary = {
   id: number;
@@ -55,12 +55,12 @@ export class ActionEventNotifWorker {
     private readonly pushService: PushService,
   ) {}
 
-  @Cron('*/3 * * * *')
+  @Cron("*/3 * * * *")
   async dispatchDueNotifs() {
     if (
       !(
-        process.env.NODE_ENV === 'production' ||
-        process.env.SEND_DEV_NOTIFS === '1'
+        process.env.NODE_ENV === "production" ||
+        process.env.SEND_DEV_NOTIFS === "1"
       )
     ) {
       return;
@@ -87,7 +87,7 @@ export class ActionEventNotifWorker {
     );
 
     if (ran === null) {
-      this.logger.log('processOne skipped bc of lock');
+      this.logger.log("processOne skipped bc of lock");
     }
   }
 
@@ -134,7 +134,7 @@ export class ActionEventNotifWorker {
         uncompletedTasks.reduce(
           (acc, task) => acc + (task.timeEstimate ?? 0),
           0,
-        ) + ' minutes',
+        ) + " minutes",
     });
   }
 
@@ -223,7 +223,7 @@ export class ActionEventNotifWorker {
         {
           userId: plan.user.id,
           body: pushMessage,
-          screen: '/',
+          screen: "/",
           idempotencyKey: plan.group.id.toString(),
         },
       );

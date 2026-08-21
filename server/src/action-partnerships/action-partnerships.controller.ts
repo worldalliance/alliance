@@ -9,29 +9,29 @@ import {
   ParseIntPipe,
   Post,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { ThrottlerGuard } from '@nestjs/throttler';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { Public } from 'src/auth/public.decorator';
-import { ACTION_PARTNERSHIP_RESPONSE_THROTTLE } from 'src/auth/signup-throttle.config';
-import { OnlyThrottle } from 'src/utils/throttle';
-import { ActionPartnershipsService } from './action-partnerships.service';
+} from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { ThrottlerGuard } from "@nestjs/throttler";
+import { AdminGuard } from "src/auth/guards/admin.guard";
+import { Public } from "src/auth/public.decorator";
+import { ACTION_PARTNERSHIP_RESPONSE_THROTTLE } from "src/auth/signup-throttle.config";
+import { OnlyThrottle } from "src/utils/throttle";
+import { ActionPartnershipsService } from "./action-partnerships.service";
 import {
   ActionPartnershipNoteDto,
   ActionPartnershipResponseDto,
   CreateActionPartnershipNoteDto,
   CreateActionPartnershipResponseDto,
   CreateActionPartnershipResponseResultDto,
-} from './dto/action-partnership.dto';
+} from "./dto/action-partnership.dto";
 
-@Controller('action-partnerships')
+@Controller("action-partnerships")
 export class ActionPartnershipsController {
   constructor(
     private readonly actionPartnershipsService: ActionPartnershipsService,
   ) {}
 
-  @Post('responses')
+  @Post("responses")
   @Public()
   @UseGuards(ThrottlerGuard)
   @OnlyThrottle(ACTION_PARTNERSHIP_RESPONSE_THROTTLE)
@@ -44,7 +44,7 @@ export class ActionPartnershipsController {
     return new CreateActionPartnershipResponseResultDto();
   }
 
-  @Get('responses')
+  @Get("responses")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionPartnershipResponseDto, isArray: true })
   async findAllResponsesAdmin(): Promise<ActionPartnershipResponseDto[]> {
@@ -55,11 +55,11 @@ export class ActionPartnershipsController {
     );
   }
 
-  @Post('responses/:id/notes')
+  @Post("responses/:id/notes")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ActionPartnershipNoteDto })
   async createNoteAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: CreateActionPartnershipNoteDto,
   ): Promise<ActionPartnershipNoteDto> {
     return new ActionPartnershipNoteDto(
@@ -67,11 +67,11 @@ export class ActionPartnershipsController {
     );
   }
 
-  @Delete('responses/:id')
+  @Delete("responses/:id")
   @UseGuards(AdminGuard)
   @ApiOkResponse()
   async deleteResponseAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
   ): Promise<void> {
     await this.actionPartnershipsService.deleteResponseAdmin(id);
   }

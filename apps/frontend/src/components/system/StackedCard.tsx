@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
 import type { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import Card from "@alliance/sharedweb/ui/Card";
+import type { ReactNode } from "react";
 
 interface StackedCardProps {
   top: ReactNode;

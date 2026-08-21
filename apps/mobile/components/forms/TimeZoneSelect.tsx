@@ -1,12 +1,11 @@
-import React from "react";
-import { ScrollView, TextInput, TouchableOpacity, View } from "react-native";
-import { ChevronDown, Clock } from "lucide-react-native";
 import { useTimeZoneSelect } from "@alliance/shared/forms/timeZoneSelect";
-import { getTimeZone } from "react-native-localize";
-import FormModal from "./FormModal";
 import { cn } from "@alliance/shared/styles/util";
+import { ChevronDown, Clock } from "lucide-react-native";
+import { ScrollView, TextInput, TouchableOpacity, View } from "react-native";
+import { getTimeZone } from "react-native-localize";
 import { colors } from "../../lib/style/colors";
 import Text, { FontWeight } from "../system/Text";
+import FormModal from "./FormModal";
 
 type Props = {
   value?: string;

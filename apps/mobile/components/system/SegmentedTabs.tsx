@@ -1,7 +1,6 @@
-import React from "react";
-import { View, TouchableOpacity } from "react-native";
-import Text, { FontWeight } from "./Text";
 import { cn } from "@alliance/shared/styles/util";
+import { TouchableOpacity, View } from "react-native";
+import Text, { FontWeight } from "./Text";
 
 export type SegmentedTabsProps<T extends string> = {
   tabs: readonly T[];

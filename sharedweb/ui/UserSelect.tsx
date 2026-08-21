@@ -38,7 +38,7 @@ const UserSelect: React.FC<UserSelectProps> = ({
     const term = filterQuery.trim().toLowerCase();
     if (!term) return selectedUsers;
     return selectedUsers.filter((user) =>
-      `${user.name ?? ""}`.toLowerCase().includes(term)
+      `${user.name ?? ""}`.toLowerCase().includes(term),
     );
   }, [selectedUsers, filterQuery]);
 
@@ -82,8 +82,8 @@ const UserSelect: React.FC<UserSelectProps> = ({
   const placeholder = loading
     ? "Loading users…"
     : canSelectMore
-    ? "Search by name"
-    : "Remove current selection to choose another";
+      ? "Search by name"
+      : "Remove current selection to choose another";
 
   return (
     <div className="relative min-h-20">
@@ -166,7 +166,9 @@ const UserSelect: React.FC<UserSelectProps> = ({
           >
             <div className="flex items-center gap-x-2 min-w-0">
               <AvatarProfile pfp={user.profilePicture} size="medium" />
-              <p className="font-medium truncate">{user.name ?? `User #${user.id}`}</p>
+              <p className="font-medium truncate">
+                {user.name ?? `User #${user.id}`}
+              </p>
             </div>
             <button
               type="button"
@@ -198,7 +200,7 @@ export const useSelectableUserIds = () => {
           id: user.id,
           name: user.displayName,
           profilePicture: user.profilePicture,
-        })) ?? []
+        })) ?? [],
       );
     });
   }, []);

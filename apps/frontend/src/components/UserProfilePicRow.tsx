@@ -1,8 +1,8 @@
 import { ProfileDto } from "@alliance/shared/client";
 import {
-  AvatarProfile,
   AvatarGroup,
   AvatarGroupCount,
+  AvatarProfile,
 } from "@alliance/sharedweb/ui/Avatar";
 import { useState } from "react";
 import { href } from "react-router";

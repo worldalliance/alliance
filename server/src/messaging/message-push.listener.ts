@@ -1,15 +1,15 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
-import { CreatePushMessage, PushService } from 'src/push/push.service';
-import { conversationUrl } from 'src/search/approutes';
-import { DetachedWorkTracker } from 'src/utils/detached-work';
-import { Repository } from 'typeorm';
-import { MessageDto } from './dto/messaging.dto';
-import { Conversation, ConversationType } from './entities/conversation.entity';
-import { Participant } from './entities/participant.entity';
-import { MessagingEvents } from './messaging.events';
-import { MessagingGateway } from './messaging.gateway';
+import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { InjectRepository } from "@nestjs/typeorm";
+import { CreatePushMessage, PushService } from "src/push/push.service";
+import { conversationUrl } from "src/search/approutes";
+import { DetachedWorkTracker } from "src/utils/detached-work";
+import { Repository } from "typeorm";
+import { MessageDto } from "./dto/messaging.dto";
+import { Conversation, ConversationType } from "./entities/conversation.entity";
+import { Participant } from "./entities/participant.entity";
+import { MessagingEvents } from "./messaging.events";
+import { MessagingGateway } from "./messaging.gateway";
 
 @Injectable()
 export class MessagePushListener implements OnModuleDestroy {
@@ -118,8 +118,8 @@ export class MessagePushListener implements OnModuleDestroy {
     const messagePreview = message.body?.trim()
       ? message.body.trim()
       : hasAttachments
-        ? 'Sent an image'
-        : '';
+        ? "Sent an image"
+        : "";
 
     if (conversation.type === ConversationType.Direct) {
       return this.truncate(`${senderName}: ${messagePreview}`, 100);
@@ -133,6 +133,6 @@ export class MessagePushListener implements OnModuleDestroy {
 
   private truncate(text: string, maxLength: number): string {
     if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength - 1) + '…';
+    return text.slice(0, maxLength - 1) + "…";
   }
 }

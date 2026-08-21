@@ -1,13 +1,13 @@
-import React, { useEffect, useRef } from "react";
-import { geoOrthographic, geoPath, select, drag, zoom, timer } from "d3";
 import type {
-  Selection,
-  GeoProjection,
+  D3DragEvent,
   GeoPath,
   GeoPermissibleObjects,
+  GeoProjection,
+  Selection,
   Timer,
-  D3DragEvent,
 } from "d3";
+import { drag, geoOrthographic, geoPath, select, timer, zoom } from "d3";
+import React, { useEffect, useRef } from "react";
 import world from "./world";
 
 interface Coordinate {

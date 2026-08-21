@@ -1,7 +1,7 @@
 import type { RangeField } from "@alliance/common/forms/form-schema";
-import { FieldWrapper } from "./FieldWrapper";
-import { FieldLabelEditor } from "./FieldLabelEditor";
 import { RequiredToggle } from "./CommonControls";
+import { FieldLabelEditor } from "./FieldLabelEditor";
+import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
 
 export function EditableRangeField({

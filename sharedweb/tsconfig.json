@@ -10,11 +10,7 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "noEmit": true,
+    "noEmit": true
   },
-  "include": [
-    "lib",
-    "ui",
-    "forms"
-  ]
+  "include": ["lib", "ui", "forms"]
 }

@@ -1,4 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -7,37 +12,32 @@ import {
   OneToOne,
   PrimaryGeneratedColumn,
   Unique,
-} from 'typeorm';
-import { Notification } from '../../notifs/entities/notification.entity';
-import { User } from './user.entity';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
+} from "typeorm";
+import { Notification } from "../../notifs/entities/notification.entity";
+import { User } from "./user.entity";
 export enum FriendStatus {
-  Pending = 'pending',
-  Accepted = 'accepted',
-  Declined = 'declined',
-  None = 'none',
+  Pending = "pending",
+  Accepted = "accepted",
+  Declined = "declined",
+  None = "none",
 }
 
 @Entity()
-@Unique(['requester', 'addressee']) // a user can only request once per counterpart
+@Unique(["requester", "addressee"]) // a user can only request once per counterpart
 export class Friend {
   // Fields
 
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'enum', enum: FriendStatus, default: FriendStatus.None })
-  @ApiProperty({ enum: FriendStatus, enumName: 'FriendStatus' })
+  @Column({ type: "enum", enum: FriendStatus, default: FriendStatus.None })
+  @ApiProperty({ enum: FriendStatus, enumName: "FriendStatus" })
   status: FriendStatus;
 
   @CreateDateColumnTz()
   createdAt: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   acceptedAt: Date | null;
 
   @UpdateDateColumnTz()
@@ -47,20 +47,20 @@ export class Friend {
 
   @ManyToOne(() => User, (user) => user.sentFriendRequests, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   requester?: Relation<User>;
 
   @ManyToOne(() => User, (user) => user.receivedFriendRequests, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   addressee?: Relation<User>;
 
   @OneToOne(() => Notification, {
     cascade: true,
     nullable: true,
-    onDelete: 'SET NULL',
+    onDelete: "SET NULL",
   })
   @JoinColumn()
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
@@ -69,7 +69,7 @@ export class Friend {
   @OneToOne(() => Notification, {
     cascade: true,
     nullable: true,
-    onDelete: 'SET NULL',
+    onDelete: "SET NULL",
   })
   @JoinColumn()
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating

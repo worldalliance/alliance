@@ -1,7 +1,7 @@
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import { formatAggregateValue } from "@alliance/shared/lib/actionAggregates";
-import CompletedBar from "./CompletedBar";
 import { completedBarPercentage } from "@alliance/shared/lib/utils";
+import CompletedBar from "./CompletedBar";
 
 export interface AggregateProgressBarBlockProps {
   view: AggregateViewSchema;

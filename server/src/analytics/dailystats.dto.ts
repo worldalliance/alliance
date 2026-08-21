@@ -1,16 +1,16 @@
-import { PickType } from '@nestjs/swagger';
-import { DailyStatsRecord } from './dailystats.entity';
+import { PickType } from "@nestjs/swagger";
+import { DailyStatsRecord } from "./dailystats.entity";
 
 export class DailyStatsDto extends PickType(DailyStatsRecord, [
-  'id',
-  'dayId',
-  'date',
-  'signedMembers',
-  'suspendedMembers',
-  'actionsCompleted',
-  'anonFormSubmissions',
-  'invitesCreated',
-  'invitesAccepted',
+  "id",
+  "dayId",
+  "date",
+  "signedMembers",
+  "suspendedMembers",
+  "actionsCompleted",
+  "anonFormSubmissions",
+  "invitesCreated",
+  "invitesAccepted",
 ] as const) {
   constructor(input: DailyStatsRecord) {
     super();

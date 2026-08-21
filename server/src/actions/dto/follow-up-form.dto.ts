@@ -1,18 +1,18 @@
-import { ApiPropertyOptional, PartialType, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsOptional } from 'class-validator';
-import { FollowUpForm } from '../entities/follow-up-form.entity';
-import { Form } from 'src/tasks/entities/form.entity';
+import { ApiPropertyOptional, PartialType, PickType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsOptional } from "class-validator";
+import { Form } from "src/tasks/entities/form.entity";
+import { FollowUpForm } from "../entities/follow-up-form.entity";
 
 export class FollowUpFormDto extends PickType(FollowUpForm, [
-  'id',
-  'name',
-  'startDate',
-  'endDate',
-  'instructions',
-  'cohortExpression',
-  'actionId',
-  'formId',
+  "id",
+  "name",
+  "startDate",
+  "endDate",
+  "instructions",
+  "cohortExpression",
+  "actionId",
+  "formId",
 ]) {
   @ApiPropertyOptional({ type: () => Form })
   @IsOptional()
@@ -34,22 +34,22 @@ export class FollowUpFormDto extends PickType(FollowUpForm, [
 }
 
 export class CreateFollowUpFormDto extends PickType(FollowUpForm, [
-  'actionId',
-  'formId',
-  'startDate',
-  'endDate',
-  'name',
-  'instructions',
-  'cohortExpression',
+  "actionId",
+  "formId",
+  "startDate",
+  "endDate",
+  "name",
+  "instructions",
+  "cohortExpression",
 ]) {}
 
 export class UpdateFollowUpFormDto extends PartialType(
   PickType(FollowUpForm, [
-    'name',
-    'startDate',
-    'endDate',
-    'formId',
-    'instructions',
-    'cohortExpression',
+    "name",
+    "startDate",
+    "endDate",
+    "formId",
+    "instructions",
+    "cohortExpression",
   ]),
 ) {}

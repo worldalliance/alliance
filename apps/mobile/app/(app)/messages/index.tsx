@@ -1,3 +1,5 @@
+import { router } from "expo-router";
+import { Plus, Search } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import {
   RefreshControl,
@@ -6,9 +8,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { router } from "expo-router";
-import { Plus, Search } from "lucide-react-native";
 import ConversationListItem from "../../../components/messages/ConversationListItem";
+import { ScreenWithLoading } from "../../../components/system/ScreenWithLoading";
+import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../../components/system/Text";
 import { useAuth } from "../../../lib/AuthContext";
 import {
@@ -18,8 +20,6 @@ import {
   getPendingInvites,
   useConversations,
 } from "../../../lib/messages";
-import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
-import { ScreenWithLoading } from "../../../components/system/ScreenWithLoading";
 
 export default function MessagesScreen() {
   const { user } = useAuth();

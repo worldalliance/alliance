@@ -1,7 +1,6 @@
-import React from "react";
 import { View } from "react-native";
-import Text from "./system/Text";
 import ProfileImage from "./ProfileImage";
+import Text from "./system/Text";
 
 export const UserProfilePicRow = ({
   users,
@@ -13,7 +12,7 @@ export const UserProfilePicRow = ({
   }[];
 }) => {
   const unique = users.filter(
-    (item, pos, self) => self.findIndex((t) => t.id === item.id) === pos
+    (item, pos, self) => self.findIndex((t) => t.id === item.id) === pos,
   );
   const displayUsers = unique.slice(0, 3);
   const remaining = unique.length - 3;

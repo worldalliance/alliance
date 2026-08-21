@@ -1,3 +1,7 @@
+import { PostDto, forumFindAllPosts } from "@alliance/shared/client";
+import { formatTime } from "@alliance/shared/lib/utils";
+import { cn } from "@alliance/shared/styles/util";
+import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -6,15 +10,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { router } from "expo-router";
-import { PostDto, forumFindAllPosts } from "@alliance/shared/client";
-import { formatTime } from "@alliance/shared/lib/utils";
 import ProfileImage from "../../../components/ProfileImage";
-import Text, { FontWeight } from "../../../components/system/Text";
-import { colors } from "../../../lib/style/colors";
-import { cn } from "@alliance/shared/styles/util";
 import PinnedIcon from "../../../components/system/PinnedIcon";
 import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
+import Text, { FontWeight } from "../../../components/system/Text";
+import { colors } from "../../../lib/style/colors";
 
 export default function ForumScreen() {
   const [posts, setPosts] = useState<PostDto[]>([]);

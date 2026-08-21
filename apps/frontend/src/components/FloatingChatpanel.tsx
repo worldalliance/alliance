@@ -3,13 +3,13 @@ import {
   conversationGetCommunityConversations,
   conversationMarkRead,
 } from "@alliance/shared/client";
-import { useEffect, useRef, useState } from "react";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
-import ConversationDetailPanel from "./ConversationDetailPanel";
-import useLiveConvoMessages from "../pages/app/messages";
-import { Expand, Minus } from "lucide-react";
-import { href, Link } from "react-router";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
+import { Expand, Minus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { href, Link } from "react-router";
+import useLiveConvoMessages from "../pages/app/messages";
+import ConversationDetailPanel from "./ConversationDetailPanel";
 
 const FloatingChatPanel = ({
   communityId,
@@ -19,7 +19,7 @@ const FloatingChatPanel = ({
   onClose: () => void;
 }) => {
   const [conversation, setConversation] = useState<ConversationDto | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);

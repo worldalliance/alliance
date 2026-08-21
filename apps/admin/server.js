@@ -8,7 +8,7 @@ const viteDevServer = ["production", "staging"].includes(process.env.NODE_ENV)
   : await import("vite").then((vite) =>
       vite.createServer({
         server: { middlewareMode: true },
-      })
+      }),
     );
 
 const reactRouterHandler = createRequestHandler({
@@ -29,7 +29,7 @@ if (viteDevServer) {
   // Vite fingerprints its assets so we can cache forever.
   app.use(
     "/assets",
-    express.static("build/client/assets", { immutable: true, maxAge: "1y" })
+    express.static("build/client/assets", { immutable: true, maxAge: "1y" }),
   );
 }
 
@@ -44,5 +44,5 @@ app.all("{*splat}", reactRouterHandler);
 
 const port = process.env.PORT || 3000;
 app.listen(port, () =>
-  console.log(`Express server listening at http://localhost:${port}`)
+  console.log(`Express server listening at http://localhost:${port}`),
 );

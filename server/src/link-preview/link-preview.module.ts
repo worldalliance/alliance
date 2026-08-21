@@ -1,7 +1,7 @@
-import { Module } from '@nestjs/common';
-import { UserThrottlerGuard } from 'src/utils/throttle';
-import { LinkPreviewController } from './link-preview.controller';
-import { LinkPreviewService } from './link-preview.service';
+import { Module } from "@nestjs/common";
+import { UserThrottlerGuard } from "src/utils/throttle";
+import { LinkPreviewController } from "./link-preview.controller";
+import { LinkPreviewService } from "./link-preview.service";
 
 @Module({
   controllers: [LinkPreviewController],

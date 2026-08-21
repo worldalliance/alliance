@@ -1,9 +1,9 @@
-import type { PaginatedList } from '@alliance/common/pagination';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import type { PaginatedList } from "@alliance/common/pagination";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsInt, IsOptional, Max, Min } from "class-validator";
 
-export type { PaginatedList } from '@alliance/common/pagination';
+export type { PaginatedList } from "@alliance/common/pagination";
 
 export class PaginationQueryDto {
   @ApiPropertyOptional({ default: 1 })

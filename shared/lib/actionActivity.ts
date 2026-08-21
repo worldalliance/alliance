@@ -1,6 +1,6 @@
 import {
   actionActivityIsVisibleInFeed,
-  FeedActionActivity
+  FeedActionActivity,
 } from "@alliance/common/actionActivity";
 import { ActionActivityDto } from "@alliance/shared/client";
 

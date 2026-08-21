@@ -1,6 +1,5 @@
-import React from "react";
-import { View } from "react-native";
 import { ActionDto } from "@alliance/shared/client";
+import { View } from "react-native";
 import Card from "./system/Card";
 import Text, { FontFamily, FontWeight } from "./system/Text";
 

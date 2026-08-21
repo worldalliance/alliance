@@ -1,13 +1,13 @@
-import { AnalyticsEvent } from '@alliance/common/analytics';
-import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { InjectRepository } from '@nestjs/typeorm';
-import crypto from 'crypto';
-import { PostHog } from 'posthog-node';
-import { User } from 'src/user/entities/user.entity';
-import type { Repository } from 'typeorm';
-import { captureEvent } from '../utils/posthog';
-import type { MailgunWebhookBody } from './mailgun';
+import { AnalyticsEvent } from "@alliance/common/analytics";
+import { BadRequestException, Body, Controller, Post } from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { InjectRepository } from "@nestjs/typeorm";
+import crypto from "crypto";
+import { PostHog } from "posthog-node";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "typeorm";
+import { captureEvent } from "../utils/posthog";
+import type { MailgunWebhookBody } from "./mailgun";
 
 function verifyMailgunSignature(sig: {
   timestamp: string;
@@ -15,9 +15,9 @@ function verifyMailgunSignature(sig: {
   signature: string;
 }) {
   const hmac = crypto
-    .createHmac('sha256', process.env.MAILGUN_SIGNING_KEY!)
+    .createHmac("sha256", process.env.MAILGUN_SIGNING_KEY!)
     .update(sig.timestamp + sig.token)
-    .digest('hex');
+    .digest("hex");
 
   const withinWindow =
     Math.abs(Date.now() / 1000 - Number(sig.timestamp)) < 600; // 10 minutes
@@ -29,54 +29,54 @@ function verifyMailgunSignature(sig: {
 
 function toPostHogEvent(event: string): AnalyticsEvent | string {
   switch (event) {
-    case 'delivered':
+    case "delivered":
       return AnalyticsEvent.EmailDelivered;
-    case 'opened':
+    case "opened":
       return AnalyticsEvent.EmailOpened;
-    case 'clicked':
+    case "clicked":
       return AnalyticsEvent.EmailClicked;
-    case 'bounced':
+    case "bounced":
       return AnalyticsEvent.EmailBounced;
-    case 'complained':
+    case "complained":
       return AnalyticsEvent.EmailComplained;
-    case 'unsubscribed':
+    case "unsubscribed":
       return AnalyticsEvent.EmailUnsubscribed;
     default:
       return `email${event}`;
   }
 }
 
-@Controller('/mailgun')
+@Controller("/mailgun")
 export class MailgunWebhookController {
   private readonly posthog: PostHog;
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {
-    if (process.env.NODE_ENV === 'test') return;
+    if (process.env.NODE_ENV === "test") return;
     this.posthog = new PostHog(process.env.POSTHOG_KEY!, {
-      host: 'https://us.i.posthog.com',
+      host: "https://us.i.posthog.com",
     });
   }
 
-  @Post('/handle-event')
+  @Post("/handle-event")
   @ApiOkResponse()
   async handle(@Body() body: MailgunWebhookBody): Promise<void> {
-    if (process.env.NODE_ENV === 'test') return;
+    if (process.env.NODE_ENV === "test") return;
 
     if (!body?.signature || !verifyMailgunSignature(body.signature)) {
-      throw new BadRequestException('invalid signature');
+      throw new BadRequestException("invalid signature");
     }
 
-    const e = body['event-data'];
+    const e = body["event-data"];
     const event = toPostHogEvent(e.event);
-    const email = e.recipient ?? 'unknown';
+    const email = e.recipient ?? "unknown";
     const phTimestamp = e.timestamp ? new Date(e.timestamp * 1000) : undefined;
 
     const user = await this.userRepository.findOneBy({ email });
     const distinctId = user?.id.toString() ?? email;
 
-    const isProduction = e.tags?.includes('production');
+    const isProduction = e.tags?.includes("production");
     if (!isProduction) {
       return;
     }
@@ -87,7 +87,7 @@ export class MailgunWebhookController {
       subject: e.message?.headers?.subject,
       mailgunId: e.id,
       headers: e.message?.headers,
-      messageId: e.message?.headers?.['message-id'],
+      messageId: e.message?.headers?.["message-id"],
     };
 
     captureEvent({

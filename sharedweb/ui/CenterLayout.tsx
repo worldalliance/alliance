@@ -1,5 +1,5 @@
-import BottomSpacer from "./BottomSpacer";
 import { cn } from "@alliance/shared/styles/util";
+import BottomSpacer from "./BottomSpacer";
 
 export interface CenterLayoutProps extends React.PropsWithChildren {
   className?: string;

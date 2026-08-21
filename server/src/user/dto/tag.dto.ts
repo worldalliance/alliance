@@ -1,16 +1,16 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsNumber } from 'class-validator';
-import { Tag } from '../entities/tag.entity';
-import { ProfileDto } from './user.dto';
+import { ApiProperty, PickType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsNumber } from "class-validator";
+import { Tag } from "../entities/tag.entity";
+import { ProfileDto } from "./user.dto";
 
 export class TagDto extends PickType(Tag, [
-  'id',
-  'name',
-  'description',
-  'publicDisplayName',
-  'createdAt',
-  'updatedAt',
+  "id",
+  "name",
+  "description",
+  "publicDisplayName",
+  "createdAt",
+  "updatedAt",
 ] as const) {
   @Allow()
   @ApiProperty({ type: ProfileDto, isArray: true })
@@ -30,12 +30,12 @@ export class TagDto extends PickType(Tag, [
 }
 
 export class TagSummaryDto extends PickType(Tag, [
-  'id',
-  'name',
-  'description',
-  'publicDisplayName',
-  'createdAt',
-  'updatedAt',
+  "id",
+  "name",
+  "description",
+  "publicDisplayName",
+  "createdAt",
+  "updatedAt",
 ] as const) {
   constructor(tag: Tag) {
     super();
@@ -49,9 +49,9 @@ export class TagSummaryDto extends PickType(Tag, [
 }
 
 export class CreateTagDto extends PickType(TagDto, [
-  'name',
-  'description',
-  'publicDisplayName',
+  "name",
+  "description",
+  "publicDisplayName",
 ]) {}
 
 export class AddUserToTagDto {

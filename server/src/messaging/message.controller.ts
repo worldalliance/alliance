@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from '@alliance/common/analytics';
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import {
   Body,
   Controller,
@@ -10,22 +10,22 @@ import {
   Query,
   Request,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
-import type { JwtRequest } from 'src/auth/guards/jwtreq';
-import { PosthogService } from 'src/posthog/posthog.service';
-import { ConversationService } from './conversation.service';
+} from "@nestjs/common";
+import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
+import { AuthGuard } from "src/auth/guards/auth.guard";
+import type { JwtRequest } from "src/auth/guards/jwtreq";
+import { PosthogService } from "src/posthog/posthog.service";
+import { ConversationService } from "./conversation.service";
 import {
   ConversationMessagesQueryDto,
   CreateMessageDto,
   MessageDto,
-} from './dto/messaging.dto';
-import { MessageService } from './message.service';
+} from "./dto/messaging.dto";
+import { MessageService } from "./message.service";
 
-@ApiTags('messaging')
-@Controller('messaging/messages')
+@ApiTags("messaging")
+@Controller("messaging/messages")
 export class MessageController {
   constructor(
     private readonly messageService: MessageService,
@@ -33,11 +33,11 @@ export class MessageController {
     private readonly posthog: PosthogService,
   ) {}
 
-  @Get('admin/:conversationId')
+  @Get("admin/:conversationId")
   @ApiOkResponse({ type: MessageDto, isArray: true })
   @UseGuards(AdminGuard)
   async getConversationMessagesForAdmin(
-    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Param("conversationId", ParseIntPipe) conversationId: number,
     @Query() query: ConversationMessagesQueryDto,
   ): Promise<MessageDto[]> {
     return this.messageService.getConversationMessagesForAdmin(
@@ -66,11 +66,11 @@ export class MessageController {
     return message;
   }
 
-  @Get(':conversationId')
+  @Get(":conversationId")
   @ApiOkResponse({ type: MessageDto, isArray: true })
   @UseGuards(AuthGuard)
   async getMessages(
-    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Param("conversationId", ParseIntPipe) conversationId: number,
     @Query() query: ConversationMessagesQueryDto,
     @Request() req: JwtRequest,
   ): Promise<MessageDto[]> {
@@ -88,7 +88,7 @@ export class MessageController {
       userId,
     );
     if (!isParticipant) {
-      throw new ForbiddenException('You are not part of this conversation.');
+      throw new ForbiddenException("You are not part of this conversation.");
     }
   }
 }

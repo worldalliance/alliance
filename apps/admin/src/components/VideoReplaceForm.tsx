@@ -65,7 +65,10 @@ const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({
     } catch (err) {
       console.error("Failed to replace video", err);
       pushError(
-        errorMessage({ error: err, fallback: "Failed to replace video content" }),
+        errorMessage({
+          error: err,
+          fallback: "Failed to replace video content",
+        }),
       );
     } finally {
       setUploading(false);

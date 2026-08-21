@@ -1,40 +1,40 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { CommunityService } from 'src/community/community.service';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { CommunityService } from "src/community/community.service";
 import {
   hasRoomForReturningMember,
   isCommunityLedBy,
-} from 'src/community/community.utils';
-import { Community } from 'src/community/entities/community.entity';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { NotificationCategory } from 'src/notifs/entities/notification.entity';
+} from "src/community/community.utils";
+import { Community } from "src/community/entities/community.entity";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   NotifsService,
   type CreateNotifParams,
-} from 'src/notifs/notifs.service';
-import { profileUrl } from 'src/search/approutes';
+} from "src/notifs/notifs.service";
+import { profileUrl } from "src/search/approutes";
 import {
+  StoredInviteAssignmentKind,
   inviteAssignmentFromColumns,
   type StoredInviteAssignment,
-  StoredInviteAssignmentKind,
-} from 'src/share-urls/invite-assignment';
+} from "src/share-urls/invite-assignment";
 import {
   ContractEvent,
   ContractEventType,
-} from 'src/user/entities/contract-event.entity';
-import { ReferralSource, User } from 'src/user/entities/user.entity';
-import { UserService } from 'src/user/user.service';
-import { referralLabel } from 'src/user/user.utils';
-import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from 'typeorm';
+} from "src/user/entities/contract-event.entity";
+import { ReferralSource, User } from "src/user/entities/user.entity";
+import { UserService } from "src/user/user.service";
+import { referralLabel } from "src/user/user.utils";
+import { IsNull, LessThanOrEqual, MoreThan, Or, Repository } from "typeorm";
 import {
   REFERRAL_COMMUNITY_SELECTORS,
   buildNotifForLeaderWithReferrer,
   memberJoinedCommunityNotif,
   newMemberReferredNotif,
-} from './contract.utils';
-import { CreateContractDto, UpdateContractDto } from './dto/contract.dto';
-import { Contract } from './entities/contract.entity';
+} from "./contract.utils";
+import { CreateContractDto, UpdateContractDto } from "./dto/contract.dto";
+import { Contract } from "./entities/contract.entity";
 
 @Injectable()
 export class ContractService {
@@ -53,7 +53,7 @@ export class ContractService {
 
   async findAll(): Promise<Contract[]> {
     return this.contractRepository.find({
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
     });
   }
 
@@ -69,7 +69,7 @@ export class ContractService {
         endDate: Or(IsNull(), MoreThan(now)),
       },
       order: {
-        startDate: 'DESC',
+        startDate: "DESC",
       },
     });
   }
@@ -280,9 +280,9 @@ export class ContractService {
       this.notifsService.sendNotifs(notifs),
       this.eventLogService.sendMessage({
         type: EventType.ContractSigned,
-        message: [user.name, referralLabel(user), 'signed their contract :)']
+        message: [user.name, referralLabel(user), "signed their contract :)"]
           .filter(Boolean)
-          .join(' '),
+          .join(" "),
         userId: user.id,
         blob: null,
       }),
@@ -305,7 +305,7 @@ export class ContractService {
       leaderOf: true,
     });
     if (!user.hasActiveContract) {
-      throw new BadRequestException('Member does not have an active contract.');
+      throw new BadRequestException("Member does not have an active contract.");
     }
     const contractEvent = this.contractEventRepository.create({
       user,
@@ -324,7 +324,7 @@ export class ContractService {
           notifForLeader: ({ leader }) => ({
             user: leader,
             category: NotificationCategory.MemberSuspendedRemovedFromCommunity,
-            message: `${user.name} ${automatic ? 'was automatically suspended' : 'suspended their contract'} and has been removed from your group (${community.name})`,
+            message: `${user.name} ${automatic ? "was automatically suspended" : "suspended their contract"} and has been removed from your group (${community.name})`,
             webAppLocation: profileUrl(user.id),
             associatedUsers: [user],
           }),

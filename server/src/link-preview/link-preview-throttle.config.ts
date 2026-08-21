@@ -1,4 +1,4 @@
-import type { ThrottlerOptions } from '@nestjs/throttler';
+import type { ThrottlerOptions } from "@nestjs/throttler";
 
 /**
  * Registered in `ThrottlerModule.forRoot` via `ALL_THROTTLERS` and applied

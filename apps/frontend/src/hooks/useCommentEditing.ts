@@ -16,12 +16,15 @@ export interface CommentEditingResult {
 
 export function useCommentEditing(
   reply: CommentDto,
-  onUpdateReply: (id: number, content: CreateEditableContentDto) => Promise<void>
+  onUpdateReply: (
+    id: number,
+    content: CreateEditableContentDto,
+  ) => Promise<void>,
 ): CommentEditingResult {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(reply.editableContent.body);
   const [editAttachments, setEditAttachments] = useState<string[]>(
-    reply.editableContent.attachments
+    reply.editableContent.attachments,
   );
   const [isUpdating, setIsUpdating] = useState(false);
 

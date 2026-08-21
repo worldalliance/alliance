@@ -1,5 +1,5 @@
-import React from "react";
 import { cn } from "@alliance/shared/styles/util";
+import React from "react";
 
 interface SpinnerProps {
   size?: "small" | "medium" | "large";
@@ -24,7 +24,7 @@ const Spinner: React.FC<SpinnerProps> = ({
           "inline",
           sizeClass[size],
           "text-zinc-200 animate-spin",
-          color
+          color,
         )}
         viewBox="0 0 100 101"
         fill="none"

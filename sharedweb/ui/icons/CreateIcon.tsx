@@ -1,5 +1,5 @@
-import { DefaultIconProps, sizeClass } from "./icons";
 import { cn } from "@alliance/shared/styles/util";
+import { DefaultIconProps, sizeClass } from "./icons";
 
 const CreateIcon = ({ size = "small", fill = "black" }: DefaultIconProps) => {
   return (

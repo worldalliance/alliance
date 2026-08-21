@@ -1,3 +1,10 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -5,71 +12,64 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   Unique,
-} from 'typeorm';
-import { Conversation } from './conversation.entity';
-import type { Relation } from 'src/utils/Repository';
-import { User } from 'src/user/entities/user.entity';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Message } from './message.entity';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
+} from "typeorm";
+import { Conversation } from "./conversation.entity";
+import { Message } from "./message.entity";
 
 export enum ParticipantRole {
-  Admin = 'admin',
-  Member = 'member',
-  Owner = 'owner',
+  Admin = "admin",
+  Member = "member",
+  Owner = "owner",
 }
 
 export enum ParticipantState {
-  Invited = 'invited',
-  Joined = 'joined',
+  Invited = "invited",
+  Joined = "joined",
 }
 
 @Entity()
-@Unique(['conversation', 'user'])
+@Unique(["conversation", "user"])
 export class Participant {
   @PrimaryGeneratedColumn()
   id: number;
 
   @ManyToOne(() => Conversation, (conversation) => conversation.participants, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   conversation: Relation<Conversation>;
 
   @ManyToOne(() => User, (user) => user.participants, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: "userId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
-  @Column({ type: 'enum', enum: ParticipantRole, enumName: 'ParticipantRole' })
-  @ApiProperty({ enum: ParticipantRole, enumName: 'ParticipantRole' })
+  @Column({ type: "enum", enum: ParticipantRole, enumName: "ParticipantRole" })
+  @ApiProperty({ enum: ParticipantRole, enumName: "ParticipantRole" })
   role: ParticipantRole;
 
-  @ManyToOne(() => Message, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'lastReadMessageId' })
+  @ManyToOne(() => Message, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "lastReadMessageId" })
   @ApiPropertyOptional({ type: () => Message })
   lastReadMessage?: Relation<Message>;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: ParticipantState,
-    enumName: 'ParticipantState',
+    enumName: "ParticipantState",
     default: ParticipantState.Joined,
   })
-  @ApiProperty({ enum: ParticipantState, enumName: 'ParticipantState' })
+  @ApiProperty({ enum: ParticipantState, enumName: "ParticipantState" })
   state: ParticipantState;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: "timestamptz" })
   joinedAt: Date;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: "boolean", default: false })
   @ApiProperty({ type: Boolean })
   userHidden: boolean;
 

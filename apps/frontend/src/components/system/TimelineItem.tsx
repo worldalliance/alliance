@@ -1,12 +1,12 @@
 import { ActionDto, ActionUpdateDto } from "@alliance/shared/client";
-import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
-import ActionCompletedBarWithInfo from "../../pages/app/ActionCompletedBarWithInfo";
-import Card from "@alliance/sharedweb/ui/Card";
-import { cn } from "@alliance/shared/styles/util";
 import useActivities, {
   ActivityList,
 } from "@alliance/shared/lib/useActivities";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
+import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
+import Card from "@alliance/sharedweb/ui/Card";
+import ActionCompletedBarWithInfo from "../../pages/app/ActionCompletedBarWithInfo";
 
 interface TimelineItemProps {
   highlighted?: boolean;

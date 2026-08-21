@@ -3,8 +3,8 @@ import {
   ApiPropertyOptional,
   OmitType,
   PickType,
-} from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+} from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   ArrayNotEmpty,
   IsArray,
@@ -16,21 +16,21 @@ import {
   Max,
   MaxLength,
   Min,
-} from 'class-validator';
-import { CommunityDto } from 'src/community/dto/community.dto';
-import { ProfileDto } from 'src/user/dto/user.dto';
+} from "class-validator";
+import { CommunityDto } from "src/community/dto/community.dto";
+import { getImageSource } from "src/images/images.service";
+import { ProfileDto } from "src/user/dto/user.dto";
 import {
   Conversation,
   ConversationType,
-} from '../entities/conversation.entity';
-import { Message } from '../entities/message.entity';
-import { Participant, ParticipantState } from '../entities/participant.entity';
-import { getImageSource } from 'src/images/images.service';
+} from "../entities/conversation.entity";
+import { Message } from "../entities/message.entity";
+import { Participant, ParticipantState } from "../entities/participant.entity";
 
 export class MessageReferenceDto extends PickType(Message, [
-  'id',
-  'body',
-  'createdAt',
+  "id",
+  "body",
+  "createdAt",
 ]) {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)
@@ -49,11 +49,11 @@ export type MessageDtoArgs = {
 };
 
 export class MessageDto extends PickType(Message, [
-  'id',
-  'body',
-  'attachments',
-  'createdAt',
-  'deletedAt',
+  "id",
+  "body",
+  "attachments",
+  "createdAt",
+  "deletedAt",
 ]) {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)
@@ -85,9 +85,9 @@ export class MessageDto extends PickType(Message, [
 }
 
 export class ParticipantDto extends OmitType(Participant, [
-  'conversation',
-  'user',
-  'lastReadMessage',
+  "conversation",
+  "user",
+  "lastReadMessage",
 ]) {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)
@@ -115,11 +115,11 @@ export type ConversationDtoArgs = {
 };
 
 export class ConversationDto extends PickType(Conversation, [
-  'id',
-  'createdAt',
-  'updatedAt',
-  'type',
-  'title',
+  "id",
+  "createdAt",
+  "updatedAt",
+  "type",
+  "title",
 ]) {
   @ApiPropertyOptional({ type: String })
   photo?: string;
@@ -305,7 +305,7 @@ export class CreateMessageDto {
   @ApiPropertyOptional({
     type: String,
     isArray: true,
-    description: 'Image attachments encoded as data URLs or existing keys',
+    description: "Image attachments encoded as data URLs or existing keys",
   })
   @IsOptional()
   @IsArray()

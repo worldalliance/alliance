@@ -1,7 +1,7 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import type { AccountDerivedConditionKind } from '@alliance/common/forms/visible-if-formula';
-import type { Result } from '@alliance/common/result';
-import { Temporal } from '@js-temporal/polyfill';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import type { AccountDerivedConditionKind } from "@alliance/common/forms/visible-if-formula";
+import type { Result } from "@alliance/common/result";
+import { Temporal } from "@js-temporal/polyfill";
 import {
   BadRequestException,
   ForbiddenException,
@@ -10,51 +10,51 @@ import {
   Logger,
   NotFoundException,
   UnauthorizedException,
-} from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { JwtService } from '@nestjs/jwt';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { countBy } from 'es-toolkit';
-import { ActionActivity } from 'src/actions/entities/action-activity.entity';
-import { LiveActivityRegistration } from 'src/apns/entities/live-activity-registration.entity';
-import { CampaignService } from 'src/campaign/campaign.service';
-import { Campaign } from 'src/campaign/entities/campaign.entity';
-import { CommunityService } from 'src/community/community.service';
-import { getStaffAssignableSlots } from 'src/community/community.utils';
-import { Community } from 'src/community/entities/community.entity';
-import { ALL_MEMBERS_TAG_NAME } from 'src/constants';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { escapeSlackText } from 'src/eventlog/slack-format';
-import { City } from 'src/geo/city.entity';
-import { getImageSource, ImagesService } from 'src/images/images.service';
-import { MailService } from 'src/mail/mail.service';
-import { NotificationCategory } from 'src/notifs/entities/notification.entity';
+} from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { JwtService } from "@nestjs/jwt";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { countBy } from "es-toolkit";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { LiveActivityRegistration } from "src/apns/entities/live-activity-registration.entity";
+import { CampaignService } from "src/campaign/campaign.service";
+import { Campaign } from "src/campaign/entities/campaign.entity";
+import { CommunityService } from "src/community/community.service";
+import { getStaffAssignableSlots } from "src/community/community.utils";
+import { Community } from "src/community/entities/community.entity";
+import { ALL_MEMBERS_TAG_NAME } from "src/constants";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import { escapeSlackText } from "src/eventlog/slack-format";
+import { City } from "src/geo/city.entity";
+import { getImageSource, ImagesService } from "src/images/images.service";
+import { MailService } from "src/mail/mail.service";
+import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   type CreateNotifParams,
   NotifsService,
-} from 'src/notifs/notifs.service';
-import { PaymentUserDataToken } from 'src/payments/entities/payment-token.entity';
-import { Push } from 'src/push/push.entity';
-import { PushService } from 'src/push/push.service';
-import { groupUrl, profileUrl } from 'src/search/approutes';
+} from "src/notifs/notifs.service";
+import { PaymentUserDataToken } from "src/payments/entities/payment-token.entity";
+import { Push } from "src/push/push.entity";
+import { PushService } from "src/push/push.service";
+import { groupUrl, profileUrl } from "src/search/approutes";
 import {
   ShareUrl,
   ShareUrlKind,
-} from 'src/share-urls/entities/share-url.entity';
+} from "src/share-urls/entities/share-url.entity";
 import {
   inviteAssignmentColumns,
   type InviteAssignmentColumns,
   type StoredInviteAssignment,
-} from 'src/share-urls/invite-assignment';
-import { ShareUrlsService } from 'src/share-urls/share-urls.service';
-import { isForeignKeyViolation } from 'src/utils/db-errors';
-import { PaginationQueryDto } from 'src/utils/pagination.dto';
+} from "src/share-urls/invite-assignment";
+import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { isForeignKeyViolation } from "src/utils/db-errors";
+import { PaginationQueryDto } from "src/utils/pagination.dto";
 import type {
   Relations,
   Repository as TypedRepository,
-} from 'src/utils/Repository';
+} from "src/utils/Repository";
 import {
   Brackets,
   DataSource,
@@ -66,17 +66,17 @@ import {
   MoreThan,
   Not,
   type Repository,
-} from 'typeorm';
+} from "typeorm";
 import {
   getAmbassadorGoalHalfwayNotificationMessage,
   getAmbassadorGoalHalfwayNotificationTime,
-} from './ambassador-invite-goal-notification.utils';
-import { CreateAwayRangeDto, UpdateAwayRangeDto } from './dto/away-range.dto';
+} from "./ambassador-invite-goal-notification.utils";
+import { CreateAwayRangeDto, UpdateAwayRangeDto } from "./dto/away-range.dto";
 import {
   RegisterDeviceDto,
   RegisterLiveActivityPushToStartTokenDto,
   RegisterLiveActivityUpdateTokenDto,
-} from './dto/device.dto';
+} from "./dto/device.dto";
 import {
   AmbassadorInviteDashboard,
   AmbassadorInviteGoalWithStats,
@@ -95,41 +95,41 @@ import {
   UpdateAmbassadorInviteGoalDto,
   UpdateAmbassadorProgramMemberDto,
   UpsertAmbassadorProgramMemberDto,
-} from './dto/invite.dto';
-import { CreateTagDto } from './dto/tag.dto';
+} from "./dto/invite.dto";
+import { CreateTagDto } from "./dto/tag.dto";
 import {
   AssignGroupsDto,
   FriendStatusDtoArgs,
   MyVisibilityContext,
   UpdateProfileDto,
   UserCityCount,
-} from './dto/user.dto';
-import { AmbassadorInviteGoal } from './entities/ambassador-invite-goal.entity';
-import { AmbassadorProgramInteraction } from './entities/ambassador-program-interaction.entity';
-import { AmbassadorProgramMember } from './entities/ambassador-program-member.entity';
+} from "./dto/user.dto";
+import { AmbassadorInviteGoal } from "./entities/ambassador-invite-goal.entity";
+import { AmbassadorProgramInteraction } from "./entities/ambassador-program-interaction.entity";
+import { AmbassadorProgramMember } from "./entities/ambassador-program-member.entity";
 import {
   ContractEvent,
   ContractEventType,
-} from './entities/contract-event.entity';
-import { Friend, FriendStatus } from './entities/friend.entity';
+} from "./entities/contract-event.entity";
+import { Friend, FriendStatus } from "./entities/friend.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
-} from './entities/onetime-invite.entity';
-import { Tag } from './entities/tag.entity';
+} from "./entities/onetime-invite.entity";
+import { Tag } from "./entities/tag.entity";
 import {
   UserAwayRange,
   UserAwayRangeReason,
-} from './entities/user-away-range.entity';
-import { UserDevice } from './entities/user-device.entity';
+} from "./entities/user-away-range.entity";
+import { UserDevice } from "./entities/user-device.entity";
 import {
   DEFAULT_TIME_ZONE,
   ReferralSource,
   sqlUserHasActiveContractAt,
   User,
-} from './entities/user.entity';
-import { type FriendsAcceptedPayload, UserEvents } from './user.events';
-import { referralLabel } from './user.utils';
+} from "./entities/user.entity";
+import { type FriendsAcceptedPayload, UserEvents } from "./user.events";
+import { referralLabel } from "./user.utils";
 
 export interface PWResetJwtPayload {
   sub: number;
@@ -137,8 +137,8 @@ export interface PWResetJwtPayload {
 }
 
 export type ReferrerResolution =
-  | { kind: 'user'; user: User }
-  | { kind: 'campaign'; campaign: Campaign };
+  | { kind: "user"; user: User }
+  | { kind: "campaign"; campaign: Campaign };
 
 /**
  * Which referral source a user-owned share-url attributes a signup to, keyed by
@@ -156,7 +156,7 @@ const REFERRAL_SOURCE_BY_SHARE_KIND: Record<
   [ShareUrlKind.Invite]: ReferralSource.InviteShareLink,
 };
 
-const AMBASSADOR_INVITES_URL = '/invites';
+const AMBASSADOR_INVITES_URL = "/invites";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const AMBASSADOR_GOAL_NOTIFICATION_LOOKBACK_MS = 60 * 60 * 1000;
 const AMBASSADOR_PROJECTION_DAYS = [14, 30] as const;
@@ -196,10 +196,10 @@ function ambassadorGoalEndedGroupingKey(goalId: number) {
  * UserService.resolveReferrer). See {@link UserService.resolveReferral}.
  */
 export type ReferralResolution =
-  | { kind: 'invite'; invite: OnetimeInvite }
-  | { kind: 'campaign'; campaign: Campaign }
+  | { kind: "invite"; invite: OnetimeInvite }
+  | { kind: "campaign"; campaign: Campaign }
   | {
-      kind: 'user';
+      kind: "user";
       user: User;
       shareUrl: ShareUrl | null;
       referralSource:
@@ -271,9 +271,9 @@ export class UserService {
     );
     await this.eventLogService.sendMessage({
       type: EventType.AccountCreated,
-      message: [user.name, referralLabel(user), 'created an account.']
+      message: [user.name, referralLabel(user), "created an account."]
         .filter(Boolean)
-        .join(' '),
+        .join(" "),
       userId: user.id,
       blob: null,
     });
@@ -295,7 +295,7 @@ export class UserService {
             : undefined) ?? undefined;
 
         if (data.cityId && !city) {
-          throw new BadRequestException('City not found');
+          throw new BadRequestException("City not found");
         }
 
         user.city = city;
@@ -304,7 +304,7 @@ export class UserService {
 
     const { cityId: _cityId, profilePicture, ...updateData } = data;
 
-    if (profilePicture?.startsWith('data:')) {
+    if (profilePicture?.startsWith("data:")) {
       //TODO: differentiate between file and url
       const key =
         await this.imagesService.processAndUploadProfileImage(profilePicture);
@@ -356,11 +356,11 @@ export class UserService {
     const [users, latestEvents] = await Promise.all([
       this.userRepository.find(),
       this.contractEventRepository
-        .createQueryBuilder('event')
-        .addSelect('event."userId"', 'event_user_id')
+        .createQueryBuilder("event")
+        .addSelect('event."userId"', "event_user_id")
         .distinctOn(['event."userId"'])
         .orderBy('event."userId"')
-        .addOrderBy('event.date', 'DESC')
+        .addOrderBy("event.date", "DESC")
         .getRawAndEntities(),
     ]);
 
@@ -379,10 +379,10 @@ export class UserService {
 
   async findAcceptedFriendIdsByUserId(): Promise<Map<number, number[]>> {
     const rows = await this.friendRepository
-      .createQueryBuilder('f')
-      .select('f.requesterId', 'requesterId')
-      .addSelect('f.addresseeId', 'addresseeId')
-      .where('f.status = :status', { status: FriendStatus.Accepted })
+      .createQueryBuilder("f")
+      .select("f.requesterId", "requesterId")
+      .addSelect("f.addresseeId", "addresseeId")
+      .where("f.status = :status", { status: FriendStatus.Accepted })
       .getRawMany<{ requesterId: number; addresseeId: number }>();
 
     const byUser = new Map<number, number[]>();
@@ -414,7 +414,7 @@ export class UserService {
   async findStaffDirectory(): Promise<User[]> {
     return this.userRepository.find({
       where: { staff: true },
-      order: { staffDisplayOrder: 'ASC', id: 'ASC' },
+      order: { staffDisplayOrder: "ASC", id: "ASC" },
     });
   }
 
@@ -485,15 +485,15 @@ export class UserService {
   ): Promise<ReferralResolution | null> {
     const invite = await this.findInviteByCode(code, opts?.inviteRelations);
     if (invite) {
-      return { kind: 'invite', invite };
+      return { kind: "invite", invite };
     }
     const shareUrl = await this.shareUrlsService.findByReferralSid(code);
     if (shareUrl?.campaign) {
-      return { kind: 'campaign', campaign: shareUrl.campaign };
+      return { kind: "campaign", campaign: shareUrl.campaign };
     }
     if (shareUrl?.user) {
       return {
-        kind: 'user',
+        kind: "user",
         user: shareUrl.user,
         shareUrl,
         referralSource: REFERRAL_SOURCE_BY_SHARE_KIND[shareUrl.kind],
@@ -501,12 +501,12 @@ export class UserService {
     }
     const campaign = await this.campaignService.findByCode(code);
     if (campaign) {
-      return { kind: 'campaign', campaign };
+      return { kind: "campaign", campaign };
     }
     const user = await this.findOneByReferralCode(code);
     if (user) {
       return {
-        kind: 'user',
+        kind: "user",
         user,
         shareUrl: null,
         referralSource: ReferralSource.ReferralLink,
@@ -523,14 +523,14 @@ export class UserService {
     const resolution = await this.resolveReferral(code);
     if (!resolution) return null;
     switch (resolution.kind) {
-      case 'invite':
+      case "invite":
         return resolution.invite.invitingUser
-          ? { kind: 'user', user: resolution.invite.invitingUser }
+          ? { kind: "user", user: resolution.invite.invitingUser }
           : null;
-      case 'campaign':
-        return { kind: 'campaign', campaign: resolution.campaign };
-      case 'user':
-        return { kind: 'user', user: resolution.user };
+      case "campaign":
+        return { kind: "campaign", campaign: resolution.campaign };
+      case "user":
+        return { kind: "user", user: resolution.user };
       default:
         throw new Error(
           `unknown referral resolution: ${resolution satisfies never}`,
@@ -620,7 +620,7 @@ export class UserService {
   }
 
   async sendWelcomeEmail(userId: number) {
-    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'staging') {
+    if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "staging") {
       return;
     }
 
@@ -644,7 +644,7 @@ export class UserService {
   }
 
   async getVerifyEmailToken(userId: number) {
-    const payload = { sub: userId, type: 'verify-email' };
+    const payload = { sub: userId, type: "verify-email" };
     return this.jwtService.sign(payload, {
       expiresIn: `7d`,
       secret: process.env.JWT_SECRET,
@@ -670,7 +670,7 @@ export class UserService {
     addresseeId: number,
   ): Promise<Friend> {
     if (requesterId === addresseeId) {
-      throw new BadRequestException('Cannot friend yourself');
+      throw new BadRequestException("Cannot friend yourself");
     }
 
     const requester = await this.findOneOrFail(requesterId);
@@ -717,7 +717,7 @@ export class UserService {
     });
 
     if (!rel || !rel.requester || !rel.addressee) {
-      throw new NotFoundException('No pending request found');
+      throw new NotFoundException("No pending request found");
     }
 
     rel.status = status;
@@ -736,7 +736,7 @@ export class UserService {
         await this.notifsService.setRead(rel.sentNotif.id, addresseeId);
       } catch (error) {
         this.logger.error(
-          'Error setting read status for friend request:',
+          "Error setting read status for friend request:",
           error,
         );
       }
@@ -801,25 +801,25 @@ export class UserService {
   ): Promise<User[]> {
     const contractAt = new Date();
     const rels = await this.friendRepository
-      .createQueryBuilder('f')
-      .innerJoinAndSelect('f.requester', 'req')
-      .innerJoinAndSelect('f.addressee', 'addr')
-      .where('f.status = :status', { status: FriendStatus.Accepted })
-      .andWhere('(f.requesterId = :inviterId OR f.addresseeId = :inviterId)', {
+      .createQueryBuilder("f")
+      .innerJoinAndSelect("f.requester", "req")
+      .innerJoinAndSelect("f.addressee", "addr")
+      .where("f.status = :status", { status: FriendStatus.Accepted })
+      .andWhere("(f.requesterId = :inviterId OR f.addresseeId = :inviterId)", {
         inviterId,
       })
       .andWhere(
         new Brackets((sqb) => {
           sqb
             .where(
-              `f.requesterId = :inviterId AND addr.profilePicture IS NOT NULL AND TRIM(addr.profilePicture) <> '' AND (${sqlUserHasActiveContractAt('addr.id')})`,
+              `f.requesterId = :inviterId AND addr.profilePicture IS NOT NULL AND TRIM(addr.profilePicture) <> '' AND (${sqlUserHasActiveContractAt("addr.id")})`,
             )
             .orWhere(
-              `f.addresseeId = :inviterId AND req.profilePicture IS NOT NULL AND TRIM(req.profilePicture) <> '' AND (${sqlUserHasActiveContractAt('req.id')})`,
+              `f.addresseeId = :inviterId AND req.profilePicture IS NOT NULL AND TRIM(req.profilePicture) <> '' AND (${sqlUserHasActiveContractAt("req.id")})`,
             );
         }),
       )
-      .setParameter('contractAt', contractAt)
+      .setParameter("contractAt", contractAt)
       .getMany();
     const others = rels.map((r) =>
       r.requester!.id === inviterId ? r.addressee! : r.requester!,
@@ -837,17 +837,17 @@ export class UserService {
     }
     const contractAt = new Date();
     const qb = this.userRepository
-      .createQueryBuilder('u')
-      .where('u.profilePicture IS NOT NULL')
+      .createQueryBuilder("u")
+      .where("u.profilePicture IS NOT NULL")
       .andWhere("TRIM(u.profilePicture) != ''")
-      .andWhere('u.isNotSignedUpPartialProfile = :partial', { partial: false });
+      .andWhere("u.isNotSignedUpPartialProfile = :partial", { partial: false });
     if (excludeIds.length > 0) {
-      qb.andWhere('u.id NOT IN (:...ids)', { ids: excludeIds });
+      qb.andWhere("u.id NOT IN (:...ids)", { ids: excludeIds });
     }
     if (signedContract) {
-      qb.andWhere(sqlUserHasActiveContractAt('u.id'), { contractAt });
+      qb.andWhere(sqlUserHasActiveContractAt("u.id"), { contractAt });
     }
-    return qb.orderBy('RANDOM()').take(count).getMany();
+    return qb.orderBy("RANDOM()").take(count).getMany();
   }
 
   /**
@@ -923,10 +923,10 @@ export class UserService {
       this.userRepository.find({ where: { staff: true } }),
 
       this.userRepository
-        .createQueryBuilder('u')
+        .createQueryBuilder("u")
         .distinct(true)
-        .leftJoin('u.leaderOf', 'leadCommunity')
-        .leftJoin('u.communities', 'memberCommunity')
+        .leftJoin("u.leaderOf", "leadCommunity")
+        .leftJoin("u.communities", "memberCommunity")
         .where(
           `
             (
@@ -990,9 +990,9 @@ export class UserService {
 
   async findPendingRequests(
     userId: number,
-    direction: 'sent' | 'received',
+    direction: "sent" | "received",
   ): Promise<User[]> {
-    if (direction === 'sent') {
+    if (direction === "sent") {
       return (
         await this.friendRepository.find({
           where: {
@@ -1094,7 +1094,7 @@ export class UserService {
   async getFirstContractSignedAt(userId: number): Promise<Date | null> {
     const firstSigned = await this.contractEventRepository.findOne({
       where: { user: { id: userId }, type: ContractEventType.SIGNED },
-      order: { date: 'ASC', id: 'ASC' },
+      order: { date: "ASC", id: "ASC" },
     });
     return firstSigned?.date ?? null;
   }
@@ -1196,7 +1196,7 @@ export class UserService {
       ...cityCountsArray,
       {
         cityId: null,
-        cityName: 'Unknown',
+        cityName: "Unknown",
         countryCode: null,
         count: nullCityCount,
         latitude: null,
@@ -1214,7 +1214,7 @@ export class UserService {
   }
 
   async generatePasswordResetToken(userId: number) {
-    const payload: PWResetJwtPayload = { sub: userId, type: 'password-reset' };
+    const payload: PWResetJwtPayload = { sub: userId, type: "password-reset" };
     return this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
       expiresIn: `1d`,
@@ -1239,7 +1239,7 @@ export class UserService {
     return this.userRepository.find({
       where: ACTIVE_USER_WHERE,
       relations: { tags: true, awayRanges: true, contractEvents: true },
-      relationLoadStrategy: 'query',
+      relationLoadStrategy: "query",
     });
   }
 
@@ -1256,7 +1256,7 @@ export class UserService {
       select: { id: true },
       where: ACTIVE_USER_WHERE,
       relations: { awayRanges: true, contractEvents: true },
-      relationLoadStrategy: 'query',
+      relationLoadStrategy: "query",
     });
   }
 
@@ -1273,11 +1273,11 @@ export class UserService {
   }
 
   async createPartialProfile(
-    body: Pick<PaymentUserDataToken, 'email' | 'firstName' | 'lastName'>,
+    body: Pick<PaymentUserDataToken, "email" | "firstName" | "lastName">,
   ): Promise<User> {
     return this.create({
       email: body.email,
-      name: body.firstName + ' ' + body.lastName,
+      name: body.firstName + " " + body.lastName,
       password: Math.random().toString(36).substring(2, 15), //TODO: they have to reset this but maybe do something better
       isNotSignedUpPartialProfile: true,
       referralSource: ReferralSource.None,
@@ -1306,7 +1306,7 @@ export class UserService {
     const now = new Date();
 
     if (startDate.getTime() >= endDate.getTime()) {
-      throw new BadRequestException('End date must be after start date.');
+      throw new BadRequestException("End date must be after start date.");
     }
 
     // buffer to let ranges start in the current day
@@ -1314,12 +1314,12 @@ export class UserService {
       validateStartDate &&
       startDate.getTime() + 1000 * 60 * 60 * 36 < now.getTime()
     ) {
-      throw new BadRequestException('Start date must be in the future.');
+      throw new BadRequestException("Start date must be in the future.");
     }
 
     if (reason === UserAwayRangeReason.OTHER && !note) {
       throw new BadRequestException(
-        'Please provide a note for your away period.',
+        "Please provide a note for your away period.",
       );
     }
   }
@@ -1368,7 +1368,7 @@ export class UserService {
   async getAwayRanges(userId: number): Promise<UserAwayRange[]> {
     return this.userAwayRangeRepository.find({
       where: { userId },
-      order: { startDate: 'DESC' },
+      order: { startDate: "DESC" },
     });
   }
 
@@ -1378,7 +1378,7 @@ export class UserService {
     });
 
     if (!awayRange) {
-      throw new NotFoundException('Away range not found.');
+      throw new NotFoundException("Away range not found.");
     }
 
     await this.userAwayRangeRepository.remove(awayRange);
@@ -1394,7 +1394,7 @@ export class UserService {
     });
 
     if (!awayRange) {
-      throw new NotFoundException('Away range not found.');
+      throw new NotFoundException("Away range not found.");
     }
 
     const user = await this.findOneOrFail(userId);
@@ -1521,10 +1521,10 @@ export class UserService {
         user: { contractEvents: true, tags: true },
       },
       order: {
-        activeParticipant: 'DESC',
-        invited: 'DESC',
-        updatedAt: 'DESC',
-        id: 'ASC',
+        activeParticipant: "DESC",
+        invited: "DESC",
+        updatedAt: "DESC",
+        id: "ASC",
       },
     });
     const activeUserIds = members
@@ -1537,7 +1537,7 @@ export class UserService {
         ? this.ambassadorInviteGoalRepository.find({
             where: { ambassador: { id: In(activeUserIds) } },
             relations: { ambassador: true },
-            order: { startAt: 'ASC', id: 'ASC' },
+            order: { startAt: "ASC", id: "ASC" },
           })
         : Promise.resolve([]),
     ]);
@@ -1620,11 +1620,11 @@ export class UserService {
         interactions: true,
         user: { contractEvents: true, tags: true },
       },
-      order: { interactions: { interactionDate: 'DESC', id: 'DESC' } },
+      order: { interactions: { interactionDate: "DESC", id: "DESC" } },
     });
 
     if (!member) {
-      throw new NotFoundException('Ambassador program member not found');
+      throw new NotFoundException("Ambassador program member not found");
     }
 
     return member;
@@ -1694,7 +1694,7 @@ export class UserService {
     const text = body.text.trim();
 
     if (!text) {
-      throw new BadRequestException('Interaction text is required');
+      throw new BadRequestException("Interaction text is required");
     }
 
     await this.ambassadorProgramInteractionRepository.save(
@@ -1731,7 +1731,7 @@ export class UserService {
 
     const user = await userP;
     if (user === null) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException("User not found");
     }
     const isAdmin = user.admin;
     if (!isAdmin && communityId && !user.leaderOfIdSet.has(communityId)) {
@@ -1750,7 +1750,7 @@ export class UserService {
 
     const community = await communityP;
     if (community === null) {
-      throw new BadRequestException('Community not found');
+      throw new BadRequestException("Community not found");
     }
     const invite = this.onetimeInviteRepository.create({
       ...rest,
@@ -1771,7 +1771,7 @@ export class UserService {
     const dueAt = new Date(body.dueAt);
 
     if (!user.ambassador) {
-      throw new ForbiddenException('Only ambassadors can set invite goals');
+      throw new ForbiddenException("Only ambassadors can set invite goals");
     }
     this.validateAmbassadorInviteGoalDates(startAt, dueAt);
     await this.assertAmbassadorInviteGoalDoesNotOverlap({
@@ -1803,7 +1803,7 @@ export class UserService {
 
     const user = await userP;
     if (!user.ambassador) {
-      throw new ForbiddenException('Only ambassadors can edit invite goals');
+      throw new ForbiddenException("Only ambassadors can edit invite goals");
     }
 
     const goal = await goalP;
@@ -1833,7 +1833,7 @@ export class UserService {
   ): Promise<void> {
     const user = await this.findOneOrFail(userId);
     if (!user.ambassador) {
-      throw new ForbiddenException('Only ambassadors can delete invite goals');
+      throw new ForbiddenException("Only ambassadors can delete invite goals");
     }
 
     const goal = await this.ambassadorInviteGoalRepository.findOneOrFail({
@@ -1849,12 +1849,12 @@ export class UserService {
     const goalsP = this.ambassadorInviteGoalRepository.find({
       where: { ambassador: { id: userId } },
       relations: { ambassador: true },
-      order: { startAt: 'ASC', id: 'ASC' },
+      order: { startAt: "ASC", id: "ASC" },
     });
 
     const user = await userP;
     if (!user.ambassador) {
-      throw new ForbiddenException('Only ambassadors can view invite stats');
+      throw new ForbiddenException("Only ambassadors can view invite stats");
     }
     const goals = await goalsP;
     const [stats, statsByGoalId, projection] = await Promise.all([
@@ -1881,7 +1881,7 @@ export class UserService {
             ambassador: { id: In(userIds) },
           },
           relations: { ambassador: true },
-          order: { dueAt: 'ASC', id: 'ASC' },
+          order: { dueAt: "ASC", id: "ASC" },
         })
       : [];
     const statsByGoalId = await this.getAmbassadorInviteStatsByGoalIds(goals);
@@ -2096,7 +2096,7 @@ export class UserService {
   }
 
   private formatSuccessfulRecruitCount(successful: number, target: number) {
-    return `${successful}/${target} ${target === 1 ? 'successful recruit' : 'successful recruits'}`;
+    return `${successful}/${target} ${target === 1 ? "successful recruit" : "successful recruits"}`;
   }
 
   private async getAmbassadorInviteStatsByUserIds(
@@ -2381,10 +2381,10 @@ export class UserService {
 
   private validateAmbassadorInviteGoalDates(startAt: Date, dueAt: Date): void {
     if (Number.isNaN(startAt.getTime()) || Number.isNaN(dueAt.getTime())) {
-      throw new BadRequestException('Goal dates are invalid');
+      throw new BadRequestException("Goal dates are invalid");
     }
     if (startAt >= dueAt) {
-      throw new BadRequestException('Goal start date must be before end date');
+      throw new BadRequestException("Goal start date must be before end date");
     }
   }
 
@@ -2411,7 +2411,7 @@ export class UserService {
 
     if (overlap) {
       throw new BadRequestException(
-        'Invite goal dates overlap with an existing goal',
+        "Invite goal dates overlap with an existing goal",
       );
     }
   }
@@ -2439,10 +2439,10 @@ export class UserService {
       this.findOneOrFail(userId, { leaderOf: true }),
     ]);
     if (invite.invitingUser?.id !== userId && !user.admin) {
-      throw new BadRequestException('Invite belongs to someone else');
+      throw new BadRequestException("Invite belongs to someone else");
     }
     if (invite.status !== OnetimeInviteStatus.LINK_UNUSED) {
-      throw new BadRequestException('This invite can no longer be edited');
+      throw new BadRequestException("This invite can no longer be edited");
     }
     if (
       communityId !== undefined &&
@@ -2457,7 +2457,7 @@ export class UserService {
 
     const trimmedInvitee = invitee?.trim();
     if (invitee !== undefined && !trimmedInvitee) {
-      throw new BadRequestException('Invitee name cannot be empty');
+      throw new BadRequestException("Invitee name cannot be empty");
     }
     await this.onetimeInviteRepository.save({
       id: inviteId,
@@ -2527,7 +2527,7 @@ export class UserService {
         relations: { leaders: true },
       });
       if (!communityWithLeaders || !communityWithLeaders.leaders) {
-        console.log('Community leaders not found for community', communityId);
+        console.log("Community leaders not found for community", communityId);
         break sendNotificationToLeaders;
       }
       await this.notifsService.sendNotifs(
@@ -2536,7 +2536,7 @@ export class UserService {
           category: NotificationCategory.OnetimeInviteRequestCreated,
           message: `${user.name} requested an invite for ${rest.invitee} (${community.name})`,
           webAppLocation: groupUrl({
-            tab: 'invites',
+            tab: "invites",
             communityId: community.id,
           }),
           associatedUsers: [user],
@@ -2555,7 +2555,7 @@ export class UserService {
     return this.approveOrRejectOnetimeInviteRequest({
       inviteId,
       userId,
-      newStatus: 'approve',
+      newStatus: "approve",
       message: `Your request to invite [USER] was approved`,
     });
   }
@@ -2567,15 +2567,15 @@ export class UserService {
     await this.approveOrRejectOnetimeInviteRequest({
       inviteId,
       userId,
-      newStatus: 'reject',
-      message: 'Your request to invite [USER] was rejected',
+      newStatus: "reject",
+      message: "Your request to invite [USER] was rejected",
     });
   }
 
   async approveOrRejectOnetimeInviteRequest(params: {
     userId: number;
     inviteId: number;
-    newStatus: 'approve' | 'reject';
+    newStatus: "approve" | "reject";
     message: `${string}[USER]${string}`;
   }): Promise<OnetimeInvite> {
     const { userId, inviteId, newStatus, message } = params;
@@ -2601,11 +2601,11 @@ export class UserService {
 
     let category: NotificationCategory;
     switch (newStatus) {
-      case 'approve':
+      case "approve":
         request.status = OnetimeInviteStatus.LINK_UNUSED;
         category = NotificationCategory.OnetimeInviteRequestApproved;
         break;
-      case 'reject':
+      case "reject":
         request.status = OnetimeInviteStatus.REQUEST_REJECTED;
         category = NotificationCategory.OnetimeInviteRequestRejected;
         break;
@@ -2619,9 +2619,9 @@ export class UserService {
     await this.notifsService.sendNotif({
       user: savedInvite.invitingUser,
       category,
-      message: message.replace('[USER]', savedInvite.invitee),
+      message: message.replace("[USER]", savedInvite.invitee),
       webAppLocation: groupUrl({
-        tab: 'invites',
+        tab: "invites",
         communityId: savedInvite.communityId,
       }),
       associatedUsers: [savedInvite.invitingUser],
@@ -2655,7 +2655,7 @@ export class UserService {
         where: { deletedAt: IsNull() },
         relations: { invitingUser: true, community: true },
         // id tiebreaker keeps offset pagination stable when createdAt ties
-        order: { createdAt: 'DESC', id: 'DESC' },
+        order: { createdAt: "DESC", id: "DESC" },
         skip: (page - 1) * limit,
         take: limit,
       },
@@ -2672,18 +2672,18 @@ export class UserService {
 
   async getOnetimeInviteMemberStats(): Promise<OnetimeInviteMemberStats[]> {
     const rows = await this.onetimeInviteRepository
-      .createQueryBuilder('invite')
-      .leftJoin('invite.invitedUser', 'invitedUser')
-      .select('invite.invitingUserId', 'userId')
-      .addSelect('COUNT(*)', 'sent')
+      .createQueryBuilder("invite")
+      .leftJoin("invite.invitedUser", "invitedUser")
+      .select("invite.invitingUserId", "userId")
+      .addSelect("COUNT(*)", "sent")
       .addSelect(
-        'COUNT(*) FILTER (WHERE invite.status = :linkUsed OR invitedUser.id IS NOT NULL)',
-        'accepted',
+        "COUNT(*) FILTER (WHERE invite.status = :linkUsed OR invitedUser.id IS NOT NULL)",
+        "accepted",
       )
-      .where('invite.deletedAt IS NULL')
-      .andWhere('invite.invitingUserId IS NOT NULL')
-      .setParameter('linkUsed', OnetimeInviteStatus.LINK_USED)
-      .groupBy('invite.invitingUserId')
+      .where("invite.deletedAt IS NULL")
+      .andWhere("invite.invitingUserId IS NOT NULL")
+      .setParameter("linkUsed", OnetimeInviteStatus.LINK_USED)
+      .groupBy("invite.invitingUserId")
       // COUNT comes back as a bigint string from pg
       .getRawMany<{ userId: number; sent: string; accepted: string }>();
 
@@ -2709,15 +2709,15 @@ export class UserService {
 
   async findOnetimeInviteEdges(): Promise<OnetimeInviteEdge[]> {
     return this.onetimeInviteRepository
-      .createQueryBuilder('invite')
-      .innerJoin('invite.invitedUser', 'invitedUser')
-      .select('invite.invitingUserId', 'invitingUserId')
-      .addSelect('invitedUser.id', 'invitedUserId')
-      .where('invite.deletedAt IS NULL')
-      .andWhere('invite.status = :status', {
+      .createQueryBuilder("invite")
+      .innerJoin("invite.invitedUser", "invitedUser")
+      .select("invite.invitingUserId", "invitingUserId")
+      .addSelect("invitedUser.id", "invitedUserId")
+      .where("invite.deletedAt IS NULL")
+      .andWhere("invite.status = :status", {
         status: OnetimeInviteStatus.LINK_USED,
       })
-      .andWhere('invite.invitingUserId IS NOT NULL')
+      .andWhere("invite.invitingUserId IS NOT NULL")
       .getRawMany<OnetimeInviteEdge>();
   }
 
@@ -2793,7 +2793,7 @@ export class UserService {
     const userIds = body.assignments.map(({ userId }) => userId);
     if (userIds.length !== new Set(userIds).size) {
       throw new BadRequestException(
-        'Cannot assign the same user multiple times',
+        "Cannot assign the same user multiple times",
       );
     }
 
@@ -2852,7 +2852,7 @@ export class UserService {
       throw new BadRequestException(
         `Cannot assign to groups that do not accept staff assignments: ${closed
           .map((community) => community.name)
-          .join(', ')}`,
+          .join(", ")}`,
       );
     }
 
@@ -2892,7 +2892,7 @@ export class UserService {
                   category: NotificationCategory.MemberLeftCommunity,
                   message: `${user.name} left your group (${oldCommunity.name})`,
                   webAppLocation: groupUrl({
-                    tab: 'members',
+                    tab: "members",
                     communityId: oldCommunity.id,
                   }),
                   associatedUsers: [user],
@@ -2918,7 +2918,7 @@ export class UserService {
           category: NotificationCategory.CommunityAssigned,
           message: `Alliance staff assigned ${user.name} to your group (${freshCommunity.name})`,
           webAppLocation: groupUrl({
-            tab: 'members',
+            tab: "members",
             communityId: freshCommunity.id,
           }),
           associatedUsers: [user],
@@ -2941,7 +2941,7 @@ export class UserService {
 
   async getAllUserIds(): Promise<number[]> {
     return this.userRepository
-      .find({ select: ['id'] })
+      .find({ select: ["id"] })
       .then((users) => users.map((user) => user.id));
   }
 
@@ -2969,7 +2969,7 @@ export class UserService {
       });
       if (existingByToken) {
         if (existingByToken.user?.id !== userId) {
-          console.log('Reassigning device by expo push token to user', userId);
+          console.log("Reassigning device by expo push token to user", userId);
           await this.userDeviceRepository.update(existingByToken.id, {
             user: { id: userId },
             deviceType: body.deviceType ?? existingByToken.deviceType,
@@ -2992,7 +2992,7 @@ export class UserService {
     const user = await this.findOneOrFail(userId, { devices: true });
     const device = user.devices?.[0];
     if (!device || !device.expoPushToken) {
-      throw new BadRequestException('User has no expo push token');
+      throw new BadRequestException("User has no expo push token");
     }
     return this.pushService.sendPushNotification(
       userId,
@@ -3027,7 +3027,7 @@ export class UserService {
     }
 
     if (!device) {
-      throw new NotFoundException('No device found for user');
+      throw new NotFoundException("No device found for user");
     }
 
     await this.userDeviceRepository.update(device.id, {
@@ -3102,13 +3102,13 @@ export class UserService {
     ]);
 
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
     if (!admin) {
       throw new UnauthorizedException();
     }
     if (user.id === admin.id) {
-      throw new BadRequestException('You cannot delete your own account');
+      throw new BadRequestException("You cannot delete your own account");
     }
     if (
       confirmationEmail.trim().toLowerCase() !== user.email.trim().toLowerCase()
@@ -3124,7 +3124,7 @@ export class UserService {
     const summary = `Admin ${admin.name} deleted the account for ${deleted.name} (${deleted.email}, id ${deleted.id}). Reason: ${reason}`;
     const screenshotLink = screenshotUrl
       ? ` — <${screenshotUrl}|screenshot>`
-      : '';
+      : "";
 
     const forwardAudit = await this.dataSource.transaction(async (manager) => {
       await manager.delete(User, deleted.id);

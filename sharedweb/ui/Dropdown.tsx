@@ -1,6 +1,6 @@
+import { cn } from "@alliance/shared/styles/util";
 import { PropsWithChildren } from "react";
 import Card, { CardProps } from "./Card";
-import { cn } from "@alliance/shared/styles/util";
 
 export interface DropdownProps extends Pick<CardProps, "ref" | "className"> {
   isOpen: boolean;

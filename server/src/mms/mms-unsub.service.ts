@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
-import { User } from 'src/user/entities/user.entity';
-import { MmsOptout } from './mms-optout.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { EventType } from 'src/eventlog/event-log.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "typeorm";
+import { MmsOptout } from "./mms-optout.entity";
 
 /** Handles E.164 numbers; asynchronous audits avoid Twilio retries. */
 @Injectable()

@@ -5,7 +5,7 @@
  * definitions one major behind the runtime. The v4 API is unchanged from
  * v3; this mirrors `lib/html-encoding-sniffer.js`.
  */
-declare module 'html-encoding-sniffer' {
+declare module "html-encoding-sniffer" {
   interface Options {
     /**
      * An encoding label obtained from the "transport layer" (probably an

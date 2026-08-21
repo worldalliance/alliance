@@ -1,6 +1,6 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { User } from '../../user/entities/user.entity';
-import { UserDto } from '../../user/dto/user.dto';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { UserDto } from "../../user/dto/user.dto";
+import { User } from "../../user/entities/user.entity";
 
 export class RefreshTokensResponseDto {
   @ApiPropertyOptional()

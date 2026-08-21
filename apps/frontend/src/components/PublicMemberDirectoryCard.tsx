@@ -1,8 +1,8 @@
 import { ProfileDto } from "@alliance/shared/client";
-import { useState } from "react";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
 import { cn } from "@alliance/shared/styles/util";
+import AppMarkdownWrapper from "@alliance/sharedweb/ui/AppMarkdownWrapper";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import { useState } from "react";
 
 interface PublicMemberDirectoryCardProps {
   member: ProfileDto;

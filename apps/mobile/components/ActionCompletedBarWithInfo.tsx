@@ -1,12 +1,12 @@
-import React, { useMemo } from "react";
-import { View } from "react-native";
-import Text from "./system/Text";
-import ProgressBar from "./system/ProgressBar";
-import { UserProfilePicRow } from "./UserProfilePicRow";
 import {
   ActionCompletedBarWithInfoPropsShared,
   getCompletedPercentage,
 } from "@alliance/shared/lib/actionCompletedBarWithInfo";
+import { useMemo } from "react";
+import { View } from "react-native";
+import ProgressBar from "./system/ProgressBar";
+import Text from "./system/Text";
+import { UserProfilePicRow } from "./UserProfilePicRow";
 
 export const ActionCompletedBarWithInfo = ({
   action,

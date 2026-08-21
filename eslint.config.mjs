@@ -1,6 +1,6 @@
+import tseslint from "typescript-eslint";
 import eslintPluginExample from "./eslint/eslint-local-rules.mjs";
 import sharedRules from "./eslint/shared-rules.mjs";
-import tseslint from "typescript-eslint";
 
 export default tseslint.config([
   ...tseslint.configs.recommended,

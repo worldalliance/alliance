@@ -1,10 +1,10 @@
 import { ConversationDto } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
-import { View, TouchableOpacity } from "react-native";
+import { cn } from "@alliance/shared/styles/util";
+import { TouchableOpacity, View } from "react-native";
+import { getConversationTimestamp } from "../../lib/messages";
 import ProfileImage from "../ProfileImage";
 import Text, { FontWeight } from "../system/Text";
-import { getConversationTimestamp } from "../../lib/messages";
-import { cn } from "@alliance/shared/styles/util";
 
 interface ConversationListItemProps {
   conversation: ConversationDto;

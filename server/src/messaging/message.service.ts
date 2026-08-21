@@ -2,21 +2,21 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-} from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
-import { User } from 'src/user/entities/user.entity';
-import { Conversation } from './entities/conversation.entity';
-import { Message } from './entities/message.entity';
-import { Participant, ParticipantState } from './entities/participant.entity';
+} from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ImagesService } from "src/images/images.service";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "typeorm";
 import {
   ConversationMessagesQueryDto,
   CreateMessageDto,
   MessageDto,
-} from './dto/messaging.dto';
-import { MessagingEvents } from './messaging.events';
-import { ImagesService } from 'src/images/images.service';
+} from "./dto/messaging.dto";
+import { Conversation } from "./entities/conversation.entity";
+import { Message } from "./entities/message.entity";
+import { Participant, ParticipantState } from "./entities/participant.entity";
+import { MessagingEvents } from "./messaging.events";
 
 @Injectable()
 export class MessageService {
@@ -44,7 +44,7 @@ export class MessageService {
     });
 
     if (!participant) {
-      throw new ForbiddenException('You are not part of this conversation.');
+      throw new ForbiddenException("You are not part of this conversation.");
     }
 
     if (participant.state !== ParticipantState.Joined) {
@@ -62,16 +62,16 @@ export class MessageService {
         })) ?? undefined;
 
       if (!replyTo || replyTo.conversation.id !== participant.conversation.id) {
-        throw new BadRequestException('Invalid reply target.');
+        throw new BadRequestException("Invalid reply target.");
       }
     }
 
-    const trimmedBody = dto.body?.trim?.() ?? '';
+    const trimmedBody = dto.body?.trim?.() ?? "";
     const attachments = await this.saveAttachments(dto.attachments);
 
     if (!trimmedBody.length && attachments.length === 0) {
       throw new BadRequestException(
-        'Message must include text or at least one attachment.',
+        "Message must include text or at least one attachment.",
       );
     }
 
@@ -122,16 +122,16 @@ export class MessageService {
 
     const limit = Math.min(query.limit ?? 50, 100);
     const qb = this.messageRepository
-      .createQueryBuilder('message')
-      .leftJoinAndSelect('message.author', 'author')
-      .leftJoinAndSelect('message.replyTo', 'replyTo')
-      .leftJoinAndSelect('replyTo.author', 'replyToAuthor')
-      .where('message.conversationId = :conversationId', { conversationId })
-      .orderBy('message.createdAt', 'DESC')
+      .createQueryBuilder("message")
+      .leftJoinAndSelect("message.author", "author")
+      .leftJoinAndSelect("message.replyTo", "replyTo")
+      .leftJoinAndSelect("replyTo.author", "replyToAuthor")
+      .where("message.conversationId = :conversationId", { conversationId })
+      .orderBy("message.createdAt", "DESC")
       .take(limit);
 
     if (query.before) {
-      qb.andWhere('message.createdAt < :before', {
+      qb.andWhere("message.createdAt < :before", {
         before: new Date(query.before),
       });
     }
@@ -148,16 +148,16 @@ export class MessageService {
   ): Promise<MessageDto[]> {
     const limit = Math.min(query.limit ?? 50, 100);
     const qb = this.messageRepository
-      .createQueryBuilder('message')
-      .leftJoinAndSelect('message.author', 'author')
-      .leftJoinAndSelect('message.replyTo', 'replyTo')
-      .leftJoinAndSelect('replyTo.author', 'replyToAuthor')
-      .where('message.conversationId = :conversationId', { conversationId })
-      .orderBy('message.createdAt', 'DESC')
+      .createQueryBuilder("message")
+      .leftJoinAndSelect("message.author", "author")
+      .leftJoinAndSelect("message.replyTo", "replyTo")
+      .leftJoinAndSelect("replyTo.author", "replyToAuthor")
+      .where("message.conversationId = :conversationId", { conversationId })
+      .orderBy("message.createdAt", "DESC")
       .take(limit);
 
     if (query.before) {
-      qb.andWhere('message.createdAt < :before', {
+      qb.andWhere("message.createdAt < :before", {
         before: new Date(query.before),
       });
     }
@@ -180,7 +180,7 @@ export class MessageService {
     });
 
     if (!count) {
-      throw new ForbiddenException('You are not part of this conversation.');
+      throw new ForbiddenException("You are not part of this conversation.");
     }
   }
 
@@ -192,7 +192,7 @@ export class MessageService {
     }
 
     if (attachments.length > 30) {
-      throw new BadRequestException('Too many attachments (max 30).');
+      throw new BadRequestException("Too many attachments (max 30).");
     }
 
     const storedKeys: string[] = [];
@@ -205,7 +205,7 @@ export class MessageService {
         continue;
       }
 
-      if (trimmed.startsWith('data:image')) {
+      if (trimmed.startsWith("data:image")) {
         const key = await this.imagesService.uploadImage(trimmed, {
           width: 1024,
           height: 1024,
@@ -215,7 +215,7 @@ export class MessageService {
       } else if (trimmed.length < 200) {
         storedKeys.push(trimmed);
       } else {
-        console.warn('unknown attachment ', trimmed);
+        console.warn("unknown attachment ", trimmed);
       }
     }
 

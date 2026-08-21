@@ -1,18 +1,18 @@
-import React, { useCallback } from "react";
-import { Link, href } from "react-router";
-import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
-import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
 import {
   ActionItemCardPropsShared,
   showCompletedBar,
 } from "@alliance/shared/lib/actionItemCard";
-import { cn } from "@alliance/shared/styles/util";
-import ShareButton from "./ShareButton";
-import { ExternalLinkIcon } from "lucide-react";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
 import { buildActionShareUrl } from "@alliance/shared/lib/shareText";
+import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
+import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
+import { ExternalLinkIcon } from "lucide-react";
+import React, { useCallback } from "react";
+import { Link, href } from "react-router";
+import ActionCompletedBarWithInfo from "../pages/app/ActionCompletedBarWithInfo";
+import ShareButton from "./ShareButton";
 
 export interface ActionItemCardProps extends ActionItemCardPropsShared {
   className?: string;
@@ -51,7 +51,9 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({
               <div className="flex-1 flex flex-col">
                 <div className="flex flex-row items-center justify-between gap-x-2">
                   <p className="font-medium text-black">{action.name}</p>
-                  {action.userRelation === "completed" && <CheckIcon size={20} />}
+                  {action.userRelation === "completed" && (
+                    <CheckIcon size={20} />
+                  )}
                 </div>
                 <p className="text-zinc-500">{action.shortDescription}</p>
               </div>

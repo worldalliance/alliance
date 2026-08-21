@@ -1,14 +1,9 @@
-import {
-  View,
-  TouchableOpacity,
-  TextInput,
-  Switch,
-} from "react-native";
-import type { Dispatch, ReactNode, SetStateAction } from "react";
 import type { CreateCommunityDto } from "@alliance/shared/client/types.gen";
 import { groupSettings } from "@alliance/shared/lib/copy";
-import Text, { FontWeight } from "../system/Text";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
+import { Switch, TextInput, TouchableOpacity, View } from "react-native";
 import { colors } from "../../lib/style/colors";
+import Text, { FontWeight } from "../system/Text";
 
 export function CreateGroupForm({
   newCommunity,

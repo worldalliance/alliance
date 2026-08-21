@@ -1,10 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { sqlUserHasActiveContractAt } from 'src/user/entities/user.entity';
-import { DataSource, EntityManager } from 'typeorm';
-import type { Repository } from 'src/utils/Repository';
-import { bulkAssign, type ClusterUser } from './cluster.algorithm';
-import { Cluster } from './entities/cluster.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { sqlUserHasActiveContractAt } from "src/user/entities/user.entity";
+import type { Repository } from "src/utils/Repository";
+import { DataSource, EntityManager } from "typeorm";
+import { bulkAssign, type ClusterUser } from "./cluster.algorithm";
+import { Cluster } from "./entities/cluster.entity";
 
 export interface ClusterAssignResult {
   clustersCreated: number;
@@ -27,7 +27,7 @@ export class ClusterService {
   async findAllWithMembers(): Promise<Cluster[]> {
     return this.clusterRepository.find({
       relations: { members: true },
-      order: { id: 'ASC' },
+      order: { id: "ASC" },
     });
   }
 
@@ -57,7 +57,7 @@ export class ClusterService {
       const eligibleRows = await manager.query<{ id: number }[]>(`
         SELECT u.id
         FROM "user" u
-        WHERE ${sqlUserHasActiveContractAt('u.id', 'NOW()')}
+        WHERE ${sqlUserHasActiveContractAt("u.id", "NOW()")}
       `);
       const eligibleIds = eligibleRows.map((r) => r.id);
 

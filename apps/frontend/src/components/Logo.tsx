@@ -1,7 +1,7 @@
-import React, { useCallback } from "react";
-import godImage from "../assets/planet-earth.png";
-import { useNavigate } from "react-router";
 import { cn } from "@alliance/shared/styles/util";
+import React, { useCallback } from "react";
+import { useNavigate } from "react-router";
+import godImage from "../assets/planet-earth.png";
 
 interface LogoProps {
   href?: string;
@@ -25,7 +25,7 @@ const Logo: React.FC<LogoProps> = ({ href, className }) => {
       className={cn(
         "aspect-square w-[30px]",
         href && "cursor-pointer",
-        className
+        className,
       )}
     />
   );

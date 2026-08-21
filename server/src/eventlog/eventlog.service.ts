@@ -1,17 +1,17 @@
-import { R, type Result } from '@alliance/common/result';
-import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'src/utils/Repository';
-import type { DeepPartial, EntityManager } from 'typeorm';
+import { R, type Result } from "@alliance/common/result";
+import { Injectable, Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { InjectRepository } from "@nestjs/typeorm";
+import type { Repository } from "src/utils/Repository";
+import type { DeepPartial, EntityManager } from "typeorm";
 import {
   EventLogDto,
   EventLogList,
   EventLogQueryDto,
-} from './dto/event-log.dto';
-import { EventLog, EventType, SEND_TO_SLACK } from './event-log.entity';
-import { EventLogEvents } from './eventlog.events';
-import { escapeSlackText } from './slack-format';
+} from "./dto/event-log.dto";
+import { EventLog, EventType, SEND_TO_SLACK } from "./event-log.entity";
+import { EventLogEvents } from "./eventlog.events";
+import { escapeSlackText } from "./slack-format";
 
 export interface EventLogMessage {
   type: EventType;
@@ -44,14 +44,14 @@ export class EventLogService {
     const limit = query.limit ?? 50;
 
     const qb = this.eventLogRepository
-      .createQueryBuilder('eventLog')
-      .leftJoinAndSelect('eventLog.user', 'user')
-      .orderBy('eventLog.createdAt', 'DESC')
+      .createQueryBuilder("eventLog")
+      .leftJoinAndSelect("eventLog.user", "user")
+      .orderBy("eventLog.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit);
 
     if (query.eventType) {
-      qb.andWhere('eventLog.event = :eventType', {
+      qb.andWhere("eventLog.event = :eventType", {
         eventType: query.eventType,
       });
     }
@@ -168,19 +168,19 @@ export class EventLogService {
 
     const webhookUrl = process.env.SLACK_WEBHOOK_URL;
     if (!webhookUrl) {
-      this.logger.warn('SLACK_WEBHOOK_URL is not set; skipping Slack message');
+      this.logger.warn("SLACK_WEBHOOK_URL is not set; skipping Slack message");
       return;
     }
-    if (process.env.NODE_ENV !== 'production') {
+    if (process.env.NODE_ENV !== "production") {
       this.logger.log(`Skipping Slack message in development: ${slackMessage}`);
       return;
     }
 
     try {
       const res = await fetch(webhookUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           text: slackMessage,
@@ -188,7 +188,7 @@ export class EventLogService {
       });
 
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
+        const text = await res.text().catch(() => "");
         this.logger.error(
           `Failed to send Slack message: ${res.status} ${res.statusText} ${text}`,
         );

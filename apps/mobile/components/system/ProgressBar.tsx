@@ -1,6 +1,5 @@
-import React from "react";
-import { View, ViewProps } from "react-native";
 import { cn } from "@alliance/shared/styles/util";
+import { View, ViewProps } from "react-native";
 
 interface ProgressBarProps extends ViewProps {
   percentage: number;

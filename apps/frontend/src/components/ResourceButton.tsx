@@ -1,6 +1,6 @@
 import { cn } from "@alliance/shared/styles/util";
-import chevronRight from "../assets/icons8-expand-arrow-96.png";
 import { Link } from "react-router";
+import chevronRight from "../assets/icons8-expand-arrow-96.png";
 
 export interface ResourceButtonProps {
   children: React.ReactNode;

@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from '@alliance/common/analytics';
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import {
   Body,
   Controller,
@@ -11,37 +11,37 @@ import {
   Post,
   Request,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
-import { CommunityLeaderGuard } from 'src/auth/guards/communityleader.guard';
-import type { JwtRequest } from 'src/auth/guards/jwtreq';
-import { PosthogService } from 'src/posthog/posthog.service';
+} from "@nestjs/common";
+import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
+import { AuthGuard } from "src/auth/guards/auth.guard";
+import { CommunityLeaderGuard } from "src/auth/guards/communityleader.guard";
+import type { JwtRequest } from "src/auth/guards/jwtreq";
+import { PosthogService } from "src/posthog/posthog.service";
 import {
   CommunityInviteDto,
   CreateCommunityInviteDto,
   RequestCommunityInviteDto,
-} from 'src/user/dto/invite.dto';
-import { CommunityMemberContactInfoDto } from 'src/user/dto/user-action-relations.dto';
-import { CommunityService } from './community.service';
+} from "src/user/dto/invite.dto";
+import { CommunityMemberContactInfoDto } from "src/user/dto/user-action-relations.dto";
+import { CommunityService } from "./community.service";
 import {
   CommunityDto,
   CommunityMemberDto,
   CreateCommunityDto,
   MoveCommunityMemberDto,
   UpdateCommunityDto,
-} from './dto/community.dto';
+} from "./dto/community.dto";
 
-@ApiTags('community')
-@Controller('community')
+@ApiTags("community")
+@Controller("community")
 export class CommunityController {
   constructor(
     private readonly communityService: CommunityService,
     private readonly posthog: PosthogService,
   ) {}
 
-  @Post('create/admin')
+  @Post("create/admin")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityDto })
   async createCommunityAdmin(
@@ -52,7 +52,7 @@ export class CommunityController {
     );
   }
 
-  @Post('create')
+  @Post("create")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: CommunityDto })
   async createCommunity(
@@ -73,7 +73,7 @@ export class CommunityController {
     return new CommunityDto(community);
   }
 
-  @Get('list')
+  @Get("list")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [CommunityDto] })
   async getCommunitiesAdmin(): Promise<CommunityDto[]> {
@@ -82,7 +82,7 @@ export class CommunityController {
     );
   }
 
-  @Get('list/public')
+  @Get("list/public")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [CommunityDto] })
   async getPublicCommunities(): Promise<CommunityDto[]> {
@@ -91,7 +91,7 @@ export class CommunityController {
     );
   }
 
-  @Get('list/my')
+  @Get("list/my")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: CommunityDto, isArray: true })
   async getMyCommunities(@Request() req: JwtRequest): Promise<CommunityDto[]> {
@@ -101,12 +101,12 @@ export class CommunityController {
     return communities.map((community) => new CommunityDto(community));
   }
 
-  @Post(':communityId/join')
+  @Post(":communityId/join")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: CommunityDto })
   async joinPublicCommunity(
     @Request() req: JwtRequest,
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityDto> {
     const community = await this.communityService.joinPublicCommunity(
       req.user.sub,
@@ -117,17 +117,17 @@ export class CommunityController {
       distinctId: String(req.user.sub),
       properties: {
         communityId,
-        via: 'public',
+        via: "public",
       },
     });
     return new CommunityDto(community);
   }
 
-  @Patch(':communityId')
+  @Patch(":communityId")
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse({ type: CommunityDto })
   async update(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: UpdateCommunityDto,
     @Request() req: JwtRequest,
   ): Promise<CommunityDto> {
@@ -140,12 +140,12 @@ export class CommunityController {
     );
   }
 
-  @Post(':communityId/removeMember')
+  @Post(":communityId/removeMember")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: CommunityDto })
   async removeMember(
     @Request() req: JwtRequest,
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
@@ -157,11 +157,11 @@ export class CommunityController {
     );
   }
 
-  @Post(':communityId/removeMember/admin')
+  @Post(":communityId/removeMember/admin")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityDto })
   async removeMemberAdmin(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
@@ -172,12 +172,12 @@ export class CommunityController {
     );
   }
 
-  @Post(':communityId/moveMember/admin')
+  @Post(":communityId/moveMember/admin")
   @HttpCode(200)
   @UseGuards(AdminGuard)
   @ApiOkResponse()
   async moveMemberAdmin(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: MoveCommunityMemberDto,
   ): Promise<void> {
     await this.communityService.moveUserBetweenCommunitiesAdmin({
@@ -187,12 +187,12 @@ export class CommunityController {
     });
   }
 
-  @Post(':communityId/leave')
+  @Post(":communityId/leave")
   @HttpCode(200)
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async leave(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
     await this.communityService.leaveCommunity(communityId, req.user.sub);
@@ -205,30 +205,30 @@ export class CommunityController {
     });
   }
 
-  @Delete(':communityId')
+  @Delete(":communityId")
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async delete(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
     await this.communityService.deleteCommunity(req.user.sub, communityId);
   }
 
-  @Delete(':communityId/admin')
+  @Delete(":communityId/admin")
   @UseGuards(AdminGuard)
   @ApiOkResponse()
   async deleteAdmin(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<void> {
     await this.communityService.deleteCommunityAdmin(communityId);
   }
 
-  @Post(':communityId/addMember/admin')
+  @Post(":communityId/addMember/admin")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityDto })
   async addMemberAdmin(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
@@ -239,11 +239,11 @@ export class CommunityController {
     );
   }
 
-  @Post(':communityId/addLeader/admin')
+  @Post(":communityId/addLeader/admin")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityDto })
   async addLeaderAdmin(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
@@ -251,11 +251,11 @@ export class CommunityController {
     );
   }
 
-  @Post(':communityId/removeLeader/admin')
+  @Post(":communityId/removeLeader/admin")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityDto })
   async removeLeaderAdmin(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Body() body: CommunityMemberDto,
   ): Promise<CommunityDto> {
     return new CommunityDto(
@@ -263,12 +263,12 @@ export class CommunityController {
     );
   }
 
-  @Get('memberContactInfo/:communityId')
+  @Get("memberContactInfo/:communityId")
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse({ type: CommunityMemberContactInfoDto, isArray: true })
   async getMemberContactInfo(
     @Request() req: JwtRequest,
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityMemberContactInfoDto[]> {
     const items = await this.communityService.getMemberContactInfo({
       leaderId: req.user.sub,
@@ -277,11 +277,11 @@ export class CommunityController {
     return items.map((item) => new CommunityMemberContactInfoDto(item));
   }
 
-  @Get('memberContactInfo/:communityId/admin')
+  @Get("memberContactInfo/:communityId/admin")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityMemberContactInfoDto, isArray: true })
   async getMemberContactInfoAdmin(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
   ): Promise<CommunityMemberContactInfoDto[]> {
     const items = await this.communityService.getMemberContactInfo({
       communityId,
@@ -289,7 +289,7 @@ export class CommunityController {
     return items.map((item) => new CommunityMemberContactInfoDto(item));
   }
 
-  @Get('memberContactInfo')
+  @Get("memberContactInfo")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CommunityMemberContactInfoDto, isArray: true })
   async getAllMemberContactInfoAdmin(): Promise<
@@ -299,7 +299,7 @@ export class CommunityController {
     return items.map((item) => new CommunityMemberContactInfoDto(item));
   }
 
-  @Post('communityInvites/create')
+  @Post("communityInvites/create")
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse({ type: CommunityInviteDto })
   async createCommunityInvite(
@@ -322,17 +322,17 @@ export class CommunityController {
     return new CommunityInviteDto(invite);
   }
 
-  @Delete('communityInvites/:inviteId')
+  @Delete("communityInvites/:inviteId")
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse()
   async deleteCommunityInvite(
-    @Param('inviteId', ParseIntPipe) inviteId: number,
+    @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
     await this.communityService.deleteCommunityInvite(inviteId, req.user.sub);
   }
 
-  @Post('communityInvites/request')
+  @Post("communityInvites/request")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: CommunityInviteDto })
   async requestCommunityInvite(
@@ -355,11 +355,11 @@ export class CommunityController {
     return new CommunityInviteDto(invite);
   }
 
-  @Post('communityInvites/:inviteId/approveRequest')
+  @Post("communityInvites/:inviteId/approveRequest")
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse({ type: CommunityInviteDto })
   async approveCommunityInviteRequest(
-    @Param('inviteId', ParseIntPipe) inviteId: number,
+    @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto> {
     const invite = await this.communityService.approveCommunityInviteRequest(
@@ -378,11 +378,11 @@ export class CommunityController {
     return new CommunityInviteDto(invite);
   }
 
-  @Post('communityInvites/:inviteId/rejectRequest')
+  @Post("communityInvites/:inviteId/rejectRequest")
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse()
   async rejectCommunityInviteRequest(
-    @Param('inviteId', ParseIntPipe) inviteId: number,
+    @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
     await this.communityService.rejectCommunityInviteRequest(
@@ -391,11 +391,11 @@ export class CommunityController {
     );
   }
 
-  @Get('communityInvites/community/:communityId')
+  @Get("communityInvites/community/:communityId")
   @UseGuards(CommunityLeaderGuard)
   @ApiOkResponse({ type: [CommunityInviteDto] })
   async getCommunityInvites(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Request() req: JwtRequest,
   ): Promise<CommunityInviteDto[]> {
     return (
@@ -406,7 +406,7 @@ export class CommunityController {
     ).map((invite) => new CommunityInviteDto(invite));
   }
 
-  @Get('communityInvites')
+  @Get("communityInvites")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: [CommunityInviteDto] })
   async getIncomingCommunityInvitesForUser(
@@ -419,11 +419,11 @@ export class CommunityController {
     ).map((invite) => new CommunityInviteDto(invite));
   }
 
-  @Post('communityInvites/:inviteId/accept')
+  @Post("communityInvites/:inviteId/accept")
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async acceptCommunityInvite(
-    @Param('inviteId', ParseIntPipe) inviteId: number,
+    @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
     const communityId = await this.communityService.acceptCommunityInvite(
@@ -435,17 +435,17 @@ export class CommunityController {
       distinctId: String(req.user.sub),
       properties: {
         communityId,
-        via: 'invite',
+        via: "invite",
         inviteId,
       },
     });
   }
 
-  @Post('communityInvites/:inviteId/reject')
+  @Post("communityInvites/:inviteId/reject")
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async rejectCommunityInvite(
-    @Param('inviteId', ParseIntPipe) inviteId: number,
+    @Param("inviteId", ParseIntPipe) inviteId: number,
     @Request() req: JwtRequest,
   ): Promise<void> {
     await this.communityService.rejectCommunityInvite(inviteId, req.user.sub);

@@ -46,12 +46,10 @@ const MessagingOverview: React.FC = () => {
           {
             credentials: "include",
             signal: controller.signal,
-          }
+          },
         );
         if (!response.ok) {
-          throw new Error(
-            `Failed to load conversations (${response.status})`
-          );
+          throw new Error(`Failed to load conversations (${response.status})`);
         }
         const data = (await response.json()) as ConversationAdminSummary[];
         if (isMounted) {
@@ -91,16 +89,12 @@ const MessagingOverview: React.FC = () => {
   }, [conversations.length, loading]);
 
   if (error) {
-    return (
-      <div className="p-6 font-mono text-sm text-red-600">{error}</div>
-    );
+    return <div className="p-6 font-mono text-sm text-red-600">{error}</div>;
   }
 
   if (emptyState) {
     return (
-      <div className="p-6 font-mono text-sm text-zinc-700">
-        {emptyState}
-      </div>
+      <div className="p-6 font-mono text-sm text-zinc-700">{emptyState}</div>
     );
   }
 

@@ -1,23 +1,23 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { formatDistanceToNow } from 'date-fns';
-import { ActionsService } from 'src/actions/actions.service';
-import { readableActionStatus } from 'src/actions/entities/action-event.entity';
-import { Action } from 'src/actions/entities/action.entity';
-import { Post } from 'src/forum/entities/post.entity';
-import { ForumService } from 'src/forum/forum.service';
-import { ProfileDto } from 'src/user/dto/user.dto';
-import { User } from 'src/user/entities/user.entity';
-import { UserService } from 'src/user/user.service';
-import type { Repository } from 'src/utils/Repository';
-import { actionUrl, postUrl, profileUrl } from './approutes';
-import { RecentSearch } from './recentsearch.entity';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { formatDistanceToNow } from "date-fns";
+import { ActionsService } from "src/actions/actions.service";
+import { readableActionStatus } from "src/actions/entities/action-event.entity";
+import { Action } from "src/actions/entities/action.entity";
+import { Post } from "src/forum/entities/post.entity";
+import { ForumService } from "src/forum/forum.service";
+import { ProfileDto } from "src/user/dto/user.dto";
+import { User } from "src/user/entities/user.entity";
+import { UserService } from "src/user/user.service";
+import type { Repository } from "src/utils/Repository";
+import { actionUrl, postUrl, profileUrl } from "./approutes";
+import { infoPageSearchItems } from "./informationpages";
+import { RecentSearch } from "./recentsearch.entity";
 import {
   SaveSearchSelectionDto,
   SearchItem,
   SearchItemType,
-} from './searchitem.dto';
-import { infoPageSearchItems } from './informationpages';
+} from "./searchitem.dto";
 
 @Injectable()
 export class SearchService {
@@ -35,7 +35,7 @@ export class SearchService {
     if (!query.length) {
       const recentSearches = await this.searchRepository.find({
         where: { userId },
-        order: { createdAt: 'DESC' },
+        order: { createdAt: "DESC" },
         take: maxItemsPerType,
       });
 
@@ -111,17 +111,17 @@ export class SearchService {
   userToSearchItem(user: User, friends: boolean, self: boolean): SearchItem {
     const profile = new ProfileDto(user);
     return {
-      id: 'u' + user.id,
+      id: "u" + user.id,
       name: profile.displayName,
       type: SearchItemType.User,
       webAppLocation: profileUrl(user.id),
       image: profile.profilePicture ?? undefined,
-      secondaryData: friends ? ['Friend'] : self ? ['This is you!'] : [],
+      secondaryData: friends ? ["Friend"] : self ? ["This is you!"] : [],
     };
   }
   actionToSearchItem(action: Action): SearchItem {
     return {
-      id: 'a' + action.id,
+      id: "a" + action.id,
       name: action.name,
       type: SearchItemType.Action,
       webAppLocation: actionUrl(action.id),
@@ -129,10 +129,10 @@ export class SearchService {
     };
   }
   postToSearchItem(
-    post: Pick<Post, 'id' | 'title' | 'createdAt' | 'likesIds'>,
+    post: Pick<Post, "id" | "title" | "createdAt" | "likesIds">,
   ): SearchItem {
     return {
-      id: 'p' + post.id,
+      id: "p" + post.id,
       name: post.title,
       type: SearchItemType.Post,
       webAppLocation: postUrl(post.id),

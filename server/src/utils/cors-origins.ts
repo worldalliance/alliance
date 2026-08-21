@@ -1,4 +1,4 @@
-import { isDeployed, parseNodeEnv } from '@alliance/common/node-env';
+import { isDeployed, parseNodeEnv } from "@alliance/common/node-env";
 
 const LOCALHOST_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 

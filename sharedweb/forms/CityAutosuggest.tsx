@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useRef } from "react";
 import type { CitySearchDto } from "@alliance/shared/client";
 import {
   formatCityDisplay,
   useCityAutosuggest,
 } from "@alliance/shared/forms/cityAutosuggest";
 import { cn } from "@alliance/shared/styles/util";
+import React, { useCallback, useEffect, useRef } from "react";
 
 export interface CityAutosuggestProps {
   value?: string;
@@ -80,7 +80,7 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
           setOpen(false);
         }
       },
-      [open, results, highlighted, selectCity, commitCustomValue, setOpen]
+      [open, results, highlighted, selectCity, commitCustomValue, setOpen],
     );
 
   return (
@@ -103,7 +103,7 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
         disabled={disabled}
         className={cn(
           "w-full rounded border border-gray-300 px-3 py-2 focus:outline-none focus:border-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-500",
-          inputClassName
+          inputClassName,
         )}
       />
 
@@ -115,7 +115,7 @@ const CityAutosuggest: React.FC<CityAutosuggestProps> = ({
               onMouseDown={() => selectCity(city)}
               className={cn(
                 "cursor-pointer px-3 py-2 gap-2 flex flex-row",
-                idx === highlighted ? "bg-gray-200" : "hover:bg-gray-100"
+                idx === highlighted ? "bg-gray-200" : "hover:bg-gray-100",
               )}
             >
               <p>{formatCityDisplay(city)}</p>

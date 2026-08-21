@@ -1,3 +1,3 @@
 export const EventLogEvents = {
-  Created: 'event-log.created',
+  Created: "event-log.created",
 } as const;

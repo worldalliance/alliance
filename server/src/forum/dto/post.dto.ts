@@ -1,38 +1,38 @@
-import { byLikeOrder, LIKE_FACEPILE_LIMIT } from '@alliance/common/likeOrder';
+import { byLikeOrder, LIKE_FACEPILE_LIMIT } from "@alliance/common/likeOrder";
 import {
   ApiProperty,
   ApiPropertyOptional,
   PartialType,
   PickType,
-} from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsDefined, IsOptional, ValidateNested } from 'class-validator';
-import { ActionDto } from 'src/actions/dto/action.dto';
-import { ProfileDto } from '../../user/dto/user.dto';
-import { Comment } from '../entities/comment.entity';
-import { Post } from '../entities/post.entity';
-import { CommentDto } from './comment.dto';
+} from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsDefined, IsOptional, ValidateNested } from "class-validator";
+import { ActionDto } from "src/actions/dto/action.dto";
+import { ProfileDto } from "../../user/dto/user.dto";
+import { Comment } from "../entities/comment.entity";
+import { Post } from "../entities/post.entity";
+import { CommentDto } from "./comment.dto";
 import {
   CreateEditableContentDto,
   EditableContentDto,
-} from './editablecontent.dto';
+} from "./editablecontent.dto";
 
 export class PostDto extends PickType(Post, [
-  'id',
-  'title',
-  'actionId',
-  'authorId',
-  'createdAt',
-  'visibleAt',
-  'updatedAt',
-  'pinned',
-  'qaMode',
-  'deleted',
-  'expertIds',
-  'expertLabel',
-  'authorIds',
-  'notifyForReplies',
-  'showClusterTags',
+  "id",
+  "title",
+  "actionId",
+  "authorId",
+  "createdAt",
+  "visibleAt",
+  "updatedAt",
+  "pinned",
+  "qaMode",
+  "deleted",
+  "expertIds",
+  "expertLabel",
+  "authorIds",
+  "notifyForReplies",
+  "showClusterTags",
 ]) {
   @ApiPropertyOptional({ type: () => ActionDto })
   action: ActionDto | undefined;
@@ -133,9 +133,9 @@ export type PostDtoArgs = {
 };
 
 export class CreatePostDto extends PickType(Post, [
-  'title',
-  'actionId',
-  'visibleAt',
+  "title",
+  "actionId",
+  "visibleAt",
 ]) {
   @ApiProperty({ type: CreateEditableContentDto })
   @ValidateNested()

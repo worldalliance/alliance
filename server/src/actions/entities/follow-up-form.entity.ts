@@ -1,20 +1,20 @@
 import {
   cohortExpressionSchema,
   type CohortExpression,
-} from '@alliance/common/cohort-expression';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsOptional } from 'class-validator';
-import { Form } from 'src/tasks/entities/form.entity';
-import type { Relation } from 'src/utils/Repository';
+} from "@alliance/common/cohort-expression";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsOptional } from "class-validator";
+import { Form } from "src/tasks/entities/form.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { Action } from './action.entity';
+} from "typeorm";
+import { Action } from "./action.entity";
 
 @Entity()
 export class FollowUpForm {
@@ -25,7 +25,7 @@ export class FollowUpForm {
   @Allow()
   id: number;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   @ApiPropertyOptional({
     type: String,
     nullable: true,
@@ -35,7 +35,7 @@ export class FollowUpForm {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   name?: string;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @ApiPropertyOptional({
     type: Date,
     nullable: true,
@@ -46,7 +46,7 @@ export class FollowUpForm {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   startDate?: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @ApiPropertyOptional({
     type: Date,
     nullable: true,
@@ -57,7 +57,7 @@ export class FollowUpForm {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   endDate?: Date;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   @ApiPropertyOptional({
     type: String,
     nullable: true,
@@ -67,7 +67,7 @@ export class FollowUpForm {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   instructions?: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: "jsonb", nullable: true })
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @Type(() => Object)
@@ -82,9 +82,9 @@ export class FollowUpForm {
   actionId: number;
 
   @ManyToOne(() => Action, (action) => action.followUpForms, {
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
-  @JoinColumn({ name: 'actionId' })
+  @JoinColumn({ name: "actionId" })
   @Type(() => Action)
   @Allow()
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
@@ -95,8 +95,8 @@ export class FollowUpForm {
   @Allow()
   formId: number;
 
-  @ManyToOne(() => Form, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'formId' })
+  @ManyToOne(() => Form, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "formId" })
   @Type(() => Form)
   @Allow()
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { actionsGetGlobalFeed, GlobalFeedItemDto } from "../client";
 
-
 const useGlobalFeed = ({ limit = 15 }) => {
   const [items, setItems] = useState<GlobalFeedItemDto[]>([]);
   const [loading, setLoading] = useState(true);

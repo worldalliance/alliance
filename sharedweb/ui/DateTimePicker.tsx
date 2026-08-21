@@ -8,11 +8,10 @@ export interface DateTimePickerChange {
   date: Date | null;
 }
 
-export interface DateTimePickerProps
-  extends Omit<
-    React.InputHTMLAttributes<HTMLInputElement>,
-    "value" | "onChange" | "type"
-  > {
+export interface DateTimePickerProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "type"
+> {
   value?: string | Date | null;
   onChange: (change: DateTimePickerChange) => void;
   precision?: DatePrecision;
@@ -40,7 +39,7 @@ export function resolveDateValue(value?: string | Date | null): Date | null {
 
 export function formatLocalDateTime(
   date: Date | null,
-  precision: DatePrecision
+  precision: DatePrecision,
 ): string {
   if (!date) {
     return "";
@@ -86,7 +85,7 @@ const DateTimePicker: React.FC<DateTimePickerProps> = ({
 
   const localValue = useMemo(
     () => formatLocalDateTime(resolvedValue, resolvedPrecision),
-    [resolvedValue, resolvedPrecision]
+    [resolvedValue, resolvedPrecision],
   );
 
   const timezoneLabel = useMemo(() => {

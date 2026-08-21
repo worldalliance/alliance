@@ -13,29 +13,29 @@ import {
   findBrand,
   findRelationDecorator,
   propertyName,
-} from './relation-ast.mjs';
+} from "./relation-ast.mjs";
 
 const rule = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
-      description: 'Require entity relations to be optional and branded',
+      description: "Require entity relations to be optional and branded",
     },
-    fixable: 'code',
+    fixable: "code",
     schema: [
       {
-        type: 'object',
+        type: "object",
         properties: {
-          checkLazyOptional: { type: 'boolean' },
+          checkLazyOptional: { type: "boolean" },
         },
         additionalProperties: false,
       },
     ],
     messages: {
       lazyMustBeOptional:
-        '`{{name}}` is a relation, so it must be declared `{{name}}?:` — `undefined` is how a find result says it was not loaded.',
+        "`{{name}}` is a relation, so it must be declared `{{name}}?:` — `undefined` is how a find result says it was not loaded.",
       missingBrand:
-        '`{{name}}` is a relation, so its type must be `Relation<...>` for the find signatures to track whether it was loaded.',
+        "`{{name}}` is a relation, so its type must be `Relation<...>` for the find signatures to track whether it was loaded.",
     },
   },
 
@@ -51,7 +51,7 @@ const rule = {
         if (!findBrand(node.typeAnnotation?.typeAnnotation)) {
           context.report({
             node: node.key,
-            messageId: 'missingBrand',
+            messageId: "missingBrand",
             data: { name },
           });
           return;
@@ -60,12 +60,12 @@ const rule = {
         if (checkLazyOptional && !node.optional) {
           context.report({
             node: node.key,
-            messageId: 'lazyMustBeOptional',
+            messageId: "lazyMustBeOptional",
             data: { name },
             // `foo!: T` would become `foo?!: T`; leave those to be fixed by hand.
             fix: node.definite
               ? undefined
-              : (fixer) => fixer.insertTextAfter(node.key, '?'),
+              : (fixer) => fixer.insertTextAfter(node.key, "?"),
           });
         }
       },

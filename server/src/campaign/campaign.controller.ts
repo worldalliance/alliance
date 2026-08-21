@@ -7,17 +7,17 @@ import {
   Patch,
   Post,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { CampaignService } from './campaign.service';
+} from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
+import { CampaignService } from "./campaign.service";
 import {
   CampaignDto,
   CreateCampaignDto,
   UpdateCampaignDto,
-} from './dto/campaign.dto';
+} from "./dto/campaign.dto";
 
-@Controller('campaigns')
+@Controller("campaigns")
 export class CampaignController {
   constructor(private readonly campaignService: CampaignService) {}
 
@@ -29,11 +29,11 @@ export class CampaignController {
     return campaigns.map((c) => new CampaignDto(c));
   }
 
-  @Get(':id')
+  @Get(":id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CampaignDto })
   async findOneAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
   ): Promise<CampaignDto> {
     return new CampaignDto(await this.campaignService.findOne(id));
   }
@@ -45,11 +45,11 @@ export class CampaignController {
     return new CampaignDto(await this.campaignService.create(dto));
   }
 
-  @Patch(':id')
+  @Patch(":id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CampaignDto })
   async updateAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateCampaignDto,
   ): Promise<CampaignDto> {
     return new CampaignDto(await this.campaignService.update(id, dto));

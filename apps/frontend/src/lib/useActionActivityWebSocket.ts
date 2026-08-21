@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { ActionActivityDto } from "@alliance/shared/client";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { getWebSocketUrl } from "./config";
-import { ActionActivityDto } from "@alliance/shared/client";
 
 interface ActionActivityEvent {
   actionId: number;
@@ -78,7 +78,7 @@ export function useActionActivityWebSocket(): UseActionActivityWebSocketReturn {
       subscribedActivitiesRef.current.add(actionId);
       socketRef.current?.emit("subscribe-action-activity", { actionId });
     },
-    [initializeSocket]
+    [initializeSocket],
   );
 
   const unsubscribeFromActionActivity = useCallback((actionId: number) => {
@@ -108,28 +108,28 @@ export function useActionActivityWebSocket(): UseActionActivityWebSocketReturn {
     (callback: (event: ActionActivityEvent) => void) => {
       actionActivityCallbacksRef.current.add(callback);
     },
-    []
+    [],
   );
 
   const offActionActivity = useCallback(
     (callback: (event: ActionActivityEvent) => void) => {
       actionActivityCallbacksRef.current.delete(callback);
     },
-    []
+    [],
   );
 
   const onFeedActivity = useCallback(
     (callback: (event: FeedActivityEvent) => void) => {
       feedActivityCallbacksRef.current.add(callback);
     },
-    []
+    [],
   );
 
   const offFeedActivity = useCallback(
     (callback: (event: FeedActivityEvent) => void) => {
       feedActivityCallbacksRef.current.delete(callback);
     },
-    []
+    [],
   );
 
   useEffect(() => {

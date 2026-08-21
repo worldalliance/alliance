@@ -1,20 +1,20 @@
-import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { InjectRepository } from '@nestjs/typeorm';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
-import { Repository } from 'typeorm';
-import { Push } from './push.entity';
-import type { JwtRequest } from 'src/auth/guards/jwtreq';
-import { PushOpenedDto } from './dto/push-opened.dto';
+import { Body, Controller, Post, Request, UseGuards } from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { InjectRepository } from "@nestjs/typeorm";
+import { AuthGuard } from "src/auth/guards/auth.guard";
+import type { JwtRequest } from "src/auth/guards/jwtreq";
+import { Repository } from "typeorm";
+import { PushOpenedDto } from "./dto/push-opened.dto";
+import { Push } from "./push.entity";
 
-@Controller('push')
+@Controller("push")
 export class PushController {
   constructor(
     @InjectRepository(Push)
     private readonly pushRepository: Repository<Push>,
   ) {}
 
-  @Post('opened')
+  @Post("opened")
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async markOpened(

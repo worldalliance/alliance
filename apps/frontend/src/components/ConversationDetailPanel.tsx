@@ -1,19 +1,19 @@
+import type { MessageDto } from "@alliance/shared/client";
 import {
   ConversationDto,
   CreateMessageDto,
   messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
-import Spinner from "@alliance/sharedweb/ui/Spinner";
-import Message from "./Message";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import { useAuth } from "../lib/AuthContext";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ConversationInfoPanel from "./ConversationInfoPanel";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { ChevronLeft, Users } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "../lib/AuthContext";
+import ConversationInfoPanel from "./ConversationInfoPanel";
+import Message from "./Message";
 import MessageInput from "./MessageInput";
-import type { MessageDto } from "@alliance/shared/client";
 import MessageRecipientSelect from "./MessageRecipientSelect";
 
 type ConversationDetailPanelProps = {

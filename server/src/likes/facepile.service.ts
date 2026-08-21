@@ -2,11 +2,11 @@ import {
   byLikeOrder,
   LIKE_FACEPILE_LIMIT,
   LIKE_ORDER_RANK_FN,
-} from '@alliance/common/likeOrder';
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { User } from 'src/user/entities/user.entity';
-import { EntityTarget, In, Repository } from 'typeorm';
+} from "@alliance/common/likeOrder";
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { User } from "src/user/entities/user.entity";
+import { EntityTarget, In, Repository } from "typeorm";
 
 type Likeable = { id: number; likes?: User[] };
 
@@ -67,21 +67,21 @@ export class FacepileService {
     // Quote derived-table columns; TypeORM leaves raw subquery aliases unquoted.
     const pairs = await this.userRepository.manager
       .createQueryBuilder()
-      .select('"ranked"."targetId"', 'targetId')
-      .addSelect('"ranked"."likerId"', 'likerId')
+      .select('"ranked"."targetId"', "targetId")
+      .addSelect('"ranked"."likerId"', "likerId")
       .from(
         (qb) =>
           qb
-            .select('target.id', 'targetId')
-            .addSelect('liker.id', 'likerId')
+            .select("target.id", "targetId")
+            .addSelect("liker.id", "likerId")
             .addSelect(
               `ROW_NUMBER() OVER (PARTITION BY target.id ORDER BY ${LIKE_ORDER_RANK_FN}(target.id::text || ':' || liker.id::text), liker.id)`,
-              'rn',
+              "rn",
             )
-            .from(target, 'target')
-            .innerJoin('target.likes', 'liker')
-            .where('target.id IN (:...ids)', { ids }),
-        'ranked',
+            .from(target, "target")
+            .innerJoin("target.likes", "liker")
+            .where("target.id IN (:...ids)", { ids }),
+        "ranked",
       )
       .where('"ranked"."rn" <= :limit', { limit: LIKE_FACEPILE_LIMIT })
       .getRawMany<{ targetId: number; likerId: number }>();

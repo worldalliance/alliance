@@ -1,14 +1,14 @@
-import 'dotenv/config';
+import "dotenv/config";
 
 import {
   assertWorktreeDatabase,
   DevDatabase,
   devPorts,
   PortCaller,
-} from '@alliance/common/dev-ports';
-import { DataSource } from 'typeorm';
-import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
-import { AppTypeOrmLogger } from '../utils/typeorm-logger';
+} from "@alliance/common/dev-ports";
+import { DataSource } from "typeorm";
+import { PostgresConnectionOptions } from "typeorm/driver/postgres/PostgresConnectionOptions";
+import { AppTypeOrmLogger } from "../utils/typeorm-logger";
 
 export const connectionOptions = (): PostgresConnectionOptions => {
   // The TypeORM CLI bypasses main.ts, and dotenv preserves an exported DB_NAME.
@@ -19,7 +19,7 @@ export const connectionOptions = (): PostgresConnectionOptions => {
   });
 
   const shared: PostgresConnectionOptions = {
-    type: 'postgres',
+    type: "postgres",
     host: process.env.DB_HOST,
     port: process.env.DB_PORT ? +process.env.DB_PORT : 5432,
     username: process.env.DB_USERNAME,
@@ -27,12 +27,12 @@ export const connectionOptions = (): PostgresConnectionOptions => {
     database: process.env.DB_NAME,
     useUTC: true,
     maxQueryExecutionTime: 100,
-    logging: ['error', 'warn'],
+    logging: ["error", "warn"],
     logger: new AppTypeOrmLogger(),
   };
 
-  return process.env.NODE_ENV === 'production' ||
-    process.env.NODE_ENV === 'staging'
+  return process.env.NODE_ENV === "production" ||
+    process.env.NODE_ENV === "staging"
     ? {
         ...shared,
         ssl: {
@@ -61,8 +61,8 @@ export const connectionOptions = (): PostgresConnectionOptions => {
  */
 const dataSource = new DataSource({
   ...connectionOptions(),
-  entities: ['src/**/*.entity.ts'],
+  entities: ["src/**/*.entity.ts"],
   logger: undefined,
-  migrations: ['migrations/*{.ts,.js}'],
+  migrations: ["migrations/*{.ts,.js}"],
 });
 export default dataSource;

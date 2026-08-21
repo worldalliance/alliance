@@ -12,19 +12,19 @@ import {
   Request,
   Res,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse, ApiResponse } from '@nestjs/swagger';
-import type { Request as ExpressRequest, Response } from 'express';
-import { ActionActivityDto, OptOutActionDto } from 'src/actions/dto/action.dto';
-import { AuthService } from 'src/auth/auth.service';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
+} from "@nestjs/common";
+import { ApiOkResponse, ApiResponse } from "@nestjs/swagger";
+import type { Request as ExpressRequest, Response } from "express";
+import { ActionActivityDto, OptOutActionDto } from "src/actions/dto/action.dto";
+import { AuthService } from "src/auth/auth.service";
+import { AdminGuard } from "src/auth/guards/admin.guard";
 import {
   AuthGuard,
   extractGuestTokenFromCookie,
   extractGuestTokenFromHeader,
-} from 'src/auth/guards/auth.guard';
-import type { JwtRequest } from 'src/auth/guards/jwtreq';
-import { Public } from 'src/auth/public.decorator';
+} from "src/auth/guards/auth.guard";
+import type { JwtRequest } from "src/auth/guards/jwtreq";
+import { Public } from "src/auth/public.decorator";
 import {
   CreateCustomValidatorDto,
   CreateCustomValidatorResponseDto,
@@ -34,7 +34,7 @@ import {
   RunValidatorDto,
   TestCustomExpressionDto,
   TestCustomExpressionResponseDto,
-} from './customvalidator.dto';
+} from "./customvalidator.dto";
 import {
   CreateFormDto,
   FormAggregateViewsDto,
@@ -49,24 +49,24 @@ import {
   SubmitFollowUpFormDto,
   SubmitFormDto,
   UpdateFormDto,
-} from './form.dto';
-import { TasksService } from './tasks.service';
+} from "./form.dto";
+import { TasksService } from "./tasks.service";
 
-const GUEST_TOKEN_RESPONSE_HEADER = 'X-Guest-Token';
+const GUEST_TOKEN_RESPONSE_HEADER = "X-Guest-Token";
 
-@Controller('tasks')
+@Controller("tasks")
 export class TasksController {
   constructor(
     private readonly tasksService: TasksService,
     private readonly authService: AuthService,
   ) {}
 
-  @Post('submitForm/:id')
+  @Post("submitForm/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: FormResponseDto })
   async submitForm(
     @Request() req: JwtRequest,
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
     return new FormResponseDto({
@@ -74,20 +74,20 @@ export class TasksController {
     });
   }
 
-  @Post('submitPublicForm/:id')
+  @Post("submitPublicForm/:id")
   @Public()
   @ApiOkResponse({ type: FormResponseDto })
   async submitPublicForm(
     @Request() req: ExpressRequest,
     @Res({ passthrough: true }) res: Response,
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() body: SubmitFormDto,
   ): Promise<FormResponseDto> {
     const authenticatedUserId =
       await this.authService.getAuthenticatedUserId(req);
     if (authenticatedUserId !== null) {
       throw new BadRequestException(
-        'Authenticated users must use /tasks/submitForm/:id',
+        "Authenticated users must use /tasks/submitForm/:id",
       );
     }
     const incomingToken =
@@ -105,12 +105,12 @@ export class TasksController {
     });
   }
 
-  @Post('submitFollowUpForm/:followUpFormId')
+  @Post("submitFollowUpForm/:followUpFormId")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: FormResponseDto })
   async submitFollowUpForm(
     @Request() req: JwtRequest,
-    @Param('followUpFormId', ParseIntPipe) followUpFormId: number,
+    @Param("followUpFormId", ParseIntPipe) followUpFormId: number,
     @Body() body: SubmitFollowUpFormDto,
   ): Promise<FormResponseDto> {
     return new FormResponseDto({
@@ -122,30 +122,30 @@ export class TasksController {
     });
   }
 
-  @Post('createForm')
+  @Post("createForm")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: FormDto })
   async createFormAdmin(@Body() body: CreateFormDto): Promise<FormDto> {
     return new FormDto(await this.tasksService.createForm(body));
   }
 
-  @Get('listForms')
+  @Get("listForms")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [FormDto] })
   async listFormsAdmin(): Promise<FormDto[]> {
     return this.tasksService.listForms();
   }
 
-  @Get('responses/:id')
+  @Get("responses/:id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [FormResponseDto] })
   async getFormResponsesAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
   ): Promise<FormResponseDto[]> {
     return this.tasksService.getFormResponses(id);
   }
 
-  @Post('responses/byForms')
+  @Post("responses/byForms")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [FormResponseDto] })
   async getFormResponsesByFormsAdmin(
@@ -154,27 +154,27 @@ export class TasksController {
     return this.tasksService.getFormResponsesForForms(body.formIds);
   }
 
-  @Get('forms/:formId/snapshotMigration')
+  @Get("forms/:formId/snapshotMigration")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: FormSnapshotMigrationDto })
   async getResponseSnapshotMigrationAdmin(
-    @Param('formId', ParseIntPipe) formId: number,
+    @Param("formId", ParseIntPipe) formId: number,
   ): Promise<FormSnapshotMigrationDto> {
     return new FormSnapshotMigrationDto(
       await this.tasksService.getResponseSnapshotMigration(formId),
     );
   }
 
-  @Patch('forms/:formId/responseSnapshots')
+  @Patch("forms/:formId/responseSnapshots")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: MigrateResponseSnapshotsResultDto })
   @ApiResponse({
     status: 409,
     description:
-      'The form snapshot changed since the migration was reviewed (optimistic-concurrency conflict).',
+      "The form snapshot changed since the migration was reviewed (optimistic-concurrency conflict).",
   })
   async migrateResponseSnapshotsAdmin(
-    @Param('formId', ParseIntPipe) formId: number,
+    @Param("formId", ParseIntPipe) formId: number,
     @Body() body: MigrateResponseSnapshotsDto,
   ): Promise<MigrateResponseSnapshotsResultDto> {
     return new MigrateResponseSnapshotsResultDto(
@@ -186,11 +186,11 @@ export class TasksController {
     );
   }
 
-  @Get('myResponse/:id')
+  @Get("myResponse/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: FormResponseDto })
   async getMyFormResponse(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<FormResponseDto> {
     return new FormResponseDto({
@@ -198,12 +198,12 @@ export class TasksController {
     });
   }
 
-  @Get('guestResponse/:id')
+  @Get("guestResponse/:id")
   @Public()
   @ApiOkResponse({ type: GuestFormResponseDto })
   async getGuestFormResponse(
     @Request() req: ExpressRequest,
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
   ): Promise<GuestFormResponseDto> {
     const token =
       extractGuestTokenFromHeader(req) ?? extractGuestTokenFromCookie(req);
@@ -218,11 +218,11 @@ export class TasksController {
     );
   }
 
-  @Get('draft/:id')
+  @Get("draft/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: LinkedGuestDraftDto })
   async getLinkedGuestDraft(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
   ): Promise<LinkedGuestDraftDto> {
     return new LinkedGuestDraftDto(
@@ -230,46 +230,46 @@ export class TasksController {
     );
   }
 
-  @Get('slug/:id')
+  @Get("slug/:id")
   @ApiOkResponse({ type: FormDto })
-  async getForm(@Param('id', ParseIntPipe) id: number): Promise<FormDto> {
+  async getForm(@Param("id", ParseIntPipe) id: number): Promise<FormDto> {
     return new FormDto(await this.tasksService.getForm(id));
   }
 
-  @Get('aggregateViews/:id')
+  @Get("aggregateViews/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: FormAggregateViewsDto })
   async getFormAggregateViews(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
   ): Promise<FormAggregateViewsDto> {
     return new FormAggregateViewsDto(
       await this.tasksService.findFormAggregateViews(id),
     );
   }
 
-  @Put('updateForm/:formId')
+  @Put("updateForm/:formId")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: FormDto })
   @ApiResponse({
     status: 409,
     description:
-      'The form was changed by someone else since it was opened (optimistic-concurrency conflict).',
+      "The form was changed by someone else since it was opened (optimistic-concurrency conflict).",
   })
   async updateFormAdmin(
-    @Param('formId', ParseIntPipe) formId: number,
+    @Param("formId", ParseIntPipe) formId: number,
     @Body() body: UpdateFormDto,
   ): Promise<FormDto> {
     return new FormDto(await this.tasksService.updateForm(+formId, body));
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @UseGuards(AdminGuard)
   @ApiOkResponse()
-  async deleteFormAdmin(@Param('id', ParseIntPipe) id: number): Promise<void> {
+  async deleteFormAdmin(@Param("id", ParseIntPipe) id: number): Promise<void> {
     return this.tasksService.deleteForm(id);
   }
 
-  @Get('customValidators')
+  @Get("customValidators")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CustomValidatorTypeDto, isArray: true })
   async customValidatorsAdmin(): Promise<CustomValidatorTypeDto[]> {
@@ -277,11 +277,11 @@ export class TasksController {
     return types.map((t) => new CustomValidatorTypeDto(t));
   }
 
-  @Post('runValidator/:id')
+  @Post("runValidator/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: CustomValidatorResponseDto })
   async runValidator(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Request() req: JwtRequest,
     @Body() body: RunValidatorDto,
   ): Promise<CustomValidatorResponseDto> {
@@ -290,18 +290,18 @@ export class TasksController {
     );
   }
 
-  @Get('findOneCustomValidator/:id')
+  @Get("findOneCustomValidator/:id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CustomValidatorDto })
   async findOneCustomValidatorAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
   ): Promise<CustomValidatorDto> {
     return new CustomValidatorDto(
       await this.tasksService.findOneCustomValidator(id),
     );
   }
 
-  @Post('createCustomValidator')
+  @Post("createCustomValidator")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: CreateCustomValidatorResponseDto })
   async createCustomValidatorAdmin(
@@ -315,7 +315,7 @@ export class TasksController {
     return new CreateCustomValidatorResponseDto(validator.id);
   }
 
-  @Post('testCustomExpression')
+  @Post("testCustomExpression")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: TestCustomExpressionResponseDto })
   async testCustomExpressionAdmin(
@@ -329,16 +329,16 @@ export class TasksController {
     );
   }
 
-  @Post('optout/:id')
+  @Post("optout/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ActionActivityDto })
   async optout(
     @Request() req: JwtRequest,
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() body: OptOutActionDto,
   ): Promise<ActionActivityDto> {
     if (!body.partialFormData) {
-      throw new BadRequestException('Partial form data is required');
+      throw new BadRequestException("Partial form data is required");
     }
     return new ActionActivityDto(
       await this.tasksService.optoutForm(
@@ -355,11 +355,11 @@ export class TasksController {
     );
   }
 
-  @Post('formsForUserSID/:userId')
+  @Post("formsForUserSID/:userId")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [FormResponseDto] })
   async getFormsForUserSIDAdmin(
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param("userId", ParseIntPipe) userId: number,
   ): Promise<FormResponseDto[]> {
     return (await this.tasksService.getFormsForUserSID(userId)).map(
       (response) => new FormResponseDto({ response }),

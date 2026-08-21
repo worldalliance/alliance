@@ -1,11 +1,11 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsNotEmpty, IsOptional, IsString, ValidateIf } from 'class-validator';
-import { User } from 'src/user/entities/user.entity';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsNotEmpty, IsOptional, IsString, ValidateIf } from "class-validator";
+import { User } from "src/user/entities/user.entity";
 import {
   CustomValidator,
   CustomValidatorType,
-} from './entities/customvalidator.entity';
+} from "./entities/customvalidator.entity";
 
 export type CustomValidatorTypeDtoArgs = {
   name: string;
@@ -19,7 +19,7 @@ export class CustomValidatorTypeDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ enum: CustomValidatorType, enumName: 'CustomValidatorType' })
+  @ApiProperty({ enum: CustomValidatorType, enumName: "CustomValidatorType" })
   @IsNotEmpty()
   id: CustomValidatorType;
 
@@ -40,7 +40,7 @@ export class CustomValidatorTypeDto {
 }
 
 export class CreateCustomValidatorDto {
-  @ApiProperty({ enum: CustomValidatorType, enumName: 'CustomValidatorType' })
+  @ApiProperty({ enum: CustomValidatorType, enumName: "CustomValidatorType" })
   @IsNotEmpty()
   type: CustomValidatorType;
 
@@ -56,10 +56,10 @@ export class CreateCustomValidatorDto {
 }
 
 export class CustomValidatorDto extends PickType(CustomValidator, [
-  'id',
-  'type',
-  'idArgument',
-  'expression',
+  "id",
+  "type",
+  "idArgument",
+  "expression",
 ]) {
   constructor(input: CustomValidator) {
     super();
@@ -107,9 +107,9 @@ export class RunValidatorDto {
 }
 
 export class CustomExpressionUserDto extends PickType(User, [
-  'id',
-  'name',
-  'anonymous',
+  "id",
+  "name",
+  "anonymous",
 ]) {
   constructor(input: User) {
     super();

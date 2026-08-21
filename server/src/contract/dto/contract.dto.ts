@@ -1,9 +1,9 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
-import { Contract } from '../entities/contract.entity';
-import type { ContractField } from '@alliance/common/forms/form-schema';
+import type { ContractField } from "@alliance/common/forms/form-schema";
+import { ApiProperty, PickType } from "@nestjs/swagger";
+import { IsNotEmpty, IsString } from "class-validator";
+import { Contract } from "../entities/contract.entity";
 
-export class ContractDto extends PickType(Contract, ['id', 'markdown']) {
+export class ContractDto extends PickType(Contract, ["id", "markdown"]) {
   constructor(contract: Contract) {
     super();
     this.id = contract.id;
@@ -28,12 +28,12 @@ export class ContractEventDateDto {
 }
 
 export class ContractAdminDto extends PickType(Contract, [
-  'id',
-  'name',
-  'createdAt',
-  'markdown',
-  'startDate',
-  'endDate',
+  "id",
+  "name",
+  "createdAt",
+  "markdown",
+  "startDate",
+  "endDate",
 ]) {
   constructor(contract: Contract) {
     super();
@@ -47,16 +47,16 @@ export class ContractAdminDto extends PickType(Contract, [
 }
 
 export class CreateContractDto extends PickType(Contract, [
-  'name',
-  'markdown',
-  'startDate',
-  'endDate',
+  "name",
+  "markdown",
+  "startDate",
+  "endDate",
 ]) {}
 
 export class UpdateContractDto extends PickType(Contract, [
-  'name',
-  'startDate',
-  'endDate',
+  "name",
+  "startDate",
+  "endDate",
 ]) {}
 
 export type ContractFieldDto = ContractField & {

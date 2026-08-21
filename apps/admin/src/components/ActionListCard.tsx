@@ -1,9 +1,9 @@
 import { ActionDto } from "@alliance/shared/client";
-import ActionProgressBar from "./ActionProgressBar";
-import { getLastPastEventDate } from "../pages/Actions";
+import { cn } from "@alliance/shared/styles/util";
 import { useCallback } from "react";
 import { useNavigate } from "react-router";
-import { cn } from "@alliance/shared/styles/util";
+import { getLastPastEventDate } from "../pages/Actions";
+import ActionProgressBar from "./ActionProgressBar";
 
 export interface ActionListCardProps {
   action: Pick<

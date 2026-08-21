@@ -1,13 +1,13 @@
-import { processKeywordReplacements } from './mail.service';
-import { User } from 'src/user/entities/user.entity';
-import { Action } from 'src/actions/entities/action.entity';
+import { Action } from "src/actions/entities/action.entity";
+import { User } from "src/user/entities/user.entity";
+import { processKeywordReplacements } from "./mail.service";
 
-describe('processKeywordReplacements', () => {
+describe("processKeywordReplacements", () => {
   let originalAppUrl: string | undefined;
 
   beforeAll(() => {
     originalAppUrl = process.env.APP_URL;
-    process.env.APP_URL = 'https://app.example.org';
+    process.env.APP_URL = "https://app.example.org";
   });
 
   afterAll(() => {
@@ -15,115 +15,115 @@ describe('processKeywordReplacements', () => {
   });
 
   const baseContext = {
-    user: { id: 1, name: 'Jane Doe' } as User,
-    action: { id: 10, name: 'Test Action' } as Action,
-    cid: 'test-cid',
-    uncompletedTasksTime: '90 minutes',
-    uncompletedTasksNames: ['Task A', 'Task B'],
+    user: { id: 1, name: "Jane Doe" } as User,
+    action: { id: 10, name: "Test Action" } as Action,
+    cid: "test-cid",
+    uncompletedTasksTime: "90 minutes",
+    uncompletedTasksNames: ["Task A", "Task B"],
   };
 
-  describe('simple placeholders', () => {
-    it('replaces #{firstname}, #{lastname}, #{fullname}, #{action}', () => {
+  describe("simple placeholders", () => {
+    it("replaces #{firstname}, #{lastname}, #{fullname}, #{action}", () => {
       const result = processKeywordReplacements(
-        'Hi #{firstname} #{lastname} (#{fullname}), #{action}',
+        "Hi #{firstname} #{lastname} (#{fullname}), #{action}",
         {
           ...baseContext,
           uncompletedTasksCount: 1,
         },
       );
-      expect(result).toBe('Hi Jane Doe (Jane Doe), Test Action');
+      expect(result).toBe("Hi Jane Doe (Jane Doe), Test Action");
     });
 
-    it('replaces #{n}, #{s}, #{tasknames}, #{tasktime}', () => {
+    it("replaces #{n}, #{s}, #{tasknames}, #{tasktime}", () => {
       const result = processKeywordReplacements(
-        '#{n} task#{s}: #{tasknames} (#{tasktime})',
+        "#{n} task#{s}: #{tasknames} (#{tasktime})",
         {
           ...baseContext,
           uncompletedTasksCount: 2,
         },
       );
-      expect(result).toBe('2 tasks: Task A, Task B (90 minutes)');
+      expect(result).toBe("2 tasks: Task A, Task B (90 minutes)");
     });
 
-    it('replaces #{link} and #{grouplink} with cid', () => {
+    it("replaces #{link} and #{grouplink} with cid", () => {
       const result = processKeywordReplacements(
-        'Link: #{link} Group: #{grouplink}',
+        "Link: #{link} Group: #{grouplink}",
         { ...baseContext, uncompletedTasksCount: 1 },
       );
       expect(result).toContain(
-        'Link: https://app.example.org/tasks?cid=test-cid',
+        "Link: https://app.example.org/tasks?cid=test-cid",
       );
       expect(result).toContain(
-        'Group: https://app.example.org/groups?tab=members',
+        "Group: https://app.example.org/groups?tab=members",
       );
-      expect(result).toContain('cid=test-cid');
+      expect(result).toContain("cid=test-cid");
     });
   });
 
-  describe('#{x|y} singular/plural', () => {
-    it('uses left part when uncompletedTasksCount === 1', () => {
+  describe("#{x|y} singular/plural", () => {
+    it("uses left part when uncompletedTasksCount === 1", () => {
       const result = processKeywordReplacements(
-        'You have #{1 task|2 tasks} left.',
+        "You have #{1 task|2 tasks} left.",
         { ...baseContext, uncompletedTasksCount: 1 },
       );
-      expect(result).toBe('You have 1 task left.');
+      expect(result).toBe("You have 1 task left.");
     });
 
-    it('uses right part when uncompletedTasksCount !== 1', () => {
+    it("uses right part when uncompletedTasksCount !== 1", () => {
       const result = processKeywordReplacements(
-        'You have #{1 task|2 tasks} left.',
+        "You have #{1 task|2 tasks} left.",
         { ...baseContext, uncompletedTasksCount: 3 },
       );
-      expect(result).toBe('You have 2 tasks left.');
+      expect(result).toBe("You have 2 tasks left.");
     });
   });
 
-  describe('#{\\n|\\n\\n} and escape sequences', () => {
-    it('replaces #{\\n|\\n\\n} with one newline when n === 1', () => {
-      const result = processKeywordReplacements(
-        'Line1#{\\n|\\n\\n}Line2',
-        { ...baseContext, uncompletedTasksCount: 1 },
-      );
-      expect(result).toBe('Line1\nLine2');
-      expect(result).toEqual(`Line1${'\n'}Line2`);
+  describe("#{\\n|\\n\\n} and escape sequences", () => {
+    it("replaces #{\\n|\\n\\n} with one newline when n === 1", () => {
+      const result = processKeywordReplacements("Line1#{\\n|\\n\\n}Line2", {
+        ...baseContext,
+        uncompletedTasksCount: 1,
+      });
+      expect(result).toBe("Line1\nLine2");
+      expect(result).toEqual(`Line1${"\n"}Line2`);
     });
 
-    it('replaces #{\\n|\\n\\n} with two newlines when n !== 1', () => {
-      const result = processKeywordReplacements(
-        'Line1#{\\n|\\n\\n}Line2',
-        { ...baseContext, uncompletedTasksCount: 2 },
-      );
-      expect(result).toBe('Line1\n\nLine2');
-      expect(result).toEqual(`Line1${'\n'}${'\n'}Line2`);
+    it("replaces #{\\n|\\n\\n} with two newlines when n !== 1", () => {
+      const result = processKeywordReplacements("Line1#{\\n|\\n\\n}Line2", {
+        ...baseContext,
+        uncompletedTasksCount: 2,
+      });
+      expect(result).toBe("Line1\n\nLine2");
+      expect(result).toEqual(`Line1${"\n"}${"\n"}Line2`);
     });
 
-    it('interprets \\t in #{x|y} as tab', () => {
-      const result = processKeywordReplacements(
-        'A#{\\t|\\t\\t}B',
-        { ...baseContext, uncompletedTasksCount: 1 },
-      );
-      expect(result).toBe('A\tB');
+    it("interprets \\t in #{x|y} as tab", () => {
+      const result = processKeywordReplacements("A#{\\t|\\t\\t}B", {
+        ...baseContext,
+        uncompletedTasksCount: 1,
+      });
+      expect(result).toBe("A\tB");
     });
 
-    it('interprets \\t in #{x|y} as double tab when plural', () => {
-      const result = processKeywordReplacements(
-        'A#{\\t|\\t\\t}B',
-        { ...baseContext, uncompletedTasksCount: 2 },
-      );
-      expect(result).toBe('A\t\tB');
+    it("interprets \\t in #{x|y} as double tab when plural", () => {
+      const result = processKeywordReplacements("A#{\\t|\\t\\t}B", {
+        ...baseContext,
+        uncompletedTasksCount: 2,
+      });
+      expect(result).toBe("A\t\tB");
     });
 
-    it('interprets \\\\ as single backslash in replacement', () => {
-      const result = processKeywordReplacements(
-        'Path: #{a\\\\b|a\\\\b\\\\c}',
-        { ...baseContext, uncompletedTasksCount: 1 },
-      );
-      expect(result).toBe('Path: a\\b');
+    it("interprets \\\\ as single backslash in replacement", () => {
+      const result = processKeywordReplacements("Path: #{a\\\\b|a\\\\b\\\\c}", {
+        ...baseContext,
+        uncompletedTasksCount: 1,
+      });
+      expect(result).toBe("Path: a\\b");
     });
 
-    it('combines escaped newlines with other placeholders', () => {
+    it("combines escaped newlines with other placeholders", () => {
       const result = processKeywordReplacements(
-        'Hi #{firstname},#{\\n|\\n\\n}#{n} task#{s}',
+        "Hi #{firstname},#{\\n|\\n\\n}#{n} task#{s}",
         { ...baseContext, uncompletedTasksCount: 1 },
       );
       expect(result).toBe(`Hi Jane,\n1 task`);

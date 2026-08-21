@@ -1,9 +1,9 @@
-import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { CreateDateColumn, UpdateDateColumn } from "typeorm";
 
 export function CreateDateColumnTz() {
-  return CreateDateColumn({ type: 'timestamptz' });
+  return CreateDateColumn({ type: "timestamptz" });
 }
 
 export function UpdateDateColumnTz() {
-  return UpdateDateColumn({ type: 'timestamptz' });
+  return UpdateDateColumn({ type: "timestamptz" });
 }

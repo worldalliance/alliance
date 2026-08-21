@@ -1,11 +1,11 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 
-import { UserAwayRange } from '../entities/user-away-range.entity';
-import { Transform } from 'class-transformer';
-import { IsDefined, IsOptional, IsString } from 'class-validator';
-import { trimToNull } from 'src/utils/transforms';
+import { Transform } from "class-transformer";
+import { IsDefined, IsOptional, IsString } from "class-validator";
+import { trimToNull } from "src/utils/transforms";
+import { UserAwayRange } from "../entities/user-away-range.entity";
 
-export class CreateAwayRangeDto extends PickType(UserAwayRange, ['reason']) {
+export class CreateAwayRangeDto extends PickType(UserAwayRange, ["reason"]) {
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
@@ -23,7 +23,7 @@ export class CreateAwayRangeDto extends PickType(UserAwayRange, ['reason']) {
   endDay: string;
 }
 
-export class UpdateAwayRangeDto extends PickType(UserAwayRange, ['reason']) {
+export class UpdateAwayRangeDto extends PickType(UserAwayRange, ["reason"]) {
   @ApiPropertyOptional({ nullable: true })
   @IsOptional()
   @IsString()
@@ -42,12 +42,12 @@ export class UpdateAwayRangeDto extends PickType(UserAwayRange, ['reason']) {
 }
 
 export class UserAwayRangeDto extends PickType(UserAwayRange, [
-  'id',
-  'startDate',
-  'endDate',
-  'reason',
-  'note',
-  'createdAt',
+  "id",
+  "startDate",
+  "endDate",
+  "reason",
+  "note",
+  "createdAt",
 ]) {
   constructor(awayRange: UserAwayRange) {
     super();

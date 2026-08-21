@@ -1,16 +1,16 @@
+import { useEffect } from "react";
 import { Keyboard, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
+  Extrapolation,
+  interpolate,
   type SharedValue,
   useAnimatedStyle,
   withSpring,
-  interpolate,
-  Extrapolation,
 } from "react-native-reanimated";
-import { useAppDrawer } from "../lib/AppDrawerContext";
-import Sidebar from "./Sidebar";
-import { useEffect } from "react";
-import { colors } from "../lib/style/colors";
 import { APP_DRAWER_SPRING_CONFIG } from "../lib/appDrawerConfig";
+import { useAppDrawer } from "../lib/AppDrawerContext";
+import { colors } from "../lib/style/colors";
+import Sidebar from "./Sidebar";
 
 type AnimatedSidebarProps = {
   sidebarWidth: number;

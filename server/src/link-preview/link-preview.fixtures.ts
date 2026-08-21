@@ -1,5 +1,5 @@
-import { Readable } from 'node:stream';
-import { SafeHttpResponse, SafeHttpTransport } from 'src/utils/safe-http';
+import { Readable } from "node:stream";
+import { SafeHttpResponse, SafeHttpTransport } from "src/utils/safe-http";
 
 /**
  * Shared fixtures for the link-preview unit and e2e specs: a canonical
@@ -26,7 +26,7 @@ export function response(
 ): SafeHttpResponse {
   return {
     status,
-    headers: { 'content-type': 'text/html; charset=utf-8', ...headers },
+    headers: { "content-type": "text/html; charset=utf-8", ...headers },
     body: Readable.from([Buffer.isBuffer(body) ? body : Buffer.from(body)]),
   };
 }
@@ -44,7 +44,7 @@ export function makeTransport(
   const requested: string[] = [];
   const transport: SafeHttpTransport = {
     lookup: async (hostname) => [
-      { address: lookups[hostname] ?? '93.184.216.34', family: 4 },
+      { address: lookups[hostname] ?? "93.184.216.34", family: 4 },
     ],
     request: async (url) => {
       requested.push(url.href);

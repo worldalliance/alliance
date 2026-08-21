@@ -1,9 +1,9 @@
-import { cn } from "@alliance/shared/styles/util";
 import {
   checkIconCircle,
   checkIconPath,
   checkIconViewBox,
 } from "@alliance/shared/icons/checkIcon";
+import { cn } from "@alliance/shared/styles/util";
 import { forwardRef, type SVGProps } from "react";
 
 interface CheckIconProps extends Omit<SVGProps<SVGSVGElement>, "ref"> {

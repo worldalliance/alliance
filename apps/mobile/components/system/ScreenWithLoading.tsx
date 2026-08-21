@@ -1,7 +1,7 @@
 import React from "react";
-import { View, ActivityIndicator } from "react-native";
-import { SimplePageTitle } from "./SimplePageTitle";
+import { ActivityIndicator, View } from "react-native";
 import { colors } from "../../lib/style/colors";
+import { SimplePageTitle } from "./SimplePageTitle";
 
 type ScreenWithLoadingProps = {
   title: string;

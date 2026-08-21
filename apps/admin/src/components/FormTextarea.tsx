@@ -1,9 +1,9 @@
+import { htmlToMarkdownFromDocs } from "@alliance/sharedweb/lib/htmlToMarkdown";
 import type React from "react";
 import { useCallback, useRef } from "react";
 import TextareaAutosize, {
   type TextareaAutosizeProps,
 } from "react-textarea-autosize";
-import { htmlToMarkdownFromDocs } from "@alliance/sharedweb/lib/htmlToMarkdown";
 
 export interface FormTextareaProps extends TextareaAutosizeProps {
   value?: string;
@@ -44,7 +44,7 @@ function FormTextarea({
         },
       } as React.ChangeEvent<HTMLTextAreaElement>);
     },
-    [onChange, resolvedRef]
+    [onChange, resolvedRef],
   );
 
   return (

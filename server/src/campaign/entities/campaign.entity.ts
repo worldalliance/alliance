@@ -1,9 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+} from "src/datasources/basecolumns";
+import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 
 /**
  * A referral owner that is not a user account — e.g. a marketing campaign, a
@@ -20,7 +20,7 @@ export class Campaign {
 
   @Column()
   @ApiProperty({
-    description: 'Human-readable label, shown in the admin panel',
+    description: "Human-readable label, shown in the admin panel",
   })
   name: string;
 
@@ -28,15 +28,15 @@ export class Campaign {
   @Column()
   @ApiProperty({
     description:
-      'Bare signup referral code attributing new users to this campaign',
+      "Bare signup referral code attributing new users to this campaign",
   })
   code: string;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   @ApiProperty({
     type: String,
     nullable: true,
-    description: 'Image key for the campaign avatar, shown on the signup page',
+    description: "Image key for the campaign avatar, shown on the signup page",
   })
   picture: string | null;
 

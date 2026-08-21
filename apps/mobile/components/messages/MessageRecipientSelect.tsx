@@ -1,7 +1,7 @@
 import { ProfileDto } from "@alliance/shared/client";
+import { X } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { TextInput, TouchableOpacity, View } from "react-native";
-import { X } from "lucide-react-native";
 import ProfileImage from "../ProfileImage";
 import Text, { FontWeight } from "../system/Text";
 

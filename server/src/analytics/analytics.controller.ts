@@ -7,29 +7,29 @@ import {
   Post,
   Query,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse, ApiQuery } from '@nestjs/swagger';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { ActionCompletionCurveDto } from './action-completion-curve.dto';
-import { ActionStatsWithOnboardingDto } from './actionstats-with-onboarding.dto';
-import { AggregateStatsDto } from './aggregatestats.dto';
-import { AnalyticsService } from './analytics.service';
-import { ContractStatusPointDto } from './contract-status-history.dto';
-import { DailyStatsDto } from './dailystats.dto';
-import { InviteFunnelDto } from './invite-funnel.dto';
-import { MemberCompletionRetentionCohortDto } from './member-completion-retention.dto';
-import { MemberReliabilityWindowDto } from './member-reliability-window.dto';
-import { MissedActionsDto } from './missed-actions.dto';
-import { PlatformTenureCohortStatsDto } from './platform-tenure-cohort.dto';
-import { ReminderGroupClickRatePointDto } from './reminder-group-click-rates.dto';
-import { TimeToChurnSampleDto } from './time-to-churn.dto';
-import { TimeSpentForUserDto } from './timespent.dto';
+} from "@nestjs/common";
+import { ApiOkResponse, ApiQuery } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
+import { ActionCompletionCurveDto } from "./action-completion-curve.dto";
+import { ActionStatsWithOnboardingDto } from "./actionstats-with-onboarding.dto";
+import { AggregateStatsDto } from "./aggregatestats.dto";
+import { AnalyticsService } from "./analytics.service";
+import { ContractStatusPointDto } from "./contract-status-history.dto";
+import { DailyStatsDto } from "./dailystats.dto";
+import { InviteFunnelDto } from "./invite-funnel.dto";
+import { MemberCompletionRetentionCohortDto } from "./member-completion-retention.dto";
+import { MemberReliabilityWindowDto } from "./member-reliability-window.dto";
+import { MissedActionsDto } from "./missed-actions.dto";
+import { PlatformTenureCohortStatsDto } from "./platform-tenure-cohort.dto";
+import { ReminderGroupClickRatePointDto } from "./reminder-group-click-rates.dto";
+import { TimeToChurnSampleDto } from "./time-to-churn.dto";
+import { TimeSpentForUserDto } from "./timespent.dto";
 
-@Controller('analytics')
+@Controller("analytics")
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
-  @Get('time-spent-per-user')
+  @Get("time-spent-per-user")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [TimeSpentForUserDto] })
   async getTimeSpentPerUserAdmin(): Promise<TimeSpentForUserDto[]> {
@@ -37,7 +37,7 @@ export class AnalyticsController {
     return entries.map((entry) => new TimeSpentForUserDto(entry));
   }
 
-  @Get('time-spent-per-user-total')
+  @Get("time-spent-per-user-total")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [TimeSpentForUserDto] })
   async getTimeSpentPerUserTotalAdmin(): Promise<TimeSpentForUserDto[]> {
@@ -46,11 +46,11 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('daily-stats')
+  @Get("daily-stats")
   @ApiOkResponse({ type: [DailyStatsDto] })
   async getDailyStatsAdmin(
-    @Query('date') startDate: string,
-    @Query('endDate') endDate: string,
+    @Query("date") startDate: string,
+    @Query("endDate") endDate: string,
   ): Promise<DailyStatsDto[]> {
     const records = await this.analyticsService.getDailyStats(
       startDate,
@@ -60,7 +60,7 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('action-stats')
+  @Get("action-stats")
   @ApiOkResponse({ type: [ActionStatsWithOnboardingDto] })
   async getActionStatsAdmin(): Promise<ActionStatsWithOnboardingDto[]> {
     const stats = await this.analyticsService.getActionStats();
@@ -68,7 +68,7 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('reminder-group-click-rates')
+  @Get("reminder-group-click-rates")
   @ApiOkResponse({ type: [ReminderGroupClickRatePointDto] })
   async getReminderGroupClickRatesAdmin(): Promise<
     ReminderGroupClickRatePointDto[]
@@ -78,22 +78,22 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('action-stats/:actionId')
+  @Get("action-stats/:actionId")
   @ApiOkResponse({ type: ActionStatsWithOnboardingDto })
   async getActionStatsByIdAdmin(
-    @Param('actionId') actionId: string,
+    @Param("actionId") actionId: string,
   ): Promise<ActionStatsWithOnboardingDto> {
     const stats = await this.analyticsService.getActionStatsById(
       Number(actionId),
     );
     if (!stats) {
-      throw new NotFoundException('Action stats not found');
+      throw new NotFoundException("Action stats not found");
     }
     return new ActionStatsWithOnboardingDto(stats);
   }
 
   @UseGuards(AdminGuard)
-  @Post('action-stats/recalculate')
+  @Post("action-stats/recalculate")
   @ApiOkResponse({ type: [ActionStatsWithOnboardingDto] })
   async recalculateActionStatsAdmin(): Promise<ActionStatsWithOnboardingDto[]> {
     await this.analyticsService.calculateActionStats();
@@ -102,7 +102,7 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('member-completion-retention')
+  @Get("member-completion-retention")
   @ApiOkResponse({ type: [MemberCompletionRetentionCohortDto] })
   async getMemberCompletionRetentionAdmin(): Promise<
     MemberCompletionRetentionCohortDto[]
@@ -115,11 +115,11 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('member-reliability-window')
+  @Get("member-reliability-window")
   @ApiOkResponse({ type: MemberReliabilityWindowDto })
-  @ApiQuery({ name: 'weeks', required: true, type: Number })
+  @ApiQuery({ name: "weeks", required: true, type: Number })
   async getMemberReliabilityWindowAdmin(
-    @Query('weeks') weeks: string,
+    @Query("weeks") weeks: string,
   ): Promise<MemberReliabilityWindowDto> {
     const parsedWeeks = Number(weeks);
     if (
@@ -128,7 +128,7 @@ export class AnalyticsController {
       parsedWeeks < 1
     ) {
       throw new BadRequestException(
-        'weeks must be a whole number of at least 1',
+        "weeks must be a whole number of at least 1",
       );
     }
     const stats =
@@ -137,7 +137,7 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('missed-actions')
+  @Get("missed-actions")
   @ApiOkResponse({ type: MissedActionsDto })
   async getMissedActionsAdmin(): Promise<MissedActionsDto> {
     const stats = await this.analyticsService.getMissedActions();
@@ -145,11 +145,11 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('platform-tenure-cohort')
+  @Get("platform-tenure-cohort")
   @ApiOkResponse({ type: PlatformTenureCohortStatsDto })
-  @ApiQuery({ name: 'weeksOnPlatform', required: true, type: Number })
+  @ApiQuery({ name: "weeksOnPlatform", required: true, type: Number })
   async getPlatformTenureCohortAdmin(
-    @Query('weeksOnPlatform') weeksOnPlatform: string,
+    @Query("weeksOnPlatform") weeksOnPlatform: string,
   ): Promise<PlatformTenureCohortStatsDto> {
     const parsedWeeks = Number(weeksOnPlatform);
     if (
@@ -157,7 +157,7 @@ export class AnalyticsController {
       parsedWeeks < 0 ||
       !Number.isInteger(parsedWeeks)
     ) {
-      throw new BadRequestException('weeksOnPlatform must be a whole number');
+      throw new BadRequestException("weeksOnPlatform must be a whole number");
     }
     const stats =
       await this.analyticsService.getPlatformTenureCohortStats(parsedWeeks);
@@ -165,16 +165,16 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('action-completion-curves')
+  @Get("action-completion-curves")
   @ApiOkResponse({ type: [ActionCompletionCurveDto] })
-  @ApiQuery({ name: 'actionId', required: false, type: String })
-  @ApiQuery({ name: 'granularity', required: false, enum: ['daily', 'hourly'] })
+  @ApiQuery({ name: "actionId", required: false, type: String })
+  @ApiQuery({ name: "granularity", required: false, enum: ["daily", "hourly"] })
   async getActionCompletionCurvesAdmin(
-    @Query('actionId') actionId?: string,
-    @Query('granularity') granularity?: string,
+    @Query("actionId") actionId?: string,
+    @Query("granularity") granularity?: string,
   ): Promise<ActionCompletionCurveDto[]> {
     const parsedActionId = actionId ? Number(actionId) : undefined;
-    const parsedGranularity = granularity === 'hourly' ? 'hourly' : 'daily';
+    const parsedGranularity = granularity === "hourly" ? "hourly" : "daily";
     const curves = await this.analyticsService.getActionCompletionCurves(
       parsedActionId,
       parsedGranularity,
@@ -183,7 +183,7 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('time-to-churn')
+  @Get("time-to-churn")
   @ApiOkResponse({ type: [TimeToChurnSampleDto] })
   async getTimeToChurnSamplesAdmin(): Promise<TimeToChurnSampleDto[]> {
     const samples = await this.analyticsService.getTimeToChurnSamples();
@@ -191,7 +191,7 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('aggregate-stats')
+  @Get("aggregate-stats")
   @ApiOkResponse({ type: AggregateStatsDto })
   async getAggregateStatsAdmin(): Promise<AggregateStatsDto> {
     const stats = await this.analyticsService.getAggregateStats();
@@ -199,13 +199,13 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('invite-funnel')
+  @Get("invite-funnel")
   @ApiOkResponse({ type: InviteFunnelDto })
-  @ApiQuery({ name: 'startDate', required: false, type: String })
-  @ApiQuery({ name: 'endDate', required: false, type: String })
+  @ApiQuery({ name: "startDate", required: false, type: String })
+  @ApiQuery({ name: "endDate", required: false, type: String })
   async getInviteFunnelAdmin(
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
   ): Promise<InviteFunnelDto> {
     const funnel = await this.analyticsService.getInviteFunnel(
       startDate,
@@ -215,11 +215,11 @@ export class AnalyticsController {
   }
 
   @UseGuards(AdminGuard)
-  @Get('contract-status-history')
+  @Get("contract-status-history")
   @ApiOkResponse({ type: [ContractStatusPointDto] })
   async getContractStatusHistoryAdmin(
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
+    @Query("startDate") startDate: string,
+    @Query("endDate") endDate: string,
   ): Promise<ContractStatusPointDto[]> {
     const points = await this.analyticsService.getContractStatusHistory(
       startDate,

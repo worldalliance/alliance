@@ -12,45 +12,45 @@ import {
   decoratorName,
   findRelationDecorator,
   propertyName,
-} from './relation-ast.mjs';
+} from "./relation-ast.mjs";
 
 const COLUMN_DECORATORS = new Set([
-  'Column',
-  'CreateDateColumn',
-  'CreateDateColumnTz',
-  'DeleteDateColumn',
-  'ObjectIdColumn',
-  'PrimaryColumn',
-  'PrimaryGeneratedColumn',
-  'UpdateDateColumn',
-  'UpdateDateColumnTz',
-  'VersionColumn',
-  'ViewColumn',
+  "Column",
+  "CreateDateColumn",
+  "CreateDateColumnTz",
+  "DeleteDateColumn",
+  "ObjectIdColumn",
+  "PrimaryColumn",
+  "PrimaryGeneratedColumn",
+  "UpdateDateColumn",
+  "UpdateDateColumnTz",
+  "VersionColumn",
+  "ViewColumn",
 ]);
 
 /** TypeORM makes the soft-delete timestamp nullable regardless of options. */
-const IMPLICITLY_NULLABLE = new Set(['DeleteDateColumn']);
+const IMPLICITLY_NULLABLE = new Set(["DeleteDateColumn"]);
 
 /** Union members of these need parenthesising before `| null` can be appended. */
 const NEEDS_PARENS = new Set([
-  'TSConditionalType',
-  'TSConstructorType',
-  'TSFunctionType',
+  "TSConditionalType",
+  "TSConstructorType",
+  "TSFunctionType",
 ]);
 
 function findColumnDecorator(node) {
   return (
     node.decorators?.find((d) => {
       const name = decoratorName(d);
-      return name === 'RelationId' || COLUMN_DECORATORS.has(name);
+      return name === "RelationId" || COLUMN_DECORATORS.has(name);
     }) ?? null
   );
 }
 
 function staticKey(property) {
   if (property.computed) return null;
-  if (property.key.type === 'Identifier') return property.key.name;
-  if (property.key.type === 'Literal') return String(property.key.value);
+  if (property.key.type === "Identifier") return property.key.name;
+  if (property.key.type === "Literal") return String(property.key.value);
   return null;
 }
 
@@ -63,19 +63,19 @@ function columnNullable(decorator, name) {
   if (IMPLICITLY_NULLABLE.has(name)) return true;
 
   const options = decorator.expression.arguments.find(
-    (arg) => arg.type === 'ObjectExpression',
+    (arg) => arg.type === "ObjectExpression",
   );
   if (!options) return false;
 
   let nullable = false;
   for (const property of options.properties) {
-    if (property.type !== 'Property') return null;
+    if (property.type !== "Property") return null;
     const key = staticKey(property);
     if (key === null) return null;
-    if (key !== 'nullable') continue;
+    if (key !== "nullable") continue;
     if (
-      property.value.type !== 'Literal' ||
-      typeof property.value.value !== 'boolean'
+      property.value.type !== "Literal" ||
+      typeof property.value.value !== "boolean"
     ) {
       return null;
     }
@@ -86,7 +86,7 @@ function columnNullable(decorator, name) {
 
 function unionMembers(typeNode) {
   if (!typeNode) return [];
-  return typeNode.type === 'TSUnionType' ? typeNode.types : [typeNode];
+  return typeNode.type === "TSUnionType" ? typeNode.types : [typeNode];
 }
 
 function includesKeyword(typeNode, keyword) {
@@ -96,10 +96,10 @@ function includesKeyword(typeNode, keyword) {
 function appendNull(fixer, typeNode) {
   return NEEDS_PARENS.has(typeNode.type)
     ? [
-        fixer.insertTextBefore(typeNode, '('),
-        fixer.insertTextAfter(typeNode, ') | null'),
+        fixer.insertTextBefore(typeNode, "("),
+        fixer.insertTextAfter(typeNode, ") | null"),
       ]
-    : [fixer.insertTextAfter(typeNode, ' | null')];
+    : [fixer.insertTextAfter(typeNode, " | null")];
 }
 
 /**
@@ -113,17 +113,17 @@ function dropOptionalFix(sourceCode, node, typeNode, nullable) {
     !node.optional ||
     !typeNode ||
     nullable === null ||
-    includesKeyword(typeNode, 'TSUndefinedKeyword')
+    includesKeyword(typeNode, "TSUndefinedKeyword")
   ) {
     return undefined;
   }
 
   const question = sourceCode.getTokenAfter(node.key);
-  if (question?.value !== '?') return undefined;
+  if (question?.value !== "?") return undefined;
 
   return (fixer) => [
     fixer.remove(question),
-    ...(nullable && !includesKeyword(typeNode, 'TSNullKeyword')
+    ...(nullable && !includesKeyword(typeNode, "TSNullKeyword")
       ? appendNull(fixer, typeNode)
       : []),
   ];
@@ -131,29 +131,29 @@ function dropOptionalFix(sourceCode, node, typeNode, nullable) {
 
 const rule = {
   meta: {
-    type: 'problem',
+    type: "problem",
     docs: {
       description:
         "Require entity columns to be non-optional and to restate the column's nullability",
     },
-    fixable: 'code',
+    fixable: "code",
     schema: [
       {
-        type: 'object',
+        type: "object",
         properties: {
-          checkOptional: { type: 'boolean' },
-          checkMissingNull: { type: 'boolean' },
+          checkOptional: { type: "boolean" },
+          checkMissingNull: { type: "boolean" },
         },
         additionalProperties: false,
       },
     ],
     messages: {
       columnMustNotBeOptional:
-        '`{{name}}` is a column, so it is always loaded and must be declared `{{name}}:` — spell absence as `| null`, and only if the column is nullable.',
+        "`{{name}}` is a column, so it is always loaded and must be declared `{{name}}:` — spell absence as `| null`, and only if the column is nullable.",
       nullableColumnNeedsNull:
-        '`{{name}}` is a `nullable: true` column, so its type must include `null`.',
+        "`{{name}}` is a `nullable: true` column, so its type must include `null`.",
       nonNullableColumnHasNull:
-        '`{{name}}` is a `NOT NULL` column, so its type must not include `null`.',
+        "`{{name}}` is a `NOT NULL` column, so its type must not include `null`.",
     },
   },
 
@@ -176,13 +176,13 @@ const rule = {
         // relation rather than on this decorator, so only optionality is
         // decidable here.
         const nullable =
-          kind === 'RelationId' ? null : columnNullable(decorator, kind);
+          kind === "RelationId" ? null : columnNullable(decorator, kind);
 
-        if (node.optional || includesKeyword(typeNode, 'TSUndefinedKeyword')) {
+        if (node.optional || includesKeyword(typeNode, "TSUndefinedKeyword")) {
           if (checkOptional) {
             context.report({
               node: node.key,
-              messageId: 'columnMustNotBeOptional',
+              messageId: "columnMustNotBeOptional",
               data: { name },
               fix: dropOptionalFix(sourceCode, node, typeNode, nullable),
             });
@@ -194,12 +194,12 @@ const rule = {
 
         if (nullable === null || !typeNode) return;
 
-        const hasNull = includesKeyword(typeNode, 'TSNullKeyword');
+        const hasNull = includesKeyword(typeNode, "TSNullKeyword");
 
         if (nullable && !hasNull && checkMissingNull) {
           context.report({
             node: node.key,
-            messageId: 'nullableColumnNeedsNull',
+            messageId: "nullableColumnNeedsNull",
             data: { name },
             fix: (fixer) => appendNull(fixer, typeNode),
           });
@@ -208,7 +208,7 @@ const rule = {
           // reader already handles the value, which the rule can't know.
           context.report({
             node: node.key,
-            messageId: 'nonNullableColumnHasNull',
+            messageId: "nonNullableColumnHasNull",
             data: { name },
           });
         }

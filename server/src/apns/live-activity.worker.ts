@@ -1,20 +1,20 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ActionsService } from 'src/actions/actions.service';
-import { ActionActivity } from 'src/actions/entities/action-activity.entity';
-import { ActionStatus } from 'src/actions/entities/action-event.entity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import { Inject, Injectable, Logger, forwardRef } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ActionsService } from "src/actions/actions.service";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { ActionStatus } from "src/actions/entities/action-event.entity";
 import {
   Action,
   parseAction,
   type ParsedAction,
-} from 'src/actions/entities/action.entity';
-import { LOCK_KEYS } from 'src/notifs/lock-keys';
-import { withPgAdvisoryLock } from 'src/notifs/lock-utils';
-import { UserDevice } from 'src/user/entities/user-device.entity';
-import { DataSource, IsNull, Not, Repository } from 'typeorm';
-import { ApnsService } from './apns.service';
-import { LiveActivityRegistration } from './entities/live-activity-registration.entity';
+} from "src/actions/entities/action.entity";
+import { LOCK_KEYS } from "src/notifs/lock-keys";
+import { withPgAdvisoryLock } from "src/notifs/lock-utils";
+import { UserDevice } from "src/user/entities/user-device.entity";
+import { DataSource, IsNull, Not, Repository } from "typeorm";
+import { ApnsService } from "./apns.service";
+import { LiveActivityRegistration } from "./entities/live-activity-registration.entity";
 
 const [LOCK_KEY_1, LOCK_KEY_2] = LOCK_KEYS.liveActivity;
 const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
@@ -40,7 +40,7 @@ export class LiveActivityWorker {
 
   // @Cron('*/3 * * * *')
   async handleCron(): Promise<void> {
-    if (process.env.NODE_ENV !== 'production') return;
+    if (process.env.NODE_ENV !== "production") return;
 
     await withPgAdvisoryLock(
       this.dataSource,
@@ -123,7 +123,7 @@ export class LiveActivityWorker {
               },
               {
                 title: action.name,
-                body: 'Action deadline approaching',
+                body: "Action deadline approaching",
               },
             );
 

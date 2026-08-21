@@ -1,37 +1,37 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import { NestFactory } from '@nestjs/core';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import 'reflect-metadata';
-import type { Repository } from 'typeorm';
-import { ActionActivity } from '../src/actions/entities/action-activity.entity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import { NestFactory } from "@nestjs/core";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import "reflect-metadata";
+import type { Repository } from "typeorm";
+import { ActionActivity } from "../src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
   ActionStatus,
-} from '../src/actions/entities/action-event.entity';
-import { ActionFormAssignment } from '../src/actions/entities/action-form-assignment.entity';
-import { ActionFormVariant } from '../src/actions/entities/action-form-variant.entity';
-import { Action, parseAction } from '../src/actions/entities/action.entity';
-import { AppModule } from '../src/app.module';
-import { ActionEventRecipientService } from '../src/notifs/action-event-recipient.service';
-import { FormResponse } from '../src/tasks/entities/formresponse.entity';
-import { ContractEventType } from '../src/user/entities/contract-event.entity';
+} from "../src/actions/entities/action-event.entity";
+import { ActionFormAssignment } from "../src/actions/entities/action-form-assignment.entity";
+import { ActionFormVariant } from "../src/actions/entities/action-form-variant.entity";
+import { Action, parseAction } from "../src/actions/entities/action.entity";
+import { AppModule } from "../src/app.module";
+import { ActionEventRecipientService } from "../src/notifs/action-event-recipient.service";
+import { FormResponse } from "../src/tasks/entities/formresponse.entity";
+import { ContractEventType } from "../src/user/entities/contract-event.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
-} from '../src/user/entities/onetime-invite.entity';
-import { User } from '../src/user/entities/user.entity';
+} from "../src/user/entities/onetime-invite.entity";
+import { User } from "../src/user/entities/user.entity";
 
 const ACTION_132_ID = 132;
 const ACTION_133_ID = 133;
 const ACTION_74_ID = 74;
 const ACTION_133_FORM_IDS = [112, 113] as const;
 const ACTION_IDS = [ACTION_132_ID, ACTION_133_ID, ACTION_74_ID] as const;
-const DEFAULT_FRAMING_FOR_UNOVERRIDDEN_INVITES = 'individual' as const;
-const ACTION_74_INVITES_SENT_ANSWER_FIELD_ID = 'field-1770338026569';
-const INVITES_SENT_ANSWER_FIELD_ID = 'field-1781048458496';
-const ACTION_133_INVITE_SUCCESS_END = new Date('2026-07-01T06:59:59.999Z');
+const DEFAULT_FRAMING_FOR_UNOVERRIDDEN_INVITES = "individual" as const;
+const ACTION_74_INVITES_SENT_ANSWER_FIELD_ID = "field-1770338026569";
+const INVITES_SENT_ANSWER_FIELD_ID = "field-1781048458496";
+const ACTION_133_INVITE_SUCCESS_END = new Date("2026-07-01T06:59:59.999Z");
 
-type InviteFraming = 'group' | 'individual';
+type InviteFraming = "group" | "individual";
 
 type ManualInviteFramingOverride = {
   formId: (typeof ACTION_133_FORM_IDS)[number];
@@ -47,21 +47,21 @@ type ManualInviteFramingOverride = {
 const MANUAL_INVITE_FRAMING_OVERRIDES: ManualInviteFramingOverride[] = [
   {
     formId: 112,
-    invitingUserName: 'Stefan Murphy',
+    invitingUserName: "Stefan Murphy",
     groupInvites: 14,
     individualInvites: 0,
     note: "Manual assumption: discount Stefan Murphy's 14 form 112 invites because they were to a group, not individuals.",
   },
   {
     formId: 113,
-    invitingUserName: 'Victoria Torrie Jacobs',
+    invitingUserName: "Victoria Torrie Jacobs",
     groupInvites: 232,
     individualInvites: 4,
     note: "Manual assumption: discount 232 of Victoria Torrie Jacobs's form 113 invites because they were to a group; count 4 as individual invites.",
   },
 ];
 
-type CompletionState = 'completed' | 'incomplete';
+type CompletionState = "completed" | "incomplete";
 
 type ActionRoster = {
   actionId: number;
@@ -185,8 +185,8 @@ function completionState(params: {
     `${params.userId}:${params.actionId}`,
   );
   return terminal?.type === ActionActivityType.USER_COMPLETED
-    ? 'completed'
-    : 'incomplete';
+    ? "completed"
+    : "incomplete";
 }
 
 function pairStats(params: {
@@ -216,11 +216,11 @@ function pairStats(params: {
       actionId: params.actionBId,
     });
 
-    if (stateA === 'completed' && stateB === 'completed') {
+    if (stateA === "completed" && stateB === "completed") {
       completedBoth.push(userId);
-    } else if (stateA === 'completed' && stateB === 'incomplete') {
+    } else if (stateA === "completed" && stateB === "incomplete") {
       aCompletedBIncomplete.push(userId);
-    } else if (stateA === 'incomplete' && stateB === 'completed') {
+    } else if (stateA === "incomplete" && stateB === "completed") {
       aIncompleteBCompleted.push(userId);
     } else {
       incompleteBoth.push(userId);
@@ -239,19 +239,19 @@ function pairStats(params: {
 }
 
 function pct(part: number, whole: number): string {
-  if (whole === 0) return 'n/a';
+  if (whole === 0) return "n/a";
   return `${((part / whole) * 100).toFixed(1)}%`;
 }
 
 function pctRange(minPart: number, maxPart: number, whole: number): string {
-  if (whole === 0) return 'n/a';
+  if (whole === 0) return "n/a";
   const min = pct(minPart, whole);
   const max = pct(maxPart, whole);
   return min === max ? min : `${min} - ${max}`;
 }
 
 function printIds(label: string, ids: number[]): void {
-  console.log(`${label} (${ids.length}): ${ids.join(', ') || '(none)'}`);
+  console.log(`${label} (${ids.length}): ${ids.join(", ") || "(none)"}`);
 }
 
 function numberAnswer(
@@ -259,10 +259,10 @@ function numberAnswer(
   fieldId: string,
 ): number {
   const value = answers[fieldId];
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
-  if (typeof value === 'string' && value.trim() !== '') {
+  if (typeof value === "string" && value.trim() !== "") {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
   }
@@ -274,10 +274,10 @@ function optionalNumberAnswer(
   fieldId: string,
 ): number | null {
   const value = answers[fieldId];
-  if (typeof value === 'number' && Number.isFinite(value)) {
+  if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
-  if (typeof value === 'string' && value.trim() !== '') {
+  if (typeof value === "string" && value.trim() !== "") {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
   }
@@ -302,18 +302,18 @@ function printPairStats(stats: PairStats): void {
   );
   console.table([
     {
-      [`${stats.labelA} \\ ${stats.labelB}`]: 'completed',
+      [`${stats.labelA} \\ ${stats.labelB}`]: "completed",
       completed: stats.completedBoth.length,
       incomplete: stats.aCompletedBIncomplete.length,
     },
     {
-      [`${stats.labelA} \\ ${stats.labelB}`]: 'incomplete',
+      [`${stats.labelA} \\ ${stats.labelB}`]: "incomplete",
       completed: stats.aIncompleteBCompleted.length,
       incomplete: stats.incompleteBoth.length,
     },
   ]);
-  printIds('overlap member IDs', stats.overlapUserIds);
-  printIds('completed both', stats.completedBoth);
+  printIds("overlap member IDs", stats.overlapUserIds);
+  printIds("completed both", stats.completedBoth);
   printIds(
     `${stats.labelA} completed / ${stats.labelB} incomplete`,
     stats.aCompletedBIncomplete,
@@ -322,7 +322,7 @@ function printPairStats(stats: PairStats): void {
     `${stats.labelA} incomplete / ${stats.labelB} completed`,
     stats.aIncompleteBCompleted,
   );
-  printIds('incomplete both', stats.incompleteBoth);
+  printIds("incomplete both", stats.incompleteBoth);
 }
 
 function inviteComparisonStats(params: {
@@ -395,10 +395,10 @@ function printInviteComparisonStats(stats: InviteComparisonStats): void {
   console.log(
     `increased: ${stats.increased.length}, decreased: ${stats.decreased.length}, unchanged: ${stats.unchanged.length}`,
   );
-  printIds('paired respondent IDs', stats.comparedUserIds);
-  printIds('increased IDs', stats.increased);
-  printIds('decreased IDs', stats.decreased);
-  printIds('unchanged IDs', stats.unchanged);
+  printIds("paired respondent IDs", stats.comparedUserIds);
+  printIds("increased IDs", stats.increased);
+  printIds("decreased IDs", stats.decreased);
+  printIds("unchanged IDs", stats.unchanged);
 }
 
 function printAction132To133DropoffStats(params: {
@@ -451,11 +451,11 @@ function printAction132To133DropoffStats(params: {
     )}`,
   );
   printIds(
-    'completed action 132 but did not complete action 133 IDs',
+    "completed action 132 but did not complete action 133 IDs",
     pair.aCompletedBIncomplete,
   );
-  printIds('completed both IDs', pair.completedBoth);
-  printIds('completed neither IDs', pair.incompleteBoth);
+  printIds("completed both IDs", pair.completedBoth);
+  printIds("completed neither IDs", pair.incompleteBoth);
 }
 
 function emptyInviteStatusCounts(): InviteStatusCounts {
@@ -473,7 +473,7 @@ function getManualOverride(params: {
   userName: string;
 }): ManualInviteFramingOverride | undefined {
   const normalizeName = (name: string) =>
-    name.replaceAll('"', '').replace(/\s+/g, ' ').trim();
+    name.replaceAll('"', "").replace(/\s+/g, " ").trim();
   return MANUAL_INVITE_FRAMING_OVERRIDES.find((override) => {
     if (override.formId !== params.formId) {
       return false;
@@ -545,8 +545,8 @@ function addSplitOverrideCounts(
   assertValidOverride(override);
 
   const key = (framing: InviteFraming) => `${stats.formId}:${framing}`;
-  const groupBucket = bucketsByKey.get(key('group'))!;
-  const individualBucket = bucketsByKey.get(key('individual'))!;
+  const groupBucket = bucketsByKey.get(key("group"))!;
+  const individualBucket = bucketsByKey.get(key("individual"))!;
   const groupInvites = override.groupInvites;
   const individualInvites = override.individualInvites;
   const overrideTotal = groupInvites + individualInvites;
@@ -615,7 +615,7 @@ function printInviteFramingStats(params: {
 }): void {
   const bucketsByKey = new Map<string, FramingBucket>();
   for (const formId of ACTION_133_FORM_IDS) {
-    for (const framing of ['group', 'individual'] as const) {
+    for (const framing of ["group", "individual"] as const) {
       bucketsByKey.set(
         `${formId}:${framing}`,
         makeFramingBucket(formId, framing),
@@ -639,7 +639,7 @@ function printInviteFramingStats(params: {
     );
   }
 
-  console.log('\n=== Action 133 form invite conversion analysis ===');
+  console.log("\n=== Action 133 form invite conversion analysis ===");
   console.log(
     `invite window: ${params.actionWindowStart.toISOString()} to ${params.actionWindowEnd.toISOString()}`,
   );
@@ -653,21 +653,21 @@ function printInviteFramingStats(params: {
     `default framing for users without a manual override: ${DEFAULT_FRAMING_FOR_UNOVERRIDDEN_INVITES}`,
   );
 
-  console.log('\nManual framing overrides');
+  console.log("\nManual framing overrides");
   console.table(
     MANUAL_INVITE_FRAMING_OVERRIDES.map((override) => ({
       formId: override.formId,
       invitingUser: override.invitingUserName ?? override.invitingUserId,
       groupInvites: override.groupInvites,
       individualInvites: override.individualInvites,
-      groupAcceptedInvites: override.groupAcceptedInvites ?? '(not specified)',
+      groupAcceptedInvites: override.groupAcceptedInvites ?? "(not specified)",
       individualAcceptedInvites:
-        override.individualAcceptedInvites ?? '(not specified)',
+        override.individualAcceptedInvites ?? "(not specified)",
       note: override.note,
     })),
   );
 
-  console.log('\nPer-inviter raw invite rows');
+  console.log("\nPer-inviter raw invite rows");
   console.table(
     params.inviterStats.map((stats) => ({
       formId: stats.formId,
@@ -681,12 +681,12 @@ function printInviteFramingStats(params: {
       requestRejected: stats.statusCounts.request_rejected,
       linkUnused: stats.statusCounts.link_unused,
       linkUsed: stats.statusCounts.link_used,
-      manualOverride: stats.override ? 'yes' : 'no',
-      inviteIds: stats.inviteIds.join(', '),
+      manualOverride: stats.override ? "yes" : "no",
+      inviteIds: stats.inviteIds.join(", "),
     })),
   );
 
-  console.log('\nPer-form raw totals');
+  console.log("\nPer-form raw totals");
   console.table(
     ACTION_133_FORM_IDS.map((formId) => {
       const rows = params.inviterStats.filter(
@@ -724,7 +724,7 @@ function printInviteFramingStats(params: {
     }),
   );
 
-  console.log('\nFraming totals and acceptance rates');
+  console.log("\nFraming totals and acceptance rates");
   console.table(
     [...bucketsByKey.values()].map((bucket) => ({
       formId: bucket.formId,
@@ -806,8 +806,8 @@ function printInviteSuccessStats(stats: InviteSuccessStats): void {
   console.log(`link unused: ${stats.linkUnused}`);
   console.log(`request pending: ${stats.requestPending}`);
   console.log(`request rejected: ${stats.requestRejected}`);
-  printIds('inviter IDs', stats.inviterIds);
-  printIds('invite IDs', stats.inviteIds);
+  printIds("inviter IDs", stats.inviterIds);
+  printIds("invite IDs", stats.inviteIds);
 }
 
 function selfReportedVsActualInvitesStats(params: {
@@ -850,10 +850,10 @@ function printSelfReportedVsActualInvitesStats(
   console.log(`self-reported invites: ${stats.selfReportedInvites}`);
   console.log(`actual invite rows created: ${stats.actualInviteRows}`);
   console.log(
-    `actual minus self-reported: ${stats.difference >= 0 ? '+' : ''}${stats.difference}`,
+    `actual minus self-reported: ${stats.difference >= 0 ? "+" : ""}${stats.difference}`,
   );
   console.log(
-    `actual / self-reported: ${stats.ratio === null ? 'n/a' : stats.ratio.toFixed(2)}`,
+    `actual / self-reported: ${stats.ratio === null ? "n/a" : stats.ratio.toFixed(2)}`,
   );
 }
 
@@ -903,7 +903,7 @@ function printGrowthActionSegmentStats(stats: GrowthActionSegmentStats): void {
 
 async function main(): Promise<void> {
   const app = await NestFactory.createApplicationContext(AppModule, {
-    logger: ['error', 'warn'],
+    logger: ["error", "warn"],
   });
 
   try {
@@ -966,14 +966,14 @@ async function main(): Promise<void> {
         { actionId, type: ActionActivityType.USER_COMPLETED },
         { actionId, type: ActionActivityType.USER_WONT_COMPLETE },
       ]),
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
     const latestTerminalByUserAction = new Map<string, LatestTerminal>();
     for (const activity of activities) {
       latestTerminalByUserAction.set(
         `${activity.userId}:${activity.actionId}`,
         {
-          type: activity.type as LatestTerminal['type'],
+          type: activity.type as LatestTerminal["type"],
           createdAt: activity.createdAt,
         },
       );
@@ -1016,12 +1016,12 @@ async function main(): Promise<void> {
     }
 
     const action133CompletionFormRows = await activityRepo
-      .createQueryBuilder('activity')
-      .leftJoin('activity.taskFormResponse', 'response')
-      .select('activity."userId"', 'userId')
-      .addSelect('response."formId"', 'formId')
+      .createQueryBuilder("activity")
+      .leftJoin("activity.taskFormResponse", "response")
+      .select('activity."userId"', "userId")
+      .addSelect('response."formId"', "formId")
       .where('activity."actionId" = :actionId', { actionId: ACTION_133_ID })
-      .andWhere('activity.type = :type', {
+      .andWhere("activity.type = :type", {
         type: ActionActivityType.USER_COMPLETED,
       })
       .andWhere('response."formId" IN (:...formIds)', {
@@ -1035,16 +1035,16 @@ async function main(): Promise<void> {
     }
 
     const formResponseRows = await formResponseRepo
-      .createQueryBuilder('response')
-      .select('response."userId"', 'userId')
-      .addSelect('response."formId"', 'formId')
-      .addSelect('response.answers', 'answers')
-      .addSelect('response."createdAt"', 'createdAt')
+      .createQueryBuilder("response")
+      .select('response."userId"', "userId")
+      .addSelect('response."formId"', "formId")
+      .addSelect("response.answers", "answers")
+      .addSelect('response."createdAt"', "createdAt")
       .where('response."formId" IN (:...formIds)', {
         formIds: ACTION_133_FORM_IDS,
       })
       .andWhere('response."userId" IS NOT NULL')
-      .orderBy('response."createdAt"', 'ASC')
+      .orderBy('response."createdAt"', "ASC")
       .getRawMany<{
         userId: number;
         formId: number;
@@ -1065,16 +1065,16 @@ async function main(): Promise<void> {
     }
 
     const inviteComparisonRows = await formResponseRepo
-      .createQueryBuilder('response')
-      .select('response."userId"', 'userId')
-      .addSelect('response."formId"', 'formId')
-      .addSelect('response.answers', 'answers')
-      .addSelect('response."createdAt"', 'createdAt')
+      .createQueryBuilder("response")
+      .select('response."userId"', "userId")
+      .addSelect('response."formId"', "formId")
+      .addSelect("response.answers", "answers")
+      .addSelect('response."createdAt"', "createdAt")
       .where('response."formId" IN (:...formIds)', {
         formIds: [67, ...ACTION_133_FORM_IDS],
       })
       .andWhere('response."userId" IS NOT NULL')
-      .orderBy('response."createdAt"', 'ASC')
+      .orderBy('response."createdAt"', "ASC")
       .getRawMany<{
         userId: number;
         formId: number;
@@ -1149,16 +1149,16 @@ async function main(): Promise<void> {
       action133UserIds.length === 0
         ? []
         : await inviteRepo
-            .createQueryBuilder('invite')
+            .createQueryBuilder("invite")
             .select([
-              'invite.id',
-              'invite.createdAt',
-              'invite.status',
-              'invite.invitingUser',
+              "invite.id",
+              "invite.createdAt",
+              "invite.status",
+              "invite.invitingUser",
             ])
-            .leftJoinAndSelect('invite.invitingUser', 'invitingUser')
-            .leftJoinAndSelect('invite.invitedUser', 'invitedUser')
-            .leftJoinAndSelect('invitedUser.contractEvents', 'contractEvent')
+            .leftJoinAndSelect("invite.invitingUser", "invitingUser")
+            .leftJoinAndSelect("invite.invitedUser", "invitedUser")
+            .leftJoinAndSelect("invitedUser.contractEvents", "contractEvent")
             .where('invite."invitingUserId" IN (:...userIds)', {
               userIds: action133UserIds,
             })
@@ -1169,24 +1169,24 @@ async function main(): Promise<void> {
               windowEnd: ACTION_133_INVITE_SUCCESS_END,
             })
             .andWhere('invite."deletedAt" IS NULL')
-            .orderBy('invite."createdAt"', 'ASC')
+            .orderBy('invite."createdAt"', "ASC")
             .getMany();
     const action133SuccessInvites =
       action133UserIds.length === 0
         ? []
         : await inviteRepo
-            .createQueryBuilder('invite')
+            .createQueryBuilder("invite")
             .select([
-              'invite.id',
-              'invite.createdAt',
-              'invite.status',
-              'invite.deletedAt',
-              'invite.usedAt',
-              'invite.invitingUser',
+              "invite.id",
+              "invite.createdAt",
+              "invite.status",
+              "invite.deletedAt",
+              "invite.usedAt",
+              "invite.invitingUser",
             ])
-            .leftJoinAndSelect('invite.invitingUser', 'invitingUser')
-            .leftJoinAndSelect('invite.invitedUser', 'invitedUser')
-            .leftJoinAndSelect('invitedUser.contractEvents', 'contractEvent')
+            .leftJoinAndSelect("invite.invitingUser", "invitingUser")
+            .leftJoinAndSelect("invite.invitedUser", "invitedUser")
+            .leftJoinAndSelect("invitedUser.contractEvents", "contractEvent")
             .where('invite."invitingUserId" IN (:...userIds)', {
               userIds: action133UserIds,
             })
@@ -1197,7 +1197,7 @@ async function main(): Promise<void> {
               windowEnd: ACTION_133_INVITE_SUCCESS_END,
             })
             .andWhere('invite."deletedAt" IS NULL')
-            .orderBy('invite."createdAt"', 'ASC')
+            .orderBy('invite."createdAt"', "ASC")
             .getMany();
     const action74UserIds = [...actionRosters.get(ACTION_74_ID)!.userIds].sort(
       (a, b) => a - b,
@@ -1206,16 +1206,16 @@ async function main(): Promise<void> {
       action74UserIds.length === 0
         ? []
         : await inviteRepo
-            .createQueryBuilder('invite')
+            .createQueryBuilder("invite")
             .select([
-              'invite.id',
-              'invite.createdAt',
-              'invite.status',
-              'invite.deletedAt',
-              'invite.usedAt',
-              'invite.invitingUser',
+              "invite.id",
+              "invite.createdAt",
+              "invite.status",
+              "invite.deletedAt",
+              "invite.usedAt",
+              "invite.invitingUser",
             ])
-            .leftJoinAndSelect('invite.invitingUser', 'invitingUser')
+            .leftJoinAndSelect("invite.invitingUser", "invitingUser")
             .where('invite."invitingUserId" IN (:...userIds)', {
               userIds: action74UserIds,
             })
@@ -1226,7 +1226,7 @@ async function main(): Promise<void> {
               windowEnd: action74WindowEnd,
             })
             .andWhere('invite."deletedAt" IS NULL')
-            .orderBy('invite."createdAt"', 'ASC')
+            .orderBy('invite."createdAt"', "ASC")
             .getMany();
 
     const inviteStatsByUser = new Map<number, InviterInviteStats>();
@@ -1326,7 +1326,7 @@ async function main(): Promise<void> {
       },
     );
 
-    console.log('Action rosters');
+    console.log("Action rosters");
     for (const actionId of ACTION_IDS) {
       const roster = actionRosters.get(actionId)!;
       console.log(
@@ -1339,7 +1339,7 @@ async function main(): Promise<void> {
       );
     }
     printIds(
-      'action 133 eligible members with no form assignment/response',
+      "action 133 eligible members with no form assignment/response",
       unassignedAction133UserIds,
     );
     printInviteFramingStats({
@@ -1348,18 +1348,18 @@ async function main(): Promise<void> {
       inviterStats,
     });
     console.log(
-      '\n=== Action 133 invite success, non-staff assigned members ===',
+      "\n=== Action 133 invite success, non-staff assigned members ===",
     );
     console.log(
       `invite window: ${action133WindowStart.toISOString()} to ${ACTION_133_INVITE_SUCCESS_END.toISOString()}`,
     );
     console.log(
-      'excluded: staff inviters, unassigned inviters, and manual massive group-invite overrides',
+      "excluded: staff inviters, unassigned inviters, and manual massive group-invite overrides",
     );
     printInviteSuccessStats(
       inviteSuccessStats({
         label:
-          'all action 133 assigned non-staff members, excluding massive group-invite overrides',
+          "all action 133 assigned non-staff members, excluding massive group-invite overrides",
         inviterIds: assignedNonStaffNonManualUserIds,
         invites: action133SuccessInvites,
         conversionEnd: ACTION_133_INVITE_SUCCESS_END,
@@ -1384,7 +1384,7 @@ async function main(): Promise<void> {
         action133IndividualInvitesByUser.set(userId, invites);
       }
     }
-    console.log('\n=== Self-reported invites vs actual invite rows ===');
+    console.log("\n=== Self-reported invites vs actual invite rows ===");
     console.log(
       `action 133 actual invite window: ${action133WindowStart.toISOString()} to ${ACTION_133_INVITE_SUCCESS_END.toISOString()}`,
     );
@@ -1392,11 +1392,11 @@ async function main(): Promise<void> {
       `action 74 actual invite window: ${action74WindowStart.toISOString()} to ${action74WindowEnd.toISOString()}`,
     );
     console.log(
-      'action 133 self-reports use counted individual invites after massive group-invite overrides; staff are excluded throughout',
+      "action 133 self-reports use counted individual invites after massive group-invite overrides; staff are excluded throughout",
     );
     printSelfReportedVsActualInvitesStats(
       selfReportedVsActualInvitesStats({
-        label: 'action 133 combined',
+        label: "action 133 combined",
         assignedUserIds: assignedNonStaffNonManualUserIds,
         selfReportedInvitesByUser: action133IndividualInvitesByUser,
         actualInvites: action133SuccessInvites,
@@ -1435,11 +1435,11 @@ async function main(): Promise<void> {
       .filter((userId) => !roster74.userIds.has(userId))
       .sort((a, b) => a - b);
     console.log(
-      '\n=== Action 74 to action 133 growth-action repeat vs 133-only split ===',
+      "\n=== Action 74 to action 133 growth-action repeat vs 133-only split ===",
     );
     printGrowthActionSegmentStats(
       growthActionSegmentStats({
-        label: 'assigned both action 74 and action 133',
+        label: "assigned both action 74 and action 133",
         userIds: action133AssignedBoth74UserIds,
         selfReportedInvitesByUser: action133IndividualInvitesByUser,
         actualInvites: action133SuccessInvites,
@@ -1447,14 +1447,14 @@ async function main(): Promise<void> {
     );
     printGrowthActionSegmentStats(
       growthActionSegmentStats({
-        label: 'assigned action 133 but not action 74',
+        label: "assigned action 133 but not action 74",
         userIds: action133OnlyUserIds,
         selfReportedInvitesByUser: action133IndividualInvitesByUser,
         actualInvites: action133SuccessInvites,
       }),
     );
 
-    console.log('\n=== Action 132 to action 133 dropoff analysis ===');
+    console.log("\n=== Action 132 to action 133 dropoff analysis ===");
     const action132OnlyUserIds = [...roster132.userIds]
       .filter((userId) => !action133Roster.userIds.has(userId))
       .sort((a, b) => a - b);
@@ -1464,7 +1464,7 @@ async function main(): Promise<void> {
           latestTerminalByUserAction,
           userId,
           actionId: ACTION_132_ID,
-        }) === 'completed',
+        }) === "completed",
     );
     const action132OnlyIncompleteUserIds = action132OnlyUserIds.filter(
       (userId) =>
@@ -1472,22 +1472,22 @@ async function main(): Promise<void> {
           latestTerminalByUserAction,
           userId,
           actionId: ACTION_132_ID,
-        }) === 'incomplete',
+        }) === "incomplete",
     );
     printIds(
-      'action 132 eligible but not action 133 assigned',
+      "action 132 eligible but not action 133 assigned",
       action132OnlyUserIds,
     );
     printIds(
-      'action 132 eligible but not action 133 assigned, completed action 132',
+      "action 132 eligible but not action 133 assigned, completed action 132",
       action132OnlyCompletedUserIds,
     );
     printIds(
-      'action 132 eligible but not action 133 assigned, did not complete action 132',
+      "action 132 eligible but not action 133 assigned, did not complete action 132",
       action132OnlyIncompleteUserIds,
     );
     printAction132To133DropoffStats({
-      label: 'action 132 vs action 133 combined',
+      label: "action 132 vs action 133 combined",
       pair: pairStats({
         labelA: `action ${ACTION_132_ID}`,
         labelB: `action ${ACTION_133_ID}`,
@@ -1513,7 +1513,7 @@ async function main(): Promise<void> {
       });
     }
 
-    console.log('\n=== Action 132 vs action 133 forms ===');
+    console.log("\n=== Action 132 vs action 133 forms ===");
     for (const formRoster of formRosters) {
       printPairStats(
         pairStats({
@@ -1528,7 +1528,7 @@ async function main(): Promise<void> {
       );
     }
 
-    console.log('\n=== Action 133 forms vs action 74 ===');
+    console.log("\n=== Action 133 forms vs action 74 ===");
     for (const formRoster of formRosters) {
       printPairStats(
         pairStats({
@@ -1543,7 +1543,7 @@ async function main(): Promise<void> {
       );
     }
 
-    console.log('\n=== Invite-count changes from action 74 to action 133 ===');
+    console.log("\n=== Invite-count changes from action 74 to action 133 ===");
     for (const formRoster of formRosters) {
       const formVsAction74 = pairStats({
         labelA: formRoster.label,

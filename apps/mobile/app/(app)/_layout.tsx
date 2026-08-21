@@ -1,23 +1,19 @@
+import { Redirect, Stack } from "expo-router";
 import {
-  View,
   ActivityIndicator,
   Platform,
   useWindowDimensions,
+  View,
 } from "react-native";
-import { Redirect, Stack } from "expo-router";
 
-import { useAuth } from "../../lib/AuthContext";
-import { AppDrawerProvider, useAppDrawer } from "../../lib/AppDrawerContext";
-import TabBar from "../../components/TabBar";
-import Sidebar from "../../components/Sidebar";
-import AnimatedSidebar from "../../components/AnimatedSidebar";
-import { colors } from "../../lib/style/colors";
-import { isVisualTestMode } from "../../lib/visualTest";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigationState } from "@react-navigation/native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSharedValue, withSpring } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
+import AnimatedSidebar from "../../components/AnimatedSidebar";
+import Sidebar from "../../components/Sidebar";
+import TabBar from "../../components/TabBar";
 import {
   APP_DRAWER_OPEN_DISTANCE_MAX,
   APP_DRAWER_OPEN_DISTANCE_RATIO,
@@ -26,6 +22,10 @@ import {
   APP_DRAWER_SIDEBAR_RATIO,
   APP_DRAWER_SPRING_CONFIG,
 } from "../../lib/appDrawerConfig";
+import { AppDrawerProvider, useAppDrawer } from "../../lib/AppDrawerContext";
+import { useAuth } from "../../lib/AuthContext";
+import { colors } from "../../lib/style/colors";
+import { isVisualTestMode } from "../../lib/visualTest";
 
 function AppContent() {
   const insets = useSafeAreaInsets();

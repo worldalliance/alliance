@@ -49,7 +49,7 @@ function getLikesBucketKey(likes: NotificationDto[]) {
 
 function createLikesBucket(
   likes: NotificationDto[],
-  dayKeys: string[]
+  dayKeys: string[],
 ): LikesBucket {
   return {
     dayKeys,
@@ -57,14 +57,14 @@ function createLikesBucket(
     time: likes.reduce(
       (latest, notification) =>
         Math.max(latest, getNotificationTime(notification).getTime()),
-      0
+      0,
     ),
     likes,
   };
 }
 
 export function buildNotificationRenderItems(
-  notifications: NotificationDto[]
+  notifications: NotificationDto[],
 ): NotificationRenderItem[] {
   const bucketMap = new Map<string, LikesBucket>();
   const items: NotificationRenderItem[] = [];
@@ -87,7 +87,7 @@ export function buildNotificationRenderItems(
       existingBucket.likes.push(notification);
       existingBucket.time = Math.max(
         existingBucket.time,
-        getNotificationTime(notification).getTime()
+        getNotificationTime(notification).getTime(),
       );
       existingBucket.key = getLikesBucketKey(existingBucket.likes);
       continue;
@@ -117,7 +117,7 @@ export function buildNotificationRenderItems(
 
     const combinedBucket = createLikesBucket(
       [...previousItem.bucket.likes, ...item.bucket.likes],
-      [...previousItem.bucket.dayKeys, ...item.bucket.dayKeys]
+      [...previousItem.bucket.dayKeys, ...item.bucket.dayKeys],
     );
 
     mergedItems[mergedItems.length - 1] = {

@@ -1,12 +1,12 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import {
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-} from 'class-validator';
-import { UserDevice } from '../entities/user-device.entity';
+} from "class-validator";
+import { UserDevice } from "../entities/user-device.entity";
 
 export class RegisterDeviceDto {
   @ApiProperty()
@@ -25,7 +25,7 @@ export class RegisterDeviceDto {
   deviceId?: string;
 }
 
-export class UserDeviceDto extends PickType(UserDevice, ['id']) {
+export class UserDeviceDto extends PickType(UserDevice, ["id"]) {
   constructor(id: string) {
     super();
     this.id = id;

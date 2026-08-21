@@ -1,18 +1,18 @@
-import { v4 } from 'uuid';
-import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'typeorm';
+import { Injectable } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
 import {
   Notification,
   NotificationCategory,
-} from 'src/notifs/entities/notification.entity';
+} from "src/notifs/entities/notification.entity";
 import {
   UnreadContent,
   UnreadContentType,
-} from 'src/notifs/entities/unread-content.entity';
-import { CreatePushMessage, PushService } from './push.service';
-import { Injectable } from '@nestjs/common';
-import { NotifsService } from 'src/notifs/notifs.service';
-import { Cron, CronExpression } from '@nestjs/schedule';
+} from "src/notifs/entities/unread-content.entity";
+import { NotifsService } from "src/notifs/notifs.service";
+import type { Repository } from "typeorm";
+import { v4 } from "uuid";
+import { CreatePushMessage, PushService } from "./push.service";
 
 const actionUpdatePushBody = (message: string) => `Update: ${message}`;
 
@@ -31,13 +31,13 @@ export class NotifPushDispatcherWorker {
   async dispatchPushes() {
     if (
       !(
-        process.env.NODE_ENV === 'production' ||
-        process.env.SEND_DEV_NOTIFS === '1'
+        process.env.NODE_ENV === "production" ||
+        process.env.SEND_DEV_NOTIFS === "1"
       )
     ) {
       return;
     }
-    const dispatchID = v4().replace(/-/g, '');
+    const dispatchID = v4().replace(/-/g, "");
 
     const messagesToSend: CreatePushMessage[] = [];
     messagesToSend.push(...(await this.findNotificationPushes(dispatchID)));
@@ -83,10 +83,10 @@ export class NotifPushDispatcherWorker {
     }
 
     const toSend = await this.notificationRepository
-      .createQueryBuilder('n')
-      .leftJoinAndSelect('n.user', 'u')
-      .where('n.id IN (:...ids)', { ids: claimed.map((c) => c.id) })
-      .orderBy('n."sendTime"', 'ASC')
+      .createQueryBuilder("n")
+      .leftJoinAndSelect("n.user", "u")
+      .where("n.id IN (:...ids)", { ids: claimed.map((c) => c.id) })
+      .orderBy('n."sendTime"', "ASC")
       .getMany();
 
     if (toSend.length === 0) {

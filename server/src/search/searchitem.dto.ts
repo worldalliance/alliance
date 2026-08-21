@@ -1,14 +1,14 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { IsEnum, IsOptional, IsString } from "class-validator";
 
 export enum SearchItemType {
-  User = 'user',
-  Action = 'action',
-  Post = 'post',
-  Recent = 'recent',
-  Page = 'page',
-  Other = 'other',
+  User = "user",
+  Action = "action",
+  Post = "post",
+  Recent = "recent",
+  Page = "page",
+  Other = "other",
 }
 
 export type SearchItem = {
@@ -49,7 +49,7 @@ export class SearchItemDto {
 
   @ApiProperty({
     enum: SearchItemType,
-    enumName: 'SearchItemType',
+    enumName: "SearchItemType",
   })
   @IsEnum(SearchItemType)
   type: SearchItemType;
@@ -72,7 +72,7 @@ export class SaveSearchSelectionDto {
 
   @ApiProperty({
     enum: SearchItemType,
-    enumName: 'SearchItemType',
+    enumName: "SearchItemType",
   })
   @IsEnum(SearchItemType)
   type: SearchItemType;

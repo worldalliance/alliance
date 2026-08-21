@@ -2,7 +2,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   S3Client,
-} from '@aws-sdk/client-s3';
+} from "@aws-sdk/client-s3";
 import {
   Body,
   Controller,
@@ -14,39 +14,39 @@ import {
   Post,
   Res,
   StreamableFile,
-} from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import type { Response } from 'express';
-import { basename } from 'path';
-import { Readable } from 'stream';
-import { getImageSource, ImagesService } from './images.service';
+} from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import type { Response } from "express";
+import { basename } from "path";
+import { Readable } from "stream";
 import {
   DeleteImageResponseDto,
   UploadImageDto,
   UploadImageResponseDto,
-} from './dto/image.dto';
+} from "./dto/image.dto";
+import { getImageSource, ImagesService } from "./images.service";
 
-@Controller('images')
+@Controller("images")
 export class ImagesController {
   constructor(
     private readonly imagesService: ImagesService,
-    @Inject('S3_CLIENT') private readonly s3: S3Client,
+    @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
   private readonly bucket = process.env.ASSETS_BUCKET!;
 
-  @Get(':key')
+  @Get(":key")
   @ApiOkResponse({ type: StreamableFile })
   async getImage(
-    @Param('key') key: string,
+    @Param("key") key: string,
     @Res() res: Response,
   ): Promise<void> {
     if (!key) throw new NotFoundException();
 
     const ac = new AbortController();
 
-    res.on('close', () => ac.abort());
-    res.on('error', () => ac.abort());
+    res.on("close", () => ac.abort());
+    res.on("error", () => ac.abort());
 
     try {
       const out = await this.s3.send(
@@ -58,16 +58,16 @@ export class ImagesController {
       if (!body) throw new NotFoundException();
 
       res.setHeader(
-        'Content-Type',
-        out.ContentType ?? 'application/octet-stream',
+        "Content-Type",
+        out.ContentType ?? "application/octet-stream",
       );
       res.setHeader(
-        'Content-Disposition',
+        "Content-Disposition",
         `inline; filename="${basename(key)}"`,
       );
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
 
-      body.on('error', () => {
+      body.on("error", () => {
         try {
           body.destroy();
         } catch {}
@@ -77,18 +77,18 @@ export class ImagesController {
 
       body.pipe(res);
     } catch (err) {
-      if (err?.name === 'AbortError') return;
+      if (err?.name === "AbortError") return;
 
-      if (process.env.NODE_ENV !== 'development') {
-        console.error('Error getting image:', err);
+      if (process.env.NODE_ENV !== "development") {
+        console.error("Error getting image:", err);
       }
       throw new NotFoundException();
     }
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @ApiOkResponse({ type: DeleteImageResponseDto })
-  async deleteImage(@Param('id') id: number): Promise<DeleteImageResponseDto> {
+  async deleteImage(@Param("id") id: number): Promise<DeleteImageResponseDto> {
     const img = await this.imagesService.getImage(id);
     if (!img) throw new NotFoundException();
 
@@ -99,7 +99,7 @@ export class ImagesController {
     return new DeleteImageResponseDto(true);
   }
 
-  @Post('/uploadImage')
+  @Post("/uploadImage")
   @ApiOkResponse({ type: UploadImageResponseDto })
   async uploadImage(
     @Body() body: UploadImageDto,

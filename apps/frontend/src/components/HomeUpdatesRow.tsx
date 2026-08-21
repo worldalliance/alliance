@@ -1,12 +1,12 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { actionsRecentUpdates } from "@alliance/shared/client";
 import type { ActionsRecentUpdatesResponse } from "@alliance/shared/client";
+import { actionsRecentUpdates } from "@alliance/shared/client";
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
-import { href, useNavigate } from "react-router";
 import { useNotifications } from "@alliance/shared/lib/useNotifications";
+import { href, useNavigate } from "react-router";
 
 const UPDATES_LIMIT = 3;
 

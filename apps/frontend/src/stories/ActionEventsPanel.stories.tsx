@@ -1,6 +1,6 @@
 import { Meta, StoryObj } from "@storybook/react";
-import { testActions } from "./testData";
 import ActionEventsPanel from "../components/ActionEventsPanel";
+import { testActions } from "./testData";
 
 const meta = {
   title: "Alliance/ActionEventsPanel",

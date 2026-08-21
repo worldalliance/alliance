@@ -1,19 +1,19 @@
-import { byLikeOrder, LIKE_FACEPILE_LIMIT } from '@alliance/common/likeOrder';
+import { byLikeOrder, LIKE_FACEPILE_LIMIT } from "@alliance/common/likeOrder";
 import {
   ApiProperty,
   ApiPropertyOptional,
   PartialType,
   PickType,
-} from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { ValidateNested } from 'class-validator';
-import { ProfileDto } from 'src/user/dto/user.dto';
-import { User } from 'src/user/entities/user.entity';
-import { Comment } from '../entities/comment.entity';
+} from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { ValidateNested } from "class-validator";
+import { ProfileDto } from "src/user/dto/user.dto";
+import { User } from "src/user/entities/user.entity";
+import { Comment } from "../entities/comment.entity";
 import {
   CreateEditableContentDto,
   EditableContentDto,
-} from './editablecontent.dto';
+} from "./editablecontent.dto";
 
 export type CommentDtoOptions = {
   requestingUserId?: number;
@@ -22,14 +22,14 @@ export type CommentDtoOptions = {
 };
 
 export class CommentDto extends PickType(Comment, [
-  'id',
-  'parentObjectId',
-  'parentId',
-  'parentObjectType',
-  'createdAt',
-  'updatedAt',
-  'deleted',
-  'pinned',
+  "id",
+  "parentObjectId",
+  "parentId",
+  "parentObjectType",
+  "createdAt",
+  "updatedAt",
+  "deleted",
+  "pinned",
 ]) {
   @ApiProperty({ type: ProfileDto })
   author: ProfileDto;
@@ -107,9 +107,9 @@ export type UserComment = {
 } & CommentDtoOptions;
 
 export class CreateCommentDto extends PickType(Comment, [
-  'parentObjectId',
-  'parentId',
-  'parentObjectType',
+  "parentObjectId",
+  "parentId",
+  "parentObjectType",
 ]) {
   @ApiProperty({ type: CreateEditableContentDto })
   @ValidateNested()

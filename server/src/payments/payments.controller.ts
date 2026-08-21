@@ -1,30 +1,30 @@
 import {
-  Controller,
-  Post,
+  BadRequestException,
   Body,
+  Controller,
+  Get,
   HttpException,
   HttpStatus,
-  UseGuards,
-  Req,
-  RawBody,
-  Request,
-  Get,
   NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
-import Stripe from 'stripe';
-import { PaymentsService } from './payments.service';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
-import type { JwtRequest } from 'src/auth/guards/jwtreq';
-import { ApiBody, ApiOkResponse } from '@nestjs/swagger';
-import { AuthOptionalGuard } from 'src/auth/guards/authoptional.guard';
-import { CreatePartialProfileDto } from './dto/partial-profile.dto';
-import { PaymentMethodDto } from './dto/payment-method.dto';
-import { CreatePaymentIntentDto } from './dto/create-payment-intent.dto';
-import { ClientSecretDto } from './dto/client-secret.dto';
-import { ActionsService } from 'src/actions/actions.service';
+  Post,
+  RawBody,
+  Req,
+  Request,
+  UseGuards,
+} from "@nestjs/common";
+import { ApiBody, ApiOkResponse } from "@nestjs/swagger";
+import { ActionsService } from "src/actions/actions.service";
+import { AuthGuard } from "src/auth/guards/auth.guard";
+import { AuthOptionalGuard } from "src/auth/guards/authoptional.guard";
+import type { JwtRequest } from "src/auth/guards/jwtreq";
+import Stripe from "stripe";
+import { ClientSecretDto } from "./dto/client-secret.dto";
+import { CreatePaymentIntentDto } from "./dto/create-payment-intent.dto";
+import { CreatePartialProfileDto } from "./dto/partial-profile.dto";
+import { PaymentMethodDto } from "./dto/payment-method.dto";
+import { PaymentsService } from "./payments.service";
 
-@Controller('payments')
+@Controller("payments")
 export class PaymentsController {
   private readonly stripe: Stripe;
 
@@ -33,15 +33,15 @@ export class PaymentsController {
     private readonly actionsService: ActionsService,
   ) {
     if (!process.env.STRIPE_API_KEY) {
-      throw new Error('STRIPE_API_KEY must be set');
+      throw new Error("STRIPE_API_KEY must be set");
     }
     this.stripe = new Stripe(process.env.STRIPE_API_KEY, {
-      apiVersion: '2025-03-31.basil',
+      apiVersion: "2025-03-31.basil",
     });
   }
 
   @UseGuards(AuthOptionalGuard)
-  @Post('create-payment-intent')
+  @Post("create-payment-intent")
   @ApiBody({ type: CreatePaymentIntentDto })
   @ApiOkResponse({ type: ClientSecretDto })
   async createPaymentIntent(
@@ -49,7 +49,7 @@ export class PaymentsController {
     @Body() body: CreatePaymentIntentDto,
   ): Promise<ClientSecretDto> {
     let customer: Stripe.Customer | undefined;
-    console.log('body', body);
+    console.log("body", body);
     if (req.user) {
       customer = await this.paymentsService.getOrCreateCustomer(
         req.user.sub,
@@ -71,13 +71,13 @@ export class PaymentsController {
 
     const paymentIntent = await this.stripe.paymentIntents.create({
       amount: amount,
-      currency: 'usd',
+      currency: "usd",
       automatic_payment_methods: {
         enabled: false,
       },
       payment_method: paymentMethod?.id,
-      setup_future_usage: 'on_session',
-      payment_method_types: ['card'],
+      setup_future_usage: "on_session",
+      payment_method_types: ["card"],
       customer: customer?.id,
       metadata: {
         actionId: body.actionId.toString(),
@@ -93,7 +93,7 @@ export class PaymentsController {
 
     if (!paymentIntent.client_secret) {
       throw new HttpException(
-        'Failed to create payment intent',
+        "Failed to create payment intent",
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -108,16 +108,16 @@ export class PaymentsController {
     };
   }
 
-  @Post('set-partial-profile')
+  @Post("set-partial-profile")
   @ApiOkResponse()
   async setPartialProfile(
     @Body() body: CreatePartialProfileDto,
   ): Promise<void> {
-    console.log('setting partial profile', body);
+    console.log("setting partial profile", body);
     return this.paymentsService.updatePaymentUserDataToken(body.id, body);
   }
 
-  @Post('webhook')
+  @Post("webhook")
   @ApiOkResponse()
   async webhook(
     @RawBody() event: string,
@@ -125,7 +125,7 @@ export class PaymentsController {
   ): Promise<void> {
     let parsedEvent: Stripe.Event;
     if (process.env.STRIPE_ENDPOINT_SECRET) {
-      const signature = request.headers['stripe-signature'];
+      const signature = request.headers["stripe-signature"];
       try {
         parsedEvent = this.stripe.webhooks.constructEvent(
           event,
@@ -134,11 +134,11 @@ export class PaymentsController {
         );
       } catch (err) {
         console.log(`Webhook signature verification failed.`, err.message);
-        throw new BadRequestException('Webhook signature verification failed');
+        throw new BadRequestException("Webhook signature verification failed");
       }
 
       switch (parsedEvent.type) {
-        case 'payment_intent.succeeded':
+        case "payment_intent.succeeded":
           const paymentIntent = parsedEvent.data.object;
           console.log(`PaymentIntent ${paymentIntent.id} was successful!`);
 
@@ -148,11 +148,11 @@ export class PaymentsController {
           break;
       }
     } else {
-      console.log('No endpoint secret set');
+      console.log("No endpoint secret set");
     }
   }
 
-  @Get('payment-method')
+  @Get("payment-method")
   @ApiOkResponse({ type: PaymentMethodDto })
   @UseGuards(AuthGuard)
   async paymentMethod(@Request() req: JwtRequest): Promise<PaymentMethodDto> {
@@ -161,12 +161,12 @@ export class PaymentsController {
       req.user.email,
     );
     if (!customer) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException("Customer not found");
     }
     const paymentMethod =
       await this.paymentsService.getSavedPaymentForCustomer(customer);
     if (!paymentMethod || !paymentMethod.card) {
-      throw new NotFoundException('Payment method not found');
+      throw new NotFoundException("Payment method not found");
     }
     return {
       id: paymentMethod.id,
@@ -175,7 +175,7 @@ export class PaymentsController {
     };
   }
 
-  @Post('clear-payment-method')
+  @Post("clear-payment-method")
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async clearPaymentMethods(@Request() req: JwtRequest): Promise<void> {
@@ -184,12 +184,12 @@ export class PaymentsController {
       req.user.email,
     );
     if (!customer) {
-      throw new NotFoundException('Customer not found');
+      throw new NotFoundException("Customer not found");
     }
     const paymentMethod =
       await this.paymentsService.getSavedPaymentForCustomer(customer);
     if (!paymentMethod) {
-      throw new NotFoundException('Payment method not found');
+      throw new NotFoundException("Payment method not found");
     }
     await this.stripe.paymentMethods.detach(paymentMethod.id);
   }

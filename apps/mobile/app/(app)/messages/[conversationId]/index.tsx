@@ -1,3 +1,15 @@
+import {
+  conversationAcceptInvite,
+  conversationDeclineInvite,
+  ConversationDto,
+  conversationMarkRead,
+  MessageDto,
+  messageSendMessage,
+  ProfileDto,
+} from "@alliance/shared/client";
+import { LegendList, LegendListRef } from "@legendapp/list";
+import { router, useLocalSearchParams } from "expo-router";
+import { Info, Users } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -6,19 +18,9 @@ import {
   View,
 } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { router, useLocalSearchParams } from "expo-router";
-import {
-  conversationAcceptInvite,
-  ConversationDto,
-  conversationDeclineInvite,
-  conversationMarkRead,
-  MessageDto,
-  messageSendMessage,
-  ProfileDto,
-} from "@alliance/shared/client";
-import { Info, Users } from "lucide-react-native";
 import MessageBubble from "../../../../components/messages/MessageBubble";
 import MessageComposer from "../../../../components/messages/MessageComposer";
+import BackButton from "../../../../components/system/BackButton";
 import Text, { FontWeight } from "../../../../components/system/Text";
 import { useAuth } from "../../../../lib/AuthContext";
 import {
@@ -28,8 +30,6 @@ import {
   useLiveConvoMessages,
 } from "../../../../lib/messages";
 import { colors } from "../../../../lib/style/colors";
-import { LegendList, LegendListRef } from "@legendapp/list";
-import BackButton from "../../../../components/system/BackButton";
 
 export default function ConversationScreen() {
   const { conversationId } = useLocalSearchParams<{

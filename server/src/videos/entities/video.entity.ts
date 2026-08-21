@@ -1,9 +1,9 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
+} from "src/datasources/basecolumns";
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Video {
@@ -27,15 +27,15 @@ export class Video {
   @ApiProperty()
   size: number;
 
-  @Column({ default: 'processing' })
+  @Column({ default: "processing" })
   @ApiProperty()
-  status: 'processing' | 'ready' | 'failed';
+  status: "processing" | "ready" | "failed";
 
-  @Column({ type: 'float', nullable: true })
+  @Column({ type: "float", nullable: true })
   @ApiProperty({ nullable: true })
   duration: number | null;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: "jsonb", nullable: true })
   @ApiProperty({ nullable: true })
   processingInfo: Record<string, unknown> | null;
 

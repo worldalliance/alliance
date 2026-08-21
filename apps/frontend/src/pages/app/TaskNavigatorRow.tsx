@@ -1,27 +1,24 @@
-import { Link, href } from "react-router";
-import { Circle, CircleChevronRight, ArrowRight, Link2 } from "lucide-react";
-import { cn } from "@alliance/shared/styles/util";
-import { type ReactNode } from "react";
-import {
-  type ActionDto,
-  type FollowUpForm,
-} from "@alliance/shared/client";
-import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
-import { useAuth } from "../../lib/AuthContext";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
-import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
+import { type ActionDto, type FollowUpForm } from "@alliance/shared/client";
 import {
   useCompletedTaskForm,
   useTaskForm,
 } from "@alliance/shared/lib/actionTaskPanelCompleted";
+import type { ActionWithAwayStatus } from "@alliance/shared/lib/actionUtils";
+import { clipboardCopy } from "@alliance/shared/lib/copy";
 import {
   buildActionShareUrl,
   buildShareText,
   getCompletedShareableTextTemplate,
 } from "@alliance/shared/lib/shareText";
-import { clipboardCopy } from "@alliance/shared/lib/copy";
+import { cn } from "@alliance/shared/styles/util";
+import { copyToClipboard } from "@alliance/sharedweb/lib/clipboard";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import CheckIcon from "@alliance/sharedweb/ui/icons/CheckIcon";
+import { ArrowRight, Circle, CircleChevronRight, Link2 } from "lucide-react";
+import { type ReactNode } from "react";
+import { Link, href } from "react-router";
 import ShareButton from "../../components/ShareButton";
+import { useAuth } from "../../lib/AuthContext";
 
 const ICON_SIZE = 16;
 

@@ -1,11 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -15,12 +15,12 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   RelationId,
-} from 'typeorm';
-import { AmbassadorProgramInteraction } from './ambassador-program-interaction.entity';
-import { User } from './user.entity';
+} from "typeorm";
+import { AmbassadorProgramInteraction } from "./ambassador-program-interaction.entity";
+import { User } from "./user.entity";
 
 @Entity()
-@Index(['user'], { unique: true })
+@Index(["user"], { unique: true })
 export class AmbassadorProgramMember {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -49,8 +49,8 @@ export class AmbassadorProgramMember {
   @Allow()
   updatedAt: Date;
 
-  @ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
   @ApiProperty({ type: () => User })
   @Type(() => User)
   @Allow()

@@ -2,7 +2,7 @@
  * Cohort Expression Evaluator
  */
 
-import { CohortExpression } from '@alliance/common/cohort-expression';
+import { CohortExpression } from "@alliance/common/cohort-expression";
 
 // --- Evaluation Context ---
 
@@ -47,19 +47,19 @@ export async function evaluateCohortExpression(
   visitedActionIds: Set<number> = new Set(),
 ): Promise<Set<number>> {
   switch (expr.type) {
-    case 'Tag':
+    case "Tag":
       return ctx.getUserIdsForTag(expr.tagId);
-    case 'Manual':
+    case "Manual":
       return new Set(expr.userIds);
-    case 'CompletedAction':
+    case "CompletedAction":
       return ctx.getUserIdsCompletedAction(expr.actionId);
-    case 'InProgressAction': {
+    case "InProgressAction": {
       if (visitedActionIds.has(expr.actionId)) {
         return new Set();
       }
       return ctx.getUserIdsInProgressAction(expr.actionId);
     }
-    case 'MissedActionDeadline': {
+    case "MissedActionDeadline": {
       // Resolving the referenced action's roster recurses into its cohort
       // expression, so it needs the same cycle guard as InProgressAction.
       if (visitedActionIds.has(expr.actionId)) {
@@ -67,16 +67,16 @@ export async function evaluateCohortExpression(
       }
       return ctx.getUserIdsMissedActionDeadline(expr.actionId);
     }
-    case 'FormFieldValue':
+    case "FormFieldValue":
       return ctx.getUserIdsForFormField({
         formId: expr.formId,
         fieldId: expr.fieldId,
         responseEqualTo: expr.responseEqualTo,
         responseAny: expr.responseAny,
       });
-    case 'GroupLead':
+    case "GroupLead":
       return ctx.getGroupLeadUserIds();
-    case 'AND': {
+    case "AND": {
       if (expr.children.length === 0) return new Set();
       const { targetUserId } = ctx;
       if (targetUserId !== undefined) {
@@ -98,7 +98,7 @@ export async function evaluateCohortExpression(
       );
       return intersect(sets);
     }
-    case 'OR': {
+    case "OR": {
       if (expr.children.length === 0) return new Set();
       const { targetUserId } = ctx;
       if (targetUserId !== undefined) {
@@ -120,7 +120,7 @@ export async function evaluateCohortExpression(
       );
       return union(sets);
     }
-    case 'NOT': {
+    case "NOT": {
       const universe = await ctx.getAllCandidateUserIds();
       const excluded = await evaluateCohortExpression(
         expr.child,
@@ -150,23 +150,23 @@ export function collectCohortDependencies(
 
   const walk = (node: CohortExpression): void => {
     switch (node.type) {
-      case 'CompletedAction':
-      case 'InProgressAction':
-      case 'MissedActionDeadline':
+      case "CompletedAction":
+      case "InProgressAction":
+      case "MissedActionDeadline":
         actionIds.add(node.actionId);
         break;
-      case 'FormFieldValue':
+      case "FormFieldValue":
         formIds.add(node.formId);
         break;
-      case 'Tag':
-      case 'Manual':
-      case 'GroupLead':
+      case "Tag":
+      case "Manual":
+      case "GroupLead":
         break;
-      case 'AND':
-      case 'OR':
+      case "AND":
+      case "OR":
         node.children.forEach(walk);
         break;
-      case 'NOT':
+      case "NOT":
         walk(node.child);
         break;
       default:

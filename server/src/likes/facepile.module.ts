@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from '../user/entities/user.entity';
-import { FacepileService } from './facepile.service';
-import { LikeOrderFunctionService } from './like-order-function.service';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { User } from "../user/entities/user.entity";
+import { FacepileService } from "./facepile.service";
+import { LikeOrderFunctionService } from "./like-order-function.service";
 
 /**
  * Owns the `likeOrderRank` SQL function its query depends on, so every module

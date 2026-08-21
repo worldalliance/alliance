@@ -1,11 +1,11 @@
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import type { Repository } from 'src/utils/Repository';
-import { EventLog, EventType } from './event-log.entity';
-import { EventLogEvents } from './eventlog.events';
-import { EventLogService } from './eventlog.service';
-import { escapeSlackText } from './slack-format';
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import type { Repository } from "src/utils/Repository";
+import { EventLog, EventType } from "./event-log.entity";
+import { EventLogEvents } from "./eventlog.events";
+import { EventLogService } from "./eventlog.service";
+import { escapeSlackText } from "./slack-format";
 
-describe('EventLogService.sendMessage', () => {
+describe("EventLogService.sendMessage", () => {
   let service: EventLogService;
   // `findOne` is generic over the requested relations, so its mocked signature
   // would demand a fully loaded row; widen just that one to a bare mock.
@@ -13,7 +13,7 @@ describe('EventLogService.sendMessage', () => {
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let fetchMock: jest.Mock;
 
-  const savedRow = { id: 'event-log-1' } as EventLog;
+  const savedRow = { id: "event-log-1" } as EventLog;
   const originalEnv = {
     NODE_ENV: process.env.NODE_ENV,
     SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL,
@@ -40,14 +40,14 @@ describe('EventLogService.sendMessage', () => {
     } as unknown as jest.Mocked<EventEmitter2>;
 
     service = new EventLogService(repository, eventEmitter);
-    jest.spyOn(service['logger'], 'error').mockImplementation(() => {});
-    jest.spyOn(service['logger'], 'log').mockImplementation(() => {});
-    jest.spyOn(service['logger'], 'warn').mockImplementation(() => {});
+    jest.spyOn(service["logger"], "error").mockImplementation(() => {});
+    jest.spyOn(service["logger"], "log").mockImplementation(() => {});
+    jest.spyOn(service["logger"], "warn").mockImplementation(() => {});
 
     fetchMock = jest.fn().mockResolvedValue({ ok: true });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
-    process.env.NODE_ENV = 'production';
-    process.env.SLACK_WEBHOOK_URL = 'https://hooks.slack.example/services/T00';
+    process.env.NODE_ENV = "production";
+    process.env.SLACK_WEBHOOK_URL = "https://hooks.slack.example/services/T00";
   });
 
   afterEach(() => {
@@ -56,13 +56,13 @@ describe('EventLogService.sendMessage', () => {
     process.env.SLACK_WEBHOOK_URL = originalEnv.SLACK_WEBHOOK_URL;
   });
 
-  it('returns failure and does not forward when the event-log write fails', async () => {
-    const dbError = new Error('connection lost');
+  it("returns failure and does not forward when the event-log write fails", async () => {
+    const dbError = new Error("connection lost");
     repository.save.mockRejectedValue(dbError);
 
     const result = await service.sendMessage({
       type: EventType.ContractSigned,
-      message: 'Jane signed their contract',
+      message: "Jane signed their contract",
       blob: null,
       userId: null,
     });
@@ -72,38 +72,38 @@ describe('EventLogService.sendMessage', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('returns success when the write succeeds but forwarding fails', async () => {
-    repository.findOne.mockRejectedValue(new Error('re-query failed'));
+  it("returns success when the write succeeds but forwarding fails", async () => {
+    repository.findOne.mockRejectedValue(new Error("re-query failed"));
 
     const result = await service.sendMessage({
       type: EventType.ContractSigned,
-      message: 'Jane signed their contract',
+      message: "Jane signed their contract",
       blob: null,
       userId: null,
     });
 
     expect(result).toEqual({ ok: true, value: undefined });
-    expect(service['logger'].error).toHaveBeenCalled();
+    expect(service["logger"].error).toHaveBeenCalled();
   });
 
-  it('stores nullable fields as null', async () => {
+  it("stores nullable fields as null", async () => {
     await service.sendMessage({
       type: EventType.ContractSigned,
-      message: 'Jane signed their contract',
+      message: "Jane signed their contract",
       blob: null,
       userId: null,
     });
 
     expect(repository.create).toHaveBeenCalledWith({
       event: EventType.ContractSigned,
-      message: 'Jane signed their contract',
+      message: "Jane signed their contract",
       blob: null,
       userId: null,
     });
   });
 
-  it('stores the raw message and escapes the Slack copy by default', async () => {
-    const message = 'Jane <!channel> & <https://evil.example|click> opted out';
+  it("stores the raw message and escapes the Slack copy by default", async () => {
+    const message = "Jane <!channel> & <https://evil.example|click> opted out";
 
     const result = await service.sendMessage({
       type: EventType.ActionOptOut,
@@ -119,27 +119,27 @@ describe('EventLogService.sendMessage', () => {
     expect(postedSlackText()).toBe(escapeSlackText(message));
   });
 
-  it('sends slackMessage verbatim when provided', async () => {
-    const slackMessage = 'New comment <@U123> - <https://app.example|Open>';
+  it("sends slackMessage verbatim when provided", async () => {
+    const slackMessage = "New comment <@U123> - <https://app.example|Open>";
 
     await service.sendMessage({
       type: EventType.ActionComment,
-      message: 'New comment on action 42',
+      message: "New comment on action 42",
       slackMessage,
       blob: null,
       userId: null,
     });
 
     expect(repository.save).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'New comment on action 42' }),
+      expect.objectContaining({ message: "New comment on action 42" }),
     );
     expect(postedSlackText()).toBe(slackMessage);
   });
 
-  it('does not post to Slack for types excluded from SEND_TO_SLACK', async () => {
+  it("does not post to Slack for types excluded from SEND_TO_SLACK", async () => {
     const result = await service.sendMessage({
       type: EventType.ForumReplyNotifFailure,
-      message: 'notif failure',
+      message: "notif failure",
       blob: null,
       userId: null,
     });
@@ -148,12 +148,12 @@ describe('EventLogService.sendMessage', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('skips the Slack post outside production', async () => {
-    process.env.NODE_ENV = 'development';
+  it("skips the Slack post outside production", async () => {
+    process.env.NODE_ENV = "development";
 
     const result = await service.sendMessage({
       type: EventType.ContractSigned,
-      message: 'Jane signed their contract',
+      message: "Jane signed their contract",
       blob: null,
       userId: null,
     });
@@ -162,20 +162,20 @@ describe('EventLogService.sendMessage', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('emits the created event with the re-queried row', async () => {
+  it("emits the created event with the re-queried row", async () => {
     const fullEvent = {
       id: savedRow.id,
       event: EventType.ContractSigned,
-      message: 'Jane signed their contract',
-      createdAt: new Date('2026-01-01T00:00:00Z'),
+      message: "Jane signed their contract",
+      createdAt: new Date("2026-01-01T00:00:00Z"),
       userId: 5,
-      user: { id: 5, anonymous: false, name: 'Jane' },
+      user: { id: 5, anonymous: false, name: "Jane" },
     } as EventLog;
     repository.findOne.mockResolvedValue(fullEvent);
 
     await service.sendMessage({
       type: EventType.ContractSigned,
-      message: 'Jane signed their contract',
+      message: "Jane signed their contract",
       userId: 5,
       blob: null,
     });

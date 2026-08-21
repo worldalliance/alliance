@@ -1,7 +1,7 @@
-import { View } from "react-native";
-import { colors } from "../../lib/style/colors";
 import { cn } from "@alliance/shared/styles/util";
+import { View } from "react-native";
 import Svg, { Path } from "react-native-svg";
+import { colors } from "../../lib/style/colors";
 
 const PinnedIcon = ({
   size = "small",
@@ -20,7 +20,7 @@ const PinnedIcon = ({
       className={cn(
         "shrink-0",
         sizeClass[size],
-        "rounded-full items-center justify-center"
+        "rounded-full items-center justify-center",
       )}
     >
       <Svg

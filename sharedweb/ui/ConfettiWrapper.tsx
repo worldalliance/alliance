@@ -1,6 +1,6 @@
+import { cn } from "@alliance/shared/styles/util";
 import type { KeyboardEvent, MouseEvent, PointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { cn } from "@alliance/shared/styles/util";
 
 type ConfettiPiece = {
   id: string;

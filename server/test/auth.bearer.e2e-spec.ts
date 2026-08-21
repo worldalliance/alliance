@@ -1,18 +1,18 @@
-import { SignUpDto } from 'src/auth/dto/sign-up.dto';
-import request from 'supertest';
-import type { Repository } from 'typeorm';
-import { RefreshTokensResponseDto } from '../src/auth/dto/authtokens.dto';
-import { SignInResponseDto } from '../src/auth/dto/signin.dto';
-import { Community } from '../src/community/entities/community.entity';
-import { Friend } from '../src/user/entities/friend.entity';
+import { SignUpDto } from "src/auth/dto/sign-up.dto";
+import request from "supertest";
+import type { Repository } from "typeorm";
+import { RefreshTokensResponseDto } from "../src/auth/dto/authtokens.dto";
+import { SignInResponseDto } from "../src/auth/dto/signin.dto";
+import { Community } from "../src/community/entities/community.entity";
+import { Friend } from "../src/user/entities/friend.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
-} from '../src/user/entities/onetime-invite.entity';
-import { User } from '../src/user/entities/user.entity';
-import { createTestApp, TestContext } from './e2e-test-utils';
+} from "../src/user/entities/onetime-invite.entity";
+import { User } from "../src/user/entities/user.entity";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
-describe('Auth (e2e)', () => {
+describe("Auth (e2e)", () => {
   let userRepository: Repository<User>;
   let inviteRepo: Repository<OnetimeInvite>;
   let ctx: TestContext;
@@ -23,39 +23,39 @@ describe('Auth (e2e)', () => {
     inviteRepo = ctx.dataSource.getRepository(OnetimeInvite);
   }, 50000);
 
-  it('returns 401 for invalid login', () => {
+  it("returns 401 for invalid login", () => {
     return request(ctx.app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: 'baduser@test.com', password: 'password', mode: 'header' })
+      .post("/auth/login")
+      .send({ email: "baduser@test.com", password: "password", mode: "header" })
       .expect(401);
   });
 
-  it('registers a new user', () => {
+  it("registers a new user", () => {
     return request(ctx.app.getHttpServer())
-      .post('/auth/register')
+      .post("/auth/register")
       .send({
-        email: 'newusertest@test.com',
-        password: 'password',
-        name: 'Test User',
-        mode: 'header',
+        email: "newusertest@test.com",
+        password: "password",
+        name: "Test User",
+        mode: "header",
       } satisfies SignUpDto)
       .expect(201);
   });
 
-  it('returns a token for a valid login', async () => {
+  it("returns a token for a valid login", async () => {
     const user = userRepository.create({
-      email: 'newusertest@test.com',
-      password: 'password',
-      name: 'Test User',
+      email: "newusertest@test.com",
+      password: "password",
+      name: "Test User",
     });
     await userRepository.save(user);
 
     const response = await request(ctx.app.getHttpServer())
-      .post('/auth/login')
+      .post("/auth/login")
       .send({
-        email: 'newusertest@test.com',
-        password: 'password',
-        mode: 'header',
+        email: "newusertest@test.com",
+        password: "password",
+        mode: "header",
       })
       .expect(200);
 
@@ -65,36 +65,36 @@ describe('Auth (e2e)', () => {
     expect(body.refresh_token).toBeDefined();
   });
 
-  describe('token refresh', () => {
-    it('returns 401 for invalid refresh token', () => {
+  describe("token refresh", () => {
+    it("returns 401 for invalid refresh token", () => {
       return request(ctx.app.getHttpServer())
-        .post('/auth/refresh')
-        .send({ refresh_token: 'invalid' })
+        .post("/auth/refresh")
+        .send({ refresh_token: "invalid" })
         .expect(401);
     });
 
-    it('returns a new access token for a valid refresh token', async () => {
+    it("returns a new access token for a valid refresh token", async () => {
       const user = userRepository.create({
-        email: 'newusertest@test.com',
-        password: 'password',
-        name: 'Test User',
+        email: "newusertest@test.com",
+        password: "password",
+        name: "Test User",
       });
       await userRepository.save(user);
 
       const loginResponse = await request(ctx.app.getHttpServer())
-        .post('/auth/login')
+        .post("/auth/login")
         .send({
-          email: 'newusertest@test.com',
-          password: 'password',
-          mode: 'header',
+          email: "newusertest@test.com",
+          password: "password",
+          mode: "header",
         })
         .expect(200);
 
       const loginBody = loginResponse.body as SignInResponseDto;
 
       const refreshResponse = await request(ctx.app.getHttpServer())
-        .post('/auth/refresh')
-        .set('Authorization', `Bearer ${loginBody.refresh_token}`)
+        .post("/auth/refresh")
+        .set("Authorization", `Bearer ${loginBody.refresh_token}`)
         .expect(200);
 
       const refreshBody = refreshResponse.body as RefreshTokensResponseDto;
@@ -103,7 +103,7 @@ describe('Auth (e2e)', () => {
     });
   });
 
-  describe('signUp with invite codes', () => {
+  describe("signUp with invite codes", () => {
     let invitingUser: User;
     let communityRepo: Repository<Community>;
 
@@ -113,19 +113,19 @@ describe('Auth (e2e)', () => {
       // Create an inviting user
       invitingUser = await userRepository.save(
         userRepository.create({
-          email: 'inviter@test.com',
-          password: 'password',
-          name: 'Inviter User',
+          email: "inviter@test.com",
+          password: "password",
+          name: "Inviter User",
         }),
       );
     });
 
-    it('registers a user with an invite code and sets referredByInvite', async () => {
+    it("registers a user with an invite code and sets referredByInvite", async () => {
       // Create a community for the invite
       const community = await communityRepo.save(
         communityRepo.create({
-          name: 'Test Community',
-          description: 'Test',
+          name: "Test Community",
+          description: "Test",
           leaders: [invitingUser],
           users: [invitingUser],
         }),
@@ -134,8 +134,8 @@ describe('Auth (e2e)', () => {
       // Create an invite
       const invite = await inviteRepo.save(
         inviteRepo.create({
-          invitee: 'invited@test.com',
-          code: 'TEST-INVITE-CODE',
+          invitee: "invited@test.com",
+          code: "TEST-INVITE-CODE",
           status: OnetimeInviteStatus.LINK_UNUSED,
           invitingUser,
           community,
@@ -144,19 +144,19 @@ describe('Auth (e2e)', () => {
 
       // Register with the invite code
       await request(ctx.app.getHttpServer())
-        .post('/auth/register')
+        .post("/auth/register")
         .send({
-          email: 'invited@test.com',
-          password: 'password',
-          name: 'Invited User',
-          referralCode: 'TEST-INVITE-CODE',
-          mode: 'header',
+          email: "invited@test.com",
+          password: "password",
+          name: "Invited User",
+          referralCode: "TEST-INVITE-CODE",
+          mode: "header",
         } satisfies SignUpDto)
         .expect(201);
 
       // Verify the user was created with referredByInvite
       const newUser = await userRepository.findOne({
-        where: { email: 'invited@test.com' },
+        where: { email: "invited@test.com" },
         relations: { referredByInvite: true, referredBy: true },
       });
 
@@ -171,30 +171,30 @@ describe('Auth (e2e)', () => {
       expect(updatedInvite?.status).toBe(OnetimeInviteStatus.LINK_USED);
     });
 
-    it('creates friendship between inviting user and new user when registering with invite', async () => {
+    it("creates friendship between inviting user and new user when registering with invite", async () => {
       await inviteRepo.save(
         inviteRepo.create({
-          invitee: 'friend-invited@test.com',
-          code: 'FRIEND-INVITE-CODE',
+          invitee: "friend-invited@test.com",
+          code: "FRIEND-INVITE-CODE",
           status: OnetimeInviteStatus.LINK_UNUSED,
           invitingUser,
         }),
       );
 
       await request(ctx.app.getHttpServer())
-        .post('/auth/register')
+        .post("/auth/register")
         .send({
-          email: 'friend-invited@test.com',
-          password: 'password',
-          name: 'Friend Invited User',
-          referralCode: 'FRIEND-INVITE-CODE',
-          mode: 'header',
+          email: "friend-invited@test.com",
+          password: "password",
+          name: "Friend Invited User",
+          referralCode: "FRIEND-INVITE-CODE",
+          mode: "header",
         } satisfies SignUpDto)
         .expect(201);
 
       // Verify friendship was created
       const newUser = await userRepository.findOne({
-        where: { email: 'friend-invited@test.com' },
+        where: { email: "friend-invited@test.com" },
       });
 
       const friendRepo = ctx.dataSource.getRepository(Friend);
@@ -214,11 +214,11 @@ describe('Auth (e2e)', () => {
       expect(friendship).not.toBeNull();
     });
 
-    it('does not join community immediately on signup with invite', async () => {
+    it("does not join community immediately on signup with invite", async () => {
       const community = await communityRepo.save(
         communityRepo.create({
-          name: 'Signup Community',
-          description: 'Test',
+          name: "Signup Community",
+          description: "Test",
           leaders: [invitingUser],
           users: [invitingUser],
         }),
@@ -226,8 +226,8 @@ describe('Auth (e2e)', () => {
 
       const invite = await inviteRepo.save(
         inviteRepo.create({
-          invitee: 'no-join@test.com',
-          code: 'NO-JOIN-CODE',
+          invitee: "no-join@test.com",
+          code: "NO-JOIN-CODE",
           status: OnetimeInviteStatus.LINK_UNUSED,
           invitingUser,
           community,
@@ -235,19 +235,19 @@ describe('Auth (e2e)', () => {
       );
 
       await request(ctx.app.getHttpServer())
-        .post('/auth/register')
+        .post("/auth/register")
         .send({
-          email: 'no-join@test.com',
-          password: 'password',
-          name: 'No Join User',
-          referralCode: 'NO-JOIN-CODE',
-          mode: 'header',
+          email: "no-join@test.com",
+          password: "password",
+          name: "No Join User",
+          referralCode: "NO-JOIN-CODE",
+          mode: "header",
         } satisfies SignUpDto)
         .expect(201);
 
       // Verify user is NOT in the community yet
       const newUser = await userRepository.findOne({
-        where: { email: 'no-join@test.com' },
+        where: { email: "no-join@test.com" },
         relations: { communities: true, referredByInvite: true },
       });
 
@@ -255,20 +255,20 @@ describe('Auth (e2e)', () => {
       expect(newUser?.referredByInvite?.id).toBe(invite.id);
     });
 
-    it('allows registration without invite code in test environment', async () => {
+    it("allows registration without invite code in test environment", async () => {
       await request(ctx.app.getHttpServer())
-        .post('/auth/register')
+        .post("/auth/register")
         .send({
-          email: 'no-invite@test.com',
-          password: 'password',
-          name: 'No Invite User',
-          referralCode: 'INVALID-CODE',
-          mode: 'header',
+          email: "no-invite@test.com",
+          password: "password",
+          name: "No Invite User",
+          referralCode: "INVALID-CODE",
+          mode: "header",
         } satisfies SignUpDto)
         .expect(201);
 
       const newUser = await userRepository.findOne({
-        where: { email: 'no-invite@test.com' },
+        where: { email: "no-invite@test.com" },
         relations: { referredByInvite: true, referredBy: true },
       });
 
@@ -277,13 +277,13 @@ describe('Auth (e2e)', () => {
       expect(newUser?.referredBy).toBeNull();
     });
 
-    it('registers a user with a user referral code (not OnetimeInvite)', async () => {
+    it("registers a user with a user referral code (not OnetimeInvite)", async () => {
       // Create a user with a referral code
       const referringUser = await userRepository.save(
         userRepository.create({
-          email: 'referrer@test.com',
-          password: 'password',
-          name: 'Referrer User',
+          email: "referrer@test.com",
+          password: "password",
+          name: "Referrer User",
         }),
       );
       // referralCode is generated automatically, but let's ensure it exists
@@ -294,19 +294,19 @@ describe('Auth (e2e)', () => {
 
       // Register with the user's referral code
       await request(ctx.app.getHttpServer())
-        .post('/auth/register')
+        .post("/auth/register")
         .send({
-          email: 'referred@test.com',
-          password: 'password',
-          name: 'Referred User',
+          email: "referred@test.com",
+          password: "password",
+          name: "Referred User",
           referralCode: referringUser.referralCode,
-          mode: 'header',
+          mode: "header",
         } satisfies SignUpDto)
         .expect(201);
 
       // Verify the user was created with referredBy set
       const newUser = await userRepository.findOne({
-        where: { email: 'referred@test.com' },
+        where: { email: "referred@test.com" },
         relations: { referredByInvite: true, referredBy: true },
       });
 

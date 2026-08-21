@@ -1,13 +1,13 @@
-import { HTTP_URL_VALIDATOR_OPTIONS } from '@alliance/common/url';
-import { ApiProperty } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
-import { Allow, IsNotEmpty, IsString, IsUrl } from 'class-validator';
+import { HTTP_URL_VALIDATOR_OPTIONS } from "@alliance/common/url";
+import { ApiProperty } from "@nestjs/swagger";
+import { Transform, Type } from "class-transformer";
+import { Allow, IsNotEmpty, IsString, IsUrl } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { trim } from 'src/utils/transforms';
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+} from "src/datasources/basecolumns";
+import { trim } from "src/utils/transforms";
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class ExternalShareTarget {

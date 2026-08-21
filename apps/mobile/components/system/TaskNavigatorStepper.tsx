@@ -1,7 +1,7 @@
-import { View, Pressable } from "react-native";
 import { ChevronLeft, ChevronRight } from "lucide-react-native";
-import Text from "./Text";
+import { Pressable, View } from "react-native";
 import { colors } from "../../lib/style/colors";
+import Text from "./Text";
 
 /** Prev/next control for the home task navigator (matches web task navigator behavior). */
 export function TaskNavigatorStepper({
@@ -35,11 +35,7 @@ export function TaskNavigatorStepper({
         accessibilityLabel={previousLabel}
         accessibilityRole="button"
       >
-        <ChevronLeft
-          size={24}
-          color={iconColor(canGoPrev)}
-          strokeWidth={2.5}
-        />
+        <ChevronLeft size={24} color={iconColor(canGoPrev)} strokeWidth={2.5} />
       </Pressable>
       <Text
         className="text-zinc-500 text-sm min-w-16 text-center"

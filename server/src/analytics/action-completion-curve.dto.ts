@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { ActionStatsRecord } from './actionstats.entity';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { ActionStatsRecord } from "./actionstats.entity";
 
 export type ActionCompletionCurve = {
   actionId: number;
@@ -16,20 +16,20 @@ export type ActionCompletionCurve = {
 };
 
 export class ActionCompletionCurveDto extends PickType(ActionStatsRecord, [
-  'actionId',
-  'actionName',
-  'usersJoined',
-  'memberActionEndDate',
+  "actionId",
+  "actionName",
+  "usersJoined",
+  "memberActionEndDate",
 ] as const) {
   // Nullable on the entity, but a curve is only built for actions that have a
   // member_action start, so it is always present here.
   @ApiProperty({
-    description: 'When the member_action phase started.',
+    description: "When the member_action phase started.",
   })
   memberActionStartDate: Date;
 
   @ApiProperty({
-    description: 'Bucket size in days used to group completions.',
+    description: "Bucket size in days used to group completions.",
     example: 1,
   })
   bucketDays: number;
@@ -37,14 +37,14 @@ export class ActionCompletionCurveDto extends PickType(ActionStatsRecord, [
   @ApiProperty({
     type: Number,
     isArray: true,
-    description: 'Bucket offsets (in days) from the member_action start date.',
+    description: "Bucket offsets (in days) from the member_action start date.",
   })
   dayOffsets: number[];
 
   @ApiProperty({
     type: Number,
     isArray: true,
-    description: 'Completion counts per bucket.',
+    description: "Completion counts per bucket.",
   })
   completedCounts: number[];
 
@@ -52,12 +52,12 @@ export class ActionCompletionCurveDto extends PickType(ActionStatsRecord, [
     type: Number,
     isArray: true,
     description:
-      'Completion fraction per bucket (completedCounts / usersJoined).',
+      "Completion fraction per bucket (completedCounts / usersJoined).",
   })
   completionFractions: number[];
 
   @ApiPropertyOptional({
-    description: 'Bucket size in hours (present when granularity is hourly).',
+    description: "Bucket size in hours (present when granularity is hourly).",
     example: 1,
   })
   bucketHours?: number;
@@ -66,7 +66,7 @@ export class ActionCompletionCurveDto extends PickType(ActionStatsRecord, [
     type: Number,
     isArray: true,
     description:
-      'Bucket offsets (in hours) from the member_action start date (present when granularity is hourly).',
+      "Bucket offsets (in hours) from the member_action start date (present when granularity is hourly).",
   })
   hourOffsets?: number[];
 

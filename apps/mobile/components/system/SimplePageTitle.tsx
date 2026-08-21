@@ -1,9 +1,9 @@
-import { Pressable, View } from "react-native";
 import { Menu } from "lucide-react-native";
-import Text, { FontWeight } from "./Text";
+import { Pressable, View } from "react-native";
 import { useAppDrawer } from "../../lib/AppDrawerContext";
 import { colors } from "../../lib/style/colors";
 import BackButton from "./BackButton";
+import Text, { FontWeight } from "./Text";
 
 export const SimplePageTitle = ({
   title,

@@ -1,18 +1,18 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, type EntityManager, type Repository } from 'typeorm';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import type { GlobalFeedActivityType } from "src/actions/dto/action.dto";
+import { ProfileDto } from "src/user/dto/user.dto";
+import { User } from "src/user/entities/user.entity";
+import { In, IsNull, type EntityManager, type Repository } from "typeorm";
 import {
   Notification,
   NotificationCategory,
-} from './entities/notification.entity';
-import { User } from 'src/user/entities/user.entity';
-import { ProfileDto } from 'src/user/dto/user.dto';
-import { NotifsService } from './notifs.service';
-import type { GlobalFeedActivityType } from 'src/actions/dto/action.dto';
+} from "./entities/notification.entity";
+import { NotifsService } from "./notifs.service";
 
 export type LikeNotificationTarget =
-  | 'post'
-  | 'comment'
+  | "post"
+  | "comment"
   | `activity:${GlobalFeedActivityType}`;
 
 type LegacyGroupingKey =
@@ -72,7 +72,7 @@ export class LikeNotificationService {
           readAt: IsNull(),
         },
         relations: { associatedUsers: true },
-        order: { createdAt: 'ASC', id: 'ASC' },
+        order: { createdAt: "ASC", id: "ASC" },
       });
 
       if (existingNotif) {
@@ -167,7 +167,7 @@ export class LikeNotificationService {
           readAt: IsNull(),
         },
         relations: { associatedUsers: true },
-        order: { createdAt: 'ASC', id: 'ASC' },
+        order: { createdAt: "ASC", id: "ASC" },
       });
 
       if (!notif) {
@@ -209,12 +209,12 @@ export class LikeNotificationService {
     const groupingKey: GroupingKey = `like:${targetType}:${targetId}`;
 
     switch (targetType) {
-      case 'post':
+      case "post":
         return [groupingKey, `forum_like:post:${targetId}:user:${ownerId}`];
-      case 'comment':
+      case "comment":
         return [groupingKey, `forum_like:comment:${targetId}`];
-      case 'activity:user_completed':
-      case 'activity:user_submitted_follow_up_form':
+      case "activity:user_completed":
+      case "activity:user_submitted_follow_up_form":
         return [groupingKey, `activity_like:${targetId}`];
       default:
         throw new Error(
@@ -229,7 +229,7 @@ export class LikeNotificationService {
   ): Promise<void> {
     for (const groupingKey of [...groupingKeys].sort()) {
       await manager.query(
-        'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+        "SELECT pg_advisory_xact_lock(hashtextextended($1, 0))",
         [groupingKey],
       );
     }
@@ -245,21 +245,21 @@ export class LikeNotificationService {
 
     let label;
     switch (targetType) {
-      case 'post':
-        label = targetContent ? `post: ${targetContent}` : 'post';
+      case "post":
+        label = targetContent ? `post: ${targetContent}` : "post";
         break;
-      case 'comment':
-        label = targetContent ? `comment: ${targetContent}` : 'comment';
+      case "comment":
+        label = targetContent ? `comment: ${targetContent}` : "comment";
         break;
-      case 'activity:user_completed':
+      case "activity:user_completed":
         label = targetContent
           ? `completion of: ${targetContent}`
-          : 'action activity';
+          : "action activity";
         break;
-      case 'activity:user_submitted_follow_up_form':
+      case "activity:user_submitted_follow_up_form":
         label = targetContent
           ? `follow-up to: ${targetContent}`
-          : 'follow-up response';
+          : "follow-up response";
         break;
       default:
         targetType satisfies never;

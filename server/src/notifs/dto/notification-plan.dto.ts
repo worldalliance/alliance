@@ -1,7 +1,7 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { ReminderGroup } from 'src/actions/entities/reminder-group.entity';
-import { User } from 'src/user/entities/user.entity';
-import { NotificationChannel } from '../notif-utils';
+import { ApiProperty } from "@nestjs/swagger";
+import { ReminderGroup } from "src/actions/entities/reminder-group.entity";
+import { User } from "src/user/entities/user.entity";
+import { NotificationChannel } from "../notif-utils";
 
 export class NotificationPlan {
   @ApiProperty()
@@ -20,7 +20,7 @@ export class PreviewNotificationPlanDto {
 
   @ApiProperty({
     enum: NotificationChannel,
-    enumName: 'NotificationChannel',
+    enumName: "NotificationChannel",
     isArray: true,
   })
   channels: NotificationChannel[];

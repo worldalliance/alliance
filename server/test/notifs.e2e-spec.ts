@@ -1,29 +1,29 @@
-import { NotifsModule } from 'src/notifs/notifs.module';
-import {
-  Comment,
-  CommentParentObject,
-} from 'src/forum/entities/comment.entity';
-import { EditableContent } from 'src/forum/entities/editablecontent.entity';
-import { User } from 'src/user/entities/user.entity';
-import type { Repository } from 'typeorm';
-import {
-  Notification,
-  NotificationCategory,
-} from '../src/notifs/entities/notification.entity';
-import { NotificationSourceType } from '../src/notifs/dto/notification.dto';
-import {
-  UnreadContent,
-  UnreadContentType,
-} from '../src/notifs/entities/unread-content.entity';
-import { createTestApp, TestContext } from './e2e-test-utils';
-import { Action } from 'src/actions/entities/action.entity';
 import {
   ActionUpdate,
   ActionUpdateNotifyType,
-} from 'src/actions/entities/action-update.entity';
-import { FormSnapshot } from 'src/tasks/entities/formsnapshot.entity';
+} from "src/actions/entities/action-update.entity";
+import { Action } from "src/actions/entities/action.entity";
+import {
+  Comment,
+  CommentParentObject,
+} from "src/forum/entities/comment.entity";
+import { EditableContent } from "src/forum/entities/editablecontent.entity";
+import { NotifsModule } from "src/notifs/notifs.module";
+import { FormSnapshot } from "src/tasks/entities/formsnapshot.entity";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "typeorm";
+import { NotificationSourceType } from "../src/notifs/dto/notification.dto";
+import {
+  Notification,
+  NotificationCategory,
+} from "../src/notifs/entities/notification.entity";
+import {
+  UnreadContent,
+  UnreadContentType,
+} from "../src/notifs/entities/unread-content.entity";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
-describe('Notifications (e2e)', () => {
+describe("Notifications (e2e)", () => {
   let ctx: TestContext;
   let notifRepo: Repository<Notification>;
   let unreadContentRepo: Repository<UnreadContent>;
@@ -50,21 +50,21 @@ describe('Notifications (e2e)', () => {
     });
 
     if (!testUser) {
-      throw new Error('Test user not found');
+      throw new Error("Test user not found");
     }
 
     const testNotif = notifRepo.create({
       user: testUser,
-      message: 'Test notification',
+      message: "Test notification",
       category: NotificationCategory.FriendRequest,
-      webAppLocation: 'test',
-      mobileAppLocation: 'test',
+      webAppLocation: "test",
+      mobileAppLocation: "test",
     });
     await notifRepo.save(testNotif);
     legacyNotifId = testNotif.id;
 
     const editableContent = editableContentRepo.create({
-      body: 'Test unread reply body',
+      body: "Test unread reply body",
       attachments: [],
     });
     await editableContentRepo.save(editableContent);
@@ -99,14 +99,14 @@ describe('Notifications (e2e)', () => {
     await ctx.app.close();
   });
 
-  it('user can list their notifications from both entities', async () => {
-    const res = await ctx.agent.get('/notifs').expect(200);
+  it("user can list their notifications from both entities", async () => {
+    const res = await ctx.agent.get("/notifs").expect(200);
     expect(res.body.length).toBe(2);
     expect(
       res.body.some(
         (notif: { id: number; category: string; sourceType: string }) =>
           notif.id === legacyNotifId &&
-          notif.category === 'friend_request' &&
+          notif.category === "friend_request" &&
           notif.sourceType === NotificationSourceType.Notification,
       ),
     ).toBe(true);
@@ -114,19 +114,19 @@ describe('Notifications (e2e)', () => {
       res.body.some(
         (notif: { id: number; category: string; sourceType: string }) =>
           notif.id === unreadNotifId &&
-          notif.category === 'forum_reply' &&
+          notif.category === "forum_reply" &&
           notif.sourceType === NotificationSourceType.UnreadContent,
       ),
     ).toBe(true);
   });
 
-  it('user can mark legacy notification as read', async () => {
+  it("user can mark legacy notification as read", async () => {
     await ctx.agent
       .post(`/notifs/read/${legacyNotifId}`)
       .query({ sourceType: NotificationSourceType.Notification })
       .expect(201);
 
-    const notifs = await ctx.agent.get('/notifs').expect(200);
+    const notifs = await ctx.agent.get("/notifs").expect(200);
     const notif = notifs.body.find(
       (item: { id: number; sourceType: string }) =>
         item.id === legacyNotifId &&
@@ -135,13 +135,13 @@ describe('Notifications (e2e)', () => {
     expect(notif?.readAt).toBeTruthy();
   });
 
-  it('user can mark unread-content notification as read', async () => {
+  it("user can mark unread-content notification as read", async () => {
     await ctx.agent
       .post(`/notifs/read/${unreadNotifId}`)
       .query({ sourceType: NotificationSourceType.UnreadContent })
       .expect(201);
 
-    const notifs = await ctx.agent.get('/notifs').expect(200);
+    const notifs = await ctx.agent.get("/notifs").expect(200);
     const notif = notifs.body.find(
       (item: { id: number; sourceType: string }) =>
         item.id === unreadNotifId &&
@@ -150,21 +150,21 @@ describe('Notifications (e2e)', () => {
     expect(notif?.readAt).toBeTruthy();
   });
 
-  it('user can mark all notifications read', async () => {
+  it("user can mark all notifications read", async () => {
     await notifRepo.update(legacyNotifId, { readAt: null as unknown as Date });
     await unreadContentRepo.update(unreadNotifId, {
       readAt: null as unknown as Date,
     });
 
-    await ctx.agent.post('/notifs/read-all').expect(201);
+    await ctx.agent.post("/notifs/read-all").expect(201);
 
-    const notifs = await ctx.agent.get('/notifs').expect(200);
+    const notifs = await ctx.agent.get("/notifs").expect(200);
     expect(
       notifs.body.every((notif: { readAt?: string }) => notif.readAt),
     ).toBe(true);
   });
 
-  it('user can mark unread content read by content id', async () => {
+  it("user can mark unread content read by content id", async () => {
     await unreadContentRepo.update(unreadNotifId, {
       readAt: null as unknown as Date,
       contentType: UnreadContentType.ForumReply,
@@ -173,7 +173,7 @@ describe('Notifications (e2e)', () => {
     });
 
     await ctx.agent
-      .post('/notifs/read-content')
+      .post("/notifs/read-content")
       .send({
         contentType: UnreadContentType.ForumReply,
         contentIds: [unreadCommentId],
@@ -186,7 +186,7 @@ describe('Notifications (e2e)', () => {
     expect(updated.readAt).toBeTruthy();
   });
 
-  it('markdown comment preview text is stripped of markdown syntax', async () => {
+  it("markdown comment preview text is stripped of markdown syntax", async () => {
     const userRepo = ctx.dataSource.getRepository(User);
     const testUser = await userRepo.findOneOrFail({
       where: { id: ctx.testUserId },
@@ -194,7 +194,7 @@ describe('Notifications (e2e)', () => {
 
     const editableContent = await editableContentRepo.save(
       editableContentRepo.create({
-        body: '**bold text** and a [link](https://example.com) with `inline code`',
+        body: "**bold text** and a [link](https://example.com) with `inline code`",
         attachments: [],
       }),
     );
@@ -224,7 +224,7 @@ describe('Notifications (e2e)', () => {
       }),
     );
 
-    const res = await ctx.agent.get('/notifs').expect(200);
+    const res = await ctx.agent.get("/notifs").expect(200);
     const notif = res.body.find(
       (n: { id: number; sourceType: string }) =>
         n.id === unreadContent.id &&
@@ -232,16 +232,16 @@ describe('Notifications (e2e)', () => {
     );
 
     expect(notif).toBeDefined();
-    expect(notif.message).not.toContain('**');
-    expect(notif.message).not.toContain('[link]');
-    expect(notif.message).not.toContain('(https://');
-    expect(notif.message).not.toContain('`');
-    expect(notif.message).toContain('bold text');
-    expect(notif.message).toContain('link');
-    expect(notif.message).toContain('inline code');
+    expect(notif.message).not.toContain("**");
+    expect(notif.message).not.toContain("[link]");
+    expect(notif.message).not.toContain("(https://");
+    expect(notif.message).not.toContain("`");
+    expect(notif.message).toContain("bold text");
+    expect(notif.message).toContain("link");
+    expect(notif.message).toContain("inline code");
   });
 
-  it('markdown action update preview text is stripped of markdown syntax', async () => {
+  it("markdown action update preview text is stripped of markdown syntax", async () => {
     const userRepo = ctx.dataSource.getRepository(User);
     const actionRepo = ctx.dataSource.getRepository(Action);
     const actionUpdateRepo = ctx.dataSource.getRepository(ActionUpdate);
@@ -252,26 +252,26 @@ describe('Notifications (e2e)', () => {
 
     const action = await actionRepo.save(
       actionRepo.create({
-        name: 'Markdown Test Action',
-        category: 'Test',
-        body: 'test body',
+        name: "Markdown Test Action",
+        category: "Test",
+        body: "test body",
       }),
     );
 
     const snapshot = await formSnapshotRepo.save(
       formSnapshotRepo.create({
-        schema: { blocks: [{ type: 'display', kind: 'text', text: 'update' }] },
-        hash: 'notifs-e2e-action-update',
+        schema: { blocks: [{ type: "display", kind: "text", text: "update" }] },
+        hash: "notifs-e2e-action-update",
       }),
     );
 
     const actionUpdate = await actionUpdateRepo.save(
       actionUpdateRepo.create({
         action,
-        title: 'Test Update',
+        title: "Test Update",
         date: new Date(),
         shortNotifString:
-          '## Heading\n\nSome **bold** and *italic* text with a [link](https://example.com)',
+          "## Heading\n\nSome **bold** and *italic* text with a [link](https://example.com)",
         notifyType: ActionUpdateNotifyType.None,
         schemaSnapshotId: snapshot.id,
       }),
@@ -287,7 +287,7 @@ describe('Notifications (e2e)', () => {
       }),
     );
 
-    const res = await ctx.agent.get('/notifs').expect(200);
+    const res = await ctx.agent.get("/notifs").expect(200);
     const notif = res.body.find(
       (n: { id: number; sourceType: string }) =>
         n.id === unreadContent.id &&
@@ -295,14 +295,14 @@ describe('Notifications (e2e)', () => {
     );
 
     expect(notif).toBeDefined();
-    expect(notif.message).not.toContain('##');
-    expect(notif.message).not.toContain('**');
-    expect(notif.message).not.toContain('*italic*');
-    expect(notif.message).not.toContain('[link]');
-    expect(notif.message).not.toContain('(https://');
-    expect(notif.message).toContain('Heading');
-    expect(notif.message).toContain('bold');
-    expect(notif.message).toContain('italic');
-    expect(notif.message).toContain('link');
+    expect(notif.message).not.toContain("##");
+    expect(notif.message).not.toContain("**");
+    expect(notif.message).not.toContain("*italic*");
+    expect(notif.message).not.toContain("[link]");
+    expect(notif.message).not.toContain("(https://");
+    expect(notif.message).toContain("Heading");
+    expect(notif.message).toContain("bold");
+    expect(notif.message).toContain("italic");
+    expect(notif.message).toContain("link");
   });
 });

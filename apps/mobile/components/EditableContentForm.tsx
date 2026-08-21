@@ -1,3 +1,6 @@
+import { CreateEditableContentDto } from "@alliance/shared/client";
+import { File, Paths } from "expo-file-system";
+import { launchImageLibraryAsync } from "expo-image-picker";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -7,13 +10,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { launchImageLibraryAsync } from "expo-image-picker";
-import { File, Paths } from "expo-file-system";
-import { CreateEditableContentDto } from "@alliance/shared/client";
-import Text from "./system/Text";
 import { KeyboardExtender } from "react-native-keyboard-controller";
 import Reanimated from "react-native-reanimated";
 import { useKeyboardExtenderPortal } from "./KeyboardExtenderPortal";
+import Text from "./system/Text";
 
 interface EditableContentFormProps {
   value: CreateEditableContentDto;

@@ -7,21 +7,21 @@ import {
   Patch,
   Post,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { ClusterService } from './cluster.service';
+} from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
+import { ClusterService } from "./cluster.service";
 import {
   ClusterAdminDto,
   ReassignAllClustersResultDto,
   UpdateClusterDto,
-} from './dto/cluster.dto';
+} from "./dto/cluster.dto";
 
-@Controller('cluster')
+@Controller("cluster")
 export class ClusterController {
   constructor(private readonly clusterService: ClusterService) {}
 
-  @Get('admin')
+  @Get("admin")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: [ClusterAdminDto] })
   async listAdmin(): Promise<ClusterAdminDto[]> {
@@ -30,7 +30,7 @@ export class ClusterController {
     );
   }
 
-  @Post('admin/reassign-all')
+  @Post("admin/reassign-all")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ReassignAllClustersResultDto })
   async reassignAllAdmin(): Promise<ReassignAllClustersResultDto> {
@@ -39,11 +39,11 @@ export class ClusterController {
     );
   }
 
-  @Patch('admin/:id')
+  @Patch("admin/:id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ClusterAdminDto })
   async updateAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateClusterDto,
   ): Promise<ClusterAdminDto> {
     return new ClusterAdminDto(

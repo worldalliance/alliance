@@ -1,40 +1,40 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
 import {
   forEachCondition,
   type FormSchema,
-} from '@alliance/common/forms/form-schema';
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { ForumService } from 'src/forum/forum.service';
-import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
-import { LOCK_KEYS } from 'src/notifs/lock-keys';
-import { withPgAdvisoryLock } from 'src/notifs/lock-utils';
+} from "@alliance/common/forms/form-schema";
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import { ForumService } from "src/forum/forum.service";
+import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
+import { LOCK_KEYS } from "src/notifs/lock-keys";
+import { withPgAdvisoryLock } from "src/notifs/lock-utils";
 import {
   CustomValidator,
   CustomValidatorType,
-} from 'src/tasks/entities/customvalidator.entity';
-import { Form } from 'src/tasks/entities/form.entity';
-import { FormResponse } from 'src/tasks/entities/formresponse.entity';
-import { User } from 'src/user/entities/user.entity';
+} from "src/tasks/entities/customvalidator.entity";
+import { Form } from "src/tasks/entities/form.entity";
+import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { User } from "src/user/entities/user.entity";
 import {
   DataSource,
   In,
   IsNull,
   QueryFailedError,
   type Repository,
-} from 'typeorm';
-import { ActionsService } from './actions.service';
-import { ForumAutocompletePlan } from './dto/action.dto';
-import { ActionActivity } from './entities/action-activity.entity';
-import { ActionEvent } from './entities/action-event.entity';
+} from "typeorm";
+import { ActionsService } from "./actions.service";
+import { ForumAutocompletePlan } from "./dto/action.dto";
+import { ActionActivity } from "./entities/action-activity.entity";
+import { ActionEvent } from "./entities/action-event.entity";
 import {
   Action,
   parseAction,
   type ParsedAction,
-} from './entities/action.entity';
+} from "./entities/action.entity";
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.forumActionCompleter;
@@ -63,7 +63,7 @@ export class ForumActionCompleterWorker {
     private readonly eventLogService: EventLogService,
   ) {}
 
-  @Cron('*/5 * * * *')
+  @Cron("*/5 * * * *")
   async autocompleteForumActions() {
     const ran = await withPgAdvisoryLock(
       this.dataSource,
@@ -115,7 +115,7 @@ export class ForumActionCompleterWorker {
     );
 
     if (ran === null) {
-      this.logger.log('autocompleteForumActions skipped bc of lock');
+      this.logger.log("autocompleteForumActions skipped bc of lock");
     }
   }
 
@@ -250,7 +250,7 @@ export class ForumActionCompleterWorker {
     const formResponseUserIds = new Set(
       formResponses
         .map((response) => response.user?.id)
-        .filter((id): id is number => typeof id === 'number'),
+        .filter((id): id is number => typeof id === "number"),
     );
 
     const toComplete = eligibleResponderIds.filter(
@@ -293,7 +293,7 @@ export class ForumActionCompleterWorker {
     const validatorIds = new Set<number>();
 
     forEachCondition(schema, (condition) => {
-      if (condition.kind === 'validator') {
+      if (condition.kind === "validator") {
         validatorIds.add(condition.validatorId);
       }
     });
@@ -302,7 +302,7 @@ export class ForumActionCompleterWorker {
     // so they aren't part of the condition walk.
     for (const page of schema.pages ?? []) {
       for (const element of page.fields ?? []) {
-        if ('customValidatorId' in element && element.customValidatorId) {
+        if ("customValidatorId" in element && element.customValidatorId) {
           validatorIds.add(element.customValidatorId);
         }
       }

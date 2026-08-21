@@ -1,9 +1,9 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const PLANT_BASED_STUDY_CAMPAIGN_ID = 1;
-const COHORT_BOUNDARY_PT = '2026-06-16 00:00:00 America/Los_Angeles';
-const ANALYSIS_END_EXCLUSIVE_PT = '2026-07-03 00:00:00 America/Los_Angeles';
+const COHORT_BOUNDARY_PT = "2026-06-16 00:00:00 America/Los_Angeles";
+const ANALYSIS_END_EXCLUSIVE_PT = "2026-07-03 00:00:00 America/Los_Angeles";
 
 type Queryable = {
   connect(): Promise<void>;
@@ -66,14 +66,14 @@ type WeeklyCompletionRow = {
 };
 
 function readDbEnv(): Record<string, string> {
-  const envPath = join(__dirname, '..', '.env');
-  const lines = readFileSync(envPath, 'utf8').split(/\r?\n/);
+  const envPath = join(__dirname, "..", ".env");
+  const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
   const keys = new Set([
-    'DB_HOST',
-    'DB_PORT',
-    'DB_USERNAME',
-    'DB_PASSWORD',
-    'DB_NAME',
+    "DB_HOST",
+    "DB_PORT",
+    "DB_USERNAME",
+    "DB_PASSWORD",
+    "DB_NAME",
   ]);
   const env: Record<string, string> = {};
 
@@ -103,12 +103,12 @@ function formatCount(value: string | null): string {
 }
 
 function formatPercent(numerator: number, denominator: number): string {
-  if (denominator === 0) return 'n/a';
+  if (denominator === 0) return "n/a";
   return `${((numerator / denominator) * 100).toFixed(1)}%`;
 }
 
 function formatHours(value: string | null): string {
-  if (value === null) return 'n/a';
+  if (value === null) return "n/a";
   const hours = numberValue(value);
   if (hours < 48) return `${hours.toFixed(1)}h`;
   return `${(hours / 24).toFixed(1)}d`;
@@ -168,8 +168,8 @@ function printCohort(row: CohortRow): void {
     )}, avg ${formatHours(row.avg_hours_to_sign)}`,
   );
   console.log(
-    `  account window PT: ${row.earliest_account_pt ?? 'n/a'} -> ${
-      row.latest_account_pt ?? 'n/a'
+    `  account window PT: ${row.earliest_account_pt ?? "n/a"} -> ${
+      row.latest_account_pt ?? "n/a"
     }`,
   );
 }
@@ -199,7 +199,7 @@ function printWeeklyCompletion(row: WeeklyCompletionRow): void {
 }
 
 async function main(): Promise<void> {
-  const { Client } = (await import('pg')) as {
+  const { Client } = (await import("pg")) as {
     Client: new (config: {
       host: string;
       port: number;
@@ -535,7 +535,7 @@ async function main(): Promise<void> {
   );
 
   const campaignRow = campaign.rows[0];
-  console.log('Plant-Based Study invite analysis');
+  console.log("Plant-Based Study invite analysis");
   console.log(`Campaign id: ${PLANT_BASED_STUDY_CAMPAIGN_ID}`);
   console.log(
     `Campaign: ${campaignRow.name} (${campaignRow.code}), created ${campaignRow.created_at_pt} PT`,
@@ -550,21 +550,21 @@ async function main(): Promise<void> {
     printCohort(row);
   }
 
-  console.log('\nSigned-user weekly completion windows');
+  console.log("\nSigned-user weekly completion windows");
   console.log(
-    '  Assigned action completions count non-optional, non-onboarding member actions launched while the user was active. Total completion events count all user_completed activities created inside that signed-user week.',
+    "  Assigned action completions count non-optional, non-onboarding member actions launched while the user was active. Total completion events count all user_completed activities created inside that signed-user week.",
   );
   for (const row of weeklyCompletions.rows) {
     printWeeklyCompletion(row);
   }
 
-  console.log('\nJoined users');
+  console.log("\nJoined users");
   for (const row of samples.rows) {
     console.log(
       `  ${row.cohort}: #${row.user_id} ${row.name} <${row.email}> | account ${row.account_created_pt} PT | signed ${
-        row.first_signed_pt ?? 'no'
-      } | latest ${row.latest_contract_type ?? 'none'} ${
-        row.latest_contract_event_pt ?? ''
+        row.first_signed_pt ?? "no"
+      } | latest ${row.latest_contract_type ?? "none"} ${
+        row.latest_contract_event_pt ?? ""
       } | completed actions ${row.completed_actions}`,
     );
   }

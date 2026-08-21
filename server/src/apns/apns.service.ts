@@ -1,6 +1,6 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import http2 from 'http2';
-import crypto from 'crypto';
+import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import crypto from "crypto";
+import http2 from "http2";
 
 interface ApnsPayload {
   aps: Record<string, unknown>;
@@ -15,13 +15,13 @@ export class ApnsService implements OnModuleDestroy {
   private jwtIssuedAt = 0;
 
   private get host(): string {
-    return process.env.NODE_ENV === 'production'
-      ? 'https://api.push.apple.com'
-      : 'https://api.sandbox.push.apple.com';
+    return process.env.NODE_ENV === "production"
+      ? "https://api.push.apple.com"
+      : "https://api.sandbox.push.apple.com";
   }
 
   private get topic(): string {
-    return 'com.alliancefoundation.alliancemobile.push-type.liveactivity';
+    return "com.alliancefoundation.alliancemobile.push-type.liveactivity";
   }
 
   onModuleDestroy() {
@@ -40,11 +40,11 @@ export class ApnsService implements OnModuleDestroy {
       return this.client;
     }
     this.client = http2.connect(this.host);
-    this.client.on('error', (err) => {
-      this.logger.error('APNs HTTP/2 connection error', err);
+    this.client.on("error", (err) => {
+      this.logger.error("APNs HTTP/2 connection error", err);
       this.destroyClient();
     });
-    this.client.on('goaway', () => {
+    this.client.on("goaway", () => {
       this.destroyClient();
     });
     return this.client;
@@ -63,27 +63,27 @@ export class ApnsService implements OnModuleDestroy {
 
     if (!keyId || !teamId || !privateKey) {
       throw new Error(
-        'Missing APNs configuration: APNS_KEY_ID, APNS_TEAM_ID, APNS_PRIVATE_KEY',
+        "Missing APNs configuration: APNS_KEY_ID, APNS_TEAM_ID, APNS_PRIVATE_KEY",
       );
     }
 
     const header = Buffer.from(
-      JSON.stringify({ alg: 'ES256', kid: keyId }),
-    ).toString('base64url');
+      JSON.stringify({ alg: "ES256", kid: keyId }),
+    ).toString("base64url");
     const payload = Buffer.from(
       JSON.stringify({ iss: teamId, iat: now }),
-    ).toString('base64url');
+    ).toString("base64url");
 
-    const signer = crypto.createSign('SHA256');
+    const signer = crypto.createSign("SHA256");
     signer.update(`${header}.${payload}`);
     // The .p8 key may have literal \n instead of actual newlines
-    const normalizedKey = privateKey.replace(/\\n/g, '\n');
+    const normalizedKey = privateKey.replace(/\\n/g, "\n");
     const signature = signer
-      .sign(normalizedKey, 'base64')
+      .sign(normalizedKey, "base64")
       // Convert from standard base64 to base64url
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
 
     this.jwt = `${header}.${payload}.${signature}`;
     this.jwtIssuedAt = now;
@@ -98,23 +98,23 @@ export class ApnsService implements OnModuleDestroy {
     return new Promise((resolve, reject) => {
       const client = this.getClient();
       const req = client.request({
-        ':method': 'POST',
-        ':path': `/3/device/${token}`,
+        ":method": "POST",
+        ":path": `/3/device/${token}`,
         authorization: `bearer ${this.getJwt()}`,
-        'apns-topic': this.topic,
-        'apns-push-type': 'liveactivity',
+        "apns-topic": this.topic,
+        "apns-push-type": "liveactivity",
         ...headers,
       });
 
       const body = JSON.stringify(payload);
-      let responseBody = '';
+      let responseBody = "";
 
-      req.on('response', (headers) => {
-        const statusCode = headers[':status'] as number;
-        req.on('data', (chunk: Buffer) => {
+      req.on("response", (headers) => {
+        const statusCode = headers[":status"] as number;
+        req.on("data", (chunk: Buffer) => {
           responseBody += chunk.toString();
         });
-        req.on('end', () => {
+        req.on("end", () => {
           if (statusCode !== 200) {
             this.logger.warn(`APNs response ${statusCode}: ${responseBody}`);
           }
@@ -122,8 +122,8 @@ export class ApnsService implements OnModuleDestroy {
         });
       });
 
-      req.on('error', (err) => {
-        this.logger.error('APNs request error', err);
+      req.on("error", (err) => {
+        this.logger.error("APNs request error", err);
         reject(err);
       });
 
@@ -144,16 +144,16 @@ export class ApnsService implements OnModuleDestroy {
     const payload: ApnsPayload = {
       aps: {
         timestamp: Math.floor(Date.now() / 1000),
-        event: 'start',
-        'content-state': contentState,
-        'attributes-type': 'ActionDeadlineAttributes',
+        event: "start",
+        "content-state": contentState,
+        "attributes-type": "ActionDeadlineAttributes",
         attributes,
         ...(alert ? { alert } : {}),
       },
     };
 
     return this.sendRequest(token, payload, {
-      'apns-priority': '10',
+      "apns-priority": "10",
     });
   }
 
@@ -164,13 +164,13 @@ export class ApnsService implements OnModuleDestroy {
     const payload: ApnsPayload = {
       aps: {
         timestamp: Math.floor(Date.now() / 1000),
-        event: 'update',
-        'content-state': contentState,
+        event: "update",
+        "content-state": contentState,
       },
     };
 
     return this.sendRequest(token, payload, {
-      'apns-priority': '10',
+      "apns-priority": "10",
     });
   }
 
@@ -182,14 +182,14 @@ export class ApnsService implements OnModuleDestroy {
     const payload: ApnsPayload = {
       aps: {
         timestamp: Math.floor(Date.now() / 1000),
-        event: 'end',
-        'content-state': contentState,
-        ...(dismissalDate ? { 'dismissal-date': dismissalDate } : {}),
+        event: "end",
+        "content-state": contentState,
+        ...(dismissalDate ? { "dismissal-date": dismissalDate } : {}),
       },
     };
 
     return this.sendRequest(token, payload, {
-      'apns-priority': '10',
+      "apns-priority": "10",
     });
   }
 }

@@ -1,36 +1,37 @@
+import { Logger } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { JwtService } from "@nestjs/jwt";
+import { InjectRepository } from "@nestjs/typeorm";
 import {
-  WebSocketGateway,
-  WebSocketServer,
-  SubscribeMessage,
   ConnectedSocket,
   OnGatewayConnection,
   OnGatewayDisconnect,
-} from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Logger } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../user/entities/user.entity';
-import { extractTokenFromSocket } from '../messaging/gateway.utils';
-import type { JwtPayload } from '../auth/guards/jwtreq';
-import type { EventLogDto } from './dto/event-log.dto';
-import { EventLogEvents } from './eventlog.events';
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
+} from "@nestjs/websockets";
+import { Server, Socket } from "socket.io";
+import { Repository } from "typeorm";
+import type { JwtPayload } from "../auth/guards/jwtreq";
+import { extractTokenFromSocket } from "../messaging/gateway.utils";
+import { User } from "../user/entities/user.entity";
+import type { EventLogDto } from "./dto/event-log.dto";
+import { EventLogEvents } from "./eventlog.events";
 
 @WebSocketGateway({
   cors: {
     origin: true,
     credentials: true,
   },
-  namespace: '/event-log',
+  namespace: "/event-log",
 })
 export class EventLogGateway
-  implements OnGatewayConnection, OnGatewayDisconnect {
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
-  private logger = new Logger('EventLogGateway');
+  private logger = new Logger("EventLogGateway");
 
   constructor(
     private readonly eventEmitter: EventEmitter2,
@@ -48,7 +49,7 @@ export class EventLogGateway
     try {
       const token = extractTokenFromSocket(client);
       if (!token) {
-        this.logger.warn('Event log gateway: missing token');
+        this.logger.warn("Event log gateway: missing token");
         client.disconnect(true);
         return;
       }
@@ -59,7 +60,7 @@ export class EventLogGateway
 
       const user = await this.userRepository.findOne({
         where: { id: payload.sub },
-        select: ['id', 'admin'],
+        select: ["id", "admin"],
       });
 
       if (!user?.admin) {
@@ -71,7 +72,7 @@ export class EventLogGateway
       client.data.userId = payload.sub;
       this.logger.log(`Admin client connected: ${client.id}`);
     } catch {
-      this.logger.warn('Event log gateway: auth failed');
+      this.logger.warn("Event log gateway: auth failed");
       client.disconnect(true);
     }
   }
@@ -80,20 +81,20 @@ export class EventLogGateway
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
-  @SubscribeMessage('subscribe-event-log')
+  @SubscribeMessage("subscribe-event-log")
   handleSubscribe(@ConnectedSocket() client: Socket) {
-    client.join('event-log-feed');
+    client.join("event-log-feed");
     this.logger.log(`Client ${client.id} subscribed to event log feed`);
   }
 
-  @SubscribeMessage('unsubscribe-event-log')
+  @SubscribeMessage("unsubscribe-event-log")
   handleUnsubscribe(@ConnectedSocket() client: Socket) {
-    client.leave('event-log-feed');
+    client.leave("event-log-feed");
     this.logger.log(`Client ${client.id} unsubscribed from event log feed`);
   }
 
   private handleEventLogCreated(eventLog: EventLogDto) {
-    this.server.to('event-log-feed').emit('event-log-new', eventLog);
+    this.server.to("event-log-feed").emit("event-log-new", eventLog);
     this.logger.log(`Broadcast new event log: ${eventLog.event}`);
   }
 }

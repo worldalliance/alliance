@@ -1,16 +1,16 @@
-import React from "react";
 import {
   CardStyle,
   mobileCardStyleClasses,
 } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
+import React from "react";
 import {
-  View,
-  TouchableOpacity,
   ImageBackground,
   ImageSourcePropType,
+  TouchableOpacity,
   TouchableOpacityProps,
+  View,
 } from "react-native";
-import { cn } from "@alliance/shared/styles/util";
 export { CardStyle } from "@alliance/shared/styles/card";
 
 interface CardProps extends TouchableOpacityProps {

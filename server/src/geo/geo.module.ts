@@ -1,8 +1,8 @@
-import { Module } from '@nestjs/common';
-import { GeoService } from './geo.service';
-import { GeoController } from './geo.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { City } from './city.entity';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { City } from "./city.entity";
+import { GeoController } from "./geo.controller";
+import { GeoService } from "./geo.service";
 
 @Module({
   imports: [TypeOrmModule.forFeature([City])],

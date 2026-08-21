@@ -1,3 +1,4 @@
+import { usePathname } from "expo-router";
 import {
   createContext,
   useCallback,
@@ -6,7 +7,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { usePathname } from "expo-router";
 
 type AppDrawerContextValue = {
   isOpen: boolean;

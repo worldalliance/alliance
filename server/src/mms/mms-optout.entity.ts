@@ -1,27 +1,27 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
-import { User } from 'src/user/entities/user.entity';
-import { phoneNumberTransformer } from 'src/utils/phone';
+} from "src/datasources/basecolumns";
+import { User } from "src/user/entities/user.entity";
+import { phoneNumberTransformer } from "src/utils/phone";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
+} from "typeorm";
 
 @Entity()
 export class MmsOptout {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   @ApiProperty()
   id: string;
 
   @Column({
-    comment: 'E.164 format (+15551234567)',
+    comment: "E.164 format (+15551234567)",
     transformer: phoneNumberTransformer,
   })
   @ApiProperty()
@@ -43,8 +43,8 @@ export class MmsOptout {
   @ApiProperty()
   rawBody: string;
 
-  @ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
   @ApiProperty({ type: () => User })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;

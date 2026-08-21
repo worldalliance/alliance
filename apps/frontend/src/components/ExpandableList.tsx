@@ -13,10 +13,7 @@ type ExpandableListProps = {
 
 const ExpandableList = ({ children }: ExpandableListProps) => {
   const [showAll, setShowAll] = useState(false);
-  const hiddenItemCount = Math.max(
-    0,
-    children.length - DEFAULT_VISIBLE_ITEMS,
-  );
+  const hiddenItemCount = Math.max(0, children.length - DEFAULT_VISIBLE_ITEMS);
   const visibleChildren = showAll
     ? children
     : children.slice(0, DEFAULT_VISIBLE_ITEMS);

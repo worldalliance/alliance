@@ -1,12 +1,12 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { IsEnum, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { IsEnum, IsOptional } from "class-validator";
 import {
   type PaginatedList,
   PaginatedListDto,
   PaginationQueryDto,
-} from 'src/utils/pagination.dto';
-import { User } from '../../user/entities/user.entity';
-import { EventLog, EventType } from '../event-log.entity';
+} from "src/utils/pagination.dto";
+import { User } from "../../user/entities/user.entity";
+import { EventLog, EventType } from "../event-log.entity";
 
 export class EventLogUserDto {
   @ApiProperty()
@@ -17,17 +17,17 @@ export class EventLogUserDto {
 
   constructor(input: User) {
     this.id = input.id;
-    this.displayName = input.anonymous ? 'Someone' : input.name;
+    this.displayName = input.anonymous ? "Someone" : input.name;
   }
 }
 
 export class EventLogDto extends PickType(EventLog, [
-  'id',
-  'event',
-  'message',
-  'blob',
-  'createdAt',
-  'userId',
+  "id",
+  "event",
+  "message",
+  "blob",
+  "createdAt",
+  "userId",
 ]) {
   @ApiPropertyOptional({ type: () => EventLogUserDto })
   user?: EventLogUserDto;
@@ -49,7 +49,7 @@ export type EventLogList = PaginatedList<EventLog>;
 export class EventLogListDto extends PaginatedListDto(EventLogDto) {}
 
 export class EventLogQueryDto extends PaginationQueryDto {
-  @ApiPropertyOptional({ enum: EventType, enumName: 'EventType' })
+  @ApiPropertyOptional({ enum: EventType, enumName: "EventType" })
   @IsOptional()
   @IsEnum(EventType)
   eventType?: EventType;

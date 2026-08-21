@@ -1,10 +1,10 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsArray, IsOptional, IsString } from 'class-validator';
-import { CreateDateColumnTz } from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
-import { ContractEvent } from 'src/user/entities/contract-event.entity';
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsArray, IsOptional, IsString } from "class-validator";
+import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { ContractEvent } from "src/user/entities/contract-event.entity";
+import type { Relation } from "src/utils/Repository";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Contract {
@@ -15,7 +15,7 @@ export class Contract {
   @Allow()
   id: number;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   @ApiProperty({ type: String, nullable: true })
   @IsOptional()
   name: string | null;
@@ -31,13 +31,13 @@ export class Contract {
   @IsString()
   markdown: string;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @IsOptional()
   startDate: Date | null;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   @IsOptional()
   @Type(() => Date)

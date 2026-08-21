@@ -1,4 +1,4 @@
-import type { ValidationPipeOptions } from '@nestjs/common';
+import type { ValidationPipeOptions } from "@nestjs/common";
 
 /** Keeps production and e2e DTO transformation aligned. */
 export const VALIDATION_PIPE_OPTIONS: ValidationPipeOptions = {

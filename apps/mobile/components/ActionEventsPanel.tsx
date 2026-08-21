@@ -1,14 +1,13 @@
-import React from "react";
-import { View } from "react-native";
 import { formatDistance } from "date-fns";
+import { View } from "react-native";
 import { ActionDto } from "../../../shared/client";
 import {
-  processActionTimeline,
   isActionEvent,
+  processActionTimeline,
 } from "../../../shared/lib/actionEventsPanel";
+import ActionUpdateCard from "./ActionUpdateCard";
 import Timeline from "./system/Timeline";
 import TimelineItem from "./system/TimelineItem";
-import ActionUpdateCard from "./ActionUpdateCard";
 
 export interface ActionEventsPanelProps {
   action: ActionDto;
@@ -39,7 +38,7 @@ export default function ActionEventsPanel({ action }: ActionEventsPanelProps) {
             />
           ) : (
             <ActionUpdateCard key={`update-${item.id}`} update={item} />
-          )
+          ),
         )}
       </Timeline>
     </View>

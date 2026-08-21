@@ -1,24 +1,24 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Allow, IsEnum, IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsEnum, IsOptional, IsString } from "class-validator";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { User } from './user.entity';
-import { Type } from 'class-transformer';
-import type { Relation } from 'src/utils/Repository';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
+} from "typeorm";
+import { User } from "./user.entity";
 
 export enum UserAwayRangeReason {
-  VACATION = 'vacation',
-  EMERGENCY = 'emergency',
-  OTHER = 'other',
+  VACATION = "vacation",
+  EMERGENCY = "emergency",
+  OTHER = "other",
 }
 
 @Entity()
@@ -28,8 +28,8 @@ export class UserAwayRange {
   @ApiProperty()
   id: number;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
   @Allow()
   @IsOptional()
   @Type(() => User)
@@ -40,13 +40,13 @@ export class UserAwayRange {
   @Allow()
   userId: number;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: "timestamptz" })
   @ApiProperty()
   @Allow()
   @Type(() => Date)
   startDate: Date;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: "timestamptz" })
   @ApiProperty()
   @Allow()
   @Type(() => Date)
@@ -65,18 +65,18 @@ export class UserAwayRange {
   updatedAt: Date;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: UserAwayRangeReason,
     default: UserAwayRangeReason.OTHER,
   })
   @ApiProperty({
     enum: UserAwayRangeReason,
-    enumName: 'UserAwayRangeReason',
+    enumName: "UserAwayRangeReason",
   })
   @IsEnum(UserAwayRangeReason)
   reason: UserAwayRangeReason;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   @ApiProperty({ nullable: true })
   @IsOptional()
   @IsString()

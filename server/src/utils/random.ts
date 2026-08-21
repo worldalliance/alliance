@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto';
+import { randomBytes } from "crypto";
 
 /**
  * Generate a random token from `numBytes` of CSPRNG output. Use this instead of
@@ -11,7 +11,7 @@ import { randomBytes } from 'crypto';
  */
 export function randomToken(
   numBytes: number,
-  encoding: 'base64url' | 'hex' = 'base64url',
+  encoding: "base64url" | "hex" = "base64url",
 ): string {
   return randomBytes(numBytes).toString(encoding);
 }

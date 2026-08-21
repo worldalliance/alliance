@@ -15,7 +15,9 @@ export type TimelineItem = ActionEventWithUpdates | ActionUpdateDto;
 /**
  * Check if a timeline item is an event (has newStatus property)
  */
-export function isActionEvent(item: TimelineItem): item is ActionEventWithUpdates {
+export function isActionEvent(
+  item: TimelineItem,
+): item is ActionEventWithUpdates {
   return "newStatus" in item;
 }
 
@@ -33,7 +35,7 @@ export function filterEvents(events: ActionEventDto[]): ActionEventDto[] {
  */
 export function addDraftEventIfNeeded(
   events: ActionEventDto[],
-  status: string
+  status: string,
 ): ActionEventDto[] {
   if (status === "draft" && events.length === 0) {
     return [
@@ -55,7 +57,7 @@ export function addDraftEventIfNeeded(
  */
 export function associateUpdatesWithEvents(
   events: ActionEventDto[],
-  updates: ActionUpdateDto[]
+  updates: ActionUpdateDto[],
 ): ActionEventWithUpdates[] {
   const now = new Date().getTime();
 
@@ -65,7 +67,7 @@ export function associateUpdatesWithEvents(
       (update) =>
         update.associatedEventId !== undefined &&
         update.associatedEventId === event.id &&
-        new Date(update.date).getTime() <= now // don't show future updates
+        new Date(update.date).getTime() <= now, // don't show future updates
     ),
   }));
 }
@@ -73,7 +75,9 @@ export function associateUpdatesWithEvents(
 /**
  * Get updates that are not associated with any event
  */
-export function getUpdatesWithoutEvents(updates: ActionUpdateDto[]): ActionUpdateDto[] {
+export function getUpdatesWithoutEvents(
+  updates: ActionUpdateDto[],
+): ActionUpdateDto[] {
   return updates.filter((update) => !update.associatedEventId);
 }
 
@@ -88,9 +92,11 @@ export function filterFutureItems<T extends { date: string }>(items: T[]): T[] {
 /**
  * Sort items by date descending (newest first)
  */
-export function sortByDateDescending<T extends { date: string }>(items: T[]): T[] {
+export function sortByDateDescending<T extends { date: string }>(
+  items: T[],
+): T[] {
   return [...items].sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 }
 
@@ -122,7 +128,7 @@ export function processActionTimeline(action: ActionDto): {
   // Find highlighted item (latest event/update that isn't in the future)
   const now = new Date().getTime();
   const highlightedIndex = interleaved.findIndex(
-    (e) => new Date(e.date).getTime() <= now
+    (e) => new Date(e.date).getTime() <= now,
   );
   const highlightedId =
     highlightedIndex !== -1 ? interleaved[highlightedIndex].id : undefined;

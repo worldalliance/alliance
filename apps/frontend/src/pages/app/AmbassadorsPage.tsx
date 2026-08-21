@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router";
-import ambassadorInviteQrCode from "../../assets/ambassador-invite-qr-code.png";
 import ambassadorInvitationGoal from "../../assets/ambassador-invitation-goal.png";
+import ambassadorInviteQrCode from "../../assets/ambassador-invite-qr-code.png";
 import { useWhiteBackground } from "../../components/HtmlBackgroundManager";
 import InfoSubpage from "../../components/InfoSubpage";
 import { TocSection } from "../../components/TableOfContents";
@@ -76,7 +76,9 @@ const AmbassadorsPage: React.FC = () => {
         </ol>
         <p>
           Most ambassadors should start with a goal of{" "}
-          <span className="font-semibold">5 successful invitations per month</span>
+          <span className="font-semibold">
+            5 successful invitations per month
+          </span>
           . On average, for every 5 invites sent, 1 yields a successful
           invitation, so ambassadors should aim to reach out to about{" "}
           <span className="font-semibold">25 people per month</span>.
@@ -406,7 +408,9 @@ const AmbassadorsPage: React.FC = () => {
         <p>Here are some general follow-up tips:</p>
         <ul className={listClassName}>
           <li>
-            <span className="font-semibold">Wait around 1 week to follow up:</span>{" "}
+            <span className="font-semibold">
+              Wait around 1 week to follow up:
+            </span>{" "}
             this is usually a good balance between giving them time to think and
             keeping the conversation warm. This depends on the person.
           </li>

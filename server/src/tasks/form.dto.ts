@@ -2,16 +2,16 @@
 import {
   DEVICE_VISIBILITY_TARGETS,
   type DeviceVisibilityTarget,
-} from '@alliance/common/forms/device';
-import type { AggregateViewSchema } from '@alliance/common/forms/form-schema';
-import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from '@alliance/common/forms/snapshot-migration';
+} from "@alliance/common/forms/device";
+import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
+import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
 import {
   ApiProperty,
   ApiPropertyOptional,
   OmitType,
   PickType,
-} from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+} from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -21,24 +21,24 @@ import {
   IsInt,
   IsOptional,
   IsString,
-} from 'class-validator';
-import { ActionDto } from 'src/actions/dto/action.dto';
-import { AiDetectionResultDto } from 'src/ai-detection/dto/ai-detection-result.dto';
-import { AiDetectionResult } from 'src/ai-detection/entities/ai-detection-result.entity';
-import { UserDto } from 'src/user/dto/user.dto';
-import { Form } from './entities/form.entity';
-import { FormResponse } from './entities/formresponse.entity';
-import { FormSnapshot } from './entities/formsnapshot.entity';
-import type { Ty } from './entities/type';
+} from "class-validator";
+import { ActionDto } from "src/actions/dto/action.dto";
+import { AiDetectionResultDto } from "src/ai-detection/dto/ai-detection-result.dto";
+import { AiDetectionResult } from "src/ai-detection/entities/ai-detection-result.entity";
+import { UserDto } from "src/user/dto/user.dto";
+import { Form } from "./entities/form.entity";
+import { FormResponse } from "./entities/formresponse.entity";
+import { FormSnapshot } from "./entities/formsnapshot.entity";
+import type { Ty } from "./entities/type";
 
-export class CreateFormDto extends PickType(Form, ['title']) {
+export class CreateFormDto extends PickType(Form, ["title"]) {
   @ApiProperty()
   @IsDefined()
   @Type(() => Object)
   schema: Record<string, unknown>;
 }
 
-export class UpdateFormDto extends PickType(CreateFormDto, ['schema']) {
+export class UpdateFormDto extends PickType(CreateFormDto, ["schema"]) {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -52,9 +52,9 @@ export class UpdateFormDto extends PickType(CreateFormDto, ['schema']) {
 }
 
 export class SubmitFormDto extends PickType(FormResponse, [
-  'answers',
-  'phDistinctId',
-  'sessionReplayUrl',
+  "answers",
+  "phDistinctId",
+  "sessionReplayUrl",
 ]) {
   // BACKCOMPAT(form-snapshot): formSnapshotId is the canonical field for
   // newer clients. Old mobile builds (pre-snapshot-cutover) still post
@@ -101,10 +101,10 @@ export class SubmitFormDto extends PickType(FormResponse, [
 }
 
 export class SubmitFollowUpFormDto extends OmitType(SubmitFormDto, [
-  'actionId',
+  "actionId",
 ]) {}
 
-export class FormDto extends PickType(Form, ['id', 'title', 'formSnapshotId']) {
+export class FormDto extends PickType(Form, ["id", "title", "formSnapshotId"]) {
   @ApiProperty()
   @IsDefined()
   @Type(() => Object)
@@ -140,17 +140,17 @@ export type FormResponseDtoArgs = {
 };
 
 export class FormResponseDto extends PickType(FormResponse, [
-  'id',
-  'answers',
-  'formId',
-  'formSnapshotId',
-  'createdAt',
-  'visibilityValidatorResults',
-  'phDistinctId',
-  'sessionReplayUrl',
-  'deviceType',
-  'sid',
-  'publicAnswers',
+  "id",
+  "answers",
+  "formId",
+  "formSnapshotId",
+  "createdAt",
+  "visibilityValidatorResults",
+  "phDistinctId",
+  "sessionReplayUrl",
+  "deviceType",
+  "sid",
+  "publicAnswers",
 ]) {
   @ApiProperty()
   @IsDefined()
@@ -201,9 +201,9 @@ export class LinkedGuestDraftDto {
 }
 
 export class FormSnapshotDto extends PickType(FormSnapshot, [
-  'id',
-  'hash',
-  'createdAt',
+  "id",
+  "hash",
+  "createdAt",
 ]) {
   @ApiProperty()
   @IsDefined()
@@ -220,8 +220,8 @@ export class FormSnapshotDto extends PickType(FormSnapshot, [
 }
 
 export class SnapshotResponseSummaryDto extends PickType(FormResponse, [
-  'id',
-  'createdAt',
+  "id",
+  "createdAt",
 ]) {
   @ApiPropertyOptional()
   @IsOptional()

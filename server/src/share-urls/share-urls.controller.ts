@@ -10,11 +10,11 @@ import {
   Post,
   Request,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
-import type { JwtRequest } from 'src/auth/guards/jwtreq';
+} from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
+import { AuthGuard } from "src/auth/guards/auth.guard";
+import type { JwtRequest } from "src/auth/guards/jwtreq";
 import {
   CreateDuplicateShareLinkDto,
   CreateInviteDuplicateDto,
@@ -24,27 +24,27 @@ import {
   ShareUrlMineDto,
   UpdateInviteDto,
   UpdateShareLinkLabelDto,
-} from './dto/share-url.dto';
-import { type ShareUrlOwner, ShareUrlsService } from './share-urls.service';
+} from "./dto/share-url.dto";
+import { type ShareUrlOwner, ShareUrlsService } from "./share-urls.service";
 
 function ownerFromDto(body: CreateDuplicateShareLinkDto): ShareUrlOwner {
   const hasUser = body.userId !== undefined;
   const hasCampaign = body.campaignId !== undefined;
   if (hasUser === hasCampaign) {
     throw new BadRequestException(
-      'Exactly one of userId or campaignId must be provided',
+      "Exactly one of userId or campaignId must be provided",
     );
   }
   return hasUser
-    ? { type: 'user', userId: body.userId! }
-    : { type: 'campaign', campaignId: body.campaignId! };
+    ? { type: "user", userId: body.userId! }
+    : { type: "campaign", campaignId: body.campaignId! };
 }
 
-@Controller('share-urls')
+@Controller("share-urls")
 export class ShareUrlsController {
   constructor(private readonly shareUrlsService: ShareUrlsService) {}
 
-  @Post('get-share-link')
+  @Post("get-share-link")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ShareLinkDto })
   async getShareLink(
@@ -60,7 +60,7 @@ export class ShareUrlsController {
     return new ShareLinkDto(url);
   }
 
-  @Get('mine/invites')
+  @Get("mine/invites")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ShareUrlMineDto, isArray: true })
   async findMyInvites(@Request() req: JwtRequest): Promise<ShareUrlMineDto[]> {
@@ -68,7 +68,7 @@ export class ShareUrlsController {
     return rows.map((r) => new ShareUrlMineDto(r));
   }
 
-  @Post('mine/invite-duplicate')
+  @Post("mine/invite-duplicate")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ShareUrlMineDto })
   async createInviteDuplicate(
@@ -84,11 +84,11 @@ export class ShareUrlsController {
     return new ShareUrlMineDto(result);
   }
 
-  @Patch('mine/invites/:id')
+  @Patch("mine/invites/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: ShareUrlMineDto })
   async updateMyInvite(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() body: UpdateInviteDto,
     @Request() req: JwtRequest,
   ): Promise<ShareUrlMineDto> {
@@ -102,17 +102,17 @@ export class ShareUrlsController {
     return new ShareUrlMineDto(result);
   }
 
-  @Delete('mine/invites/:id')
+  @Delete("mine/invites/:id")
   @UseGuards(AuthGuard)
   @ApiOkResponse()
   async deleteMyInvite(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Request() req: JwtRequest,
   ): Promise<void> {
     await this.shareUrlsService.deleteInviteForUser(id, req.user.sub);
   }
 
-  @Post('create-duplicate')
+  @Post("create-duplicate")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ShareUrlAdminDto })
   async createDuplicateAdmin(
@@ -129,31 +129,31 @@ export class ShareUrlsController {
     return new ShareUrlAdminDto(result);
   }
 
-  @Get('for-user/:userId')
+  @Get("for-user/:userId")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ShareUrlAdminDto, isArray: true })
   async findForUserAdmin(
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param("userId", ParseIntPipe) userId: number,
   ): Promise<ShareUrlAdminDto[]> {
     const rows = await this.shareUrlsService.findForUser(userId);
     return rows.map((r) => new ShareUrlAdminDto(r));
   }
 
-  @Get('for-campaign/:campaignId')
+  @Get("for-campaign/:campaignId")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ShareUrlAdminDto, isArray: true })
   async findForCampaignAdmin(
-    @Param('campaignId', ParseIntPipe) campaignId: number,
+    @Param("campaignId", ParseIntPipe) campaignId: number,
   ): Promise<ShareUrlAdminDto[]> {
     const rows = await this.shareUrlsService.findForCampaign(campaignId);
     return rows.map((r) => new ShareUrlAdminDto(r));
   }
 
-  @Patch(':id/label')
+  @Patch(":id/label")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ShareUrlAdminDto })
   async updateLabelAdmin(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() body: UpdateShareLinkLabelDto,
   ): Promise<ShareUrlAdminDto> {
     const row = await this.shareUrlsService.updateLabel(id, body.label);
@@ -161,10 +161,10 @@ export class ShareUrlsController {
     return new ShareUrlAdminDto(result);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @UseGuards(AdminGuard)
   @ApiOkResponse()
-  async deleteAdmin(@Param('id') id: string): Promise<void> {
+  async deleteAdmin(@Param("id") id: string): Promise<void> {
     await this.shareUrlsService.deleteById(id);
   }
 }

@@ -1,3 +1,13 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsDefined, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import { Notification } from "src/notifs/entities/notification.entity";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -5,26 +15,16 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { User } from 'src/user/entities/user.entity';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsDefined, IsOptional } from 'class-validator';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { Community } from './community.entity';
-import type { Relation } from 'src/utils/Repository';
-import { Notification } from 'src/notifs/entities/notification.entity';
+} from "typeorm";
+import { Community } from "./community.entity";
 
 export enum CommunityInviteStatus {
-  RequestPending = 'request_pending',
-  RequestRejected = 'request_rejected',
-  InviteePending = 'invitee_pending',
-  InviteeAccepted = 'invitee_accepted',
-  InviteeRejected = 'invitee_rejected',
-  Cancelled = 'cancelled',
+  RequestPending = "request_pending",
+  RequestRejected = "request_rejected",
+  InviteePending = "invitee_pending",
+  InviteeAccepted = "invitee_accepted",
+  InviteeRejected = "invitee_rejected",
+  Cancelled = "cancelled",
 }
 
 @Entity()
@@ -37,12 +37,12 @@ export class CommunityInvite {
   id: number;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: CommunityInviteStatus,
   })
   @ApiProperty({
     enum: CommunityInviteStatus,
-    enumName: 'CommunityInviteStatus',
+    enumName: "CommunityInviteStatus",
   })
   @Allow()
   status: CommunityInviteStatus;
@@ -59,7 +59,7 @@ export class CommunityInvite {
   @Type(() => Date)
   updatedAt: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
   @IsOptional()
@@ -67,31 +67,31 @@ export class CommunityInvite {
 
   // Relations
 
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => User, { nullable: true, onDelete: "SET NULL" })
   @ApiPropertyOptional({ type: () => User })
   @Type(() => User)
-  @JoinColumn({ name: 'invitingUserId' })
+  @JoinColumn({ name: "invitingUserId" })
   @IsOptional()
   invitingUser?: Relation<User>;
 
   @ManyToOne(() => User, (user) => user.invitedCommunities, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @ApiProperty({ type: () => User })
   @Type(() => User)
-  @JoinColumn({ name: 'invitedUserId' })
+  @JoinColumn({ name: "invitedUserId" })
   @Allow()
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   invitedUser: Relation<User>;
 
   @ManyToOne(() => Community, (community) => community.internalInvites, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @ApiProperty({ type: () => Community })
   @Type(() => Community)
-  @JoinColumn({ name: 'communityId' })
+  @JoinColumn({ name: "communityId" })
   @IsDefined()
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   community: Relation<Community>;

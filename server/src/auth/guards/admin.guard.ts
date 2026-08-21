@@ -3,13 +3,13 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import type { Request } from 'express';
-import type { JwtPayload } from './jwtreq';
-import { User } from 'src/user/entities/user.entity';
-import type { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { InjectRepository } from "@nestjs/typeorm";
+import type { Request } from "express";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "typeorm";
+import type { JwtPayload } from "./jwtreq";
 
 @Injectable()
 export class AdminGuard implements CanActivate {
@@ -17,7 +17,7 @@ export class AdminGuard implements CanActivate {
     private jwtService: JwtService,
     @InjectRepository(User)
     private userRepository: Repository<User>,
-  ) { }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -33,18 +33,18 @@ export class AdminGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: process.env.JWT_SECRET,
       });
-      request['user'] = payload;
+      request["user"] = payload;
 
       const user = await this.userRepository.findOne({
         where: { email: payload.email },
       });
 
       if (!user) {
-        console.log('admin guard failed');
+        console.log("admin guard failed");
         throw new UnauthorizedException();
       }
       if (!user.admin) {
-        console.log('user is not admin');
+        console.log("user is not admin");
         throw new UnauthorizedException();
       }
       return true;
@@ -58,7 +58,7 @@ export class AdminGuard implements CanActivate {
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    const [type, token] = request.headers.authorization?.split(" ") ?? [];
+    return type === "Bearer" ? token : undefined;
   }
 }

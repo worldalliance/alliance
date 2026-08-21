@@ -1,6 +1,16 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsDefined, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsDefined, IsOptional } from "class-validator";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import {
+  FormSnapshot,
+  GENERAL_UPDATE_SNAPSHOT_HISTORY_TABLE,
+} from "src/tasks/entities/formsnapshot.entity";
+import { Tag } from "src/user/entities/tag.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -10,19 +20,9 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import {
-  FormSnapshot,
-  GENERAL_UPDATE_SNAPSHOT_HISTORY_TABLE,
-} from 'src/tasks/entities/formsnapshot.entity';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { GeneralUpdateActivity } from './general-update-activity.entity';
-import type { Relation } from 'src/utils/Repository';
-import { Tag } from 'src/user/entities/tag.entity';
-import { ActionSuite } from './action-suite.entity';
+} from "typeorm";
+import { ActionSuite } from "./action-suite.entity";
+import { GeneralUpdateActivity } from "./general-update-activity.entity";
 
 @Entity()
 export class GeneralUpdate {
@@ -33,7 +33,7 @@ export class GeneralUpdate {
   @Allow()
   id: number;
 
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   @ApiProperty()
   @IsDefined()
   name: string;
@@ -43,8 +43,8 @@ export class GeneralUpdate {
   @Allow()
   schemaSnapshotId: number;
 
-  @ManyToOne(() => FormSnapshot, { onDelete: 'RESTRICT' })
-  @JoinColumn({ name: 'schemaSnapshotId' })
+  @ManyToOne(() => FormSnapshot, { onDelete: "RESTRICT" })
+  @JoinColumn({ name: "schemaSnapshotId" })
   @Type(() => FormSnapshot)
   @IsOptional()
   schemaSnapshot?: Relation<FormSnapshot>;
@@ -52,8 +52,8 @@ export class GeneralUpdate {
   @ManyToMany(() => FormSnapshot)
   @JoinTable({
     name: GENERAL_UPDATE_SNAPSHOT_HISTORY_TABLE,
-    joinColumn: { name: 'generalUpdateId', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'schemaSnapshotId', referencedColumnName: 'id' },
+    joinColumn: { name: "generalUpdateId", referencedColumnName: "id" },
+    inverseJoinColumn: { name: "schemaSnapshotId", referencedColumnName: "id" },
   })
   @Type(() => FormSnapshot)
   @IsOptional()
@@ -71,7 +71,7 @@ export class GeneralUpdate {
   @Type(() => Date)
   updatedAt: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @ApiPropertyOptional()
   @Type(() => Date)
   @Allow()
@@ -79,7 +79,7 @@ export class GeneralUpdate {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   startDate?: Date;
 
-  @Column({ type: 'timestamptz', nullable: true })
+  @Column({ type: "timestamptz", nullable: true })
   @ApiPropertyOptional()
   @Type(() => Date)
   @Allow()
@@ -92,10 +92,10 @@ export class GeneralUpdate {
   @IsDefined()
   useManualCohort: boolean;
 
-  @Column('int', { array: true, nullable: true })
+  @Column("int", { array: true, nullable: true })
   @Allow()
   @ApiPropertyOptional({
-    description: 'User IDs in the manual cohort',
+    description: "User IDs in the manual cohort",
     type: [Number],
     nullable: true,
   })
@@ -116,7 +116,7 @@ export class GeneralUpdate {
   activities?: Relation<GeneralUpdateActivity>[];
 
   @ManyToMany(() => Tag, (tag) => tag.generalUpdates, {
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @ApiProperty({ type: () => Tag, isArray: true })
   @Allow()

@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In } from 'typeorm';
-import type { Repository } from 'src/utils/Repository';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import type { Repository } from "src/utils/Repository";
+import { In } from "typeorm";
 import {
   AiDetectionResult,
   DetectableEntity,
-} from './entities/ai-detection-result.entity';
+} from "./entities/ai-detection-result.entity";
 
 @Injectable()
 export class AiDetectionQueryService {
@@ -26,7 +26,7 @@ export class AiDetectionQueryService {
 
     const results = await this.detectionResultRepository.find({
       where: { entityType, entityId: In(entityIds) },
-      order: { updatedAt: 'DESC' },
+      order: { updatedAt: "DESC" },
     });
 
     for (const result of results) {

@@ -2,28 +2,29 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ActionActivity } from 'src/actions/entities/action-activity.entity';
-import { Action } from 'src/actions/entities/action.entity';
-import { AiDetectionQueueService } from 'src/ai-detection/ai-detection-queue.service';
-import { DetectableEntity } from 'src/ai-detection/entities/ai-detection-result.entity';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { FacepileService } from 'src/likes/facepile.service';
-import { EmailType } from 'src/mail/mail.entity';
-import { MailService } from 'src/mail/mail.service';
-import { MmsService } from 'src/mms/mms.service';
-import { UnreadContentType } from 'src/notifs/entities/unread-content.entity';
-import { LikeNotificationService } from 'src/notifs/like-notification.service';
-import { generateCIDForNotif } from 'src/notifs/notif-utils';
-import { NotifsService } from 'src/notifs/notifs.service';
-import { commentUrl, postUrl, withCid } from 'src/search/approutes';
-import { ProfileDto } from 'src/user/dto/user.dto';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
+import { Action } from "src/actions/entities/action.entity";
+import { AiDetectionQueueService } from "src/ai-detection/ai-detection-queue.service";
+import { DetectableEntity } from "src/ai-detection/entities/ai-detection-result.entity";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import { FacepileService } from "src/likes/facepile.service";
+import { EmailType } from "src/mail/mail.entity";
+import { MailService } from "src/mail/mail.service";
+import { MmsService } from "src/mms/mms.service";
+import { UnreadContentType } from "src/notifs/entities/unread-content.entity";
+import { LikeNotificationService } from "src/notifs/like-notification.service";
+import { generateCIDForNotif } from "src/notifs/notif-utils";
+import { NotifsService } from "src/notifs/notifs.service";
+import { commentUrl, postUrl, withCid } from "src/search/approutes";
+import { ProfileDto } from "src/user/dto/user.dto";
 import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
-} from 'src/user/user.utils';
+} from "src/user/user.utils";
+import type { Repository as TypedRepository } from "src/utils/Repository";
 import {
   ILike,
   In,
@@ -31,19 +32,18 @@ import {
   type ObjectLiteral,
   type Repository,
   type SelectQueryBuilder,
-} from 'typeorm';
-import type { Repository as TypedRepository } from 'src/utils/Repository';
-import { Notification } from '../notifs/entities/notification.entity';
-import { User } from '../user/entities/user.entity';
+} from "typeorm";
+import { Notification } from "../notifs/entities/notification.entity";
+import { User } from "../user/entities/user.entity";
 import {
   CreateCommentDto,
   UpdateCommentDto,
   UserComment,
-} from './dto/comment.dto';
-import { CreatePostDto, PostDtoArgs, UpdatePostDto } from './dto/post.dto';
-import { Comment, CommentParentObject } from './entities/comment.entity';
-import { EditableContent } from './entities/editablecontent.entity';
-import { Post } from './entities/post.entity';
+} from "./dto/comment.dto";
+import { CreatePostDto, PostDtoArgs, UpdatePostDto } from "./dto/post.dto";
+import { Comment, CommentParentObject } from "./entities/comment.entity";
+import { EditableContent } from "./entities/editablecontent.entity";
+import { Post } from "./entities/post.entity";
 
 export type ForumFeedComment = {
   comment: Comment;
@@ -127,17 +127,17 @@ export class ForumService {
     if (userId !== undefined) {
       const coAuthorSubQuery = qb
         .subQuery()
-        .select('1')
-        .from(Post, 'visPost')
-        .innerJoin('visPost.authors', 'visAuthor')
+        .select("1")
+        .from(Post, "visPost")
+        .innerJoin("visPost.authors", "visAuthor")
         .where(`visPost.id = ${postAlias}.id`)
-        .andWhere('visAuthor.id = :postVisibility_userId')
+        .andWhere("visAuthor.id = :postVisibility_userId")
         .getQuery();
       clauses.push(`${postAlias}.authorId = :postVisibility_userId`);
       clauses.push(`EXISTS ${coAuthorSubQuery}`);
       params.postVisibility_userId = userId;
     }
-    qb.andWhere(`(${clauses.join(' OR ')})`, params);
+    qb.andWhere(`(${clauses.join(" OR ")})`, params);
     return qb;
   }
 
@@ -150,10 +150,10 @@ export class ForumService {
     }
 
     const rows = await this.commentRepository
-      .createQueryBuilder('comment')
-      .innerJoin('comment.likes', 'liker', 'liker.id = :userId', { userId })
-      .where('comment.id IN (:...commentIds)', { commentIds })
-      .select('comment.id', 'id')
+      .createQueryBuilder("comment")
+      .innerJoin("comment.likes", "liker", "liker.id = :userId", { userId })
+      .where("comment.id IN (:...commentIds)", { commentIds })
+      .select("comment.id", "id")
       .getRawMany<{ id: number }>();
 
     return new Set(rows.map((r) => r.id));
@@ -161,25 +161,25 @@ export class ForumService {
 
   async findAllPosts(userId?: number): Promise<PostDtoArgs[]> {
     const qb = this.postRepository
-      .createQueryBuilder('post')
-      .leftJoinAndSelect('post.author', 'author')
-      .leftJoinAndSelect('post.action', 'action')
-      .leftJoinAndSelect('post.editableContent', 'editableContent')
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.author", "author")
+      .leftJoinAndSelect("post.action", "action")
+      .leftJoinAndSelect("post.editableContent", "editableContent")
       .leftJoin(
         Comment,
-        'comment',
-        'comment.parentObjectId = post.id ' +
-          'AND comment.parentObjectType = :parentType ' +
-          'AND comment.deleted = false',
+        "comment",
+        "comment.parentObjectId = post.id " +
+          "AND comment.parentObjectType = :parentType " +
+          "AND comment.deleted = false",
         { parentType: CommentParentObject.Post },
       )
-      .orderBy('post.updatedAt', 'DESC')
-      .addSelect('COUNT(comment.id)', 'commentCount')
-      .groupBy('post.id')
-      .addGroupBy('author.id')
-      .addGroupBy('action.id')
-      .addGroupBy('editableContent.id');
-    this.addPostVisibilityFilter(qb, 'post', userId);
+      .orderBy("post.updatedAt", "DESC")
+      .addSelect("COUNT(comment.id)", "commentCount")
+      .groupBy("post.id")
+      .addGroupBy("author.id")
+      .addGroupBy("action.id")
+      .addGroupBy("editableContent.id");
+    this.addPostVisibilityFilter(qb, "post", userId);
 
     const { entities: posts, raw } = await qb.getRawAndEntities();
 
@@ -192,7 +192,7 @@ export class ForumService {
     const postsWithAuthors = await this.postRepository.find({
       where: { id: In(postIds) },
       relations: { authors: true, likes: true },
-      relationLoadStrategy: 'query',
+      relationLoadStrategy: "query",
     });
     const relationsByPostId = new Map(postsWithAuthors.map((p) => [p.id, p]));
     for (const post of posts) {
@@ -204,17 +204,17 @@ export class ForumService {
 
     // 3) Fetch last comment per post in one query using DISTINCT ON (Postgres)
     const lastComments = await this.commentRepository
-      .createQueryBuilder('comment')
-      .leftJoinAndSelect('comment.author', 'author')
-      .leftJoinAndSelect('comment.editableContent', 'editableContent')
-      .where('comment.parentObjectType = :parentType', {
+      .createQueryBuilder("comment")
+      .leftJoinAndSelect("comment.author", "author")
+      .leftJoinAndSelect("comment.editableContent", "editableContent")
+      .where("comment.parentObjectType = :parentType", {
         parentType: CommentParentObject.Post,
       })
-      .andWhere('comment.deleted = false')
-      .andWhere('comment.parentObjectId IN (:...postIds)', { postIds })
-      .distinctOn(['comment.parentObjectId'])
-      .orderBy('comment.parentObjectId', 'ASC')
-      .addOrderBy('comment.createdAt', 'DESC') // latest for each post
+      .andWhere("comment.deleted = false")
+      .andWhere("comment.parentObjectId IN (:...postIds)", { postIds })
+      .distinctOn(["comment.parentObjectId"])
+      .orderBy("comment.parentObjectId", "ASC")
+      .addOrderBy("comment.createdAt", "DESC") // latest for each post
       .getMany();
 
     const lastCommentByPostId = new Map<number, Comment>(
@@ -230,15 +230,15 @@ export class ForumService {
 
   async findPostsByAction(actionId: number): Promise<Post[]> {
     const qb = this.postRepository
-      .createQueryBuilder('post')
-      .leftJoinAndSelect('post.author', 'author')
-      .leftJoinAndSelect('post.action', 'action')
-      .leftJoinAndSelect('post.editableContent', 'editableContent')
-      .leftJoinAndSelect('post.authors', 'authors')
-      .leftJoinAndSelect('post.likes', 'likes')
-      .where('post.actionId = :actionId', { actionId })
-      .orderBy('post.updatedAt', 'DESC');
-    this.addPostVisibilityFilter(qb, 'post');
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.author", "author")
+      .leftJoinAndSelect("post.action", "action")
+      .leftJoinAndSelect("post.editableContent", "editableContent")
+      .leftJoinAndSelect("post.authors", "authors")
+      .leftJoinAndSelect("post.likes", "likes")
+      .where("post.actionId = :actionId", { actionId })
+      .orderBy("post.updatedAt", "DESC");
+    this.addPostVisibilityFilter(qb, "post");
     const posts = await qb.getMany();
 
     const postsWithComments = await Promise.all(
@@ -261,14 +261,14 @@ export class ForumService {
 
   private async findOneVisiblePost(id: number, userId?: number): Promise<Post> {
     const qb = this.postRepository
-      .createQueryBuilder('post')
-      .leftJoinAndSelect('post.author', 'author')
-      .leftJoinAndSelect('post.action', 'action')
-      .leftJoinAndSelect('post.editableContent', 'editableContent')
-      .leftJoinAndSelect('post.authors', 'authors')
-      .leftJoinAndSelect('post.likes', 'likes')
-      .where('post.id = :id', { id });
-    this.addPostVisibilityFilter(qb, 'post', userId);
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.author", "author")
+      .leftJoinAndSelect("post.action", "action")
+      .leftJoinAndSelect("post.editableContent", "editableContent")
+      .leftJoinAndSelect("post.authors", "authors")
+      .leftJoinAndSelect("post.likes", "likes")
+      .where("post.id = :id", { id });
+    this.addPostVisibilityFilter(qb, "post", userId);
     const post = await qb.getOne();
     if (!post) {
       throw new NotFoundException(`Post with ID "${id}" not found`);
@@ -291,7 +291,7 @@ export class ForumService {
         parentObjectType: CommentParentObject.Post,
       },
       relations: { author: true },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
 
     return allComments;
@@ -308,7 +308,7 @@ export class ForumService {
         editableContent: true,
         likes: true,
       },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
 
     return this.organizeRepliesHierarchy(allComments);
@@ -322,7 +322,7 @@ export class ForumService {
         deleted: false,
       },
       relations: { author: true, editableContent: true },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
     });
 
     return lastComment;
@@ -335,7 +335,7 @@ export class ForumService {
         parentObjectType: CommentParentObject.Activity,
       },
       relations: { author: true, editableContent: true, likes: true },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
 
     return this.organizeRepliesHierarchy(allComments);
@@ -354,7 +354,7 @@ export class ForumService {
         parentObjectType: CommentParentObject.Activity,
       },
       relations: { author: true, editableContent: true, likes: true },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
 
     const grouped = new Map<number, Comment[]>();
@@ -383,34 +383,34 @@ export class ForumService {
       params;
 
     const qb = this.commentRepository
-      .createQueryBuilder('comment')
-      .innerJoin(Post, 'post', 'post.id = comment.parentObjectId')
-      .innerJoinAndSelect('comment.author', 'author')
-      .innerJoinAndSelect('comment.editableContent', 'editableContent')
-      .addSelect(['post.id', 'post.title'])
-      .where('comment.parentObjectType = :postType', {
+      .createQueryBuilder("comment")
+      .innerJoin(Post, "post", "post.id = comment.parentObjectId")
+      .innerJoinAndSelect("comment.author", "author")
+      .innerJoinAndSelect("comment.editableContent", "editableContent")
+      .addSelect(["post.id", "post.title"])
+      .where("comment.parentObjectType = :postType", {
         postType: CommentParentObject.Post,
       })
-      .andWhere('comment.deleted = false');
+      .andWhere("comment.deleted = false");
 
-    const authorClauses: string[] = ['author.id = :feedUserId'];
+    const authorClauses: string[] = ["author.id = :feedUserId"];
     const authorParams: Record<string, unknown> = { feedUserId: userId };
     if (friendAndGroupMemberIds.length > 0) {
-      authorClauses.push('author.id IN (:...feedFriendIds)');
+      authorClauses.push("author.id IN (:...feedFriendIds)");
       authorParams.feedFriendIds = friendAndGroupMemberIds;
     }
     if (userClusterId != null) {
       authorClauses.push(
-        '(post.showClusterTags = true AND author.clusterId = :feedClusterId)',
+        "(post.showClusterTags = true AND author.clusterId = :feedClusterId)",
       );
       authorParams.feedClusterId = userClusterId;
     }
-    qb.andWhere(`(${authorClauses.join(' OR ')})`, authorParams);
-    this.addPostVisibilityFilter(qb, 'post', userId);
+    qb.andWhere(`(${authorClauses.join(" OR ")})`, authorParams);
+    this.addPostVisibilityFilter(qb, "post", userId);
     if (before) {
-      qb.andWhere('comment.createdAt < :before', { before });
+      qb.andWhere("comment.createdAt < :before", { before });
     }
-    qb.orderBy('comment.createdAt', 'DESC').limit(limit);
+    qb.orderBy("comment.createdAt", "DESC").limit(limit);
 
     const { entities, raw } = await qb.getRawAndEntities();
     const commentIds = entities.map((c) => c.id);
@@ -448,21 +448,21 @@ export class ForumService {
     const { authorId, requestingUserId, limit, before } = params;
 
     const qb = this.commentRepository
-      .createQueryBuilder('comment')
-      .innerJoin(Post, 'post', 'post.id = comment.parentObjectId')
-      .innerJoinAndSelect('comment.author', 'author')
-      .innerJoinAndSelect('comment.editableContent', 'editableContent')
-      .addSelect(['post.id', 'post.title'])
-      .where('comment.parentObjectType = :postType', {
+      .createQueryBuilder("comment")
+      .innerJoin(Post, "post", "post.id = comment.parentObjectId")
+      .innerJoinAndSelect("comment.author", "author")
+      .innerJoinAndSelect("comment.editableContent", "editableContent")
+      .addSelect(["post.id", "post.title"])
+      .where("comment.parentObjectType = :postType", {
         postType: CommentParentObject.Post,
       })
-      .andWhere('comment.deleted = false')
-      .andWhere('author.id = :authorId', { authorId });
+      .andWhere("comment.deleted = false")
+      .andWhere("author.id = :authorId", { authorId });
     if (before) {
-      qb.andWhere('comment.createdAt < :before', { before });
+      qb.andWhere("comment.createdAt < :before", { before });
     }
-    this.addPostVisibilityFilter(qb, 'post', requestingUserId);
-    qb.orderBy('comment.createdAt', 'DESC').limit(limit);
+    this.addPostVisibilityFilter(qb, "post", requestingUserId);
+    qb.orderBy("comment.createdAt", "DESC").limit(limit);
 
     const { entities, raw } = await qb.getRawAndEntities();
     const commentIds = entities.map((c) => c.id);
@@ -500,7 +500,7 @@ export class ForumService {
         parentObjectType: CommentParentObject.Action,
       },
       relations: { author: true, editableContent: true, likes: true },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
 
     return this.organizeRepliesHierarchy(allComments);
@@ -560,7 +560,7 @@ export class ForumService {
       post.authorId !== userId &&
       !post.authors?.some((author) => author.id === userId)
     ) {
-      throw new NotFoundException('You can only edit your own posts');
+      throw new NotFoundException("You can only edit your own posts");
     }
 
     await this.postRepository.update(id, {
@@ -589,7 +589,7 @@ export class ForumService {
       post.authorId !== userId &&
       !post.authors?.some((author) => author.id === userId)
     ) {
-      throw new NotFoundException('You can only delete your own posts');
+      throw new NotFoundException("You can only delete your own posts");
     }
 
     await this.postRepository.update(id, { deleted: true });
@@ -622,7 +622,7 @@ export class ForumService {
       (!createCommentDto.editableContent.attachments ||
         createCommentDto.editableContent.attachments.length === 0)
     ) {
-      throw new BadRequestException('Reply cannot be empty');
+      throw new BadRequestException("Reply cannot be empty");
     }
 
     const content = this.editableContentRepository.create({
@@ -646,7 +646,7 @@ export class ForumService {
     // TODO: notify action authors in app?
     if (
       createCommentDto.parentObjectType === CommentParentObject.Action &&
-      process.env.NODE_ENV === 'production'
+      process.env.NODE_ENV === "production"
     ) {
       this.eventLogService.sendMessage({
         type: EventType.ActionComment,
@@ -800,7 +800,7 @@ export class ForumService {
     }
 
     if (reply.authorId !== userId) {
-      throw new NotFoundException('You can only edit your own replies');
+      throw new NotFoundException("You can only edit your own replies");
     }
 
     if (updateCommentDto.editableContent && reply.editableContent) {
@@ -833,10 +833,10 @@ export class ForumService {
 
   async refreshLikesCount(comment: Comment): Promise<void> {
     const result = await this.commentRepository
-      .createQueryBuilder('comment')
-      .innerJoin('comment.likes', 'like')
-      .where('comment.id = :id', { id: comment.id })
-      .select('COUNT(*)', 'count')
+      .createQueryBuilder("comment")
+      .innerJoin("comment.likes", "like")
+      .where("comment.id = :id", { id: comment.id })
+      .select("COUNT(*)", "count")
       .getRawOne<{ count: string }>();
     await this.commentRepository.update(comment.id, {
       likesCount: Number(result?.count ?? 0),
@@ -847,10 +847,10 @@ export class ForumService {
     id: number,
     userId: number,
     unlike = false,
-    type: 'comment' | 'post',
+    type: "comment" | "post",
   ): Promise<Comment | Post> {
     const object =
-      type === 'comment'
+      type === "comment"
         ? await this.commentRepository.findOne({
             where: { id },
             relations: { likes: true, author: true, editableContent: true },
@@ -882,22 +882,22 @@ export class ForumService {
 
       object.likes = [...likes, user];
     }
-    const obj = await (type === 'comment'
+    const obj = await (type === "comment"
       ? this.commentRepository.save(object)
       : this.postRepository.save(object));
 
-    if (type === 'comment') {
+    if (type === "comment") {
       await this.refreshLikesCount(obj as Comment);
     }
 
     if (!unlike) {
-      if (type === 'comment') {
+      if (type === "comment") {
         await this.sendCommentLikeNotification(object as Comment, user);
       } else {
         await this.sendPostLikeNotification(object as Post, user);
       }
     } else {
-      if (type === 'comment') {
+      if (type === "comment") {
         await this.removeCommentLikeNotification(object as Comment, user);
       } else {
         await this.removePostLikeNotification(object as Post, user);
@@ -931,7 +931,7 @@ export class ForumService {
       await this.likeNotificationService.createOrUpdate({
         owner,
         liker,
-        targetType: 'post',
+        targetType: "post",
         targetId: post.id,
         targetContent: post.title,
         webAppLocation: postUrl(post.id),
@@ -960,7 +960,7 @@ export class ForumService {
     await this.likeNotificationService.createOrUpdate({
       owner: comment.author,
       liker,
-      targetType: 'comment',
+      targetType: "comment",
       targetId: comment.id,
       targetContent: comment.editableContent?.body ?? null,
       webAppLocation,
@@ -975,7 +975,7 @@ export class ForumService {
       await this.likeNotificationService.removeOnUnlike({
         ownerId: owner.id,
         unlikerId: unliker.id,
-        targetType: 'post',
+        targetType: "post",
         targetId: post.id,
       });
     }
@@ -988,7 +988,7 @@ export class ForumService {
     await this.likeNotificationService.removeOnUnlike({
       ownerId: comment.authorId,
       unlikerId: unliker.id,
-      targetType: 'comment',
+      targetType: "comment",
       targetId: comment.id,
     });
   }
@@ -1004,7 +1004,7 @@ export class ForumService {
     }
 
     if (reply.authorId !== userId) {
-      throw new NotFoundException('You can only delete your own replies');
+      throw new NotFoundException("You can only delete your own replies");
     }
 
     for (const notification of reply.notifications) {
@@ -1016,15 +1016,15 @@ export class ForumService {
 
   async findPostsByUser(userId: number): Promise<Post[]> {
     const qb = this.postRepository
-      .createQueryBuilder('post')
-      .leftJoinAndSelect('post.author', 'author')
-      .leftJoinAndSelect('post.action', 'action')
-      .leftJoinAndSelect('post.editableContent', 'editableContent')
-      .leftJoin('post.authors', 'coAuthor')
-      .andWhere('(post.authorId = :userId OR coAuthor.id = :userId)', {
+      .createQueryBuilder("post")
+      .leftJoinAndSelect("post.author", "author")
+      .leftJoinAndSelect("post.action", "action")
+      .leftJoinAndSelect("post.editableContent", "editableContent")
+      .leftJoin("post.authors", "coAuthor")
+      .andWhere("(post.authorId = :userId OR coAuthor.id = :userId)", {
         userId,
       });
-    this.addPostVisibilityFilter(qb, 'post', userId);
+    this.addPostVisibilityFilter(qb, "post", userId);
     return qb.getMany();
   }
 
@@ -1077,7 +1077,7 @@ export class ForumService {
         parentObjectType: CommentParentObject.Post,
       },
       relations: { author: true, editableContent: true, likes: true },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
     });
   }
 
@@ -1133,7 +1133,7 @@ export class ForumService {
         authors: true,
         editableContent: true,
       },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
     });
   }
 

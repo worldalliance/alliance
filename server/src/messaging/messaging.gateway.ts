@@ -1,6 +1,6 @@
-import { Logger, OnModuleDestroy } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { JwtService } from '@nestjs/jwt';
+import { Logger, OnModuleDestroy } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { JwtService } from "@nestjs/jwt";
 import {
   ConnectedSocket,
   MessageBody,
@@ -10,21 +10,21 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
-} from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import type { JwtPayload } from 'src/auth/guards/jwtreq';
-import { DetachedWorkTracker } from 'src/utils/detached-work';
-import { ConversationService } from './conversation.service';
-import { MessageDto } from './dto/messaging.dto';
-import { extractTokenFromSocket } from './gateway.utils';
-import { MessagingEvents } from './messaging.events';
+} from "@nestjs/websockets";
+import { Server, Socket } from "socket.io";
+import type { JwtPayload } from "src/auth/guards/jwtreq";
+import { DetachedWorkTracker } from "src/utils/detached-work";
+import { ConversationService } from "./conversation.service";
+import { MessageDto } from "./dto/messaging.dto";
+import { extractTokenFromSocket } from "./gateway.utils";
+import { MessagingEvents } from "./messaging.events";
 
 @WebSocketGateway({
   cors: {
     origin: true,
     credentials: true,
   },
-  namespace: '/messaging',
+  namespace: "/messaging",
 })
 export class MessagingGateway
   implements
@@ -83,7 +83,7 @@ export class MessagingGateway
       try {
         const token = extractTokenFromSocket(socket);
         if (!token) {
-          return next(new Error('Unauthorized'));
+          return next(new Error("Unauthorized"));
         }
         const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
           secret: process.env.JWT_SECRET,
@@ -110,20 +110,20 @@ export class MessagingGateway
     this.clientUserIds.delete(client.id);
   }
 
-  @SubscribeMessage('join-conversation')
+  @SubscribeMessage("join-conversation")
   async handleJoinConversation(
     @MessageBody() data: { conversationId: number },
     @ConnectedSocket() client: Socket,
   ) {
     const conversationId = Number(data?.conversationId);
     if (!conversationId || Number.isNaN(conversationId)) {
-      client.emit('messaging:error', { message: 'Invalid conversation id.' });
+      client.emit("messaging:error", { message: "Invalid conversation id." });
       return;
     }
 
     const userId = client.data.userId as number | undefined;
     if (!userId) {
-      client.emit('messaging:error', { message: 'Unauthorized.' });
+      client.emit("messaging:error", { message: "Unauthorized." });
       client.disconnect(true);
       return;
     }
@@ -133,29 +133,29 @@ export class MessagingGateway
       userId,
     );
     if (!allowed) {
-      client.emit('messaging:error', { message: 'Access denied.' });
+      client.emit("messaging:error", { message: "Access denied." });
       return;
     }
 
     client.join(this.roomName(conversationId));
     this.trackClientRoom(client.id, conversationId);
-    client.emit('conversation-joined', { conversationId });
+    client.emit("conversation-joined", { conversationId });
   }
 
-  @SubscribeMessage('leave-conversation')
+  @SubscribeMessage("leave-conversation")
   handleLeaveConversation(
     @MessageBody() data: { conversationId: number },
     @ConnectedSocket() client: Socket,
   ) {
     const conversationId = Number(data?.conversationId);
     if (!conversationId || Number.isNaN(conversationId)) {
-      client.emit('messaging:error', { message: 'Invalid conversation id.' });
+      client.emit("messaging:error", { message: "Invalid conversation id." });
       return;
     }
 
     client.leave(this.roomName(conversationId));
     this.untrackClientRoom(client.id, conversationId);
-    client.emit('conversation-left', { conversationId });
+    client.emit("conversation-left", { conversationId });
   }
 
   private handleMessageCreated(payload: {
@@ -164,7 +164,7 @@ export class MessagingGateway
   }) {
     this.server
       .to(this.roomName(payload.conversationId))
-      .emit('message:new', payload.message);
+      .emit("message:new", payload.message);
   }
 
   private async handleConversationUpdated(payload: { conversationId: number }) {
@@ -181,7 +181,7 @@ export class MessagingGateway
             payload.conversationId,
             userId,
           );
-        socket.emit('conversation:updated', conversation);
+        socket.emit("conversation:updated", conversation);
       } catch (error) {
         this.logger.warn(
           `Failed to build conversation dto for socket ${socket.id}: ${error.message}`,

@@ -1,42 +1,42 @@
-import { devPorts, PortCaller } from '@alliance/common/dev-ports';
-import { currentNodeEnv, isDeployed } from '@alliance/common/node-env';
-import { ValidationPipe } from '@nestjs/common';
-import { HttpAdapterHost, NestFactory } from '@nestjs/core';
-import type { NestExpressApplication } from '@nestjs/platform-express';
-import { IoAdapter } from '@nestjs/platform-socket.io';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import bodyParser from 'body-parser';
-import { useContainer } from 'class-validator';
-import cookieParser from 'cookie-parser';
-import { randomUUID } from 'node:crypto';
-import { PostHog, setupExpressErrorHandler } from 'posthog-node';
-import type { ServerOptions } from 'socket.io';
-import { AppModule } from './app.module';
-import { MetricsInterceptor } from './metrics';
-import { twilioSignatureEnforced } from './mms/twilio-signature.guard';
-import { injectResponseSchemas } from './openapi-errors';
-import { PosthogExceptionFilter } from './posthog.filter';
-import { socketCorsOrigins } from './utils/cors-origins';
-import { requestContext } from './utils/request-context';
-import { RouteContextGuard } from './utils/request-context.guard';
-import { VALIDATION_PIPE_OPTIONS } from './utils/validation-pipe-options';
+import { devPorts, PortCaller } from "@alliance/common/dev-ports";
+import { currentNodeEnv, isDeployed } from "@alliance/common/node-env";
+import { ValidationPipe } from "@nestjs/common";
+import { HttpAdapterHost, NestFactory } from "@nestjs/core";
+import type { NestExpressApplication } from "@nestjs/platform-express";
+import { IoAdapter } from "@nestjs/platform-socket.io";
+import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import bodyParser from "body-parser";
+import { useContainer } from "class-validator";
+import cookieParser from "cookie-parser";
+import { randomUUID } from "node:crypto";
+import { PostHog, setupExpressErrorHandler } from "posthog-node";
+import type { ServerOptions } from "socket.io";
+import { AppModule } from "./app.module";
+import { MetricsInterceptor } from "./metrics";
+import { twilioSignatureEnforced } from "./mms/twilio-signature.guard";
+import { injectResponseSchemas } from "./openapi-errors";
+import { PosthogExceptionFilter } from "./posthog.filter";
+import { socketCorsOrigins } from "./utils/cors-origins";
+import { requestContext } from "./utils/request-context";
+import { RouteContextGuard } from "./utils/request-context.guard";
+import { VALIDATION_PIPE_OPTIONS } from "./utils/validation-pipe-options";
 
 // Let validateNodeEnv report unknown values without treating them as deployed.
 function deployedUrlVars(): string[] {
   const env = currentNodeEnv();
   if (!env.ok || !isDeployed(env.value)) return [];
-  return ['APP_URL', 'ADMIN_URL'];
+  return ["APP_URL", "ADMIN_URL"];
 }
 
 function validateEnv() {
   const requiredVars = new Set([
-    'DB_HOST',
-    'DB_USERNAME',
-    'DB_PASSWORD',
-    'DB_NAME',
-    'JWT_SECRET',
-    'JWT_REFRESH_SECRET',
-    ...(twilioSignatureEnforced() ? ['TWILIO_AUTH_TOKEN', 'APP_URL'] : []),
+    "DB_HOST",
+    "DB_USERNAME",
+    "DB_PASSWORD",
+    "DB_NAME",
+    "JWT_SECRET",
+    "JWT_REFRESH_SECRET",
+    ...(twilioSignatureEnforced() ? ["TWILIO_AUTH_TOKEN", "APP_URL"] : []),
     ...deployedUrlVars(),
   ]);
 
@@ -44,7 +44,7 @@ function validateEnv() {
 
   if (missing.length > 0) {
     console.error(
-      `ERR: Missing required environment variables: ${missing.join(', ')}`,
+      `ERR: Missing required environment variables: ${missing.join(", ")}`,
     );
     process.exit(1);
   }
@@ -62,11 +62,11 @@ function validateNodeEnv() {
   const webhook = process.env.SLACK_WEBHOOK_URL;
   if (!webhook) return;
   void fetch(webhook, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text: msg }),
   }).catch((err) => {
-    console.error('Failed to post NODE_ENV warning to Slack:', err);
+    console.error("Failed to post NODE_ENV warning to Slack:", err);
   });
 }
 
@@ -80,7 +80,7 @@ class SocketIoAdapter extends IoAdapter {
           appUrl: process.env.APP_URL,
           adminUrl: process.env.ADMIN_URL,
         }),
-        methods: ['GET', 'POST'],
+        methods: ["GET", "POST"],
         credentials: true,
       },
     });
@@ -93,9 +93,9 @@ async function bootstrap() {
   const port = devPorts(PortCaller.Server).server;
   let client: PostHog | null = null;
 
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === "production") {
     client = new PostHog(process.env.POSTHOG_KEY!, {
-      host: 'https://us.i.posthog.com',
+      host: "https://us.i.posthog.com",
     });
   }
 
@@ -104,8 +104,8 @@ async function bootstrap() {
     bodyParser: false,
   });
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
-  app.use(bodyParser.json({ limit: '50mb' }));
-  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+  app.use(bodyParser.json({ limit: "50mb" }));
+  app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
   app.useGlobalPipes(new ValidationPipe(VALIDATION_PIPE_OPTIONS));
   app.useGlobalGuards(new RouteContextGuard());
   app.useGlobalInterceptors(new MetricsInterceptor());
@@ -122,18 +122,18 @@ async function bootstrap() {
   app.use(cookieParser());
   app.enableCors({
     origin: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
-    exposedHeaders: ['X-Guest-Token'],
+    exposedHeaders: ["X-Guest-Token"],
   });
   app.useWebSocketAdapter(new SocketIoAdapter(app));
-  app.set('trust proxy', 'loopback');
+  app.set("trust proxy", "loopback");
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== "production") {
     const config = new DocumentBuilder()
-      .setTitle('Alliance API')
-      .setVersion('1.0')
-      .addTag('alliance')
+      .setTitle("Alliance API")
+      .setVersion("1.0")
+      .addTag("alliance")
       .addBearerAuth()
       .build();
 
@@ -141,12 +141,12 @@ async function bootstrap() {
       injectResponseSchemas(
         SwaggerModule.createDocument(app, config, {
           operationIdFactory: (controllerKey: string, methodKey: string) =>
-            controllerKey.replace('Controller', '') + '_' + methodKey,
+            controllerKey.replace("Controller", "") + "_" + methodKey,
         }),
       );
 
-    SwaggerModule.setup('openapi', app, documentFactory, {
-      yamlDocumentUrl: '/openapi.yaml',
+    SwaggerModule.setup("openapi", app, documentFactory, {
+      yamlDocumentUrl: "/openapi.yaml",
     });
   }
 
@@ -156,7 +156,7 @@ async function bootstrap() {
     setupExpressErrorHandler(client, app);
   }
 
-  await app.listen(port, '0.0.0.0');
+  await app.listen(port, "0.0.0.0");
 }
 
 void bootstrap();

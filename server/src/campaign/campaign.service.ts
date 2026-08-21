@@ -3,13 +3,13 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { randomToken } from 'src/utils/random';
-import { QueryFailedError } from 'typeorm';
-import type { Repository } from 'src/utils/Repository';
-import { CreateCampaignDto, UpdateCampaignDto } from './dto/campaign.dto';
-import { Campaign } from './entities/campaign.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { randomToken } from "src/utils/random";
+import type { Repository } from "src/utils/Repository";
+import { QueryFailedError } from "typeorm";
+import { CreateCampaignDto, UpdateCampaignDto } from "./dto/campaign.dto";
+import { Campaign } from "./entities/campaign.entity";
 
 /** Attempts to find a free random `code` before giving up. */
 const MAX_CODE_GENERATION_ATTEMPTS = 5;
@@ -22,7 +22,7 @@ function generateCampaignCode(): string {
 function isUniqueViolation(err: unknown): boolean {
   return (
     err instanceof QueryFailedError &&
-    (err as { code?: string }).code === '23505'
+    (err as { code?: string }).code === "23505"
   );
 }
 
@@ -34,13 +34,13 @@ export class CampaignService {
   ) {}
 
   async findAll(): Promise<Campaign[]> {
-    return this.repository.find({ order: { createdAt: 'DESC' } });
+    return this.repository.find({ order: { createdAt: "DESC" } });
   }
 
   async findOne(id: number): Promise<Campaign> {
     const campaign = await this.repository.findOne({ where: { id } });
     if (!campaign) {
-      throw new NotFoundException('Campaign not found');
+      throw new NotFoundException("Campaign not found");
     }
     return campaign;
   }
@@ -69,13 +69,13 @@ export class CampaignService {
       }
     }
     throw new InternalServerErrorException(
-      'Failed to generate a unique campaign code',
+      "Failed to generate a unique campaign code",
     );
   }
 
   async update(id: number, dto: UpdateCampaignDto): Promise<Campaign> {
     if (Object.keys(dto).length === 0) {
-      throw new BadRequestException('No fields to update');
+      throw new BadRequestException("No fields to update");
     }
     const campaign = await this.findOne(id);
     if (dto.name !== undefined) campaign.name = dto.name;

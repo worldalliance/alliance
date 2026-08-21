@@ -6,7 +6,8 @@ import { Flag, Layers, Megaphone, Target } from "lucide-react";
 import React from "react";
 import { testActions } from "./testData";
 
-const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
+const inDays = (n: number) =>
+  new Date(Date.now() + n * 86_400_000).toISOString();
 
 /** Actions tailored to exercise the preview: thumbnail, live deadline, completed state. */
 const previewActions: ActionDto[] = [
@@ -100,13 +101,15 @@ export const InList: Story = {
 export const GlyphComparison: Story = {
   args: { markdownContent: "" },
   render: () => {
-    const glyphs: [string, React.ComponentType<{ size?: number; style?: React.CSSProperties }>][] =
-      [
-        ["Flag", Flag],
-        ["Target", Target],
-        ["Megaphone", Megaphone],
-        ["Layers (current nav icon)", Layers],
-      ];
+    const glyphs: [
+      string,
+      React.ComponentType<{ size?: number; style?: React.CSSProperties }>,
+    ][] = [
+      ["Flag", Flag],
+      ["Target", Target],
+      ["Megaphone", Megaphone],
+      ["Layers (current nav icon)", Layers],
+    ];
     return (
       <div className="flex flex-col gap-y-3">
         {glyphs.map(([name, Icon]) => (
@@ -114,7 +117,10 @@ export const GlyphComparison: Story = {
             Help us{" "}
             <span className="text-link">
               save the Ecuador cloud forest
-              <Icon size={13} style={{ margin: "-3px 0 0 3px", display: "inline-block" }} />
+              <Icon
+                size={13}
+                style={{ margin: "-3px 0 0 3px", display: "inline-block" }}
+              />
             </span>{" "}
             <span className="text-zinc-400">— {name}</span>
           </p>

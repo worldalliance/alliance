@@ -1,8 +1,8 @@
-import request from 'supertest';
-import { SIGNUP_THROTTLE } from '../src/auth/signup-throttle.config';
-import { createTestApp, TestContext } from './e2e-test-utils';
+import request from "supertest";
+import { SIGNUP_THROTTLE } from "../src/auth/signup-throttle.config";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
-describe('Auth register rate limiting (e2e)', () => {
+describe("Auth register rate limiting (e2e)", () => {
   let ctx: TestContext;
   const burstLimit = SIGNUP_THROTTLE.signupBurst.limit as number;
 
@@ -18,12 +18,12 @@ describe('Auth register rate limiting (e2e)', () => {
 
   const register = (n: number) =>
     request(ctx.app.getHttpServer())
-      .post('/auth/register')
+      .post("/auth/register")
       .send({
         email: `throttle-${n}@test.com`,
-        password: 'password',
+        password: "password",
         name: `Throttle User ${n}`,
-        mode: 'header',
+        mode: "header",
       });
 
   it(`blocks with 429 once the burst limit (${burstLimit}/min) is exceeded`, async () => {

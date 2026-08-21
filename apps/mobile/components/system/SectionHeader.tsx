@@ -1,6 +1,6 @@
+import { cn } from "@alliance/shared/styles/util";
 import { View } from "react-native";
 import Text, { FontWeight } from "./Text";
-import { cn } from "@alliance/shared/styles/util";
 
 export function SectionHeader({
   label,

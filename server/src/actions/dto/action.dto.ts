@@ -2,16 +2,17 @@ import {
   ActionActivityType,
   WITHDRAWAL_OPTIONS,
   type WithdrawalOption,
-} from '@alliance/common/actionActivity';
-import { byLikeOrder, LIKE_FACEPILE_LIMIT } from '@alliance/common/likeOrder';
+} from "@alliance/common/actionActivity";
+import type { DisplayOnlySchema } from "@alliance/common/forms/display-only-schema";
+import { byLikeOrder, LIKE_FACEPILE_LIMIT } from "@alliance/common/likeOrder";
 import {
   ApiProperty,
   ApiPropertyOptional,
   OmitType,
   PartialType,
   PickType,
-} from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+} from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   Allow,
   ArrayMaxSize,
@@ -26,60 +27,59 @@ import {
   IsString,
   ValidateIf,
   ValidateNested,
-} from 'class-validator';
-import type { DisplayOnlySchema } from '@alliance/common/forms/display-only-schema';
-import { CommentDto } from 'src/forum/dto/comment.dto';
-import { EditableContentDto } from 'src/forum/dto/editablecontent.dto';
-import type { Comment } from 'src/forum/entities/comment.entity';
-import type { ForumFeedComment } from 'src/forum/forum.service';
-import { getImageSource } from 'src/images/images.service';
-import { Form } from 'src/tasks/entities/form.entity';
-import { FormResponse } from 'src/tasks/entities/formresponse.entity';
-import { displayOnlySchemaOf } from 'src/tasks/display-only-snapshot';
-import { SubmitFormDto } from 'src/tasks/form.dto';
-import { UserActionRelationPillStatus } from 'src/user/dto/user-action-relations.dto';
-import { ProfileDto } from 'src/user/dto/user.dto';
-import { User } from 'src/user/entities/user.entity';
-import { TaskAwayStatus } from 'src/utils/action-user';
-import { UserActionRelation } from '../action-activity-status';
-import { ActionActivity } from '../entities/action-activity.entity';
-import { ActionEvent, ActionStatus } from '../entities/action-event.entity';
-import { ActionSuite } from '../entities/action-suite.entity';
-import { ActionUpdate } from '../entities/action-update.entity';
+} from "class-validator";
+import { CommentDto } from "src/forum/dto/comment.dto";
+import { EditableContentDto } from "src/forum/dto/editablecontent.dto";
+import type { Comment } from "src/forum/entities/comment.entity";
+import type { ForumFeedComment } from "src/forum/forum.service";
+import { getImageSource } from "src/images/images.service";
+import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
+import { Form } from "src/tasks/entities/form.entity";
+import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { SubmitFormDto } from "src/tasks/form.dto";
+import { UserActionRelationPillStatus } from "src/user/dto/user-action-relations.dto";
+import { ProfileDto } from "src/user/dto/user.dto";
+import { User } from "src/user/entities/user.entity";
+import { TaskAwayStatus } from "src/utils/action-user";
+import { UserActionRelation } from "../action-activity-status";
+import { ActionActivity } from "../entities/action-activity.entity";
+import { ActionEvent, ActionStatus } from "../entities/action-event.entity";
+import { ActionSuite } from "../entities/action-suite.entity";
+import { ActionUpdate } from "../entities/action-update.entity";
 import {
   Action,
   ACTION_REVIEWERS_MAX,
   ActionReviewer,
-} from '../entities/action.entity';
-import { GeneralUpdate } from '../entities/general-update.entity';
+} from "../entities/action.entity";
+import { GeneralUpdate } from "../entities/general-update.entity";
 import {
   ReminderCohortType,
   ReminderGroup,
-} from '../entities/reminder-group.entity';
+} from "../entities/reminder-group.entity";
 import {
   ViewerActionRelation,
   type UserActionStatus,
   type UserActionWithdrawal,
-} from '../user-action-status';
-import { GeneralUpdateDto } from './general-update.dto';
+} from "../user-action-status";
+import { GeneralUpdateDto } from "./general-update.dto";
 
 export class CreateReminderGroupDto extends PickType(ReminderGroup, [
-  'name',
-  'emailMessage',
-  'cohortType',
-  'timingMode',
-  'emailSubject',
-  'textMessage',
-  'pushMessage',
-  'sendAtAbsolute',
-  'sendAtSecondsFromDeadline',
-  'send_range_start',
-  'send_range_end',
-  'relative_range_start_seconds_from_deadline',
-  'relative_range_end_seconds_from_deadline',
-  'useSuiteTaskCount',
-  'excludeOptionalActions',
-  'excludePreviouslyNotified',
+  "name",
+  "emailMessage",
+  "cohortType",
+  "timingMode",
+  "emailSubject",
+  "textMessage",
+  "pushMessage",
+  "sendAtAbsolute",
+  "sendAtSecondsFromDeadline",
+  "send_range_start",
+  "send_range_end",
+  "relative_range_start_seconds_from_deadline",
+  "relative_range_end_seconds_from_deadline",
+  "useSuiteTaskCount",
+  "excludeOptionalActions",
+  "excludePreviouslyNotified",
 ]) {
   @ApiPropertyOptional({ type: Number, isArray: true })
   @IsOptional()
@@ -100,8 +100,8 @@ export class CreateReminderGroupDto extends PickType(ReminderGroup, [
 }
 
 export class PreviewEmailHtmlDto extends PickType(CreateReminderGroupDto, [
-  'emailMessage',
-  'emailSubject',
+  "emailMessage",
+  "emailSubject",
 ]) {
   @ApiProperty({ type: Number })
   @IsDefined()
@@ -120,7 +120,7 @@ export class PreviewEmailHtmlDto extends PickType(CreateReminderGroupDto, [
 }
 
 export class PreviewTextDto extends PickType(CreateReminderGroupDto, [
-  'textMessage',
+  "textMessage",
 ]) {
   @ApiProperty({ type: Number })
   @IsDefined()
@@ -206,12 +206,12 @@ export class PreviewEmailHtmlResponseDto implements PreviewEmailHtmlResponse {
 }
 
 export class ActionEventDto extends PickType(ActionEvent, [
-  'id',
-  'title',
-  'description',
-  'newStatus',
-  'suiteManaged',
-  'date',
+  "id",
+  "title",
+  "description",
+  "newStatus",
+  "suiteManaged",
+  "date",
 ]) {
   constructor(event: ActionEvent) {
     super();
@@ -225,16 +225,16 @@ export class ActionEventDto extends PickType(ActionEvent, [
 }
 
 export class CreateActionEventDto extends OmitType(ActionEventDto, [
-  'id',
-  'suiteManaged',
+  "id",
+  "suiteManaged",
 ]) {}
 
 export class UpdateActionEventDto extends PartialType(CreateActionEventDto) {}
 
-export { UserActionRelation } from '../action-activity-status';
+export { UserActionRelation } from "../action-activity-status";
 
 export class UserActionWithdrawalDto {
-  @ApiProperty({ enum: WITHDRAWAL_OPTIONS, enumName: 'WithdrawalOption' })
+  @ApiProperty({ enum: WITHDRAWAL_OPTIONS, enumName: "WithdrawalOption" })
   reason: WithdrawalOption;
 
   @ApiProperty({ type: String, nullable: true })
@@ -261,7 +261,7 @@ export class UserActionStatusDto {
 
   @ApiProperty({
     enum: ViewerActionRelation,
-    enumName: 'ViewerActionRelation',
+    enumName: "ViewerActionRelation",
   })
   relation: ViewerActionRelation;
 
@@ -271,7 +271,7 @@ export class UserActionStatusDto {
   @ApiProperty()
   dismissed: boolean;
 
-  @ApiProperty({ enum: TaskAwayStatus, enumName: 'TaskAwayStatus' })
+  @ApiProperty({ enum: TaskAwayStatus, enumName: "TaskAwayStatus" })
   away: TaskAwayStatus;
 
   @ApiProperty()
@@ -285,7 +285,7 @@ export class UserActionStatusDto {
 
   @ApiProperty({
     enum: UserActionRelationPillStatus,
-    enumName: 'UserActionRelationPillStatus',
+    enumName: "UserActionRelationPillStatus",
   })
   display: UserActionRelationPillStatus;
 
@@ -306,43 +306,43 @@ export class UserActionStatusDto {
 }
 
 export class ActionDto extends PickType(Action, [
-  'id',
-  'name',
-  'category',
-  'image',
-  'squareThumbnailImage',
-  'squareThumbnailImageAlt',
-  'donationAmount',
-  'body',
-  'taskContents',
-  'shortDescription',
-  'timeEstimate',
-  'type',
-  'taskFormId',
-  'createdAt',
-  'updatedAt',
-  'cohortExpression',
-  'isContractSigningAction',
-  'visibilityMode',
-  'usersJoined',
-  'onboarding',
-  'archived',
-  'priority',
-  'optional',
-  'preventCompletion',
-  'publicOnly',
-  'shouldCompleteAfterDeadline',
-  'isForumParticipationAction',
-  'forumParticipationPostId',
-  'forumParticipationIncludeChildren',
-  'computedAutocompleteAt',
-  'customStatType',
-  'customStatLabel',
-  'customStatValue',
-  'customStatGoal',
-  'followUpForms',
-  'reviewers',
-  'suite',
+  "id",
+  "name",
+  "category",
+  "image",
+  "squareThumbnailImage",
+  "squareThumbnailImageAlt",
+  "donationAmount",
+  "body",
+  "taskContents",
+  "shortDescription",
+  "timeEstimate",
+  "type",
+  "taskFormId",
+  "createdAt",
+  "updatedAt",
+  "cohortExpression",
+  "isContractSigningAction",
+  "visibilityMode",
+  "usersJoined",
+  "onboarding",
+  "archived",
+  "priority",
+  "optional",
+  "preventCompletion",
+  "publicOnly",
+  "shouldCompleteAfterDeadline",
+  "isForumParticipationAction",
+  "forumParticipationPostId",
+  "forumParticipationIncludeChildren",
+  "computedAutocompleteAt",
+  "customStatType",
+  "customStatLabel",
+  "customStatValue",
+  "customStatGoal",
+  "followUpForms",
+  "reviewers",
+  "suite",
 ]) {
   @ApiProperty()
   usersCompleted: number;
@@ -350,7 +350,7 @@ export class ActionDto extends PickType(Action, [
   @ApiProperty({ type: ActionEventDto, isArray: true })
   events: ActionEventDto[];
 
-  @ApiProperty({ enum: ActionStatus, enumName: 'ActionStatus' })
+  @ApiProperty({ enum: ActionStatus, enumName: "ActionStatus" })
   status: ActionStatus;
 
   @ApiProperty({ type: () => ActionUpdateDto, isArray: true })
@@ -365,11 +365,11 @@ export class ActionDto extends PickType(Action, [
 
   @ApiPropertyOptional({
     enum: UserActionRelation,
-    enumName: 'UserActionRelation',
+    enumName: "UserActionRelation",
   })
   userRelation?: UserActionRelation;
 
-  @ApiPropertyOptional({ enum: TaskAwayStatus, enumName: 'TaskAwayStatus' })
+  @ApiPropertyOptional({ enum: TaskAwayStatus, enumName: "TaskAwayStatus" })
   awayStatus?: TaskAwayStatus;
 
   @ApiPropertyOptional({ type: () => UserActionStatusDto })
@@ -456,34 +456,34 @@ export class ActionDto extends PickType(Action, [
 }
 
 export class CreateActionDto extends PickType(ActionDto, [
-  'name',
-  'category',
-  'image',
-  'squareThumbnailImage',
-  'squareThumbnailImageAlt',
-  'donationAmount',
-  'body',
-  'shortDescription',
-  'timeEstimate',
-  'type',
-  'taskFormId',
-  'cohortExpression',
-  'isContractSigningAction',
-  'visibilityMode',
-  'onboarding',
-  'optional',
-  'preventCompletion',
-  'publicOnly',
-  'shouldCompleteAfterDeadline',
-  'isForumParticipationAction',
-  'forumParticipationPostId',
-  'forumParticipationIncludeChildren',
-  'computedAutocompleteAt',
-  'customStatType',
-  'customStatLabel',
-  'customStatValue',
-  'customStatGoal',
-  'followUpForms',
+  "name",
+  "category",
+  "image",
+  "squareThumbnailImage",
+  "squareThumbnailImageAlt",
+  "donationAmount",
+  "body",
+  "shortDescription",
+  "timeEstimate",
+  "type",
+  "taskFormId",
+  "cohortExpression",
+  "isContractSigningAction",
+  "visibilityMode",
+  "onboarding",
+  "optional",
+  "preventCompletion",
+  "publicOnly",
+  "shouldCompleteAfterDeadline",
+  "isForumParticipationAction",
+  "forumParticipationPostId",
+  "forumParticipationIncludeChildren",
+  "computedAutocompleteAt",
+  "customStatType",
+  "customStatLabel",
+  "customStatValue",
+  "customStatGoal",
+  "followUpForms",
 ]) {
   @ApiPropertyOptional({
     type: Number,
@@ -515,13 +515,13 @@ export class CreateActionDto extends PickType(ActionDto, [
 export class UpdateActionDto extends PartialType(CreateActionDto) {}
 
 export class SetActionPriorityDto extends PickType(Action, [
-  'id',
-  'priority',
+  "id",
+  "priority",
 ]) {}
 
 export class SetGeneralUpdatePriorityDto extends PickType(GeneralUpdate, [
-  'id',
-  'priority',
+  "id",
+  "priority",
 ]) {}
 
 export class SetPriorityDto {
@@ -570,12 +570,12 @@ export class OptOutActionDto {
 }
 
 export class FormResponseOutputDto extends PickType(FormResponse, [
-  'id',
-  'answers',
-  'formId',
-  'visibilityValidatorResults',
-  'deviceType',
-  'publicAnswers',
+  "id",
+  "answers",
+  "formId",
+  "visibilityValidatorResults",
+  "deviceType",
+  "publicAnswers",
 ]) {
   @ApiProperty()
   @Type(() => Object)
@@ -594,11 +594,11 @@ export class FormResponseOutputDto extends PickType(FormResponse, [
 }
 
 export class ActionActivityDto extends PickType(ActionActivity, [
-  'id',
-  'type',
-  'createdAt',
-  'actionId',
-  'likesCount',
+  "id",
+  "type",
+  "createdAt",
+  "actionId",
+  "likesCount",
 ]) {
   @ApiProperty({ type: () => ProfileDto })
   @Type(() => ProfileDto)
@@ -671,7 +671,7 @@ export class ActionActivityDto extends PickType(ActionActivity, [
       : undefined;
     this.editableContent = actionActivity.editableContent
       ? new EditableContentDto(actionActivity.editableContent)
-      : { body: '', attachments: [], id: -1 };
+      : { body: "", attachments: [], id: -1 };
   }
 }
 
@@ -715,7 +715,7 @@ export class UnwelcomedSignedContractMemberDto {
 }
 
 export class UserActionRelationDto {
-  @ApiProperty({ enum: UserActionRelation, enumName: 'UserActionRelation' })
+  @ApiProperty({ enum: UserActionRelation, enumName: "UserActionRelation" })
   relation: UserActionRelation;
 
   constructor(relation: UserActionRelation) {
@@ -724,8 +724,8 @@ export class UserActionRelationDto {
 }
 
 export class CreateActionActivityDto extends PickType(ActionActivityDto, [
-  'actionId',
-  'type',
+  "actionId",
+  "type",
 ]) {
   @ApiProperty()
   @IsNumber()
@@ -733,7 +733,7 @@ export class CreateActionActivityDto extends PickType(ActionActivityDto, [
 }
 
 export class UpdateActionActivityDto extends PickType(ActionActivityDto, [
-  'editableContent',
+  "editableContent",
 ]) {}
 
 export class ActionRelationsDto {
@@ -742,18 +742,18 @@ export class ActionRelationsDto {
 }
 
 export class ActionUpdateDto extends PickType(ActionUpdate, [
-  'id',
-  'title',
-  'date',
-  'actionId',
-  'visibleAt',
-  'notifyType',
-  'notifiedAt',
-  'shortNotifString',
-  'associatedEvent',
-  'associatedEventId',
-  'schemaSnapshotId',
-  'tag',
+  "id",
+  "title",
+  "date",
+  "actionId",
+  "visibleAt",
+  "notifyType",
+  "notifiedAt",
+  "shortNotifString",
+  "associatedEvent",
+  "associatedEventId",
+  "schemaSnapshotId",
+  "tag",
 ]) {
   @ApiProperty()
   @Type(() => Object)
@@ -779,7 +779,7 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
     this.associatedEventId = actionUpdate.associatedEventId;
     this.tag = actionUpdate.tag;
     this.schema = displayOnlySchemaOf({
-      owner: 'ActionUpdate',
+      owner: "ActionUpdate",
       ownerId: actionUpdate.id,
       snapshot: actionUpdate.schemaSnapshot,
     });
@@ -789,10 +789,10 @@ export class ActionUpdateDto extends PickType(ActionUpdate, [
 }
 
 export class CreateActionUpdateDto extends PickType(ActionUpdate, [
-  'title',
-  'date',
-  'notifyType',
-  'shortNotifString',
+  "title",
+  "date",
+  "notifyType",
+  "shortNotifString",
 ]) {
   @ApiPropertyOptional({ type: Number })
   @IsOptional()
@@ -804,7 +804,7 @@ export class CreateActionUpdateDto extends PickType(ActionUpdate, [
 }
 
 export class UpdateActionUpdateDto extends PartialType(
-  PickType(ActionUpdate, ['title', 'date', 'notifyType', 'shortNotifString']),
+  PickType(ActionUpdate, ["title", "date", "notifyType", "shortNotifString"]),
 ) {
   @ApiPropertyOptional({ type: Number, nullable: true })
   @IsOptional()
@@ -826,33 +826,33 @@ export class UpdateActionUpdateDto extends PartialType(
   expectedSchemaSnapshotId?: number;
 }
 
-export class CreateActionSuiteDto extends PickType(ActionSuite, ['name']) {}
+export class CreateActionSuiteDto extends PickType(ActionSuite, ["name"]) {}
 
 export class ReminderGroupDto extends PickType(ReminderGroup, [
-  'id',
-  'name',
-  'timingMode',
-  'actionSuite',
-  'memberActionEvent',
-  'cohortType',
-  'userTag',
-  'users',
-  'emailMessage',
-  'emailSubject',
-  'textMessage',
-  'pushMessage',
-  'send_range_start',
-  'send_range_end',
-  'sendAtAbsolute',
-  'sendAtSecondsFromDeadline',
-  'relative_range_start_seconds_from_deadline',
-  'relative_range_end_seconds_from_deadline',
-  'deadlineEvent',
-  'timingAnchorEvent',
-  'useSuiteTaskCount',
-  'allSent',
-  'excludeOptionalActions',
-  'excludePreviouslyNotified',
+  "id",
+  "name",
+  "timingMode",
+  "actionSuite",
+  "memberActionEvent",
+  "cohortType",
+  "userTag",
+  "users",
+  "emailMessage",
+  "emailSubject",
+  "textMessage",
+  "pushMessage",
+  "send_range_start",
+  "send_range_end",
+  "sendAtAbsolute",
+  "sendAtSecondsFromDeadline",
+  "relative_range_start_seconds_from_deadline",
+  "relative_range_end_seconds_from_deadline",
+  "deadlineEvent",
+  "timingAnchorEvent",
+  "useSuiteTaskCount",
+  "allSent",
+  "excludeOptionalActions",
+  "excludePreviouslyNotified",
 ]) {
   constructor(group: ReminderGroup) {
     super();
@@ -919,7 +919,7 @@ export class ReminderAnchorCandidateDto {
   }
 }
 
-export class ActionSuiteDto extends PickType(ActionSuite, ['id', 'name']) {
+export class ActionSuiteDto extends PickType(ActionSuite, ["id", "name"]) {
   @ApiProperty({ type: () => ActionDto, isArray: true })
   @Type(() => ActionDto)
   @Allow()
@@ -964,12 +964,12 @@ export class ActionSuiteDto extends PickType(ActionSuite, ['id', 'name']) {
 }
 
 export class ExportActionDto extends OmitType(Action, [
-  'deadlineWeekNumber',
-  'memberActionPhase',
-  'status',
-  'usersJoined',
-  'usersCompleted',
-  'formVariants',
+  "deadlineWeekNumber",
+  "memberActionPhase",
+  "status",
+  "usersJoined",
+  "usersCompleted",
+  "formVariants",
 ]) {
   @ApiPropertyOptional({ type: () => Form })
   @Type(() => Form)
@@ -1023,8 +1023,8 @@ export class SuspensionPlanDto {
   }
 }
 
-export class ActionSummaryDto extends PickType(Action, ['id', 'name']) {
-  constructor(action: Pick<Action, 'id' | 'name'>) {
+export class ActionSummaryDto extends PickType(Action, ["id", "name"]) {
+  constructor(action: Pick<Action, "id" | "name">) {
     super();
     this.id = action.id;
     this.name = action.name;
@@ -1072,10 +1072,10 @@ export class ScheduledPlansOverviewDto {
 }
 
 export enum GlobalFeedItemType {
-  ActivityGroup = 'activity_group',
-  ActionUpdate = 'action_update',
-  NewMembers = 'new_members',
-  ForumComments = 'forum_comments',
+  ActivityGroup = "activity_group",
+  ActionUpdate = "action_update",
+  NewMembers = "new_members",
+  ForumComments = "forum_comments",
 }
 
 export const GlobalFeedActivityTypes = [
@@ -1097,7 +1097,7 @@ export class GlobalFeedActivityGroupDto {
 
   @ApiProperty({
     enum: GlobalFeedActivityTypes,
-    enumName: 'GlobalFeedActivityTypes',
+    enumName: "GlobalFeedActivityTypes",
   })
   activityType: GlobalFeedActivityType;
 
@@ -1187,7 +1187,7 @@ export type GlobalFeedItem = {
 );
 
 export class GlobalFeedItemDto {
-  @ApiProperty({ enum: GlobalFeedItemType, enumName: 'GlobalFeedItemType' })
+  @ApiProperty({ enum: GlobalFeedItemType, enumName: "GlobalFeedItemType" })
   @Allow()
   type: GlobalFeedItemType;
 
@@ -1232,8 +1232,8 @@ export class GlobalFeedItemDto {
 }
 
 export enum TimelineFeedItemType {
-  ActionUpdate = 'action_update',
-  ActionEvent = 'action_event',
+  ActionUpdate = "action_update",
+  ActionEvent = "action_event",
 }
 
 export type TimelineFeedItem = {
@@ -1253,7 +1253,7 @@ export type TimelineFeedItem = {
 );
 
 export class TimelineFeedItemDto {
-  @ApiProperty({ enum: TimelineFeedItemType, enumName: 'TimelineFeedItemType' })
+  @ApiProperty({ enum: TimelineFeedItemType, enumName: "TimelineFeedItemType" })
   @Allow()
   type: TimelineFeedItemType;
 
@@ -1298,8 +1298,8 @@ export class TimelineFeedItemDto {
 }
 
 export enum HomeFeedItemType {
-  Activity = 'activity',
-  ForumComment = 'forum_comment',
+  Activity = "activity",
+  ForumComment = "forum_comment",
 }
 
 export class HomeFeedForumCommentDto {
@@ -1344,7 +1344,7 @@ export type HomeFeedItem = {
 );
 
 export class HomeFeedItemDto {
-  @ApiProperty({ enum: HomeFeedItemType, enumName: 'HomeFeedItemType' })
+  @ApiProperty({ enum: HomeFeedItemType, enumName: "HomeFeedItemType" })
   @Allow()
   type: HomeFeedItemType;
 
@@ -1384,7 +1384,7 @@ export class HomeFeedItemDto {
 
 export class EvaluateCohortExpressionDto {
   // eslint-disable-next-line @darraghor/nestjs-typed/all-properties-have-explicit-defined
-  @ApiProperty({ description: 'Cohort expression to evaluate' })
+  @ApiProperty({ description: "Cohort expression to evaluate" })
   @IsDefined()
   expression: unknown;
 }
@@ -1403,10 +1403,10 @@ export class EvaluateCohortExpressionResponseDto {
 }
 
 export class ActionWithdrawalDto extends PickType(ActionActivity, [
-  'userId',
-  'declineReason',
-  'isMoral',
-  'outOfTime',
+  "userId",
+  "declineReason",
+  "isMoral",
+  "outOfTime",
 ]) {
   constructor(activity: ActionActivity) {
     super();

@@ -1,4 +1,4 @@
-import { DataSource, QueryRunner } from 'typeorm';
+import { DataSource, QueryRunner } from "typeorm";
 
 export async function withPgAdvisoryLock<T>(
   dataSource: DataSource,
@@ -11,7 +11,7 @@ export async function withPgAdvisoryLock<T>(
 
   try {
     const [{ pg_try_advisory_lock }] = await qr.query(
-      'SELECT pg_try_advisory_lock($1, $2) AS pg_try_advisory_lock',
+      "SELECT pg_try_advisory_lock($1, $2) AS pg_try_advisory_lock",
       [lockKey1, lockKey2],
     );
 
@@ -28,7 +28,7 @@ export async function withPgAdvisoryLock<T>(
       await qr.rollbackTransaction();
       throw err;
     } finally {
-      await qr.query('SELECT pg_advisory_unlock($1, $2)', [lockKey1, lockKey2]);
+      await qr.query("SELECT pg_advisory_unlock($1, $2)", [lockKey1, lockKey2]);
     }
   } finally {
     await qr.release();

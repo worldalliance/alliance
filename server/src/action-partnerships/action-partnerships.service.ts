@@ -1,15 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
 import type {
   Repository as TypedRepository,
   WithRelationsExact,
-} from 'src/utils/Repository';
+} from "src/utils/Repository";
 import {
   CreateActionPartnershipNoteDto,
   CreateActionPartnershipResponseDto,
-} from './dto/action-partnership.dto';
-import { ActionPartnershipNote } from './entities/action-partnership-note.entity';
-import { ActionPartnershipResponse } from './entities/action-partnership-response.entity';
+} from "./dto/action-partnership.dto";
+import { ActionPartnershipNote } from "./entities/action-partnership-note.entity";
+import { ActionPartnershipResponse } from "./entities/action-partnership-response.entity";
 
 @Injectable()
 export class ActionPartnershipsService {
@@ -25,8 +25,8 @@ export class ActionPartnershipsService {
   ): Promise<ActionPartnershipResponse> {
     const response = this.responseRepository.create({
       ...dto,
-      outreachOtherDetails: dto.outreachOtherDetails ?? '',
-      notes: dto.notes ?? '',
+      outreachOtherDetails: dto.outreachOtherDetails ?? "",
+      notes: dto.notes ?? "",
     });
     return this.responseRepository.save(response);
   }
@@ -37,8 +37,8 @@ export class ActionPartnershipsService {
     return this.responseRepository.find({
       relations: { notesHistory: true },
       order: {
-        createdAt: 'DESC',
-        notesHistory: { noteDate: 'DESC', createdAt: 'DESC' },
+        createdAt: "DESC",
+        notesHistory: { noteDate: "DESC", createdAt: "DESC" },
       },
     });
   }
@@ -51,7 +51,7 @@ export class ActionPartnershipsService {
       where: { id: responseId },
     });
     if (!response) {
-      throw new NotFoundException('Action partnership response not found');
+      throw new NotFoundException("Action partnership response not found");
     }
 
     const note = this.noteRepository.create({
@@ -67,7 +67,7 @@ export class ActionPartnershipsService {
       where: { id: responseId },
     });
     if (!response) {
-      throw new NotFoundException('Action partnership response not found');
+      throw new NotFoundException("Action partnership response not found");
     }
 
     await this.responseRepository.remove(response);

@@ -1,22 +1,22 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsInt, Min } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsInt, Min } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
   Index,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { User } from './user.entity';
+} from "typeorm";
+import { User } from "./user.entity";
 
 @Entity()
-@Index(['ambassador', 'startAt', 'dueAt'])
+@Index(["ambassador", "startAt", "dueAt"])
 export class AmbassadorInviteGoal {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -30,13 +30,13 @@ export class AmbassadorInviteGoal {
   @Min(1)
   targetSuccessfulRecruits: number;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: "timestamptz" })
   @ApiProperty({ type: Date })
   @Type(() => Date)
   @Allow()
   startAt: Date;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: "timestamptz" })
   @ApiProperty({ type: Date })
   @Type(() => Date)
   @Allow()
@@ -54,7 +54,7 @@ export class AmbassadorInviteGoal {
   @Allow()
   updatedAt: Date;
 
-  @ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: false, onDelete: "CASCADE" })
   @ApiProperty({ type: () => User })
   @Type(() => User)
   @Allow()

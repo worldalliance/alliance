@@ -1,5 +1,5 @@
-import { Link } from "react-router";
 import { ArrowRight, type LucideIcon } from "lucide-react";
+import { Link } from "react-router";
 
 export interface InfoResourceCardProps {
   title: string;

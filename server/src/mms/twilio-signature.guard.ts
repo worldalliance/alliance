@@ -1,25 +1,25 @@
-import { R, type Result } from '@alliance/common/result';
+import { R, type Result } from "@alliance/common/result";
 import {
   ForbiddenException,
   Injectable,
   Logger,
   type CanActivate,
   type ExecutionContext,
-} from '@nestjs/common';
-import type { Request } from 'express';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { validateRequest } from 'twilio/lib/webhooks/webhooks';
+} from "@nestjs/common";
+import type { Request } from "express";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import { validateRequest } from "twilio/lib/webhooks/webhooks";
 
-const UNVERIFIED_ENVS: ReadonlySet<string> = new Set(['test', 'development']);
+const UNVERIFIED_ENVS: ReadonlySet<string> = new Set(["test", "development"]);
 
 /** Keeps startup validation aligned with guard policy. */
 export function twilioSignatureEnforced(): boolean {
-  return !UNVERIFIED_ENVS.has(process.env.NODE_ENV ?? '');
+  return !UNVERIFIED_ENVS.has(process.env.NODE_ENV ?? "");
 }
 
 /** Public path; nginx strips `/api` before the request reaches Nest. */
-const TWILIO_WEBHOOK_PATH = '/api/mms/inbound';
+const TWILIO_WEBHOOK_PATH = "/api/mms/inbound";
 
 /** Builds the public URL from `APP_URL`, ignoring proxy-altered request data. */
 export function twilioWebhookUrl(): Result<string, Error> {
@@ -51,14 +51,14 @@ export class TwilioSignatureGuard implements CanActivate {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     if (!authToken) {
       this.logger.error(
-        'TWILIO_AUTH_TOKEN is not set; rejecting inbound Twilio webhook',
+        "TWILIO_AUTH_TOKEN is not set; rejecting inbound Twilio webhook",
       );
-      this.alert('TWILIO_AUTH_TOKEN is not set', expectedUrl, {});
+      this.alert("TWILIO_AUTH_TOKEN is not set", expectedUrl, {});
       throw new ForbiddenException();
     }
 
     if (R.isFailure(webhookUrl)) {
-      const appUrl = process.env.APP_URL ?? 'unset';
+      const appUrl = process.env.APP_URL ?? "unset";
       this.logger.error(
         `APP_URL is not a usable base URL (${appUrl}); rejecting inbound Twilio webhook`,
       );
@@ -70,7 +70,7 @@ export class TwilioSignatureGuard implements CanActivate {
     const url = webhookUrl.value;
 
     const req = context.switchToHttp().getRequest<Request>();
-    const signature = req.header('X-Twilio-Signature');
+    const signature = req.header("X-Twilio-Signature");
 
     if (
       !signature ||
@@ -116,15 +116,15 @@ export class TwilioSignatureGuard implements CanActivate {
 
     const since =
       rejections === 1
-        ? ''
+        ? ""
         : ` (${rejections} rejections since the last alert)`;
     void this.eventLogService.sendMessage({
       type: EventType.SmsFailure,
       message:
         `Inbound Twilio webhook rejected: ${reason}${since}. ` +
-        'No STOP or START from a member is being honoured while this continues — ' +
-        'check that the webhook URL in the Twilio console is exactly ' +
-        `${expectedUrl ?? '<APP_URL is unusable>'}.`,
+        "No STOP or START from a member is being honoured while this continues — " +
+        "check that the webhook URL in the Twilio console is exactly " +
+        `${expectedUrl ?? "<APP_URL is unusable>"}.`,
       blob: { ...blob, rejectionsSinceLastAlert: rejections },
       userId: null,
     });

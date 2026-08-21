@@ -1,3 +1,11 @@
+import { ApiProperty } from "@nestjs/swagger";
+import { Action } from "src/actions/entities/action.entity";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
@@ -5,18 +13,10 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { User } from 'src/user/entities/user.entity';
-import { Action } from 'src/actions/entities/action.entity';
-import type { Relation } from 'src/utils/Repository';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { ApiProperty } from '@nestjs/swagger';
+} from "typeorm";
 
 @Entity()
-@Index(['userId', 'actionId'], { unique: true })
+@Index(["userId", "actionId"], { unique: true })
 export class LiveActivityRegistration {
   @PrimaryGeneratedColumn()
   @ApiProperty()
@@ -25,24 +25,24 @@ export class LiveActivityRegistration {
   @Column()
   userId: number;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "userId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   user: Relation<User>;
 
   @Column()
   actionId: number;
 
-  @ManyToOne(() => Action, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'actionId' })
+  @ManyToOne(() => Action, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "actionId" })
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   action: Relation<Action>;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   updateToken: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: "varchar", nullable: true })
   @ApiProperty({ nullable: true })
   activityId: string | null;
 
@@ -54,7 +54,7 @@ export class LiveActivityRegistration {
   @ApiProperty()
   ended: boolean;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: "int", nullable: true })
   @ApiProperty({ nullable: true })
   lastCompletedCountSent: number | null;
 

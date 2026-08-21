@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsInt,
   IsNumber,
@@ -7,18 +7,18 @@ import {
   IsString,
   Max,
   Min,
-} from 'class-validator';
-import { VariantStats } from '../action-form-variant.service';
-import { ActionFormVariant } from '../entities/action-form-variant.entity';
+} from "class-validator";
+import { VariantStats } from "../action-form-variant.service";
+import { ActionFormVariant } from "../entities/action-form-variant.entity";
 
 export class ActionFormVariantDto extends PickType(ActionFormVariant, [
-  'id',
-  'actionId',
-  'formId',
-  'name',
-  'splitValue',
-  'createdAt',
-  'updatedAt',
+  "id",
+  "actionId",
+  "formId",
+  "name",
+  "splitValue",
+  "createdAt",
+  "updatedAt",
 ]) {
   constructor(variant: ActionFormVariant) {
     super();
@@ -37,7 +37,7 @@ export class CreateActionFormVariantDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ description: 'Fraction of new joiners (0-1).' })
+  @ApiProperty({ description: "Fraction of new joiners (0-1)." })
   @IsNumber()
   @Min(0)
   @Max(1)
@@ -59,7 +59,7 @@ export class UpdateActionFormVariantDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Fraction of new joiners (0-1).' })
+  @ApiPropertyOptional({ description: "Fraction of new joiners (0-1)." })
   @IsOptional()
   @IsNumber()
   @Min(0)

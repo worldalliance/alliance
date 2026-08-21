@@ -1,5 +1,5 @@
-import type { ShareUrl } from './entities/share-url.entity';
-import type { StoredInviteAssignment } from './invite-assignment';
+import type { ShareUrl } from "./entities/share-url.entity";
+import type { StoredInviteAssignment } from "./invite-assignment";
 
 /**
  * Read models the share-url service hands to its DTOs. They live outside the

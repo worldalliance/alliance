@@ -1,16 +1,16 @@
-import { ActionEvent } from 'src/actions/entities/action-event.entity';
+import { ActionEvent } from "src/actions/entities/action-event.entity";
 
 export function plural(n: number, word: string): string {
-  return n.toString() + ' ' + word + (n === 1 ? '' : 's');
+  return n.toString() + " " + word + (n === 1 ? "" : "s");
 }
 
 export function getTimeLeftString(
   deadlineEvent: ActionEvent,
   dateNow: Date,
-  mode: 'both' | 'days' | 'hours' = 'both',
+  mode: "both" | "days" | "hours" = "both",
 ): string {
   if (dateNow.getTime() > deadlineEvent.date.getTime()) {
-    return '0 ' + (mode === 'days' ? 'days' : 'hours');
+    return "0 " + (mode === "days" ? "days" : "hours");
   }
   let days = Math.floor(
     (deadlineEvent.date.getTime() - dateNow.getTime()) / (1000 * 60 * 60 * 24),
@@ -27,22 +27,22 @@ export function getTimeLeftString(
     hours = 0;
   }
 
-  if (mode === 'hours') {
-    return plural(hours, 'hour');
+  if (mode === "hours") {
+    return plural(hours, "hour");
   }
-  if (mode === 'days') {
-    return plural(days, 'day');
+  if (mode === "days") {
+    return plural(days, "day");
   }
 
   if (days === 0) {
-    return plural(hours, 'hour');
+    return plural(hours, "hour");
   }
   if (hours === 0) {
-    return plural(days, 'day');
+    return plural(days, "day");
   }
 
-  const daysString = plural(days, 'day');
-  const hoursString = plural(hours, 'hour');
+  const daysString = plural(days, "day");
+  const hoursString = plural(hours, "hour");
 
   return `${daysString}, ${hoursString}`;
 }

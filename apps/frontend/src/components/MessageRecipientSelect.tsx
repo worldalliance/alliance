@@ -1,6 +1,6 @@
 import { ProfileDto, userMembers } from "@alliance/shared/client";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { X } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -75,8 +75,8 @@ const MessageRecipientSelect: React.FC<MessageRecipientSelectProps> = ({
   const placeholder = loading
     ? "Loading users…"
     : canSelectMore
-    ? "Search by name"
-    : "Remove current selection to choose another";
+      ? "Search by name"
+      : "Remove current selection to choose another";
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (
@@ -165,7 +165,7 @@ export const useSelectableUserIds = () => {
           id: user.id,
           displayName: user.displayName,
           profilePicture: user.profilePicture,
-        })) ?? []
+        })) ?? [],
       );
     });
   }, []);

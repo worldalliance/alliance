@@ -1,7 +1,7 @@
 import { ProfileDto } from "@alliance/shared/client";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import { Link, href } from "react-router";
 import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
+import { Link, href } from "react-router";
 
 export interface MembersListCardProps {
   profile: ProfileDto;

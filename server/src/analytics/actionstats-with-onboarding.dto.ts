@@ -1,5 +1,5 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
-import { ActionStatsRecord } from './actionstats.entity';
+import { ApiProperty, PickType } from "@nestjs/swagger";
+import { ActionStatsRecord } from "./actionstats.entity";
 
 export type ActionStatsWithOnboarding = {
   actionStatsRecord: ActionStatsRecord;
@@ -8,27 +8,27 @@ export type ActionStatsWithOnboarding = {
 };
 
 export class ActionStatsWithOnboardingDto extends PickType(ActionStatsRecord, [
-  'id',
-  'actionId',
-  'actionName',
-  'usersCompleted',
-  'usersJoined',
-  'usersWithdrawn',
-  'usersDismissed',
-  'completionRate',
-  'lastCalculatedAt',
-  'actionCompletedAt',
-  'showInChart',
-  'memberActionStartDate',
-  'memberActionEndDate',
+  "id",
+  "actionId",
+  "actionName",
+  "usersCompleted",
+  "usersJoined",
+  "usersWithdrawn",
+  "usersDismissed",
+  "completionRate",
+  "lastCalculatedAt",
+  "actionCompletedAt",
+  "showInChart",
+  "memberActionStartDate",
+  "memberActionEndDate",
 ]) {
   @ApiProperty({
-    description: 'Whether the action is marked as onboarding.',
+    description: "Whether the action is marked as onboarding.",
   })
   onboarding: boolean;
 
   @ApiProperty({
-    description: 'Whether the action is optional.',
+    description: "Whether the action is optional.",
   })
   optional: boolean;
 

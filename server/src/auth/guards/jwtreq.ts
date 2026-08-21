@@ -1,23 +1,22 @@
-import type { Request } from 'express';
+import type { Request } from "express";
 
 export enum JWTTokenType {
-    access = 'access',
-    refresh = 'refresh',
-    guest = 'guest',
+  access = "access",
+  refresh = "refresh",
+  guest = "guest",
 }
 
 export interface JwtRequest extends Request {
-    user: JwtPayload;
+  user: JwtPayload;
 }
 export interface JwtPayload {
-    sub: number;
-    email: string;
-    tokenType: JWTTokenType;
-    isImpersonation?: boolean;
+  sub: number;
+  email: string;
+  tokenType: JWTTokenType;
+  isImpersonation?: boolean;
 }
 
 export interface GuestJwtPayload {
-    sub: string;
-    tokenType: JWTTokenType.guest;
+  sub: string;
+  tokenType: JWTTokenType.guest;
 }
-

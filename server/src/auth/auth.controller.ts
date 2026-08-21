@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from '@alliance/common/analytics';
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import {
   Body,
   Controller,
@@ -12,8 +12,8 @@ import {
   Request,
   Res,
   UseGuards,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 import {
   ApiBearerAuth,
   ApiCookieAuth,
@@ -21,43 +21,43 @@ import {
   ApiPropertyOptional,
   ApiResponse,
   ApiUnauthorizedResponse,
-} from '@nestjs/swagger';
-import { ThrottlerGuard } from '@nestjs/throttler';
-import { IsEnum, IsOptional } from 'class-validator';
-import type { Request as ExpressRequest, Response } from 'express';
-import { PosthogService } from 'src/posthog/posthog.service';
-import { OnlyThrottle } from 'src/utils/throttle';
-import { AuthService } from './auth.service';
+} from "@nestjs/swagger";
+import { ThrottlerGuard } from "@nestjs/throttler";
+import { IsEnum, IsOptional } from "class-validator";
+import type { Request as ExpressRequest, Response } from "express";
+import { PosthogService } from "src/posthog/posthog.service";
+import { OnlyThrottle } from "src/utils/throttle";
+import { AuthService } from "./auth.service";
 import {
   AuthMeResponseDto,
   RefreshTokensResponseDto,
-} from './dto/authtokens.dto';
-import ForgotPasswordDto, { ResetPasswordDto } from './dto/forgotpassword.dto';
-import { SignUpDto } from './dto/sign-up.dto';
-import { SignInDto, SignInResponseDto, type TokenMode } from './dto/signin.dto';
-import { AdminGuard } from './guards/admin.guard';
+} from "./dto/authtokens.dto";
+import ForgotPasswordDto, { ResetPasswordDto } from "./dto/forgotpassword.dto";
+import { SignUpDto } from "./dto/sign-up.dto";
+import { SignInDto, SignInResponseDto, type TokenMode } from "./dto/signin.dto";
+import { AdminGuard } from "./guards/admin.guard";
 import {
   AuthGuard,
   extractAccessTokenFromCookie,
   extractGuestTokenFromCookie,
   extractRefreshTokenFromCookie,
   extractTokenFromHeader,
-} from './guards/auth.guard';
-import type { JwtPayload, JwtRequest } from './guards/jwtreq';
-import { RefreshTokenGuard } from './guards/refresh.guard';
-import { Public } from './public.decorator';
-import { SIGNUP_THROTTLE } from './signup-throttle.config';
+} from "./guards/auth.guard";
+import type { JwtPayload, JwtRequest } from "./guards/jwtreq";
+import { RefreshTokenGuard } from "./guards/refresh.guard";
+import { Public } from "./public.decorator";
+import { SIGNUP_THROTTLE } from "./signup-throttle.config";
 
 class TokenModeQuery {
-  @ApiPropertyOptional({ enum: ['cookie', 'header'] })
+  @ApiPropertyOptional({ enum: ["cookie", "header"] })
   @IsOptional()
-  @IsEnum(['cookie', 'header'])
+  @IsEnum(["cookie", "header"])
   mode?: TokenMode;
 }
 
 @ApiBearerAuth()
 @ApiCookieAuth()
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
   constructor(
     private authService: AuthService,
@@ -69,7 +69,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: SignInResponseDto })
   @ApiUnauthorizedResponse()
-  @Post('login')
+  @Post("login")
   async login(
     @Request() req: ExpressRequest,
     @Body() signInDto: SignInDto,
@@ -89,7 +89,7 @@ export class AuthController {
       distinctId: String(userId),
       properties: { isAdmin },
     });
-    if (signInDto.mode === 'header') {
+    if (signInDto.mode === "header") {
       return new SignInResponseDto({ access_token, refresh_token, isAdmin });
     }
     return new SignInResponseDto({ isAdmin });
@@ -99,7 +99,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse({ type: SignInResponseDto })
   @ApiUnauthorizedResponse()
-  @Post('admin/login')
+  @Post("admin/login")
   async adminLogin(
     @Request() req: ExpressRequest,
     @Body() signInDto: SignInDto,
@@ -119,7 +119,7 @@ export class AuthController {
       distinctId: String(userId),
       properties: { isAdmin: true },
     });
-    if (signInDto.mode === 'header') {
+    if (signInDto.mode === "header") {
       return new SignInResponseDto({ access_token, refresh_token, isAdmin });
     }
     return new SignInResponseDto({ isAdmin: true });
@@ -142,11 +142,11 @@ export class AuthController {
   @Public()
   @UseGuards(ThrottlerGuard)
   @OnlyThrottle(SIGNUP_THROTTLE)
-  @Post('register')
+  @Post("register")
   @HttpCode(HttpStatus.CREATED)
   @ApiResponse({
     status: HttpStatus.CREATED,
-    description: 'User created successfully',
+    description: "User created successfully",
     type: SignInResponseDto,
   })
   @ApiUnauthorizedResponse()
@@ -175,13 +175,13 @@ export class AuthController {
         referral_code: signUp.referralCode,
       },
     });
-    if (signUp.mode === 'header') {
+    if (signUp.mode === "header") {
       return new SignInResponseDto({ access_token, refresh_token, isAdmin });
     }
     return new SignInResponseDto({ isAdmin });
   }
 
-  @Post('refresh')
+  @Post("refresh")
   @UseGuards(RefreshTokenGuard)
   @ApiOkResponse({ type: RefreshTokensResponseDto })
   @HttpCode(HttpStatus.OK)
@@ -195,19 +195,19 @@ export class AuthController {
     const { access_token, refresh_token } =
       await this.authService.refreshTokens(userId, isImpersonation);
     const mode: TokenMode =
-      query.mode === 'header'
-        ? 'header'
+      query.mode === "header"
+        ? "header"
         : extractRefreshTokenFromCookie(req)
-          ? 'cookie'
-          : 'header';
-    if (mode === 'cookie') {
+          ? "cookie"
+          : "header";
+    if (mode === "cookie") {
       this.authService.setAuthCookies(res, access_token, refresh_token);
       return new RefreshTokensResponseDto({});
     }
     return new RefreshTokensResponseDto({ access_token, refresh_token });
   }
 
-  @Get('/me')
+  @Get("/me")
   @UseGuards(AuthGuard)
   @ApiOkResponse({ type: AuthMeResponseDto })
   async me(@Request() req: JwtRequest): Promise<AuthMeResponseDto> {
@@ -218,7 +218,7 @@ export class AuthController {
     });
   }
 
-  @Post('logout')
+  @Post("logout")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse()
   async logout(
@@ -247,7 +247,7 @@ export class AuthController {
   }
 
   @Public()
-  @Post('forgot-password')
+  @Post("forgot-password")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse()
   async forgotPassword(@Body() body: ForgotPasswordDto): Promise<void> {
@@ -255,21 +255,21 @@ export class AuthController {
   }
 
   @Public()
-  @Post('reset-password')
+  @Post("reset-password")
   @HttpCode(HttpStatus.OK)
   @ApiOkResponse()
   async resetPassword(@Body() body: ResetPasswordDto): Promise<void> {
     await this.authService.resetPassword(body.token, body.password);
   }
 
-  @Get('impersonate/:userId')
+  @Get("impersonate/:userId")
   @UseGuards(AdminGuard)
   @ApiResponse({
     status: 302,
-    description: 'Redirects to frontend as the specified user',
+    description: "Redirects to frontend as the specified user",
   })
   async impersonateAdmin(
-    @Param('userId', ParseIntPipe) userId: number,
+    @Param("userId", ParseIntPipe) userId: number,
     @Res() res: Response,
   ): Promise<void> {
     const { access_token, refresh_token } =
@@ -278,10 +278,10 @@ export class AuthController {
     this.authService.setAuthCookies(res, access_token, refresh_token);
 
     if (!process.env.APP_URL) {
-      throw new Error('APP_URL is not set');
+      throw new Error("APP_URL is not set");
     }
 
-    const frontendUrl = process.env.APP_URL + '/tasks';
+    const frontendUrl = process.env.APP_URL + "/tasks";
     res.redirect(frontendUrl);
   }
 }

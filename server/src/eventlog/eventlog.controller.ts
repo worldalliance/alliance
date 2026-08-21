@@ -5,17 +5,17 @@ import {
   Param,
   Query,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { AdminGuard } from '../auth/guards/admin.guard';
+} from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { AdminGuard } from "../auth/guards/admin.guard";
 import {
   EventLogDto,
   EventLogListDto,
   EventLogQueryDto,
-} from './dto/event-log.dto';
-import { EventLogService } from './eventlog.service';
+} from "./dto/event-log.dto";
+import { EventLogService } from "./eventlog.service";
 
-@Controller('eventlog')
+@Controller("eventlog")
 export class EventLogController {
   constructor(private readonly eventLogService: EventLogService) {}
 
@@ -28,10 +28,10 @@ export class EventLogController {
     return new EventLogListDto(await this.eventLogService.findAll(query));
   }
 
-  @Get(':id')
+  @Get(":id")
   @ApiOkResponse({ type: EventLogDto })
   @UseGuards(AdminGuard)
-  async findOneAdmin(@Param('id') id: string): Promise<EventLogDto> {
+  async findOneAdmin(@Param("id") id: string): Promise<EventLogDto> {
     const event = await this.eventLogService.findOne(id);
     if (!event) {
       throw new NotFoundException(`Event log with id ${id} not found`);

@@ -1,6 +1,6 @@
 import { useActionUpdates } from "@alliance/shared/lib/informationPage";
-import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import ActionUpdateCard from "@alliance/sharedweb/ui/ActionUpdateCard";
+import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 
 const ActionUpdatesPage = () => {
   const { updates, error } = useActionUpdates();

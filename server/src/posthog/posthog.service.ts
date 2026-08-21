@@ -1,7 +1,7 @@
-import { AnalyticsEvent } from '@alliance/common/analytics';
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import { PostHog } from 'posthog-node';
-import { captureEvent } from '../utils/posthog';
+import { AnalyticsEvent } from "@alliance/common/analytics";
+import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { PostHog } from "posthog-node";
+import { captureEvent } from "../utils/posthog";
 
 /**
  * Singleton PostHog client for the server. Captures typed analytics events
@@ -13,9 +13,9 @@ export class PosthogService implements OnModuleDestroy {
   private readonly client: PostHog | null = null;
 
   constructor() {
-    if (process.env.NODE_ENV !== 'production') return;
+    if (process.env.NODE_ENV !== "production") return;
     this.client = new PostHog(process.env.POSTHOG_KEY!, {
-      host: 'https://us.i.posthog.com',
+      host: "https://us.i.posthog.com",
     });
   }
 

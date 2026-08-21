@@ -1,6 +1,6 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import { CreateDateColumnTz } from 'src/datasources/basecolumns';
-import { SearchItemType } from './searchitem.dto';
+import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { SearchItemType } from "./searchitem.dto";
 
 @Entity()
 export class RecentSearch {
@@ -11,7 +11,7 @@ export class RecentSearch {
   objectId: number;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: SearchItemType,
   })
   objectType: SearchItemType;

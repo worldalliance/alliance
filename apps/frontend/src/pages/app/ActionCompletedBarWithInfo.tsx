@@ -1,13 +1,13 @@
-import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
-import UserProfilePicRow from "../../components/UserProfilePicRow";
 import {
   ActionCompletedBarWithInfoPropsShared,
   getCompletedPercentage,
 } from "@alliance/shared/lib/actionCompletedBarWithInfo";
-import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
-import { href, Link } from "react-router";
 import { cn } from "@alliance/shared/styles/util";
+import CompletedBar from "@alliance/sharedweb/ui/CompletedBar";
+import InfoTooltip from "@alliance/sharedweb/ui/InfoTooltip";
 import { ReactNode, useMemo } from "react";
+import { href, Link } from "react-router";
+import UserProfilePicRow from "../../components/UserProfilePicRow";
 
 interface ActionCompletedBarWithInfoProps extends ActionCompletedBarWithInfoPropsShared {
   className?: string;

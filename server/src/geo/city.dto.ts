@@ -1,8 +1,8 @@
-import { PickType, ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { City } from './city.entity';
-import { CityFieldValue } from '@alliance/common/forms/form-schema';
-import { Assert } from '@alliance/common/types';
+import { CityFieldValue } from "@alliance/common/forms/form-schema";
+import { Assert } from "@alliance/common/types";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { City } from "./city.entity";
 
 export class UserCity {
   @ApiProperty()
@@ -20,11 +20,11 @@ export class UserCity {
 }
 
 export class CitySearchDto extends PickType(City, [
-  'id',
-  'name',
-  'countryName',
-  'countryCode',
-  'admin1',
+  "id",
+  "name",
+  "countryName",
+  "countryCode",
+  "admin1",
 ]) {
   constructor(city: City) {
     super();

@@ -2,9 +2,9 @@ import { useCallback, useMemo } from "react";
 import { ActionDto, FollowUpForm } from "../client";
 import {
   ActionWithAwayStatus,
+  homePagePriorityComparator,
   isCurrentlyCompletedAction,
   isFollowUpFormActive,
-  homePagePriorityComparator,
   shouldCompleteAction,
   showActionInSidebarList,
 } from "./actionUtils";

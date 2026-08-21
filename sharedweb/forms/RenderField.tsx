@@ -10,6 +10,10 @@ import type {
   TimeField,
 } from "@alliance/common/forms/form-schema";
 import type { UserDto } from "@alliance/shared/client";
+import {
+  formatTimeForDisplay,
+  parseTimeInput,
+} from "@alliance/shared/forms/timeUtils";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { isOutputValueMissing } from "@alliance/shared/outputrenderer";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -38,10 +42,6 @@ import { getCustomComponentById } from "./components";
 import { OptionalLabelPrefix } from "./OptionalLabelPrefix";
 import { shuffleWithSeed } from "./randomutils";
 import { RankingFieldInput } from "./RankingFieldInput";
-import {
-  formatTimeForDisplay,
-  parseTimeInput,
-} from "@alliance/shared/forms/timeUtils";
 import TimeZoneSelect from "./TimeZoneSelect";
 
 export type RenderFieldProps = {

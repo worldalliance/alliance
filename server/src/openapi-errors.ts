@@ -1,6 +1,6 @@
-import type { OpenAPIObject } from '@nestjs/swagger';
+import type { OpenAPIObject } from "@nestjs/swagger";
 
-const API_ERROR_SCHEMA_NAME = 'HeyApiError';
+const API_ERROR_SCHEMA_NAME = "HeyApiError";
 
 const API_ERROR_REF = {
   $ref: `#/components/schemas/${API_ERROR_SCHEMA_NAME}`,
@@ -13,19 +13,19 @@ const API_ERROR_REF = {
  * at runtime for an empty response body (an empty object, not `undefined`).
  */
 const EMPTY_OBJECT_SCHEMA = {
-  type: 'object',
+  type: "object",
   additionalProperties: false,
 } as const;
 
 const HTTP_METHODS = [
-  'get',
-  'post',
-  'put',
-  'delete',
-  'patch',
-  'options',
-  'head',
-  'trace',
+  "get",
+  "post",
+  "put",
+  "delete",
+  "patch",
+  "options",
+  "head",
+  "trace",
 ] as const;
 
 function isSuccessStatus(status: string): boolean {
@@ -53,18 +53,18 @@ export function injectResponseSchemas(document: OpenAPIObject): OpenAPIObject {
   document.components ??= {};
   document.components.schemas ??= {};
   document.components.schemas[API_ERROR_SCHEMA_NAME] = {
-    type: 'object',
+    type: "object",
     properties: {
-      statusCode: { type: 'number' },
+      statusCode: { type: "number" },
       message: {
         oneOf: [
-          { type: 'string' },
-          { type: 'array', items: { type: 'string' } },
+          { type: "string" },
+          { type: "array", items: { type: "string" } },
         ],
       },
-      error: { type: 'string' },
+      error: { type: "string" },
     },
-    required: ['statusCode', 'message'],
+    required: ["statusCode", "message"],
   };
 
   for (const pathItem of Object.values(document.paths ?? {})) {
@@ -78,30 +78,30 @@ export function injectResponseSchemas(document: OpenAPIObject): OpenAPIObject {
       for (const [status, response] of Object.entries(responses)) {
         if (!response) continue;
         // Leave $ref responses and ones that already declare a body untouched.
-        if ('$ref' in response || response.content) {
-          if (status === 'default' || Number(status) >= 400) {
+        if ("$ref" in response || response.content) {
+          if (status === "default" || Number(status) >= 400) {
             hasErrorResponse = true;
           }
           continue;
         }
 
-        if (status === 'default' || Number(status) >= 400) {
+        if (status === "default" || Number(status) >= 400) {
           hasErrorResponse = true;
           response.content = {
-            'application/json': { schema: { ...API_ERROR_REF } },
+            "application/json": { schema: { ...API_ERROR_REF } },
           };
         } else if (isSuccessStatus(status)) {
           // Void endpoint: empty success body.
           response.content = {
-            'application/json': { schema: { ...EMPTY_OBJECT_SCHEMA } },
+            "application/json": { schema: { ...EMPTY_OBJECT_SCHEMA } },
           };
         }
       }
 
       if (!hasErrorResponse) {
         responses.default = {
-          description: 'Default error response for hey-api',
-          content: { 'application/json': { schema: { ...API_ERROR_REF } } },
+          description: "Default error response for hey-api",
+          content: { "application/json": { schema: { ...API_ERROR_REF } } },
         };
       }
     }

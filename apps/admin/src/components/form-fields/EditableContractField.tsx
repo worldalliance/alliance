@@ -1,10 +1,10 @@
 import type { ContractField } from "@alliance/common/forms/form-schema";
-import { useQuery } from "@tanstack/react-query";
 import { contractAllAdmin, contractGetCurrent } from "@alliance/shared/client";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef } from "react";
 import { RequiredToggle } from "./CommonControls";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
-import { useEffect, useMemo, useRef } from "react";
 
 export function EditableContractField({
   field,

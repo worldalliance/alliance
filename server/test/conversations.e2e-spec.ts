@@ -1,19 +1,19 @@
-import request from 'supertest';
-import type { Repository } from 'typeorm';
-import { MessagingModule } from 'src/messaging/messaging.module';
 import {
   Conversation,
   ConversationType,
-} from 'src/messaging/entities/conversation.entity';
+} from "src/messaging/entities/conversation.entity";
 import {
   Participant,
   ParticipantRole,
   ParticipantState,
-} from 'src/messaging/entities/participant.entity';
-import { User } from 'src/user/entities/user.entity';
-import { createTestApp, TestContext } from './e2e-test-utils';
+} from "src/messaging/entities/participant.entity";
+import { MessagingModule } from "src/messaging/messaging.module";
+import { User } from "src/user/entities/user.entity";
+import request from "supertest";
+import type { Repository } from "typeorm";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
-describe('ConversationController (e2e)', () => {
+describe("ConversationController (e2e)", () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
   let conversationRepo: Repository<Conversation>;
@@ -27,7 +27,7 @@ describe('ConversationController (e2e)', () => {
     const user = userRepo.create({
       name: `Extra User ${userCounter}`,
       email: `extra${userCounter}@example.com`,
-      password: 'pass',
+      password: "pass",
       tags: [ctx.defaultTag],
       ...overrides,
     });
@@ -52,17 +52,17 @@ describe('ConversationController (e2e)', () => {
     }
   });
 
-  describe('direct conversations', () => {
-    it('creates a direct conversation and surfaces the invite state to the target user', async () => {
+  describe("direct conversations", () => {
+    it("creates a direct conversation and surfaces the invite state to the target user", async () => {
       const { user: targetUser, token: targetToken } =
         await createUserAndToken();
 
       const createResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
           targetUserId: targetUser.id,
-          title: 'Hello there',
+          title: "Hello there",
         })
         .expect(201);
 
@@ -80,8 +80,8 @@ describe('ConversationController (e2e)', () => {
       expect(invitedParticipant?.state).toBe(ParticipantState.Invited);
 
       const targetListResponse = await request(ctx.app.getHttpServer())
-        .get('/messaging/conversations')
-        .set('Authorization', `Bearer ${targetToken}`)
+        .get("/messaging/conversations")
+        .set("Authorization", `Bearer ${targetToken}`)
         .expect(200);
 
       const targetConversation = targetListResponse.body.find(
@@ -97,58 +97,58 @@ describe('ConversationController (e2e)', () => {
       ).toBe(ParticipantState.Invited);
     });
 
-    it('reuses an existing direct conversation instead of creating duplicates', async () => {
+    it("reuses an existing direct conversation instead of creating duplicates", async () => {
       const { user: targetUser, token: targetToken } =
         await createUserAndToken();
 
       const firstResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({ targetUserId: targetUser.id })
         .expect(201);
 
       const secondResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({ targetUserId: targetUser.id })
         .expect(201);
 
       expect(secondResponse.body.id).toBe(firstResponse.body.id);
 
       const reverseResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${targetToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${targetToken}`)
         .send({ targetUserId: ctx.testUserId })
         .expect(201);
 
       expect(reverseResponse.body.id).toBe(firstResponse.body.id);
     });
 
-    it('rejects invalid direct conversation requests', async () => {
+    it("rejects invalid direct conversation requests", async () => {
       const selfResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({ targetUserId: ctx.testUserId })
         .expect(400);
 
       expect(selfResponse.body.message).toContain(
-        'You cannot message yourself.',
+        "You cannot message yourself.",
       );
 
       await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({ targetUserId: 999999 })
         .expect(404);
     });
 
-    it('removes a direct conversation when the invite is declined', async () => {
+    it("removes a direct conversation when the invite is declined", async () => {
       const { user: targetUser, token: targetToken } =
         await createUserAndToken();
 
       const createResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({ targetUserId: targetUser.id })
         .expect(201);
 
@@ -156,7 +156,7 @@ describe('ConversationController (e2e)', () => {
 
       const declineResponse = await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/decline`)
-        .set('Authorization', `Bearer ${targetToken}`)
+        .set("Authorization", `Bearer ${targetToken}`)
         .expect(201);
 
       expect(declineResponse.body.type).toBe(ConversationType.Direct);
@@ -167,8 +167,8 @@ describe('ConversationController (e2e)', () => {
       ).not.toContain(targetUser.id);
 
       const initiatorConversations = await request(ctx.app.getHttpServer())
-        .get('/messaging/conversations')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .get("/messaging/conversations")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .expect(200);
 
       expect(
@@ -178,8 +178,8 @@ describe('ConversationController (e2e)', () => {
       ).toBeUndefined();
 
       const targetConversations = await request(ctx.app.getHttpServer())
-        .get('/messaging/conversations')
-        .set('Authorization', `Bearer ${targetToken}`)
+        .get("/messaging/conversations")
+        .set("Authorization", `Bearer ${targetToken}`)
         .expect(200);
 
       expect(
@@ -195,42 +195,42 @@ describe('ConversationController (e2e)', () => {
     });
   });
 
-  describe('group conversations', () => {
-    it('requires at least one additional participant', async () => {
+  describe("group conversations", () => {
+    it("requires at least one additional participant", async () => {
       const response = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/group')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
-          title: 'Solo Group',
+          title: "Solo Group",
           participantIds: [ctx.testUserId],
         })
         .expect(400);
 
       expect(response.body.message).toContain(
-        'A group conversation requires at least one additional participant.',
+        "A group conversation requires at least one additional participant.",
       );
     });
 
-    it('throws when a requested participant is missing', async () => {
+    it("throws when a requested participant is missing", async () => {
       await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/group')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
-          title: 'Missing Participant',
+          title: "Missing Participant",
           participantIds: [999999],
         })
         .expect(404);
     });
 
-    it('creates a group conversation, deduplicates participants, and reuses the existing room', async () => {
+    it("creates a group conversation, deduplicates participants, and reuses the existing room", async () => {
       const { user: memberA } = await createUserAndToken();
       const { user: memberB } = await createUserAndToken();
 
       const createResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/group')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
-          title: 'Project Chat',
+          title: "Project Chat",
           participantIds: [memberA.id, memberB.id, memberB.id],
         })
         .expect(201);
@@ -245,10 +245,10 @@ describe('ConversationController (e2e)', () => {
       expect(owner?.state).toBe(ParticipantState.Joined);
 
       const repeatResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/group')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
-          title: 'Project Chat',
+          title: "Project Chat",
           participantIds: [memberB.id, memberA.id],
         })
         .expect(201);
@@ -257,16 +257,16 @@ describe('ConversationController (e2e)', () => {
       expect(repeatResponse.body.participants).toHaveLength(3);
     });
 
-    it('allows invited participants to accept and blocks outsiders', async () => {
+    it("allows invited participants to accept and blocks outsiders", async () => {
       const { user: invitedUser, token: invitedToken } =
         await createUserAndToken();
       const { token: outsiderToken } = await createUserAndToken();
 
       const createResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/group')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
-          title: 'Joinable Chat',
+          title: "Joinable Chat",
           participantIds: [invitedUser.id],
         })
         .expect(201);
@@ -274,8 +274,8 @@ describe('ConversationController (e2e)', () => {
       const conversationId = createResponse.body.id;
 
       const invitePreview = await request(ctx.app.getHttpServer())
-        .get('/messaging/conversations')
-        .set('Authorization', `Bearer ${invitedToken}`)
+        .get("/messaging/conversations")
+        .set("Authorization", `Bearer ${invitedToken}`)
         .expect(200);
 
       const pendingConversation = invitePreview.body.find(
@@ -285,7 +285,7 @@ describe('ConversationController (e2e)', () => {
 
       const acceptResponse = await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/accept`)
-        .set('Authorization', `Bearer ${invitedToken}`)
+        .set("Authorization", `Bearer ${invitedToken}`)
         .expect(201);
 
       const acceptedParticipant = acceptResponse.body.participants.find(
@@ -296,19 +296,19 @@ describe('ConversationController (e2e)', () => {
 
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/accept`)
-        .set('Authorization', `Bearer ${outsiderToken}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
         .expect(403);
     });
 
-    it('removes members who leave and blocks further access attempts', async () => {
+    it("removes members who leave and blocks further access attempts", async () => {
       const { user: leavingUser, token: leavingToken } =
         await createUserAndToken();
 
       const createResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/group')
-        .set('Authorization', `Bearer ${ctx.accessToken}`)
+        .post("/messaging/conversations/group")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
         .send({
-          title: 'Temporary Chat',
+          title: "Temporary Chat",
           participantIds: [leavingUser.id],
         })
         .expect(201);
@@ -317,12 +317,12 @@ describe('ConversationController (e2e)', () => {
 
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/accept`)
-        .set('Authorization', `Bearer ${leavingToken}`)
+        .set("Authorization", `Bearer ${leavingToken}`)
         .expect(201);
 
       const leaveResponse = await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/leave`)
-        .set('Authorization', `Bearer ${leavingToken}`)
+        .set("Authorization", `Bearer ${leavingToken}`)
         .expect(201);
 
       expect(
@@ -333,13 +333,13 @@ describe('ConversationController (e2e)', () => {
 
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/leave`)
-        .set('Authorization', `Bearer ${leavingToken}`)
+        .set("Authorization", `Bearer ${leavingToken}`)
         .expect(403);
 
       const { token: outsiderToken } = await createUserAndToken();
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/leave`)
-        .set('Authorization', `Bearer ${outsiderToken}`)
+        .set("Authorization", `Bearer ${outsiderToken}`)
         .expect(403);
 
       const participantRecords = await participantRepo.find({
@@ -352,7 +352,7 @@ describe('ConversationController (e2e)', () => {
     });
   });
 
-  describe('unread counts', () => {
+  describe("unread counts", () => {
     const getUnreadSummary = async (
       token: string,
     ): Promise<{
@@ -361,8 +361,8 @@ describe('ConversationController (e2e)', () => {
       totalCount: number;
     }> => {
       const response = await request(ctx.app.getHttpServer())
-        .get('/messaging/conversations/unread-summary')
-        .set('Authorization', `Bearer ${token}`)
+        .get("/messaging/conversations/unread-summary")
+        .set("Authorization", `Bearer ${token}`)
         .expect(200);
 
       return response.body;
@@ -370,8 +370,8 @@ describe('ConversationController (e2e)', () => {
 
     const getUnreadCount = async (token: string): Promise<number> => {
       const response = await request(ctx.app.getHttpServer())
-        .get('/messaging/conversations/unread')
-        .set('Authorization', `Bearer ${token}`)
+        .get("/messaging/conversations/unread")
+        .set("Authorization", `Bearer ${token}`)
         .expect(200);
 
       return response.body.count;
@@ -383,45 +383,45 @@ describe('ConversationController (e2e)', () => {
       senderToken: string,
     ): Promise<number> => {
       const conversationResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${readerToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${readerToken}`)
         .send({ targetUserId: senderId })
         .expect(201);
 
       await request(ctx.app.getHttpServer())
-        .post('/messaging/messages')
-        .set('Authorization', `Bearer ${senderToken}`)
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${senderToken}`)
         .send({
           conversationId: conversationResponse.body.id,
-          body: 'Unread message for total count checks',
+          body: "Unread message for total count checks",
         })
         .expect(201);
 
       return conversationResponse.body.id;
     };
 
-    it('returns zero when the user has no conversations or unread messages', async () => {
+    it("returns zero when the user has no conversations or unread messages", async () => {
       const { token } = await createUserAndToken();
       const unreadCount = await getUnreadCount(token);
       expect(unreadCount).toBe(0);
     });
 
-    it('ignores messages authored by the requesting user', async () => {
+    it("ignores messages authored by the requesting user", async () => {
       const { token: readerToken } = await createUserAndToken();
       const { user: recipient } = await createUserAndToken();
 
       const conversationResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${readerToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${readerToken}`)
         .send({ targetUserId: recipient.id })
         .expect(201);
 
       await request(ctx.app.getHttpServer())
-        .post('/messaging/messages')
-        .set('Authorization', `Bearer ${readerToken}`)
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${readerToken}`)
         .send({
           conversationId: conversationResponse.body.id,
-          body: 'Hello, me!',
+          body: "Hello, me!",
         })
         .expect(201);
 
@@ -429,22 +429,22 @@ describe('ConversationController (e2e)', () => {
       expect(unreadCount).toBe(0);
     });
 
-    it('counts conversations with unread messages from others and clears after marking read', async () => {
+    it("counts conversations with unread messages from others and clears after marking read", async () => {
       const { token: readerToken } = await createUserAndToken();
       const { user: sender, token: senderToken } = await createUserAndToken();
 
       const conversationResponse = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${readerToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${readerToken}`)
         .send({ targetUserId: sender.id })
         .expect(201);
 
       await request(ctx.app.getHttpServer())
-        .post('/messaging/messages')
-        .set('Authorization', `Bearer ${senderToken}`)
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${senderToken}`)
         .send({
           conversationId: conversationResponse.body.id,
-          body: 'Unread for you',
+          body: "Unread for you",
         })
         .expect(201);
 
@@ -453,56 +453,56 @@ describe('ConversationController (e2e)', () => {
 
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationResponse.body.id}/read`)
-        .set('Authorization', `Bearer ${readerToken}`)
+        .set("Authorization", `Bearer ${readerToken}`)
         .expect(201);
 
       const unreadAfter = await getUnreadCount(readerToken);
       expect(unreadAfter).toBe(0);
     });
 
-    it('counts distinct conversations even when multiple messages are unread', async () => {
+    it("counts distinct conversations even when multiple messages are unread", async () => {
       const { token: readerToken } = await createUserAndToken();
       const { user: senderA, token: senderAToken } = await createUserAndToken();
       const { user: senderB, token: senderBToken } = await createUserAndToken();
 
       const conversationA = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${readerToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${readerToken}`)
         .send({ targetUserId: senderA.id })
         .expect(201);
 
       const conversationB = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${readerToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${readerToken}`)
         .send({ targetUserId: senderB.id })
         .expect(201);
 
       await request(ctx.app.getHttpServer())
-        .post('/messaging/messages')
-        .set('Authorization', `Bearer ${senderAToken}`)
-        .send({ conversationId: conversationA.body.id, body: 'Hi from A' })
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${senderAToken}`)
+        .send({ conversationId: conversationA.body.id, body: "Hi from A" })
         .expect(201);
 
       await request(ctx.app.getHttpServer())
-        .post('/messaging/messages')
-        .set('Authorization', `Bearer ${senderAToken}`)
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${senderAToken}`)
         .send({
           conversationId: conversationA.body.id,
-          body: 'Another from A',
+          body: "Another from A",
         })
         .expect(201);
 
       await request(ctx.app.getHttpServer())
-        .post('/messaging/messages')
-        .set('Authorization', `Bearer ${senderBToken}`)
-        .send({ conversationId: conversationB.body.id, body: 'Hi from B' })
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${senderBToken}`)
+        .send({ conversationId: conversationB.body.id, body: "Hi from B" })
         .expect(201);
 
       const unreadCount = await getUnreadCount(readerToken);
       expect(unreadCount).toBe(2);
     });
 
-    it('returns a lightweight summary for unread messages and message requests', async () => {
+    it("returns a lightweight summary for unread messages and message requests", async () => {
       const { token: readerToken, user: reader } = await createUserAndToken();
       const { user: joinedSender, token: joinedSenderToken } =
         await createUserAndToken();
@@ -515,12 +515,13 @@ describe('ConversationController (e2e)', () => {
       );
 
       const requestConversation = await request(ctx.app.getHttpServer())
-        .post('/messaging/conversations/direct')
-        .set('Authorization', `Bearer ${requestSenderToken}`)
+        .post("/messaging/conversations/direct")
+        .set("Authorization", `Bearer ${requestSenderToken}`)
         .send({ targetUserId: reader.id })
         .expect(201);
 
-      const unreadSummaryBeforeMessageRequest = await getUnreadSummary(readerToken);
+      const unreadSummaryBeforeMessageRequest =
+        await getUnreadSummary(readerToken);
       expect(unreadSummaryBeforeMessageRequest).toEqual({
         messageCount: 1,
         messageRequestCount: 1,
@@ -528,15 +529,16 @@ describe('ConversationController (e2e)', () => {
       });
 
       await request(ctx.app.getHttpServer())
-        .post('/messaging/messages')
-        .set('Authorization', `Bearer ${requestSenderToken}`)
+        .post("/messaging/messages")
+        .set("Authorization", `Bearer ${requestSenderToken}`)
         .send({
           conversationId: requestConversation.body.id,
-          body: 'Request follow-up',
+          body: "Request follow-up",
         })
         .expect(201);
 
-      const unreadSummaryAfterMessageRequest = await getUnreadSummary(readerToken);
+      const unreadSummaryAfterMessageRequest =
+        await getUnreadSummary(readerToken);
       expect(unreadSummaryAfterMessageRequest).toEqual({
         messageCount: 1,
         messageRequestCount: 1,
@@ -544,12 +546,15 @@ describe('ConversationController (e2e)', () => {
       });
     });
 
-    describe('overall unread totals across multiple conversations', () => {
-      it('adjusts totals when conversations are toggled read and new messages arrive across threads', async () => {
+    describe("overall unread totals across multiple conversations", () => {
+      it("adjusts totals when conversations are toggled read and new messages arrive across threads", async () => {
         const { token: readerToken } = await createUserAndToken();
-        const { user: senderA, token: senderAToken } = await createUserAndToken();
-        const { user: senderB, token: senderBToken } = await createUserAndToken();
-        const { user: senderC, token: senderCToken } = await createUserAndToken();
+        const { user: senderA, token: senderAToken } =
+          await createUserAndToken();
+        const { user: senderB, token: senderBToken } =
+          await createUserAndToken();
+        const { user: senderC, token: senderCToken } =
+          await createUserAndToken();
 
         const conversationAId = await createDirectConversationWithUnread(
           readerToken,
@@ -568,11 +573,11 @@ describe('ConversationController (e2e)', () => {
         );
 
         await request(ctx.app.getHttpServer())
-          .post('/messaging/messages')
-          .set('Authorization', `Bearer ${senderBToken}`)
+          .post("/messaging/messages")
+          .set("Authorization", `Bearer ${senderBToken}`)
           .send({
             conversationId: conversationBId,
-            body: 'Another unread from B',
+            body: "Another unread from B",
           })
           .expect(201);
 
@@ -580,17 +585,17 @@ describe('ConversationController (e2e)', () => {
 
         await request(ctx.app.getHttpServer())
           .post(`/messaging/conversations/${conversationAId}/read`)
-          .set('Authorization', `Bearer ${readerToken}`)
+          .set("Authorization", `Bearer ${readerToken}`)
           .expect(201);
 
         expect(await getUnreadCount(readerToken)).toBe(2);
 
         await request(ctx.app.getHttpServer())
-          .post('/messaging/messages')
-          .set('Authorization', `Bearer ${senderAToken}`)
+          .post("/messaging/messages")
+          .set("Authorization", `Bearer ${senderAToken}`)
           .send({
             conversationId: conversationAId,
-            body: 'New activity after read',
+            body: "New activity after read",
           })
           .expect(201);
 
@@ -598,30 +603,32 @@ describe('ConversationController (e2e)', () => {
 
         await request(ctx.app.getHttpServer())
           .post(`/messaging/conversations/${conversationBId}/read`)
-          .set('Authorization', `Bearer ${readerToken}`)
+          .set("Authorization", `Bearer ${readerToken}`)
           .expect(201);
 
         expect(await getUnreadCount(readerToken)).toBe(2);
 
         await request(ctx.app.getHttpServer())
           .post(`/messaging/conversations/${conversationAId}/read`)
-          .set('Authorization', `Bearer ${readerToken}`)
+          .set("Authorization", `Bearer ${readerToken}`)
           .expect(201);
 
         expect(await getUnreadCount(readerToken)).toBe(1);
 
         await request(ctx.app.getHttpServer())
           .post(`/messaging/conversations/${conversationCId}/read`)
-          .set('Authorization', `Bearer ${readerToken}`)
+          .set("Authorization", `Bearer ${readerToken}`)
           .expect(201);
 
         expect(await getUnreadCount(readerToken)).toBe(0);
       });
 
-      it('handles re-reading threads and new activity after clearing all unreads', async () => {
+      it("handles re-reading threads and new activity after clearing all unreads", async () => {
         const { token: readerToken } = await createUserAndToken();
-        const { user: senderA, token: senderAToken } = await createUserAndToken();
-        const { user: senderB, token: senderBToken } = await createUserAndToken();
+        const { user: senderA, token: senderAToken } =
+          await createUserAndToken();
+        const { user: senderB, token: senderBToken } =
+          await createUserAndToken();
 
         const conversationAId = await createDirectConversationWithUnread(
           readerToken,
@@ -638,31 +645,31 @@ describe('ConversationController (e2e)', () => {
 
         await request(ctx.app.getHttpServer())
           .post(`/messaging/conversations/${conversationAId}/read`)
-          .set('Authorization', `Bearer ${readerToken}`)
+          .set("Authorization", `Bearer ${readerToken}`)
           .expect(201);
 
         expect(await getUnreadCount(readerToken)).toBe(1);
 
         await request(ctx.app.getHttpServer())
           .post(`/messaging/conversations/${conversationAId}/read`)
-          .set('Authorization', `Bearer ${readerToken}`)
+          .set("Authorization", `Bearer ${readerToken}`)
           .expect(201);
 
         expect(await getUnreadCount(readerToken)).toBe(1);
 
         await request(ctx.app.getHttpServer())
           .post(`/messaging/conversations/${conversationBId}/read`)
-          .set('Authorization', `Bearer ${readerToken}`)
+          .set("Authorization", `Bearer ${readerToken}`)
           .expect(201);
 
         expect(await getUnreadCount(readerToken)).toBe(0);
 
         await request(ctx.app.getHttpServer())
-          .post('/messaging/messages')
-          .set('Authorization', `Bearer ${senderBToken}`)
+          .post("/messaging/messages")
+          .set("Authorization", `Bearer ${senderBToken}`)
           .send({
             conversationId: conversationBId,
-            body: 'Fresh unread message',
+            body: "Fresh unread message",
           })
           .expect(201);
 
@@ -670,7 +677,7 @@ describe('ConversationController (e2e)', () => {
 
         await request(ctx.app.getHttpServer())
           .post(`/messaging/conversations/${conversationAId}/read`)
-          .set('Authorization', `Bearer ${readerToken}`)
+          .set("Authorization", `Bearer ${readerToken}`)
           .expect(201);
 
         expect(await getUnreadCount(readerToken)).toBe(1);

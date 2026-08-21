@@ -1,16 +1,16 @@
-import { ContractEventType } from 'src/user/entities/contract-event.entity';
+import { ContractEventType } from "src/user/entities/contract-event.entity";
 import {
   ForumDigestPreference,
   NotificationPreference,
   PublicFormResponseDefault,
   ReferralSource,
   User,
-} from 'src/user/entities/user.entity';
+} from "src/user/entities/user.entity";
 
 export const testUser = new User({
   id: -1,
-  name: 'Test User',
-  email: 'test@example.com',
+  name: "Test User",
+  email: "test@example.com",
   phoneNumber: process.env.NOTIF_TEST_PHONE_NUMBER ?? null,
   emailVerified: false,
   devices: [],
@@ -37,7 +37,7 @@ export const testUser = new User({
   pushesForFriendRequests: false,
   turnedOffAllNotifs: false,
   forumDigestPreference: ForumDigestPreference.Off,
-  password: '',
+  password: "",
   admin: false,
   staff: false,
   staffTitle: null,
@@ -65,18 +65,18 @@ export const testUser = new User({
   shareEmailWithCommunityLead: true,
   undergoingGroupAssignment: false,
   sharePhoneNumberWithCommunityLead: true,
-  referralCode: '',
+  referralCode: "",
   referralSource: ReferralSource.ReferralLink,
   hashPassword: function (): Promise<void> {
-    throw new Error('Function not implemented.');
+    throw new Error("Function not implemented.");
   },
   generateReferralCode: function (): Promise<void> {
-    throw new Error('Function not implemented.');
+    throw new Error("Function not implemented.");
   },
   checkPassword: function (): Promise<boolean> {
-    throw new Error('Function not implemented.');
+    throw new Error("Function not implemented.");
   },
-  stripeCustomerId: '',
+  stripeCustomerId: "",
   isNotSignedUpPartialProfile: false,
   over18: false,
   awayRanges: [],
@@ -97,17 +97,17 @@ export const testUser = new User({
   preferredReminderTime: null,
 } satisfies Omit<
   User,
-  | 'friends'
-  | 'hasActiveContract'
-  | 'isCommunityLeader'
-  | '_hasActiveContractAt'
-  | 'hasActiveContractAt'
-  | '_hasActiveContractInFullRange'
-  | 'hasActiveContractInFullRange'
-  | '_isAwayAt'
-  | 'isAwayAt'
-  | '_isAwayAtAnyPointInRange'
-  | 'isAwayAtAnyPointInRange'
-  | '_leaderOfIdSet'
-  | 'leaderOfIdSet'
+  | "friends"
+  | "hasActiveContract"
+  | "isCommunityLeader"
+  | "_hasActiveContractAt"
+  | "hasActiveContractAt"
+  | "_hasActiveContractInFullRange"
+  | "hasActiveContractInFullRange"
+  | "_isAwayAt"
+  | "isAwayAt"
+  | "_isAwayAtAnyPointInRange"
+  | "isAwayAtAnyPointInRange"
+  | "_leaderOfIdSet"
+  | "leaderOfIdSet"
 >);

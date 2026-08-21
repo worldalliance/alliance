@@ -2,15 +2,15 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
-} from '@nestjs/common';
-import { ActionsService } from 'src/actions/actions.service';
-import { ActionTaskType } from 'src/actions/entities/action.entity';
-import { UserService } from 'src/user/user.service';
-import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'src/utils/Repository';
-import Stripe from 'stripe';
-import { PaymentUserDataToken } from './entities/payment-token.entity';
-import { MailService } from 'src/mail/mail.service';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ActionsService } from "src/actions/actions.service";
+import { ActionTaskType } from "src/actions/entities/action.entity";
+import { MailService } from "src/mail/mail.service";
+import { UserService } from "src/user/user.service";
+import type { Repository } from "src/utils/Repository";
+import Stripe from "stripe";
+import { PaymentUserDataToken } from "./entities/payment-token.entity";
 @Injectable()
 export class PaymentsService {
   private readonly stripe: Stripe;
@@ -23,10 +23,10 @@ export class PaymentsService {
     private paymentUserDataTokenRepository: Repository<PaymentUserDataToken>,
   ) {
     if (!process.env.STRIPE_API_KEY) {
-      throw new Error('STRIPE_API_KEY must be set');
+      throw new Error("STRIPE_API_KEY must be set");
     }
     this.stripe = new Stripe(process.env.STRIPE_API_KEY, {
-      apiVersion: '2025-03-31.basil',
+      apiVersion: "2025-03-31.basil",
     });
   }
 
@@ -72,7 +72,7 @@ export class PaymentsService {
       );
       if (
         paymentMethods.data.length > 0 &&
-        paymentMethods.data[0].type === 'card'
+        paymentMethods.data[0].type === "card"
       ) {
         //TODO: support multiple payment methods
         paymentMethod = paymentMethods.data[0];
@@ -107,14 +107,14 @@ export class PaymentsService {
         );
       }
       userId = user.id;
-      console.log('got authenticated user with id', user.id);
+      console.log("got authenticated user with id", user.id);
     } else {
       const userToken = pi.metadata.token;
       if (!userToken) {
-        throw new Error('No token in payment intent metadata');
+        throw new Error("No token in payment intent metadata");
       }
 
-      console.log('userToken from payment intent metadata', userToken);
+      console.log("userToken from payment intent metadata", userToken);
 
       const userTokenEntity = await this.paymentUserDataTokenRepository.findOne(
         {
@@ -156,7 +156,7 @@ export class PaymentsService {
     if (pi.metadata.actionId) {
       const actionId = parseInt(pi.metadata.actionId);
 
-      console.log('actionId: ', actionId);
+      console.log("actionId: ", actionId);
 
       if (
         (await this.actionService.findOneOrFail({ id: actionId })).type !==
@@ -167,9 +167,9 @@ export class PaymentsService {
         );
       }
       await this.actionService.completeAction(actionId, userId);
-      console.log('completed action');
+      console.log("completed action");
     } else {
-      throw new Error('No actionId in payment intent metadata');
+      throw new Error("No actionId in payment intent metadata");
     }
   }
 }

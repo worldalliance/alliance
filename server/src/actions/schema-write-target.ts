@@ -1,7 +1,7 @@
-import type { EntityTarget } from 'typeorm';
-import { SnapshotHistoryOwner } from 'src/tasks/entities/formsnapshot.entity';
-import { ActionUpdate } from './entities/action-update.entity';
-import { GeneralUpdate } from './entities/general-update.entity';
+import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
+import type { EntityTarget } from "typeorm";
+import { ActionUpdate } from "./entities/action-update.entity";
+import { GeneralUpdate } from "./entities/general-update.entity";
 
 export type SchemaWriteTarget = {
   entity: EntityTarget<{ schemaSnapshotId: number }>;
@@ -20,11 +20,11 @@ export const SCHEMA_WRITE_TARGETS: Record<
   [SnapshotHistoryOwner.GeneralUpdate]: {
     entity: GeneralUpdate,
     conflictMessage:
-      'This general update was changed by someone else since you opened it.',
+      "This general update was changed by someone else since you opened it.",
   },
   [SnapshotHistoryOwner.ActionUpdate]: {
     entity: ActionUpdate,
     conflictMessage:
-      'This update was changed by someone else since you opened it.',
+      "This update was changed by someone else since you opened it.",
   },
 };

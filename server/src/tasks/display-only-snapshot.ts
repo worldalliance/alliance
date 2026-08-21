@@ -2,11 +2,11 @@ import {
   emptyDisplayOnlySchema,
   readDisplayOnlySchema,
   type DisplayOnlySchema,
-} from '@alliance/common/forms/display-only-schema';
-import { Logger } from '@nestjs/common';
-import type { FormSnapshot } from './entities/formsnapshot.entity';
+} from "@alliance/common/forms/display-only-schema";
+import { Logger } from "@nestjs/common";
+import type { FormSnapshot } from "./entities/formsnapshot.entity";
 
-const logger = new Logger('DisplayOnlySnapshot');
+const logger = new Logger("DisplayOnlySnapshot");
 
 /**
  * Narrows a snapshot's `schema` column, which is polymorphic across owners, to

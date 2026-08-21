@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 
 export type MemberCompletionRetentionActionSummary = {
   actionId: number;
@@ -70,7 +70,10 @@ export class MemberCompletionRetentionPointDto {
   @ApiProperty()
   weekCompletedCount: number;
 
-  @ApiProperty({ type: () => MemberCompletionRetentionActionSummaryDto, isArray: true })
+  @ApiProperty({
+    type: () => MemberCompletionRetentionActionSummaryDto,
+    isArray: true,
+  })
   actions: MemberCompletionRetentionActionSummaryDto[];
 
   constructor(input: MemberCompletionRetentionPoint) {

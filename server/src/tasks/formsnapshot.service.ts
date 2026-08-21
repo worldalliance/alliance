@@ -1,20 +1,20 @@
-import { createHash } from 'crypto';
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import jsonStableStringify from 'json-stable-stringify';
-import { EntityManager } from 'typeorm';
-import type { Repository } from 'src/utils/Repository';
+import { BadRequestException, Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { createHash } from "crypto";
+import jsonStableStringify from "json-stable-stringify";
+import type { Repository } from "src/utils/Repository";
+import { EntityManager } from "typeorm";
 import {
   FORM_SNAPSHOT_HISTORY_TABLE,
   FormSnapshot,
   SNAPSHOT_HISTORY_OWNERS,
   SnapshotHistoryOwner,
-} from './entities/formsnapshot.entity';
+} from "./entities/formsnapshot.entity";
 
 export function hashFormSchema(schema: Record<string, unknown>): string {
-  return createHash('sha256')
-    .update(jsonStableStringify(schema) ?? '')
-    .digest('hex');
+  return createHash("sha256")
+    .update(jsonStableStringify(schema) ?? "")
+    .digest("hex");
 }
 
 @Injectable()
@@ -37,7 +37,7 @@ export class FormSnapshotService {
       [JSON.stringify(schema), hash],
     );
     if (rows.length === 0) {
-      throw new Error('FormSnapshot.findOrCreate: upsert returned no rows');
+      throw new Error("FormSnapshot.findOrCreate: upsert returned no rows");
     }
     return runner.findOneByOrFail(FormSnapshot, { id: rows[0].id });
   }
@@ -65,18 +65,18 @@ export class FormSnapshotService {
     formSnapshotId: number,
   ): Promise<FormSnapshot> {
     const snapshot = await this.snapshotRepository
-      .createQueryBuilder('s')
+      .createQueryBuilder("s")
       .innerJoin(
         FORM_SNAPSHOT_HISTORY_TABLE,
-        'fhs',
+        "fhs",
         'fhs."formSnapshotId" = s.id',
       )
       .where('fhs."formId" = :formId', { formId })
-      .andWhere('s.id = :formSnapshotId', { formSnapshotId })
+      .andWhere("s.id = :formSnapshotId", { formSnapshotId })
       .getOne();
     if (!snapshot) {
       throw new BadRequestException(
-        'Submitted form snapshot was never associated with this form',
+        "Submitted form snapshot was never associated with this form",
       );
     }
     return snapshot;
@@ -88,18 +88,18 @@ export class FormSnapshotService {
   ): Promise<FormSnapshot> {
     const hash = hashFormSchema(schema);
     const snapshot = await this.snapshotRepository
-      .createQueryBuilder('s')
+      .createQueryBuilder("s")
       .innerJoin(
         FORM_SNAPSHOT_HISTORY_TABLE,
-        'fhs',
+        "fhs",
         'fhs."formSnapshotId" = s.id',
       )
       .where('fhs."formId" = :formId', { formId })
-      .andWhere('s.hash = :hash', { hash })
+      .andWhere("s.hash = :hash", { hash })
       .getOne();
     if (!snapshot) {
       throw new BadRequestException(
-        'Submitted schema does not match any historical snapshot for this form',
+        "Submitted schema does not match any historical snapshot for this form",
       );
     }
     return snapshot;

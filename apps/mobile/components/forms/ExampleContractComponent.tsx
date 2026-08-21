@@ -1,10 +1,10 @@
-import { View } from "react-native";
+import type { CustomComponentProps } from "@alliance/shared/forms/customComponents";
 import { formatShortDate } from "@alliance/shared/lib/dateFormatters";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { View } from "react-native";
 import Card from "../system/Card";
 import Checkbox from "../system/Checkbox";
 import Text, { FontWeight } from "../system/Text";
-import type { CustomComponentProps } from "@alliance/shared/forms/customComponents";
 
 const ExampleContractComponent = ({
   user,

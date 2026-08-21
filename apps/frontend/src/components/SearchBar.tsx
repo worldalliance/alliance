@@ -1,7 +1,4 @@
 import { SearchItemDto, searchSaveSelected } from "@alliance/shared/client";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
 import {
   getSearchCategoriesWithItems,
   getSearchSecondaryText,
@@ -9,6 +6,9 @@ import {
   useSearchResults,
 } from "@alliance/shared/lib/search";
 import { cn } from "@alliance/shared/styles/util";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 
 const SearchBar = ({
   autofocus,

@@ -1,4 +1,4 @@
-import { Community } from './entities/community.entity';
+import { Community } from "./entities/community.entity";
 
 /**
  * Non-leader member count (users minus leaders). Safe when relations are unloaded.

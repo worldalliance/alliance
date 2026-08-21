@@ -1,8 +1,8 @@
-import { R, type Result } from '@alliance/common/result';
+import { R, type Result } from "@alliance/common/result";
 
 /** The task was rejected by the limiter, not attempted and failed. */
 export enum SemaphoreRejection {
-  QueueOverflow = 'queue-overflow',
+  QueueOverflow = "queue-overflow",
 }
 
 export class AsyncSemaphore {

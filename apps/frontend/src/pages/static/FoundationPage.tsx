@@ -1,7 +1,7 @@
 import React from "react";
+import { Link, href } from "react-router";
 import Footer from "../../components/Footer";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
-import { Link, href } from "react-router";
 import { GuideLi, GuideOl, GuideP, GuideSection } from "./StaticDocShared";
 
 const FoundationPage: React.FC = () => {

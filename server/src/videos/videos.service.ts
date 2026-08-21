@@ -3,17 +3,17 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
-} from '@aws-sdk/client-s3';
+} from "@aws-sdk/client-s3";
 import {
   BadRequestException,
   Inject,
   Injectable,
   Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'src/utils/Repository';
-import type { VideoDetailResponse } from './dto/video-response.dto';
-import { Video } from './entities/video.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import type { Repository } from "src/utils/Repository";
+import type { VideoDetailResponse } from "./dto/video-response.dto";
+import { Video } from "./entities/video.entity";
 
 @Injectable()
 export class VideosService {
@@ -22,18 +22,18 @@ export class VideosService {
   constructor(
     @InjectRepository(Video)
     private videoRepository: Repository<Video>,
-    @Inject('S3_CLIENT') private readonly s3: S3Client,
+    @Inject("S3_CLIENT") private readonly s3: S3Client,
   ) {}
 
   private readonly bucket = process.env.ASSETS_BUCKET!;
 
   private contentTypeForFile(filename: string) {
-    if (filename.endsWith('.m3u8')) {
-      return 'application/vnd.apple.mpegurl';
-    } else if (filename.endsWith('.vtt')) {
-      return 'text/vtt';
+    if (filename.endsWith(".m3u8")) {
+      return "application/vnd.apple.mpegurl";
+    } else if (filename.endsWith(".vtt")) {
+      return "text/vtt";
     }
-    return 'video/MP2T';
+    return "video/MP2T";
   }
 
   private assertBroadlyPlayable(files: Express.Multer.File[]): void {
@@ -90,7 +90,7 @@ export class VideosService {
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
     const playlist = files.find(
       (f) =>
-        f.originalname.endsWith('.m3u8') && !f.originalname.includes('_vtt'),
+        f.originalname.endsWith(".m3u8") && !f.originalname.includes("_vtt"),
     );
 
     // Upload to S3 before persisting: a failed upload throws before any Video
@@ -108,9 +108,9 @@ export class VideosService {
       this.videoRepository.create({
         key,
         originalFilename: playlist?.originalname ?? files[0].originalname,
-        mime: 'application/vnd.apple.mpegurl',
+        mime: "application/vnd.apple.mpegurl",
         size: totalSize,
-        status: 'ready',
+        status: "ready",
         duration: null,
         processingInfo: null,
       }),
@@ -122,7 +122,7 @@ export class VideosService {
   }
 
   async listVideos(): Promise<Video[]> {
-    return this.videoRepository.find({ order: { dateCreated: 'DESC' } });
+    return this.videoRepository.find({ order: { dateCreated: "DESC" } });
   }
 
   async getVideoDetails(id: number): Promise<VideoDetailResponse | null> {
@@ -137,7 +137,7 @@ export class VideosService {
     );
 
     const segments = (listResult.Contents ?? []).map((obj) => ({
-      filename: obj.Key!.split('/').pop()!,
+      filename: obj.Key!.split("/").pop()!,
       size: obj.Size ?? 0,
       key: obj.Key!,
     }));
@@ -178,7 +178,7 @@ export class VideosService {
       }),
     );
     const staleObjects = (listResult.Contents ?? []).filter(
-      (obj) => !newFilenames.has(obj.Key!.split('/').pop()!),
+      (obj) => !newFilenames.has(obj.Key!.split("/").pop()!),
     );
     await Promise.all(
       staleObjects.map((obj) =>
@@ -189,7 +189,7 @@ export class VideosService {
     );
 
     await this.videoRepository.update(video.id, {
-      status: 'ready',
+      status: "ready",
       processingInfo: null,
     });
     return this.videoRepository.findOneBy({ id });
@@ -215,10 +215,10 @@ export class VideosService {
 const MSE_SAFE_H264_PROFILES = new Set([66, 77, 100]);
 
 const H264_PROFILE_NAMES: Record<number, string> = {
-  88: 'Extended',
-  110: 'High 10 (10-bit)',
-  122: 'High 4:2:2',
-  244: 'High 4:4:4',
+  88: "Extended",
+  110: "High 10 (10-bit)",
+  122: "High 4:2:2",
+  244: "High 4:4:4",
 };
 
 /**
@@ -227,17 +227,17 @@ const H264_PROFILE_NAMES: Record<number, string> = {
  * video codec we police (audio codecs like `mp4a.40.2` are ignored).
  */
 function unsupportedVideoCodecReason(codec: string): string | null {
-  if (codec.startsWith('hvc1') || codec.startsWith('hev1')) {
-    return 'HEVC / H.265, which Firefox cannot decode';
+  if (codec.startsWith("hvc1") || codec.startsWith("hev1")) {
+    return "HEVC / H.265, which Firefox cannot decode";
   }
-  if (codec.startsWith('avc1.')) {
+  if (codec.startsWith("avc1.")) {
     const rest = codec.slice(5);
     // Two forms exist: packed hex `avc1.PPCCLL` (e.g. avc1.640028) and the
     // legacy dotted decimal `avc1.<profile>.<level>` (e.g. avc1.66.30). Parse
     // the profile_idc according to the form so we don't read a decimal `66` as
     // hex `0x66` (= 102) and reject a Baseline stream as unplayable.
-    const profileIdc = rest.includes('.')
-      ? parseInt(rest.split('.')[0], 10)
+    const profileIdc = rest.includes(".")
+      ? parseInt(rest.split(".")[0], 10)
       : parseInt(rest.slice(0, 2), 16);
     if (Number.isNaN(profileIdc) || MSE_SAFE_H264_PROFILES.has(profileIdc)) {
       return null;
@@ -256,13 +256,13 @@ function unsupportedVideoCodecReason(codec: string): string | null {
  * a segment. Returns the first offending `{ codec, reason }`, or `null`.
  */
 export function findUnsupportedVideoCodec(
-  files: Pick<Express.Multer.File, 'originalname' | 'buffer'>[],
+  files: Pick<Express.Multer.File, "originalname" | "buffer">[],
 ): { codec: string; reason: string } | null {
   for (const file of files) {
-    if (!file.originalname.endsWith('.m3u8')) continue;
-    const manifest = file.buffer.toString('utf8');
+    if (!file.originalname.endsWith(".m3u8")) continue;
+    const manifest = file.buffer.toString("utf8");
     for (const match of manifest.matchAll(/CODECS="([^"]*)"/g)) {
-      for (const raw of match[1].split(',')) {
+      for (const raw of match[1].split(",")) {
         const codec = raw.trim();
         const reason = unsupportedVideoCodecReason(codec);
         if (reason) return { codec, reason };
@@ -276,11 +276,11 @@ export function getVideoSource(key: string): string {
   // An empty/whitespace key must not become a bare-origin URL like
   // `https://<cloudfront-domain>/` — the player would then append
   // `/playlist.m3u8` and request a nonexistent bucket-root object (403).
-  if (typeof key !== 'string' || key.trim() === '') return '';
+  if (typeof key !== "string" || key.trim() === "") return "";
 
-  if (key.startsWith('http')) return key;
+  if (key.startsWith("http")) return key;
 
-  if (process.env.USE_CLOUDFRONT === 'true' && process.env.CLOUDFRONT_DOMAIN) {
+  if (process.env.USE_CLOUDFRONT === "true" && process.env.CLOUDFRONT_DOMAIN) {
     return `https://${process.env.CLOUDFRONT_DOMAIN}/${key}`;
   }
 

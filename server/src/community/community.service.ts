@@ -1,39 +1,39 @@
-import { run } from '@alliance/common/run';
+import { run } from "@alliance/common/run";
 import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ImagesService } from 'src/images/images.service';
-import { ConversationService } from 'src/messaging/conversation.service';
-import { NotificationCategory } from 'src/notifs/entities/notification.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ImagesService } from "src/images/images.service";
+import { ConversationService } from "src/messaging/conversation.service";
+import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   type CreateNotifParams,
   NotifsService,
-} from 'src/notifs/notifs.service';
-import { groupUrl } from 'src/search/approutes';
+} from "src/notifs/notifs.service";
+import { groupUrl } from "src/search/approutes";
 import {
   CreateCommunityInviteDto,
   RequestCommunityInviteDto,
-} from 'src/user/dto/invite.dto';
-import { CommunityMemberContactInfo } from 'src/user/dto/user-action-relations.dto';
+} from "src/user/dto/invite.dto";
+import { CommunityMemberContactInfo } from "src/user/dto/user-action-relations.dto";
 import {
   DEFAULT_TIME_ZONE,
   sqlUserHasActiveContractAt,
   User,
-} from 'src/user/entities/user.entity';
-import type { Relations } from 'src/utils/Repository';
-import { DeepPartial, In, IsNull, type Repository } from 'typeorm';
-import { CreateCommunityDto, UpdateCommunityDto } from './dto/community.dto';
+} from "src/user/entities/user.entity";
+import type { Relations } from "src/utils/Repository";
+import { DeepPartial, In, IsNull, type Repository } from "typeorm";
+import { acceptsPublicJoin, acceptsStaffAssignment } from "./community.utils";
+import { CreateCommunityDto, UpdateCommunityDto } from "./dto/community.dto";
 import {
   CommunityInvite,
   CommunityInviteStatus,
-} from './entities/community-invite.entity';
-import { Community } from './entities/community.entity';
-import { acceptsPublicJoin, acceptsStaffAssignment } from './community.utils';
+} from "./entities/community-invite.entity";
+import { Community } from "./entities/community.entity";
 
 const COMMUNITY_DEFAULT_RELATIONS: Readonly<Relations<Community>> =
   Object.freeze({
@@ -47,8 +47,8 @@ const COMMUNITY_DEFAULT_RELATIONS: Readonly<Relations<Community>> =
  * telling an admin which of someone else's blocked the request.
  */
 export enum ContractRefusalAudience {
-  Self = 'self',
-  Staff = 'staff',
+  Self = "self",
+  Staff = "staff",
 }
 
 const CONTRACT_REFUSAL_MESSAGE: Record<
@@ -56,9 +56,9 @@ const CONTRACT_REFUSAL_MESSAGE: Record<
   (blockedNames: string[]) => string
 > = {
   [ContractRefusalAudience.Self]: () =>
-    'You need an active contract to join a group.',
+    "You need an active contract to join a group.",
   [ContractRefusalAudience.Staff]: (blockedNames) =>
-    `Cannot add members without an active contract to a group: ${blockedNames.join(', ')}`,
+    `Cannot add members without an active contract to a group: ${blockedNames.join(", ")}`,
 };
 
 @Injectable()
@@ -98,7 +98,7 @@ export class CommunityService {
   }
 
   async createCommunityAdmin(body: CreateCommunityDto): Promise<Community> {
-    if (body.photo?.startsWith('data:')) {
+    if (body.photo?.startsWith("data:")) {
       body.photo = await this.imagesService.processAndUploadProfileImage(
         body.photo,
       );
@@ -119,10 +119,10 @@ export class CommunityService {
       where: { id: userId },
     });
     if (body.name.trim().length === 0) {
-      throw new BadRequestException('Name cannot be empty');
+      throw new BadRequestException("Name cannot be empty");
     }
 
-    if (body.photo?.startsWith('data:')) {
+    if (body.photo?.startsWith("data:")) {
       body.photo = await this.imagesService.processAndUploadProfileImage(
         body.photo,
       );
@@ -186,12 +186,12 @@ export class CommunityService {
       contractRefusalAudience?: ContractRefusalAudience;
     } & (
       | {
-          user: Pick<User, 'id' | 'name'> & DeepPartial<User>;
+          user: Pick<User, "id" | "name"> & DeepPartial<User>;
           users?: undefined;
         }
       | {
           user?: undefined;
-          users: (Pick<User, 'id' | 'name'> & DeepPartial<User>)[];
+          users: (Pick<User, "id" | "name"> & DeepPartial<User>)[];
         }
     ),
   ): Promise<Community> {
@@ -252,16 +252,16 @@ export class CommunityService {
    * per-add, since that is where the invariant has to hold.
    */
   async assertUsersHaveActiveContracts(
-    users: Pick<User, 'id' | 'name'>[],
+    users: Pick<User, "id" | "name">[],
     audience: ContractRefusalAudience = ContractRefusalAudience.Staff,
   ): Promise<void> {
     const byId = new Map(users.map((user) => [user.id, user]));
     if (byId.size === 0) return;
     const rows = await this.userRepository
-      .createQueryBuilder('u')
-      .select('u.id', 'id')
-      .where('u.id IN (:...userIds)', { userIds: Array.from(byId.keys()) })
-      .andWhere(sqlUserHasActiveContractAt('u.id', 'NOW()'))
+      .createQueryBuilder("u")
+      .select("u.id", "id")
+      .where("u.id IN (:...userIds)", { userIds: Array.from(byId.keys()) })
+      .andWhere(sqlUserHasActiveContractAt("u.id", "NOW()"))
       .getRawMany<{ id: number }>();
     const signed = new Set(rows.map((row) => row.id));
     const blocked = Array.from(byId.values()).filter(
@@ -374,12 +374,12 @@ export class CommunityService {
 
     if (community.users.some((existing) => existing.id === userId)) {
       throw new BadRequestException(
-        'User is already a member of this community',
+        "User is already a member of this community",
       );
     }
 
     if (!acceptsPublicJoin(community)) {
-      throw new BadRequestException('Community is full');
+      throw new BadRequestException("Community is full");
     }
 
     const [addedCommunity] = await Promise.all([
@@ -392,7 +392,7 @@ export class CommunityService {
           category: NotificationCategory.MemberJoinedCommunity,
           message: `${user.name} joined your public group (${community.name})`,
           webAppLocation: groupUrl({
-            tab: 'members',
+            tab: "members",
             communityId: community.id,
           }),
           associatedUsers: [user],
@@ -408,7 +408,7 @@ export class CommunityService {
             category: NotificationCategory.MemberLeftCommunity,
             message: `${user.name} left your group (${community.name})`,
             webAppLocation: groupUrl({
-              tab: 'members',
+              tab: "members",
               communityId: community.id,
             }),
             associatedUsers: [user],
@@ -439,10 +439,10 @@ export class CommunityService {
 
     community.name = name?.trim() ?? community.name;
     if (community.name.length === 0) {
-      throw new BadRequestException('Name cannot be empty');
+      throw new BadRequestException("Name cannot be empty");
     }
 
-    if (photo?.startsWith('data:')) {
+    if (photo?.startsWith("data:")) {
       const key = await this.imagesService.processAndUploadProfileImage(photo);
 
       const updateDataWithPhoto = {
@@ -478,7 +478,7 @@ export class CommunityService {
     }
     if (userId === removeeId) {
       throw new BadRequestException(
-        'You cannot remove yourself from your own community',
+        "You cannot remove yourself from your own community",
       );
     }
 
@@ -505,7 +505,7 @@ export class CommunityService {
             category: NotificationCategory.RemovedFromCommunityForLeader,
             message: `${user.name} removed ${removee.name} from your group (${community.name})`,
             webAppLocation: groupUrl({
-              tab: 'members',
+              tab: "members",
               communityId: community.id,
             }),
             associatedUsers: [removee, user],
@@ -519,7 +519,7 @@ export class CommunityService {
       category: NotificationCategory.RemovedFromCommunity,
       message: `${user.name} removed you from their group (${community.name})`,
       webAppLocation: groupUrl({
-        tab: 'groups',
+        tab: "groups",
       }),
       associatedUsers: [user],
     };
@@ -551,7 +551,7 @@ export class CommunityService {
             category: NotificationCategory.RemovedFromCommunityForLeader,
             message: `Alliance staff removed ${user.name} from your group (${community.name})`,
             webAppLocation: groupUrl({
-              tab: 'members',
+              tab: "members",
               communityId: community.id,
             }),
             associatedUsers: [user],
@@ -565,7 +565,7 @@ export class CommunityService {
       category: NotificationCategory.RemovedFromCommunity,
       message: `Alliance staff removed you from your group (${community.name})`,
       webAppLocation: groupUrl({
-        tab: 'groups',
+        tab: "groups",
       }),
       associatedUsers: [],
     });
@@ -586,14 +586,14 @@ export class CommunityService {
     });
     const user = community.users.find((user) => user.id === userId);
     if (!user) {
-      throw new BadRequestException('User not found in community');
+      throw new BadRequestException("User not found in community");
     }
     if (
       community.leaders!.length === 1 &&
       community.leaders![0].id === userId
     ) {
       throw new BadRequestException(
-        'You cannot leave as the last leader of the community',
+        "You cannot leave as the last leader of the community",
       );
     }
 
@@ -606,7 +606,7 @@ export class CommunityService {
         category: NotificationCategory.MemberLeftCommunity,
         message: `${user.name} left your group (${community.name})`,
         webAppLocation: groupUrl({
-          tab: 'members',
+          tab: "members",
           communityId: community.id,
         }),
         associatedUsers: [user],
@@ -627,12 +627,12 @@ export class CommunityService {
       throw new NotFoundException();
     }
     if (user.communities.length !== 1) {
-      throw new InternalServerErrorException('Multiple communities found');
+      throw new InternalServerErrorException("Multiple communities found");
     }
     const community = user.communities[0];
     if (community.users.some((user) => user.id !== userId)) {
       throw new BadRequestException(
-        'User cannot delete community with other members',
+        "User cannot delete community with other members",
       );
     }
     await this.communityRepository.delete(communityId);
@@ -659,7 +659,7 @@ export class CommunityService {
   }): Promise<void> {
     const { sourceCommunityId, destinationCommunityId, userId } = params;
     if (sourceCommunityId === destinationCommunityId) {
-      throw new BadRequestException('Source and destination must be different');
+      throw new BadRequestException("Source and destination must be different");
     }
 
     await this.placeUserInCommunityAdmin({
@@ -682,7 +682,7 @@ export class CommunityService {
         const userRepository = manager.getRepository(User);
         const user = await userRepository.findOneOrFail({
           where: { id: userId },
-          lock: { mode: 'pessimistic_write' },
+          lock: { mode: "pessimistic_write" },
         });
 
         const communityIds = Array.from(
@@ -696,7 +696,7 @@ export class CommunityService {
           await communityRepository.findOneOrFail({
             where: { id },
             select: { id: true },
-            lock: { mode: 'pessimistic_write' },
+            lock: { mode: "pessimistic_write" },
           });
         }
 
@@ -722,7 +722,7 @@ export class CommunityService {
         }
         if (sourceCommunity?.leaders?.some((leader) => leader.id === userId)) {
           throw new BadRequestException(
-            'Group leaders cannot be moved without first removing their leader role',
+            "Group leaders cannot be moved without first removing their leader role",
           );
         }
         if (destinationCommunity.users.some((member) => member.id === userId)) {
@@ -777,7 +777,7 @@ export class CommunityService {
       category: NotificationCategory.MemberJoinedCommunity,
       message: `Staff added ${user.name} to your group (${destinationCommunity.name})`,
       webAppLocation: groupUrl({
-        tab: 'members',
+        tab: "members",
         communityId: destinationCommunity.id,
       }),
       associatedUsers: [user],
@@ -788,7 +788,7 @@ export class CommunityService {
           category: NotificationCategory.RemovedFromCommunityForLeader,
           message: `Alliance staff removed ${user.name} from your group (${sourceCommunity.name})`,
           webAppLocation: groupUrl({
-            tab: 'members',
+            tab: "members",
             communityId: sourceCommunity.id,
           }),
           associatedUsers: [user],
@@ -837,9 +837,9 @@ export class CommunityService {
     );
     results.forEach((result, index) => {
       switch (result.status) {
-        case 'fulfilled':
+        case "fulfilled":
           break;
-        case 'rejected':
+        case "rejected":
           this.logger.error(
             `Post-commit membership effect failed: ${effects[index].description}`,
             result.reason,
@@ -942,7 +942,7 @@ export class CommunityService {
       leaderId !== undefined &&
       !community.leaders!.some((leader) => leader.id === leaderId)
     ) {
-      throw new BadRequestException('User is not a leader of this community');
+      throw new BadRequestException("User is not a leader of this community");
     }
 
     const leader = await leaderP;
@@ -964,7 +964,7 @@ export class CommunityService {
       where: { id: userId },
     });
     if (!invitingUser.admin && !invitingUser.leaderOfIdSet.has(communityId)) {
-      throw new BadRequestException('User is not a leader of this community');
+      throw new BadRequestException("User is not a leader of this community");
     }
 
     const existingInvites = await this.communityInviteRepository.find({
@@ -980,7 +980,7 @@ export class CommunityService {
       )
     ) {
       throw new BadRequestException(
-        'User has already been invited to this community',
+        "User has already been invited to this community",
       );
     }
 
@@ -997,7 +997,7 @@ export class CommunityService {
       category: NotificationCategory.CommunityInviteCreated,
       message: `${invitingUser.name} invited you to join their group (${community.name})`,
       webAppLocation: groupUrl({
-        tab: 'groups',
+        tab: "groups",
       }),
       associatedUsers: [invitingUser],
       communityInvite: invite,
@@ -1065,28 +1065,28 @@ export class CommunityService {
       )
     ) {
       throw new BadRequestException(
-        'This user already has a pending invite to this community.',
+        "This user already has a pending invite to this community.",
       );
     }
 
     const invitedUser = await invitedUserP;
     if (!invitedUser) {
-      throw new BadRequestException('Invited user not found');
+      throw new BadRequestException("Invited user not found");
     }
     if (invitedUser.communities.some((c) => c.id === communityId)) {
       throw new BadRequestException(
-        'Invited user is already a member of the community',
+        "Invited user is already a member of the community",
       );
     }
 
     const invitingUser = await invitingUserP;
     if (!invitingUser) {
-      throw new BadRequestException('Inviting user not found');
+      throw new BadRequestException("Inviting user not found");
     }
 
     const community = await communityP;
     if (!community) {
-      throw new BadRequestException('Community not found');
+      throw new BadRequestException("Community not found");
     }
     const invite = this.communityInviteRepository.create({
       invitedUser,
@@ -1112,7 +1112,7 @@ export class CommunityService {
               category: NotificationCategory.CommunityInviteRequestCreated,
               message: `${invitingUser.name} requested an invite for ${invitedUser.name} (${community.name})`,
               webAppLocation: groupUrl({
-                tab: 'invites',
+                tab: "invites",
                 communityId: community.id,
               }),
               associatedUsers: [invitingUser, invitedUser],
@@ -1145,7 +1145,7 @@ export class CommunityService {
 
     const user = await userP;
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException("User not found");
     }
     if (!user.leaderOfIds.some((cid) => cid === invite.community.id)) {
       throw new BadRequestException(
@@ -1162,7 +1162,7 @@ export class CommunityService {
         category: NotificationCategory.CommunityInviteCreated,
         message: `${invite.invitingUser?.name ?? user.name} invited you to join their group (${invite.community.name})`,
         webAppLocation: groupUrl({
-          tab: 'groups',
+          tab: "groups",
         }),
         associatedUsers: [invite.invitingUser ?? user],
         communityInvite: invite,
@@ -1174,7 +1174,7 @@ export class CommunityService {
               category: NotificationCategory.CommunityInviteCreated,
               message: `Your request to invite ${invite.invitedUser.name} was approved`,
               webAppLocation: groupUrl({
-                tab: 'groups',
+                tab: "groups",
                 communityId: invite.community.id,
               }),
               associatedUsers: [],
@@ -1207,7 +1207,7 @@ export class CommunityService {
 
     const user = await userP;
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException("User not found");
     }
     if (!user.leaderOfIds.some((cid) => cid === invite.community.id)) {
       throw new BadRequestException(
@@ -1224,7 +1224,7 @@ export class CommunityService {
         category: NotificationCategory.CommunityInviteRequestRejected,
         message: `Your request to invite ${invite.invitedUser.name} was rejected`,
         webAppLocation: groupUrl({
-          tab: 'groups',
+          tab: "groups",
         }),
         associatedUsers: [user],
         communityInvite: invite,
@@ -1309,7 +1309,7 @@ export class CommunityService {
             category: NotificationCategory.MemberJoinedCommunity,
             message: `${invite.invitedUser.name} joined your group (${community.name})`,
             webAppLocation: groupUrl({
-              tab: 'members',
+              tab: "members",
               communityId: community.id,
             }),
             associatedUsers: [invite.invitedUser],
@@ -1328,7 +1328,7 @@ export class CommunityService {
               category: NotificationCategory.MemberLeftCommunity,
               message: `${invite.invitedUser.name} left your group (${c.name})`,
               webAppLocation: groupUrl({
-                tab: 'members',
+                tab: "members",
                 communityId: c.id,
               }),
               associatedUsers: [invite.invitedUser],
@@ -1344,7 +1344,7 @@ export class CommunityService {
         category: NotificationCategory.CommunityInviteAccepted,
         message: `${invite.invitedUser.name} accepted your invitation to join your group (${community.name})`,
         webAppLocation: groupUrl({
-          tab: 'members',
+          tab: "members",
           communityId: community.id,
         }),
         associatedUsers: [invite.invitedUser],
@@ -1384,7 +1384,7 @@ export class CommunityService {
       category: NotificationCategory.CommunityInviteRejected,
       message: `${invite.invitedUser?.name} declined your invitation to join your group (${invite.community.name})`,
       webAppLocation: groupUrl({
-        tab: 'invites',
+        tab: "invites",
         communityId: invite.community.id,
       }),
       associatedUsers: [invite.invitedUser],

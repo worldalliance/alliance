@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { City } from './city.entity';
-import type { Repository } from 'src/utils/Repository';
-import { InjectRepository } from '@nestjs/typeorm';
-import path from 'path';
-import fs from 'fs';
-import readline from 'readline';
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import fs from "fs";
+import path from "path";
+import readline from "readline";
+import type { Repository } from "src/utils/Repository";
+import { City } from "./city.entity";
 
 @Injectable()
 export class GeoService {
@@ -16,12 +16,12 @@ export class GeoService {
   async collectCityIds(filePath: string): Promise<Set<number>> {
     const ids = new Set<number>();
 
-    const stream = fs.createReadStream(filePath, { encoding: 'utf-8' });
+    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
     const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
     for await (const line of rl) {
-      if (!line || line.startsWith('#')) continue;
-      const geonameid = line.split('\t', 2)[0];
+      if (!line || line.startsWith("#")) continue;
+      const geonameid = line.split("\t", 2)[0];
       if (!geonameid) continue;
       ids.add(parseInt(geonameid, 10));
     }
@@ -30,34 +30,34 @@ export class GeoService {
   }
 
   async loadCountryDataFromTxt(): Promise<Record<string, string>> {
-    const filePath = path.join(__dirname, 'countryInfo.txt');
+    const filePath = path.join(__dirname, "countryInfo.txt");
     const countries: Record<string, string> = {};
-    const data = fs.readFileSync(filePath, { encoding: 'utf-8' });
-    const lines = data.split('\n').filter((line) => !line.startsWith('#'));
+    const data = fs.readFileSync(filePath, { encoding: "utf-8" });
+    const lines = data.split("\n").filter((line) => !line.startsWith("#"));
     for (const line of lines) {
-      const [ISO, _ISO3, _ISO_NUMERIC, _fips, country] = line.split('\t', 5);
+      const [ISO, _ISO3, _ISO_NUMERIC, _fips, country] = line.split("\t", 5);
       countries[ISO] = country;
     }
     return countries;
   }
 
   async loadEnglishNamesForIds(ids: Set<number>): Promise<Map<number, string>> {
-    const filePath = path.join(__dirname, 'alternateNames.txt');
+    const filePath = path.join(__dirname, "alternateNames.txt");
     const english = new Map<number, string>();
 
-    const stream = fs.createReadStream(filePath, { encoding: 'utf-8' });
+    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
     const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
     for await (const line of rl) {
       if (!line) continue;
-      const cols = line.split('\t');
+      const cols = line.split("\t");
       // GeoNames: [alternateNameId, geonameid, isolanguage, alternateName, isPreferredName, ...]
       const geonameid = cols[1];
       const isolanguage = cols[2];
       const altName = cols[3];
-      const isPreferred = cols[4] === '1';
+      const isPreferred = cols[4] === "1";
 
-      if (isolanguage !== 'en' || !geonameid || !altName) continue;
+      if (isolanguage !== "en" || !geonameid || !altName) continue;
 
       const id = parseInt(geonameid, 10);
       if (!ids.has(id)) continue;
@@ -72,23 +72,23 @@ export class GeoService {
   }
 
   async loadCityDataFromTxt(): Promise<void> {
-    const citiesPath = path.join(__dirname, 'cities5000.txt');
+    const citiesPath = path.join(__dirname, "cities5000.txt");
 
     const countries = await this.loadCountryDataFromTxt();
 
     const ids = await this.collectCityIds(citiesPath);
     const englishNames = await this.loadEnglishNamesForIds(ids);
 
-    const stream = fs.createReadStream(citiesPath, { encoding: 'utf-8' });
+    const stream = fs.createReadStream(citiesPath, { encoding: "utf-8" });
     const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
     const batch: City[] = [];
     const BATCH_SIZE = 500;
 
     for await (const line of rl) {
-      if (!line || line.startsWith('#')) continue;
+      if (!line || line.startsWith("#")) continue;
 
-      const cols = line.split('\t');
+      const cols = line.split("\t");
       const geonameid = cols[0];
       if (!geonameid) continue;
 
@@ -132,19 +132,19 @@ export class GeoService {
     longitude?: number,
   ): Promise<City[]> {
     const qb = this.cityRepository
-      .createQueryBuilder('c')
-      .where('(c.name ILIKE :q OR c.englishName ILIKE :q)', {
+      .createQueryBuilder("c")
+      .where("(c.name ILIKE :q OR c.englishName ILIKE :q)", {
         q: `%${query}%`,
       });
 
     if (latitude != null && longitude != null) {
       qb.orderBy(
-        '( (c.latitude  - :lat) * (c.latitude  - :lat) ' +
-          '+ (c.longitude - :lon) * (c.longitude - :lon) )',
-        'ASC',
+        "( (c.latitude  - :lat) * (c.latitude  - :lat) " +
+          "+ (c.longitude - :lon) * (c.longitude - :lon) )",
+        "ASC",
       ).setParameters({ lat: latitude, lon: longitude });
     } else {
-      qb.orderBy('c.name', 'ASC');
+      qb.orderBy("c.name", "ASC");
     }
 
     const cities = await qb.limit(10).getMany();

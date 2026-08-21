@@ -1,13 +1,13 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsNotEmpty, IsOptional } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsNotEmpty, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { User } from 'src/user/entities/user.entity';
-import type { Relation } from 'src/utils/Repository';
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+} from "src/datasources/basecolumns";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Cluster {

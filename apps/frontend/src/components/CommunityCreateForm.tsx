@@ -266,7 +266,9 @@ const CommunityCreateForm = ({
       </div>
       {!hideSubmitButton && (
         <div className="flex flex-row justify-end">
-          <div className={cn("flex gap-x-1 mt-1", fullWidthButtons && "w-full")}>
+          <div
+            className={cn("flex gap-x-1 mt-1", fullWidthButtons && "w-full")}
+          >
             {onCancel && (
               <Button
                 onClick={onCancel}

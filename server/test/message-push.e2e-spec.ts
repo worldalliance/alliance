@@ -1,14 +1,14 @@
-import request from 'supertest';
-import type { Repository } from 'typeorm';
-import { Expo } from 'expo-server-sdk';
-import { MessagingModule } from 'src/messaging/messaging.module';
-import { User } from 'src/user/entities/user.entity';
-import { UserDevice } from 'src/user/entities/user-device.entity';
-import { Push } from 'src/push/push.entity';
-import { EXPO_CLIENT } from 'src/push/push.service';
-import { createTestApp, TestContext } from './e2e-test-utils';
+import { Expo } from "expo-server-sdk";
+import { MessagingModule } from "src/messaging/messaging.module";
+import { Push } from "src/push/push.entity";
+import { EXPO_CLIENT } from "src/push/push.service";
+import { UserDevice } from "src/user/entities/user-device.entity";
+import { User } from "src/user/entities/user.entity";
+import request from "supertest";
+import type { Repository } from "typeorm";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
-describe('Message Push Notifications (e2e)', () => {
+describe("Message Push Notifications (e2e)", () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
   let deviceRepo: Repository<UserDevice>;
@@ -23,7 +23,7 @@ describe('Message Push Notifications (e2e)', () => {
     const user = userRepo.create({
       name: `Push User ${userCounter}`,
       email: `pushuser${userCounter}@example.com`,
-      password: 'pass',
+      password: "pass",
       tags: [ctx.defaultTag],
       ...overrides,
     });
@@ -43,7 +43,7 @@ describe('Message Push Notifications (e2e)', () => {
     await deviceRepo.save(
       deviceRepo.create({
         user,
-        deviceType: 'iOS',
+        deviceType: "iOS",
         expoPushToken,
       }),
     );
@@ -57,8 +57,8 @@ describe('Message Push Notifications (e2e)', () => {
     body: string,
   ) => {
     const res = await request(ctx.app.getHttpServer())
-      .post('/messaging/messages')
-      .set('Authorization', `Bearer ${senderToken}`)
+      .post("/messaging/messages")
+      .set("Authorization", `Bearer ${senderToken}`)
       .send({ conversationId, body })
       .expect(201);
     // Give the async event listener time to process
@@ -71,8 +71,8 @@ describe('Message Push Notifications (e2e)', () => {
     targetUserId: number,
   ): Promise<number> => {
     const res = await request(ctx.app.getHttpServer())
-      .post('/messaging/conversations/direct')
-      .set('Authorization', `Bearer ${initiatorToken}`)
+      .post("/messaging/conversations/direct")
+      .set("Authorization", `Bearer ${initiatorToken}`)
       .send({ targetUserId })
       .expect(201);
     return res.body.id;
@@ -84,8 +84,8 @@ describe('Message Push Notifications (e2e)', () => {
     participantIds: number[],
   ): Promise<number> => {
     const res = await request(ctx.app.getHttpServer())
-      .post('/messaging/conversations/group')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .post("/messaging/conversations/group")
+      .set("Authorization", `Bearer ${ownerToken}`)
       .send({ title, participantIds })
       .expect(201);
     return res.body.id;
@@ -100,13 +100,13 @@ describe('Message Push Notifications (e2e)', () => {
     // Mock the Expo client so we never hit the real push service
     const expo = ctx.app.get<Expo>(EXPO_CLIENT);
     mockSendPush = jest.fn(async (messages) =>
-      messages.map(() => ({ status: 'ok', id: `receipt-${Date.now()}` })),
+      messages.map(() => ({ status: "ok", id: `receipt-${Date.now()}` })),
     );
     jest
-      .spyOn(expo, 'chunkPushNotifications')
+      .spyOn(expo, "chunkPushNotifications")
       .mockImplementation((msgs) => [msgs]);
     jest
-      .spyOn(expo, 'sendPushNotificationsAsync')
+      .spyOn(expo, "sendPushNotificationsAsync")
       .mockImplementation(mockSendPush);
   }, 50000);
 
@@ -116,8 +116,8 @@ describe('Message Push Notifications (e2e)', () => {
     }
   });
 
-  describe('direct conversations', () => {
-    it('creates a push for the recipient when a message is sent', async () => {
+  describe("direct conversations", () => {
+    it("creates a push for the recipient when a message is sent", async () => {
       const { token: senderToken } = await createUserWithDevice();
       const { user: recipient, expoPushToken } = await createUserWithDevice();
 
@@ -126,18 +126,18 @@ describe('Message Push Notifications (e2e)', () => {
         recipient.id,
       );
 
-      await sendMessage(senderToken, conversationId, 'Hey, are you free?');
+      await sendMessage(senderToken, conversationId, "Hey, are you free?");
 
       const pushes = await pushRepo.find({
         where: { expoPushToken },
       });
       expect(pushes).toHaveLength(1);
-      expect(pushes[0].body).toContain('Hey, are you free?');
+      expect(pushes[0].body).toContain("Hey, are you free?");
       expect(pushes[0].screen).toBe(`/messages/${conversationId}`);
-      expect(pushes[0].ticketStatus).toBe('ok');
+      expect(pushes[0].ticketStatus).toBe("ok");
     });
 
-    it('does not create a push for the sender', async () => {
+    it("does not create a push for the sender", async () => {
       const { token: senderToken, expoPushToken: senderPushToken } =
         await createUserWithDevice();
       const { user: recipient } = await createUserWithDevice();
@@ -147,7 +147,7 @@ describe('Message Push Notifications (e2e)', () => {
         recipient.id,
       );
 
-      await sendMessage(senderToken, conversationId, 'Hello');
+      await sendMessage(senderToken, conversationId, "Hello");
 
       const senderPushes = await pushRepo.find({
         where: { expoPushToken: senderPushToken },
@@ -156,8 +156,8 @@ describe('Message Push Notifications (e2e)', () => {
     });
   });
 
-  describe('user preferences', () => {
-    it('does not push when pushesForMessages is false', async () => {
+  describe("user preferences", () => {
+    it("does not push when pushesForMessages is false", async () => {
       const { token: senderToken } = await createUserWithDevice();
       const { user: recipient, expoPushToken } = await createUserWithDevice({
         pushesForMessages: false,
@@ -168,7 +168,7 @@ describe('Message Push Notifications (e2e)', () => {
         recipient.id,
       );
 
-      await sendMessage(senderToken, conversationId, 'Will you see this?');
+      await sendMessage(senderToken, conversationId, "Will you see this?");
 
       const pushes = await pushRepo.find({
         where: { expoPushToken },
@@ -176,7 +176,7 @@ describe('Message Push Notifications (e2e)', () => {
       expect(pushes).toHaveLength(0);
     });
 
-    it('does not push when turnedOffAllNotifs is true', async () => {
+    it("does not push when turnedOffAllNotifs is true", async () => {
       const { token: senderToken } = await createUserWithDevice();
       const { user: recipient, expoPushToken } = await createUserWithDevice({
         turnedOffAllNotifs: true,
@@ -187,7 +187,7 @@ describe('Message Push Notifications (e2e)', () => {
         recipient.id,
       );
 
-      await sendMessage(senderToken, conversationId, 'No notifs please');
+      await sendMessage(senderToken, conversationId, "No notifs please");
 
       const pushes = await pushRepo.find({
         where: { expoPushToken },
@@ -196,8 +196,8 @@ describe('Message Push Notifications (e2e)', () => {
     });
   });
 
-  describe('group conversations', () => {
-    it('sends pushes to all non-sender participants with group format', async () => {
+  describe("group conversations", () => {
+    it("sends pushes to all non-sender participants with group format", async () => {
       const { token: ownerToken } = await createUserWithDevice();
       const { user: memberA, expoPushToken: tokenA } =
         await createUserWithDevice();
@@ -206,7 +206,7 @@ describe('Message Push Notifications (e2e)', () => {
 
       const conversationId = await createGroupConversation(
         ownerToken,
-        'Project Team',
+        "Project Team",
         [memberA.id, memberB.id],
       );
 
@@ -221,14 +221,14 @@ describe('Message Push Notifications (e2e)', () => {
       );
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/accept`)
-        .set('Authorization', `Bearer ${memberAToken}`)
+        .set("Authorization", `Bearer ${memberAToken}`)
         .expect(201);
       await request(ctx.app.getHttpServer())
         .post(`/messaging/conversations/${conversationId}/accept`)
-        .set('Authorization', `Bearer ${memberBToken}`)
+        .set("Authorization", `Bearer ${memberBToken}`)
         .expect(201);
 
-      await sendMessage(ownerToken, conversationId, 'Hey everyone');
+      await sendMessage(ownerToken, conversationId, "Hey everyone");
 
       const pushesA = await pushRepo.find({ where: { expoPushToken: tokenA } });
       const pushesB = await pushRepo.find({ where: { expoPushToken: tokenB } });
@@ -237,14 +237,14 @@ describe('Message Push Notifications (e2e)', () => {
       expect(pushesB).toHaveLength(1);
 
       // Group format: "SenderName in GroupTitle: message"
-      expect(pushesA[0].body).toContain('in Project Team');
-      expect(pushesA[0].body).toContain('Hey everyone');
-      expect(pushesB[0].body).toContain('in Project Team');
+      expect(pushesA[0].body).toContain("in Project Team");
+      expect(pushesA[0].body).toContain("Hey everyone");
+      expect(pushesB[0].body).toContain("in Project Team");
     });
   });
 
-  describe('idempotency', () => {
-    it('prevents duplicate pushes for the same message via idempotency key', async () => {
+  describe("idempotency", () => {
+    it("prevents duplicate pushes for the same message via idempotency key", async () => {
       const { token: senderToken } = await createUserWithDevice();
       const { user: recipient, expoPushToken } = await createUserWithDevice();
 
@@ -256,7 +256,7 @@ describe('Message Push Notifications (e2e)', () => {
       const msgRes = await sendMessage(
         senderToken,
         conversationId,
-        'Unique message',
+        "Unique message",
       );
 
       const pushes = await pushRepo.find({
@@ -267,8 +267,8 @@ describe('Message Push Notifications (e2e)', () => {
     });
   });
 
-  describe('multiple devices', () => {
-    it('sends a push to each of the recipient devices', async () => {
+  describe("multiple devices", () => {
+    it("sends a push to each of the recipient devices", async () => {
       const { token: senderToken } = await createUserWithDevice();
       const { user: recipient } = await createUserAndToken();
 
@@ -277,12 +277,12 @@ describe('Message Push Notifications (e2e)', () => {
       await deviceRepo.save([
         deviceRepo.create({
           user: recipient,
-          deviceType: 'iOS',
+          deviceType: "iOS",
           expoPushToken: token1,
         }),
         deviceRepo.create({
           user: recipient,
-          deviceType: 'Android',
+          deviceType: "Android",
           expoPushToken: token2,
         }),
       ]);
@@ -292,7 +292,7 @@ describe('Message Push Notifications (e2e)', () => {
         recipient.id,
       );
 
-      await sendMessage(senderToken, conversationId, 'Multi-device test');
+      await sendMessage(senderToken, conversationId, "Multi-device test");
 
       const pushes1 = await pushRepo.find({
         where: { expoPushToken: token1 },

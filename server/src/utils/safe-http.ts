@@ -1,15 +1,15 @@
-import { R, type Result } from '@alliance/common/result';
-import ipaddr from 'ipaddr.js';
-import { lookup as dnsLookup } from 'node:dns/promises';
+import { R, type Result } from "@alliance/common/result";
+import ipaddr from "ipaddr.js";
+import { lookup as dnsLookup } from "node:dns/promises";
 import {
   request as httpRequest,
   type IncomingHttpHeaders,
   type RequestOptions,
-} from 'node:http';
-import { request as httpsRequest } from 'node:https';
-import { isIP } from 'node:net';
-import { pipeline, type Readable } from 'node:stream';
-import { createBrotliDecompress, createGunzip } from 'node:zlib';
+} from "node:http";
+import { request as httpsRequest } from "node:https";
+import { isIP } from "node:net";
+import { pipeline, type Readable } from "node:stream";
+import { createBrotliDecompress, createGunzip } from "node:zlib";
 
 /**
  * SSRF-guarded outbound HTTP: fetch a caller-supplied URL without letting it
@@ -25,12 +25,12 @@ const FETCH_TIMEOUT_MS = 5_000;
 // to FETCH_TIMEOUT_MS, so only the first few get a connection attempt.
 const MAX_ADDRESSES_TRIED = 2;
 const MAX_REDIRECTS = 3;
-export const HTML_ACCEPT = 'text/html,application/xhtml+xml';
+export const HTML_ACCEPT = "text/html,application/xhtml+xml";
 
 // Honest bot UA — sites like Wikipedia 403 spoofed crawler tokens
 // (e.g. a fake facebookexternalhit), so don't add any.
 const USER_AGENT =
-  'Mozilla/5.0 (compatible; AllianceLinkPreview/1.0; +https://worldalliance.org)';
+  "Mozilla/5.0 (compatible; AllianceLinkPreview/1.0; +https://worldalliance.org)";
 
 /**
  * The fetcher's only two touchpoints with the network, injectable so tests
@@ -88,7 +88,7 @@ export async function fetchWithRedirects(
     const response = await getWithSafeLookup(current, transport, options);
 
     if (isRedirect(response.status)) {
-      const location = getHeader(response.headers, 'location');
+      const location = getHeader(response.headers, "location");
       response.body.destroy();
       if (!location) {
         return R.failure(
@@ -118,9 +118,9 @@ export async function fetchWithRedirects(
 
 /** Which rule makes a caller-supplied URL one we will never fetch. */
 export enum UnfetchableUrl {
-  Malformed = 'malformed',
-  UnsupportedScheme = 'unsupported-scheme',
-  ExplicitPort = 'explicit-port',
+  Malformed = "malformed",
+  UnsupportedScheme = "unsupported-scheme",
+  ExplicitPort = "explicit-port",
 }
 
 /**
@@ -141,10 +141,10 @@ export function parseHttpUrl(
   } catch {
     return R.failure(UnfetchableUrl.Malformed);
   }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
     return R.failure(UnfetchableUrl.UnsupportedScheme);
   }
-  if (url.port !== '' && url.port !== '80' && url.port !== '443') {
+  if (url.port !== "" && url.port !== "80" && url.port !== "443") {
     return R.failure(UnfetchableUrl.ExplicitPort);
   }
   return R.success(url);
@@ -192,7 +192,7 @@ function getWithResolvedAddress(
   target: ResolvedAddress,
   options: FetchOptions,
 ): Promise<SafeHttpResponse> {
-  const request = url.protocol === 'https:' ? httpsRequest : httpRequest;
+  const request = url.protocol === "https:" ? httpsRequest : httpRequest;
   // Whichever fires first aborts the attempt — including a response body
   // that is still streaming when the deadline hits.
   const signal = AbortSignal.any([
@@ -206,7 +206,7 @@ function getWithResolvedAddress(
       (res) => {
         // Keep a listener attached for late response errors so a best-effort
         // fetch never brings down the server process.
-        res.once('error', () => {});
+        res.once("error", () => {});
         resolve({
           status: res.statusCode ?? 0,
           headers: res.headers,
@@ -215,7 +215,7 @@ function getWithResolvedAddress(
       },
     );
 
-    req.once('error', reject);
+    req.once("error", reject);
     req.end();
   });
 }
@@ -231,7 +231,7 @@ type SafeHttpRequestOptions = RequestOptions & {
 
 export async function resolvePublicAddresses(
   url: URL,
-  lookup: SafeHttpTransport['lookup'] = defaultSafeHttpTransport.lookup,
+  lookup: SafeHttpTransport["lookup"] = defaultSafeHttpTransport.lookup,
 ): Promise<ResolvedAddress[]> {
   const hostname = normalizeHostname(url.hostname);
   const literalFamily = isIP(hostname);
@@ -244,7 +244,7 @@ export async function resolvePublicAddresses(
   }
 
   if (isLocalHostname(hostname)) {
-    throw new Error('Blocked localhost');
+    throw new Error("Blocked localhost");
   }
 
   const addresses = await lookup(hostname);
@@ -278,14 +278,14 @@ export function buildRequestOptions(
     family: target.family,
     headers: {
       host: url.host,
-      'user-agent': USER_AGENT,
+      "user-agent": USER_AGENT,
       accept: extras.accept ?? HTML_ACCEPT,
       // Advertised so decodedBodyStream's supported encodings are exercised
       // by compliant servers too, not just the ones that compress unasked.
-      'accept-encoding': 'gzip, br',
+      "accept-encoding": "gzip, br",
     },
     hostname: target.address,
-    method: 'GET',
+    method: "GET",
     path: `${url.pathname}${url.search}`,
     port: url.port ? Number(url.port) : defaultPortForProtocol(url.protocol),
     protocol: url.protocol,
@@ -296,9 +296,9 @@ export function buildRequestOptions(
 
 function defaultPortForProtocol(protocol: string): number {
   switch (protocol) {
-    case 'http:':
+    case "http:":
       return 80;
-    case 'https:':
+    case "https:":
       return 443;
     default:
       throw new Error(`unsupported protocol: ${protocol}`);
@@ -307,13 +307,13 @@ function defaultPortForProtocol(protocol: string): number {
 
 export function normalizeHostname(hostname: string): string {
   return hostname
-    .replace(/^\[|\]$/g, '')
-    .replace(/\.$/, '')
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/, "")
     .toLowerCase();
 }
 
 export function isLocalHostname(hostname: string): boolean {
-  return hostname === 'localhost' || hostname.endsWith('.localhost');
+  return hostname === "localhost" || hostname.endsWith(".localhost");
 }
 
 export function getHeader(
@@ -331,8 +331,8 @@ export function getHeader(
 // fetch: deprecated site-local (RFC 3879 — may address an internal host) and
 // the RFC 6666 discard-only block.
 const EXTRA_BLOCKED_V6: ReadonlyArray<[ipaddr.IPv6, number]> = [
-  [ipaddr.parse('fec0::') as ipaddr.IPv6, 10],
-  [ipaddr.parse('100::') as ipaddr.IPv6, 64],
+  [ipaddr.parse("fec0::") as ipaddr.IPv6, 10],
+  [ipaddr.parse("100::") as ipaddr.IPv6, 64],
 ];
 
 /**
@@ -352,16 +352,16 @@ export function isPrivateAddress(address: string): boolean {
   } catch {
     return true; // unparseable — fail closed
   }
-  if (parsed.kind() === 'ipv6') {
+  if (parsed.kind() === "ipv6") {
     const v6 = parsed as ipaddr.IPv6;
     if (v6.isIPv4MappedAddress()) {
       parsed = v6.toIPv4Address();
     }
   }
-  if (parsed.range() !== 'unicast') {
+  if (parsed.range() !== "unicast") {
     return true;
   }
-  if (parsed.kind() === 'ipv6') {
+  if (parsed.kind() === "ipv6") {
     const v6 = parsed as ipaddr.IPv6;
     return EXTRA_BLOCKED_V6.some(([net, bits]) => v6.match(net, bits));
   }
@@ -379,13 +379,13 @@ export function decodedBodyStream(
   body: Readable,
   contentEncoding: string | null,
 ): Readable {
-  const encoding = contentEncoding?.trim().toLowerCase() ?? 'identity';
-  if (encoding === '' || encoding === 'identity') {
+  const encoding = contentEncoding?.trim().toLowerCase() ?? "identity";
+  if (encoding === "" || encoding === "identity") {
     return body;
   }
-  if (encoding === 'gzip' || encoding === 'x-gzip' || encoding === 'br') {
+  if (encoding === "gzip" || encoding === "x-gzip" || encoding === "br") {
     const decompress =
-      encoding === 'br' ? createBrotliDecompress() : createGunzip();
+      encoding === "br" ? createBrotliDecompress() : createGunzip();
     // pipeline (not .pipe) so teardown propagates both ways: when
     // readBodyCapped destroys the decompress stream at the byte cap, the
     // underlying socket must stop downloading too.
@@ -404,7 +404,7 @@ export async function readBodyCapped(
   let total = 0;
 
   for await (const chunk of body) {
-    const value = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+    const value = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
     chunks.push(value);
     total += value.byteLength;
     if (total > maxBytes) {

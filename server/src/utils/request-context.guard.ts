@@ -1,5 +1,5 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { requestContext } from './request-context';
+import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
+import { requestContext } from "./request-context";
 
 /**
  * Stamps the matched route pattern and controller handler onto the request
@@ -11,7 +11,7 @@ import { requestContext } from './request-context';
 @Injectable()
 export class RouteContextGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    if (context.getType() !== 'http') return true;
+    if (context.getType() !== "http") return true;
     const ctx = requestContext.getStore();
     if (ctx) {
       ctx.route = context.switchToHttp().getRequest().route?.path;

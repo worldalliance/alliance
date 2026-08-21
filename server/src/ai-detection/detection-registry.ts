@@ -1,4 +1,4 @@
-import { DetectableEntity } from './entities/ai-detection-result.entity';
+import { DetectableEntity } from "./entities/ai-detection-result.entity";
 
 export interface DetectedField {
   fieldPath: string;
@@ -26,7 +26,7 @@ export const DETECTION_REGISTRY: DetectableFieldConfig[] = [
     entityType: DetectableEntity.Comment,
     extractText: (comment: { editableContent?: { body?: unknown } }) => {
       const body = comment?.editableContent?.body;
-      if (typeof body !== 'string') {
+      if (typeof body !== "string") {
         return [];
       }
       const trimmedBody = body.trim();
@@ -35,7 +35,7 @@ export const DETECTION_REGISTRY: DetectableFieldConfig[] = [
       }
       return [
         {
-          fieldPath: 'editableContent.body',
+          fieldPath: "editableContent.body",
           text: trimmedBody,
         },
       ];
@@ -50,14 +50,14 @@ export const DETECTION_REGISTRY: DetectableFieldConfig[] = [
       response.skipAiDetection
         ? []
         : Object.entries(response.answers ?? {})
-          .filter(
-            ([, value]) =>
-              typeof value === 'string' &&
-              isLongEnoughForDetection(value.trim()),
-          )
-          .map(([key, value]: [string, string]) => ({
-            fieldPath: `answers.${key}`,
-            text: value.trim(),
-          })),
+            .filter(
+              ([, value]) =>
+                typeof value === "string" &&
+                isLongEnoughForDetection(value.trim()),
+            )
+            .map(([key, value]: [string, string]) => ({
+              fieldPath: `answers.${key}`,
+              text: value.trim(),
+            })),
   },
 ];

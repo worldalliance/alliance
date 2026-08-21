@@ -52,7 +52,7 @@ export const useEventLogWebSocket = () => {
     (handler: ((event: EventLogWsEvent) => void) | null) => {
       onNewEventRef.current = handler;
     },
-    []
+    [],
   );
 
   return {

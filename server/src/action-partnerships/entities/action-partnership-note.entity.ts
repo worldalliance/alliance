@@ -1,19 +1,19 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsNotEmpty, IsOptional, IsString } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Column,
   Entity,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import type { Relation } from 'src/utils/Repository';
-import type { ActionPartnershipResponse } from './action-partnership-response.entity';
+} from "typeorm";
+import type { ActionPartnershipResponse } from "./action-partnership-response.entity";
 
 @Entity()
 export class ActionPartnershipNote {
@@ -24,29 +24,29 @@ export class ActionPartnershipNote {
 
   // eslint-disable-next-line @darraghor/nestjs-typed/validated-non-primitive-property-needs-type-decorator
   @ManyToOne(
-    'ActionPartnershipResponse',
+    "ActionPartnershipResponse",
     (response: ActionPartnershipResponse) => response.notesHistory,
     {
-      onDelete: 'CASCADE',
+      onDelete: "CASCADE",
       nullable: false,
     },
   )
-  @JoinColumn({ name: 'responseId' })
+  @JoinColumn({ name: "responseId" })
   @IsOptional()
   response?: Relation<ActionPartnershipResponse>;
 
-  @Column({ type: 'int' })
+  @Column({ type: "int" })
   @ApiProperty()
   @Allow()
   responseId: number;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: "timestamptz" })
   @ApiProperty()
   @Allow()
   @Type(() => Date)
   noteDate: Date;
 
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   @ApiProperty()
   @IsString()
   @IsNotEmpty()

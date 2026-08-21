@@ -1,40 +1,40 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import type { FormSchema } from '@alliance/common/forms/form-schema';
-import { ActionActivity } from 'src/actions/entities/action-activity.entity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
   ActionStatus,
-} from 'src/actions/entities/action-event.entity';
+} from "src/actions/entities/action-event.entity";
 import {
   Action,
   ActionTaskType,
   VisibilityMode,
-} from 'src/actions/entities/action.entity';
-import { ForumActionCompleterWorker } from 'src/actions/forum-action-completer.worker';
+} from "src/actions/entities/action.entity";
+import { ForumActionCompleterWorker } from "src/actions/forum-action-completer.worker";
 import {
   Comment,
   CommentParentObject,
-} from 'src/forum/entities/comment.entity';
-import { EditableContent } from 'src/forum/entities/editablecontent.entity';
-import { Post } from 'src/forum/entities/post.entity';
+} from "src/forum/entities/comment.entity";
+import { EditableContent } from "src/forum/entities/editablecontent.entity";
+import { Post } from "src/forum/entities/post.entity";
 import {
   CustomValidator,
   CustomValidatorType,
-} from 'src/tasks/entities/customvalidator.entity';
-import { Form } from 'src/tasks/entities/form.entity';
-import { FormResponse } from 'src/tasks/entities/formresponse.entity';
-import { User } from 'src/user/entities/user.entity';
-import type { Repository } from 'typeorm';
+} from "src/tasks/entities/customvalidator.entity";
+import { Form } from "src/tasks/entities/form.entity";
+import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "typeorm";
 import {
   createFormWithSnapshot,
   createTestApp,
   TestContext,
-} from './e2e-test-utils';
+} from "./e2e-test-utils";
 
 const addMinutes = (date: Date, minutes: number) =>
   new Date(date.getTime() + minutes * 60 * 1000);
 
-describe('ForumActionCompleterWorker (e2e)', () => {
+describe("ForumActionCompleterWorker (e2e)", () => {
   let ctx: TestContext;
   let worker: ForumActionCompleterWorker;
   let actionRepo: Repository<Action>;
@@ -64,15 +64,15 @@ describe('ForumActionCompleterWorker (e2e)', () => {
   }, 50000);
 
   afterEach(async () => {
-    await activityRepo.query('DELETE FROM action_activity');
-    await eventRepo.query('DELETE FROM action_event');
-    await actionRepo.query('DELETE FROM action');
-    await formResponseRepo.query('DELETE FROM form_response');
-    await formRepo.query('DELETE FROM form');
-    await customValidatorRepo.query('DELETE FROM custom_validator');
-    await commentRepo.query('DELETE FROM comment');
-    await postRepo.query('DELETE FROM post');
-    await editableContentRepo.query('DELETE FROM editable_content');
+    await activityRepo.query("DELETE FROM action_activity");
+    await eventRepo.query("DELETE FROM action_event");
+    await actionRepo.query("DELETE FROM action");
+    await formResponseRepo.query("DELETE FROM form_response");
+    await formRepo.query("DELETE FROM form");
+    await customValidatorRepo.query("DELETE FROM custom_validator");
+    await commentRepo.query("DELETE FROM comment");
+    await postRepo.query("DELETE FROM post");
+    await editableContentRepo.query("DELETE FROM editable_content");
   });
 
   afterAll(async () => {
@@ -83,7 +83,7 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     return userRepo.save(
       userRepo.create({
         email,
-        password: 'pass',
+        password: "pass",
         name,
         tags: [ctx.defaultTag],
       }),
@@ -97,7 +97,7 @@ describe('ForumActionCompleterWorker (e2e)', () => {
         author,
         authorId: author.id,
         editableContent: editableContentRepo.create({
-          body: 'Post body',
+          body: "Post body",
           attachments: [],
         }),
       }),
@@ -142,18 +142,18 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     const schema: FormSchema = {
       pages: [
         {
-          id: 'page-1',
+          id: "page-1",
           fields: [
             {
-              id: 'reply',
-              type: 'input',
-              kind: 'text',
-              label: 'Reply',
+              id: "reply",
+              type: "input",
+              kind: "text",
+              label: "Reply",
               visibleIfFormula: {
                 conditions: {
-                  condition1: { kind: 'validator', validatorId },
+                  condition1: { kind: "validator", validatorId },
                 },
-                formula: 'condition1',
+                formula: "condition1",
               },
             },
           ],
@@ -164,7 +164,7 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     };
 
     const { form } = await createFormWithSnapshot(ctx.dataSource, {
-      title: 'Forum Action Form',
+      title: "Forum Action Form",
       schema,
     });
     return form;
@@ -184,10 +184,10 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     } = params;
     const action = await actionRepo.save(
       actionRepo.create({
-        name: 'Forum Action',
-        category: 'Forum',
-        body: 'Action body',
-        shortDescription: 'Short description',
+        name: "Forum Action",
+        category: "Forum",
+        body: "Action body",
+        shortDescription: "Short description",
         type: ActionTaskType.Activity,
         onboarding: true,
         shouldCompleteAfterDeadline: false,
@@ -196,21 +196,21 @@ describe('ForumActionCompleterWorker (e2e)', () => {
         forumParticipationPostId,
         forumParticipationIncludeChildren,
         taskFormId: formId,
-        cohortExpression: { type: 'Tag', tagId: ctx.defaultTag.id },
+        cohortExpression: { type: "Tag", tagId: ctx.defaultTag.id },
       }),
     );
 
     await eventRepo.save([
       eventRepo.create({
-        title: 'Member phase',
-        description: 'Members take action',
+        title: "Member phase",
+        description: "Members take action",
         newStatus: ActionStatus.MemberAction,
         date: addMinutes(now, -30),
         action,
       }),
       eventRepo.create({
-        title: 'Resolution phase',
-        description: 'Action deadline',
+        title: "Resolution phase",
+        description: "Action deadline",
         newStatus: ActionStatus.Resolution,
         date: addMinutes(now, 5),
         action,
@@ -220,24 +220,24 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     return action;
   };
 
-  it('autocompletes forum responders within the deadline window and runs once', async () => {
+  it("autocompletes forum responders within the deadline window and runs once", async () => {
     const now = new Date();
 
-    const responder = await createUser('responder@example.com', 'Responder');
+    const responder = await createUser("responder@example.com", "Responder");
     const completedViaForm = await createUser(
-      'form-complete@example.com',
-      'Form Completer',
+      "form-complete@example.com",
+      "Form Completer",
     );
     const completedViaActivity = await createUser(
-      'activity-complete@example.com',
-      'Activity Completer',
+      "activity-complete@example.com",
+      "Activity Completer",
     );
-    const noReplyUser = await createUser('noreply@example.com', 'No Reply');
+    const noReplyUser = await createUser("noreply@example.com", "No Reply");
     const nonCohortResponder = await userRepo.save(
       userRepo.create({
-        email: 'noncohort@example.com',
-        password: 'pass',
-        name: 'Non Cohort',
+        email: "noncohort@example.com",
+        password: "pass",
+        name: "Non Cohort",
         tags: [],
       }),
     );
@@ -245,7 +245,7 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     const postAuthor = await userRepo.findOneOrFail({
       where: { id: ctx.adminUserId },
     });
-    const post = await createPost(postAuthor, 'Forum Thread');
+    const post = await createPost(postAuthor, "Forum Thread");
 
     const validator = await createForumValidator(
       CustomValidatorType.RepliedToForumPost,
@@ -258,21 +258,21 @@ describe('ForumActionCompleterWorker (e2e)', () => {
       now,
     });
 
-    await createComment({ author: responder, post, body: 'Top level reply' });
+    await createComment({ author: responder, post, body: "Top level reply" });
     await createComment({
       author: completedViaForm,
       post,
-      body: 'Reply with form',
+      body: "Reply with form",
     });
     await createComment({
       author: completedViaActivity,
       post,
-      body: 'Reply with activity',
+      body: "Reply with activity",
     });
     await createComment({
       author: nonCohortResponder,
       post,
-      body: 'Reply from non-cohort',
+      body: "Reply from non-cohort",
     });
 
     await formResponseRepo.save(
@@ -314,7 +314,7 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     await createComment({
       author: noReplyUser,
       post,
-      body: 'Late reply after computed',
+      body: "Late reply after computed",
     });
 
     await worker.autocompleteForumActions();
@@ -325,14 +325,14 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     expect(completionsAfterSecondRun).toHaveLength(completions.length);
   });
 
-  it('skips actions outside the 1-hour deadline window', async () => {
+  it("skips actions outside the 1-hour deadline window", async () => {
     const now = new Date();
-    const responder = await createUser('window@example.com', 'Window User');
+    const responder = await createUser("window@example.com", "Window User");
 
     const postAuthor = await userRepo.findOneOrFail({
       where: { id: ctx.adminUserId },
     });
-    const post = await createPost(postAuthor, 'Window Thread');
+    const post = await createPost(postAuthor, "Window Thread");
 
     const validator = await createForumValidator(
       CustomValidatorType.RepliedToForumPost,
@@ -342,10 +342,10 @@ describe('ForumActionCompleterWorker (e2e)', () => {
 
     const action = await actionRepo.save(
       actionRepo.create({
-        name: 'Forum Action Window',
-        category: 'Forum',
-        body: 'Action body',
-        shortDescription: 'Short description',
+        name: "Forum Action Window",
+        category: "Forum",
+        body: "Action body",
+        shortDescription: "Short description",
         type: ActionTaskType.Activity,
         shouldCompleteAfterDeadline: false,
         visibilityMode: VisibilityMode.Public,
@@ -356,15 +356,15 @@ describe('ForumActionCompleterWorker (e2e)', () => {
 
     await eventRepo.save([
       eventRepo.create({
-        title: 'Member phase',
-        description: 'Members take action',
+        title: "Member phase",
+        description: "Members take action",
         newStatus: ActionStatus.MemberAction,
         date: addMinutes(now, -30),
         action,
       }),
       eventRepo.create({
-        title: 'Resolution phase',
-        description: 'Deadline far away',
+        title: "Resolution phase",
+        description: "Deadline far away",
         newStatus: ActionStatus.Resolution,
         date: addMinutes(now, 120),
         action,
@@ -374,7 +374,7 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     await createComment({
       author: responder,
       post,
-      body: 'Reply outside window',
+      body: "Reply outside window",
     });
 
     await worker.autocompleteForumActions();
@@ -390,14 +390,14 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     expect(updatedAction.computedAutocompleteAt).toBeNull();
   });
 
-  it('counts child replies when using RepliedToForumPostOrChild', async () => {
+  it("counts child replies when using RepliedToForumPostOrChild", async () => {
     const now = new Date();
-    const responder = await createUser('child@example.com', 'Child Responder');
+    const responder = await createUser("child@example.com", "Child Responder");
 
     const postAuthor = await userRepo.findOneOrFail({
       where: { id: ctx.adminUserId },
     });
-    const post = await createPost(postAuthor, 'Child Thread');
+    const post = await createPost(postAuthor, "Child Thread");
 
     const validator = await createForumValidator(
       CustomValidatorType.RepliedToForumPostOrChild,
@@ -412,22 +412,22 @@ describe('ForumActionCompleterWorker (e2e)', () => {
 
     const nonCohortCommenter = await userRepo.save(
       userRepo.create({
-        email: 'noncohort-child@example.com',
-        password: 'pass',
-        name: 'Non Cohort Commenter',
+        email: "noncohort-child@example.com",
+        password: "pass",
+        name: "Non Cohort Commenter",
         tags: [],
       }),
     );
     const topLevelComment = await createComment({
       author: nonCohortCommenter,
       post,
-      body: 'Top level',
+      body: "Top level",
     });
 
     await createComment({
       author: responder,
       post,
-      body: 'Child reply',
+      body: "Child reply",
       parentId: topLevelComment.id,
     });
 
@@ -440,22 +440,22 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     expect(completions[0].userId).toBe(responder.id);
   });
 
-  it('uses the manual post override instead of the form validator', async () => {
+  it("uses the manual post override instead of the form validator", async () => {
     const now = new Date();
     const overrideResponder = await createUser(
-      'override@example.com',
-      'Override Responder',
+      "override@example.com",
+      "Override Responder",
     );
     const validatorResponder = await createUser(
-      'validator@example.com',
-      'Validator Responder',
+      "validator@example.com",
+      "Validator Responder",
     );
 
     const postAuthor = await userRepo.findOneOrFail({
       where: { id: ctx.adminUserId },
     });
-    const validatorPost = await createPost(postAuthor, 'Validator Thread');
-    const overridePost = await createPost(postAuthor, 'Override Thread');
+    const validatorPost = await createPost(postAuthor, "Validator Thread");
+    const overridePost = await createPost(postAuthor, "Override Thread");
 
     // Form points at validatorPost, but the action overrides to overridePost.
     const validator = await createForumValidator(
@@ -473,12 +473,12 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     await createComment({
       author: overrideResponder,
       post: overridePost,
-      body: 'Reply on the override post',
+      body: "Reply on the override post",
     });
     await createComment({
       author: validatorResponder,
       post: validatorPost,
-      body: 'Reply on the validator post',
+      body: "Reply on the validator post",
     });
 
     await worker.autocompleteForumActions();
@@ -492,23 +492,23 @@ describe('ForumActionCompleterWorker (e2e)', () => {
     expect(completionIds).not.toContain(validatorResponder.id);
   });
 
-  it('includes child replies when the override sets includeChildren', async () => {
+  it("includes child replies when the override sets includeChildren", async () => {
     const now = new Date();
     const childResponder = await createUser(
-      'override-child@example.com',
-      'Override Child Responder',
+      "override-child@example.com",
+      "Override Child Responder",
     );
 
     const postAuthor = await userRepo.findOneOrFail({
       where: { id: ctx.adminUserId },
     });
-    const overridePost = await createPost(postAuthor, 'Override Child Thread');
+    const overridePost = await createPost(postAuthor, "Override Child Thread");
 
     // Form has no forum validator at all — only the override drives this.
     const { form } = await createFormWithSnapshot(ctx.dataSource, {
-      title: 'No Validator Form',
+      title: "No Validator Form",
       schema: {
-        title: 'No Validator Form',
+        title: "No Validator Form",
         pages: [],
         outputViews: [],
         aggregateViews: [],
@@ -524,21 +524,21 @@ describe('ForumActionCompleterWorker (e2e)', () => {
 
     const nonCohortCommenter = await userRepo.save(
       userRepo.create({
-        email: 'override-child-top@example.com',
-        password: 'pass',
-        name: 'Override Child Top',
+        email: "override-child-top@example.com",
+        password: "pass",
+        name: "Override Child Top",
         tags: [],
       }),
     );
     const topLevelComment = await createComment({
       author: nonCohortCommenter,
       post: overridePost,
-      body: 'Top level',
+      body: "Top level",
     });
     await createComment({
       author: childResponder,
       post: overridePost,
-      body: 'Child reply',
+      body: "Child reply",
       parentId: topLevelComment.id,
     });
 

@@ -1,15 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not } from 'typeorm';
-import type { Repository } from 'src/utils/Repository';
-import { AiDetectionJobData } from './ai-detection.types';
-import { DETECTION_REGISTRY } from './detection-registry';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import type { Repository } from "src/utils/Repository";
+import { In, Not } from "typeorm";
+import { AiDetectionJobData } from "./ai-detection.types";
+import { DETECTION_REGISTRY } from "./detection-registry";
 import {
   AiDetectionResult,
   DetectionStatus,
-} from './entities/ai-detection-result.entity';
-import { EntityResolverService } from './entity-resolver.service';
-import { PangramAiDetectionApiService } from './pangram-ai-detection-api.service';
+} from "./entities/ai-detection-result.entity";
+import { EntityResolverService } from "./entity-resolver.service";
+import { PangramAiDetectionApiService } from "./pangram-ai-detection-api.service";
 
 @Injectable()
 export class AiDetectionProcessor {
@@ -60,7 +60,7 @@ export class AiDetectionProcessor {
           rawApiResponse: null,
           modelVersion: null,
         },
-        ['entityType', 'entityId', 'fieldPath'],
+        ["entityType", "entityId", "fieldPath"],
       );
 
       try {

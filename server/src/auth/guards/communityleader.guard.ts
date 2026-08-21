@@ -3,18 +3,18 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import type { Request } from 'express';
-import { UserService } from '../../user/user.service';
-import type { JwtPayload } from './jwtreq';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import type { Request } from "express";
+import { UserService } from "../../user/user.service";
+import type { JwtPayload } from "./jwtreq";
 
 @Injectable()
 export class CommunityLeaderGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private userService: UserService,
-  ) { }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -30,7 +30,7 @@ export class CommunityLeaderGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: process.env.JWT_SECRET,
       });
-      request['user'] = payload;
+      request["user"] = payload;
 
       const isLeader = await this.userService.isCommunityLeader(payload.email);
       const isAdmin = await this.userService.isAdmin(payload.sub);
@@ -49,7 +49,7 @@ export class CommunityLeaderGuard implements CanActivate {
   }
 
   private extractTokenFromHeader(request: Request): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    return type === 'Bearer' ? token : undefined;
+    const [type, token] = request.headers.authorization?.split(" ") ?? [];
+    return type === "Bearer" ? token : undefined;
   }
 }

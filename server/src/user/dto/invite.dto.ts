@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   Allow,
   IsArray,
@@ -13,21 +13,21 @@ import {
   Min,
   ValidateIf,
   ValidateNested,
-} from 'class-validator';
-import { CommunityDto } from 'src/community/dto/community.dto';
-import { CommunityInvite } from 'src/community/entities/community-invite.entity';
-import { getImageSource } from 'src/images/images.service';
-import { type PaginatedList, PaginatedListDto } from 'src/utils/pagination.dto';
-import { AmbassadorInviteGoal } from '../entities/ambassador-invite-goal.entity';
-import { AmbassadorProgramInteraction } from '../entities/ambassador-program-interaction.entity';
-import { AmbassadorProgramMember } from '../entities/ambassador-program-member.entity';
-import { OnetimeInvite } from '../entities/onetime-invite.entity';
-import { User } from '../entities/user.entity';
-import { ProfileDto, UserDto } from './user.dto';
+} from "class-validator";
+import { CommunityDto } from "src/community/dto/community.dto";
+import { CommunityInvite } from "src/community/entities/community-invite.entity";
+import { getImageSource } from "src/images/images.service";
+import { type PaginatedList, PaginatedListDto } from "src/utils/pagination.dto";
+import { AmbassadorInviteGoal } from "../entities/ambassador-invite-goal.entity";
+import { AmbassadorProgramInteraction } from "../entities/ambassador-program-interaction.entity";
+import { AmbassadorProgramMember } from "../entities/ambassador-program-member.entity";
+import { OnetimeInvite } from "../entities/onetime-invite.entity";
+import { User } from "../entities/user.entity";
+import { ProfileDto, UserDto } from "./user.dto";
 
 export class CreateOnetimeInviteDto extends PickType(OnetimeInvite, [
-  'invitee',
-  'info',
+  "invitee",
+  "info",
 ]) {
   @ApiPropertyOptional()
   @IsOptional()
@@ -41,7 +41,7 @@ export class CreateOnetimeInviteDto extends PickType(OnetimeInvite, [
 
 export class UpdateOnetimeInviteDto {
   @ApiPropertyOptional({
-    description: 'Omit to leave the invitee name as it is.',
+    description: "Omit to leave the invitee name as it is.",
   })
   @IsOptional()
   @IsString()
@@ -52,7 +52,7 @@ export class UpdateOnetimeInviteDto {
     type: Number,
     nullable: true,
     description:
-      'Group the invitee joins: a group you lead, or null for any open group. Omit to leave it as it is.',
+      "Group the invitee joins: a group you lead, or null for any open group. Omit to leave it as it is.",
   })
   @ValidateIf((_object, value) => value !== null && value !== undefined)
   @IsInt()
@@ -81,10 +81,10 @@ export class RequestCommunityInviteDto {
 }
 
 export class CommunityInviteDto extends PickType(CommunityInvite, [
-  'id',
-  'status',
-  'createdAt',
-  'updatedAt',
+  "id",
+  "status",
+  "createdAt",
+  "updatedAt",
 ]) {
   @ApiProperty({ type: CommunityDto })
   @Type(() => CommunityDto)
@@ -113,14 +113,14 @@ export class CommunityInviteDto extends PickType(CommunityInvite, [
 }
 
 export class OnetimeInviteDto extends PickType(OnetimeInvite, [
-  'id',
-  'invitee',
-  'inviteeDescription',
-  'info',
-  'code',
-  'status',
-  'createdAt',
-  'invitedUserId',
+  "id",
+  "invitee",
+  "inviteeDescription",
+  "info",
+  "code",
+  "status",
+  "createdAt",
+  "invitedUserId",
 ]) {
   @ApiPropertyOptional({ type: CommunityDto })
   @Type(() => CommunityDto)
@@ -184,7 +184,7 @@ export class OnetimeInviteMemberUserDto {
 
   constructor(input: User) {
     this.id = input.id;
-    this.displayName = input.anonymous ? 'Someone' : input.name;
+    this.displayName = input.anonymous ? "Someone" : input.name;
     this.profilePicture = input.profilePicture
       ? getImageSource(input.profilePicture)
       : null;
@@ -227,8 +227,8 @@ export class OnetimeInviteEdgeDto {
 }
 
 export class RequestOnetimeInviteDto extends PickType(OnetimeInvite, [
-  'invitee',
-  'inviteeDescription',
+  "invitee",
+  "inviteeDescription",
 ]) {
   @ApiPropertyOptional()
   @IsOptional()
@@ -241,13 +241,13 @@ export class RequestOnetimeInviteDto extends PickType(OnetimeInvite, [
 
 export class CreateAmbassadorInviteGoalDto extends PickType(
   AmbassadorInviteGoal,
-  ['targetSuccessfulRecruits'],
+  ["targetSuccessfulRecruits"],
 ) {
-  @ApiProperty({ type: String, format: 'date-time' })
+  @ApiProperty({ type: String, format: "date-time" })
   @IsDateString()
   startAt: string;
 
-  @ApiProperty({ type: String, format: 'date-time' })
+  @ApiProperty({ type: String, format: "date-time" })
   @IsDateString()
   dueAt: string;
 }
@@ -259,24 +259,24 @@ export class UpdateAmbassadorInviteGoalDto {
   @Min(1)
   targetSuccessfulRecruits?: number;
 
-  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @ApiPropertyOptional({ type: String, format: "date-time" })
   @IsOptional()
   @IsDateString()
   startAt?: string;
 
-  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @ApiPropertyOptional({ type: String, format: "date-time" })
   @IsOptional()
   @IsDateString()
   dueAt?: string;
 }
 
 export class AmbassadorInviteGoalDto extends PickType(AmbassadorInviteGoal, [
-  'id',
-  'targetSuccessfulRecruits',
-  'startAt',
-  'dueAt',
-  'createdAt',
-  'updatedAt',
+  "id",
+  "targetSuccessfulRecruits",
+  "startAt",
+  "dueAt",
+  "createdAt",
+  "updatedAt",
 ]) {
   constructor(goal: AmbassadorInviteGoal) {
     super();
@@ -351,7 +351,7 @@ export type AmbassadorInviteProjectionPoint = {
 };
 
 export class AmbassadorInviteProjectionPointDto {
-  @ApiProperty({ type: String, format: 'date-time' })
+  @ApiProperty({ type: String, format: "date-time" })
   @IsDateString()
   date: string;
 
@@ -372,7 +372,7 @@ export type AmbassadorInviteProjection = {
 };
 
 export class AmbassadorInviteProjectionDto {
-  @ApiProperty({ type: String, format: 'date-time' })
+  @ApiProperty({ type: String, format: "date-time" })
   @IsDateString()
   generatedAt: string;
 
@@ -451,14 +451,14 @@ export class CreateAmbassadorProgramInteractionDto {
   @IsString()
   text: string;
 
-  @ApiProperty({ type: String, format: 'date' })
+  @ApiProperty({ type: String, format: "date" })
   @IsDateString()
   interactionDate: string;
 }
 
 export class AmbassadorProgramInteractionDto extends PickType(
   AmbassadorProgramInteraction,
-  ['id', 'text', 'interactionDate', 'createdAt'],
+  ["id", "text", "interactionDate", "createdAt"],
 ) {
   constructor(interaction: AmbassadorProgramInteraction) {
     super();
@@ -520,7 +520,7 @@ export type AmbassadorProgramMemberWithInviteStats = AmbassadorProgramMember & {
 
 export class AmbassadorProgramMemberDto extends PickType(
   AmbassadorProgramMember,
-  ['id', 'userId', 'invited', 'activeParticipant', 'createdAt', 'updatedAt'],
+  ["id", "userId", "invited", "activeParticipant", "createdAt", "updatedAt"],
 ) {
   @ApiProperty({ type: UserDto })
   @Type(() => UserDto)

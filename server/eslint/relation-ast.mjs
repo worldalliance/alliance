@@ -3,19 +3,19 @@
  */
 
 const RELATION_DECORATORS = new Set([
-  'OneToOne',
-  'OneToMany',
-  'ManyToOne',
-  'ManyToMany',
+  "OneToOne",
+  "OneToMany",
+  "ManyToOne",
+  "ManyToMany",
 ]);
 
 /** Type references that wrap a relation rather than being one. */
-const TRANSPARENT_WRAPPERS = new Set(['Promise', 'Array', 'Readonly']);
+const TRANSPARENT_WRAPPERS = new Set(["Promise", "Array", "Readonly"]);
 
 export function decoratorName(decorator) {
   const { expression } = decorator;
-  if (expression.type !== 'CallExpression') return null;
-  return expression.callee.type === 'Identifier'
+  if (expression.type !== "CallExpression") return null;
+  return expression.callee.type === "Identifier"
     ? expression.callee.name
     : null;
 }
@@ -36,19 +36,19 @@ export function findBrand(typeNode) {
   if (!typeNode) return null;
 
   switch (typeNode.type) {
-    case 'TSArrayType':
+    case "TSArrayType":
       return findBrand(typeNode.elementType);
-    case 'TSUnionType':
-    case 'TSIntersectionType':
+    case "TSUnionType":
+    case "TSIntersectionType":
       for (const member of typeNode.types) {
         const found = findBrand(member);
         if (found) return found;
       }
       return null;
-    case 'TSTypeReference': {
-      if (typeNode.typeName.type !== 'Identifier') return null;
+    case "TSTypeReference": {
+      if (typeNode.typeName.type !== "Identifier") return null;
       const { name } = typeNode.typeName;
-      if (name === 'Relation') return typeNode;
+      if (name === "Relation") return typeNode;
       if (TRANSPARENT_WRAPPERS.has(name)) {
         const [first] = typeNode.typeArguments?.params ?? [];
         return findBrand(first);
@@ -61,7 +61,7 @@ export function findBrand(typeNode) {
 }
 
 export function propertyName(node) {
-  if (node.key.type === 'Identifier') return node.key.name;
-  if (node.key.type === 'Literal') return String(node.key.value);
-  return 'relation';
+  if (node.key.type === "Identifier") return node.key.name;
+  if (node.key.type === "Literal") return String(node.key.value);
+  return "relation";
 }

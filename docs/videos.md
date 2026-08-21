@@ -79,10 +79,7 @@ Make a video block in a form and upload all the generated files into it (`.m3u8`
 
 ---
 
-
-
 ### Todo items
 
 - whisper v2 is from 2022, there must be something better by now?
 - At some point we must make a more automated process for this, but doing it on the server is complex as video manipulation requires a decent amount of memory (more memory than our servers have).
-

@@ -2,8 +2,8 @@ import {
   ActionActivityType,
   WithdrawalOption,
   withdrawalOptionFromFlags,
-} from '@alliance/common/actionActivity';
-import type { User } from 'src/user/entities/user.entity';
+} from "@alliance/common/actionActivity";
+import type { User } from "src/user/entities/user.entity";
 import {
   computeContractSignedAfterOnboardingStart,
   computeIsAssignedToAction,
@@ -11,12 +11,12 @@ import {
   computeMemberActionAwayStatus,
   hasMemberActionStarted,
   TaskAwayStatus,
-} from 'src/utils/action-user';
-import { UserActionRelationPillStatus } from '../user/dto/user-action-relations.dto';
-import { findLatestTerminalActivity } from './action-activity-status';
-import type { ActionActivity } from './entities/action-activity.entity';
-import type { Action } from './entities/action.entity';
-import { resolveUserActionPillStatus } from './user-action-pill-status';
+} from "src/utils/action-user";
+import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
+import { findLatestTerminalActivity } from "./action-activity-status";
+import type { ActionActivity } from "./entities/action-activity.entity";
+import type { Action } from "./entities/action.entity";
+import { resolveUserActionPillStatus } from "./user-action-pill-status";
 
 /**
  * The viewer's full status on one action — the single composition point for
@@ -81,9 +81,9 @@ export type UserActionStatus = {
 };
 
 export enum ViewerActionRelation {
-  Completed = 'completed',
-  Withdrawn = 'withdrawn',
-  None = 'none',
+  Completed = "completed",
+  Withdrawn = "withdrawn",
+  None = "none",
 }
 
 export type UserActionWithdrawal = {
@@ -106,9 +106,9 @@ export type UserActionWithdrawal = {
 export function computeCanCompleteAction(params: {
   action: Pick<
     Action,
-    'preventCompletion' | 'onboarding' | 'memberActionPhase'
+    "preventCompletion" | "onboarding" | "memberActionPhase"
   >;
-  user: Pick<User, 'contractEvents'>;
+  user: Pick<User, "contractEvents">;
   inCohort: boolean;
 }): boolean {
   const { action, user, inCohort } = params;
@@ -142,23 +142,23 @@ export function computeCanCompleteAction(params: {
 export function resolveUserActionStatus(params: {
   action: Pick<
     Action,
-    | 'events'
-    | 'memberActionPhase'
-    | 'onboarding'
-    | 'optional'
-    | 'preventCompletion'
+    | "events"
+    | "memberActionPhase"
+    | "onboarding"
+    | "optional"
+    | "preventCompletion"
   >;
   user: Pick<
     User,
-    | 'contractEvents'
-    | 'hasActiveContractInFullRange'
-    | 'awayRanges'
-    | 'isAwayAtAnyPointInRange'
+    | "contractEvents"
+    | "hasActiveContractInFullRange"
+    | "awayRanges"
+    | "isAwayAtAnyPointInRange"
   >;
   inCohort: boolean;
   activities: Pick<
     ActionActivity,
-    'type' | 'createdAt' | 'declineReason' | 'isMoral' | 'outOfTime'
+    "type" | "createdAt" | "declineReason" | "isMoral" | "outOfTime"
   >[];
   now: Date;
 }): UserActionStatus {

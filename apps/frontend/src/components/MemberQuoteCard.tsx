@@ -1,5 +1,5 @@
-import Card from "@alliance/sharedweb/ui/Card";
 import { CardStyle } from "@alliance/shared/styles/card";
+import Card from "@alliance/sharedweb/ui/Card";
 
 interface MemberQuoteCardProps {
   quote: string;

@@ -1,6 +1,6 @@
-import { useMemo } from "react";
 import type { UserDto } from "@alliance/shared/client";
 import { getReferralSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import { useMemo } from "react";
 import { getBaseUrl } from "./config";
 
 /**

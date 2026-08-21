@@ -1,40 +1,40 @@
-import { SearchItem, SearchItemType } from './searchitem.dto';
+import { SearchItem, SearchItemType } from "./searchitem.dto";
 
 export const infoPageSearchItems: SearchItem[] = [
   {
-    id: 'faq',
-    name: 'Frequently asked questions',
+    id: "faq",
+    name: "Frequently asked questions",
     type: SearchItemType.Page,
-    webAppLocation: '/faq',
+    webAppLocation: "/faq",
   },
   {
-    id: 'guide',
-    name: 'Guide to the Alliance',
+    id: "guide",
+    name: "Guide to the Alliance",
     type: SearchItemType.Page,
-    webAppLocation: '/guide',
+    webAppLocation: "/guide",
   },
   {
-    id: 'foundation',
-    name: 'Foundation',
+    id: "foundation",
+    name: "Foundation",
     type: SearchItemType.Page,
-    webAppLocation: '/foundation',
+    webAppLocation: "/foundation",
   },
   {
-    id: 'governance',
-    name: 'Governance',
+    id: "governance",
+    name: "Governance",
     type: SearchItemType.Page,
-    webAppLocation: '/governance',
+    webAppLocation: "/governance",
   },
   {
-    id: 'members',
-    name: 'Member directory',
+    id: "members",
+    name: "Member directory",
     type: SearchItemType.Page,
-    webAppLocation: '/members',
+    webAppLocation: "/members",
   },
   {
-    id: 'groups-guide',
-    name: 'Groups guide',
+    id: "groups-guide",
+    name: "Groups guide",
     type: SearchItemType.Page,
-    webAppLocation: '/groups-guide',
+    webAppLocation: "/groups-guide",
   },
 ];

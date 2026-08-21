@@ -122,7 +122,9 @@ function ImageDisplay({
         />
       )}
       {hasCaption && (
-        <figcaption className="mt-2 text-sm text-gray-600">{caption}</figcaption>
+        <figcaption className="mt-2 text-sm text-gray-600">
+          {caption}
+        </figcaption>
       )}
       {expandable && (
         <ImageLightboxModal

@@ -1,3 +1,10 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Community } from "src/community/entities/community.entity";
+import {
+  CreateDateColumnTz,
+  UpdateDateColumnTz,
+} from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Check,
   Column,
@@ -7,28 +14,21 @@ import {
   OneToMany,
   PrimaryGeneratedColumn,
   Unique,
-} from 'typeorm';
-import { Message } from './message.entity';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  CreateDateColumnTz,
-  UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
-import { Participant } from './participant.entity';
-import { Community } from 'src/community/entities/community.entity';
+} from "typeorm";
+import { Message } from "./message.entity";
+import { Participant } from "./participant.entity";
 
 export enum ConversationType {
-  Direct = 'direct',
-  Multiple = 'multiple',
-  Community = 'community',
+  Direct = "direct",
+  Multiple = "multiple",
+  Community = "community",
 }
 
 @Entity()
 @Check(
   `("type" = 'direct' AND "communityId" IS NULL) OR ("type" = 'multiple' AND "communityId" IS NULL) OR ("type" = 'community' AND "communityId" IS NOT NULL)`,
 )
-@Unique(['community'])
+@Unique(["community"])
 export class Conversation {
   @PrimaryGeneratedColumn()
   @ApiProperty({ type: Number })
@@ -53,11 +53,11 @@ export class Conversation {
   participants: Relation<Participant>[];
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: ConversationType,
-    enumName: 'ConversationType',
+    enumName: "ConversationType",
   })
-  @ApiProperty({ enum: ConversationType, enumName: 'ConversationType' })
+  @ApiProperty({ enum: ConversationType, enumName: "ConversationType" })
   type: ConversationType;
 
   @Column()
@@ -69,8 +69,8 @@ export class Conversation {
   // eslint-disable-next-line local-rules/column-optionality -- legacy: pre-dates the rule, needs migrating
   photo?: string;
 
-  @ManyToOne(() => Community, { nullable: true, onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'communityId' })
+  @ManyToOne(() => Community, { nullable: true, onDelete: "CASCADE" })
+  @JoinColumn({ name: "communityId" })
   @ApiPropertyOptional({ type: () => Community })
   community?: Relation<Community>;
 }

@@ -3,19 +3,19 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import type { Request } from 'express';
-import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from '../public.decorator';
-import type { JwtPayload } from './jwtreq';
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { JwtService } from "@nestjs/jwt";
+import type { Request } from "express";
+import { IS_PUBLIC_KEY } from "../public.decorator";
+import type { JwtPayload } from "./jwtreq";
 
 @Injectable()
 export class AuthOptionalGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private reflector: Reflector,
-  ) { }
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -34,7 +34,7 @@ export class AuthOptionalGuard implements CanActivate {
     if (!token) {
       token = extractTokenFromHeader(request);
       if (!token) {
-        request['user'] = undefined;
+        request["user"] = undefined;
         return true;
       }
     }
@@ -43,7 +43,7 @@ export class AuthOptionalGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, {
         secret: process.env.JWT_SECRET,
       });
-      request['user'] = payload;
+      request["user"] = payload;
     } catch {
       throw new UnauthorizedException();
     }
@@ -63,6 +63,6 @@ export function extractRefreshTokenFromCookie(
 }
 
 export function extractTokenFromHeader(request: Request): string | undefined {
-  const [type, token] = request.headers.authorization?.split(' ') ?? [];
-  return type === 'Bearer' ? token : undefined;
+  const [type, token] = request.headers.authorization?.split(" ") ?? [];
+  return type === "Bearer" ? token : undefined;
 }

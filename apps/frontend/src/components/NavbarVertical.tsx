@@ -1,4 +1,6 @@
 import { Features } from "@alliance/shared/lib/features";
+import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
+import { cn } from "@alliance/shared/styles/util";
 import BottomSpacer from "@alliance/sharedweb/ui/BottomSpacer";
 import {
   BookText,
@@ -11,6 +13,7 @@ import {
 } from "lucide-react";
 import {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -19,11 +22,8 @@ import {
 import { Link, href, useLocation } from "react-router";
 import { useAuth } from "../lib/AuthContext";
 import { isFeatureEnabled } from "../lib/config";
-import { useMessagingUnread } from "../pages/app/messages";
-import useIncomingCommunityInvites from "@alliance/shared/lib/useIncomingCommunityInvites";
-import { cn } from "@alliance/shared/styles/util";
-import { useContext } from "react";
 import { NavbarOptionsContext } from "../lib/NavbarOptionsContext";
+import { useMessagingUnread } from "../pages/app/messages";
 
 export enum NavbarPage {
   Tasks = "Tasks",

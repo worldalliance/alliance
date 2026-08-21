@@ -1,9 +1,8 @@
-import React from "react";
-import { View } from "react-native";
 import type { OnetimeInviteDto } from "@alliance/shared/client";
 import type { OnetimeInviteActions } from "@alliance/shared/lib/inviteUtils";
-import Text, { FontWeight } from "./system/Text";
+import { View } from "react-native";
 import OnetimeInviteListItem from "./OnetimeInviteListItem";
+import Text, { FontWeight } from "./system/Text";
 
 export type InviteSectionProps = {
   title: string;

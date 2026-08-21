@@ -1,12 +1,12 @@
 import {
-  extent,
-  max,
-  bisector,
-  scaleTime,
-  scaleLinear,
-  line,
   area,
+  bisector,
   curveMonotoneX,
+  extent,
+  line,
+  max,
+  scaleLinear,
+  scaleTime,
 } from "d3";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 
@@ -791,4 +791,4 @@ export const TimeSeriesChart: React.FC<TimeSeriesChartProps> = (props) => {
   );
 };
 
-export { formatDateAsLocal, fullDateFormatter, dateFormatter };
+export { dateFormatter, formatDateAsLocal, fullDateFormatter };

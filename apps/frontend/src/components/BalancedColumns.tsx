@@ -140,10 +140,7 @@ export default function BalancedColumns({
   }, [items.length, columnCount, gap, assignmentKey]);
 
   return (
-    <div
-      className={cn("flex w-full items-start", className)}
-      style={{ gap }}
-    >
+    <div className={cn("flex w-full items-start", className)} style={{ gap }}>
       {columnAssignments.map((itemIndexes, columnIndex) => (
         <div
           key={columnIndex}
@@ -153,9 +150,7 @@ export default function BalancedColumns({
           {itemIndexes.map((itemIndex) => {
             const item = items[itemIndex];
             const key =
-              isValidElement(item) && item.key != null
-                ? item.key
-                : itemIndex;
+              isValidElement(item) && item.key != null ? item.key : itemIndex;
 
             return (
               <div

@@ -1,51 +1,51 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ActionActivity } from 'src/actions/entities/action-activity.entity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
   ActionStatus,
-} from 'src/actions/entities/action-event.entity';
+} from "src/actions/entities/action-event.entity";
 import {
   Action,
   parseAction,
   type ParsedAction,
-} from 'src/actions/entities/action.entity';
-import { ReminderGroup } from 'src/actions/entities/reminder-group.entity';
-import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
-import { CohortResolutionSession } from 'src/notifs/cohort-resolution-session';
-import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
-import { FormResponse } from 'src/tasks/entities/formresponse.entity';
+} from "src/actions/entities/action.entity";
+import { ReminderGroup } from "src/actions/entities/reminder-group.entity";
+import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
+import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
+import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import {
   ContractEvent,
   ContractEventType,
-} from 'src/user/entities/contract-event.entity';
+} from "src/user/entities/contract-event.entity";
 import {
   OnetimeInvite,
   OnetimeInviteStatus,
-} from 'src/user/entities/onetime-invite.entity';
-import { User } from 'src/user/entities/user.entity';
-import { UserService } from 'src/user/user.service';
-import { yieldToEventLoop } from 'src/utils/event-loop';
-import { Between, In, IsNull, type Repository } from 'typeorm';
-import type { Repository as TypedRepository } from 'src/utils/Repository';
-import { ActionCompletionCurve } from './action-completion-curve.dto';
-import { ActionStatsWithOnboarding } from './actionstats-with-onboarding.dto';
-import { ActionStatsRecord } from './actionstats.entity';
-import { AggregateStats } from './aggregatestats.dto';
-import { ContractStatusPoint } from './contract-status-history.dto';
-import { DailyStatsRecord } from './dailystats.entity';
-import { InviteFunnel } from './invite-funnel.dto';
+} from "src/user/entities/onetime-invite.entity";
+import { User } from "src/user/entities/user.entity";
+import { UserService } from "src/user/user.service";
+import { yieldToEventLoop } from "src/utils/event-loop";
+import type { Repository as TypedRepository } from "src/utils/Repository";
+import { Between, In, IsNull, type Repository } from "typeorm";
+import { ActionCompletionCurve } from "./action-completion-curve.dto";
+import { ActionStatsWithOnboarding } from "./actionstats-with-onboarding.dto";
+import { ActionStatsRecord } from "./actionstats.entity";
+import { AggregateStats } from "./aggregatestats.dto";
+import { ContractStatusPoint } from "./contract-status-history.dto";
+import { DailyStatsRecord } from "./dailystats.entity";
+import { InviteFunnel } from "./invite-funnel.dto";
 import {
   MemberCompletionRetentionCohort,
   MemberCompletionRetentionPoint,
-} from './member-completion-retention.dto';
-import { MemberReliabilityWindow } from './member-reliability-window.dto';
-import { MissedActions } from './missed-actions.dto';
-import { PlatformTenureCohortStats } from './platform-tenure-cohort.dto';
-import { ReminderGroupClickRatePoint } from './reminder-group-click-rates.dto';
-import { TimeSpentForUser } from './timespent.dto';
+} from "./member-completion-retention.dto";
+import { MemberReliabilityWindow } from "./member-reliability-window.dto";
+import { MissedActions } from "./missed-actions.dto";
+import { PlatformTenureCohortStats } from "./platform-tenure-cohort.dto";
+import { ReminderGroupClickRatePoint } from "./reminder-group-click-rates.dto";
+import { TimeSpentForUser } from "./timespent.dto";
 
 @Injectable()
 export class AnalyticsService {
@@ -56,7 +56,7 @@ export class AnalyticsService {
   private timeSpentPerUserLast7Days: TimeSpentForUser[] = [];
   private timeSpentPerUserTotal: TimeSpentForUser[] = [];
 
-  getQuery(range: 'last7Days' | 'total') {
+  getQuery(range: "last7Days" | "total") {
     return `
 WITH scoped_sessions AS (
   SELECT
@@ -66,7 +66,7 @@ WITH scoped_sessions AS (
     toFloat(e.session.$end_timestamp - e.session.$start_timestamp) AS raw_duration
   FROM events AS e
   WHERE e.event = '$pageview'
-    ${range === 'last7Days' ? 'AND e.timestamp >= now() - INTERVAL 7 DAY' : ''}
+    ${range === "last7Days" ? "AND e.timestamp >= now() - INTERVAL 7 DAY" : ""}
     AND e.person_id IS NOT NULL
     AND e.session.id IS NOT NULL
     AND e.session.$start_timestamp IS NOT NULL
@@ -124,7 +124,7 @@ ORDER BY pp.total_session_duration_seconds DESC
     private readonly actionEventRecipientService: ActionEventRecipientService,
   ) {
     if (!process.env.POSTHOG_QUERY_KEY || !process.env.POSTHOG_PROJECT_ID) {
-      this.logger.warn('POSTHOG_QUERY_KEY or POSTHOG_PROJECT_ID is not set');
+      this.logger.warn("POSTHOG_QUERY_KEY or POSTHOG_PROJECT_ID is not set");
       return;
     }
     this.API_KEY = process.env.POSTHOG_QUERY_KEY;
@@ -132,7 +132,7 @@ ORDER BY pp.total_session_duration_seconds DESC
   }
 
   async getPosthogData(
-    range: 'last7Days' | 'total',
+    range: "last7Days" | "total",
   ): Promise<TimeSpentForUser[]> {
     const users = await this.userService.findAllUsers();
 
@@ -142,7 +142,7 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const body = {
       query: {
-        kind: 'HogQLQuery',
+        kind: "HogQLQuery",
         query: this.getQuery(range),
       },
     };
@@ -150,9 +150,9 @@ ORDER BY pp.total_session_duration_seconds DESC
     const res = await fetch(
       `https://app.posthog.com/api/projects/${this.PROJECT_ID}/query`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           Authorization: `Bearer ${this.API_KEY}`,
         },
         body: JSON.stringify(body),
@@ -187,20 +187,20 @@ ORDER BY pp.total_session_duration_seconds DESC
     return timeSpentPerUser;
   }
 
-  @Cron('* * * * *')
+  @Cron("* * * * *")
   async getTimeSpentFromPosthog() {
     if (!this.API_KEY) {
-      this.logger.warn('POSTHOG_QUERY_KEY or POSTHOG_PROJECT_ID is not set');
+      this.logger.warn("POSTHOG_QUERY_KEY or POSTHOG_PROJECT_ID is not set");
       return;
     }
     if (
-      process.env.NODE_ENV === 'development' &&
+      process.env.NODE_ENV === "development" &&
       !process.env.DEV_POSTHOG_ANALYTICS
     ) {
       return;
     }
-    const timeSpentPerUserLast7Days = await this.getPosthogData('last7Days');
-    const timeSpentPerUserTotal = await this.getPosthogData('total');
+    const timeSpentPerUserLast7Days = await this.getPosthogData("last7Days");
+    const timeSpentPerUserTotal = await this.getPosthogData("total");
 
     this.timeSpentPerUserLast7Days = timeSpentPerUserLast7Days;
     this.timeSpentPerUserTotal = timeSpentPerUserTotal;
@@ -214,10 +214,10 @@ ORDER BY pp.total_session_duration_seconds DESC
     return this.timeSpentPerUserTotal;
   }
 
-  @Cron('0 8,20 * * *')
+  @Cron("0 8,20 * * *")
   async calculateDailyStats() {
     const now = new Date();
-    const dayId = now.toISOString().split('T')[0];
+    const dayId = now.toISOString().split("T")[0];
 
     if (await this.dailyStatsRepository.findOne({ where: { dayId } })) {
       return;
@@ -300,9 +300,9 @@ ORDER BY pp.total_session_duration_seconds DESC
     return completedEvent?.date ?? null;
   }
 
-  @Cron('0 9 * * *') // Daily at 9 AM
+  @Cron("0 9 * * *") // Daily at 9 AM
   async calculateActionStats() {
-    this.logger.log('Starting action stats calculation');
+    this.logger.log("Starting action stats calculation");
 
     const now = new Date();
 
@@ -317,14 +317,14 @@ ORDER BY pp.total_session_duration_seconds DESC
     const dismissalByActionId = new Map<number, number>();
     if (actionIds.length > 0) {
       const withdrawalCounts = await this.actionActivityRepository
-        .createQueryBuilder('activity')
-        .select('activity.actionId', 'actionId')
-        .addSelect('COUNT(DISTINCT activity.userId)', 'withdrawnCount')
-        .where('activity.actionId IN (:...actionIds)', { actionIds })
-        .andWhere('activity.type IN (:...types)', {
+        .createQueryBuilder("activity")
+        .select("activity.actionId", "actionId")
+        .addSelect("COUNT(DISTINCT activity.userId)", "withdrawnCount")
+        .where("activity.actionId IN (:...actionIds)", { actionIds })
+        .andWhere("activity.type IN (:...types)", {
           types: [ActionActivityType.USER_WONT_COMPLETE],
         })
-        .groupBy('activity.actionId')
+        .groupBy("activity.actionId")
         .getRawMany<{ actionId: string; withdrawnCount: string }>();
 
       for (const row of withdrawalCounts) {
@@ -336,14 +336,14 @@ ORDER BY pp.total_session_duration_seconds DESC
       }
 
       const dismissalCounts = await this.actionActivityRepository
-        .createQueryBuilder('activity')
-        .select('activity.actionId', 'actionId')
-        .addSelect('COUNT(DISTINCT activity.userId)', 'dismissedCount')
-        .where('activity.actionId IN (:...actionIds)', { actionIds })
-        .andWhere('activity.type = :type', {
+        .createQueryBuilder("activity")
+        .select("activity.actionId", "actionId")
+        .addSelect("COUNT(DISTINCT activity.userId)", "dismissedCount")
+        .where("activity.actionId IN (:...actionIds)", { actionIds })
+        .andWhere("activity.type = :type", {
           type: ActionActivityType.USER_DISMISSED,
         })
-        .groupBy('activity.actionId')
+        .groupBy("activity.actionId")
         .getRawMany<{ actionId: string; dismissedCount: string }>();
 
       for (const row of dismissalCounts) {
@@ -436,12 +436,12 @@ ORDER BY pp.total_session_duration_seconds DESC
       }
     }
 
-    this.logger.log('Finished action stats calculation');
+    this.logger.log("Finished action stats calculation");
   }
 
   async getActionStats(): Promise<ActionStatsWithOnboarding[]> {
     const records = await this.actionStatsRepository.find({
-      order: { actionId: 'ASC' },
+      order: { actionId: "ASC" },
     });
 
     if (records.length === 0) {
@@ -492,7 +492,7 @@ ORDER BY pp.total_session_duration_seconds DESC
 
   async getActionCompletionCurves(
     actionId?: number,
-    granularity: 'daily' | 'hourly' = 'daily',
+    granularity: "daily" | "hourly" = "daily",
   ): Promise<ActionCompletionCurve[]> {
     const whereClause: { showInChart: boolean; actionId?: number } = {
       showInChart: true,
@@ -503,7 +503,7 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const actionStats = await this.actionStatsRepository.find({
       where: whereClause,
-      order: { actionId: 'ASC' },
+      order: { actionId: "ASC" },
     });
 
     if (actionStats.length === 0) {
@@ -559,7 +559,7 @@ ORDER BY pp.total_session_duration_seconds DESC
         type: ActionActivityType.USER_COMPLETED,
       },
       select: { actionId: true, createdAt: true },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
 
     const completionsByActionId = new Map<number, Date[]>();
@@ -569,7 +569,7 @@ ORDER BY pp.total_session_duration_seconds DESC
       completionsByActionId.set(activity.actionId, list);
     }
 
-    const isHourly = granularity === 'hourly';
+    const isHourly = granularity === "hourly";
     const msPerBucket = isHourly ? 60 * 60 * 1000 : msPerDay;
 
     return eligibleActions.map((record) => {
@@ -633,7 +633,7 @@ ORDER BY pp.total_session_duration_seconds DESC
   }
 
   private formatDateKey(date: Date): string {
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   }
 
   async getMemberCompletionRetentionByCohort(
@@ -641,12 +641,12 @@ ORDER BY pp.total_session_duration_seconds DESC
     startInFollowingWeek = false,
   ): Promise<MemberCompletionRetentionCohort[]> {
     const signedEvents = await this.contractEventRepository
-      .createQueryBuilder('event')
-      .select('user.id', 'userId')
-      .addSelect('MIN(event.date)', 'signedAt')
-      .innerJoin('event.user', 'user')
-      .where('event.type = :type', { type: ContractEventType.SIGNED })
-      .groupBy('user.id')
+      .createQueryBuilder("event")
+      .select("user.id", "userId")
+      .addSelect("MIN(event.date)", "signedAt")
+      .innerJoin("event.user", "user")
+      .where("event.type = :type", { type: ContractEventType.SIGNED })
+      .groupBy("user.id")
       .getRawMany<{ userId: number; signedAt: string }>();
 
     const memberSignedAtByUserId = new Map<number, Date>();
@@ -664,7 +664,7 @@ ORDER BY pp.total_session_duration_seconds DESC
     }
 
     if (memberSignedAtByUserId.size === 0) {
-      console.log('No signed users found');
+      console.log("No signed users found");
       return [];
     }
 
@@ -915,7 +915,7 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const summarize = (
       includePoint: (point: MemberCompletionRetentionPoint) => boolean,
-    ): MemberReliabilityWindow['firstWeek'] => {
+    ): MemberReliabilityWindow["firstWeek"] => {
       const matchingPoints = points.filter(
         (point) =>
           point.actionIndex >= earliestActionIndex && includePoint(point),
@@ -1132,8 +1132,8 @@ ORDER BY pp.total_session_duration_seconds DESC
       ),
     );
 
-    const missedLastAction: MissedActions['missedLastAction'] = [];
-    const missedLastTwoActions: MissedActions['missedLastTwoActions'] = [];
+    const missedLastAction: MissedActions["missedLastAction"] = [];
+    const missedLastTwoActions: MissedActions["missedLastTwoActions"] = [];
     for (const user of activeUsers.values()) {
       const assignedActions = completedActions.filter(({ action }) =>
         participantsByAction.get(action.id)?.has(user.id),
@@ -1159,8 +1159,8 @@ ORDER BY pp.total_session_duration_seconds DESC
     }
 
     const byName = (
-      a: MissedActions['missedLastAction'][number],
-      b: MissedActions['missedLastAction'][number],
+      a: MissedActions["missedLastAction"][number],
+      b: MissedActions["missedLastAction"][number],
     ) => a.name.localeCompare(b.name) || a.userId - b.userId;
     missedLastAction.sort(byName);
     missedLastTwoActions.sort(byName);
@@ -1237,7 +1237,7 @@ ORDER BY pp.total_session_duration_seconds DESC
       })
       .then((rows) => rows.map(parseAction));
 
-    const actionStats: PlatformTenureCohortStats['actions'] = [];
+    const actionStats: PlatformTenureCohortStats["actions"] = [];
 
     const eligible: {
       action: ParsedAction;
@@ -1342,7 +1342,7 @@ ORDER BY pp.total_session_duration_seconds DESC
   async getTimeToChurnSamples(): Promise<number[]> {
     const allEvents = await this.contractEventRepository.find({
       relations: { user: true },
-      order: { date: 'ASC' },
+      order: { date: "ASC" },
     });
 
     const userEvents = new Map<
@@ -1381,16 +1381,16 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     const churnedUserIds = Array.from(churnedUsers.keys());
     const lastCompletions = await this.actionActivityRepository
-      .createQueryBuilder('activity')
-      .select('activity.userId', 'userId')
-      .addSelect('MAX(activity.createdAt)', 'lastCompletedAt')
-      .where('activity.type = :type', {
+      .createQueryBuilder("activity")
+      .select("activity.userId", "userId")
+      .addSelect("MAX(activity.createdAt)", "lastCompletedAt")
+      .where("activity.type = :type", {
         type: ActionActivityType.USER_COMPLETED,
       })
-      .andWhere('activity.userId IN (:...userIds)', {
+      .andWhere("activity.userId IN (:...userIds)", {
         userIds: churnedUserIds,
       })
-      .groupBy('activity.userId')
+      .groupBy("activity.userId")
       .getRawMany<{ userId: string; lastCompletedAt: string }>();
 
     const lastCompletionByUserId = new Map<number, Date>();
@@ -1449,7 +1449,7 @@ ORDER BY pp.total_session_duration_seconds DESC
     // Get all contract events ordered by date
     const allEvents = await this.contractEventRepository.find({
       relations: { user: true },
-      order: { date: 'ASC' },
+      order: { date: "ASC" },
     });
 
     // Build a timeline of user status changes
@@ -1566,28 +1566,28 @@ ORDER BY pp.total_session_duration_seconds DESC
 
     // 3. Invited users who signed the contract
     const contractSignedCount = await this.contractEventRepository
-      .createQueryBuilder('event')
-      .select('COUNT(DISTINCT event.user)', 'count')
-      .innerJoin('event.user', 'user')
-      .where('event.type = :type', { type: ContractEventType.SIGNED })
-      .andWhere('user.id IN (:...userIds)', { userIds: invitedUserIds })
+      .createQueryBuilder("event")
+      .select("COUNT(DISTINCT event.user)", "count")
+      .innerJoin("event.user", "user")
+      .where("event.type = :type", { type: ContractEventType.SIGNED })
+      .andWhere("user.id IN (:...userIds)", { userIds: invitedUserIds })
       .getRawOne<{ count: string }>();
 
     const contractSigned = Number(contractSignedCount?.count ?? 0);
 
     // 4. Invited users who finished onboarding (>= 4 completed actions)
     const onboardingRows = await this.actionActivityRepository
-      .createQueryBuilder('activity')
-      .select('activity.userId', 'userId')
-      .addSelect('COUNT(DISTINCT activity.actionId)', 'completedActions')
-      .where('activity.type = :type', {
+      .createQueryBuilder("activity")
+      .select("activity.userId", "userId")
+      .addSelect("COUNT(DISTINCT activity.actionId)", "completedActions")
+      .where("activity.type = :type", {
         type: ActionActivityType.USER_COMPLETED,
       })
-      .andWhere('activity.userId IN (:...userIds)', {
+      .andWhere("activity.userId IN (:...userIds)", {
         userIds: invitedUserIds,
       })
-      .groupBy('activity.userId')
-      .having('COUNT(DISTINCT activity.actionId) >= 4')
+      .groupBy("activity.userId")
+      .having("COUNT(DISTINCT activity.actionId) >= 4")
       .getRawMany<{ userId: string; completedActions: string }>();
 
     const onboardingCompleted = onboardingRows.length;

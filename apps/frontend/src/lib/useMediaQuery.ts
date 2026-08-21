@@ -6,7 +6,7 @@ type UseMediaQueryOptions = {
 
 export function useMediaQuery(
   query: string,
-  { defaultValue = false }: UseMediaQueryOptions = {}
+  { defaultValue = false }: UseMediaQueryOptions = {},
 ): boolean {
   const [matches, setMatches] = useState<boolean>(defaultValue);
 

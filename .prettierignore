@@ -1,0 +1,29 @@
+node_modules
+dist
+build
+coverage
+.expo
+.worktree
+bun.lock
+
+server/migrations
+
+# Generated — regenerating would undo any reformatting
+**/*.gen.ts
+shared/client
+apps/*/public/assets/world.js
+apps/*/public/assets/world.json
+apps/*/public/mockServiceWorker.js
+
+# Vendored native dependencies
+apps/mobile/ios
+apps/mobile/android
+
+# Tool-managed, and only listed in a nested .gitignore, which Prettier doesn't read
+.react-router
+expo-env.d.ts
+
+# Consumed verbatim by external tooling, or a data blob with no reason to reflow
+apps/mobile/google-services-dev.json
+apps/*/public/.well-known
+apps/frontend/src/components/projects/plant-based-study/data.json

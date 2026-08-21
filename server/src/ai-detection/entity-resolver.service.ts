@@ -1,19 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
-import { DetectableEntity } from './entities/ai-detection-result.entity';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { DataSource } from "typeorm";
+import { DetectableEntity } from "./entities/ai-detection-result.entity";
 
 @Injectable()
 export class EntityResolverService {
-  constructor(private readonly dataSource: DataSource) { }
+  constructor(private readonly dataSource: DataSource) {}
 
   private asBoolean(value: unknown): boolean {
-    if (typeof value === 'boolean') {
+    if (typeof value === "boolean") {
       return value;
     }
-    if (typeof value === 'string') {
-      return value === 't' || value === 'true' || value === '1';
+    if (typeof value === "string") {
+      return value === "t" || value === "true" || value === "1";
     }
-    if (typeof value === 'number') {
+    if (typeof value === "number") {
       return value === 1;
     }
     return false;
@@ -25,10 +25,10 @@ export class EntityResolverService {
   ): Promise<
     | { id: number; editableContent: { body: string | null } }
     | {
-      id: number;
-      answers: Record<string, unknown>;
-      skipAiDetection: boolean;
-    }
+        id: number;
+        answers: Record<string, unknown>;
+        skipAiDetection: boolean;
+      }
   > {
     switch (entityType) {
       case DetectableEntity.Comment: {
@@ -54,7 +54,7 @@ export class EntityResolverService {
         };
       }
       case DetectableEntity.FormResponse: {
-        console.log('Resolving form response', entityId);
+        console.log("Resolving form response", entityId);
         const responseRows = await this.dataSource.query(
           `
           SELECT
@@ -79,15 +79,15 @@ export class EntityResolverService {
         );
         const response = responseRows[0] as
           | {
-            id: number;
-            answers: Record<string, unknown>;
-            hasStaffTag?: unknown;
-          }
+              id: number;
+              answers: Record<string, unknown>;
+              hasStaffTag?: unknown;
+            }
           | undefined;
         if (!response) {
           throw new NotFoundException(`FormResponse ${entityId} was not found`);
         }
-        console.log('Resolved form response', response);
+        console.log("Resolved form response", response);
         return {
           id: response.id,
           answers: response.answers,

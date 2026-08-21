@@ -1,3 +1,13 @@
+import {
+  conversationAddParticipant,
+  conversationLeave,
+  conversationRemoveParticipant,
+  conversationUpdateInfo,
+} from "@alliance/shared/client";
+import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
+import { launchImageLibraryAsync } from "expo-image-picker";
+import { router, useLocalSearchParams } from "expo-router";
+import { ChevronLeft, Edit, Plus, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -6,30 +16,20 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
-import { launchImageLibraryAsync } from "expo-image-picker";
-import {
-  conversationAddParticipant,
-  conversationLeave,
-  conversationRemoveParticipant,
-  conversationUpdateInfo,
-} from "@alliance/shared/client";
-import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
-import { ChevronLeft, Edit, Plus, X } from "lucide-react-native";
+import KeyboardAwareScrollView from "../../../../components/KeyboardAwareScrollView";
 import ProfileImage from "../../../../components/ProfileImage";
+import Button, { ButtonColor } from "../../../../components/system/Button";
 import Text, {
   FontFamily,
   FontWeight,
   resolveFontFamily,
 } from "../../../../components/system/Text";
-import Button, { ButtonColor } from "../../../../components/system/Button";
 import { useAuth } from "../../../../lib/AuthContext";
 import {
   mergeConversationUpdate,
   useConversations,
 } from "../../../../lib/messages";
 import { colors } from "../../../../lib/style/colors";
-import KeyboardAwareScrollView from "../../../../components/KeyboardAwareScrollView";
 
 export default function ConversationInfoScreen() {
   const { conversationId } = useLocalSearchParams<{

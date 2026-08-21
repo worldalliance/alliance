@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { ActionUpdateDto } from "../../../../shared/client";
-import Text, { FontWeight } from "./Text";
 import ActionUpdateCard from "../ActionUpdateCard";
+import Text, { FontWeight } from "./Text";
 
 interface TimelineItemProps {
   highlighted?: boolean;

@@ -1,5 +1,12 @@
-import { View, TouchableOpacity, Linking } from "react-native";
-import { useCallback, useEffect, useState } from "react";
+import type { CommunityMemberContactInfoDto } from "@alliance/shared/client/types.gen";
+import {
+  formatAwayRange,
+  formatAwayReason,
+} from "@alliance/shared/lib/awayRangesFormatters";
+import { formatNextTaskDue } from "@alliance/shared/lib/formatNextTaskDue";
+import { getMemberContactActionDescriptors } from "@alliance/shared/lib/memberContactActions";
+import { useAwayRanges } from "@alliance/shared/lib/useAwayRanges";
+import { cn } from "@alliance/shared/styles/util";
 import { router } from "expo-router";
 import {
   AlarmClock,
@@ -13,18 +20,11 @@ import {
   Phone,
   User,
 } from "lucide-react-native";
-import type { CommunityMemberContactInfoDto } from "@alliance/shared/client/types.gen";
-import {
-  formatAwayRange,
-  formatAwayReason,
-} from "@alliance/shared/lib/awayRangesFormatters";
-import { formatNextTaskDue } from "@alliance/shared/lib/formatNextTaskDue";
-import { useAwayRanges } from "@alliance/shared/lib/useAwayRanges";
-import { getMemberContactActionDescriptors } from "@alliance/shared/lib/memberContactActions";
-import { cn } from "@alliance/shared/styles/util";
-import Text, { TextStyle, FontWeight } from "./system/Text";
-import ProfileImage from "./ProfileImage";
+import { useCallback, useEffect, useState } from "react";
+import { Linking, TouchableOpacity, View } from "react-native";
 import { colors } from "../lib/style/colors";
+import ProfileImage from "./ProfileImage";
+import Text, { FontWeight, TextStyle } from "./system/Text";
 
 /** Icon sizes: inline with text = 16, row accent = 18, completion = 22, contact actions = 18 */
 const ICON_SIZE_INLINE = 16;

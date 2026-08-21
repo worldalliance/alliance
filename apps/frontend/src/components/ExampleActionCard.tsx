@@ -1,8 +1,8 @@
 import { ChevronRight } from "lucide-react";
 import { ReactNode } from "react";
 
-import { Link } from "react-router";
 import { cn } from "@alliance/shared/styles/util";
+import { Link } from "react-router";
 
 import ExampleDropdownCard from "./ExampleDropdownCard";
 

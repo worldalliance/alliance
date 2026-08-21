@@ -1,10 +1,10 @@
 import {
   UserAwayRange,
   UserAwayRangeReason,
-} from 'src/user/entities/user-away-range.entity';
-import request from 'supertest';
-import type { Repository } from 'typeorm';
-import { createTestApp, TestContext } from './e2e-test-utils';
+} from "src/user/entities/user-away-range.entity";
+import request from "supertest";
+import type { Repository } from "typeorm";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
 /** `YYYY-MM-DD`, `offsetDays` from today. Creation rejects past start dates. */
 function day(offsetDays: number): string {
@@ -13,21 +13,21 @@ function day(offsetDays: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-describe('Away ranges (e2e)', () => {
+describe("Away ranges (e2e)", () => {
   let ctx: TestContext;
   let awayRangeRepo: Repository<UserAwayRange>;
 
   const create = (body: Record<string, unknown>) =>
     request(ctx.app.getHttpServer())
-      .post('/user/awayranges')
+      .post("/user/awayranges")
       .send({ startDay: day(7), endDay: day(14), ...body })
-      .set('Authorization', `Bearer ${ctx.accessToken}`);
+      .set("Authorization", `Bearer ${ctx.accessToken}`);
 
   const update = (id: number, body: Record<string, unknown>) =>
     request(ctx.app.getHttpServer())
       .patch(`/user/awayranges/${id}`)
       .send(body)
-      .set('Authorization', `Bearer ${ctx.accessToken}`);
+      .set("Authorization", `Bearer ${ctx.accessToken}`);
 
   beforeAll(async () => {
     ctx = await createTestApp([]);
@@ -42,8 +42,8 @@ describe('Away ranges (e2e)', () => {
     await ctx.app.close();
   });
 
-  describe('note normalization', () => {
-    it('stores an explicit null note', async () => {
+  describe("note normalization", () => {
+    it("stores an explicit null note", async () => {
       const res = await create({
         reason: UserAwayRangeReason.VACATION,
         note: null,
@@ -56,27 +56,27 @@ describe('Away ranges (e2e)', () => {
       );
     });
 
-    it('trims surrounding whitespace from a note', async () => {
+    it("trims surrounding whitespace from a note", async () => {
       const res = await create({
         reason: UserAwayRangeReason.VACATION,
-        note: '  packing  ',
+        note: "  packing  ",
       });
 
       expect(res.status).toBe(201);
-      expect(res.body.note).toBe('packing');
+      expect(res.body.note).toBe("packing");
     });
 
-    it('collapses a blank note to null rather than an empty string', async () => {
+    it("collapses a blank note to null rather than an empty string", async () => {
       const res = await create({
         reason: UserAwayRangeReason.VACATION,
-        note: '   ',
+        note: "   ",
       });
 
       expect(res.status).toBe(201);
       expect(res.body.note).toBeNull();
     });
 
-    it('rejects a non-string note', async () => {
+    it("rejects a non-string note", async () => {
       const res = await create({
         reason: UserAwayRangeReason.VACATION,
         note: 123,
@@ -87,59 +87,59 @@ describe('Away ranges (e2e)', () => {
   });
 
   describe('note required for the "other" reason', () => {
-    it('rejects a null note', async () => {
+    it("rejects a null note", async () => {
       const res = await create({
         reason: UserAwayRangeReason.OTHER,
         note: null,
       });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('note');
+      expect(res.body.message).toContain("note");
     });
 
-    it('rejects a whitespace-only note', async () => {
+    it("rejects a whitespace-only note", async () => {
       const res = await create({
         reason: UserAwayRangeReason.OTHER,
-        note: '   ',
+        note: "   ",
       });
 
       expect(res.status).toBe(400);
-      expect(res.body.message).toContain('note');
+      expect(res.body.message).toContain("note");
     });
 
-    it('accepts a real note', async () => {
+    it("accepts a real note", async () => {
       const res = await create({
         reason: UserAwayRangeReason.OTHER,
-        note: 'jury duty',
+        note: "jury duty",
       });
 
       expect(res.status).toBe(201);
-      expect(res.body.note).toBe('jury duty');
+      expect(res.body.note).toBe("jury duty");
     });
   });
 
-  describe('updating a note', () => {
+  describe("updating a note", () => {
     let rangeId: number;
 
     beforeEach(async () => {
       const res = await create({
         reason: UserAwayRangeReason.VACATION,
-        note: 'original',
+        note: "original",
       });
       expect(res.status).toBe(201);
       rangeId = res.body.id;
     });
 
-    it('leaves the note alone when the field is omitted', async () => {
+    it("leaves the note alone when the field is omitted", async () => {
       const res = await update(rangeId, {
         reason: UserAwayRangeReason.VACATION,
       });
 
       expect(res.status).toBe(200);
-      expect(res.body.note).toBe('original');
+      expect(res.body.note).toBe("original");
     });
 
-    it('clears the note when sent explicitly as null', async () => {
+    it("clears the note when sent explicitly as null", async () => {
       const res = await update(rangeId, {
         reason: UserAwayRangeReason.VACATION,
         note: null,
@@ -149,10 +149,10 @@ describe('Away ranges (e2e)', () => {
       expect(res.body.note).toBeNull();
     });
 
-    it('clears the note when sent as whitespace', async () => {
+    it("clears the note when sent as whitespace", async () => {
       const res = await update(rangeId, {
         reason: UserAwayRangeReason.VACATION,
-        note: '  ',
+        note: "  ",
       });
 
       expect(res.status).toBe(200);
@@ -167,15 +167,15 @@ describe('Away ranges (e2e)', () => {
 
       expect(res.status).toBe(400);
       expect(await awayRangeRepo.findOneByOrFail({ id: rangeId })).toEqual(
-        expect.objectContaining({ note: 'original' }),
+        expect.objectContaining({ note: "original" }),
       );
     });
   });
 
-  it('always serializes note, including when it is null', async () => {
+  it("always serializes note, including when it is null", async () => {
     const withNote = await create({
       reason: UserAwayRangeReason.VACATION,
-      note: 'skiing',
+      note: "skiing",
     });
     const withoutNote = await create({
       reason: UserAwayRangeReason.VACATION,
@@ -185,15 +185,15 @@ describe('Away ranges (e2e)', () => {
     expect(withoutNote.status).toBe(201);
 
     const res = await request(ctx.app.getHttpServer())
-      .get('/user/awayranges')
-      .set('Authorization', `Bearer ${ctx.accessToken}`);
+      .get("/user/awayranges")
+      .set("Authorization", `Bearer ${ctx.accessToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
     for (const range of res.body) {
-      expect(range).toHaveProperty('note');
+      expect(range).toHaveProperty("note");
     }
     const notes = res.body.map((range: { note: string | null }) => range.note);
-    expect(new Set(notes)).toEqual(new Set([null, 'skiing']));
+    expect(new Set(notes)).toEqual(new Set([null, "skiing"]));
   });
 });

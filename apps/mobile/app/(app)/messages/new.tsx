@@ -1,18 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import {
-  ConversationDto,
   conversationCreateDirectConversation,
   conversationCreateGroupConversation,
+  ConversationDto,
   messageSendMessage,
   ProfileDto,
 } from "@alliance/shared/client";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
-import BackButton from "../../../components/system/BackButton";
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import MessageComposer from "../../../components/messages/MessageComposer";
 import MessageRecipientSelect from "../../../components/messages/MessageRecipientSelect";
+import BackButton from "../../../components/system/BackButton";
 import Text, { FontWeight } from "../../../components/system/Text";
 import { useAuth } from "../../../lib/AuthContext";
 import {

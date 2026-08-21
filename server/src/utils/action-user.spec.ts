@@ -1,22 +1,22 @@
-import { ActionStatus } from '../actions/entities/action-event.entity';
-import type { User } from '../user/entities/user.entity';
+import { ActionStatus } from "../actions/entities/action-event.entity";
+import type { User } from "../user/entities/user.entity";
 import {
   computeContractSignedAfterOnboardingStart,
   computeIsAssignedFromCohortSet,
   computeIsAssignedToAction,
-} from './action-user';
+} from "./action-user";
 
 type Params = Parameters<typeof computeIsAssignedToAction>[0];
 
-const PHASE_START = new Date('2020-01-01');
+const PHASE_START = new Date("2020-01-01");
 
 function userWithContractSignedAt(
   date: Date | null,
-): Pick<User, 'contractEvents' | 'hasActiveContractInFullRange'> {
+): Pick<User, "contractEvents" | "hasActiveContractInFullRange"> {
   return {
     contractEvents: date ? [{ date }] : [],
     hasActiveContractInFullRange: () => false,
-  } as unknown as Pick<User, 'contractEvents' | 'hasActiveContractInFullRange'>;
+  } as unknown as Pick<User, "contractEvents" | "hasActiveContractInFullRange">;
 }
 
 function makeAction(
@@ -24,15 +24,15 @@ function makeAction(
     hasMemberActionEvent?: boolean;
     onboarding?: boolean;
   } = {},
-): Params['action'] {
+): Params["action"] {
   const { hasMemberActionEvent = true, onboarding = false } = opts;
   return {
     events: hasMemberActionEvent
-      ? [{ newStatus: ActionStatus.MemberAction, date: new Date('2020-01-01') }]
+      ? [{ newStatus: ActionStatus.MemberAction, date: new Date("2020-01-01") }]
       : [
           {
             newStatus: ActionStatus.OfficeAction,
-            date: new Date('2020-01-01'),
+            date: new Date("2020-01-01"),
           },
         ],
     onboarding,
@@ -40,18 +40,18 @@ function makeAction(
     // from `events`: no member-action event means an empty phase.
     memberActionPhase: hasMemberActionEvent
       ? {
-          event: { date: new Date('2020-01-01') },
-          deadlineEvent: { date: new Date('2020-02-01') },
+          event: { date: new Date("2020-01-01") },
+          deadlineEvent: { date: new Date("2020-02-01") },
         }
       : { event: null, deadlineEvent: null },
-  } as unknown as Params['action'];
+  } as unknown as Params["action"];
 }
 
-function makeUser(hasActiveContract: boolean): Params['user'] {
+function makeUser(hasActiveContract: boolean): Params["user"] {
   return {
     contractEvents: [],
     hasActiveContractInFullRange: () => hasActiveContract,
-  } as unknown as Params['user'];
+  } as unknown as Params["user"];
 }
 
 function input(overrides: Partial<Params> = {}): Params {
@@ -64,16 +64,16 @@ function input(overrides: Partial<Params> = {}): Params {
   };
 }
 
-describe('computeIsAssignedToAction', () => {
-  it('participates when in cohort, with a contract active over the member action', () => {
+describe("computeIsAssignedToAction", () => {
+  it("participates when in cohort, with a contract active over the member action", () => {
     expect(computeIsAssignedToAction(input())).toBe(true);
   });
 
-  it('does not participate for a logged-out viewer', () => {
+  it("does not participate for a logged-out viewer", () => {
     expect(computeIsAssignedToAction(input({ user: null }))).toBe(false);
   });
 
-  it('does not participate when the action has no member-action event', () => {
+  it("does not participate when the action has no member-action event", () => {
     expect(
       computeIsAssignedToAction(
         input({ action: makeAction({ hasMemberActionEvent: false }) }),
@@ -81,22 +81,22 @@ describe('computeIsAssignedToAction', () => {
     ).toBe(false);
   });
 
-  it('does not participate when the user has dismissed the action', () => {
+  it("does not participate when the user has dismissed the action", () => {
     expect(computeIsAssignedToAction(input({ dismissed: true }))).toBe(false);
   });
 
-  it('does not participate when the user is not in the cohort', () => {
+  it("does not participate when the user is not in the cohort", () => {
     expect(computeIsAssignedToAction(input({ inCohort: false }))).toBe(false);
   });
 
-  describe('contract requirement', () => {
-    it('does not participate without an active contract', () => {
+  describe("contract requirement", () => {
+    it("does not participate without an active contract", () => {
       expect(computeIsAssignedToAction(input({ user: makeUser(false) }))).toBe(
         false,
       );
     });
 
-    it('participates without an active contract for an onboarding action', () => {
+    it("participates without an active contract for an onboarding action", () => {
       expect(
         computeIsAssignedToAction(
           input({
@@ -108,9 +108,9 @@ describe('computeIsAssignedToAction', () => {
     });
   });
 
-  describe('onboarding join timing', () => {
+  describe("onboarding join timing", () => {
     // Excluded even when in the cohort: onboarding targets new members only.
-    it('excludes an existing member who joined before the phase began', () => {
+    it("excludes an existing member who joined before the phase began", () => {
       expect(
         computeIsAssignedToAction(
           input({
@@ -123,7 +123,7 @@ describe('computeIsAssignedToAction', () => {
       ).toBe(false);
     });
 
-    it('includes a new member who joined at/after the phase began', () => {
+    it("includes a new member who joined at/after the phase began", () => {
       expect(
         computeIsAssignedToAction(
           input({
@@ -138,7 +138,7 @@ describe('computeIsAssignedToAction', () => {
   });
 });
 
-describe('computeIsAssignedFromCohortSet', () => {
+describe("computeIsAssignedFromCohortSet", () => {
   type PopulationParams = Parameters<typeof computeIsAssignedFromCohortSet>[0];
 
   function makePopulationUser(opts: {
@@ -175,7 +175,7 @@ describe('computeIsAssignedFromCohortSet', () => {
   ): PopulationParams {
     return {
       eventDate: PHASE_START,
-      deadlineDate: new Date('2020-02-01'),
+      deadlineDate: new Date("2020-02-01"),
       cohortMemberIds: new Set([1]),
       user: makePopulationUser({}).user,
       userDismissed: false,
@@ -184,11 +184,11 @@ describe('computeIsAssignedFromCohortSet', () => {
     };
   }
 
-  it('participates when in cohort with a contract active over the window', () => {
+  it("participates when in cohort with a contract active over the window", () => {
     expect(computeIsAssignedFromCohortSet(populationInput())).toBe(true);
   });
 
-  it('does not participate when dismissed, unless includeDismissed', () => {
+  it("does not participate when dismissed, unless includeDismissed", () => {
     expect(
       computeIsAssignedFromCohortSet(populationInput({ userDismissed: true })),
     ).toBe(false);
@@ -199,7 +199,7 @@ describe('computeIsAssignedFromCohortSet', () => {
     ).toBe(true);
   });
 
-  it('does not participate when not in the cohort', () => {
+  it("does not participate when not in the cohort", () => {
     expect(
       computeIsAssignedFromCohortSet(
         populationInput({ cohortMemberIds: new Set([999]) }),
@@ -207,14 +207,14 @@ describe('computeIsAssignedFromCohortSet', () => {
     ).toBe(false);
   });
 
-  it('does not participate without a contract active over the window', () => {
+  it("does not participate without a contract active over the window", () => {
     const { user } = makePopulationUser({ hasContractInFullRange: false });
     expect(computeIsAssignedFromCohortSet(populationInput({ user }))).toBe(
       false,
     );
   });
 
-  it('still requires the full-window contract when the deadline is null', () => {
+  it("still requires the full-window contract when the deadline is null", () => {
     // Regression: a null deadline used to skip the full-range check, so
     // lapsed-contract users were included here but excluded by the self-view
     // predicate (computeIsAssignedToAction).
@@ -229,7 +229,7 @@ describe('computeIsAssignedFromCohortSet', () => {
     expect(fullRangeCalls).toEqual([{ startDate: PHASE_START, endDate: null }]);
   });
 
-  it('includeSuspended skips the contract-lapse exclusion', () => {
+  it("includeSuspended skips the contract-lapse exclusion", () => {
     const { user, fullRangeCalls } = makePopulationUser({
       hasContractInFullRange: false,
     });
@@ -246,8 +246,8 @@ describe('computeIsAssignedFromCohortSet', () => {
     expect(fullRangeCalls).toEqual([]);
   });
 
-  describe('onboarding join timing', () => {
-    it('excludes an existing member who joined before the event', () => {
+  describe("onboarding join timing", () => {
+    it("excludes an existing member who joined before the event", () => {
       const { user } = makePopulationUser({
         contractSignedAt: new Date(PHASE_START.getTime() - 1000),
       });
@@ -258,7 +258,7 @@ describe('computeIsAssignedFromCohortSet', () => {
       ).toBe(false);
     });
 
-    it('includes a new member who joined at/after the event', () => {
+    it("includes a new member who joined at/after the event", () => {
       const { user } = makePopulationUser({
         contractSignedAt: new Date(PHASE_START.getTime() + 1000),
       });
@@ -271,8 +271,8 @@ describe('computeIsAssignedFromCohortSet', () => {
   });
 });
 
-describe('computeContractSignedAfterOnboardingStart', () => {
-  it('treats a user with no contract events as in time', () => {
+describe("computeContractSignedAfterOnboardingStart", () => {
+  it("treats a user with no contract events as in time", () => {
     expect(
       computeContractSignedAfterOnboardingStart({
         user: userWithContractSignedAt(null),
@@ -281,7 +281,7 @@ describe('computeContractSignedAfterOnboardingStart', () => {
     ).toBe(true);
   });
 
-  it('is out of time when joined before the phase began', () => {
+  it("is out of time when joined before the phase began", () => {
     expect(
       computeContractSignedAfterOnboardingStart({
         user: userWithContractSignedAt(new Date(PHASE_START.getTime() - 1000)),
@@ -290,7 +290,7 @@ describe('computeContractSignedAfterOnboardingStart', () => {
     ).toBe(false);
   });
 
-  it('is in time when joined exactly at the phase start', () => {
+  it("is in time when joined exactly at the phase start", () => {
     expect(
       computeContractSignedAfterOnboardingStart({
         user: userWithContractSignedAt(PHASE_START),
@@ -299,7 +299,7 @@ describe('computeContractSignedAfterOnboardingStart', () => {
     ).toBe(true);
   });
 
-  it('is out of time when a contract holder has no member-action phase start', () => {
+  it("is out of time when a contract holder has no member-action phase start", () => {
     expect(
       computeContractSignedAfterOnboardingStart({
         user: userWithContractSignedAt(PHASE_START),

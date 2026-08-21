@@ -4,16 +4,16 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-} from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Community } from 'src/community/entities/community.entity';
-import { ImagesService } from 'src/images/images.service';
-import { Friend, FriendStatus } from 'src/user/entities/friend.entity';
-import { User } from 'src/user/entities/user.entity';
-import { type FriendsAcceptedPayload, UserEvents } from 'src/user/user.events';
-import type { Relations } from 'src/utils/Repository';
-import { In, type EntityManager, type Repository } from 'typeorm';
+} from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Community } from "src/community/entities/community.entity";
+import { ImagesService } from "src/images/images.service";
+import { Friend, FriendStatus } from "src/user/entities/friend.entity";
+import { User } from "src/user/entities/user.entity";
+import { UserEvents, type FriendsAcceptedPayload } from "src/user/user.events";
+import type { Relations } from "src/utils/Repository";
+import { In, type EntityManager, type Repository } from "typeorm";
 import {
   ConversationAdminSummaryDto,
   ConversationDto,
@@ -22,15 +22,15 @@ import {
   CreateGroupConversationDto,
   UnreadMessageSummary,
   UpdateConversationDto,
-} from './dto/messaging.dto';
-import { Conversation, ConversationType } from './entities/conversation.entity';
-import { Message } from './entities/message.entity';
+} from "./dto/messaging.dto";
+import { Conversation, ConversationType } from "./entities/conversation.entity";
+import { Message } from "./entities/message.entity";
 import {
   Participant,
   ParticipantRole,
   ParticipantState,
-} from './entities/participant.entity';
-import { MessagingEvents } from './messaging.events';
+} from "./entities/participant.entity";
+import { MessagingEvents } from "./messaging.events";
 
 @Injectable()
 export class ConversationService {
@@ -82,7 +82,7 @@ export class ConversationService {
       await this.acceptDirectInviteBetween(payload.userIdA, payload.userIdB);
     } catch (error) {
       this.logger.error(
-        'Error auto-accepting direct invite for new friends:',
+        "Error auto-accepting direct invite for new friends:",
         error,
       );
     }
@@ -112,16 +112,16 @@ export class ConversationService {
 
   async getAllConversationsForAdmin(): Promise<ConversationAdminSummaryDto[]> {
     const conversations = await this.conversationRepository
-      .createQueryBuilder('conversation')
-      .leftJoinAndSelect('conversation.participants', 'participant')
-      .leftJoinAndSelect('participant.user', 'participantUser')
-      .leftJoinAndSelect('participant.lastReadMessage', 'participantLastRead')
+      .createQueryBuilder("conversation")
+      .leftJoinAndSelect("conversation.participants", "participant")
+      .leftJoinAndSelect("participant.user", "participantUser")
+      .leftJoinAndSelect("participant.lastReadMessage", "participantLastRead")
       .leftJoinAndSelect(
-        'participantLastRead.author',
-        'participantLastReadAuthor',
+        "participantLastRead.author",
+        "participantLastReadAuthor",
       )
-      .leftJoinAndSelect('conversation.community', 'community')
-      .orderBy('conversation.updatedAt', 'DESC')
+      .leftJoinAndSelect("conversation.community", "community")
+      .orderBy("conversation.updatedAt", "DESC")
       .getMany();
 
     if (!conversations.length) {
@@ -148,22 +148,22 @@ export class ConversationService {
     await this.ensureCommunityMembershipForUser(userId);
 
     const conversations = await this.conversationRepository
-      .createQueryBuilder('conversation')
+      .createQueryBuilder("conversation")
       .innerJoin(
-        'conversation.participants',
-        'membership',
-        'membership.userId = :userId',
+        "conversation.participants",
+        "membership",
+        "membership.userId = :userId",
         { userId },
       )
-      .leftJoinAndSelect('conversation.participants', 'participant')
-      .leftJoinAndSelect('participant.user', 'participantUser')
-      .leftJoinAndSelect('participant.lastReadMessage', 'participantLastRead')
+      .leftJoinAndSelect("conversation.participants", "participant")
+      .leftJoinAndSelect("participant.user", "participantUser")
+      .leftJoinAndSelect("participant.lastReadMessage", "participantLastRead")
       .leftJoinAndSelect(
-        'participantLastRead.author',
-        'participantLastReadAuthor',
+        "participantLastRead.author",
+        "participantLastReadAuthor",
       )
-      .leftJoinAndSelect('conversation.community', 'community')
-      .orderBy('conversation.updatedAt', 'DESC')
+      .leftJoinAndSelect("conversation.community", "community")
+      .orderBy("conversation.updatedAt", "DESC")
       .getMany();
 
     if (!conversations.length) {
@@ -217,7 +217,7 @@ export class ConversationService {
     dto: CreateDirectConversationDto,
   ): Promise<ConversationDto> {
     if (userId === dto.targetUserId) {
-      throw new BadRequestException('You cannot message yourself.');
+      throw new BadRequestException("You cannot message yourself.");
     }
 
     const [initiator, target] = await Promise.all([
@@ -226,28 +226,28 @@ export class ConversationService {
     ]);
 
     if (!initiator) {
-      throw new NotFoundException('User not found.');
+      throw new NotFoundException("User not found.");
     }
 
     if (!target) {
-      throw new NotFoundException('Recipient not found.');
+      throw new NotFoundException("Recipient not found.");
     }
 
     const existingConversation = await this.conversationRepository
-      .createQueryBuilder('conversation')
+      .createQueryBuilder("conversation")
       .innerJoin(
-        'conversation.participants',
-        'initiatorParticipant',
-        'initiatorParticipant.userId = :userId',
+        "conversation.participants",
+        "initiatorParticipant",
+        "initiatorParticipant.userId = :userId",
         { userId },
       )
       .innerJoin(
-        'conversation.participants',
-        'targetParticipant',
-        'targetParticipant.userId = :targetUserId',
+        "conversation.participants",
+        "targetParticipant",
+        "targetParticipant.userId = :targetUserId",
         { targetUserId: dto.targetUserId },
       )
-      .where('conversation.type = :type', {
+      .where("conversation.type = :type", {
         type: ConversationType.Direct,
       })
       .getOne();
@@ -275,7 +275,7 @@ export class ConversationService {
 
     const conversation = await this.conversationRepository.save(
       this.conversationRepository.create({
-        title: dto.title?.trim() || 'Direct message',
+        title: dto.title?.trim() || "Direct message",
         type: ConversationType.Direct,
       }),
     );
@@ -318,26 +318,26 @@ export class ConversationService {
 
     if (!uniqueParticipantIds.length) {
       throw new BadRequestException(
-        'A group conversation requires at least one additional participant.',
+        "A group conversation requires at least one additional participant.",
       );
     }
 
     const allUserIds = [userId, ...uniqueParticipantIds];
 
     const existingConversation = await this.conversationRepository
-      .createQueryBuilder('conversation')
-      .innerJoin('conversation.participants', 'p')
-      .where('conversation.type = :type', {
+      .createQueryBuilder("conversation")
+      .innerJoin("conversation.participants", "p")
+      .where("conversation.type = :type", {
         type: ConversationType.Multiple,
       })
-      .groupBy('conversation.id')
+      .groupBy("conversation.id")
       // Total number of participants must match exactly
-      .having('COUNT(DISTINCT p.userId) = :participantCount', {
+      .having("COUNT(DISTINCT p.userId) = :participantCount", {
         participantCount: allUserIds.length,
       })
       // All participants must be within the requested set
       .andHaving(
-        'COUNT(DISTINCT CASE WHEN p.userId IN (:...allUserIds) THEN p.userId END) = :participantCount',
+        "COUNT(DISTINCT CASE WHEN p.userId IN (:...allUserIds) THEN p.userId END) = :participantCount",
         {
           allUserIds,
           participantCount: allUserIds.length,
@@ -365,11 +365,11 @@ export class ConversationService {
     ]);
 
     if (!owner) {
-      throw new NotFoundException('User not found.');
+      throw new NotFoundException("User not found.");
     }
 
     if (participants.length !== uniqueParticipantIds.length) {
-      throw new NotFoundException('One or more participants were not found.');
+      throw new NotFoundException("One or more participants were not found.");
     }
 
     const conversation = await this.conversationRepository.save(
@@ -440,20 +440,20 @@ export class ConversationService {
     userIdB: number,
   ): Promise<void> {
     const conversation = await this.conversationRepository
-      .createQueryBuilder('conversation')
+      .createQueryBuilder("conversation")
       .innerJoin(
-        'conversation.participants',
-        'participantA',
-        'participantA.userId = :userIdA',
+        "conversation.participants",
+        "participantA",
+        "participantA.userId = :userIdA",
         { userIdA },
       )
       .innerJoin(
-        'conversation.participants',
-        'participantB',
-        'participantB.userId = :userIdB',
+        "conversation.participants",
+        "participantB",
+        "participantB.userId = :userIdB",
         { userIdB },
       )
-      .where('conversation.type = :type', { type: ConversationType.Direct })
+      .where("conversation.type = :type", { type: ConversationType.Direct })
       .getOne();
 
     if (!conversation) {
@@ -510,7 +510,7 @@ export class ConversationService {
     if (conversation.type !== ConversationType.Direct) {
       conversation.title = dto.title ?? conversation.title;
 
-      if (dto.photo?.startsWith('data:')) {
+      if (dto.photo?.startsWith("data:")) {
         conversation.photo =
           await this.imagesService.processAndUploadProfileImage(dto.photo);
       }
@@ -543,7 +543,7 @@ export class ConversationService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found.');
+      throw new NotFoundException("User not found.");
     }
 
     const participant = this.participantRepository.create({
@@ -584,14 +584,14 @@ export class ConversationService {
     });
 
     if (!targetParticipant) {
-      throw new NotFoundException('Participant not found.');
+      throw new NotFoundException("Participant not found.");
     }
 
     if (
       targetParticipant.role === ParticipantRole.Owner &&
       adminParticipant.user.id !== targetParticipant.user.id
     ) {
-      throw new ForbiddenException('Only owners can remove other owners.');
+      throw new ForbiddenException("Only owners can remove other owners.");
     }
 
     await this.participantRepository.remove(targetParticipant);
@@ -629,7 +629,7 @@ export class ConversationService {
     });
 
     if (!community) {
-      throw new NotFoundException('Community not found.');
+      throw new NotFoundException("Community not found.");
     }
 
     let conversation = await this.conversationRepository.findOne({
@@ -837,7 +837,7 @@ export class ConversationService {
   ): Promise<Participant> {
     const participant = await this.getParticipantOrFail(conversationId, userId);
     if (!this.isConversationAdmin(participant)) {
-      throw new ForbiddenException('Admin access required.');
+      throw new ForbiddenException("Admin access required.");
     }
     return participant;
   }
@@ -849,7 +849,7 @@ export class ConversationService {
     });
 
     if (!user) {
-      throw new NotFoundException('User not found.');
+      throw new NotFoundException("User not found.");
     }
 
     await Promise.all(
@@ -879,7 +879,7 @@ export class ConversationService {
     });
 
     if (!participant) {
-      throw new ForbiddenException('You are not part of this conversation.');
+      throw new ForbiddenException("You are not part of this conversation.");
     }
 
     return participant;
@@ -906,12 +906,12 @@ export class ConversationService {
     conversationId: number,
   ): Promise<Message | null> {
     return this.messageRepository
-      .createQueryBuilder('message')
-      .leftJoinAndSelect('message.author', 'author')
-      .leftJoinAndSelect('message.replyTo', 'replyTo')
-      .leftJoinAndSelect('replyTo.author', 'replyToAuthor')
-      .where('message.conversationId = :conversationId', { conversationId })
-      .orderBy('message.createdAt', 'DESC')
+      .createQueryBuilder("message")
+      .leftJoinAndSelect("message.author", "author")
+      .leftJoinAndSelect("message.replyTo", "replyTo")
+      .leftJoinAndSelect("replyTo.author", "replyToAuthor")
+      .where("message.conversationId = :conversationId", { conversationId })
+      .orderBy("message.createdAt", "DESC")
       .limit(1)
       .getOne();
   }
@@ -925,15 +925,15 @@ export class ConversationService {
     }
 
     const messages = await this.messageRepository
-      .createQueryBuilder('message')
-      .leftJoinAndSelect('message.author', 'author')
-      .leftJoinAndSelect('message.replyTo', 'replyTo')
-      .leftJoinAndSelect('replyTo.author', 'replyToAuthor')
-      .leftJoinAndSelect('message.conversation', 'conversation')
-      .where('conversation.id IN (:...conversationIds)', { conversationIds })
-      .distinctOn(['conversation.id'])
-      .orderBy('conversation.id', 'ASC')
-      .addOrderBy('message.createdAt', 'DESC')
+      .createQueryBuilder("message")
+      .leftJoinAndSelect("message.author", "author")
+      .leftJoinAndSelect("message.replyTo", "replyTo")
+      .leftJoinAndSelect("replyTo.author", "replyToAuthor")
+      .leftJoinAndSelect("message.conversation", "conversation")
+      .where("conversation.id IN (:...conversationIds)", { conversationIds })
+      .distinctOn(["conversation.id"])
+      .orderBy("conversation.id", "ASC")
+      .addOrderBy("message.createdAt", "DESC")
       .getMany();
 
     messages.forEach((message) => {
@@ -955,13 +955,13 @@ export class ConversationService {
     }
 
     const rows = await this.messageRepository
-      .createQueryBuilder('message')
-      .select('message.conversationId', 'conversationId')
-      .addSelect('COUNT(message.id)', 'count')
-      .where('message.conversationId IN (:...conversationIds)', {
+      .createQueryBuilder("message")
+      .select("message.conversationId", "conversationId")
+      .addSelect("COUNT(message.id)", "count")
+      .where("message.conversationId IN (:...conversationIds)", {
         conversationIds,
       })
-      .groupBy('message.conversationId')
+      .groupBy("message.conversationId")
       .getRawMany<{ conversationId: number; count: string }>();
 
     rows.forEach((row) => {
@@ -1023,13 +1023,13 @@ export class ConversationService {
       new Date(0);
 
     const qb = this.messageRepository
-      .createQueryBuilder('message')
-      .where('message.conversationId = :conversationId', { conversationId })
-      .andWhere('message.authorId != :userId', { userId })
-      .andWhere('message.createdAt > :since', { since });
+      .createQueryBuilder("message")
+      .where("message.conversationId = :conversationId", { conversationId })
+      .andWhere("message.authorId != :userId", { userId })
+      .andWhere("message.createdAt > :since", { since });
 
     if (participant.lastReadMessage?.id) {
-      qb.andWhere('message.id != :lastReadMessageId', {
+      qb.andWhere("message.id != :lastReadMessageId", {
         lastReadMessageId: participant.lastReadMessage.id,
       });
     }
@@ -1045,28 +1045,28 @@ export class ConversationService {
 
   async getUnreadMessages(userId: number): Promise<number> {
     const result = await this.participantRepository
-      .createQueryBuilder('participant')
-      .leftJoin('participant.lastReadMessage', 'lastReadMessage')
-      .where('participant.userId = :userId', { userId })
+      .createQueryBuilder("participant")
+      .leftJoin("participant.lastReadMessage", "lastReadMessage")
+      .where("participant.userId = :userId", { userId })
       .andWhere((qb) => {
         const unreadSubQuery = qb
           .subQuery()
-          .select('1')
-          .from(Message, 'message')
-          .where('message.conversationId = participant.conversationId')
-          .andWhere('message.authorId != :userId', { userId })
+          .select("1")
+          .from(Message, "message")
+          .where("message.conversationId = participant.conversationId")
+          .andWhere("message.authorId != :userId", { userId })
           .andWhere(
-            'message.createdAt > COALESCE(lastReadMessage.createdAt, participant.joinedAt)',
+            "message.createdAt > COALESCE(lastReadMessage.createdAt, participant.joinedAt)",
           )
           .andWhere(
-            '(message.id != lastReadMessage.id OR lastReadMessage.id IS NULL)',
+            "(message.id != lastReadMessage.id OR lastReadMessage.id IS NULL)",
           )
           .limit(1)
           .getQuery();
 
         return `EXISTS ${unreadSubQuery}`;
       })
-      .select('COUNT(DISTINCT participant.conversationId)', 'unreadCount')
+      .select("COUNT(DISTINCT participant.conversationId)", "unreadCount")
       .getRawOne<{ unreadCount?: string }>();
 
     return Number(result?.unreadCount ?? 0);
@@ -1095,15 +1095,15 @@ export class ConversationService {
   ): Promise<number> {
     const minimumPerConversation = options?.minimumPerConversation ?? 0;
     const unreadCountSubquery = this.messageRepository
-      .createQueryBuilder('message')
-      .select('COUNT(message.id)')
-      .where('message.conversationId = participant.conversationId')
-      .andWhere('message.authorId != :userId', { userId })
+      .createQueryBuilder("message")
+      .select("COUNT(message.id)")
+      .where("message.conversationId = participant.conversationId")
+      .andWhere("message.authorId != :userId", { userId })
       .andWhere(
-        'message.createdAt > COALESCE(lastReadMessage.createdAt, participant.joinedAt)',
+        "message.createdAt > COALESCE(lastReadMessage.createdAt, participant.joinedAt)",
       )
       .andWhere(
-        '(message.id != lastReadMessage.id OR lastReadMessage.id IS NULL)',
+        "(message.id != lastReadMessage.id OR lastReadMessage.id IS NULL)",
       )
       .getQuery();
     const unreadCountExpression =
@@ -1111,11 +1111,11 @@ export class ConversationService {
         ? `GREATEST((${unreadCountSubquery}), ${minimumPerConversation})`
         : `(${unreadCountSubquery})`;
     const result = await this.participantRepository
-      .createQueryBuilder('participant')
-      .leftJoin('participant.lastReadMessage', 'lastReadMessage')
-      .select(`COALESCE(SUM(${unreadCountExpression}), 0)`, 'total')
-      .where('participant.userId = :userId', { userId })
-      .andWhere('participant.state = :state', { state })
+      .createQueryBuilder("participant")
+      .leftJoin("participant.lastReadMessage", "lastReadMessage")
+      .select(`COALESCE(SUM(${unreadCountExpression}), 0)`, "total")
+      .where("participant.userId = :userId", { userId })
+      .andWhere("participant.state = :state", { state })
       .getRawOne<{ total?: string }>();
 
     return Number(result?.total ?? 0);
@@ -1126,10 +1126,10 @@ export class ConversationService {
     state: ParticipantState,
   ): Promise<number> {
     const result = await this.participantRepository
-      .createQueryBuilder('participant')
-      .select('COUNT(DISTINCT participant.conversationId)', 'total')
-      .where('participant.userId = :userId', { userId })
-      .andWhere('participant.state = :state', { state })
+      .createQueryBuilder("participant")
+      .select("COUNT(DISTINCT participant.conversationId)", "total")
+      .where("participant.userId = :userId", { userId })
+      .andWhere("participant.state = :state", { state })
       .getRawOne<{ total?: string }>();
 
     return Number(result?.total ?? 0);

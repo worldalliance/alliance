@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
-import type { Assert, Equal, Extends } from '@alliance/common/types';
+import type { Assert, Equal, Extends } from "@alliance/common/types";
 import type {
   EntityShape,
   EntityShapeViolations,
@@ -12,7 +12,7 @@ import type {
   Repository,
   WithRelations,
   WithRelationsExact,
-} from './Repository';
+} from "./Repository";
 
 type Author = { id: number; email: string };
 
@@ -38,7 +38,7 @@ type _typecheck_IsRelation =
   | Assert<Equal<IsRelation<{ theme: string; notifications: boolean }>, false>>
   | Assert<Equal<IsRelation<{ nested: { deep: number } }>, false>>
   | Assert<Equal<IsRelation<{ items: { id: string }[] }>, false>>
-  | Assert<Equal<IsRelation<{ kind: 'a' } | { kind: 'b' }>, false>>
+  | Assert<Equal<IsRelation<{ kind: "a" } | { kind: "b" }>, false>>
   | Assert<Equal<IsRelation<Record<string, number>>, false>>
   | Assert<Equal<IsRelation<Relation<{ param: string }>>, true>>
   | Assert<Equal<IsRelation<Relation<{ param: number }> | null>, true>>
@@ -633,13 +633,13 @@ type _typecheck_EntityShape =
   | Assert<EntityShape<WellShapedEntity>>
   | Assert<Equal<EntityShapeViolations<WellShapedEntity>, never>>
   | Assert<
-      Equal<EntityShapeViolations<{ user: Relation<{ id: number }> }>, 'user'>
+      Equal<EntityShapeViolations<{ user: Relation<{ id: number }> }>, "user">
     >
-  | Assert<Equal<EntityShapeViolations<{ note?: string }>, 'note'>>
+  | Assert<Equal<EntityShapeViolations<{ note?: string }>, "note">>
   | Assert<
       Equal<
         EntityShapeViolations<{ parent: Relation<{ id: number }> | null }>,
-        'parent'
+        "parent"
       >
     >
   // a well-shaped entity round-trips: query results stay assignable to the
@@ -661,45 +661,45 @@ async function _typecheck_Repository(repo: Repository<Probe>) {
   // default it falls back to the constraint, making every result a union over
   // every possible loading.
   const _unspecified = await repo.find({ where: { id: 1 } });
-  type _1 = Assert<Equal<(typeof _unspecified)[number]['author'], undefined>>;
+  type _1 = Assert<Equal<(typeof _unspecified)[number]["author"], undefined>>;
   type _2 = Assert<Extends<(typeof _unspecified)[number], Probe>>;
 
   const _loaded = await repo.findOneOrFail({
     where: { id: 1 },
     relations: { author: true },
   });
-  type _3 = Assert<Equal<(typeof _loaded)['author']['email'], string>>;
-  type _4 = Assert<Equal<(typeof _loaded)['editors'], undefined>>;
+  type _3 = Assert<Equal<(typeof _loaded)["author"]["email"], string>>;
+  type _4 = Assert<Equal<(typeof _loaded)["editors"], undefined>>;
   type _5 = Assert<Extends<typeof _loaded, Probe>>;
 
   // The `*By` methods can't request relations, so only eager ones are loaded.
   const _by = await repo.findBy({ id: 1 });
-  type _6 = Assert<Equal<(typeof _by)[number]['author'], undefined>>;
+  type _6 = Assert<Equal<(typeof _by)[number]["author"], undefined>>;
 
   const _oneBy = await repo.findOneBy({ id: 1 });
   type _7 = Assert<Extends<null, typeof _oneBy>>;
 
   const _oneByOrFail = await repo.findOneByOrFail({ id: 1 });
-  type _8 = Assert<Equal<(typeof _oneByOrFail)['editors'], undefined>>;
+  type _8 = Assert<Equal<(typeof _oneByOrFail)["editors"], undefined>>;
 
   const _byIds = await repo.findByIds([1, 2]);
-  type _9 = Assert<Equal<(typeof _byIds)[number]['author'], undefined>>;
+  type _9 = Assert<Equal<(typeof _byIds)[number]["author"], undefined>>;
 
   const [_rows, _count] = await repo.findAndCount({
     where: { id: 1 },
     relations: { editors: true },
   });
-  type _10 = Assert<Extends<(typeof _rows)[number]['editors'][number], Author>>;
-  type _11 = Assert<Equal<(typeof _rows)[number]['author'], undefined>>;
+  type _10 = Assert<Extends<(typeof _rows)[number]["editors"][number], Author>>;
+  type _11 = Assert<Equal<(typeof _rows)[number]["author"], undefined>>;
   type _12 = Assert<Equal<typeof _count, number>>;
 
   const [_countedBy] = await repo.findAndCountBy({ id: 1 });
-  type _13 = Assert<Equal<(typeof _countedBy)[number]['author'], undefined>>;
+  type _13 = Assert<Equal<(typeof _countedBy)[number]["author"], undefined>>;
 
   // `find` and `findAndCount` take no arguments in TypeORM; keeping that
   // spelling means adopting this type never forces a meaningless `find({})`.
   const _all = await repo.find();
-  type _14 = Assert<Equal<(typeof _all)[number]['author'], undefined>>;
+  type _14 = Assert<Equal<(typeof _all)[number]["author"], undefined>>;
 
   const [_allRows] = await repo.findAndCount();
   type _15 = Assert<Extends<(typeof _allRows)[number], Probe>>;
@@ -717,21 +717,21 @@ type NestedProbe = {
 async function _typecheck_ToManyExactness(repo: Repository<NestedProbe>) {
   const [row] = await repo.find({ relations: { editors: true } });
 
-  type _1 = Assert<Equal<(typeof row)['editors'][number]['boss'], undefined>>;
+  type _1 = Assert<Equal<(typeof row)["editors"][number]["boss"], undefined>>;
 
   row.editors.map((_editor) => {
-    type _2 = Assert<Equal<(typeof _editor)['boss'], undefined>>;
+    type _2 = Assert<Equal<(typeof _editor)["boss"], undefined>>;
   });
 
   row.editors.forEach((_editor) => {
-    type _3 = Assert<Equal<(typeof _editor)['boss'], undefined>>;
+    type _3 = Assert<Equal<(typeof _editor)["boss"], undefined>>;
   });
 
   const _found = row.editors.find(() => true);
-  type _4 = Assert<Equal<NonNullable<typeof _found>['boss'], undefined>>;
+  type _4 = Assert<Equal<NonNullable<typeof _found>["boss"], undefined>>;
 
   for (const _editor of row.editors) {
-    type _5 = Assert<Equal<(typeof _editor)['boss'], undefined>>;
+    type _5 = Assert<Equal<(typeof _editor)["boss"], undefined>>;
   }
 }
 
@@ -757,12 +757,12 @@ type _typecheck_RepositoryRejectsUnshapedEntity =
   | Assert<
       Equal<
         Repository<{ id: number; author: Relation<Author> }>,
-        { author: 'must be optional if and only if it is a relation' }
+        { author: "must be optional if and only if it is a relation" }
       >
     >
   | Assert<
       Equal<
         Repository<{ id: number; note?: string }>,
-        { note: 'must be optional if and only if it is a relation' }
+        { note: "must be optional if and only if it is a relation" }
       >
     >;

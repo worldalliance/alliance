@@ -1,16 +1,16 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { IsDateString, IsOptional } from 'class-validator';
-import { ActionPartnershipNote } from '../entities/action-partnership-note.entity';
-import { ActionPartnershipResponse } from '../entities/action-partnership-response.entity';
-import type { WithRelations } from 'src/utils/Repository';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { IsDateString, IsOptional } from "class-validator";
+import type { WithRelations } from "src/utils/Repository";
+import { ActionPartnershipNote } from "../entities/action-partnership-note.entity";
+import { ActionPartnershipResponse } from "../entities/action-partnership-response.entity";
 
 export class ActionPartnershipNoteDto extends PickType(ActionPartnershipNote, [
-  'id',
-  'responseId',
-  'noteDate',
-  'body',
-  'createdAt',
-  'updatedAt',
+  "id",
+  "responseId",
+  "noteDate",
+  "body",
+  "createdAt",
+  "updatedAt",
 ]) {
   constructor(note: ActionPartnershipNote) {
     super();
@@ -26,18 +26,18 @@ export class ActionPartnershipNoteDto extends PickType(ActionPartnershipNote, [
 export class ActionPartnershipResponseDto extends PickType(
   ActionPartnershipResponse,
   [
-    'id',
-    'organizationName',
-    'organizationWebsite',
-    'personName',
-    'contact',
-    'outreachChannels',
-    'outreachOtherDetails',
-    'audienceSize',
-    'desiredCollaboration',
-    'notes',
-    'createdAt',
-    'updatedAt',
+    "id",
+    "organizationName",
+    "organizationWebsite",
+    "personName",
+    "contact",
+    "outreachChannels",
+    "outreachOtherDetails",
+    "audienceSize",
+    "desiredCollaboration",
+    "notes",
+    "createdAt",
+    "updatedAt",
   ],
 ) {
   @ApiProperty({ type: () => ActionPartnershipNoteDto, isArray: true })
@@ -68,15 +68,15 @@ export class ActionPartnershipResponseDto extends PickType(
 export class CreateActionPartnershipResponseDto extends PickType(
   ActionPartnershipResponse,
   [
-    'organizationName',
-    'organizationWebsite',
-    'personName',
-    'contact',
-    'outreachChannels',
-    'outreachOtherDetails',
-    'audienceSize',
-    'desiredCollaboration',
-    'notes',
+    "organizationName",
+    "organizationWebsite",
+    "personName",
+    "contact",
+    "outreachChannels",
+    "outreachOtherDetails",
+    "audienceSize",
+    "desiredCollaboration",
+    "notes",
   ],
 ) {}
 
@@ -91,9 +91,9 @@ export class CreateActionPartnershipResponseResultDto {
 
 export class CreateActionPartnershipNoteDto extends PickType(
   ActionPartnershipNote,
-  ['body'],
+  ["body"],
 ) {
-  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @ApiPropertyOptional({ type: String, format: "date-time" })
   @IsOptional()
   @IsDateString()
   noteDate?: string;

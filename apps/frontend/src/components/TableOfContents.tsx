@@ -83,10 +83,7 @@ const TableOfContents: React.FC<TableOfContentsProps> = ({ tocSections }) => {
             key={id}
             href={`#${id}`}
             aria-current={activeSectionId === id ? "location" : undefined}
-            className={tocLinkClassName(
-              level,
-              activeSectionId === id,
-            )}
+            className={tocLinkClassName(level, activeSectionId === id)}
           >
             {label}
           </a>

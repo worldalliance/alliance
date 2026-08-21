@@ -1,14 +1,14 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Allow, IsOptional } from 'class-validator';
-import { Type } from 'class-transformer';
-import { Entity, Index, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
-import { CreateDateColumnTz } from 'src/datasources/basecolumns';
-import { User } from 'src/user/entities/user.entity';
-import type { Relation } from 'src/utils/Repository';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsOptional } from "class-validator";
+import { CreateDateColumnTz } from "src/datasources/basecolumns";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
+import { Entity, Index, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Guest {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   @ApiProperty()
   @Allow()
   id: string;
@@ -20,7 +20,7 @@ export class Guest {
   createdAt: Date;
 
   @Index()
-  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => User, { nullable: true, onDelete: "SET NULL" })
   @ApiPropertyOptional({ type: () => User })
   @IsOptional()
   @Type(() => User)

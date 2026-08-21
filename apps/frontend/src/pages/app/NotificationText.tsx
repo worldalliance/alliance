@@ -1,6 +1,6 @@
-import { formatTime } from "@alliance/shared/lib/utils";
 import { NotificationDto } from "@alliance/shared/client";
-import { AvatarProfile, AvatarGroup } from "@alliance/sharedweb/ui/Avatar";
+import { formatTime } from "@alliance/shared/lib/utils";
+import { AvatarGroup, AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { CheckCheck } from "lucide-react";
 
 export interface NotificationTextProps {

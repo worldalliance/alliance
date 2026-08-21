@@ -1,3 +1,4 @@
+import { cn } from "@alliance/shared/styles/util";
 import React, {
   CSSProperties,
   ReactNode,
@@ -6,7 +7,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { cn } from "@alliance/shared/styles/util";
 
 interface TimelineProps {
   children: ReactNode[];

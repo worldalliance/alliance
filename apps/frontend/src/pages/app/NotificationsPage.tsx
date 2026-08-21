@@ -1,8 +1,8 @@
-import { useEffect } from "react";
 import { useNotifications } from "@alliance/shared/lib/useNotifications";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
 import List from "@alliance/sharedweb/ui/List";
+import { useEffect } from "react";
 import NotificationList from "../../components/NotificationList";
 
 const NotificationsPage = () => {

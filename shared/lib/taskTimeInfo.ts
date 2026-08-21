@@ -1,5 +1,5 @@
-import { ActionDto, ActionEventDto } from "../client";
 import { format } from "date-fns";
+import { ActionDto, ActionEventDto } from "../client";
 
 export interface TaskTimeInfoPropsShared {
   action: ActionDto;
@@ -9,7 +9,7 @@ export interface TaskTimeInfoPropsShared {
 
 export function deadlineColor(
   nextEvent: ActionEventDto | null,
-  action: ActionDto
+  action: ActionDto,
 ) {
   return !!nextEvent &&
     new Date(nextEvent.date).getTime() - Date.now() < 172800000 &&

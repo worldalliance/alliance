@@ -1,6 +1,6 @@
-import { Link } from "react-router";
-import { ChevronRight } from "lucide-react";
 import { cn } from "@alliance/shared/styles/util";
+import { ChevronRight } from "lucide-react";
+import { Link } from "react-router";
 
 interface SeeAllProps {
   link: string;

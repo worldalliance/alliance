@@ -5,10 +5,10 @@
 
 It produces, into `apps/frontend/public/`:
 
-| Output           | Used by                                  | Route     |
-| ---------------- | ---------------------------------------- | --------- |
-| `og-home.png`    | `src/pages/static/PrelaunchLandingPage.tsx` | `/`       |
-| `og-signup.png`  | `src/pages/app/SignupPage.tsx`           | `/signup` |
+| Output          | Used by                                     | Route     |
+| --------------- | ------------------------------------------- | --------- |
+| `og-home.png`   | `src/pages/static/PrelaunchLandingPage.tsx` | `/`       |
+| `og-signup.png` | `src/pages/app/SignupPage.tsx`              | `/signup` |
 
 Each page wires its image in via its `meta()` export, which calls the shared
 helper `src/lib/socialPreviewMeta.ts`.

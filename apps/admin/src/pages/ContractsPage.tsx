@@ -1,13 +1,13 @@
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
-import ContractCard from "../components/ContractCard";
 import {
   ContractAdminDto,
   contractAllAdmin,
   contractGetCurrent,
 } from "@alliance/shared/client";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useQuery } from "@tanstack/react-query";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router";
+import ContractCard from "../components/ContractCard";
 
 const ContractsPage: React.FC = () => {
   const [contracts, setContracts] = useState<ContractAdminDto[]>([]);
@@ -58,7 +58,7 @@ const ContractsPage: React.FC = () => {
 
       scheduledContracts.sort(
         (a, b) =>
-          new Date(a.startDate!).getTime() - new Date(b.startDate!).getTime()
+          new Date(a.startDate!).getTime() - new Date(b.startDate!).getTime(),
       );
 
       return {

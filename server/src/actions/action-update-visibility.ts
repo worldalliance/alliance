@@ -1,5 +1,5 @@
-import { LessThanOrEqual, type FindOptionsWhere } from 'typeorm';
-import type { ActionUpdate } from './entities/action-update.entity';
+import { LessThanOrEqual, type FindOptionsWhere } from "typeorm";
+import type { ActionUpdate } from "./entities/action-update.entity";
 
 /**
  * `visibleAt` stays null until the first body save. SQL comparisons exclude
@@ -12,7 +12,7 @@ export function publishedActionUpdateWhere(
 }
 
 export function isActionUpdatePublished(
-  update: Pick<ActionUpdate, 'visibleAt'>,
+  update: Pick<ActionUpdate, "visibleAt">,
   now: Date,
 ): boolean {
   return update.visibleAt !== null && update.visibleAt <= now;

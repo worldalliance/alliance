@@ -1,7 +1,7 @@
-import { formatShortDate } from "@alliance/shared/lib/dateFormatters";
 import type { CustomComponentProps } from "@alliance/shared/forms/customComponents";
-import Card from "../../ui/Card";
+import { formatShortDate } from "@alliance/shared/lib/dateFormatters";
 import { CardStyle } from "@alliance/shared/styles/card";
+import Card from "../../ui/Card";
 
 const ExampleContractComponent = ({
   user,

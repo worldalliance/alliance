@@ -1,15 +1,15 @@
-import { ApiProperty, ApiPropertyOptional, PickType } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
-import { getImageSource } from 'src/images/images.service';
-import { User } from 'src/user/entities/user.entity';
-import type { ClusterAssignResult } from '../cluster.service';
-import { Cluster } from '../entities/cluster.entity';
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { IsNotEmpty, IsString } from "class-validator";
+import { getImageSource } from "src/images/images.service";
+import { User } from "src/user/entities/user.entity";
+import type { ClusterAssignResult } from "../cluster.service";
+import { Cluster } from "../entities/cluster.entity";
 
 export class ClusterSummaryDto extends PickType(Cluster, [
-  'id',
-  'displayName',
+  "id",
+  "displayName",
 ]) {
-  constructor(cluster: Pick<Cluster, 'id' | 'displayName'>) {
+  constructor(cluster: Pick<Cluster, "id" | "displayName">) {
     super();
     this.id = cluster.id;
     this.displayName = cluster.displayName;
@@ -27,10 +27,10 @@ export class ClusterMemberDto {
   profilePicture?: string;
 
   constructor(
-    user: Pick<User, 'id' | 'name' | 'anonymous' | 'profilePicture'>,
+    user: Pick<User, "id" | "name" | "anonymous" | "profilePicture">,
   ) {
     this.id = user.id;
-    this.displayName = user.anonymous ? 'Someone' : user.name;
+    this.displayName = user.anonymous ? "Someone" : user.name;
     if (user.profilePicture) {
       this.profilePicture = getImageSource(user.profilePicture);
     }
@@ -38,10 +38,10 @@ export class ClusterMemberDto {
 }
 
 export class ClusterAdminDto extends PickType(Cluster, [
-  'id',
-  'displayName',
-  'createdAt',
-  'updatedAt',
+  "id",
+  "displayName",
+  "createdAt",
+  "updatedAt",
 ]) {
   @ApiProperty({ type: ClusterMemberDto, isArray: true })
   members: ClusterMemberDto[];

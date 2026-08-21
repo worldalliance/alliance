@@ -1,4 +1,7 @@
 import { MessageDto } from "@alliance/shared/client";
+import { cn } from "@alliance/shared/styles/util";
+import { launchImageLibraryAsync } from "expo-image-picker";
+import { ImagePlus, Send, X } from "lucide-react-native";
 import {
   type Dispatch,
   type SetStateAction,
@@ -12,12 +15,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { launchImageLibraryAsync } from "expo-image-picker";
-import { ImagePlus, Send, X } from "lucide-react-native";
-import Text from "../system/Text";
-import { colors } from "../../lib/style/colors";
-import { cn } from "@alliance/shared/styles/util";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
+import { colors } from "../../lib/style/colors";
+import Text from "../system/Text";
 
 interface MessageComposerProps {
   message: string;

@@ -1,12 +1,12 @@
-import React from "react";
-import { View, TouchableOpacity } from "react-native";
-import Text, { FontWeight } from "./system/Text";
-import { Check } from "lucide-react-native";
-import { ActionCompletedBarWithInfo } from "./ActionCompletedBarWithInfo";
 import {
   ActionItemCardPropsShared,
   showCompletedBar,
 } from "@alliance/shared/lib/actionItemCard";
+import { Check } from "lucide-react-native";
+import React from "react";
+import { TouchableOpacity, View } from "react-native";
+import { ActionCompletedBarWithInfo } from "./ActionCompletedBarWithInfo";
+import Text, { FontWeight } from "./system/Text";
 
 export interface ActionItemCardProps extends ActionItemCardPropsShared {
   onPress: () => void;

@@ -1,21 +1,21 @@
-import { R } from '@alliance/common/result';
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { ActionsService } from 'src/actions/actions.service';
-import { ContractService } from 'src/contract/contract.service';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { MailService } from 'src/mail/mail.service';
-import { MmsService } from 'src/mms/mms.service';
-import { generateCIDForNotif } from 'src/notifs/notif-utils';
-import { suspensionMessage } from 'src/notifs/textnotifcontents';
+import { R } from "@alliance/common/result";
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import { ActionsService } from "src/actions/actions.service";
+import { ContractService } from "src/contract/contract.service";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import { MailService } from "src/mail/mail.service";
+import { MmsService } from "src/mms/mms.service";
+import { generateCIDForNotif } from "src/notifs/notif-utils";
+import { suspensionMessage } from "src/notifs/textnotifcontents";
 import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_text,
-} from 'src/user/user.utils';
-import { DataSource } from 'typeorm';
-import { LOCK_KEYS } from '../notifs/lock-keys';
-import { withPgAdvisoryLock } from '../notifs/lock-utils';
+} from "src/user/user.utils";
+import { DataSource } from "typeorm";
+import { LOCK_KEYS } from "../notifs/lock-keys";
+import { withPgAdvisoryLock } from "../notifs/lock-utils";
 
 const [PROCESS_ONE_LOCK_KEY1, PROCESS_ONE_LOCK_KEY2] =
   LOCK_KEYS.contractSuspender;
@@ -32,12 +32,12 @@ export class ContractSuspenderWorker {
     private readonly eventLogService: EventLogService,
   ) {}
 
-  @Cron('*/10 * * * *')
+  @Cron("*/10 * * * *")
   async processSuspensions() {
     if (
       !(
-        process.env.NODE_ENV === 'production' ||
-        process.env.SEND_DEV_NOTIFS === '1'
+        process.env.NODE_ENV === "production" ||
+        process.env.SEND_DEV_NOTIFS === "1"
       )
     ) {
       return;
@@ -54,7 +54,7 @@ export class ContractSuspenderWorker {
 
         if (candidates.length > 0) {
           console.log(
-            'suspending users for action failure: ',
+            "suspending users for action failure: ",
             candidates.map(({ user }) => user.name),
           );
         }
@@ -116,7 +116,7 @@ export class ContractSuspenderWorker {
     );
 
     if (ran === null) {
-      this.logger.log('suspender processOne skipped bc of lock');
+      this.logger.log("suspender processOne skipped bc of lock");
     }
   }
 

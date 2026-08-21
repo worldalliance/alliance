@@ -2,15 +2,15 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import type { Repository } from 'src/utils/Repository';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import type { Repository } from "src/utils/Repository";
 import {
   CreateExternalShareTargetDto,
   UpdateExternalShareTargetDto,
-} from './dto/external-share-target.dto';
-import { ExternalShareTarget } from './entities/external-share-target.entity';
-import { ShareUrlsService } from './share-urls.service';
+} from "./dto/external-share-target.dto";
+import { ExternalShareTarget } from "./entities/external-share-target.entity";
+import { ShareUrlsService } from "./share-urls.service";
 
 @Injectable()
 export class ExternalShareTargetsService {
@@ -21,13 +21,13 @@ export class ExternalShareTargetsService {
   ) {}
 
   async findAll(): Promise<ExternalShareTarget[]> {
-    return this.repository.find({ order: { createdAt: 'DESC' } });
+    return this.repository.find({ order: { createdAt: "DESC" } });
   }
 
   async findOne(id: number): Promise<ExternalShareTarget> {
     const target = await this.repository.findOne({ where: { id } });
     if (!target) {
-      throw new NotFoundException('External share target not found');
+      throw new NotFoundException("External share target not found");
     }
     return target;
   }
@@ -44,15 +44,15 @@ export class ExternalShareTargetsService {
     dto: UpdateExternalShareTargetDto,
   ): Promise<ExternalShareTarget> {
     if (Object.keys(dto).length === 0) {
-      throw new BadRequestException('No fields to update');
+      throw new BadRequestException("No fields to update");
     }
     return this.repository.manager.transaction(async (m) => {
       const existing = await m.findOne(ExternalShareTarget, {
         where: { id },
-        lock: { mode: 'pessimistic_write' },
+        lock: { mode: "pessimistic_write" },
       });
       if (!existing) {
-        throw new NotFoundException('External share target not found');
+        throw new NotFoundException("External share target not found");
       }
       await m.update(ExternalShareTarget, id, dto);
       const updated = await m.findOneOrFail(ExternalShareTarget, {
@@ -71,7 +71,7 @@ export class ExternalShareTargetsService {
   async remove(id: number): Promise<void> {
     const result = await this.repository.delete(id);
     if (!result.affected) {
-      throw new NotFoundException('External share target not found');
+      throw new NotFoundException("External share target not found");
     }
   }
 }

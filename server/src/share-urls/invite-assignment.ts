@@ -1,4 +1,4 @@
-import { StoredInviteAssignmentKind } from './invite-assignment-kind';
+import { StoredInviteAssignmentKind } from "./invite-assignment-kind";
 
 export { StoredInviteAssignmentKind };
 
@@ -19,9 +19,9 @@ export type StoredInviteAssignment =
   | { kind: StoredInviteAssignmentKind.Open };
 
 export enum InviteAssignmentKind {
-  Automatic = 'automatic',
-  Community = 'community',
-  Open = 'open',
+  Automatic = "automatic",
+  Community = "community",
+  Open = "open",
 }
 
 /**

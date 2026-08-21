@@ -33,7 +33,7 @@ const ActionSquareThumbnail: React.FC<ActionSquareThumbnailProps> = ({
     <div
       className={cn(
         "flex items-center justify-center rounded-md bg-zinc-100 text-zinc-300 shrink-0",
-        sizeClass[size]
+        sizeClass[size],
       )}
     >
       <MousePointerClick className={iconSizeClass[size]} />

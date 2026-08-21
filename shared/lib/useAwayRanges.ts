@@ -1,5 +1,5 @@
-import type { UserAwayRangeDto } from "../client";
 import { useMemo } from "react";
+import type { UserAwayRangeDto } from "../client";
 
 export function useAwayRanges(awayRanges: UserAwayRangeDto[] | undefined) {
   const sortedAwayRanges = useMemo(() => {

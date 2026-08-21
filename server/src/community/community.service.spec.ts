@@ -1,18 +1,18 @@
-import { BadRequestException, Logger } from '@nestjs/common';
-import type { EntityManager, Repository } from 'typeorm';
-import { CommunityService, ContractRefusalAudience } from './community.service';
-import { Community } from './entities/community.entity';
-import { User } from 'src/user/entities/user.entity';
-import { ConversationService } from 'src/messaging/conversation.service';
-import { ImagesService } from 'src/images/images.service';
+import { BadRequestException, Logger } from "@nestjs/common";
+import { ImagesService } from "src/images/images.service";
+import { ConversationService } from "src/messaging/conversation.service";
+import { NotificationCategory } from "src/notifs/entities/notification.entity";
 import {
   NotifsService,
   type CreateNotifParams,
-} from 'src/notifs/notifs.service';
-import { NotificationCategory } from 'src/notifs/entities/notification.entity';
-import { CommunityInvite } from './entities/community-invite.entity';
+} from "src/notifs/notifs.service";
+import { User } from "src/user/entities/user.entity";
+import type { EntityManager, Repository } from "typeorm";
+import { CommunityService, ContractRefusalAudience } from "./community.service";
+import { CommunityInvite } from "./entities/community-invite.entity";
+import { Community } from "./entities/community.entity";
 
-describe('CommunityService', () => {
+describe("CommunityService", () => {
   let service: CommunityService;
   let communityInviteRepository: jest.Mocked<Repository<CommunityInvite>>;
   let communityRepository: jest.Mocked<Repository<Community>>;
@@ -22,16 +22,16 @@ describe('CommunityService', () => {
   let transaction: jest.Mock;
   let transactionManager: EntityManager;
 
-  const leader1 = { id: 10, name: 'Leader One' } as User;
-  const leader2 = { id: 11, name: 'Leader Two' } as User;
+  const leader1 = { id: 10, name: "Leader One" } as User;
+  const leader2 = { id: 11, name: "Leader Two" } as User;
 
   /** Ids the contract check should treat as signed; every id by default. */
-  let signedUserIds: number[] | 'all';
+  let signedUserIds: number[] | "all";
 
   const buildCommunity = (overrides?: Partial<Community>): Community =>
     ({
       id: 1,
-      name: 'Test Community',
+      name: "Test Community",
       users: [],
       leaders: [leader1, leader2],
       ...overrides,
@@ -61,7 +61,7 @@ describe('CommunityService', () => {
 
     // The only query builder this service builds is the contract check, which
     // asks "which of these ids have signed" and reads back raw ids.
-    signedUserIds = 'all';
+    signedUserIds = "all";
     let checkedIds: number[] = [];
     const contractCheck = {
       select: jest.fn(() => contractCheck),
@@ -74,7 +74,7 @@ describe('CommunityService', () => {
         Promise.resolve(
           checkedIds
             .filter(
-              (id) => signedUserIds === 'all' || signedUserIds.includes(id),
+              (id) => signedUserIds === "all" || signedUserIds.includes(id),
             )
             .map((id) => ({ id })),
         ),
@@ -108,9 +108,9 @@ describe('CommunityService', () => {
     );
   });
 
-  describe('addUsersToCommunityAndRefreshConversation', () => {
-    it('throws when user is already a member', async () => {
-      const user = { id: 5, name: 'Existing User' } as User;
+  describe("addUsersToCommunityAndRefreshConversation", () => {
+    it("throws when user is already a member", async () => {
+      const user = { id: 5, name: "Existing User" } as User;
       const community = buildCommunity({ users: [user] });
 
       await expect(
@@ -125,8 +125,8 @@ describe('CommunityService', () => {
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
     });
 
-    it('throws when the user has no active contract', async () => {
-      const user = { id: 5, name: 'Unsigned User' } as User;
+    it("throws when the user has no active contract", async () => {
+      const user = { id: 5, name: "Unsigned User" } as User;
       const community = buildCommunity();
       signedUserIds = [];
 
@@ -142,8 +142,8 @@ describe('CommunityService', () => {
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
     });
 
-    it('names who is blocked for staff, rather than exposing ids', async () => {
-      const user = { id: 5, name: 'Unsigned User' } as User;
+    it("names who is blocked for staff, rather than exposing ids", async () => {
+      const user = { id: 5, name: "Unsigned User" } as User;
       signedUserIds = [];
 
       await expect(
@@ -155,8 +155,8 @@ describe('CommunityService', () => {
       ).rejects.toThrow(/Unsigned User/);
     });
 
-    it('tells a member joining for themselves about their own contract', async () => {
-      const user = { id: 5, name: 'Unsigned User' } as User;
+    it("tells a member joining for themselves about their own contract", async () => {
+      const user = { id: 5, name: "Unsigned User" } as User;
       signedUserIds = [];
 
       const rejection = service.addUsersToCommunityAndRefreshConversation({
@@ -167,14 +167,14 @@ describe('CommunityService', () => {
       });
 
       await expect(rejection).rejects.toThrow(
-        'You need an active contract to join a group.',
+        "You need an active contract to join a group.",
       );
       // Nothing about the account behind the request.
       await expect(rejection).rejects.not.toThrow(/Unsigned User|\b5\b/);
     });
 
-    it('skips the contract check while the contract is being signed', async () => {
-      const user = { id: 5, name: 'Signing User' } as User;
+    it("skips the contract check while the contract is being signed", async () => {
+      const user = { id: 5, name: "Signing User" } as User;
       const community = buildCommunity();
 
       await service.addUsersToCommunityAndRefreshConversation({
@@ -191,15 +191,15 @@ describe('CommunityService', () => {
       });
     });
 
-    it('adds user to community, sends notifs, and syncs conversation', async () => {
-      const user = { id: 5, name: 'New User' } as User;
+    it("adds user to community, sends notifs, and syncs conversation", async () => {
+      const user = { id: 5, name: "New User" } as User;
       const community = buildCommunity();
 
       const notifFactory = jest.fn(({ leader }: { leader: User }) => ({
         user: { id: leader.id },
-        category: 'test' as NotificationCategory,
+        category: "test" as NotificationCategory,
         message: `${user.name} joined`,
-        webAppLocation: '/community/1',
+        webAppLocation: "/community/1",
         associatedUsers: [],
       })) as (params: { leader: User }) => CreateNotifParams;
 
@@ -235,8 +235,8 @@ describe('CommunityService', () => {
       ).toHaveBeenCalledWith(community.id);
     });
 
-    it('filters out null notifs from the leader notif factory', async () => {
-      const user = { id: 6, name: 'Another User' } as User;
+    it("filters out null notifs from the leader notif factory", async () => {
+      const user = { id: 6, name: "Another User" } as User;
       const community = buildCommunity();
 
       // only produce a notif for leader1, return null for leader2
@@ -244,9 +244,9 @@ describe('CommunityService', () => {
         leader.id === leader1.id
           ? ({
               user: { id: leader.id },
-              category: 'test' as NotificationCategory,
-              message: 'joined',
-              webAppLocation: '/',
+              category: "test" as NotificationCategory,
+              message: "joined",
+              webAppLocation: "/",
               associatedUsers: [],
             } as CreateNotifParams)
           : null;
@@ -262,9 +262,9 @@ describe('CommunityService', () => {
     });
   });
 
-  describe('removeUserFromCommunityAndRefreshConversation', () => {
-    it('returns the community unchanged when user is not a member', async () => {
-      const user = { id: 99, name: 'Non-member' } as User;
+  describe("removeUserFromCommunityAndRefreshConversation", () => {
+    it("returns the community unchanged when user is not a member", async () => {
+      const user = { id: 99, name: "Non-member" } as User;
       const community = buildCommunity({ users: [leader1, leader2] });
 
       const result =
@@ -281,7 +281,7 @@ describe('CommunityService', () => {
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
     });
 
-    it('removes user from members and leaders, sends notifs, and syncs conversation', async () => {
+    it("removes user from members and leaders, sends notifs, and syncs conversation", async () => {
       const user = leader1;
       const community = buildCommunity({
         users: [leader1, leader2],
@@ -289,9 +289,9 @@ describe('CommunityService', () => {
 
       const notifFactory = jest.fn(({ leader }: { leader: User }) => ({
         user: { id: leader.id },
-        category: 'test' as NotificationCategory,
+        category: "test" as NotificationCategory,
         message: `${user.name} left`,
-        webAppLocation: '/community/1',
+        webAppLocation: "/community/1",
         associatedUsers: [],
       })) as (params: { leader: User }) => CreateNotifParams;
 
@@ -320,8 +320,8 @@ describe('CommunityService', () => {
       ).toHaveBeenCalledWith(community.id);
     });
 
-    it('removes a non-leader user from members while keeping leaders intact', async () => {
-      const user = { id: 99, name: 'Regular Member' } as User;
+    it("removes a non-leader user from members while keeping leaders intact", async () => {
+      const user = { id: 99, name: "Regular Member" } as User;
       const community = buildCommunity({
         users: [leader1, leader2, user],
       });
@@ -341,8 +341,8 @@ describe('CommunityService', () => {
       });
     });
 
-    it('saves user pendingCommunity when saveAsPendingCommunity is true', async () => {
-      const user = { id: 99, name: 'Departing Member' } as User;
+    it("saves user pendingCommunity when saveAsPendingCommunity is true", async () => {
+      const user = { id: 99, name: "Departing Member" } as User;
       const community = buildCommunity({
         users: [leader1, user],
       });
@@ -363,8 +363,8 @@ describe('CommunityService', () => {
       ]);
     });
 
-    it('does not save pendingCommunity when saveAsPendingCommunity is false', async () => {
-      const user = { id: 99, name: 'Departing Member' } as User;
+    it("does not save pendingCommunity when saveAsPendingCommunity is false", async () => {
+      const user = { id: 99, name: "Departing Member" } as User;
       const community = buildCommunity({
         users: [leader1, user],
       });
@@ -381,18 +381,18 @@ describe('CommunityService', () => {
     });
   });
 
-  describe('moveUserBetweenCommunitiesAdmin', () => {
+  describe("moveUserBetweenCommunitiesAdmin", () => {
     const setUpMove = () => {
-      const user = { id: 99, name: 'Moving Member' } as User;
+      const user = { id: 99, name: "Moving Member" } as User;
       const sourceCommunity = buildCommunity({
         id: 1,
-        name: 'Old Group',
+        name: "Old Group",
         users: [leader1, user],
         leaders: [leader1],
       });
       const destinationCommunity = buildCommunity({
         id: 2,
-        name: 'New Group',
+        name: "New Group",
         users: [leader2],
         leaders: [leader2],
         allowStaffAssignments: true,
@@ -417,7 +417,7 @@ describe('CommunityService', () => {
         userId: params.user.id,
       });
 
-    it('writes both memberships in one transaction before side effects', async () => {
+    it("writes both memberships in one transaction before side effects", async () => {
       const { user, sourceCommunity, destinationCommunity } = setUpMove();
 
       await move({ user, sourceCommunity, destinationCommunity });
@@ -448,17 +448,17 @@ describe('CommunityService', () => {
           expect.objectContaining({
             user,
             category: NotificationCategory.CommunityAssigned,
-            message: 'Alliance staff moved you from Old Group to New Group',
+            message: "Alliance staff moved you from Old Group to New Group",
           }),
         ]),
       );
     });
 
-    it('does not announce a move when its membership write fails', async () => {
+    it("does not announce a move when its membership write fails", async () => {
       const communities = setUpMove();
-      communityRepository.save.mockRejectedValueOnce(new Error('db is down'));
+      communityRepository.save.mockRejectedValueOnce(new Error("db is down"));
 
-      await expect(move(communities)).rejects.toThrow('db is down');
+      await expect(move(communities)).rejects.toThrow("db is down");
 
       expect(
         conversationService.syncCommunityConversationMembers,
@@ -466,14 +466,14 @@ describe('CommunityService', () => {
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
     });
 
-    it('does not commit the placement when participant authorization cannot be updated', async () => {
+    it("does not commit the placement when participant authorization cannot be updated", async () => {
       const communities = setUpMove();
       conversationService.placeCommunityConversationParticipant.mockRejectedValueOnce(
-        new Error('participant write failed'),
+        new Error("participant write failed"),
       );
 
       await expect(move(communities)).rejects.toThrow(
-        'participant write failed',
+        "participant write failed",
       );
 
       expect(
@@ -482,33 +482,33 @@ describe('CommunityService', () => {
       expect(notifsService.sendNotifs).not.toHaveBeenCalled();
     });
 
-    it('keeps the committed move successful when a follow-up effect fails', async () => {
+    it("keeps the committed move successful when a follow-up effect fails", async () => {
       const communities = setUpMove();
-      const syncError = new Error('conversation sync failed');
+      const syncError = new Error("conversation sync failed");
       conversationService.syncCommunityConversationMembers.mockRejectedValueOnce(
         syncError,
       );
       const loggerError = jest
-        .spyOn(Logger.prototype, 'error')
+        .spyOn(Logger.prototype, "error")
         .mockImplementation(() => undefined);
 
       await expect(move(communities)).resolves.toBeUndefined();
 
       expect(notifsService.sendNotifs).toHaveBeenCalled();
       expect(loggerError).toHaveBeenCalledWith(
-        'Post-commit membership effect failed: sync community conversation 1',
+        "Post-commit membership effect failed: sync community conversation 1",
         syncError,
       );
       loggerError.mockRestore();
     });
   });
 
-  describe('addUserToCommunityAdmin', () => {
-    it('locks and writes the assignment transactionally and notifies the member', async () => {
-      const user = { id: 99, name: 'New Member' } as User;
+  describe("addUserToCommunityAdmin", () => {
+    it("locks and writes the assignment transactionally and notifies the member", async () => {
+      const user = { id: 99, name: "New Member" } as User;
       const destinationCommunity = buildCommunity({
         id: 2,
-        name: 'New Group',
+        name: "New Group",
         users: [leader2],
         leaders: [leader2],
         allowStaffAssignments: true,
@@ -534,7 +534,7 @@ describe('CommunityService', () => {
           expect.objectContaining({
             user,
             category: NotificationCategory.CommunityAssigned,
-            message: 'Alliance staff assigned you to New Group',
+            message: "Alliance staff assigned you to New Group",
           }),
         ]),
       );

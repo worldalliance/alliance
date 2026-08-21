@@ -1,18 +1,18 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import { TaskAwayStatus } from 'src/utils/action-user';
-import { UserActionRelationPillStatus } from '../user/dto/user-action-relations.dto';
-import type { ActionEvent } from './entities/action-event.entity';
-import { ActionStatus } from './entities/action-event.entity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import { TaskAwayStatus } from "src/utils/action-user";
+import { UserActionRelationPillStatus } from "../user/dto/user-action-relations.dto";
+import type { ActionEvent } from "./entities/action-event.entity";
+import { ActionStatus } from "./entities/action-event.entity";
 import {
   computeCanCompleteAction,
   resolveUserActionStatus,
   ViewerActionRelation,
-} from './user-action-status';
-import { memberActionPhase } from './utils/action-event';
+} from "./user-action-status";
+import { memberActionPhase } from "./utils/action-event";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Fixed "now": 7 days into a 14-day member-action window by default. */
-const NOW = new Date('2026-01-08T00:00:00Z');
+const NOW = new Date("2026-01-08T00:00:00Z");
 const PHASE_START = new Date(NOW.getTime() - 7 * DAY_MS);
 const DEADLINE = new Date(NOW.getTime() + 7 * DAY_MS);
 
@@ -33,8 +33,8 @@ function makeEvents(params?: {
 }
 
 function makeAction(
-  overrides: Partial<ResolveParams['action']> & { events?: ActionEvent[] } = {},
-): ResolveParams['action'] {
+  overrides: Partial<ResolveParams["action"]> & { events?: ActionEvent[] } = {},
+): ResolveParams["action"] {
   const events = overrides.events ?? makeEvents();
   return {
     onboarding: false,
@@ -47,8 +47,8 @@ function makeAction(
 }
 
 function makeUser(
-  overrides: Partial<ResolveParams['user']> = {},
-): ResolveParams['user'] {
+  overrides: Partial<ResolveParams["user"]> = {},
+): ResolveParams["user"] {
   return {
     contractEvents: [],
     hasActiveContractInFullRange: () => true,
@@ -61,8 +61,8 @@ function makeUser(
 let activitySeq = 0;
 function activity(
   type: ActionActivityType,
-  overrides: Partial<ResolveParams['activities'][number]> = {},
-): ResolveParams['activities'][number] {
+  overrides: Partial<ResolveParams["activities"][number]> = {},
+): ResolveParams["activities"][number] {
   return {
     type,
     createdAt: new Date(PHASE_START.getTime() + ++activitySeq * 60_000),
@@ -83,8 +83,8 @@ function resolve(
   });
 }
 
-describe('resolveUserActionStatus', () => {
-  it('resolves the plain assigned-todo case', () => {
+describe("resolveUserActionStatus", () => {
+  it("resolves the plain assigned-todo case", () => {
     const status = resolve();
     expect(status).toEqual({
       assigned: true,
@@ -100,14 +100,14 @@ describe('resolveUserActionStatus', () => {
     });
   });
 
-  it('is entirely unassigned outside the cohort', () => {
+  it("is entirely unassigned outside the cohort", () => {
     const status = resolve({ inCohort: false });
     expect(status.assigned).toBe(false);
     expect(status.canComplete).toBe(false);
     expect(status.display).toBe(UserActionRelationPillStatus.NotRequired);
   });
 
-  it('keeps a dismissed user assigned and completable (dismissal is an overlay)', () => {
+  it("keeps a dismissed user assigned and completable (dismissal is an overlay)", () => {
     const status = resolve({
       activities: [activity(ActionActivityType.USER_DISMISSED)],
     });
@@ -118,7 +118,7 @@ describe('resolveUserActionStatus', () => {
     expect(status.display).toBe(UserActionRelationPillStatus.Todo);
   });
 
-  it('lets a lapsed-contract member complete a regular action without being assigned', () => {
+  it("lets a lapsed-contract member complete a regular action without being assigned", () => {
     const status = resolve({
       user: makeUser({ hasActiveContractInFullRange: () => false }),
     });
@@ -127,32 +127,32 @@ describe('resolveUserActionStatus', () => {
     expect(status.display).toBe(UserActionRelationPillStatus.NotRequired);
   });
 
-  it('blocks both assignment and completion when an onboarding action predates the first contract', () => {
+  it("blocks both assignment and completion when an onboarding action predates the first contract", () => {
     const status = resolve({
       action: makeAction({ onboarding: true }),
       user: makeUser({
         contractEvents: [
           { date: new Date(PHASE_START.getTime() - 30 * DAY_MS) },
-        ] as ResolveParams['user']['contractEvents'],
+        ] as ResolveParams["user"]["contractEvents"],
       }),
     });
     expect(status.assigned).toBe(false);
     expect(status.canComplete).toBe(false);
   });
 
-  it('assigns onboarding actions to brand-new signups with no contract yet', () => {
+  it("assigns onboarding actions to brand-new signups with no contract yet", () => {
     const status = resolve({ action: makeAction({ onboarding: true }) });
     expect(status.assigned).toBe(true);
     expect(status.canComplete).toBe(true);
   });
 
-  it('preventCompletion blocks completion but not assignment', () => {
+  it("preventCompletion blocks completion but not assignment", () => {
     const status = resolve({ action: makeAction({ preventCompletion: true }) });
     expect(status.assigned).toBe(true);
     expect(status.canComplete).toBe(false);
   });
 
-  it('resolves a completion', () => {
+  it("resolves a completion", () => {
     const status = resolve({
       activities: [activity(ActionActivityType.USER_COMPLETED)],
     });
@@ -162,10 +162,10 @@ describe('resolveUserActionStatus', () => {
   });
 
   it.each([
-    [{ outOfTime: true }, 'out_of_time', null],
-    [{ isMoral: true, declineReason: 'conscience' }, 'moral', 'conscience'],
-    [{ declineReason: 'busy week' }, 'other', 'busy week'],
-  ] as const)('maps withdrawal %o to reason %s', (fields, reason, note) => {
+    [{ outOfTime: true }, "out_of_time", null],
+    [{ isMoral: true, declineReason: "conscience" }, "moral", "conscience"],
+    [{ declineReason: "busy week" }, "other", "busy week"],
+  ] as const)("maps withdrawal %o to reason %s", (fields, reason, note) => {
     const status = resolve({
       activities: [
         activity(ActionActivityType.USER_WONT_COMPLETE, { ...fields }),
@@ -176,7 +176,7 @@ describe('resolveUserActionStatus', () => {
     expect(status.display).toBe(UserActionRelationPillStatus.WontComplete);
   });
 
-  it('lets the latest terminal activity win', () => {
+  it("lets the latest terminal activity win", () => {
     const status = resolve({
       activities: [
         activity(ActionActivityType.USER_WONT_COMPLETE, { outOfTime: true }),
@@ -187,7 +187,7 @@ describe('resolveUserActionStatus', () => {
     expect(status.withdrawal).toBeNull();
   });
 
-  it('keeps the dismissed overlay visible after a completion', () => {
+  it("keeps the dismissed overlay visible after a completion", () => {
     const status = resolve({
       activities: [
         activity(ActionActivityType.USER_DISMISSED),
@@ -198,7 +198,7 @@ describe('resolveUserActionStatus', () => {
     expect(status.relation).toBe(ViewerActionRelation.Completed);
   });
 
-  it('shows away for an in-cohort user away during the window', () => {
+  it("shows away for an in-cohort user away during the window", () => {
     const status = resolve({
       user: makeUser({
         awayRanges: [
@@ -206,7 +206,7 @@ describe('resolveUserActionStatus', () => {
             startDate: new Date(NOW.getTime() - DAY_MS),
             endDate: new Date(NOW.getTime() + DAY_MS),
           },
-        ] as ResolveParams['user']['awayRanges'],
+        ] as ResolveParams["user"]["awayRanges"],
         isAwayAtAnyPointInRange: () => true,
       }),
     });
@@ -215,7 +215,7 @@ describe('resolveUserActionStatus', () => {
     expect(status.display).toBe(UserActionRelationPillStatus.Away);
   });
 
-  it('shows completed over away (completions count regardless of absence)', () => {
+  it("shows completed over away (completions count regardless of absence)", () => {
     const status = resolve({
       user: makeUser({ isAwayAtAnyPointInRange: () => true }),
       activities: [activity(ActionActivityType.USER_COMPLETED)],
@@ -223,7 +223,7 @@ describe('resolveUserActionStatus', () => {
     expect(status.display).toBe(UserActionRelationPillStatus.Completed);
   });
 
-  it('flags a passed deadline', () => {
+  it("flags a passed deadline", () => {
     const pastDeadline = new Date(NOW.getTime() - DAY_MS);
     const status = resolve({
       action: makeAction({
@@ -238,7 +238,7 @@ describe('resolveUserActionStatus', () => {
     expect(status.display).toBe(UserActionRelationPillStatus.MissedDeadline);
   });
 
-  it('shows optional_task for optional actions even past the deadline', () => {
+  it("shows optional_task for optional actions even past the deadline", () => {
     const status = resolve({
       action: makeAction({
         optional: true,
@@ -251,7 +251,7 @@ describe('resolveUserActionStatus', () => {
     expect(status.display).toBe(UserActionRelationPillStatus.OptionalTask);
   });
 
-  it('resolves an action with no member-action phase as not required', () => {
+  it("resolves an action with no member-action phase as not required", () => {
     const status = resolve({
       action: makeAction({ events: [] as ActionEvent[] }),
     });
@@ -265,7 +265,7 @@ describe('resolveUserActionStatus', () => {
     expect(status.display).toBe(UserActionRelationPillStatus.NotRequired);
   });
 
-  it('marks an upcoming phase as not started while assignment already applies', () => {
+  it("marks an upcoming phase as not started while assignment already applies", () => {
     const status = resolve({
       action: makeAction({
         events: makeEvents({
@@ -280,8 +280,8 @@ describe('resolveUserActionStatus', () => {
   });
 });
 
-describe('computeCanCompleteAction', () => {
-  it('does not require a contract for regular actions (decided 2026-07)', () => {
+describe("computeCanCompleteAction", () => {
+  it("does not require a contract for regular actions (decided 2026-07)", () => {
     expect(
       computeCanCompleteAction({
         action: makeAction(),
@@ -291,7 +291,7 @@ describe('computeCanCompleteAction', () => {
     ).toBe(true);
   });
 
-  it('requires cohort membership', () => {
+  it("requires cohort membership", () => {
     expect(
       computeCanCompleteAction({
         action: makeAction(),
@@ -301,21 +301,21 @@ describe('computeCanCompleteAction', () => {
     ).toBe(false);
   });
 
-  it('enforces the onboarding join-timing rule', () => {
+  it("enforces the onboarding join-timing rule", () => {
     expect(
       computeCanCompleteAction({
         action: makeAction({ onboarding: true }),
         user: makeUser({
           contractEvents: [
             { date: new Date(PHASE_START.getTime() - 30 * DAY_MS) },
-          ] as ResolveParams['user']['contractEvents'],
+          ] as ResolveParams["user"]["contractEvents"],
         }),
         inCohort: true,
       }),
     ).toBe(false);
   });
 
-  it('respects preventCompletion', () => {
+  it("respects preventCompletion", () => {
     expect(
       computeCanCompleteAction({
         action: makeAction({ preventCompletion: true }),

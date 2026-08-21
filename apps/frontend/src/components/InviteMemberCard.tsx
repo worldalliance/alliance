@@ -1,11 +1,11 @@
 import { Features } from "@alliance/shared/lib/features";
 import { getOnetimeInviteSignupUrl } from "@alliance/shared/lib/inviteUrls";
+import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 import Button from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useCallback } from "react";
 import { useAuth } from "../lib/AuthContext";
 import { isFeatureEnabled } from "../lib/config";
-import { getBaseUrl } from "@alliance/sharedweb/lib/config";
 
 const InviteMemberCard = () => {
   const { user } = useAuth();

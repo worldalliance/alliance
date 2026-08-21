@@ -1,9 +1,9 @@
 import { ProfileDto, userFindOne } from "@alliance/shared/client";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import React, { useEffect, useMemo, useState } from "react";
+import sidneyandmark from "../../assets/sidneyandmark.jpg";
 import Footer from "../../components/Footer";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
-import sidneyandmark from "../../assets/sidneyandmark.jpg";
 
 const PeoplePage: React.FC = () => {
   const authorIds: Record<string, number> = useMemo(() => {
@@ -35,11 +35,11 @@ const PeoplePage: React.FC = () => {
           const result = await userFindOne({ path: { id } });
           const { data: profile } = result;
           return [name, profile];
-        })
+        }),
       );
 
       const authorProfiles = Object.fromEntries(
-        responses.map(([name, profile]) => [name, profile])
+        responses.map(([name, profile]) => [name, profile]),
       );
 
       setAuthorProfiles(authorProfiles);

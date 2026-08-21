@@ -1,39 +1,39 @@
-import { FormSchema } from '@alliance/common/forms/form-schema';
-import { MailerModule } from '@nestjs-modules/mailer';
-import { INestApplication, Type, ValidationPipe } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { EventEmitterModule } from '@nestjs/event-emitter';
-import { JwtService } from '@nestjs/jwt';
-import { Test, TestingModule } from '@nestjs/testing';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import cookieParser from 'cookie-parser';
-import { Contract } from 'src/contract/entities/contract.entity';
-import { testConnectionOptions } from 'src/datasources/dataSourceTest';
-import { VALIDATION_PIPE_OPTIONS } from 'src/utils/validation-pipe-options';
-import { ForumModule } from 'src/forum/forum.module';
-import { NotifsModule } from 'src/notifs/notifs.module';
-import { PosthogModule } from 'src/posthog/posthog.module';
-import { Form } from 'src/tasks/entities/form.entity';
+import { FormSchema } from "@alliance/common/forms/form-schema";
+import { MailerModule } from "@nestjs-modules/mailer";
+import { INestApplication, Type, ValidationPipe } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { EventEmitterModule } from "@nestjs/event-emitter";
+import { JwtService } from "@nestjs/jwt";
+import { Test, TestingModule } from "@nestjs/testing";
+import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import cookieParser from "cookie-parser";
+import { Contract } from "src/contract/entities/contract.entity";
+import { testConnectionOptions } from "src/datasources/dataSourceTest";
+import { ForumModule } from "src/forum/forum.module";
+import { NotifsModule } from "src/notifs/notifs.module";
+import { PosthogModule } from "src/posthog/posthog.module";
+import { Form } from "src/tasks/entities/form.entity";
 import {
   FormSnapshot,
   SnapshotHistoryOwner,
-} from 'src/tasks/entities/formsnapshot.entity';
-import { FormSnapshotService } from 'src/tasks/formsnapshot.service';
+} from "src/tasks/entities/formsnapshot.entity";
+import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import {
   ContractEvent,
   ContractEventType,
-} from 'src/user/entities/contract-event.entity';
-import { Tag } from 'src/user/entities/tag.entity';
-import { ALL_THROTTLERS } from 'src/utils/throttle';
-import supertest from 'supertest';
-import TestAgent from 'supertest/lib/agent';
-import { DataSource } from 'typeorm';
-import { ActionsModule } from '../src/actions/actions.module';
-import { AuthModule } from '../src/auth/auth.module';
-import { ContractModule } from '../src/contract/contract.module';
-import { ReferralSource, User } from '../src/user/entities/user.entity';
-import { UserModule } from '../src/user/user.module';
+} from "src/user/entities/contract-event.entity";
+import { Tag } from "src/user/entities/tag.entity";
+import { ALL_THROTTLERS } from "src/utils/throttle";
+import { VALIDATION_PIPE_OPTIONS } from "src/utils/validation-pipe-options";
+import supertest from "supertest";
+import TestAgent from "supertest/lib/agent";
+import { DataSource } from "typeorm";
+import { ActionsModule } from "../src/actions/actions.module";
+import { AuthModule } from "../src/auth/auth.module";
+import { ContractModule } from "../src/contract/contract.module";
+import { ReferralSource, User } from "../src/user/entities/user.entity";
+import { UserModule } from "../src/user/user.module";
 
 export interface TestContext {
   app: INestApplication;
@@ -56,7 +56,7 @@ export async function createTestApp(
     imports: [
       ConfigModule.forRoot({
         isGlobal: true,
-        envFilePath: '.env.test',
+        envFilePath: ".env.test",
       }),
       MailerModule.forRoot({
         transport: {
@@ -103,22 +103,22 @@ export async function createTestApp(
   const jwtService = moduleFixture.get<JwtService>(JwtService);
 
   const defaultTag = await tagRepo.save(
-    tagRepo.create({ name: 'Default Tag', description: 'Default Tag' }),
+    tagRepo.create({ name: "Default Tag", description: "Default Tag" }),
   );
 
   const contractRepo = dataSource.getRepository(Contract);
   const defaultContract = await contractRepo.save(
     contractRepo.create({
-      markdown: '# Test Contract',
+      markdown: "# Test Contract",
       startDate: new Date(0),
     }),
   );
 
   const user = await userRepo.save(
     userRepo.create({
-      email: 'user@example.com',
-      password: 'pass',
-      name: 'Test User',
+      email: "user@example.com",
+      password: "pass",
+      name: "Test User",
       referralSource: ReferralSource.None,
       tags: [defaultTag],
     }),
@@ -126,9 +126,9 @@ export async function createTestApp(
 
   const adminUser = await userRepo.save(
     userRepo.create({
-      email: 'admin@example.com',
-      password: 'pass',
-      name: 'Test Admin',
+      email: "admin@example.com",
+      password: "pass",
+      name: "Test Admin",
       admin: true,
       referralSource: ReferralSource.None,
       tags: [defaultTag],
@@ -149,10 +149,10 @@ export async function createTestApp(
   const agent = supertest.agent(app.getHttpServer());
 
   // start agent as logged in user
-  await agent.post('/auth/login').send({
-    email: 'user@example.com',
-    password: 'pass',
-    mode: 'cookie',
+  await agent.post("/auth/login").send({
+    email: "user@example.com",
+    password: "pass",
+    mode: "cookie",
   });
 
   return {
@@ -216,7 +216,7 @@ export async function createFormWithSnapshot(
  * saving a bare `User` have no contract events at all.
  */
 export async function giveActiveContract(
-  ctx: Pick<TestContext, 'dataSource' | 'defaultContractId'>,
+  ctx: Pick<TestContext, "dataSource" | "defaultContractId">,
   userId: number,
 ): Promise<void> {
   await ctx.dataSource.getRepository(ContractEvent).save({

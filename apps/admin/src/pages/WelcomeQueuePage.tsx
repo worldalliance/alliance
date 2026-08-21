@@ -92,9 +92,7 @@ const WelcomeQueuePage: React.FC = () => {
               ? "Loading members..."
               : `${displayedMembers.length} member${
                   displayedMembers.length === 1 ? "" : "s"
-                } need${
-                  displayedMembers.length === 1 ? "s" : ""
-                } a welcome`}
+                } need${displayedMembers.length === 1 ? "s" : ""} a welcome`}
           </p>
           <div className="flex rounded-md border border-zinc-300 bg-white overflow-hidden text-sm">
             <button
@@ -143,9 +141,7 @@ const WelcomeQueuePage: React.FC = () => {
                   <th className="px-4 py-2 font-medium text-zinc-600">
                     Staff Likes
                   </th>
-                  <th className="px-4 py-2 font-medium text-zinc-600">
-                    Links
-                  </th>
+                  <th className="px-4 py-2 font-medium text-zinc-600">Links</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">

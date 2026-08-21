@@ -79,7 +79,7 @@ const MessagingConversationDetail: React.FC = () => {
           {
             credentials: "include",
             signal: controller.signal,
-          }
+          },
         );
         if (!response.ok) {
           throw new Error(`Failed to load conversation (${response.status})`);
@@ -133,7 +133,7 @@ const MessagingConversationDetail: React.FC = () => {
       try {
         while (true) {
           const url = new URL(
-            `${apiUrl}/messaging/messages/admin/${conversationIdNumber}`
+            `${apiUrl}/messaging/messages/admin/${conversationIdNumber}`,
           );
           url.searchParams.set("limit", String(limit));
           if (before) {

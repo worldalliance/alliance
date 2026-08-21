@@ -1,4 +1,4 @@
-import { DetectableEntity } from './entities/ai-detection-result.entity';
+import { DetectableEntity } from "./entities/ai-detection-result.entity";
 
 export interface AiDetectionJobData {
   entityType: DetectableEntity;

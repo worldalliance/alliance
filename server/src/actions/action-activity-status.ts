@@ -1,7 +1,7 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import { CachedFilter } from '../utils/cached-filter';
-import { findLeast } from '../utils/filter';
-import type { ActionActivity } from './entities/action-activity.entity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import { CachedFilter } from "../utils/cached-filter";
+import { findLeast } from "../utils/filter";
+import type { ActionActivity } from "./entities/action-activity.entity";
 
 /**
  * The viewer's collapsed relation to an action, as exposed on the legacy
@@ -15,10 +15,10 @@ import type { ActionActivity } from './entities/action-activity.entity';
  * for wire compatibility.
  */
 export enum UserActionRelation {
-  Completed = 'completed',
-  None = 'none',
-  Declined = 'declined',
-  Dismissed = 'dismissed',
+  Completed = "completed",
+  None = "none",
+  Declined = "declined",
+  Dismissed = "dismissed",
 }
 
 /**
@@ -47,7 +47,7 @@ export type TerminalActivityType = {
     : never;
 }[ActionActivityType];
 
-function isTerminalActivity<T extends Pick<ActionActivity, 'type'>>(
+function isTerminalActivity<T extends Pick<ActionActivity, "type">>(
   activity: T,
 ): activity is T & { type: TerminalActivityType } {
   return IS_TERMINAL_ACTIVITY_TYPE[activity.type];
@@ -65,7 +65,7 @@ function isTerminalActivity<T extends Pick<ActionActivity, 'type'>>(
  * Assumes `activities` are pre-filtered to one user + one action.
  */
 export function findLatestTerminalActivity<
-  T extends Pick<ActionActivity, 'type' | 'createdAt'>,
+  T extends Pick<ActionActivity, "type" | "createdAt">,
 >(activities: T[]): (T & { type: TerminalActivityType }) | null {
   return findLeast(
     activities,
@@ -87,7 +87,7 @@ export function findLatestTerminalActivity<
  */
 export function resolveUserActionRelation(params: {
   activities: CachedFilter<
-    Pick<ActionActivity, 'type' | 'createdAt' | 'userId' | 'actionId'>
+    Pick<ActionActivity, "type" | "createdAt" | "userId" | "actionId">
   >;
   userId: number;
   actionId: number;

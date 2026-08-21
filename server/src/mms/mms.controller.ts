@@ -1,23 +1,23 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { normalizePhoneNumber } from '@alliance/common/phone';
-import { MmsUnsubService } from './mms-unsub.service';
-import { TwilioSignatureGuard } from './twilio-signature.guard';
+import { normalizePhoneNumber } from "@alliance/common/phone";
+import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { MmsUnsubService } from "./mms-unsub.service";
+import { TwilioSignatureGuard } from "./twilio-signature.guard";
 
 const STOP_KEYWORDS = new Set([
-  'STOP',
-  'STOPALL',
-  'UNSUBSCRIBE',
-  'CANCEL',
-  'END',
-  'QUIT',
-  'REVOKE',
-  'OPTOUT',
+  "STOP",
+  "STOPALL",
+  "UNSUBSCRIBE",
+  "CANCEL",
+  "END",
+  "QUIT",
+  "REVOKE",
+  "OPTOUT",
 ]);
 
-const START_KEYWORDS = new Set(['START', 'YES', 'UNSTOP']);
+const START_KEYWORDS = new Set(["START", "YES", "UNSTOP"]);
 
-@Controller('mms')
+@Controller("mms")
 export class MmsController {
   constructor(private readonly mmsUnsubService: MmsUnsubService) {}
 
@@ -26,7 +26,7 @@ export class MmsController {
    * so it must stay a primitive string rather than a DTO — JSON-wrapping it
    * would break Twilio's response handling.
    */
-  @Post('inbound')
+  @Post("inbound")
   @UseGuards(TwilioSignatureGuard)
   @ApiOkResponse({ type: String })
   async handleInboundMms(
@@ -44,13 +44,13 @@ export class MmsController {
 
     const rawFrom = body.From as string | undefined;
     const rawTo = body.To as string | undefined;
-    const text = (body.Body as string | undefined) ?? '';
+    const text = (body.Body as string | undefined) ?? "";
 
     if (!rawFrom || !rawTo) {
       console.warn(
         `Missing From/To in Twilio webhook: ${JSON.stringify(body)}`,
       );
-      return '';
+      return "";
     }
 
     const from = normalizePhoneNumber(rawFrom);
@@ -60,19 +60,19 @@ export class MmsController {
     if (STOP_KEYWORDS.has(keyword)) {
       console.log(`Received STOP from ${from}, marking unsubscribed`);
       await this.mmsUnsubService.unsubFromMms(from, {
-        reason: 'stop_keyword',
+        reason: "stop_keyword",
         rawBody: text,
       });
-      return '';
+      return "";
     }
 
     if (START_KEYWORDS.has(keyword)) {
       console.log(`Received START from ${from}, marking subscribed`);
       await this.mmsUnsubService.subscribeToMms(from, { rawBody: text });
-      return '';
+      return "";
     }
 
     await this.mmsUnsubService.logUnhandledMessage(from, rawTo, text);
-    return '';
+    return "";
   }
 }

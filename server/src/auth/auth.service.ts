@@ -2,32 +2,32 @@ import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import type { Request, Response } from 'express';
-import { Campaign } from 'src/campaign/entities/campaign.entity';
-import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { InjectRepository } from "@nestjs/typeorm";
+import type { Request, Response } from "express";
+import { Campaign } from "src/campaign/entities/campaign.entity";
+import { ShareUrl } from "src/share-urls/entities/share-url.entity";
 import {
   inviteAssignmentFromColumns,
   type StoredInviteAssignment,
-} from 'src/share-urls/invite-assignment';
-import { OnetimeInvite } from 'src/user/entities/onetime-invite.entity';
-import type { Repository } from 'src/utils/Repository';
-import { MailService } from '../mail/mail.service';
-import { ReferralSource, User } from '../user/entities/user.entity';
-import { type PWResetJwtPayload, UserService } from '../user/user.service';
-import { SignUpDto } from './dto/sign-up.dto';
-import { Guest } from './entities/guest.entity';
+} from "src/share-urls/invite-assignment";
+import { OnetimeInvite } from "src/user/entities/onetime-invite.entity";
+import type { Repository } from "src/utils/Repository";
+import { MailService } from "../mail/mail.service";
+import { ReferralSource, User } from "../user/entities/user.entity";
+import { type PWResetJwtPayload, UserService } from "../user/user.service";
+import { SignUpDto } from "./dto/sign-up.dto";
+import { Guest } from "./entities/guest.entity";
 import {
   extractAccessTokenFromCookie,
   extractTokenFromHeader,
-} from './guards/auth.guard';
+} from "./guards/auth.guard";
 import {
   type GuestJwtPayload,
   type JwtPayload,
   JWTTokenType,
-} from './guards/jwtreq';
+} from "./guards/jwtreq";
 
 @Injectable()
 export class AuthService {
@@ -39,50 +39,50 @@ export class AuthService {
     private guestRepository: Repository<Guest>,
   ) {}
 
-  public static ACCESS_COOKIE = 'access_token';
-  public static REFRESH_COOKIE = 'refresh_token';
-  public static GUEST_COOKIE = 'guest_token';
+  public static ACCESS_COOKIE = "access_token";
+  public static REFRESH_COOKIE = "refresh_token";
+  public static GUEST_COOKIE = "guest_token";
   private static GUEST_COOKIE_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
   setAuthCookies(res: Response, access: string, refresh?: string) {
-    const prod = process.env.NODE_ENV === 'production';
+    const prod = process.env.NODE_ENV === "production";
 
     res.cookie(AuthService.ACCESS_COOKIE, access, {
       httpOnly: true,
       secure: prod,
-      path: '/',
-      sameSite: 'strict',
+      path: "/",
+      sameSite: "strict",
       maxAge: 1000 * 60 * 30, // 30 min
     });
     if (refresh) {
       res.cookie(AuthService.REFRESH_COOKIE, refresh, {
         httpOnly: true,
         secure: prod,
-        sameSite: 'strict',
-        path: '/',
+        sameSite: "strict",
+        path: "/",
         maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
       });
     }
   }
 
   clearAuthCookies(res: Response) {
-    res.clearCookie(AuthService.ACCESS_COOKIE, { path: '/' });
-    res.clearCookie(AuthService.REFRESH_COOKIE, { path: '/' });
+    res.clearCookie(AuthService.ACCESS_COOKIE, { path: "/" });
+    res.clearCookie(AuthService.REFRESH_COOKIE, { path: "/" });
   }
 
   setGuestCookie(res: Response, token: string) {
-    const prod = process.env.NODE_ENV === 'production';
+    const prod = process.env.NODE_ENV === "production";
     res.cookie(AuthService.GUEST_COOKIE, token, {
       httpOnly: true,
       secure: prod,
-      sameSite: 'lax',
-      path: '/',
+      sameSite: "lax",
+      path: "/",
       maxAge: AuthService.GUEST_COOKIE_MAX_AGE_MS,
     });
   }
 
   clearGuestCookie(res: Response) {
-    res.clearCookie(AuthService.GUEST_COOKIE, { path: '/' });
+    res.clearCookie(AuthService.GUEST_COOKIE, { path: "/" });
   }
 
   async createGuestSession(
@@ -108,7 +108,7 @@ export class AuthService {
       tokenType: JWTTokenType.guest,
     };
     const guestToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '30d',
+      expiresIn: "30d",
     });
     return { guestId: guest.id, guestToken };
   }
@@ -196,8 +196,8 @@ export class AuthService {
     });
 
     if (!resolution) {
-      if (process.env.NODE_ENV !== 'test') {
-        throw new BadRequestException('invalid referral code'); // TODO: feature flag
+      if (process.env.NODE_ENV !== "test") {
+        throw new BadRequestException("invalid referral code"); // TODO: feature flag
       }
       return {
         invite: null,
@@ -210,11 +210,11 @@ export class AuthService {
     }
 
     switch (resolution.kind) {
-      case 'invite': {
+      case "invite": {
         const { invite } = resolution;
         if (invite.invitedUser) {
           throw new BadRequestException(
-            'This invite code has already been used',
+            "This invite code has already been used",
           );
         }
         await this.usersService.invalidateInvite(invite.id);
@@ -227,7 +227,7 @@ export class AuthService {
           referralSource: ReferralSource.OnetimeInvite,
         };
       }
-      case 'campaign':
+      case "campaign":
         return {
           invite: null,
           referringUser: null,
@@ -236,7 +236,7 @@ export class AuthService {
           inviteAssignment: null,
           referralSource: ReferralSource.Campaign,
         };
-      case 'user':
+      case "user":
         return {
           invite: null,
           referringUser: resolution.user,
@@ -256,11 +256,11 @@ export class AuthService {
 
   async register(signUp: SignUpDto): Promise<User> {
     if (await this.usersService.findOneByEmail(signUp.email)) {
-      throw new BadRequestException('User already exists');
+      throw new BadRequestException("User already exists");
     }
 
     if (!signUp.referralCode) {
-      throw new BadRequestException('No referral code provided');
+      throw new BadRequestException("No referral code provided");
     }
 
     const {
@@ -339,7 +339,7 @@ export class AuthService {
       ...(isImpersonation && { isImpersonation: true }),
     };
     const token = await this.jwtService.signAsync(payload, {
-      expiresIn: '14d',
+      expiresIn: "14d",
       secret: process.env.JWT_REFRESH_SECRET,
     });
     return token;
@@ -355,7 +355,7 @@ export class AuthService {
       tokenType: JWTTokenType.access,
       ...(isImpersonation && { isImpersonation: true }),
     };
-    return this.jwtService.signAsync(payload, { expiresIn: '1d' });
+    return this.jwtService.signAsync(payload, { expiresIn: "1d" });
   }
 
   async refreshTokens(
@@ -364,7 +364,7 @@ export class AuthService {
   ): Promise<{ access_token: string; refresh_token: string }> {
     const user = await this.usersService.findOne(userId);
     if (!user) {
-      throw new UnauthorizedException('Invalid user id');
+      throw new UnauthorizedException("Invalid user id");
     }
     return {
       access_token: await this.generateAccessToken(user, isImpersonation),
@@ -406,11 +406,11 @@ export class AuthService {
         secret: process.env.JWT_SECRET,
       });
     } catch (error) {
-      console.log('password reset jwt verification error: ', error);
+      console.log("password reset jwt verification error: ", error);
       throw new UnauthorizedException();
     }
 
-    if (payload.type !== 'password-reset') {
+    if (payload.type !== "password-reset") {
       throw new UnauthorizedException();
     }
 
@@ -433,7 +433,7 @@ export class AuthService {
   ): Promise<{ access_token: string; refresh_token: string }> {
     const user = await this.usersService.findOne(userId);
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new BadRequestException("User not found");
     }
 
     return {

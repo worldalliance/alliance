@@ -1,6 +1,3 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { cn } from "@alliance/shared/styles/util";
-import { href, Link } from "react-router";
 import {
   communityCreateCommunityAdmin,
   communityGetCommunitiesAdmin,
@@ -9,15 +6,18 @@ import type {
   CommunityDto,
   CreateCommunityDto,
 } from "@alliance/shared/client/types.gen";
-import Card from "@alliance/sharedweb/ui/Card";
-import { CardStyle } from "@alliance/shared/styles/card";
-import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
-import List from "@alliance/sharedweb/ui/List";
-import GroupAssignmentPanel from "../components/GroupAssignmentPanel";
-import { useGroupAssignment } from "../lib/GroupAssignmentContext";
+import { getMemberCount } from "@alliance/shared/lib/communityUtils";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
 import { groupSettings } from "@alliance/shared/lib/copy";
-import { getMemberCount } from "@alliance/shared/lib/communityUtils";
+import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
+import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
+import Card from "@alliance/sharedweb/ui/Card";
+import List from "@alliance/sharedweb/ui/List";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { href, Link } from "react-router";
+import GroupAssignmentPanel from "../components/GroupAssignmentPanel";
+import { useGroupAssignment } from "../lib/GroupAssignmentContext";
 
 const INITIAL_COMMUNITY: CreateCommunityDto = {
   name: "",
@@ -74,7 +74,7 @@ const GroupsPage: React.FC = () => {
     return [...communities].sort((a, b) =>
       a.name
         .trim()
-        .localeCompare(b.name.trim(), undefined, { sensitivity: "base" })
+        .localeCompare(b.name.trim(), undefined, { sensitivity: "base" }),
     );
   }, [communities]);
 
@@ -88,7 +88,7 @@ const GroupsPage: React.FC = () => {
         return (
           acc + Math.max(0, community.maxCapacity - getMemberCount(community))
         );
-      }, 0) - membersUndergoingGroupAssignment.length
+      }, 0) - membersUndergoingGroupAssignment.length,
     );
   }, [communities, membersUndergoingGroupAssignment.length]);
 
@@ -135,7 +135,7 @@ const GroupsPage: React.FC = () => {
         setCreating(false);
       }
     },
-    [newCommunity, requiresMaxCapacity]
+    [newCommunity, requiresMaxCapacity],
   );
 
   return (
@@ -404,7 +404,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
             <div
               className={cn(
                 "flex flex-col items-end gap-1 text-sm",
-                community.public ? "text-green" : "text-zinc-400"
+                community.public ? "text-green" : "text-zinc-400",
               )}
             >
               {community.public ? "Public" : "Private"}
@@ -419,7 +419,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
                 "text-sm mr-4 font-medium",
                 capacity !== null &&
                   effectiveMemberCount >= capacity &&
-                  "text-zinc-400"
+                  "text-zinc-400",
               )}
             >
               {memberCount}

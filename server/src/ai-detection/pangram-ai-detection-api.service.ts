@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PangramAiDetectionResult } from './ai-detection.types';
+import { Injectable, Logger } from "@nestjs/common";
+import { PangramAiDetectionResult } from "./ai-detection.types";
 
 type PangramApiResponse = {
   version?: string;
@@ -11,11 +11,11 @@ export class PangramAiDetectionApiService {
   private readonly logger = new Logger(PangramAiDetectionApiService.name);
   private readonly endpoint = process.env.PANGRAM_API_URL?.trim()
     ? process.env.PANGRAM_API_URL.trim()
-    : 'https://text.api.pangram.com/v3';
+    : "https://text.api.pangram.com/v3";
   private readonly apiKey = process.env.PANGRAM_API_KEY?.trim();
 
   private normalizeProbability(value: unknown): number | null {
-    if (typeof value !== 'number' || Number.isNaN(value)) {
+    if (typeof value !== "number" || Number.isNaN(value)) {
       return null;
     }
     if (value < 0) {
@@ -29,14 +29,14 @@ export class PangramAiDetectionApiService {
 
   async check(text: string): Promise<PangramAiDetectionResult> {
     if (!this.apiKey) {
-      throw new Error('PANGRAM_API_KEY is not configured');
+      throw new Error("PANGRAM_API_KEY is not configured");
     }
 
     const response = await fetch(this.endpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
+        "Content-Type": "application/json",
+        "x-api-key": this.apiKey,
       },
       body: JSON.stringify({ text }),
     });
@@ -51,21 +51,20 @@ export class PangramAiDetectionApiService {
     }
 
     const parsed =
-      data && typeof data === 'object'
+      data && typeof data === "object"
         ? (data as PangramApiResponse & Record<string, unknown>)
         : {};
 
     if (!response.ok) {
       throw new Error(
-        `Pangram request failed with status ${response.status}${response.statusText ? ` (${response.statusText})` : ''}`,
+        `Pangram request failed with status ${response.status}${response.statusText ? ` (${response.statusText})` : ""}`,
       );
     }
 
     return {
       probability: this.normalizeProbability(parsed.fraction_ai),
       raw: parsed,
-      modelVersion:
-        typeof parsed.version === 'string' ? parsed.version : null,
+      modelVersion: typeof parsed.version === "string" ? parsed.version : null,
     };
   }
 }

@@ -4,23 +4,23 @@ import {
   authMe,
   SignInDto,
 } from "@alliance/shared/client";
-import { Features } from "@alliance/shared/lib/features";
 import { forgotPassword as forgotPasswordCopy } from "@alliance/shared/lib/copy";
+import { Features } from "@alliance/shared/lib/features";
+import { CardStyle } from "@alliance/shared/styles/card";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
+import FormInput from "@alliance/sharedweb/ui/FormInput";
+import { Eye, EyeOff } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Link,
   href,
+  Link,
   useLocation,
   useNavigate,
   useSearchParams,
 } from "react-router";
-import FormInput from "@alliance/sharedweb/ui/FormInput";
 import { useAuth } from "../../lib/AuthContext";
 import { isFeatureEnabled } from "../../lib/config";
-import { EyeOff, Eye } from "lucide-react";
-import { CardStyle } from "@alliance/shared/styles/card";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();

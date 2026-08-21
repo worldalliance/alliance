@@ -1,4 +1,4 @@
-import type { ThrottlerOptions } from '@nestjs/throttler';
+import type { ThrottlerOptions } from "@nestjs/throttler";
 
 /**
  * Rate limits for the public `/auth/register` endpoint.

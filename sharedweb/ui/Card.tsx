@@ -1,6 +1,6 @@
 import { CardStyle, cardStyleClasses } from "@alliance/shared/styles/card";
-import { PropsWithChildren } from "react";
 import { cn } from "@alliance/shared/styles/util";
+import { PropsWithChildren } from "react";
 
 export interface CardProps extends PropsWithChildren {
   className?: string;
@@ -33,7 +33,7 @@ const Card: React.FC<CardProps> = ({
         "p-4 border",
         onClick && "cursor-pointer",
         "bg-cover bg-center rounded",
-        className
+        className,
       )}
       ref={ref}
       style={{

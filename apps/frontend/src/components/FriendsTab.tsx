@@ -7,16 +7,16 @@ import {
   userListSentRequests,
   userRemoveFriend,
 } from "@alliance/shared/client";
+import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
-import { CardStyle } from "@alliance/shared/styles/card";
 import List from "@alliance/sharedweb/ui/List";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import React, { useState } from "react";
-import { Link, href } from "react-router";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { cn } from "@alliance/shared/styles/util";
+import React, { useState } from "react";
+import { Link, href } from "react-router";
 
 interface FriendsTabProps {
   userId: number;
@@ -56,10 +56,10 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
   const loading = isLoadingFriends || isLoadingReceived || isLoadingSent;
 
   const [activeTab, setActiveTab] = useState<"friends" | "received" | "sent">(
-    originalTab
+    originalTab,
   );
   const [processingIds, setProcessingIds] = useState<Record<string, boolean>>(
-    {}
+    {},
   );
   const { confirm } = useToast();
 
@@ -106,7 +106,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
 
   const handleRemoveFriend = async (
     e: React.MouseEvent<HTMLElement>,
-    friendId: number
+    friendId: number,
   ) => {
     const ok = await confirm({
       message: "Are you sure you want to remove this friend?",
@@ -212,7 +212,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
         <span
           className={cn(
             baseClasses,
-            activeTab === "friends" ? activeClasses : inactiveClasses
+            activeTab === "friends" ? activeClasses : inactiveClasses,
           )}
           onClick={() => setActiveTab("friends")}
         >
@@ -222,7 +222,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
           <span
             className={cn(
               baseClasses,
-              activeTab === "received" ? activeClasses : inactiveClasses
+              activeTab === "received" ? activeClasses : inactiveClasses,
             )}
             onClick={() => setActiveTab("received")}
           >
@@ -233,7 +233,7 @@ const FriendsTab: React.FC<FriendsTabProps> = ({
           <span
             className={cn(
               baseClasses,
-              activeTab === "sent" ? activeClasses : inactiveClasses
+              activeTab === "sent" ? activeClasses : inactiveClasses,
             )}
             onClick={() => setActiveTab("sent")}
           >

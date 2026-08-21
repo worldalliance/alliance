@@ -1,17 +1,16 @@
+import { NotificationDto, notifsSetRead } from "@alliance/shared/client";
 import {
   buildNotificationRenderItems,
   getUnreadLikesCount,
   LikesBucket,
 } from "@alliance/shared/lib/notificationBucketing";
-import { NotificationDto } from "@alliance/shared/client";
 import {
   getNotificationIdentityKey,
   getNotificationReadRequest,
 } from "@alliance/shared/lib/notificationIdentity";
-import { notifsSetRead } from "@alliance/shared/client";
-import { useMemo, useState } from "react";
 import { cn } from "@alliance/shared/styles/util";
-import { Heart, ChevronDown, ChevronUp, CheckCheck } from "lucide-react";
+import { CheckCheck, ChevronDown, ChevronUp, Heart } from "lucide-react";
+import { useMemo, useState } from "react";
 import NotificationText from "../pages/app/NotificationText";
 
 const LikesGroup = ({

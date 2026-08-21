@@ -1,34 +1,34 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsOptional } from 'class-validator';
-import { Column, Entity, PrimaryGeneratedColumn, Unique } from 'typeorm';
+import { ApiProperty } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsOptional } from "class-validator";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
+} from "src/datasources/basecolumns";
+import { Column, Entity, PrimaryGeneratedColumn, Unique } from "typeorm";
 
 export enum DetectableEntity {
-  Comment = 'comment',
-  FormResponse = 'formResponse',
+  Comment = "comment",
+  FormResponse = "formResponse",
 }
 
 export enum DetectionStatus {
-  Pending = 'pending',
-  Processing = 'processing',
-  Completed = 'completed',
-  Failed = 'failed',
+  Pending = "pending",
+  Processing = "processing",
+  Completed = "completed",
+  Failed = "failed",
 }
 
 @Entity()
-@Unique(['entityType', 'entityId', 'fieldPath'])
+@Unique(["entityType", "entityId", "fieldPath"])
 export class AiDetectionResult {
   @PrimaryGeneratedColumn()
   @ApiProperty()
   @Allow()
   id: number;
 
-  @Column({ type: 'enum', enum: DetectableEntity })
-  @ApiProperty({ enum: DetectableEntity, enumName: 'DetectableEntity' })
+  @Column({ type: "enum", enum: DetectableEntity })
+  @ApiProperty({ enum: DetectableEntity, enumName: "DetectableEntity" })
   @Allow()
   entityType: DetectableEntity;
 
@@ -37,32 +37,32 @@ export class AiDetectionResult {
   @Allow()
   entityId: number;
 
-  @Column({ type: 'text' })
+  @Column({ type: "text" })
   @ApiProperty()
   @Allow()
   fieldPath: string;
 
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: DetectionStatus,
     default: DetectionStatus.Pending,
   })
-  @ApiProperty({ enum: DetectionStatus, enumName: 'DetectionStatus' })
+  @ApiProperty({ enum: DetectionStatus, enumName: "DetectionStatus" })
   @Allow()
   status: DetectionStatus;
 
-  @Column({ type: 'float', nullable: true })
+  @Column({ type: "float", nullable: true })
   @ApiProperty({ nullable: true })
   @IsOptional()
   aiProbability: number | null;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: "jsonb", nullable: true })
   @ApiProperty({ nullable: true })
   @IsOptional()
   @Type(() => Object)
   rawApiResponse: string | null;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   @ApiProperty({ nullable: true })
   @IsOptional()
   modelVersion: string | null;

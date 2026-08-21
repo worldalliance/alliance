@@ -8,17 +8,17 @@ import {
   Patch,
   Post,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse } from '@nestjs/swagger';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
+} from "@nestjs/common";
+import { ApiOkResponse } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
 import {
   CreateExternalShareTargetDto,
   ExternalShareTargetDto,
   UpdateExternalShareTargetDto,
-} from './dto/external-share-target.dto';
-import { ExternalShareTargetsService } from './external-share-targets.service';
+} from "./dto/external-share-target.dto";
+import { ExternalShareTargetsService } from "./external-share-targets.service";
 
-@Controller('external-share-targets')
+@Controller("external-share-targets")
 export class ExternalShareTargetsController {
   constructor(
     private readonly externalShareTargetsService: ExternalShareTargetsService,
@@ -32,11 +32,11 @@ export class ExternalShareTargetsController {
     return targets.map((t) => new ExternalShareTargetDto(t));
   }
 
-  @Get(':id')
+  @Get(":id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ExternalShareTargetDto })
   async findOneAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
   ): Promise<ExternalShareTargetDto> {
     return new ExternalShareTargetDto(
       await this.externalShareTargetsService.findOne(id),
@@ -54,11 +54,11 @@ export class ExternalShareTargetsController {
     );
   }
 
-  @Patch(':id')
+  @Patch(":id")
   @UseGuards(AdminGuard)
   @ApiOkResponse({ type: ExternalShareTargetDto })
   async updateAdmin(
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateExternalShareTargetDto,
   ): Promise<ExternalShareTargetDto> {
     return new ExternalShareTargetDto(
@@ -66,10 +66,10 @@ export class ExternalShareTargetsController {
     );
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @UseGuards(AdminGuard)
   @ApiOkResponse()
-  async removeAdmin(@Param('id', ParseIntPipe) id: number): Promise<void> {
+  async removeAdmin(@Param("id", ParseIntPipe) id: number): Promise<void> {
     await this.externalShareTargetsService.remove(id);
   }
 }

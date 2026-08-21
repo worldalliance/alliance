@@ -3,12 +3,12 @@ import {
   formatDeadline,
   TaskTimeInfoPropsShared,
 } from "@alliance/shared/lib/taskTimeInfo";
-import { View } from "react-native";
-import Text from "./system/Text";
-import { ClockIcon, Calendar } from "lucide-react-native";
-import { cn } from "@alliance/shared/styles/util";
-import { colors } from "../lib/style/colors";
 import { formatTime } from "@alliance/shared/lib/utils";
+import { cn } from "@alliance/shared/styles/util";
+import { Calendar, ClockIcon } from "lucide-react-native";
+import { View } from "react-native";
+import { colors } from "../lib/style/colors";
+import Text from "./system/Text";
 
 const TaskTimeInfo = ({
   action,

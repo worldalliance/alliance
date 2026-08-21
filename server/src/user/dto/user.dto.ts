@@ -1,11 +1,11 @@
-import { Temporal } from '@js-temporal/polyfill';
+import { Temporal } from "@js-temporal/polyfill";
 import {
   ApiProperty,
   ApiPropertyOptional,
   PartialType,
   PickType,
-} from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+} from "@nestjs/swagger";
+import { Transform, Type } from "class-transformer";
 import {
   Allow,
   IsArray,
@@ -15,25 +15,25 @@ import {
   IsOptional,
   IsString,
   ValidateNested,
-} from 'class-validator';
-import { getImageSource } from 'src/images/images.service';
-import { IsE164 } from 'src/utils/phone';
-import { IsPlainTime, trimToPlainTime } from 'src/utils/plain-time';
-import { trim, trimToNull } from 'src/utils/transforms';
-import { ClusterSummaryDto } from '../../cluster/dto/cluster.dto';
-import { Cluster } from '../../cluster/entities/cluster.entity';
-import { Campaign } from '../../campaign/entities/campaign.entity';
-import { City } from '../../geo/city.entity';
-import { ShareUrl } from '../../share-urls/entities/share-url.entity';
+} from "class-validator";
+import { getImageSource } from "src/images/images.service";
+import { IsE164 } from "src/utils/phone";
+import { IsPlainTime, trimToPlainTime } from "src/utils/plain-time";
+import { trim, trimToNull } from "src/utils/transforms";
+import { Campaign } from "../../campaign/entities/campaign.entity";
+import { ClusterSummaryDto } from "../../cluster/dto/cluster.dto";
+import { Cluster } from "../../cluster/entities/cluster.entity";
+import { City } from "../../geo/city.entity";
+import { ShareUrl } from "../../share-urls/entities/share-url.entity";
 import {
   compareContractEventsNewestFirst,
   ContractEvent,
   ContractEventType,
-} from '../entities/contract-event.entity';
-import { FriendStatus } from '../entities/friend.entity';
-import { OnetimeInvite } from '../entities/onetime-invite.entity';
-import { ReferralSource, User } from '../entities/user.entity';
-import type { ReferrerResolution } from '../user.service';
+} from "../entities/contract-event.entity";
+import { FriendStatus } from "../entities/friend.entity";
+import { OnetimeInvite } from "../entities/onetime-invite.entity";
+import { ReferralSource, User } from "../entities/user.entity";
+import type { ReferrerResolution } from "../user.service";
 
 export type FriendStatusDtoArgs = {
   status: FriendStatus;
@@ -41,7 +41,7 @@ export type FriendStatusDtoArgs = {
 };
 
 export class FriendStatusDto {
-  @ApiProperty({ enum: FriendStatus, nullable: true, enumName: 'FriendStatus' })
+  @ApiProperty({ enum: FriendStatus, nullable: true, enumName: "FriendStatus" })
   status: FriendStatus;
 
   @ApiProperty()
@@ -54,7 +54,7 @@ export class FriendStatusDto {
 }
 
 export class ContractEventDto {
-  @ApiProperty({ enum: ContractEventType, enumName: 'ContractEventType' })
+  @ApiProperty({ enum: ContractEventType, enumName: "ContractEventType" })
   type: ContractEventType;
 
   @ApiProperty()
@@ -67,7 +67,7 @@ export class ContractEventDto {
   contractId: number | null;
 
   constructor(
-    input: Pick<ContractEvent, 'type' | 'date' | 'automatic' | 'contractId'>,
+    input: Pick<ContractEvent, "type" | "date" | "automatic" | "contractId">,
   ) {
     this.type = input.type;
     this.date = input.date;
@@ -77,13 +77,13 @@ export class ContractEventDto {
 }
 
 export class ProfileDto extends PickType(User, [
-  'admin',
-  'staff',
-  'ambassador',
-  'id',
-  'profilePicture',
-  'profileDescription',
-  'anonymous',
+  "admin",
+  "staff",
+  "ambassador",
+  "id",
+  "profilePicture",
+  "profileDescription",
+  "anonymous",
 ]) {
   @ApiProperty()
   displayName: string;
@@ -103,19 +103,19 @@ export class ProfileDto extends PickType(User, [
   constructor(
     user: Pick<
       User,
-      | 'id'
-      | 'name'
-      | 'admin'
-      | 'staff'
-      | 'ambassador'
-      | 'email'
-      | 'anonymous'
-      | 'profilePicture'
-      | 'profileDescription'
-      | 'hasActiveContract'
-      | 'isCommunityLeader'
-      | 'contractEvents'
-    > & { cluster?: Pick<Cluster, 'id' | 'displayName'> | null },
+      | "id"
+      | "name"
+      | "admin"
+      | "staff"
+      | "ambassador"
+      | "email"
+      | "anonymous"
+      | "profilePicture"
+      | "profileDescription"
+      | "hasActiveContract"
+      | "isCommunityLeader"
+      | "contractEvents"
+    > & { cluster?: Pick<Cluster, "id" | "displayName"> | null },
   ) {
     super();
     this.id = user.id;
@@ -133,7 +133,7 @@ export class ProfileDto extends PickType(User, [
       ? new ContractEventDto(lastContractEvent)
       : undefined;
     if (user.anonymous) {
-      this.displayName = 'Someone';
+      this.displayName = "Someone";
     } else {
       this.displayName = user.name;
     }
@@ -154,8 +154,8 @@ export class ProfileDto extends PickType(User, [
  * "Invited by {name}" vs "Invited via {name}").
  */
 export class ReferrerProfileDto {
-  @ApiProperty({ enum: ['user', 'campaign'], enumName: 'ReferrerKind' })
-  kind: 'user' | 'campaign';
+  @ApiProperty({ enum: ["user", "campaign"], enumName: "ReferrerKind" })
+  kind: "user" | "campaign";
 
   @ApiProperty()
   displayName: string;
@@ -165,15 +165,15 @@ export class ReferrerProfileDto {
 
   constructor(input: ReferrerResolution) {
     switch (input.kind) {
-      case 'user':
-        this.kind = 'user';
-        this.displayName = input.user.anonymous ? 'Someone' : input.user.name;
+      case "user":
+        this.kind = "user";
+        this.displayName = input.user.anonymous ? "Someone" : input.user.name;
         this.profilePicture = input.user.profilePicture
           ? getImageSource(input.user.profilePicture)
           : null;
         break;
-      case 'campaign':
-        this.kind = 'campaign';
+      case "campaign":
+        this.kind = "campaign";
         this.displayName = input.campaign.name;
         this.profilePicture = input.campaign.picture
           ? getImageSource(input.campaign.picture)
@@ -206,44 +206,44 @@ export class SignupSocialProofDto {
 }
 
 export class UserDto extends PickType(User, [
-  'name',
-  'admin',
-  'staff',
-  'ambassador',
-  'id',
-  'emailNotifsForActions',
-  'pushNotifsForActions',
-  'textNotifsForActions',
-  'profileDescription',
-  'forumDigestPreference',
-  'turnedOffAllNotifs',
-  'referralCode',
-  'referralSource',
-  'referredById',
-  'referredByCampaignId',
-  'anonymous',
-  'pushesForLikes',
-  'pushesForComments',
-  'pushesForFriendRequests',
-  'pushesForMessages',
-  'pushesForActionUpdates',
-  'phoneNumber',
-  'communities',
-  'profilePicture',
-  'leaderOfIds',
-  'activities',
-  'shareEmailWithCommunityLead',
-  'sharePhoneNumberWithCommunityLead',
-  'preferredReminderTime',
-  'remindAboutUncompletedGroupMembers',
-  'timeZone',
-  'formDataPreference',
-  'shareInfoPublicly',
-  'customCityString',
-  'undergoingGroupAssignment',
-  'receiveReplyNotifications',
-  'tags',
-  'clusterId',
+  "name",
+  "admin",
+  "staff",
+  "ambassador",
+  "id",
+  "emailNotifsForActions",
+  "pushNotifsForActions",
+  "textNotifsForActions",
+  "profileDescription",
+  "forumDigestPreference",
+  "turnedOffAllNotifs",
+  "referralCode",
+  "referralSource",
+  "referredById",
+  "referredByCampaignId",
+  "anonymous",
+  "pushesForLikes",
+  "pushesForComments",
+  "pushesForFriendRequests",
+  "pushesForMessages",
+  "pushesForActionUpdates",
+  "phoneNumber",
+  "communities",
+  "profilePicture",
+  "leaderOfIds",
+  "activities",
+  "shareEmailWithCommunityLead",
+  "sharePhoneNumberWithCommunityLead",
+  "preferredReminderTime",
+  "remindAboutUncompletedGroupMembers",
+  "timeZone",
+  "formDataPreference",
+  "shareInfoPublicly",
+  "customCityString",
+  "undergoingGroupAssignment",
+  "receiveReplyNotifications",
+  "tags",
+  "clusterId",
 ]) {
   @ApiProperty()
   @Allow()
@@ -316,20 +316,20 @@ export class UserDto extends PickType(User, [
 
 export type UserAdminInvitedBy =
   | {
-      kind: 'user';
+      kind: "user";
       user: User;
       referralSource: ReferralSource;
       shareUrl?: ShareUrl | null;
     }
-  | { kind: 'campaign'; campaign: Campaign }
-  | { kind: 'unknown'; referralSource: ReferralSource };
+  | { kind: "campaign"; campaign: Campaign }
+  | { kind: "unknown"; referralSource: ReferralSource };
 
 export class UserAdminInvitedByDto {
   @ApiProperty({
-    enum: ['user', 'campaign', 'unknown'],
-    enumName: 'UserAdminInvitedByKind',
+    enum: ["user", "campaign", "unknown"],
+    enumName: "UserAdminInvitedByKind",
   })
-  kind: 'user' | 'campaign' | 'unknown';
+  kind: "user" | "campaign" | "unknown";
 
   @ApiProperty()
   label: string;
@@ -340,7 +340,7 @@ export class UserAdminInvitedByDto {
   @ApiPropertyOptional({ type: Number, nullable: true })
   campaignId?: number | null;
 
-  @ApiPropertyOptional({ enum: ReferralSource, enumName: 'ReferralSource' })
+  @ApiPropertyOptional({ enum: ReferralSource, enumName: "ReferralSource" })
   referralSource?: ReferralSource;
 
   @ApiPropertyOptional({ type: String, nullable: true })
@@ -348,21 +348,21 @@ export class UserAdminInvitedByDto {
 
   constructor(input: UserAdminInvitedBy) {
     switch (input.kind) {
-      case 'user':
-        this.kind = 'user';
+      case "user":
+        this.kind = "user";
         this.label = input.user.name;
         this.userId = input.user.id;
         this.referralSource = input.referralSource;
         this.inviteLinkLabel = input.shareUrl?.label ?? null;
         break;
-      case 'campaign':
-        this.kind = 'campaign';
+      case "campaign":
+        this.kind = "campaign";
         this.label = input.campaign.name;
         this.campaignId = input.campaign.id;
         this.referralSource = ReferralSource.Campaign;
         break;
-      case 'unknown':
-        this.kind = 'unknown';
+      case "unknown":
+        this.kind = "unknown";
         this.label = humanizeReferralSource(input.referralSource);
         this.referralSource = input.referralSource;
         break;
@@ -425,7 +425,7 @@ export class UserAdminDetailDto extends UserDto {
 function userAdminInvitedBy(user: UserAdminDetail) {
   if (user.referredBy) {
     return new UserAdminInvitedByDto({
-      kind: 'user',
+      kind: "user",
       user: user.referredBy,
       referralSource: user.referralSource,
       shareUrl: user.referredByShareUrl,
@@ -433,20 +433,20 @@ function userAdminInvitedBy(user: UserAdminDetail) {
   }
   if (user.referredByCampaign) {
     return new UserAdminInvitedByDto({
-      kind: 'campaign',
+      kind: "campaign",
       campaign: user.referredByCampaign,
     });
   }
   if (user.referredByInvite?.invitingUser) {
     return new UserAdminInvitedByDto({
-      kind: 'user',
+      kind: "user",
       user: user.referredByInvite.invitingUser,
       referralSource: user.referralSource,
     });
   }
   if (user.referralSource !== ReferralSource.None) {
     return new UserAdminInvitedByDto({
-      kind: 'unknown',
+      kind: "unknown",
       referralSource: user.referralSource,
     });
   }
@@ -456,19 +456,19 @@ function userAdminInvitedBy(user: UserAdminDetail) {
 function humanizeReferralSource(source: ReferralSource) {
   switch (source) {
     case ReferralSource.ReferralLink:
-      return 'Referral link';
+      return "Referral link";
     case ReferralSource.OnetimeInvite:
-      return 'One-time invite';
+      return "One-time invite";
     case ReferralSource.ActionShareLink:
-      return 'Action share link';
+      return "Action share link";
     case ReferralSource.ExternalShareLink:
-      return 'External share link';
+      return "External share link";
     case ReferralSource.InviteShareLink:
-      return 'Invite share link';
+      return "Invite share link";
     case ReferralSource.Campaign:
-      return 'Campaign';
+      return "Campaign";
     case ReferralSource.None:
-      return 'No invite';
+      return "No invite";
     default:
       throw new Error(`unknown referral source: ${source satisfies never}`);
   }
@@ -476,25 +476,25 @@ function humanizeReferralSource(source: ReferralSource) {
 
 export class UpdateProfileDto extends PartialType(
   PickType(User, [
-    'name',
-    'anonymous',
-    'emailNotifsForActions',
-    'pushNotifsForActions',
-    'textNotifsForActions',
-    'shareEmailWithCommunityLead',
-    'remindAboutUncompletedGroupMembers',
-    'receiveReplyNotifications',
-    'sharePhoneNumberWithCommunityLead',
-    'forumDigestPreference',
-    'formDataPreference',
-    'timeZone',
-    'isNotSignedUpPartialProfile',
-    'shareInfoPublicly',
-    'pushesForLikes',
-    'pushesForComments',
-    'pushesForFriendRequests',
-    'pushesForMessages',
-    'pushesForActionUpdates',
+    "name",
+    "anonymous",
+    "emailNotifsForActions",
+    "pushNotifsForActions",
+    "textNotifsForActions",
+    "shareEmailWithCommunityLead",
+    "remindAboutUncompletedGroupMembers",
+    "receiveReplyNotifications",
+    "sharePhoneNumberWithCommunityLead",
+    "forumDigestPreference",
+    "formDataPreference",
+    "timeZone",
+    "isNotSignedUpPartialProfile",
+    "shareInfoPublicly",
+    "pushesForLikes",
+    "pushesForComments",
+    "pushesForFriendRequests",
+    "pushesForMessages",
+    "pushesForActionUpdates",
   ]),
 ) {
   @ApiPropertyOptional({ type: Number, nullable: true })
@@ -532,7 +532,7 @@ export class UpdateProfileDto extends PartialType(
 }
 
 export class UpdateUserRolesAdminDto extends PartialType(
-  PickType(User, ['ambassador', 'staff']),
+  PickType(User, ["ambassador", "staff"]),
 ) {
   @ApiPropertyOptional()
   @IsOptional()
@@ -546,7 +546,7 @@ export class UpdateUserRolesAdminDto extends PartialType(
 }
 
 export class DeleteUserAdminDto {
-  @ApiProperty({ description: 'Posted to Slack; not stored on the account' })
+  @ApiProperty({ description: "Posted to Slack; not stored on the account" })
   @IsString()
   @IsNotEmpty()
   @Transform(trim)
@@ -592,17 +592,17 @@ export class StaffDirectoryEntryDto {
   constructor(
     user: Pick<
       User,
-      | 'id'
-      | 'name'
-      | 'anonymous'
-      | 'profilePicture'
-      | 'staffTitle'
-      | 'staffLink'
-      | 'staffDisplayOrder'
+      | "id"
+      | "name"
+      | "anonymous"
+      | "profilePicture"
+      | "staffTitle"
+      | "staffLink"
+      | "staffDisplayOrder"
     >,
   ) {
     this.id = user.id;
-    this.displayName = user.anonymous ? 'Someone' : user.name;
+    this.displayName = user.anonymous ? "Someone" : user.name;
     this.profilePicture = user.profilePicture
       ? getImageSource(user.profilePicture)
       : null;

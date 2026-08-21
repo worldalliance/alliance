@@ -1,9 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { LiveActivityRegistration } from './entities/live-activity-registration.entity';
-import { ApnsService } from './apns.service';
-import { Action } from 'src/actions/entities/action.entity';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Action } from "src/actions/entities/action.entity";
+import { Repository } from "typeorm";
+import { ApnsService } from "./apns.service";
+import { LiveActivityRegistration } from "./entities/live-activity-registration.entity";
 
 @Injectable()
 export class LiveActivityService {

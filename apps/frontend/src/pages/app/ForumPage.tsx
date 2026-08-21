@@ -1,12 +1,12 @@
 import { forumFindAllPosts, PostDto } from "@alliance/shared/client";
+import { CardStyle } from "@alliance/shared/styles/card";
+import Card from "@alliance/sharedweb/ui/Card";
+import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
+import List from "@alliance/sharedweb/ui/List";
 import React, { useCallback } from "react";
 import { href, useLoaderData, useNavigate } from "react-router";
 import ForumListPost from "../../components/ForumListPost";
 import { useGrayBackground } from "../../components/HtmlBackgroundManager";
-import List from "@alliance/sharedweb/ui/List";
-import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
-import Card from "@alliance/sharedweb/ui/Card";
-import { CardStyle } from "@alliance/shared/styles/card";
 
 export async function clientLoader() {
   const response = await forumFindAllPosts();
@@ -18,7 +18,7 @@ export async function clientLoader() {
   return [...posts].sort(
     (a, b) =>
       new Date(b.lastComment?.createdAt ?? b.updatedAt).getTime() -
-      new Date(a.lastComment?.createdAt ?? a.updatedAt).getTime()
+      new Date(a.lastComment?.createdAt ?? a.updatedAt).getTime(),
   );
 }
 

@@ -1,9 +1,9 @@
 import { ActionEventNotifDto, ProfileDto } from "@alliance/shared/client";
+import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
 import Badge from "@alliance/sharedweb/ui/Badge";
 import Card from "@alliance/sharedweb/ui/Card";
-import { CardStyle } from "@alliance/shared/styles/card";
 import React from "react";
-import { cn } from "@alliance/shared/styles/util";
 
 function statusClasses(status?: string) {
   const s = (status || "").toString().toLowerCase();
@@ -46,7 +46,7 @@ const EmailNotif: React.FC<EmailNotifProps> = ({ notif }) => {
             <Badge
               className={cn(
                 statusClasses(mail.status),
-                "!bg-zinc-100 !py-2 !px-3"
+                "!bg-zinc-100 !py-2 !px-3",
               )}
             >
               {mail.status}
@@ -54,7 +54,7 @@ const EmailNotif: React.FC<EmailNotifProps> = ({ notif }) => {
             <Badge
               className={cn(
                 linkClickClasses(mail.clickedLink),
-                "!bg-zinc-100 !py-2 !px-3"
+                "!bg-zinc-100 !py-2 !px-3",
               )}
             >
               {mail.clickedLink ? "Link clicked" : "No link clicked"}

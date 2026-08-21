@@ -1,18 +1,18 @@
-import type { Repository } from 'typeorm';
-import { Expo } from 'expo-server-sdk';
-import { User } from 'src/user/entities/user.entity';
-import { UserDevice } from 'src/user/entities/user-device.entity';
-import { Push } from 'src/push/push.entity';
-import { EXPO_CLIENT, PushService } from 'src/push/push.service';
+import { Expo } from "expo-server-sdk";
+import { MessagingModule } from "src/messaging/messaging.module";
 import {
   Notification,
   NotificationCategory,
-} from 'src/notifs/entities/notification.entity';
-import { NotifPushDispatcherWorker } from 'src/push/notif-push-dispatcher.worker';
-import { MessagingModule } from 'src/messaging/messaging.module';
-import { createTestApp, TestContext } from './e2e-test-utils';
+} from "src/notifs/entities/notification.entity";
+import { NotifPushDispatcherWorker } from "src/push/notif-push-dispatcher.worker";
+import { Push } from "src/push/push.entity";
+import { EXPO_CLIENT, PushService } from "src/push/push.service";
+import { UserDevice } from "src/user/entities/user-device.entity";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "typeorm";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
-describe('NotifPushDispatcher – new device filtering (e2e)', () => {
+describe("NotifPushDispatcher – new device filtering (e2e)", () => {
   let ctx: TestContext;
   let userRepo: Repository<User>;
   let deviceRepo: Repository<UserDevice>;
@@ -28,7 +28,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
     const user = userRepo.create({
       name: `Dispatcher User ${userCounter}`,
       email: `dispatcheruser${userCounter}@example.com`,
-      password: 'pass',
+      password: "pass",
       tags: [ctx.defaultTag],
       ...overrides,
     });
@@ -42,7 +42,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
     const token = `ExponentPushToken[dispatch_${user.id}_${Date.now()}_${Math.random().toString(36).slice(2)}]`;
     const device = deviceRepo.create({
       user,
-      deviceType: 'iOS',
+      deviceType: "iOS",
       expoPushToken: token,
     });
     const saved = await deviceRepo.save(device);
@@ -63,10 +63,10 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
   ): Promise<Notification> => {
     const notif = notifRepo.create({
       user,
-      message: 'Test push notification',
+      message: "Test push notification",
       category: NotificationCategory.ActionEvent,
-      webAppLocation: '/test',
-      mobileAppLocation: '/test',
+      webAppLocation: "/test",
+      mobileAppLocation: "/test",
       shouldPush: true,
       sendTime,
       ...overrides,
@@ -86,13 +86,13 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
     // Mock the Expo client so we never hit the real push service
     const expo = ctx.app.get<Expo>(EXPO_CLIENT);
     mockSendPush = jest.fn(async (messages) =>
-      messages.map(() => ({ status: 'ok', id: `receipt-${Date.now()}` })),
+      messages.map(() => ({ status: "ok", id: `receipt-${Date.now()}` })),
     );
     jest
-      .spyOn(expo, 'chunkPushNotifications')
+      .spyOn(expo, "chunkPushNotifications")
       .mockImplementation((msgs) => [msgs]);
     jest
-      .spyOn(expo, 'sendPushNotificationsAsync')
+      .spyOn(expo, "sendPushNotificationsAsync")
       .mockImplementation(mockSendPush);
   }, 50000);
 
@@ -103,14 +103,14 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
   });
 
   beforeEach(async () => {
-    await pushRepo.query('DELETE FROM push');
-    await notifRepo.query('DELETE FROM notification');
-    await deviceRepo.query('DELETE FROM user_device');
+    await pushRepo.query("DELETE FROM push");
+    await notifRepo.query("DELETE FROM notification");
+    await deviceRepo.query("DELETE FROM user_device");
     mockSendPush.mockClear();
   });
 
-  describe('getPushForAllUserDevices with notifCreatedAt filter', () => {
-    it('sends to devices registered before the notification was created', async () => {
+  describe("getPushForAllUserDevices with notifCreatedAt filter", () => {
+    it("sends to devices registered before the notification was created", async () => {
       const user = await createUser();
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
@@ -123,8 +123,8 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
         user.id,
         {
           userId: user.id,
-          body: 'Test message',
-          idempotencyKey: 'test-1',
+          body: "Test message",
+          idempotencyKey: "test-1",
         },
         now,
       );
@@ -133,7 +133,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       expect(messages[0].expoPushToken).toBe(device.expoPushToken);
     });
 
-    it('does not send to devices registered after the notification was created', async () => {
+    it("does not send to devices registered after the notification was created", async () => {
       const user = await createUser();
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
@@ -146,8 +146,8 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
         user.id,
         {
           userId: user.id,
-          body: 'Old notification',
-          idempotencyKey: 'test-2',
+          body: "Old notification",
+          idempotencyKey: "test-2",
         },
         oneHourAgo,
       );
@@ -155,7 +155,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       expect(messages).toHaveLength(0);
     });
 
-    it('sends to old device but not new device for an old notification', async () => {
+    it("sends to old device but not new device for an old notification", async () => {
       const user = await createUser();
       const now = new Date();
       const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
@@ -171,8 +171,8 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
         user.id,
         {
           userId: user.id,
-          body: 'Mid-age notification',
-          idempotencyKey: 'test-3',
+          body: "Mid-age notification",
+          idempotencyKey: "test-3",
         },
         oneHourAgo,
       );
@@ -181,7 +181,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       expect(messages[0].expoPushToken).toBe(oldDevice.expoPushToken);
     });
 
-    it('sends to all devices when notifCreatedAt is not provided', async () => {
+    it("sends to all devices when notifCreatedAt is not provided", async () => {
       const user = await createUser();
       const now = new Date();
 
@@ -190,8 +190,8 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
 
       const messages = await pushService.getPushForAllUserDevices(user.id, {
         userId: user.id,
-        body: 'No filter',
-        idempotencyKey: 'test-4',
+        body: "No filter",
+        idempotencyKey: "test-4",
       });
 
       expect(messages).toHaveLength(2);
@@ -201,8 +201,8 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
     });
   });
 
-  describe('dispatcher integration', () => {
-    it('does not push old notifications to a newly registered device', async () => {
+  describe("dispatcher integration", () => {
+    it("does not push old notifications to a newly registered device", async () => {
       const user = await createUser();
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
@@ -215,13 +215,13 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
 
       // Run the dispatcher (call private method directly to bypass NODE_ENV check)
       const messages =
-        await dispatcher.findNotificationPushes('test-dispatch-1');
+        await dispatcher.findNotificationPushes("test-dispatch-1");
 
       // No messages should be generated since the device was registered after the notification
       expect(messages).toHaveLength(0);
     });
 
-    it('pushes notifications to devices that existed before the notification', async () => {
+    it("pushes notifications to devices that existed before the notification", async () => {
       const user = await createUser();
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
@@ -234,14 +234,14 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       await createNotification(user, fiveMinutesAgo);
 
       const messages =
-        await dispatcher.findNotificationPushes('test-dispatch-2');
+        await dispatcher.findNotificationPushes("test-dispatch-2");
 
       expect(messages).toHaveLength(1);
       expect(messages[0].expoPushToken).toBe(device.expoPushToken);
-      expect(messages[0].body).toBe('Test push notification');
+      expect(messages[0].body).toBe("Test push notification");
     });
 
-    it('can send a second push when a grouped like notification is updated', async () => {
+    it("can send a second push when a grouped like notification is updated", async () => {
       const user = await createUser({ pushesForLikes: true });
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
@@ -250,35 +250,37 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
 
       const notif = await createNotification(user, oneHourAgo, {
         category: NotificationCategory.Likes,
-        message: 'First like',
+        message: "First like",
       });
 
-      const firstMessages =
-        await dispatcher.findNotificationPushes('test-dispatch-likes-1');
+      const firstMessages = await dispatcher.findNotificationPushes(
+        "test-dispatch-likes-1",
+      );
       expect(firstMessages).toHaveLength(1);
-      expect(firstMessages[0].body).toBe('First like');
+      expect(firstMessages[0].body).toBe("First like");
 
       const firstPushes = await pushService.sendMessages(firstMessages);
       expect(firstPushes).toHaveLength(1);
 
       await notifRepo.update(notif.id, {
-        message: 'Second like',
+        message: "Second like",
         shouldPush: true,
         pushClaimedBy: null,
         pushClaimedAt: null,
         pushDispatchedAt: null,
       });
 
-      const secondMessages =
-        await dispatcher.findNotificationPushes('test-dispatch-likes-2');
+      const secondMessages = await dispatcher.findNotificationPushes(
+        "test-dispatch-likes-2",
+      );
       expect(secondMessages).toHaveLength(1);
-      expect(secondMessages[0].body).toBe('Second like');
+      expect(secondMessages[0].body).toBe("Second like");
 
       const secondPushes = await pushService.sendMessages(secondMessages);
       expect(secondPushes).toHaveLength(1);
     });
 
-    it('only pushes to the pre-existing device, not the new one', async () => {
+    it("only pushes to the pre-existing device, not the new one", async () => {
       const user = await createUser();
       const now = new Date();
       const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
@@ -294,7 +296,7 @@ describe('NotifPushDispatcher – new device filtering (e2e)', () => {
       await createNotification(user, thirtyMinutesAgo);
 
       const messages =
-        await dispatcher.findNotificationPushes('test-dispatch-3');
+        await dispatcher.findNotificationPushes("test-dispatch-3");
 
       expect(messages).toHaveLength(1);
       expect(messages[0].expoPushToken).toBe(oldDevice.expoPushToken);

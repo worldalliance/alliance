@@ -1,3 +1,4 @@
+import { cn } from "@alliance/shared/styles/util";
 import { forwardRef } from "react";
 import {
   // eslint-disable-next-line no-restricted-imports
@@ -5,7 +6,6 @@ import {
   KeyboardAwareScrollViewProps,
   KeyboardAwareScrollViewRef,
 } from "react-native-keyboard-controller";
-import { cn } from "@alliance/shared/styles/util";
 
 const KeyboardAwareScrollView = forwardRef<
   KeyboardAwareScrollViewRef,

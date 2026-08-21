@@ -1,9 +1,9 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Allow, IsOptional } from 'class-validator';
-import { Contract } from 'src/contract/entities/contract.entity';
-import { UpdateDateColumnTz } from 'src/datasources/basecolumns';
-import type { Relation } from 'src/utils/Repository';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Allow, IsOptional } from "class-validator";
+import { Contract } from "src/contract/entities/contract.entity";
+import { UpdateDateColumnTz } from "src/datasources/basecolumns";
+import type { Relation } from "src/utils/Repository";
 import {
   Check,
   Column,
@@ -13,15 +13,15 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   Unique,
-} from 'typeorm';
-import { User } from './user.entity';
+} from "typeorm";
+import { User } from "./user.entity";
 
 export enum ContractEventType {
-  SIGNED = 'signed',
-  SUSPENDED = 'suspended',
+  SIGNED = "signed",
+  SUSPENDED = "suspended",
 }
 
-type ContractEventOrderFields = Pick<ContractEvent, 'date' | 'id'>;
+type ContractEventOrderFields = Pick<ContractEvent, "date" | "id">;
 
 export function compareContractEventsNewestFirst<
   T extends ContractEventOrderFields,
@@ -48,8 +48,8 @@ export function getEffectiveContractEventsInRange<
 }
 
 @Entity()
-@Index(['user', 'date'])
-@Unique(['user', 'autoSuspendKey'])
+@Index(["user", "date"])
+@Unique(["user", "autoSuspendKey"])
 @Check(`"type" != 'signed' OR "contractId" IS NOT NULL`)
 export class ContractEvent {
   // Fields
@@ -58,12 +58,12 @@ export class ContractEvent {
   @Allow()
   id: number;
 
-  @Column({ type: 'enum', enum: ContractEventType })
-  @ApiProperty({ enum: ContractEventType, enumName: 'ContractEventType' })
+  @Column({ type: "enum", enum: ContractEventType })
+  @ApiProperty({ enum: ContractEventType, enumName: "ContractEventType" })
   @Allow()
   type: ContractEventType;
 
-  @Column({ type: 'timestamptz' })
+  @Column({ type: "timestamptz" })
   @ApiProperty()
   @Type(() => Date)
   @Allow()
@@ -79,17 +79,17 @@ export class ContractEvent {
   @Allow()
   automatic: boolean;
 
-  @Column({ type: 'varchar', nullable: true })
-  @ApiProperty({ type: 'string', nullable: true })
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: "string", nullable: true })
   @IsOptional()
   autoSuspendKey: string | null;
 
-  @Column({ type: 'varchar', nullable: true })
-  @ApiProperty({ type: 'string', nullable: true })
+  @Column({ type: "varchar", nullable: true })
+  @ApiProperty({ type: "string", nullable: true })
   @IsOptional()
   signedName: string | null;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: "int", nullable: true })
   @ApiProperty({ nullable: true })
   @IsOptional()
   contractId: number | null;
@@ -98,7 +98,7 @@ export class ContractEvent {
 
   @ManyToOne(() => User, (user) => user.contractEvents, {
     nullable: false,
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
   @Allow()
   @Type(() => User)
@@ -106,9 +106,9 @@ export class ContractEvent {
   user: Relation<User>;
 
   @ManyToOne(() => Contract, (contract) => contract.events, {
-    onDelete: 'CASCADE',
+    onDelete: "CASCADE",
   })
-  @JoinColumn({ name: 'contractId' })
+  @JoinColumn({ name: "contractId" })
   @ApiPropertyOptional({
     type: () => Contract,
     nullable: true,

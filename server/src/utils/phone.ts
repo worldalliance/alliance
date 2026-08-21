@@ -1,11 +1,11 @@
-import { isCanonicalE164, normalizePhoneNumber } from '@alliance/common/phone';
-import { registerDecorator, type ValidationOptions } from 'class-validator';
-import type { ValueTransformer } from 'typeorm';
+import { isCanonicalE164, normalizePhoneNumber } from "@alliance/common/phone";
+import { registerDecorator, type ValidationOptions } from "class-validator";
+import type { ValueTransformer } from "typeorm";
 
 /** Normalizes ORM writes but preserves invalid strings. Raw SQL bypasses this. */
 export const phoneNumberTransformer: ValueTransformer = {
   to(value: unknown): unknown {
-    if (typeof value !== 'string' || !value.trim()) {
+    if (typeof value !== "string" || !value.trim()) {
       return value;
     }
     return normalizePhoneNumber(value);
@@ -22,7 +22,7 @@ export const phoneNumberTransformer: ValueTransformer = {
  *
  * Keep in sync with that script — it is the only writer of these.
  */
-const ANONYMIZED_PHONE_PREFIXES = ['+1555', '15550100'] as const;
+const ANONYMIZED_PHONE_PREFIXES = ["+1555", "15550100"] as const;
 
 /**
  * The 555 area code is unassigned in the NANP, so these can never reach a
@@ -38,16 +38,16 @@ export function isAnonymizedPhoneNumber(value: string): boolean {
 export function IsE164(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string): void {
     registerDecorator({
-      name: 'isE164',
+      name: "isE164",
       target: object.constructor,
       propertyName,
       options: validationOptions,
       validator: {
         validate(value: unknown): boolean {
-          return typeof value === 'string' && isCanonicalE164(value);
+          return typeof value === "string" && isCanonicalE164(value);
         },
         defaultMessage(): string {
-          return '$property must be an E.164 phone number, e.g. +15551234567';
+          return "$property must be an E.164 phone number, e.g. +15551234567";
         },
       },
     });

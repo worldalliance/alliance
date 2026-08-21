@@ -59,7 +59,7 @@ export default function SphereWebGL({
       out[10] = c * scale; // scale Z
       return out;
     },
-    []
+    [],
   );
 
   const perspective = useCallback(
@@ -68,7 +68,7 @@ export default function SphereWebGL({
       fovy: number,
       aspect: number,
       near: number,
-      far: number
+      far: number,
     ) => {
       const f = 1.0 / Math.tan(fovy / 2);
       identity(out);
@@ -80,7 +80,7 @@ export default function SphereWebGL({
       out[15] = 0;
       return out;
     },
-    []
+    [],
   );
 
   /* -------------------------------- Effect -------------------------------- */
@@ -309,7 +309,7 @@ export default function SphereWebGL({
           positions.push(
             radius * cosP * sinT,
             radius * cosT,
-            radius * sinP * sinT
+            radius * sinP * sinT,
           );
           uvs.push(1 - lon / lonBands, 1 - lat / latBands);
         }
@@ -326,7 +326,7 @@ export default function SphereWebGL({
       gl.bufferData(
         gl.ARRAY_BUFFER,
         new Float32Array(positions),
-        gl.STATIC_DRAW
+        gl.STATIC_DRAW,
       );
       return {
         posBuf,
@@ -381,24 +381,24 @@ export default function SphereWebGL({
             gl.RGBA,
             gl.RGBA,
             gl.UNSIGNED_BYTE,
-            img
+            img,
           );
           gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
           const ext = gl.getExtension("EXT_texture_filter_anisotropic");
           if (ext) {
             const max = gl.getParameter(
-              ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT
+              ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT,
             ) as number;
             gl.texParameterf(
               gl.TEXTURE_2D,
               ext.TEXTURE_MAX_ANISOTROPY_EXT,
-              max
+              max,
             );
           }
           gl.texParameteri(
             gl.TEXTURE_2D,
             gl.TEXTURE_MIN_FILTER,
-            gl.LINEAR_MIPMAP_LINEAR
+            gl.LINEAR_MIPMAP_LINEAR,
           );
           gl.generateMipmap(gl.TEXTURE_2D);
           resolve();
@@ -418,7 +418,7 @@ export default function SphereWebGL({
       Math.PI / 3,
       width / height,
       0.1,
-      100
+      100,
     );
 
     /* ------------------------------ Render ------------------------------ */
@@ -459,7 +459,7 @@ export default function SphereWebGL({
           gl.TRIANGLES,
           sphereBase.indices.length,
           gl.UNSIGNED_SHORT,
-          0
+          0,
         );
 
         /* ---------- CLOUDS (noise) ---------- */
@@ -477,7 +477,7 @@ export default function SphereWebGL({
         const mvC = setRotateYScale(
           new Float32Array(16),
           t * overlaySpeed,
-          1.02
+          1.02,
         );
         mvC[14] = -3.0;
         gl.uniformMatrix4fv(uModelC, false, mvC);
@@ -492,7 +492,7 @@ export default function SphereWebGL({
           gl.TRIANGLES,
           sphereOverlay.indices.length,
           gl.UNSIGNED_SHORT,
-          0
+          0,
         );
 
         rafRef.current = requestAnimationFrame(tick);
@@ -506,7 +506,7 @@ export default function SphereWebGL({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       [texBase, texOverlay].forEach((t) => gl.deleteTexture(t));
       [sphereBase.posBuf, sphereOverlay.posBuf, uvBuf, idxBuf].forEach((b) =>
-        gl.deleteBuffer(b)
+        gl.deleteBuffer(b),
       );
       gl.deleteProgram(progEarth);
       gl.deleteProgram(progCloud);

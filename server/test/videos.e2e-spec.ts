@@ -1,33 +1,33 @@
-import { Readable } from 'stream';
-import request from 'supertest';
-import { createTestApp, TestContext } from './e2e-test-utils';
+import { Readable } from "stream";
+import request from "supertest";
+import { createTestApp, TestContext } from "./e2e-test-utils";
 
-import { VideosModule } from '../src/videos/videos.module';
-import type { Repository } from 'typeorm';
-import { Video } from '../src/videos/entities/video.entity';
 import {
   GetObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
-} from '@aws-sdk/client-s3';
+} from "@aws-sdk/client-s3";
+import type { Repository } from "typeorm";
+import { Video } from "../src/videos/entities/video.entity";
+import { VideosModule } from "../src/videos/videos.module";
 
-describe('Videos (e2e)', () => {
+describe("Videos (e2e)", () => {
   let ctx: TestContext;
   let videoRepo: Repository<Video>;
   let mockSend: jest.Mock;
 
   beforeAll(async () => {
-    process.env.ASSETS_BUCKET = 'test-bucket';
+    process.env.ASSETS_BUCKET = "test-bucket";
     ctx = await createTestApp([VideosModule]);
     videoRepo = ctx.dataSource.getRepository(Video);
 
-    const s3 = ctx.app.get<S3Client>('S3_CLIENT');
+    const s3 = ctx.app.get<S3Client>("S3_CLIENT");
     mockSend = jest.fn(async (command) => {
       if (command instanceof GetObjectCommand) {
         return {
-          Body: Readable.from(Buffer.from('mock-video-bytes')),
-          ContentType: 'video/MP2T',
+          Body: Readable.from(Buffer.from("mock-video-bytes")),
+          ContentType: "video/MP2T",
         };
       }
       // For PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand
@@ -38,7 +38,7 @@ describe('Videos (e2e)', () => {
   }, 50000);
 
   afterEach(async () => {
-    await videoRepo.query('DELETE FROM video');
+    await videoRepo.query("DELETE FROM video");
     mockSend.mockClear();
   });
 
@@ -46,31 +46,31 @@ describe('Videos (e2e)', () => {
     await ctx.app.close();
   });
 
-  it('uploads a video and returns processing status', async () => {
+  it("uploads a video and returns processing status", async () => {
     const response = await request(ctx.app.getHttpServer())
-      .post('/videos/upload')
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-      .attach('files', Buffer.from('fake-video-data'), {
-        filename: 'test.mp4',
-        contentType: 'video/mp4',
+      .post("/videos/upload")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .attach("files", Buffer.from("fake-video-data"), {
+        filename: "test.mp4",
+        contentType: "video/mp4",
       })
       .expect(201);
 
     expect(response.body).toMatchObject({
       id: expect.any(Number),
-      key: expect.stringContaining('videos/'),
-      status: 'ready',
+      key: expect.stringContaining("videos/"),
+      status: "ready",
     });
   });
 
-  it('returns video status', async () => {
+  it("returns video status", async () => {
     const video = await videoRepo.save(
       videoRepo.create({
-        key: 'videos/test-status',
-        originalFilename: 'test.mp4',
-        mime: 'video/mp4',
+        key: "videos/test-status",
+        originalFilename: "test.mp4",
+        mime: "video/mp4",
         size: 1000,
-        status: 'ready',
+        status: "ready",
         duration: 10.5,
       }),
     );
@@ -81,20 +81,20 @@ describe('Videos (e2e)', () => {
 
     expect(response.body).toMatchObject({
       id: video.id,
-      key: 'videos/test-status',
-      status: 'ready',
+      key: "videos/test-status",
+      status: "ready",
       duration: 10.5,
     });
   });
 
-  it('streams HLS files from S3', async () => {
+  it("streams HLS files from S3", async () => {
     const video = await videoRepo.save(
       videoRepo.create({
-        key: 'videos/test-stream',
-        originalFilename: 'test.mp4',
-        mime: 'video/mp4',
+        key: "videos/test-stream",
+        originalFilename: "test.mp4",
+        mime: "video/mp4",
         size: 1000,
-        status: 'ready',
+        status: "ready",
       }),
     );
 
@@ -108,26 +108,26 @@ describe('Videos (e2e)', () => {
     );
   });
 
-  it('returns 404 for non-existent video status', async () => {
+  it("returns 404 for non-existent video status", async () => {
     await request(ctx.app.getHttpServer())
-      .get('/videos/99999/status')
+      .get("/videos/99999/status")
       .expect(404);
   });
 
-  it('deletes a video', async () => {
+  it("deletes a video", async () => {
     const video = await videoRepo.save(
       videoRepo.create({
-        key: 'videos/test-delete',
-        originalFilename: 'test.mp4',
-        mime: 'video/mp4',
+        key: "videos/test-delete",
+        originalFilename: "test.mp4",
+        mime: "video/mp4",
         size: 1000,
-        status: 'ready',
+        status: "ready",
       }),
     );
 
     await request(ctx.app.getHttpServer())
       .delete(`/videos/${video.id}`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(200)
       .expect((res) => {
         expect(res.body.deleted).toBe(true);
@@ -137,78 +137,76 @@ describe('Videos (e2e)', () => {
     expect(deleted).toBeNull();
   });
 
-  it('returns 404 when deleting a non-existent video', async () => {
+  it("returns 404 when deleting a non-existent video", async () => {
     await request(ctx.app.getHttpServer())
-      .delete('/videos/99999')
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .delete("/videos/99999")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(404);
   });
 
-  it('rejects upload without admin token', async () => {
+  it("rejects upload without admin token", async () => {
     await request(ctx.app.getHttpServer())
-      .post('/videos/upload')
-      .attach('files', Buffer.from('fake-video-data'), {
-        filename: 'test.mp4',
-        contentType: 'video/mp4',
+      .post("/videos/upload")
+      .attach("files", Buffer.from("fake-video-data"), {
+        filename: "test.mp4",
+        contentType: "video/mp4",
       })
       .expect(401);
   });
 
-  it('lists videos as admin', async () => {
+  it("lists videos as admin", async () => {
     await videoRepo.save(
       videoRepo.create({
-        key: 'videos/test-list-1',
-        originalFilename: 'one.mp4',
-        mime: 'video/mp4',
+        key: "videos/test-list-1",
+        originalFilename: "one.mp4",
+        mime: "video/mp4",
         size: 1000,
-        status: 'ready',
+        status: "ready",
       }),
     );
     await videoRepo.save(
       videoRepo.create({
-        key: 'videos/test-list-2',
-        originalFilename: 'two.mp4',
-        mime: 'video/mp4',
+        key: "videos/test-list-2",
+        originalFilename: "two.mp4",
+        mime: "video/mp4",
         size: 2000,
-        status: 'processing',
+        status: "processing",
       }),
     );
 
     const response = await request(ctx.app.getHttpServer())
-      .get('/videos')
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .get("/videos")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(200);
 
     expect(response.body.videos).toHaveLength(2);
-    expect(response.body.videos[0]).toHaveProperty('id');
-    expect(response.body.videos[0]).toHaveProperty('originalFilename');
-    expect(response.body.videos[0]).toHaveProperty('dateCreated');
+    expect(response.body.videos[0]).toHaveProperty("id");
+    expect(response.body.videos[0]).toHaveProperty("originalFilename");
+    expect(response.body.videos[0]).toHaveProperty("dateCreated");
   });
 
-  it('rejects list without auth', async () => {
-    await request(ctx.app.getHttpServer())
-      .get('/videos')
-      .expect(401);
+  it("rejects list without auth", async () => {
+    await request(ctx.app.getHttpServer()).get("/videos").expect(401);
   });
 
-  it('gets video details with segments', async () => {
+  it("gets video details with segments", async () => {
     const video = await videoRepo.save(
       videoRepo.create({
-        key: 'videos/test-details',
-        originalFilename: 'detail.mp4',
-        mime: 'video/mp4',
+        key: "videos/test-details",
+        originalFilename: "detail.mp4",
+        mime: "video/mp4",
         size: 5000,
-        status: 'ready',
+        status: "ready",
         duration: 30.0,
         processingInfo: {
-          codec: 'libx264',
-          preset: 'fast',
+          codec: "libx264",
+          preset: "fast",
           crf: 28,
-          maxrate: '2M',
-          bufsize: '4M',
-          scale: '-2:720',
-          audioCodec: 'aac',
-          audioBitrate: '128k',
+          maxrate: "2M",
+          bufsize: "4M",
+          scale: "-2:720",
+          audioCodec: "aac",
+          audioBitrate: "128k",
           hlsTime: 6,
         },
       }),
@@ -218,8 +216,8 @@ describe('Videos (e2e)', () => {
     mockSend.mockImplementation(async (command) => {
       if (command instanceof GetObjectCommand) {
         return {
-          Body: Readable.from(Buffer.from('mock-video-bytes')),
-          ContentType: 'video/MP2T',
+          Body: Readable.from(Buffer.from("mock-video-bytes")),
+          ContentType: "video/MP2T",
         };
       }
       if (command instanceof ListObjectsV2Command) {
@@ -236,47 +234,45 @@ describe('Videos (e2e)', () => {
 
     const response = await request(ctx.app.getHttpServer())
       .get(`/videos/${video.id}/details`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(200);
 
     expect(response.body).toMatchObject({
       id: video.id,
-      originalFilename: 'detail.mp4',
-      status: 'ready',
+      originalFilename: "detail.mp4",
+      status: "ready",
       duration: 30.0,
     });
     expect(response.body.segments).toHaveLength(3);
-    expect(response.body.segments[0]).toHaveProperty('filename');
-    expect(response.body.segments[0]).toHaveProperty('size');
+    expect(response.body.segments[0]).toHaveProperty("filename");
+    expect(response.body.segments[0]).toHaveProperty("size");
     expect(response.body.totalOutputSize).toBe(98200);
-    expect(response.body.processingInfo).toHaveProperty('codec');
-    expect(response.body.processingInfo.codec).toBe('libx264');
+    expect(response.body.processingInfo).toHaveProperty("codec");
+    expect(response.body.processingInfo.codec).toBe("libx264");
   });
 
-  it('returns 404 for non-existent video details', async () => {
+  it("returns 404 for non-existent video details", async () => {
     await request(ctx.app.getHttpServer())
-      .get('/videos/99999/details')
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
+      .get("/videos/99999/details")
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(404);
   });
 
-  it('replaces video content', async () => {
+  it("replaces video content", async () => {
     const video = await videoRepo.save(
       videoRepo.create({
-        key: 'videos/test-replace',
-        originalFilename: 'replace.mp4',
-        mime: 'video/mp4',
+        key: "videos/test-replace",
+        originalFilename: "replace.mp4",
+        mime: "video/mp4",
         size: 3000,
-        status: 'ready',
+        status: "ready",
       }),
     );
 
     mockSend.mockImplementation(async (command) => {
       if (command instanceof ListObjectsV2Command) {
         return {
-          Contents: [
-            { Key: `${video.key}/playlist.m3u8`, Size: 200 },
-          ],
+          Contents: [{ Key: `${video.key}/playlist.m3u8`, Size: 200 }],
         };
       }
       if (command instanceof PutObjectCommand) {
@@ -287,21 +283,21 @@ describe('Videos (e2e)', () => {
 
     const response = await request(ctx.app.getHttpServer())
       .post(`/videos/${video.id}/replace`)
-      .set('Authorization', `Bearer ${ctx.adminAccessToken}`)
-      .attach('files', Buffer.from('fake-m3u8'), {
-        filename: 'playlist.m3u8',
-        contentType: 'application/vnd.apple.mpegurl',
+      .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+      .attach("files", Buffer.from("fake-m3u8"), {
+        filename: "playlist.m3u8",
+        contentType: "application/vnd.apple.mpegurl",
       })
-      .attach('files', Buffer.from('fake-segment'), {
-        filename: 'segment_000.ts',
-        contentType: 'video/MP2T',
+      .attach("files", Buffer.from("fake-segment"), {
+        filename: "segment_000.ts",
+        contentType: "video/MP2T",
       })
       .expect(201);
 
     expect(response.body).toMatchObject({
       id: video.id,
       key: video.key,
-      status: 'ready',
+      status: "ready",
     });
   });
 });

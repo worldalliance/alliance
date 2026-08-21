@@ -1,6 +1,6 @@
-import { Temporal } from '@js-temporal/polyfill';
-import { registerDecorator, type ValidationOptions } from 'class-validator';
-import type { ValueTransformer } from 'typeorm';
+import { Temporal } from "@js-temporal/polyfill";
+import { registerDecorator, type ValidationOptions } from "class-validator";
+import type { ValueTransformer } from "typeorm";
 
 /**
  * `Temporal.PlainTime.from` also parses datetime forms that a Postgres `time`
@@ -12,7 +12,7 @@ import type { ValueTransformer } from 'typeorm';
  */
 export function toPlainTime(value: string): Temporal.PlainTime | null {
   try {
-    return Temporal.PlainTime.from(value.trim().replace(/^\d:/, '0$&'));
+    return Temporal.PlainTime.from(value.trim().replace(/^\d:/, "0$&"));
   } catch {
     return null;
   }
@@ -23,7 +23,7 @@ export function toPlainTime(value: string): Temporal.PlainTime | null {
  * unparseable input intact for `@IsPlainTime` to reject.
  */
 export const trimToPlainTime = ({ value }: { value: unknown }): unknown => {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return value;
   }
   const trimmed = value.trim();
@@ -37,7 +37,7 @@ export const trimToPlainTime = ({ value }: { value: unknown }): unknown => {
 export function IsPlainTime(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string): void {
     registerDecorator({
-      name: 'isPlainTime',
+      name: "isPlainTime",
       target: object.constructor,
       propertyName,
       options: validationOptions,
@@ -46,7 +46,7 @@ export function IsPlainTime(validationOptions?: ValidationOptions) {
           return value instanceof Temporal.PlainTime;
         },
         defaultMessage(): string {
-          return '$property must be a time of day, e.g. 09:30';
+          return "$property must be a time of day, e.g. 09:30";
         },
       },
     });

@@ -1,20 +1,20 @@
-import { ISendMailOptions, MailerService } from '@nestjs-modules/mailer';
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ActionEvent } from 'src/actions/entities/action-event.entity';
-import { groupMembersListUrl, tasksUrl, withCid } from 'src/search/approutes';
-import type { Repository } from 'src/utils/Repository';
-import { EmailStatus, EmailType, Mail } from './mail.entity';
-import { getTimeLeftString } from 'src/notifs/textnotifcontents';
-import { User } from 'src/user/entities/user.entity';
-import { Action } from 'src/actions/entities/action.entity';
+import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ActionEvent } from "src/actions/entities/action-event.entity";
+import { Action } from "src/actions/entities/action.entity";
+import { getTimeLeftString } from "src/notifs/textnotifcontents";
+import { groupMembersListUrl, tasksUrl, withCid } from "src/search/approutes";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "src/utils/Repository";
+import { EmailStatus, EmailType, Mail } from "./mail.entity";
 
 function interpretEscapes(s: string): string {
   return s
-    .replace(/\\n/g, '\n')
-    .replace(/\\r/g, '\r')
-    .replace(/\\t/g, '\t')
-    .replace(/\\\\/g, '\\');
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\\/g, "\\");
 }
 
 export function processKeywordReplacements(
@@ -31,64 +31,64 @@ export function processKeywordReplacements(
     uncompletedMembersInGroupCount?: number;
   },
 ): string {
-  const names = context.user.name.split(' ');
+  const names = context.user.name.split(" ");
   const dateNow = context.dateNow ?? new Date();
-  let firstname = '';
-  let lastname = '';
+  let firstname = "";
+  let lastname = "";
   if (names.length < 2) {
-    console.error('User name has less than 2 parts: ' + context.user.name);
+    console.error("User name has less than 2 parts: " + context.user.name);
     firstname = context.user.name;
   } else {
     firstname = names[0];
     lastname = names[names.length - 1];
   }
   let str = text
-    .replaceAll('#{fullname}', context.user.name)
-    .replaceAll('#{firstname}', firstname)
-    .replaceAll('#{nmembers}', () =>
+    .replaceAll("#{fullname}", context.user.name)
+    .replaceAll("#{firstname}", firstname)
+    .replaceAll("#{nmembers}", () =>
       context.uncompletedMembersInGroupCount === undefined
-        ? '0'
+        ? "0"
         : context.uncompletedMembersInGroupCount.toString(),
     )
-    .replaceAll('#{grouplink}', withCid(groupMembersListUrl(true), context.cid))
-    .replaceAll('#{lastname}', lastname)
-    .replaceAll('#{action}', context.action.name)
-    .replaceAll('#{tasknames}', context.uncompletedTasksNames.join(', '))
-    .replaceAll('#{n}', context.uncompletedTasksCount.toString())
-    .replaceAll('#{tasktime}', context.uncompletedTasksTime)
-    .replaceAll('#{s}', context.uncompletedTasksCount === 1 ? '' : 's')
+    .replaceAll("#{grouplink}", withCid(groupMembersListUrl(true), context.cid))
+    .replaceAll("#{lastname}", lastname)
+    .replaceAll("#{action}", context.action.name)
+    .replaceAll("#{tasknames}", context.uncompletedTasksNames.join(", "))
+    .replaceAll("#{n}", context.uncompletedTasksCount.toString())
+    .replaceAll("#{tasktime}", context.uncompletedTasksTime)
+    .replaceAll("#{s}", context.uncompletedTasksCount === 1 ? "" : "s")
     .replaceAll(
-      '#{days}',
+      "#{days}",
       context.deadlineEvent
-        ? getTimeLeftString(context.deadlineEvent, dateNow, 'days')
-        : '[err]',
+        ? getTimeLeftString(context.deadlineEvent, dateNow, "days")
+        : "[err]",
     )
     .replaceAll(
-      '#{hours}',
+      "#{hours}",
       context.deadlineEvent
-        ? getTimeLeftString(context.deadlineEvent, dateNow, 'hours')
-        : '[err]',
+        ? getTimeLeftString(context.deadlineEvent, dateNow, "hours")
+        : "[err]",
     )
     .replaceAll(
-      '#{timeremaining}',
+      "#{timeremaining}",
       context.deadlineEvent
         ? getTimeLeftString(context.deadlineEvent, dateNow)
-        : '[err]',
+        : "[err]",
     )
-    .replaceAll('#{link}', withCid(tasksUrl(true), context.cid))
+    .replaceAll("#{link}", withCid(tasksUrl(true), context.cid))
     .replaceAll(
-      '#{formattedtasklist}',
+      "#{formattedtasklist}",
       context.uncompletedTasksCount === 1
-        ? context.uncompletedTasksNames.join(', ')
+        ? context.uncompletedTasksNames.join(", ")
         : context.uncompletedTasksNames
             .map((name, index) => `${index + 1}. ${name}`)
-            .join('\n'),
+            .join("\n"),
     );
 
-  while (str.includes('|') && str.includes('#{') && str.includes('}')) {
-    const idx_start = str.indexOf('#{');
-    const idx_separator = str.indexOf('|', idx_start);
-    const idx_end = str.indexOf('}', idx_separator);
+  while (str.includes("|") && str.includes("#{") && str.includes("}")) {
+    const idx_start = str.indexOf("#{");
+    const idx_separator = str.indexOf("|", idx_start);
+    const idx_end = str.indexOf("}", idx_separator);
     const st_one = interpretEscapes(
       str.substring(idx_start + 2, idx_separator),
     );
@@ -112,26 +112,26 @@ export class MailService {
   ) {}
 
   private readonly templates: Record<EmailType, string> = {
-    [EmailType.Welcome]: 'welcome',
-    [EmailType.PasswordReset]: 'password-reset',
-    [EmailType.Verification]: '',
-    [EmailType.Other]: '',
-    [EmailType.PartialSignup]: 'partial-signup',
-    [EmailType.Commitment]: 'commitment',
-    [EmailType.MemberAction]: 'memberaction',
-    [EmailType.CommitmentReminder]: 'commitmentreminder',
-    [EmailType.MemberActionReminder]: 'memberactionreminder',
-    [EmailType.ForumDigest]: 'forumdigest',
-    [EmailType.ForumReply]: 'forumreply',
-    [EmailType.MissedDeadline]: 'misseddeadline',
-    [EmailType.MissedSecondDeadline]: 'missedseconddeadline',
-    [EmailType.CustomActionReminder]: 'customactionreminder',
-    [EmailType.ContractSuspended]: 'contractsuspended',
-    [EmailType.ContractReminder]: 'contractreminder',
+    [EmailType.Welcome]: "welcome",
+    [EmailType.PasswordReset]: "password-reset",
+    [EmailType.Verification]: "",
+    [EmailType.Other]: "",
+    [EmailType.PartialSignup]: "partial-signup",
+    [EmailType.Commitment]: "commitment",
+    [EmailType.MemberAction]: "memberaction",
+    [EmailType.CommitmentReminder]: "commitmentreminder",
+    [EmailType.MemberActionReminder]: "memberactionreminder",
+    [EmailType.ForumDigest]: "forumdigest",
+    [EmailType.ForumReply]: "forumreply",
+    [EmailType.MissedDeadline]: "misseddeadline",
+    [EmailType.MissedSecondDeadline]: "missedseconddeadline",
+    [EmailType.CustomActionReminder]: "customactionreminder",
+    [EmailType.ContractSuspended]: "contractsuspended",
+    [EmailType.ContractReminder]: "contractreminder",
   };
 
-  async renderHtml(emailType: EmailType, context: ISendMailOptions['context']) {
-    const pug = await import('pug');
+  async renderHtml(emailType: EmailType, context: ISendMailOptions["context"]) {
+    const pug = await import("pug");
 
     return pug.renderFile(
       __dirname + `/templates/${this.templates[emailType]}.pug`,
@@ -143,7 +143,7 @@ export class MailService {
     recipient: string;
     emailType: EmailType;
     subject: string | null;
-    context: ISendMailOptions['context'];
+    context: ISendMailOptions["context"];
     cid: string | null;
   }): Promise<Mail> {
     const { recipient, emailType, subject, context, cid } = params;
@@ -157,27 +157,27 @@ export class MailService {
     });
 
     if (
-      process.env.NODE_ENV === 'test' ||
+      process.env.NODE_ENV === "test" ||
       !(
-        process.env.NODE_ENV === 'production' ||
-        process.env.SEND_DEV_NOTIFS === '1'
+        process.env.NODE_ENV === "production" ||
+        process.env.SEND_DEV_NOTIFS === "1"
       )
     ) {
       return await this.mailRepository.save(mail);
     }
 
     const tag =
-      process.env.NODE_ENV === 'production' ? 'production' : 'development';
+      process.env.NODE_ENV === "production" ? "production" : "development";
 
     const html = await this.renderHtml(emailType, context);
 
     const e = await this.mailerService.sendMail({
       to: recipient,
-      from: 'Alliance <alliance@worldalliance.org>',
+      from: "Alliance <alliance@worldalliance.org>",
       subject: subject ?? undefined,
       headers: {
-        'o:tag': emailType,
-        'X-Mailgun-Tag': tag,
+        "o:tag": emailType,
+        "X-Mailgun-Tag": tag,
       },
       html,
     });
@@ -204,7 +204,7 @@ export class MailService {
     return this.sendMail({
       recipient,
       emailType: EmailType.Welcome,
-      subject: 'Welcome to the Alliance',
+      subject: "Welcome to the Alliance",
       context: {
         name,
         url: `${process.env.APP_URL}/verifyEmail?token=${verifyToken}`,
@@ -227,7 +227,7 @@ export class MailService {
     return this.sendMail({
       recipient: email,
       emailType: EmailType.PasswordReset,
-      subject: 'a link to reset your password',
+      subject: "a link to reset your password",
       context: {
         name,
         url,
@@ -246,7 +246,7 @@ export class MailService {
     return this.sendMail({
       recipient: email,
       emailType: EmailType.PartialSignup,
-      subject: 'Thanks for helping out! Want to do more?',
+      subject: "Thanks for helping out! Want to do more?",
       context: {
         name,
         email,
@@ -263,7 +263,7 @@ export class MailService {
     return this.sendMail({
       recipient: email,
       emailType: EmailType.ContractSuspended,
-      subject: 'Alliance contract suspended',
+      subject: "Alliance contract suspended",
       context: {
         name,
       },
@@ -278,7 +278,7 @@ export class MailService {
     return this.sendMail({
       recipient: email,
       emailType: EmailType.ContractReminder,
-      subject: 'Sign your membership contract to participate in actions',
+      subject: "Sign your membership contract to participate in actions",
       context: {
         name,
         link: `${process.env.APP_URL}/tasks`,
@@ -299,7 +299,7 @@ export class MailService {
     cid: string;
   }): Promise<Mail> {
     const { email, name, unreadCount, notifications, cid } = params;
-    const subject = `You have ${unreadCount} unread Alliance forum notification${unreadCount === 1 ? '' : 's'}`;
+    const subject = `You have ${unreadCount} unread Alliance forum notification${unreadCount === 1 ? "" : "s"}`;
 
     return this.sendMail({
       recipient: email,
@@ -331,7 +331,7 @@ export class MailService {
       emailType: EmailType.CustomActionReminder,
       subject,
       context: {
-        customMessage: message.replace(/\n/g, '<br>'),
+        customMessage: message.replace(/\n/g, "<br>"),
       },
       cid,
     });
@@ -340,7 +340,7 @@ export class MailService {
   async setClickedLinkByCid(cid: string): Promise<void> {
     const mail = await this.mailRepository.findOne({ where: { cid } });
     if (!mail) {
-      throw new NotFoundException('Mail not found');
+      throw new NotFoundException("Mail not found");
     }
     mail.clickedLink = true;
     await this.mailRepository.save(mail);

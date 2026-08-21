@@ -4,10 +4,10 @@ import {
   HttpException,
   NotFoundException,
   UnauthorizedException,
-} from '@nestjs/common';
-import { AbstractHttpAdapter, BaseExceptionFilter } from '@nestjs/core';
-import type { Request } from 'express';
-import { PostHog } from 'posthog-node';
+} from "@nestjs/common";
+import { AbstractHttpAdapter, BaseExceptionFilter } from "@nestjs/core";
+import type { Request } from "express";
+import { PostHog } from "posthog-node";
 
 @Catch()
 export class PosthogExceptionFilter extends BaseExceptionFilter {
@@ -32,17 +32,17 @@ export class PosthogExceptionFilter extends BaseExceptionFilter {
       return super.catch(exception, host);
     }
 
-    const posthogSessionId = req.headers['x-posthog-session-id'] ?? undefined;
+    const posthogSessionId = req.headers["x-posthog-session-id"] ?? undefined;
 
     // Bypasses the typed `captureEvent` wrapper `captureException` is only
     // ever called here on the backend.
-    this.posthog.captureException(exception, 'server', {
-      event: '$exception',
+    this.posthog.captureException(exception, "server", {
+      event: "$exception",
       properties: {
         message:
-          exception instanceof Error ? exception.message : 'Unknown error',
-        name: exception instanceof Error ? exception.name : 'Unknown error',
-        stack: exception instanceof Error ? exception.stack : 'Unknown error',
+          exception instanceof Error ? exception.message : "Unknown error",
+        name: exception instanceof Error ? exception.name : "Unknown error",
+        stack: exception instanceof Error ? exception.stack : "Unknown error",
         path: req?.url,
         method: req?.method,
         status,

@@ -1,4 +1,4 @@
-import type { User } from 'src/user/entities/user.entity';
+import type { User } from "src/user/entities/user.entity";
 
 /** Raw slice of a form response needed to evaluate FormFieldValue leaves. */
 export type FormResponseAnswerRow = {

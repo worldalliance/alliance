@@ -1,9 +1,9 @@
 import React from "react";
+import { Link, href } from "react-router";
 import Footer from "../../components/Footer";
 import MarkdownWrapper from "../../components/MarkdownWrapper";
 import MemberContract from "../../components/MemberContract";
 import PrelaunchNavbar from "../../components/PrelaunchNavbar";
-import { Link, href } from "react-router";
 
 const GovernancePage: React.FC = () => {
   return (

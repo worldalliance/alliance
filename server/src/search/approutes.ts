@@ -1,8 +1,8 @@
-import { appendQueryParam } from '@alliance/common/url';
+import { appendQueryParam } from "@alliance/common/url";
 import {
   Comment,
   CommentParentObject,
-} from 'src/forum/entities/comment.entity';
+} from "src/forum/entities/comment.entity";
 
 export function profileUrl(userId: number) {
   return `/member/${userId}`;
@@ -19,7 +19,7 @@ export function signupUrl(full = false) {
 }
 
 export function groupUrl(params?: {
-  tab?: 'invites' | 'groups' | 'members';
+  tab?: "invites" | "groups" | "members";
   communityId?: number;
 }) {
   return `/groups?${new URLSearchParams({
@@ -54,11 +54,11 @@ export function postUrl(postId: number) {
 }
 
 export function commentUrl(
-  comment: Pick<Comment, 'parentObjectType' | 'parentObjectId' | 'id'>,
+  comment: Pick<Comment, "parentObjectType" | "parentObjectId" | "id">,
   actionId?: number,
   full = false,
 ) {
-  let path = '';
+  let path = "";
   switch (comment.parentObjectType) {
     case CommentParentObject.Post:
       path = `/forum/post/${comment.parentObjectId}?replyId=${comment.id}`;
@@ -82,13 +82,13 @@ export function conversationUrl(conversationId: number) {
 }
 
 export function withCid(url: string, cid: string) {
-  return appendQueryParam(url, 'cid', cid);
+  return appendQueryParam(url, "cid", cid);
 }
 
 export function withSid(url: string, sid: string) {
-  return appendQueryParam(url, 'sid', sid);
+  return appendQueryParam(url, "sid", sid);
 }
 
 export function withRef(url: string, ref: string) {
-  return appendQueryParam(url, 'ref', ref);
+  return appendQueryParam(url, "ref", ref);
 }

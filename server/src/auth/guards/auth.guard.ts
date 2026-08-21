@@ -3,13 +3,13 @@ import {
   ExecutionContext,
   Injectable,
   UnauthorizedException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import type { Request } from 'express';
-import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from '../public.decorator';
-import { requestContext } from 'src/utils/request-context';
-import { JWTTokenType, type JwtPayload } from './jwtreq';
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { JwtService } from "@nestjs/jwt";
+import type { Request } from "express";
+import { requestContext } from "src/utils/request-context";
+import { IS_PUBLIC_KEY } from "../public.decorator";
+import { JWTTokenType, type JwtPayload } from "./jwtreq";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -46,7 +46,7 @@ export class AuthGuard implements CanActivate {
       if (payload.tokenType === JWTTokenType.guest) {
         throw new UnauthorizedException();
       }
-      request['user'] = payload;
+      request["user"] = payload;
       const ctx = requestContext.getStore();
       if (ctx) {
         ctx.userId = payload.sub;
@@ -78,14 +78,14 @@ export function extractGuestTokenFromCookie(
 export function extractGuestTokenFromHeader(
   request: Request,
 ): string | undefined {
-  const header = request.headers['x-guest-token'];
-  if (typeof header !== 'string' || header.length === 0) {
+  const header = request.headers["x-guest-token"];
+  if (typeof header !== "string" || header.length === 0) {
     return undefined;
   }
   return header;
 }
 
 export function extractTokenFromHeader(request: Request): string | undefined {
-  const [type, token] = request.headers.authorization?.split(' ') ?? [];
-  return type === 'Bearer' ? token : undefined;
+  const [type, token] = request.headers.authorization?.split(" ") ?? [];
+  return type === "Bearer" ? token : undefined;
 }

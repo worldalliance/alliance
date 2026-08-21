@@ -1,3 +1,5 @@
+import type { CitySearchDto } from "@alliance/shared/client";
+import { geoSearchCity } from "@alliance/shared/client";
 import {
   Dispatch,
   SetStateAction,
@@ -6,8 +8,6 @@ import {
   useRef,
   useState,
 } from "react";
-import type { CitySearchDto } from "@alliance/shared/client";
-import { geoSearchCity } from "@alliance/shared/client";
 
 export type CityGeo = {
   latitude?: number;

@@ -4,21 +4,21 @@ import {
   WITHDRAWAL_OPTION_LABELS,
   withdrawalHasRequiredReason,
   withdrawalOptionFromFlags,
-} from '@alliance/common/actionActivity';
+} from "@alliance/common/actionActivity";
 import {
   cohortExpressionSchema,
   expressionReferencesTag,
   type CohortExpression,
-} from '@alliance/common/cohort-expression';
+} from "@alliance/common/cohort-expression";
 import {
   displayOnlySchema,
   displayOnlySchemaError,
   emptyDisplayOnlySchema,
   type DisplayOnlySchema,
-} from '@alliance/common/forms/display-only-schema';
-import type { FormSchema } from '@alliance/common/forms/form-schema';
-import { run } from '@alliance/common/run';
-import { Assert } from '@alliance/common/types';
+} from "@alliance/common/forms/display-only-schema";
+import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { run } from "@alliance/common/run";
+import { Assert } from "@alliance/common/types";
 import {
   BadRequestException,
   ConflictException,
@@ -27,77 +27,76 @@ import {
   Inject,
   Injectable,
   NotFoundException,
-} from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { InjectRepository } from '@nestjs/typeorm';
-import { LiveActivityService } from 'src/apns/live-activity.service';
-import { CommunityService } from 'src/community/community.service';
-import { Community } from 'src/community/entities/community.entity';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import { CommentDto, CreateCommentDto } from 'src/forum/dto/comment.dto';
+} from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { InjectRepository } from "@nestjs/typeorm";
+import { LiveActivityService } from "src/apns/live-activity.service";
+import { CommunityService } from "src/community/community.service";
+import { Community } from "src/community/entities/community.entity";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import { CommentDto, CreateCommentDto } from "src/forum/dto/comment.dto";
 import {
   Comment,
   CommentParentObject,
-} from 'src/forum/entities/comment.entity';
-import { EditableContent } from 'src/forum/entities/editablecontent.entity';
-import { Post } from 'src/forum/entities/post.entity';
-import { ForumService } from 'src/forum/forum.service';
-import { FacepileService } from 'src/likes/facepile.service';
-import { SnapshotHistoryOwner } from 'src/tasks/entities/formsnapshot.entity';
-import { displayOnlySchemaOf } from 'src/tasks/display-only-snapshot';
-import {
-  isActionUpdatePublished,
-  publishedActionUpdateWhere,
-} from './action-update-visibility';
-import { SCHEMA_WRITE_TARGETS } from './schema-write-target';
-import { FormSnapshotService } from 'src/tasks/formsnapshot.service';
-import { ActionEventRecipientService } from 'src/notifs/action-event-recipient.service';
+} from "src/forum/entities/comment.entity";
+import { EditableContent } from "src/forum/entities/editablecontent.entity";
+import { Post } from "src/forum/entities/post.entity";
+import { ForumService } from "src/forum/forum.service";
+import { FacepileService } from "src/likes/facepile.service";
+import { ActionEventRecipientService } from "src/notifs/action-event-recipient.service";
 import {
   ActionEventReminderService,
   assertExcludePreviouslyNotifiedAllowed,
   NOTIFICATION_LOOKBACK_WINDOW_MS,
-} from 'src/notifs/action-event-reminder.service';
-import { CohortResolutionSession } from 'src/notifs/cohort-resolution-session';
-import { PreviewNotificationPlanDto } from 'src/notifs/dto/notification-plan.dto';
-import { LikeNotificationService } from 'src/notifs/like-notification.service';
-import { NotificationChannel } from 'src/notifs/notif-utils';
-import { NotifsService } from 'src/notifs/notifs.service';
-import { actionActivityUrl } from 'src/search/approutes';
-import { ShareUrl } from 'src/share-urls/entities/share-url.entity';
-import { ShareUrlsService } from 'src/share-urls/share-urls.service';
-import { Form } from 'src/tasks/entities/form.entity';
-import { FormResponse } from 'src/tasks/entities/formresponse.entity';
+} from "src/notifs/action-event-reminder.service";
+import { CohortResolutionSession } from "src/notifs/cohort-resolution-session";
+import { PreviewNotificationPlanDto } from "src/notifs/dto/notification-plan.dto";
+import { LikeNotificationService } from "src/notifs/like-notification.service";
+import { NotificationChannel } from "src/notifs/notif-utils";
+import { NotifsService } from "src/notifs/notifs.service";
+import { actionActivityUrl } from "src/search/approutes";
+import { ShareUrl } from "src/share-urls/entities/share-url.entity";
+import { ShareUrlsService } from "src/share-urls/share-urls.service";
+import { displayOnlySchemaOf } from "src/tasks/display-only-snapshot";
+import { Form } from "src/tasks/entities/form.entity";
+import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import { SnapshotHistoryOwner } from "src/tasks/entities/formsnapshot.entity";
+import { FormSnapshotService } from "src/tasks/formsnapshot.service";
 import {
   UserActionRelationDetail,
   UserActionRelationPillStatus,
   UserActionRelations,
   UserActionRelationsForUser,
   UserActionSummary,
-} from 'src/user/dto/user-action-relations.dto';
-import { ProfileDto } from 'src/user/dto/user.dto';
-import { ContractEventType } from 'src/user/entities/contract-event.entity';
-import { Tag } from 'src/user/entities/tag.entity';
+} from "src/user/dto/user-action-relations.dto";
+import { ProfileDto } from "src/user/dto/user.dto";
+import { ContractEventType } from "src/user/entities/contract-event.entity";
+import { Tag } from "src/user/entities/tag.entity";
 import {
   sqlUserHasActiveContractAt,
   User,
-} from 'src/user/entities/user.entity';
+} from "src/user/entities/user.entity";
 import {
   userActionNotifsEnabled_email,
   userActionNotifsEnabled_push,
   userActionNotifsEnabled_text,
-} from 'src/user/user.utils';
+} from "src/user/user.utils";
 import {
   computeIsAssignedAndPresent,
   computeIsAssignedToAction,
   computeIsAwayDuringWindow,
   computeIsTaggedOrInManualCohort,
   computeMemberActionAwayStatus,
-} from 'src/utils/action-user';
-import { CachedFilter } from 'src/utils/cached-filter';
-import { yieldToEventLoop } from 'src/utils/event-loop';
-import { startDatePriorityComparator } from 'src/utils/general-update';
-import type { IsRelation, Relations } from 'src/utils/Repository';
+} from "src/utils/action-user";
+import { CachedFilter } from "src/utils/cached-filter";
+import { yieldToEventLoop } from "src/utils/event-loop";
+import { startDatePriorityComparator } from "src/utils/general-update";
+import type {
+  IsRelation,
+  Relations,
+  Repository as TypedRepository,
+} from "src/utils/Repository";
 import {
   DeepPartial,
   EntityManager,
@@ -109,19 +108,22 @@ import {
   Not,
   Or,
   type Repository,
-} from 'typeorm';
-import type { Repository as TypedRepository } from 'src/utils/Repository';
-import { UserService } from '../user/user.service';
+} from "typeorm";
+import { UserService } from "../user/user.service";
 import {
   findLatestTerminalActivity,
   resolveUserActionRelation,
-} from './action-activity-status';
-import { ActionFormVariantService } from './action-form-variant.service';
+} from "./action-activity-status";
+import { ActionFormVariantService } from "./action-form-variant.service";
+import {
+  isActionUpdatePublished,
+  publishedActionUpdateWhere,
+} from "./action-update-visibility";
 import {
   answerMatchesFormField,
   evaluateCohortExpression,
   singleUserCohortContext,
-} from './cohort-expression.evaluator';
+} from "./cohort-expression.evaluator";
 import {
   ActionActivityDto,
   ActionDto,
@@ -155,54 +157,55 @@ import {
   UpdateActionEventDto,
   UpdateActionUpdateDto,
   UserActionRelation,
-} from './dto/action.dto';
+} from "./dto/action.dto";
 import {
   CreateFollowUpFormDto,
   UpdateFollowUpFormDto,
-} from './dto/follow-up-form.dto';
+} from "./dto/follow-up-form.dto";
 import {
   CreateGeneralUpdateDto,
   UpdateGeneralUpdateDto,
-} from './dto/general-update.dto';
-import { ShareUrlStats } from './dto/share-url.dto';
+} from "./dto/general-update.dto";
+import { ShareUrlStats } from "./dto/share-url.dto";
 import {
   ActionActivity,
   ActivitySource,
   ALLOW_DUPLICATE,
-} from './entities/action-activity.entity';
-import { ActionEvent, ActionStatus } from './entities/action-event.entity';
-import { ActionFormVariant } from './entities/action-form-variant.entity';
-import { ActionSuite } from './entities/action-suite.entity';
+} from "./entities/action-activity.entity";
+import { ActionEvent, ActionStatus } from "./entities/action-event.entity";
+import { ActionFormVariant } from "./entities/action-form-variant.entity";
+import { ActionSuite } from "./entities/action-suite.entity";
 import {
   ActionUpdate,
   ActionUpdateNotifyType,
-} from './entities/action-update.entity';
+} from "./entities/action-update.entity";
 import {
   Action,
   ActionTaskType,
   parseAction,
   VisibilityMode,
   type ParsedAction,
-} from './entities/action.entity';
+} from "./entities/action.entity";
 import {
   FollowUpForm,
   parseFollowUpForm,
   type ParsedFollowUpForm,
-} from './entities/follow-up-form.entity';
+} from "./entities/follow-up-form.entity";
 import {
   GeneralUpdateActivity,
   GeneralUpdateActivityType,
-} from './entities/general-update-activity.entity';
-import { GeneralUpdate } from './entities/general-update.entity';
+} from "./entities/general-update-activity.entity";
+import { GeneralUpdate } from "./entities/general-update.entity";
 import {
   ReminderGroup,
   ReminderGroupTimingMode,
-} from './entities/reminder-group.entity';
-import { resolveUserActionPillStatus } from './user-action-pill-status';
+} from "./entities/reminder-group.entity";
+import { SCHEMA_WRITE_TARGETS } from "./schema-write-target";
+import { resolveUserActionPillStatus } from "./user-action-pill-status";
 import {
   computeCanCompleteAction,
   resolveUserActionStatus,
-} from './user-action-status';
+} from "./user-action-status";
 
 type SuspendPlanContext = {
   orderedSuites: Array<{ suiteId: number; pastDate: Date | null }>;
@@ -353,14 +356,14 @@ export class ActionsService {
       await manager
         .createQueryBuilder()
         .update(Action)
-        .set({ priority: () => 'priority + 1' })
-        .where('priority >= :min', { min: 0 })
+        .set({ priority: () => "priority + 1" })
+        .where("priority >= :min", { min: 0 })
         .execute();
       await manager
         .createQueryBuilder()
         .update(GeneralUpdate)
-        .set({ priority: () => 'priority + 1' })
-        .where('priority >= :min', { min: 0 })
+        .set({ priority: () => "priority + 1" })
+        .where("priority >= :min", { min: 0 })
         .execute();
     });
   }
@@ -374,8 +377,8 @@ export class ActionsService {
     const parsed = cohortExpressionSchema.safeParse(value);
     if (!parsed.success) {
       const issues = parsed.error.issues
-        .map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
-        .join('; ');
+        .map((issue) => `${issue.path.join(".") || "<root>"}: ${issue.message}`)
+        .join("; ");
       throw new BadRequestException(`Invalid cohort expression: ${issues}`);
     }
     return parsed.data;
@@ -425,7 +428,7 @@ export class ActionsService {
 
   async findAllSorted(
     relations:
-      | Omit<Relations<Action>, 'usersCompleted' | 'status'>
+      | Omit<Relations<Action>, "usersCompleted" | "status">
       | undefined = undefined,
     limit?: number,
   ): Promise<ParsedAction[]> {
@@ -435,13 +438,13 @@ export class ActionsService {
     // 3. Priority (higher priority first)
 
     const qb = this.actionRepository
-      .createQueryBuilder('a')
-      .leftJoin('a.events', 'e')
+      .createQueryBuilder("a")
+      .leftJoin("a.events", "e")
       .addSelect(
         `
     MIN(CASE WHEN e.date > NOW() THEN e.date END)
   `,
-        'soonest_future_event_date',
+        "soonest_future_event_date",
       )
       .addSelect(
         `
@@ -449,21 +452,21 @@ export class ActionsService {
       WHEN e.newStatus = :memberAction THEN e.date
     END)
   `,
-        'latest_memberaction_event_date',
+        "latest_memberaction_event_date",
       )
-      .setParameter('memberAction', ActionStatus.MemberAction)
-      .groupBy('a.id')
+      .setParameter("memberAction", ActionStatus.MemberAction)
+      .groupBy("a.id")
       .orderBy(
-        'CASE WHEN MIN(CASE WHEN e.date > NOW() THEN e.date END) IS NULL THEN 1 ELSE 0 END',
-        'ASC',
+        "CASE WHEN MIN(CASE WHEN e.date > NOW() THEN e.date END) IS NULL THEN 1 ELSE 0 END",
+        "ASC",
       ) // actions with future events first
-      .addOrderBy('soonest_future_event_date', 'ASC') // earliest future event first
+      .addOrderBy("soonest_future_event_date", "ASC") // earliest future event first
       .addOrderBy(
-        'CASE WHEN MAX(CASE WHEN e.newStatus = :memberAction THEN e.date END) IS NULL THEN 1 ELSE 0 END',
-        'ASC',
+        "CASE WHEN MAX(CASE WHEN e.newStatus = :memberAction THEN e.date END) IS NULL THEN 1 ELSE 0 END",
+        "ASC",
       ) // actions with past member-action events next
-      .addOrderBy('latest_memberaction_event_date', 'DESC') // latest member-action event first
-      .addOrderBy('a.priority', 'ASC'); // higher priority first
+      .addOrderBy("latest_memberaction_event_date", "DESC") // latest member-action event first
+      .addOrderBy("a.priority", "ASC"); // higher priority first
 
     if (limit) {
       qb.limit(limit);
@@ -792,7 +795,7 @@ export class ActionsService {
     userId?: number,
     sorted?: boolean,
   ): Promise<ActionDto[]> {
-    const relations: Omit<Relations<Action>, 'usersCompleted' | 'status'> = {
+    const relations: Omit<Relations<Action>, "usersCompleted" | "status"> = {
       events: true,
       followUpForms: true,
     };
@@ -890,7 +893,7 @@ export class ActionsService {
   }
 
   async findPublicOnly(): Promise<ActionDto[]> {
-    const relations: Omit<Relations<Action>, 'usersCompleted' | 'status'> = {
+    const relations: Omit<Relations<Action>, "usersCompleted" | "status"> = {
       events: true,
       followUpForms: true,
     };
@@ -999,7 +1002,7 @@ export class ActionsService {
       !action ||
       !((await this.userCanSeeAction(action, user)) || serverSide)
     ) {
-      throw new NotFoundException('Action not found');
+      throw new NotFoundException("Action not found");
     }
     return action;
   }
@@ -1111,24 +1114,24 @@ export class ActionsService {
     const shareUrl = await this.shareUrlsService.getOrCreateForAction(
       actionId,
       {
-        type: 'user',
+        type: "user",
         userId,
       },
     );
     if (!shareUrl.sid) {
-      throw new BadRequestException('Unable to create share code');
+      throw new BadRequestException("Unable to create share code");
     }
     return shareUrl.sid;
   }
 
   private getFirstNameForSharePreview(
-    user: Pick<User, 'anonymous' | 'name'>,
+    user: Pick<User, "anonymous" | "name">,
   ): string {
     if (user.anonymous) {
-      return 'Someone';
+      return "Someone";
     }
 
-    return user.name.trim().split(/\s+/)[0] || 'Someone';
+    return user.name.trim().split(/\s+/)[0] || "Someone";
   }
 
   async findAllGeneralUpdates(): Promise<GeneralUpdate[]> {
@@ -1191,7 +1194,7 @@ export class ActionsService {
       .createQueryBuilder()
       .update(target.entity)
       .set({ schemaSnapshotId: snapshot.id })
-      .where('id = :id', { id })
+      .where("id = :id", { id })
       .andWhere('"schemaSnapshotId" = :expectedSchemaSnapshotId', {
         expectedSchemaSnapshotId,
       })
@@ -1264,7 +1267,7 @@ export class ActionsService {
       if (schema === undefined) return null;
       if (expectedSchemaSnapshotId === undefined) {
         throw new BadRequestException(
-          'expectedSchemaSnapshotId is required when writing schema',
+          "expectedSchemaSnapshotId is required when writing schema",
         );
       }
       return { schema, expectedSchemaSnapshotId };
@@ -1281,7 +1284,7 @@ export class ActionsService {
     const affectedSuiteIds =
       await this.generalUpdateRepository.manager.transaction(async (em) => {
         await em.query(
-          'SELECT id FROM general_update WHERE id = $1 FOR UPDATE',
+          "SELECT id FROM general_update WHERE id = $1 FOR UPDATE",
           [id],
         );
         const generalUpdate = await this.findOneGeneralUpdate(id, em);
@@ -1464,7 +1467,7 @@ export class ActionsService {
     );
     if (!generalUpdate) {
       throw new NotFoundException(
-        'General update not found or already dismissed',
+        "General update not found or already dismissed",
       );
     }
 
@@ -1531,7 +1534,7 @@ export class ActionsService {
       !adminCreated
     ) {
       throw new BadRequestException(
-        'Contract signing actions cannot be withdrawn from',
+        "Contract signing actions cannot be withdrawn from",
       );
     }
 
@@ -1546,7 +1549,7 @@ export class ActionsService {
         where: { actionId, userId, type },
       });
       if (existingActivity) {
-        throw new BadRequestException('Activity already exists');
+        throw new BadRequestException("Activity already exists");
       }
     }
 
@@ -1577,10 +1580,10 @@ export class ActionsService {
       const reasonChars = trimmedReason ? [...trimmedReason] : [];
       const reason =
         reasonChars.length > OPT_OUT_REASON_PREVIEW_LENGTH
-          ? `${reasonChars.slice(0, OPT_OUT_REASON_PREVIEW_LENGTH).join('')}...`
+          ? `${reasonChars.slice(0, OPT_OUT_REASON_PREVIEW_LENGTH).join("")}...`
           : trimmedReason;
       const label = adminCreated
-        ? 'admin-created'
+        ? "admin-created"
         : WITHDRAWAL_OPTION_LABELS[option];
       const detail = reason ? `${label}: ${reason}` : label;
       this.eventLogService.sendMessage({
@@ -1597,7 +1600,7 @@ export class ActionsService {
       });
     }
 
-    this.eventEmitter.emit('action.activity', {
+    this.eventEmitter.emit("action.activity", {
       actionId,
       activity: new ActionActivityDto(savedActivity),
     });
@@ -1617,7 +1620,7 @@ export class ActionsService {
     withdrawal: { reason: string; outOfTime: boolean; isMoral: boolean },
   ): Promise<ActionActivity> {
     if (!withdrawalHasRequiredReason(withdrawal)) {
-      throw new BadRequestException('A withdrawal reason is required');
+      throw new BadRequestException("A withdrawal reason is required");
     }
     return this.createActionActivity({
       actionId,
@@ -1661,7 +1664,7 @@ export class ActionsService {
       });
 
     if (!action) {
-      throw new NotFoundException('Action not found');
+      throw new NotFoundException("Action not found");
     }
     const oldSuiteId = action.suite?.id;
 
@@ -1736,11 +1739,11 @@ export class ActionsService {
       );
     } catch (err) {
       if (
-        err?.code === '23505' &&
-        err?.constraint === 'UQ_action_event_one_member_action'
+        err?.code === "23505" &&
+        err?.constraint === "UQ_action_event_one_member_action"
       ) {
         throw new BadRequestException(
-          'An action can only have one member_action event',
+          "An action can only have one member_action event",
         );
       }
       throw err;
@@ -1827,10 +1830,10 @@ export class ActionsService {
     }
 
     const rows = await this.actionActivityRepository
-      .createQueryBuilder('activity')
-      .innerJoin('activity.likes', 'liker', 'liker.id = :userId', { userId })
-      .where('activity.id IN (:...activityIds)', { activityIds })
-      .select('activity.id', 'id')
+      .createQueryBuilder("activity")
+      .innerJoin("activity.likes", "liker", "liker.id = :userId", { userId })
+      .where("activity.id IN (:...activityIds)", { activityIds })
+      .select("activity.id", "id")
       .getRawMany<{ id: number }>();
 
     return new Set(rows.map((r) => r.id));
@@ -1879,7 +1882,7 @@ export class ActionsService {
         page.fields.some(
           (field) =>
             field.id === answer &&
-            'label' in field &&
+            "label" in field &&
             field.output?.output === true,
         ),
       );
@@ -2009,73 +2012,73 @@ export class ActionsService {
     requireFormResponse?: boolean;
   }) {
     const qb = this.actionActivityRepository
-      .createQueryBuilder('activity')
-      .leftJoinAndSelect('activity.user', 'user')
-      .leftJoinAndSelect('activity.action', 'action')
-      .leftJoinAndSelect('activity.editableContent', 'editableContent')
-      .leftJoinAndSelect('activity.taskFormResponse', 'taskFormResponse')
-      .leftJoinAndSelect('taskFormResponse.formSnapshot', 'taskFormSnapshot')
+      .createQueryBuilder("activity")
+      .leftJoinAndSelect("activity.user", "user")
+      .leftJoinAndSelect("activity.action", "action")
+      .leftJoinAndSelect("activity.editableContent", "editableContent")
+      .leftJoinAndSelect("activity.taskFormResponse", "taskFormResponse")
+      .leftJoinAndSelect("taskFormResponse.formSnapshot", "taskFormSnapshot")
       .select([
-        'activity.id',
-        'activity.type',
-        'activity.actionId',
-        'activity.userId',
-        'activity.createdAt',
-        'activity.likesCount',
-        'user.id',
-        'user.name',
-        'user.profilePicture',
-        'user.profileDescription',
-        'user.admin',
-        'user.staff',
-        'user.anonymous',
-        'action.id',
-        'action.name',
-        'editableContent.id',
-        'editableContent.body',
-        'editableContent.attachments',
-        'taskFormResponse.id',
-        'taskFormResponse.formId',
-        'taskFormResponse.answers',
-        'taskFormResponse.publicAnswers',
-        'taskFormResponse.formSnapshotId',
-        'taskFormResponse.visibilityValidatorResults',
-        'taskFormResponse.deviceType',
-        'taskFormSnapshot.id',
-        'taskFormSnapshot.schema',
+        "activity.id",
+        "activity.type",
+        "activity.actionId",
+        "activity.userId",
+        "activity.createdAt",
+        "activity.likesCount",
+        "user.id",
+        "user.name",
+        "user.profilePicture",
+        "user.profileDescription",
+        "user.admin",
+        "user.staff",
+        "user.anonymous",
+        "action.id",
+        "action.name",
+        "editableContent.id",
+        "editableContent.body",
+        "editableContent.attachments",
+        "taskFormResponse.id",
+        "taskFormResponse.formId",
+        "taskFormResponse.answers",
+        "taskFormResponse.publicAnswers",
+        "taskFormResponse.formSnapshotId",
+        "taskFormResponse.visibilityValidatorResults",
+        "taskFormResponse.deviceType",
+        "taskFormSnapshot.id",
+        "taskFormSnapshot.schema",
       ])
-      .loadRelationIdAndMap('user.leaderOfIds', 'user.leaderOf')
-      .where('activity.type IN (:...types)', {
+      .loadRelationIdAndMap("user.leaderOfIds", "user.leaderOf")
+      .where("activity.type IN (:...types)", {
         types: ACTION_ACTIVITY_FEED_VISIBLE_TYPES,
       })
-      .orderBy('activity.createdAt', 'DESC')
+      .orderBy("activity.createdAt", "DESC")
       .take(options.limit);
 
     if (options.before) {
-      qb.andWhere('activity.createdAt < :before', { before: options.before });
+      qb.andWhere("activity.createdAt < :before", { before: options.before });
     }
 
     if (options.communityId) {
       qb.innerJoin(
-        'user.communities',
-        'communityFilter',
-        'communityFilter.id = :communityId',
+        "user.communities",
+        "communityFilter",
+        "communityFilter.id = :communityId",
         { communityId: options.communityId },
       );
     } else if (options.userIds?.length) {
-      qb.andWhere('activity.userId IN (:...userIds)', {
+      qb.andWhere("activity.userId IN (:...userIds)", {
         userIds: options.userIds,
       });
     }
 
     if (options.actionId) {
-      qb.andWhere('activity.actionId = :actionId', {
+      qb.andWhere("activity.actionId = :actionId", {
         actionId: options.actionId,
       });
     }
 
     if (options.requireFormResponse) {
-      qb.andWhere('taskFormResponse.id IS NOT NULL');
+      qb.andWhere("taskFormResponse.id IS NOT NULL");
     }
 
     return qb.getMany();
@@ -2120,12 +2123,12 @@ export class ActionsService {
       awayRanges: true,
     });
     if (!(await this.isCompletionAllowed(action, user))) {
-      throw new ForbiddenException('This action is not available to you');
+      throw new ForbiddenException("This action is not available to you");
     }
   }
 
   async clearDb() {
-    if (process.env.NODE_ENV !== 'development') {
+    if (process.env.NODE_ENV !== "development") {
       return;
     }
     await this.actionActivityRepository.delete({});
@@ -2153,7 +2156,7 @@ export class ActionsService {
       receivedFriendRequests: true,
     });
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException("User not found");
     }
     const friends = await this.userService.findFriends(userId);
 
@@ -2232,15 +2235,15 @@ export class ActionsService {
     communityId: number,
   ): Promise<number> {
     const memberRow = await this.communityRepository
-      .createQueryBuilder('c')
-      .select('c.id', 'id')
+      .createQueryBuilder("c")
+      .select("c.id", "id")
       .innerJoin(
-        'community_users_user',
-        'cuu',
+        "community_users_user",
+        "cuu",
         'cuu."communityId" = c.id AND cuu."userId" = :userId',
         { userId },
       )
-      .where('c.id = :communityId', { communityId })
+      .where("c.id = :communityId", { communityId })
       .getRawOne<{ id: number }>();
 
     if (!memberRow) {
@@ -2248,18 +2251,18 @@ export class ActionsService {
         where: { id: communityId },
         select: { id: true },
       });
-      throw new NotFoundException('User is not a member of this community');
+      throw new NotFoundException("User is not a member of this community");
     }
 
     return this.actionActivityRepository
-      .createQueryBuilder('activity')
+      .createQueryBuilder("activity")
       .innerJoin(
-        'community_users_user',
-        'cuu',
+        "community_users_user",
+        "cuu",
         'cuu."userId" = activity.userId AND cuu."communityId" = :communityId',
         { communityId },
       )
-      .where('activity.type = :type', {
+      .where("activity.type = :type", {
         type: ActionActivityType.USER_COMPLETED,
       })
       .getCount();
@@ -2275,7 +2278,7 @@ export class ActionsService {
       this.userService.findFriends(userId),
       this.userService.findOne(userId, { communities: true }),
     ]);
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
     const friendIds = friends.map((f) => f.id);
     const communityIds = (user.communities ?? []).map((c) => c.id);
@@ -2386,7 +2389,7 @@ export class ActionsService {
           user: true,
           taskFormResponse: { formSnapshot: true },
         },
-        order: { createdAt: 'DESC' },
+        order: { createdAt: "DESC" },
         take: limit,
       }),
       this.forumService.findForumCommentsByUserForFeed({
@@ -2445,7 +2448,7 @@ export class ActionsService {
       },
     });
     if (!activity) {
-      throw new NotFoundException('Activity not found');
+      throw new NotFoundException("Activity not found");
     }
     return new ActionActivityDto(activity, {
       formResponseOutput: this.buildOutputFormResponse(activity),
@@ -2461,7 +2464,7 @@ export class ActionsService {
       relations: { action: true },
     });
     if (!event) {
-      throw new NotFoundException('Event not found');
+      throw new NotFoundException("Event not found");
     }
     return event;
   }
@@ -2481,18 +2484,18 @@ export class ActionsService {
       },
     });
     if (!activity) {
-      throw new NotFoundException('Activity not found');
+      throw new NotFoundException("Activity not found");
     }
     if (
       !GlobalFeedActivityTypes.includes(activity.type as GlobalFeedActivityType)
     ) {
-      throw new BadRequestException('Activity type is not supported');
+      throw new BadRequestException("Activity type is not supported");
     }
     const user = await this.userService.findOneOrFail(userId);
 
     const qb = this.actionActivityRepository
       .createQueryBuilder()
-      .relation(ActionActivity, 'likes')
+      .relation(ActionActivity, "likes")
       .of(activity);
 
     let createdLike = false;
@@ -2510,7 +2513,7 @@ export class ActionsService {
     // Update likesCount
     if (createdLike || removedLike) {
       await this.actionActivityRepository.update(id, {
-        likesCount: () => `"likesCount" ${createdLike ? '+ 1' : '- 1'}`,
+        likesCount: () => `"likesCount" ${createdLike ? "+ 1" : "- 1"}`,
       });
     }
 
@@ -2524,7 +2527,7 @@ export class ActionsService {
       },
     });
     if (!updatedActivity) {
-      throw new NotFoundException('Activity not found');
+      throw new NotFoundException("Activity not found");
     }
 
     if (createdLike && updatedActivity.user) {
@@ -2593,10 +2596,10 @@ export class ActionsService {
       },
     });
     if (!activity) {
-      throw new NotFoundException('Activity not found');
+      throw new NotFoundException("Activity not found");
     }
     if (activity.userId !== userId) {
-      throw new ForbiddenException('You are not the owner of this activity');
+      throw new ForbiddenException("You are not the owner of this activity");
     }
     let editableContent = await this.editableContentRepository.findOne({
       where: { id: activity.editableContent?.id },
@@ -2619,10 +2622,10 @@ export class ActionsService {
   async getPaymentAmountForAction(id: number): Promise<number> {
     const action = await this.findOneOrFail({ id, serverSide: true });
     if (action.type !== ActionTaskType.Funding) {
-      throw new BadRequestException('Action is not a funding action');
+      throw new BadRequestException("Action is not a funding action");
     }
     if (!action.donationAmount) {
-      throw new BadRequestException('Action has no funding amount');
+      throw new BadRequestException("Action has no funding amount");
     }
     return action.donationAmount;
   }
@@ -2707,24 +2710,24 @@ export class ActionsService {
   async notifyActionUpdate(id: number): Promise<ActionUpdate> {
     const actionUpdate = await this.findOneActionUpdate(id);
     const schema = displayOnlySchemaOf({
-      owner: 'ActionUpdate',
+      owner: "ActionUpdate",
       ownerId: actionUpdate.id,
       snapshot: actionUpdate.schemaSnapshot,
     });
 
     if (actionUpdate.notifyType === ActionUpdateNotifyType.None) {
       throw new BadRequestException(
-        'This update has no notification audience set.',
+        "This update has no notification audience set.",
       );
     }
     if (schema.blocks.length === 0) {
       throw new BadRequestException(
-        'Write the update body before sending the notification.',
+        "Write the update body before sending the notification.",
       );
     }
     if (actionUpdate.notifiedAt) {
       throw new ConflictException(
-        'This update has already been notified about.',
+        "This update has already been notified about.",
       );
     }
 
@@ -2742,13 +2745,13 @@ export class ActionsService {
         .createQueryBuilder()
         .update(ActionUpdate)
         .set({ notifiedAt: new Date() })
-        .where('id = :id', { id })
+        .where("id = :id", { id })
         .andWhere('"notifiedAt" IS NULL')
         .execute();
 
       if (claimed.affected === 0) {
         throw new ConflictException(
-          'This update has already been notified about.',
+          "This update has already been notified about.",
         );
       }
 
@@ -2795,7 +2798,7 @@ export class ActionsService {
       if (schema === undefined) return null;
       if (expectedSchemaSnapshotId === undefined) {
         throw new BadRequestException(
-          'expectedSchemaSnapshotId is required when writing schema',
+          "expectedSchemaSnapshotId is required when writing schema",
         );
       }
       return { schema, expectedSchemaSnapshotId };
@@ -2805,7 +2808,7 @@ export class ActionsService {
     // column that differs from the entity read here, so an unlocked
     // read-modify-write would revert a concurrent schema save.
     await this.actionUpdateRepository.manager.transaction(async (em) => {
-      await em.query('SELECT id FROM action_update WHERE id = $1 FOR UPDATE', [
+      await em.query("SELECT id FROM action_update WHERE id = $1 FOR UPDATE", [
         id,
       ]);
       const actionUpdate = await this.findOneActionUpdate(id, em);
@@ -2864,11 +2867,11 @@ export class ActionsService {
     const now = new Date();
 
     if (actionUpdate.visibleAt === null) {
-      throw new BadRequestException('This update has not been published yet.');
+      throw new BadRequestException("This update has not been published yet.");
     }
     if (actionUpdate.date <= now) {
       throw new BadRequestException(
-        'The displayed date has already passed, so hiding the update until then would leave it visible.',
+        "The displayed date has already passed, so hiding the update until then would leave it visible.",
       );
     }
 
@@ -2888,7 +2891,7 @@ export class ActionsService {
 
     if (actionUpdate.visibleAt === null || actionUpdate.visibleAt <= now) {
       throw new BadRequestException(
-        'This update is not waiting on a future date.',
+        "This update is not waiting on a future date.",
       );
     }
 
@@ -2909,7 +2912,7 @@ export class ActionsService {
     return this.actionUpdateRepository.find({
       take: limit,
       where: publishedActionUpdateWhere(new Date()),
-      order: { date: 'DESC' },
+      order: { date: "DESC" },
       relations: { action: true, schemaSnapshot: true },
       select: {
         action: {
@@ -2933,7 +2936,7 @@ export class ActionsService {
       }
       case ActionUpdateNotifyType.Tag: {
         if (!actionUpdate.tag) {
-          throw new BadRequestException('Tag is required');
+          throw new BadRequestException("Tag is required");
         }
         return (await this.userService.findTagOrFail(actionUpdate.tag.id))
           .users;
@@ -2959,7 +2962,7 @@ export class ActionsService {
         reminderGroups: { memberActionEvent: true, deadlineEvent: true },
         generalUpdates: { schemaSnapshot: true },
       },
-      relationLoadStrategy: 'query',
+      relationLoadStrategy: "query",
     });
   }
 
@@ -2993,7 +2996,7 @@ export class ActionsService {
     for (const action of suite.actions) {
       if (action.events.length <= eventIdx) {
         throw new BadRequestException(
-          'Events do not have equivalent events to edit',
+          "Events do not have equivalent events to edit",
         );
       }
       const possibleEvent = action.events.sort(
@@ -3045,7 +3048,7 @@ export class ActionsService {
     for (const action of suite.actions) {
       if (action.events.length <= eventIdx) {
         throw new BadRequestException(
-          'Events do not have equivalent events to delete',
+          "Events do not have equivalent events to delete",
         );
       }
       const possibleEvent = action.events.sort(
@@ -3055,7 +3058,7 @@ export class ActionsService {
         possibleEvent.newStatus === event.newStatus &&
         possibleEvent.suiteManaged
       ) {
-        console.log('deleting event', possibleEvent.id);
+        console.log("deleting event", possibleEvent.id);
         await this.actionEventRepository.delete(possibleEvent.id);
       }
     }
@@ -3112,7 +3115,7 @@ export class ActionsService {
     const fakeGroup = {
       ...bodyRest,
       id: 0,
-      name: 'Tentative Reminder Group',
+      name: "Tentative Reminder Group",
       memberActionEvent: event,
       notifications: [],
       users,
@@ -3134,7 +3137,7 @@ export class ActionsService {
         !withDeadlineEvent.timingAnchorEvent
       ) {
         throw new BadRequestException(
-          'Deadline or anchor event is required for relative timing modes',
+          "Deadline or anchor event is required for relative timing modes",
         );
       }
     }
@@ -3146,7 +3149,7 @@ export class ActionsService {
           new Date(fakeGroup.send_range_end).getTime()
       ) {
         throw new BadRequestException(
-          'Send range start must be before the end',
+          "Send range start must be before the end",
         );
       }
     }
@@ -3301,7 +3304,7 @@ export class ActionsService {
         if (authors?.length) {
           await actionRepo
             .createQueryBuilder()
-            .relation(Action, 'authors')
+            .relation(Action, "authors")
             .of(actionId)
             .add(authors.map((a) => ({ id: a.id })));
         }
@@ -3386,7 +3389,7 @@ export class ActionsService {
       const actionIds = actions.map((a) => a.id);
       return this.actionActivityRepository.find({
         where: { actionId: In(actionIds), userId: In(await userIdsP) },
-        order: { createdAt: 'ASC' },
+        order: { createdAt: "ASC" },
       });
     });
 
@@ -3425,7 +3428,7 @@ export class ActionsService {
       number,
       Map<
         number,
-        Omit<UserActionRelationDetail, 'latestActivityAt'> & {
+        Omit<UserActionRelationDetail, "latestActivityAt"> & {
           latestActivityAt?: Date;
           // Transient resolver inputs; not serialized (see final mapping below).
           isJoined: boolean;
@@ -3580,7 +3583,7 @@ export class ActionsService {
         actionId: action.id,
         type: ActionActivityType.USER_WONT_COMPLETE,
       },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
     });
     const seen = new Set<number>();
     const results: ActionActivity[] = [];
@@ -3640,7 +3643,7 @@ export class ActionsService {
         users: { awayRanges: true, contractEvents: true, tags: true },
       });
       if (!community.users.some((user) => user.id === userId)) {
-        throw new NotFoundException('User is not a member of this community');
+        throw new NotFoundException("User is not a member of this community");
       }
 
       return community.users;
@@ -3966,7 +3969,7 @@ export class ActionsService {
           if (streak >= 3) {
             candidates.push({
               user: context.idToUser.get(userId)!,
-              reasonKey: `s-${lastThreeSuiteIds.join('-')}`,
+              reasonKey: `s-${lastThreeSuiteIds.join("-")}`,
             });
             break;
           }
@@ -4031,7 +4034,7 @@ export class ActionsService {
   async getShareLinksForForm(formId: number): Promise<ShareUrl[]> {
     const action = await this.findActionByFormId(formId);
     if (!action) {
-      throw new NotFoundException('No action found for this form');
+      throw new NotFoundException("No action found for this form");
     }
     // This is a per-user view (ShareUrlDto requires a user); campaign-owned
     // links have no user and are managed via the admin campaign view instead.
@@ -4060,18 +4063,18 @@ export class ActionsService {
       return shareUrls.map((su) => ({
         user: su.user!,
         inviteCount: 0,
-        sid: su.sid ?? '',
+        sid: su.sid ?? "",
         yesCount: 0,
       }));
     }
 
     // Count form responses per sid
     const formResponseCounts = await this.formResponseRepository
-      .createQueryBuilder('fr')
-      .select('fr.sid', 'sid')
-      .addSelect('COUNT(*)', 'count')
-      .where('fr.sid IN (:...sids)', { sids })
-      .groupBy('fr.sid')
+      .createQueryBuilder("fr")
+      .select("fr.sid", "sid")
+      .addSelect("COUNT(*)", "count")
+      .where("fr.sid IN (:...sids)", { sids })
+      .groupBy("fr.sid")
       .getRawMany<{ sid: string; count: string }>();
 
     const countMap = new Map<string, number>();
@@ -4083,12 +4086,12 @@ export class ActionsService {
     const yesCountMap = new Map<string, number>();
     if (questionId) {
       const yesAnswerCounts = await this.formResponseRepository
-        .createQueryBuilder('fr')
-        .select('fr.sid', 'sid')
-        .addSelect('COUNT(*)', 'count')
-        .where('fr.sid IN (:...sids)', { sids })
+        .createQueryBuilder("fr")
+        .select("fr.sid", "sid")
+        .addSelect("COUNT(*)", "count")
+        .where("fr.sid IN (:...sids)", { sids })
         .andWhere(`fr.answers ->> :questionId = 'yes'`, { questionId })
-        .groupBy('fr.sid')
+        .groupBy("fr.sid")
         .getRawMany<{ sid: string; count: string }>();
 
       for (const row of yesAnswerCounts) {
@@ -4099,9 +4102,9 @@ export class ActionsService {
     const results = shareUrls
       .map((su) => ({
         user: su.user!,
-        inviteCount: countMap.get(su.sid ?? '') ?? 0,
-        sid: su.sid ?? '',
-        yesCount: yesCountMap.get(su.sid ?? '') ?? 0,
+        inviteCount: countMap.get(su.sid ?? "") ?? 0,
+        sid: su.sid ?? "",
+        yesCount: yesCountMap.get(su.sid ?? "") ?? 0,
       }))
       .filter((stat) => stat.inviteCount > 0);
 
@@ -4115,32 +4118,32 @@ export class ActionsService {
     const oneWeekAgo = this.globalFeedWindowStart();
 
     const recentActivities = (await this.actionActivityRepository
-      .createQueryBuilder('activity')
-      .leftJoinAndSelect('activity.user', 'user')
-      .leftJoinAndSelect('activity.action', 'action')
+      .createQueryBuilder("activity")
+      .leftJoinAndSelect("activity.user", "user")
+      .leftJoinAndSelect("activity.action", "action")
       .select([
-        'activity.id',
-        'activity.type',
-        'activity.actionId',
-        'activity.createdAt',
-        'user.id',
-        'user.name',
-        'user.profilePicture',
-        'user.anonymous',
-        'user.admin',
-        'user.staff',
-        'user.profileDescription',
-        'action.id',
-        'action.name',
-        'action.onboarding',
+        "activity.id",
+        "activity.type",
+        "activity.actionId",
+        "activity.createdAt",
+        "user.id",
+        "user.name",
+        "user.profilePicture",
+        "user.anonymous",
+        "user.admin",
+        "user.staff",
+        "user.profileDescription",
+        "action.id",
+        "action.name",
+        "action.onboarding",
       ])
-      .loadRelationIdAndMap('user.leaderOfIds', 'user.leaderOf')
-      .where('activity.type IN (:...types)', {
+      .loadRelationIdAndMap("user.leaderOfIds", "user.leaderOf")
+      .where("activity.type IN (:...types)", {
         types: GlobalFeedActivityTypes,
       })
-      .andWhere('action.onboarding = false')
-      .andWhere('activity.createdAt > :oneWeekAgo', { oneWeekAgo })
-      .orderBy('activity.createdAt', 'DESC')
+      .andWhere("action.onboarding = false")
+      .andWhere("activity.createdAt > :oneWeekAgo", { oneWeekAgo })
+      .orderBy("activity.createdAt", "DESC")
       .getMany()) as (ActionActivity & {
       type: GlobalFeedActivityType;
     })[];
@@ -4164,7 +4167,7 @@ export class ActionsService {
         activityGroups.set(key, {
           activities: [],
           actionId: activity.actionId,
-          actionName: activity.action?.name || 'Unknown Action',
+          actionName: activity.action?.name || "Unknown Action",
           type: activity.type,
           latestDate: activity.createdAt,
         });
@@ -4210,7 +4213,7 @@ export class ActionsService {
         visibleAt: MoreThan(oneWeekAgo),
       },
       relations: { action: true, schemaSnapshot: true },
-      order: { date: 'DESC' },
+      order: { date: "DESC" },
       take: 10,
     });
 
@@ -4220,13 +4223,13 @@ export class ActionsService {
           id: update.id,
           title: update.title,
           schema: displayOnlySchemaOf({
-            owner: 'ActionUpdate',
+            owner: "ActionUpdate",
             ownerId: update.id,
             snapshot: update.schemaSnapshot,
           }),
           date: update.date,
           actionId: update.actionId,
-          actionName: update.action?.name || 'Unknown Action',
+          actionName: update.action?.name || "Unknown Action",
         };
 
         feedItems.push(
@@ -4261,28 +4264,28 @@ export class ActionsService {
     }
 
     const recentComments = await this.commentRepository
-      .createQueryBuilder('comment')
-      .leftJoinAndSelect('comment.author', 'author')
+      .createQueryBuilder("comment")
+      .leftJoinAndSelect("comment.author", "author")
       .select([
-        'comment.id',
-        'comment.parentObjectId',
-        'comment.parentObjectType',
-        'comment.createdAt',
-        'author.id',
-        'author.name',
-        'author.profilePicture',
-        'author.anonymous',
-        'author.admin',
-        'author.staff',
-        'author.profileDescription',
+        "comment.id",
+        "comment.parentObjectId",
+        "comment.parentObjectType",
+        "comment.createdAt",
+        "author.id",
+        "author.name",
+        "author.profilePicture",
+        "author.anonymous",
+        "author.admin",
+        "author.staff",
+        "author.profileDescription",
       ])
-      .loadRelationIdAndMap('author.leaderOfIds', 'author.leaderOf')
-      .where('comment.parentObjectType = :postType', {
+      .loadRelationIdAndMap("author.leaderOfIds", "author.leaderOf")
+      .where("comment.parentObjectType = :postType", {
         postType: CommentParentObject.Post,
       })
-      .andWhere('comment.createdAt > :oneWeekAgo', { oneWeekAgo })
-      .andWhere('comment.deleted = false')
-      .orderBy('comment.createdAt', 'DESC')
+      .andWhere("comment.createdAt > :oneWeekAgo", { oneWeekAgo })
+      .andWhere("comment.deleted = false")
+      .orderBy("comment.createdAt", "DESC")
       .getMany();
 
     const commentGroups = new Map<
@@ -4320,7 +4323,7 @@ export class ActionsService {
     if (postIds.length > 0) {
       const posts = await this.postRepository.find({
         where: { id: In(postIds), deleted: false },
-        select: ['id', 'title'],
+        select: ["id", "title"],
       });
 
       const postTitleMap = new Map<number, string>();
@@ -4396,7 +4399,7 @@ export class ActionsService {
               previous_event.type IS NULL
               OR previous_event.type = $3
             )
-            AND ${sqlUserHasActiveContractAt('signed_event."userId"', '$4')}
+            AND ${sqlUserHasActiveContractAt('signed_event."userId"', "$4")}
           ORDER BY signed_event."userId" ASC, signed_event.date DESC, signed_event.id DESC
         ) ranked`,
       params: [
@@ -4608,14 +4611,14 @@ export class ActionsService {
     const eventsQuery = this.actionEventRepository.find({
       relations: { action: true },
       where: { newStatus: Not(ActionStatus.MemberAction) },
-      order: { date: 'DESC' },
+      order: { date: "DESC" },
       take: 10,
     });
 
     const actionUpdatesQuery = this.actionUpdateRepository.find({
       relations: { action: true, schemaSnapshot: true },
       where: publishedActionUpdateWhere(now),
-      order: { date: 'DESC' },
+      order: { date: "DESC" },
       take: 10,
     });
 
@@ -4823,9 +4826,9 @@ export class ActionsService {
       },
       isGroupLead: async () => {
         const count = await this.communityRepository
-          .createQueryBuilder('community')
-          .innerJoin('community.leaders', 'leader')
-          .where('leader.id = :userId', { userId: user.id })
+          .createQueryBuilder("community")
+          .innerJoin("community.leaders", "leader")
+          .where("leader.id = :userId", { userId: user.id })
           .getCount();
         return count > 0;
       },

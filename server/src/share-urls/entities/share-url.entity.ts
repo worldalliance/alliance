@@ -1,15 +1,14 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { Action } from 'src/actions/entities/action.entity';
-import { Campaign } from 'src/campaign/entities/campaign.entity';
-import { Community } from 'src/community/entities/community.entity';
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import { Action } from "src/actions/entities/action.entity";
+import { Campaign } from "src/campaign/entities/campaign.entity";
+import { Community } from "src/community/entities/community.entity";
 import {
   CreateDateColumnTz,
   UpdateDateColumnTz,
-} from 'src/datasources/basecolumns';
-import { User } from 'src/user/entities/user.entity';
-import { StoredInviteAssignmentKind } from '../invite-assignment-kind';
-import type { Relation } from 'src/utils/Repository';
+} from "src/datasources/basecolumns";
+import { User } from "src/user/entities/user.entity";
+import type { Relation } from "src/utils/Repository";
 import {
   Check,
   Column,
@@ -18,19 +17,20 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-} from 'typeorm';
-import { ExternalShareTarget } from './external-share-target.entity';
+} from "typeorm";
+import { StoredInviteAssignmentKind } from "../invite-assignment-kind";
+import { ExternalShareTarget } from "./external-share-target.entity";
 
 export enum ShareUrlKind {
-  Action = 'action',
-  ExternalTarget = 'externalTarget',
+  Action = "action",
+  ExternalTarget = "externalTarget",
   // Links directly to the signup page
-  Invite = 'invite',
+  Invite = "invite",
 }
 
 @Entity()
 @Check(
-  'CHK_share_url_kind',
+  "CHK_share_url_kind",
   `("kind" = 'action' ` +
     `AND "actionId" IS NOT NULL ` +
     `AND "externalTargetId" IS NULL) ` +
@@ -42,87 +42,87 @@ export enum ShareUrlKind {
     `AND "externalTargetId" IS NULL)`,
 )
 @Check(
-  'CHK_share_url_owner',
+  "CHK_share_url_owner",
   '("userId" IS NOT NULL AND "campaignId" IS NULL) ' +
     'OR ("userId" IS NULL AND "campaignId" IS NOT NULL)',
 )
 @Check(
-  'CHK_share_url_invite_assignment',
+  "CHK_share_url_invite_assignment",
   `("inviteAssignmentKind" IS NULL OR "kind" = 'invite')
    AND ("inviteAssignmentCommunityId" IS NULL
         OR "inviteAssignmentKind" IS NOT DISTINCT FROM 'community')`,
 )
-@Index('UQ_share_url_user_action', ['user', 'action'], {
+@Index("UQ_share_url_user_action", ["user", "action"], {
   unique: true,
   where: '"actionId" IS NOT NULL AND "duplicate" = false',
 })
-@Index('UQ_share_url_user_external_target', ['user', 'externalTarget'], {
+@Index("UQ_share_url_user_external_target", ["user", "externalTarget"], {
   unique: true,
   where: '"externalTargetId" IS NOT NULL AND "duplicate" = false',
 })
-@Index('UQ_share_url_campaign_action', ['campaign', 'action'], {
+@Index("UQ_share_url_campaign_action", ["campaign", "action"], {
   unique: true,
   where:
     '"actionId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false',
 })
 @Index(
-  'UQ_share_url_campaign_external_target',
-  ['campaign', 'externalTarget'],
+  "UQ_share_url_campaign_external_target",
+  ["campaign", "externalTarget"],
   {
     unique: true,
     where:
       '"externalTargetId" IS NOT NULL AND "campaignId" IS NOT NULL AND "duplicate" = false',
   },
 )
-@Index('UQ_share_url_user_invite', ['user'], {
+@Index("UQ_share_url_user_invite", ["user"], {
   unique: true,
   where: `"kind" = 'invite' AND "userId" IS NOT NULL AND "duplicate" = false`,
 })
-@Index('UQ_share_url_campaign_invite', ['campaign'], {
+@Index("UQ_share_url_campaign_invite", ["campaign"], {
   unique: true,
   where: `"kind" = 'invite' AND "campaignId" IS NOT NULL AND "duplicate" = false`,
 })
 export class ShareUrl {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @Column()
   @ApiProperty()
   url: string;
 
-  @Column({ type: 'enum', enum: ShareUrlKind })
+  @Column({ type: "enum", enum: ShareUrlKind })
   @ApiProperty({
     enum: ShareUrlKind,
-    enumName: 'ShareUrlKind',
+    enumName: "ShareUrlKind",
   })
   kind: ShareUrlKind;
 
   @Column({ nullable: true })
   userId: number | null;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'userId' })
+  @ManyToOne(() => User, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "userId" })
   @Type(() => User)
   user?: Relation<User> | null;
 
   @Column({ nullable: true })
   campaignId: number | null;
 
-  @ManyToOne(() => Campaign, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'campaignId' })
+  @ManyToOne(() => Campaign, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "campaignId" })
   @Type(() => Campaign)
   campaign?: Relation<Campaign> | null;
 
   @Column({ nullable: true })
   actionId: number | null;
 
-  @ManyToOne(() => Action, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'actionId' })
+  @ManyToOne(() => Action, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "actionId" })
   @Type(() => Action)
   action?: Relation<Action> | null;
 
-  @ManyToOne(() => ExternalShareTarget, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'externalTargetId' })
+  @ManyToOne(() => ExternalShareTarget, { onDelete: "CASCADE", nullable: true })
+  @JoinColumn({ name: "externalTargetId" })
   @Type(() => ExternalShareTarget)
   externalTarget?: Relation<ExternalShareTarget> | null;
 
@@ -138,9 +138,9 @@ export class ShareUrl {
   })
   duplicate: boolean;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   @ApiProperty({
-    description: 'Human-readable name, only viewable in the admin panel',
+    description: "Human-readable name, only viewable in the admin panel",
   })
   label: string | null;
 
@@ -156,7 +156,7 @@ export class ShareUrl {
    * choose — which places them by referral default instead.
    */
   @Column({
-    type: 'enum',
+    type: "enum",
     enum: StoredInviteAssignmentKind,
     nullable: true,
   })
@@ -170,7 +170,7 @@ export class ShareUrl {
   @Column({ nullable: true })
   inviteAssignmentCommunityId: number | null;
 
-  @ManyToOne(() => Community, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'inviteAssignmentCommunityId' })
+  @ManyToOne(() => Community, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "inviteAssignmentCommunityId" })
   inviteAssignmentCommunity?: Relation<Community> | null;
 }

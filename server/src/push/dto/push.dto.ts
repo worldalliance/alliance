@@ -1,25 +1,25 @@
-import { PickType } from '@nestjs/swagger';
-import { Push } from '../push.entity';
+import { PickType } from "@nestjs/swagger";
+import { Push } from "../push.entity";
 
 export class PushDto extends PickType(Push, [
-  'id',
-  'user',
-  'expoPushToken',
-  'createdAt',
-  'body',
-  'screen',
-  'updatedAt',
-  'receiptId',
-  'ticketStatus',
-  'receiptStatus',
-  'errorCode',
-  'errorMessage',
-  'lastCheckedStatusAt',
-  'idempotencyKey',
-  'notification',
-  'unreadContent',
-  'actionEventNotif',
-  'openedAt',
+  "id",
+  "user",
+  "expoPushToken",
+  "createdAt",
+  "body",
+  "screen",
+  "updatedAt",
+  "receiptId",
+  "ticketStatus",
+  "receiptStatus",
+  "errorCode",
+  "errorMessage",
+  "lastCheckedStatusAt",
+  "idempotencyKey",
+  "notification",
+  "unreadContent",
+  "actionEventNotif",
+  "openedAt",
 ]) {
   constructor(push: Push) {
     super();

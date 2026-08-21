@@ -1,44 +1,44 @@
-import { ActionActivityType } from '@alliance/common/actionActivity';
-import { Temporal } from '@js-temporal/polyfill';
-import { ActionsService } from 'src/actions/actions.service';
-import { CreateReminderGroupDto } from 'src/actions/dto/action.dto';
-import { ActionActivity } from 'src/actions/entities/action-activity.entity';
+import { ActionActivityType } from "@alliance/common/actionActivity";
+import { Temporal } from "@js-temporal/polyfill";
+import { ActionsService } from "src/actions/actions.service";
+import { CreateReminderGroupDto } from "src/actions/dto/action.dto";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   ActionEvent,
   ActionStatus,
-} from 'src/actions/entities/action-event.entity';
-import { ActionFormVariant } from 'src/actions/entities/action-form-variant.entity';
-import { ActionSuite } from 'src/actions/entities/action-suite.entity';
-import { Action, ActionTaskType } from 'src/actions/entities/action.entity';
+} from "src/actions/entities/action-event.entity";
+import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
+import { ActionSuite } from "src/actions/entities/action-suite.entity";
+import { Action, ActionTaskType } from "src/actions/entities/action.entity";
 import {
   ReminderCohortType,
   ReminderGroup,
   ReminderGroupTimingMode,
-} from 'src/actions/entities/reminder-group.entity';
-import { Community } from 'src/community/entities/community.entity';
-import { ActionEventNotifWorker } from 'src/notifs/action-event-notif.worker';
-import { ActionEventReminderService } from 'src/notifs/action-event-reminder.service';
-import { ActionEventNotif } from 'src/notifs/entities/action-event-notif.entity';
-import { Form } from 'src/tasks/entities/form.entity';
-import { FormResponse } from 'src/tasks/entities/formresponse.entity';
+} from "src/actions/entities/reminder-group.entity";
+import { Community } from "src/community/entities/community.entity";
+import { ActionEventNotifWorker } from "src/notifs/action-event-notif.worker";
+import { ActionEventReminderService } from "src/notifs/action-event-reminder.service";
+import { ActionEventNotif } from "src/notifs/entities/action-event-notif.entity";
+import { Form } from "src/tasks/entities/form.entity";
+import { FormResponse } from "src/tasks/entities/formresponse.entity";
 import {
   ContractEvent,
   ContractEventType,
-} from 'src/user/entities/contract-event.entity';
-import { Tag } from 'src/user/entities/tag.entity';
+} from "src/user/entities/contract-event.entity";
+import { Tag } from "src/user/entities/tag.entity";
 import {
   UserAwayRange,
   UserAwayRangeReason,
-} from 'src/user/entities/user-away-range.entity';
-import { User } from 'src/user/entities/user.entity';
-import type { Repository } from 'typeorm';
+} from "src/user/entities/user-away-range.entity";
+import { User } from "src/user/entities/user.entity";
+import type { Repository } from "typeorm";
 import {
   createFormWithSnapshot,
   createTestApp,
   TestContext,
-} from './e2e-test-utils';
+} from "./e2e-test-utils";
 
-describe('ActionEventNotifWorker (e2e)', () => {
+describe("ActionEventNotifWorker (e2e)", () => {
   let ctx: TestContext;
   let worker: ActionEventNotifWorker;
   let actionRepo: Repository<Action>;
@@ -56,16 +56,16 @@ describe('ActionEventNotifWorker (e2e)', () => {
   let awayRangeRepo: Repository<UserAwayRange>;
 
   const baseMessages = {
-    emailMessage: 'Reminder for #{firstname} on #{action}',
-    emailSubject: 'Reminder: #{action}',
-    textMessage: 'Hi #{firstname}, remember #{action}',
+    emailMessage: "Reminder for #{firstname} on #{action}",
+    emailSubject: "Reminder: #{action}",
+    textMessage: "Hi #{firstname}, remember #{action}",
   };
 
   const uniqueName = (prefix: string) =>
     `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   beforeAll(async () => {
-    process.env.SEND_DEV_NOTIFS = '1';
+    process.env.SEND_DEV_NOTIFS = "1";
     ctx = await createTestApp([]);
     worker = ctx.app.get(ActionEventNotifWorker);
     actionRepo = ctx.dataSource.getRepository(Action);
@@ -132,8 +132,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
       turnedOffAllNotifs: false,
       emailNotifsForActions: false,
       textNotifsForActions: true,
-      phoneNumber: '+14155550100',
-      name: 'Reminder Tester',
+      phoneNumber: "+14155550100",
+      name: "Reminder Tester",
     });
     await setUserContractSigned(
       ctx.testUserId,
@@ -163,14 +163,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name,
-        category: 'Testing',
-        body: 'Body copy',
-        shortDescription: 'Short description',
+        category: "Testing",
+        body: "Body copy",
+        shortDescription: "Short description",
         type: ActionTaskType.Activity,
         suite,
         timeEstimate,
         cohortExpression: {
-          type: 'Tag',
+          type: "Tag",
           tagId: ctx.defaultTag.id,
         },
       }),
@@ -179,7 +179,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const memberEvent = await eventRepo.save(
       eventRepo.create({
         title: `${name} member event`,
-        description: 'desc',
+        description: "desc",
         newStatus: ActionStatus.MemberAction,
         date: eventDate,
         action,
@@ -235,24 +235,24 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
   beforeEach(async () => {
-    await notifRepo.query('DELETE FROM action_event_notif');
-    await reminderGroupRepo.query('DELETE FROM reminder_group');
-    await activityRepo.query('DELETE FROM action_activity');
-    await eventRepo.query('DELETE FROM action_event');
-    await actionRepo.query('DELETE FROM action');
-    await actionSuiteRepo.query('DELETE FROM action_suite');
-    await formResponseRepo.query('DELETE FROM form_response');
-    await formRepo.query('DELETE FROM form');
+    await notifRepo.query("DELETE FROM action_event_notif");
+    await reminderGroupRepo.query("DELETE FROM reminder_group");
+    await activityRepo.query("DELETE FROM action_activity");
+    await eventRepo.query("DELETE FROM action_event");
+    await actionRepo.query("DELETE FROM action");
+    await actionSuiteRepo.query("DELETE FROM action_suite");
+    await formResponseRepo.query("DELETE FROM form_response");
+    await formRepo.query("DELETE FROM form");
     await resetPrimaryUser();
   });
 
-  it('sends email reminders for absolute timing groups to eligible users', async () => {
+  it("sends email reminders for absolute timing groups to eligible users", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('absolute-action'),
+      name: uniqueName("absolute-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
 
@@ -274,13 +274,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].mms).toBeTruthy();
   });
 
-  it('does not send reminders older than the 3 hour lookback window', async () => {
+  it("does not send reminders older than the 3 hour lookback window", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('lookback-blocked'),
+      name: uniqueName("lookback-blocked"),
       eventDate: new Date(now - 7 * 60 * 60 * 1000),
     });
 
@@ -299,13 +299,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs).toHaveLength(0);
   });
 
-  it('sends reminders that are within the 3 hour lookback window', async () => {
+  it("sends reminders that are within the 3 hour lookback window", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('lookback-allowed'),
+      name: uniqueName("lookback-allowed"),
       eventDate: new Date(now - 3 * 60 * 60 * 1000),
     });
 
@@ -325,13 +325,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].user.id).toBe(user.id);
   });
 
-  it('guards against duplicate reminders via idempotency keys', async () => {
+  it("guards against duplicate reminders via idempotency keys", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('duplicate-action'),
+      name: uniqueName("duplicate-action"),
       eventDate: new Date(now - 45 * 60 * 1000),
     });
 
@@ -352,7 +352,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].mms).toBeTruthy();
   });
 
-  it('skips users who have already completed the action', async () => {
+  it("skips users who have already completed the action", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(
@@ -361,7 +361,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('completed-action'),
+      name: uniqueName("completed-action"),
       eventDate: new Date(now - 30 * 60 * 1000),
     });
 
@@ -390,7 +390,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs).toHaveLength(0);
   });
 
-  it('sends reminders to eligible users who have not completed the action', async () => {
+  it("sends reminders to eligible users who have not completed the action", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(
@@ -399,7 +399,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('uncompleted-action'),
+      name: uniqueName("uncompleted-action"),
       eventDate: new Date(now - 50 * 60 * 1000),
     });
 
@@ -419,12 +419,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].user.id).toBe(user.id);
   });
 
-  it('does not send reminders to users without signed contracts', async () => {
+  it("does not send reminders to users without signed contracts", async () => {
     const now = Date.now();
     await clearUserContract(ctx.testUserId);
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('no-contract-action'),
+      name: uniqueName("no-contract-action"),
       eventDate: new Date(now - 20 * 60 * 1000),
     });
 
@@ -445,7 +445,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await resetPrimaryUser();
   });
 
-  it('blocks notifications for users with suspended contracts', async () => {
+  it("blocks notifications for users with suspended contracts", async () => {
     const now = Date.now();
     await setUserContractSuspended(
       ctx.testUserId,
@@ -454,7 +454,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('suspended-action'),
+      name: uniqueName("suspended-action"),
       eventDate: new Date(now - 30 * 60 * 1000),
     });
 
@@ -473,7 +473,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs.map((notif) => notif.user.id)).toHaveLength(0);
   });
 
-  it('excludes users who suspend mid-action from AllUncompleted reminders', async () => {
+  it("excludes users who suspend mid-action from AllUncompleted reminders", async () => {
     const now = Date.now();
     // User signed contract well before the action started
     // Action started 2 hours ago
@@ -488,15 +488,15 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('mid-action-suspend'),
+      name: uniqueName("mid-action-suspend"),
       eventDate: new Date(now - 2 * 60 * 60 * 1000), // action started 2 hours ago
     });
 
     // Create a deadline event so the full range check is triggered
     const deadlineEvent = await eventRepo.save(
       eventRepo.create({
-        title: 'Deadline',
-        description: 'desc',
+        title: "Deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 60 * 60 * 1000), // deadline 1 hour from now
         action,
@@ -519,16 +519,16 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs).toHaveLength(0);
   });
 
-  it('excludes users who suspend mid-action from Custom cohort reminders', async () => {
+  it("excludes users who suspend mid-action from Custom cohort reminders", async () => {
     const now = Date.now();
     const primaryUser = await getPrimaryUser();
 
     // Create a custom user who was active at action launch but suspended mid-action
     const suspendedCustomUser = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('custom-suspended')}@example.com`,
-        password: 'pass',
-        name: 'Suspended Custom User',
+        email: `${uniqueName("custom-suspended")}@example.com`,
+        password: "pass",
+        name: "Suspended Custom User",
         tags: primaryUser.tags,
         contractEvents: [
           {
@@ -544,7 +544,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
           } as ContractEvent,
         ],
         textNotifsForActions: true,
-        phoneNumber: '+14155550201',
+        phoneNumber: "+14155550201",
         emailNotifsForActions: false,
       }),
     );
@@ -554,15 +554,15 @@ describe('ActionEventNotifWorker (e2e)', () => {
     });
 
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('custom-cohort-mid-suspend'),
+      name: uniqueName("custom-cohort-mid-suspend"),
       eventDate: new Date(now - 2 * 60 * 60 * 1000), // action started 2 hours ago
     });
 
     // Create a deadline event so the full range check is triggered
     const deadlineEvent = await eventRepo.save(
       eventRepo.create({
-        title: 'Deadline',
-        description: 'desc',
+        title: "Deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 60 * 60 * 1000), // deadline 1 hour from now
         action,
@@ -588,7 +588,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await userRepo.delete({ id: suspendedCustomUser.id });
   });
 
-  it('excludes users away during the member-action window, even if back at send time', async () => {
+  it("excludes users away during the member-action window, even if back at send time", async () => {
     const now = Date.now();
     const primaryUser = await getPrimaryUser();
 
@@ -598,9 +598,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // alone would let this user through.
     const awayUser = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('custom-away')}@example.com`,
-        password: 'pass',
-        name: 'Away Custom User',
+        email: `${uniqueName("custom-away")}@example.com`,
+        password: "pass",
+        name: "Away Custom User",
         tags: primaryUser.tags,
         contractEvents: [
           {
@@ -611,7 +611,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
           } as ContractEvent,
         ],
         textNotifsForActions: true,
-        phoneNumber: '+14155550202',
+        phoneNumber: "+14155550202",
         emailNotifsForActions: false,
       }),
     );
@@ -629,13 +629,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     });
 
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('custom-cohort-away-mid-phase'),
+      name: uniqueName("custom-cohort-away-mid-phase"),
       eventDate: new Date(now - 2 * 60 * 60 * 1000), // phase started 2 hours ago
     });
     const deadlineEvent = await eventRepo.save(
       eventRepo.create({
-        title: 'Deadline',
-        description: 'desc',
+        title: "Deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 60 * 60 * 1000), // deadline 1 hour from now
         action,
@@ -661,7 +661,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await userRepo.delete({ id: awayUser.id });
   });
 
-  it('sends reminders to users whose away range misses the member-action window', async () => {
+  it("sends reminders to users whose away range misses the member-action window", async () => {
     const now = Date.now();
     const primaryUser = await getPrimaryUser();
 
@@ -669,9 +669,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // phase started, present throughout it — must still be reminded.
     const previouslyAwayUser = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('custom-was-away')}@example.com`,
-        password: 'pass',
-        name: 'Previously Away Custom User',
+        email: `${uniqueName("custom-was-away")}@example.com`,
+        password: "pass",
+        name: "Previously Away Custom User",
         tags: primaryUser.tags,
         contractEvents: [
           {
@@ -682,7 +682,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
           } as ContractEvent,
         ],
         textNotifsForActions: true,
-        phoneNumber: '+14155550203',
+        phoneNumber: "+14155550203",
         emailNotifsForActions: false,
       }),
     );
@@ -700,13 +700,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     });
 
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('custom-cohort-away-before-phase'),
+      name: uniqueName("custom-cohort-away-before-phase"),
       eventDate: new Date(now - 2 * 60 * 60 * 1000),
     });
     const deadlineEvent = await eventRepo.save(
       eventRepo.create({
-        title: 'Deadline',
-        description: 'desc',
+        title: "Deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 60 * 60 * 1000),
         action,
@@ -733,7 +733,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await userRepo.delete({ id: previouslyAwayUser.id });
   });
 
-  it('sends reminders only to members of a custom cohort', async () => {
+  it("sends reminders only to members of a custom cohort", async () => {
     const now = Date.now();
     const primaryUser = await getPrimaryUser();
     await setUserContractSigned(
@@ -743,9 +743,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const customUser = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('custom')}@example.com`,
-        password: 'pass',
-        name: 'Custom User',
+        email: `${uniqueName("custom")}@example.com`,
+        password: "pass",
+        name: "Custom User",
         tags: primaryUser.tags,
         contractEvents: [
           {
@@ -756,7 +756,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
           } as ContractEvent,
         ],
         textNotifsForActions: true,
-        phoneNumber: '+14155550200',
+        phoneNumber: "+14155550200",
         emailNotifsForActions: false,
       }),
     );
@@ -766,7 +766,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     });
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('custom-cohort-action'),
+      name: uniqueName("custom-cohort-action"),
       eventDate: new Date(now - 40 * 60 * 1000),
     });
 
@@ -789,20 +789,20 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await userRepo.delete({ id: customUser.id });
   });
 
-  it('targets only users in the configured group cohort', async () => {
+  it("targets only users in the configured group cohort", async () => {
     const now = Date.now();
     const tag = await tagRepo.save(
       tagRepo.create({
-        name: uniqueName('reminder-tag'),
-        description: 'Reminder cohort tag',
+        name: uniqueName("reminder-tag"),
+        description: "Reminder cohort tag",
       }),
     );
 
     const cohortUser = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('cohort')}@example.com`,
-        password: 'pass',
-        name: 'Cohort User',
+        email: `${uniqueName("cohort")}@example.com`,
+        password: "pass",
+        name: "Cohort User",
         tags: [tag, ctx.defaultTag],
         contractEvents: [
           {
@@ -813,7 +813,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
           } as ContractEvent,
         ],
         textNotifsForActions: true,
-        phoneNumber: '+14155550300',
+        phoneNumber: "+14155550300",
         emailNotifsForActions: false,
       }),
     );
@@ -823,7 +823,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     });
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('group-cohort-action'),
+      name: uniqueName("group-cohort-action"),
       eventDate: new Date(now - 35 * 60 * 1000),
     });
 
@@ -846,7 +846,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await userRepo.delete({ id: cohortUser.id });
   });
 
-  it('respects deadlines when scheduling reminders from a deadline offset', async () => {
+  it("respects deadlines when scheduling reminders from a deadline offset", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(
@@ -855,14 +855,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('deadline-action'),
+      name: uniqueName("deadline-action"),
       eventDate: new Date(now - 2 * 60 * 60 * 1000),
     });
 
     const deadlineEvent = await eventRepo.save(
       eventRepo.create({
-        title: 'Deadline event',
-        description: 'desc',
+        title: "Deadline event",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 30 * 60 * 1000),
         action,
@@ -886,7 +886,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].user.id).toBe(user.id);
   });
 
-  it('schedules reminders within ranges based on user preference', async () => {
+  it("schedules reminders within ranges based on user preference", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     const preferredStart = new Date(now - 4 * 60 * 1000);
@@ -894,7 +894,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
       preferredStart.toISOString(),
     );
     const preferredTime = preferredInstant
-      .toZonedDateTimeISO('UTC')
+      .toZonedDateTimeISO("UTC")
       .toPlainTime();
 
     await setUserContractSigned(
@@ -902,12 +902,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
       new Date(now - 6 * 24 * 60 * 60 * 1000),
     );
     await userRepo.update(user.id, {
-      timeZone: 'UTC',
+      timeZone: "UTC",
       preferredReminderTime: preferredTime,
     });
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('range-action'),
+      name: uniqueName("range-action"),
       eventDate: new Date(now - 3 * 60 * 60 * 1000),
     });
 
@@ -929,13 +929,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].mms).toBeTruthy();
   });
 
-  it('aligns relative range reminders with deadline offsets', async () => {
+  it("aligns relative range reminders with deadline offsets", async () => {
     const now = Date.now();
     const sendTime = new Date(now - 5 * 60 * 1000);
 
     const user = await getPrimaryUser();
     const preferredTime = Temporal.Instant.from(sendTime.toISOString())
-      .toZonedDateTimeISO('UTC')
+      .toZonedDateTimeISO("UTC")
       .toPlainTime();
 
     await setUserContractSigned(
@@ -943,12 +943,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
       new Date(now - 7 * 24 * 60 * 60 * 1000),
     );
     await userRepo.update(user.id, {
-      timeZone: 'UTC',
+      timeZone: "UTC",
       preferredReminderTime: preferredTime,
     });
 
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('relative-range-action'),
+      name: uniqueName("relative-range-action"),
       eventDate: new Date(now - 6 * 60 * 60 * 1000),
     });
 
@@ -956,8 +956,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const deadlineEvent = await eventRepo.save(
       eventRepo.create({
-        title: 'Relative deadline',
-        description: 'desc',
+        title: "Relative deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(sendTime.getTime() + offsetSeconds * 1000),
         action,
@@ -983,7 +983,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].mms).toBeTruthy();
   });
 
-  it('sends at a dependency action deadline when timingAnchorEvent is set, even with the own deadline far away', async () => {
+  it("sends at a dependency action deadline when timingAnchorEvent is set, even with the own deadline far away", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(
@@ -993,13 +993,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     // dependency action A whose deadline just passed
     const { action: dependencyAction } = await createActionWithMemberEvent({
-      name: uniqueName('dependency-action'),
+      name: uniqueName("dependency-action"),
       eventDate: new Date(now - 3 * 24 * 60 * 60 * 1000),
     });
     const dependencyDeadline = await eventRepo.save(
       eventRepo.create({
-        title: 'Dependency deadline',
-        description: 'desc',
+        title: "Dependency deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now - 5 * 60 * 1000),
         action: dependencyAction,
@@ -1008,13 +1008,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     // action B with its own deadline far outside the send window
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('anchored-action'),
+      name: uniqueName("anchored-action"),
       eventDate: new Date(now - 2 * 60 * 60 * 1000),
     });
     const ownDeadline = await eventRepo.save(
       eventRepo.create({
-        title: 'Own deadline',
-        description: 'desc',
+        title: "Own deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 10 * 24 * 60 * 60 * 1000),
         action,
@@ -1039,13 +1039,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].user.id).toBe(user.id);
   });
 
-  it('anchors relative range windows to timingAnchorEvent when set', async () => {
+  it("anchors relative range windows to timingAnchorEvent when set", async () => {
     const now = Date.now();
     const sendTime = new Date(now - 5 * 60 * 1000);
 
     const user = await getPrimaryUser();
     const preferredTime = Temporal.Instant.from(sendTime.toISOString())
-      .toZonedDateTimeISO('UTC')
+      .toZonedDateTimeISO("UTC")
       .toPlainTime();
 
     await setUserContractSigned(
@@ -1053,20 +1053,20 @@ describe('ActionEventNotifWorker (e2e)', () => {
       new Date(now - 7 * 24 * 60 * 60 * 1000),
     );
     await userRepo.update(user.id, {
-      timeZone: 'UTC',
+      timeZone: "UTC",
       preferredReminderTime: preferredTime,
     });
 
     const { action: dependencyAction } = await createActionWithMemberEvent({
-      name: uniqueName('anchor-range-dependency'),
+      name: uniqueName("anchor-range-dependency"),
       eventDate: new Date(now - 3 * 24 * 60 * 60 * 1000),
     });
 
     const offsetSeconds = 2 * 60 * 60;
     const anchorEvent = await eventRepo.save(
       eventRepo.create({
-        title: 'Anchor deadline',
-        description: 'desc',
+        title: "Anchor deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(sendTime.getTime() + offsetSeconds * 1000),
         action: dependencyAction,
@@ -1074,13 +1074,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('anchor-range-action'),
+      name: uniqueName("anchor-range-action"),
       eventDate: new Date(now - 6 * 60 * 60 * 1000),
     });
     const ownDeadline = await eventRepo.save(
       eventRepo.create({
-        title: 'Own faraway deadline',
-        description: 'desc',
+        title: "Own faraway deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 10 * 24 * 60 * 60 * 1000),
         action,
@@ -1106,13 +1106,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].user.id).toBe(user.id);
   });
 
-  it('skips users already notified via any sibling group when excludePreviouslyNotified is set', async () => {
+  it("skips users already notified via any sibling group when excludePreviouslyNotified is set", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('exclude-notified-action'),
+      name: uniqueName("exclude-notified-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
 
@@ -1152,13 +1152,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs).toHaveLength(0);
   });
 
-  it('still skips previously notified users after the notifying group is deleted', async () => {
+  it("still skips previously notified users after the notifying group is deleted", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('deleted-group-action'),
+      name: uniqueName("deleted-group-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
 
@@ -1200,13 +1200,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs).toHaveLength(0);
   });
 
-  it('skips the catch-up when a sibling group sends in the same dispatch cycle', async () => {
+  it("skips the catch-up when a sibling group sends in the same dispatch cycle", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('same-cycle-action'),
+      name: uniqueName("same-cycle-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
 
@@ -1236,13 +1236,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(catchUpNotifs).toHaveLength(0);
   });
 
-  it('dispatches the sibling before the catch-up when both are due at the same instant', async () => {
+  it("dispatches the sibling before the catch-up when both are due at the same instant", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('same-instant-action'),
+      name: uniqueName("same-instant-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
 
@@ -1274,13 +1274,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(catchUpNotifs).toHaveLength(0);
   });
 
-  it('still sends the catch-up when the sibling plan in the same cycle never actually sent', async () => {
+  it("still sends the catch-up when the sibling plan in the same cycle never actually sent", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('failed-sibling-action'),
+      name: uniqueName("failed-sibling-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
 
@@ -1320,7 +1320,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(catchUpNotifs[0].user.id).toBe(user.id);
   });
 
-  it('does not count a group-leads nudge as personally notifying the leader', async () => {
+  it("does not count a group-leads nudge as personally notifying the leader", async () => {
     const now = Date.now();
 
     const createSignedUser = async (
@@ -1331,9 +1331,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
       userRepo.save(
         userRepo.create({
           email: `${uniqueName(
-            `catchup-${label.toLowerCase().replace(/\s+/g, '-')}`,
+            `catchup-${label.toLowerCase().replace(/\s+/g, "-")}`,
           )}@example.com`,
-          password: 'pass',
+          password: "pass",
           name: label,
           tags: [ctx.defaultTag],
           contractEvents: [
@@ -1352,23 +1352,23 @@ describe('ActionEventNotifWorker (e2e)', () => {
         }),
       );
 
-    const leader = await createSignedUser('Leader Also Member', '6301', {
+    const leader = await createSignedUser("Leader Also Member", "6301", {
       remindAboutUncompletedGroupMembers: true,
     });
-    const member = await createSignedUser('Member Behind', '6302', {
+    const member = await createSignedUser("Member Behind", "6302", {
       textNotifsForActions: false,
     });
     const community = await communityRepo.save(
       communityRepo.create({
-        name: uniqueName('community-catch-up'),
-        description: 'Community for catch-up exclusion',
+        name: uniqueName("community-catch-up"),
+        description: "Community for catch-up exclusion",
         leaders: [leader],
         users: [leader, member],
       }),
     );
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('group-leads-catch-up-action'),
+      name: uniqueName("group-leads-catch-up-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
 
@@ -1406,13 +1406,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await communityRepo.delete([community.id]);
   });
 
-  it('still sends when the prior sent notif belongs to a different event and excludePreviouslyNotified is set', async () => {
+  it("still sends when the prior sent notif belongs to a different event and excludePreviouslyNotified is set", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent: otherEvent } = await createActionWithMemberEvent({
-      name: uniqueName('other-event-action'),
+      name: uniqueName("other-event-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
     const otherGroup = await createReminderGroup(
@@ -1435,7 +1435,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('unrelated-notified-action'),
+      name: uniqueName("unrelated-notified-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
     const catchUpGroup = await createReminderGroup(
@@ -1455,13 +1455,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].user.id).toBe(user.id);
   });
 
-  it('does not skip sibling-group-notified users when excludePreviouslyNotified is false', async () => {
+  it("does not skip sibling-group-notified users when excludePreviouslyNotified is false", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('flag-off-action'),
+      name: uniqueName("flag-off-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
 
@@ -1501,24 +1501,24 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].user.id).toBe(user.id);
   });
 
-  it('derives reminder anchor candidates from form-response and completed-action cohort conditions', async () => {
+  it("derives reminder anchor candidates from form-response and completed-action cohort conditions", async () => {
     const now = Date.now();
     const actionsService = ctx.app.get(ActionsService);
 
     // dependency A: owns the form (taskFormId) and has a deadline
     const { form } = await createFormWithSnapshot(ctx.dataSource, {
-      title: uniqueName('dependency-form'),
+      title: uniqueName("dependency-form"),
       schema: { fields: [] },
     });
     const { action: formAction } = await createActionWithMemberEvent({
-      name: uniqueName('form-owner-action'),
+      name: uniqueName("form-owner-action"),
       eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
     });
     await actionRepo.update(formAction.id, { taskFormId: form.id });
     const formActionDeadline = await eventRepo.save(
       eventRepo.create({
-        title: 'Form action deadline',
-        description: 'desc',
+        title: "Form action deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 24 * 60 * 60 * 1000),
         action: formAction,
@@ -1527,13 +1527,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     // dependency B: referenced via CompletedAction, has a deadline
     const { action: completedDep } = await createActionWithMemberEvent({
-      name: uniqueName('completed-dependency'),
+      name: uniqueName("completed-dependency"),
       eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
     });
     const completedDepDeadline = await eventRepo.save(
       eventRepo.create({
-        title: 'Completed dependency deadline',
-        description: 'desc',
+        title: "Completed dependency deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 2 * 24 * 60 * 60 * 1000),
         action: completedDep,
@@ -1542,17 +1542,17 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     // dependency C: referenced but has no deadline event → dropped
     const { action: noDeadlineDep } = await createActionWithMemberEvent({
-      name: uniqueName('no-deadline-dependency'),
+      name: uniqueName("no-deadline-dependency"),
       eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
     });
 
     // dependency D: owns its form via an action_form_variant, has a deadline
     const { form: variantForm } = await createFormWithSnapshot(ctx.dataSource, {
-      title: uniqueName('variant-form'),
+      title: uniqueName("variant-form"),
       schema: { fields: [] },
     });
     const { action: variantAction } = await createActionWithMemberEvent({
-      name: uniqueName('variant-owner-action'),
+      name: uniqueName("variant-owner-action"),
       eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
     });
     const variantRepo = ctx.dataSource.getRepository(ActionFormVariant);
@@ -1560,14 +1560,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
       variantRepo.create({
         actionId: variantAction.id,
         formId: variantForm.id,
-        name: 'Variant A',
+        name: "Variant A",
         splitValue: 0.5,
       }),
     );
     const variantActionDeadline = await eventRepo.save(
       eventRepo.create({
-        title: 'Variant action deadline',
-        description: 'desc',
+        title: "Variant action deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 3 * 24 * 60 * 60 * 1000),
         action: variantAction,
@@ -1576,17 +1576,17 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const { action: dependentAction, memberEvent } =
       await createActionWithMemberEvent({
-        name: uniqueName('dependent-action'),
+        name: uniqueName("dependent-action"),
         eventDate: new Date(now - 60 * 60 * 1000),
       });
     await actionRepo.update(dependentAction.id, {
       cohortExpression: {
-        type: 'AND',
+        type: "AND",
         children: [
-          { type: 'FormFieldValue', formId: form.id, fieldId: 'q1' },
-          { type: 'FormFieldValue', formId: variantForm.id, fieldId: 'q1' },
-          { type: 'CompletedAction', actionId: completedDep.id },
-          { type: 'CompletedAction', actionId: noDeadlineDep.id },
+          { type: "FormFieldValue", formId: form.id, fieldId: "q1" },
+          { type: "FormFieldValue", formId: variantForm.id, fieldId: "q1" },
+          { type: "CompletedAction", actionId: completedDep.id },
+          { type: "CompletedAction", actionId: noDeadlineDep.id },
         ],
       },
     });
@@ -1610,18 +1610,18 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(byActionId.has(dependentAction.id)).toBe(false);
   });
 
-  it('only accepts a timing anchor that is a dependency deadline of the action', async () => {
+  it("only accepts a timing anchor that is a dependency deadline of the action", async () => {
     const now = Date.now();
     const reminderService = ctx.app.get(ActionEventReminderService);
 
     const { action: dependencyAction } = await createActionWithMemberEvent({
-      name: uniqueName('anchor-validate-dependency'),
+      name: uniqueName("anchor-validate-dependency"),
       eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
     });
     const dependencyDeadline = await eventRepo.save(
       eventRepo.create({
-        title: 'Dependency deadline',
-        description: 'desc',
+        title: "Dependency deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 24 * 60 * 60 * 1000),
         action: dependencyAction,
@@ -1630,13 +1630,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     // real deadline event, but of an action the cohort doesn't depend on
     const { action: unrelatedAction } = await createActionWithMemberEvent({
-      name: uniqueName('anchor-validate-unrelated'),
+      name: uniqueName("anchor-validate-unrelated"),
       eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
     });
     const unrelatedDeadline = await eventRepo.save(
       eventRepo.create({
-        title: 'Unrelated deadline',
-        description: 'desc',
+        title: "Unrelated deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 24 * 60 * 60 * 1000),
         action: unrelatedAction,
@@ -1645,25 +1645,25 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const { action: dependentAction, memberEvent } =
       await createActionWithMemberEvent({
-        name: uniqueName('anchor-validate-action'),
+        name: uniqueName("anchor-validate-action"),
         eventDate: new Date(now - 60 * 60 * 1000),
       });
     await actionRepo.update(dependentAction.id, {
       cohortExpression: {
-        type: 'CompletedAction',
+        type: "CompletedAction",
         actionId: dependencyAction.id,
       },
     });
 
     const baseDto = {
-      name: 'Anchor validation group',
+      name: "Anchor validation group",
       timingMode: ReminderGroupTimingMode.FromDeadline,
       cohortType: ReminderCohortType.AllUncompleted,
       sendAtSecondsFromDeadline: 0,
-      emailMessage: 'msg',
-      emailSubject: 'subject',
-      textMessage: 'text',
-      pushMessage: 'push',
+      emailMessage: "msg",
+      emailSubject: "subject",
+      textMessage: "text",
+      pushMessage: "push",
       useSuiteTaskCount: false,
       excludeOptionalActions: false,
       excludePreviouslyNotified: true,
@@ -1675,7 +1675,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
         timingAnchorEventId: unrelatedDeadline.id,
       } as CreateReminderGroupDto),
     ).rejects.toThrow(
-      'Timing anchor event must be the deadline of a cohort dependency of the action or its suite',
+      "Timing anchor event must be the deadline of a cohort dependency of the action or its suite",
     );
 
     const created = await reminderService.createReminderGroup(memberEvent.id, {
@@ -1695,29 +1695,29 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(reloaded.timingAnchorEvent).toBeNull();
   });
 
-  it('only notifies about the suite tasks the user has not been notified about yet', async () => {
+  it("only notifies about the suite tasks the user has not been notified about yet", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const suite = await actionSuiteRepo.save(
-      actionSuiteRepo.create({ name: uniqueName('catch-up-suite') }),
+      actionSuiteRepo.create({ name: uniqueName("catch-up-suite") }),
     );
     const eventDate = new Date(now - 60 * 60 * 1000);
     const { action: actionA, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('catch-up-task-a'),
+      name: uniqueName("catch-up-task-a"),
       eventDate,
       suite,
       suiteManaged: true,
     });
     const { action: actionB } = await createActionWithMemberEvent({
-      name: uniqueName('catch-up-task-b'),
+      name: uniqueName("catch-up-task-b"),
       eventDate,
       suite,
       suiteManaged: true,
     });
     const { action: actionC } = await createActionWithMemberEvent({
-      name: uniqueName('catch-up-task-c'),
+      name: uniqueName("catch-up-task-c"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -1771,24 +1771,24 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifs[0].notifiedActionIds).toEqual([actionC.id]);
   });
 
-  it('previews a suite catch-up with the full suite scope, not just the member action', async () => {
+  it("previews a suite catch-up with the full suite scope, not just the member action", async () => {
     const now = Date.now();
     const actionsService = ctx.app.get(ActionsService);
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const suite = await actionSuiteRepo.save(
-      actionSuiteRepo.create({ name: uniqueName('preview-scope-suite') }),
+      actionSuiteRepo.create({ name: uniqueName("preview-scope-suite") }),
     );
     const eventDate = new Date(now - 60 * 60 * 1000);
     const { action: actionA, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('preview-scope-task-a'),
+      name: uniqueName("preview-scope-task-a"),
       eventDate,
       suite,
       suiteManaged: true,
     });
     const { action: actionB } = await createActionWithMemberEvent({
-      name: uniqueName('preview-scope-task-b'),
+      name: uniqueName("preview-scope-task-b"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -1818,14 +1818,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const catchUpDto = {
-      name: 'Tentative suite catch-up',
+      name: "Tentative suite catch-up",
       timingMode: ReminderGroupTimingMode.Absolute,
       sendAtAbsolute: new Date(now - 5 * 60 * 1000),
       cohortType: ReminderCohortType.AllUncompleted,
-      emailMessage: 'msg',
-      emailSubject: 'subject',
-      textMessage: 'text',
-      pushMessage: 'push',
+      emailMessage: "msg",
+      emailSubject: "subject",
+      textMessage: "text",
+      pushMessage: "push",
       suiteId: suite.id,
       useSuiteTaskCount: true,
       excludeOptionalActions: false,
@@ -1851,23 +1851,23 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
   });
 
-  it('records only in-scope tasks, so a targeted reminder does not suppress a later catch-up', async () => {
+  it("records only in-scope tasks, so a targeted reminder does not suppress a later catch-up", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
 
     const suite = await actionSuiteRepo.save(
-      actionSuiteRepo.create({ name: uniqueName('scope-suite') }),
+      actionSuiteRepo.create({ name: uniqueName("scope-suite") }),
     );
     const eventDate = new Date(now - 60 * 60 * 1000);
     const { action: actionA, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('scope-task-a'),
+      name: uniqueName("scope-task-a"),
       eventDate,
       suite,
       suiteManaged: true,
     });
     const { action: actionB } = await createActionWithMemberEvent({
-      name: uniqueName('scope-task-b'),
+      name: uniqueName("scope-task-b"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -1875,7 +1875,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // uncompleted task outside the suite: it is on the user's global task
     // list, but never in scope for groups on this event
     await createActionWithMemberEvent({
-      name: uniqueName('scope-unrelated'),
+      name: uniqueName("scope-unrelated"),
       eventDate,
     });
     const suiteWithActions = await actionSuiteRepo.findOneOrFail({
@@ -1921,19 +1921,19 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(catchUpNotifs[0].notifiedActionIds).toEqual([actionB.id]);
   });
 
-  it('derives anchor candidates from every suite action and never from actions inside the suite', async () => {
+  it("derives anchor candidates from every suite action and never from actions inside the suite", async () => {
     const now = Date.now();
     const actionsService = ctx.app.get(ActionsService);
 
     // external dependency with a deadline
     const { action: externalDep } = await createActionWithMemberEvent({
-      name: uniqueName('suite-external-dep'),
+      name: uniqueName("suite-external-dep"),
       eventDate: new Date(now - 2 * 24 * 60 * 60 * 1000),
     });
     const externalDepDeadline = await eventRepo.save(
       eventRepo.create({
-        title: 'External dependency deadline',
-        description: 'desc',
+        title: "External dependency deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 24 * 60 * 60 * 1000),
         action: externalDep,
@@ -1941,18 +1941,18 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const suite = await actionSuiteRepo.save(
-      actionSuiteRepo.create({ name: uniqueName('anchor-suite') }),
+      actionSuiteRepo.create({ name: uniqueName("anchor-suite") }),
     );
     const eventDate = new Date(now - 60 * 60 * 1000);
     const { action: firstAction, memberEvent } =
       await createActionWithMemberEvent({
-        name: uniqueName('anchor-suite-first'),
+        name: uniqueName("anchor-suite-first"),
         eventDate,
         suite,
         suiteManaged: true,
       });
     const { action: secondAction } = await createActionWithMemberEvent({
-      name: uniqueName('anchor-suite-second'),
+      name: uniqueName("anchor-suite-second"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -1960,8 +1960,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // give the in-suite dependency a deadline so its exclusion is meaningful
     await eventRepo.save(
       eventRepo.create({
-        title: 'First action deadline',
-        description: 'desc',
+        title: "First action deadline",
+        description: "desc",
         newStatus: ActionStatus.Resolution,
         date: new Date(now + 24 * 60 * 60 * 1000),
         action: firstAction,
@@ -1971,10 +1971,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // own action keeps its plain tag cohort
     await actionRepo.update(secondAction.id, {
       cohortExpression: {
-        type: 'AND',
+        type: "AND",
         children: [
-          { type: 'CompletedAction', actionId: externalDep.id },
-          { type: 'CompletedAction', actionId: firstAction.id },
+          { type: "CompletedAction", actionId: externalDep.id },
+          { type: "CompletedAction", actionId: firstAction.id },
         ],
       },
     });
@@ -1995,13 +1995,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     ).toBe(externalDepDeadline.id);
   });
 
-  it('sends suite reminders to users missing any suite actions', async () => {
+  it("sends suite reminders to users missing any suite actions", async () => {
     const now = Date.now();
     await clearUserContract(ctx.testUserId);
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
-        name: uniqueName('suite-reminder'),
+        name: uniqueName("suite-reminder"),
       }),
     );
 
@@ -2009,14 +2009,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const { action: firstAction, memberEvent } =
       await createActionWithMemberEvent({
-        name: uniqueName('suite-action-one'),
+        name: uniqueName("suite-action-one"),
         eventDate,
         suite,
         suiteManaged: true,
       });
 
     const { action: secondAction } = await createActionWithMemberEvent({
-      name: uniqueName('suite-action-two'),
+      name: uniqueName("suite-action-two"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -2034,7 +2034,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
       userRepo.save(
         userRepo.create({
           email: `${uniqueName(`suite-${label}`)}@example.com`,
-          password: 'pass',
+          password: "pass",
           name: `Suite ${label}`,
           tags: [ctx.defaultTag],
           contractEvents: [
@@ -2054,10 +2054,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const [noCompletion, firstOnly, secondOnly, bothCompleted] =
       await Promise.all([
-        createSuiteUser('none', '2001'),
-        createSuiteUser('first', '2002'),
-        createSuiteUser('second', '2003'),
-        createSuiteUser('both', '2004'),
+        createSuiteUser("none", "2001"),
+        createSuiteUser("first", "2002"),
+        createSuiteUser("second", "2003"),
+        createSuiteUser("both", "2004"),
       ]);
 
     await recordCompletion(firstOnly, firstAction);
@@ -2094,19 +2094,19 @@ describe('ActionEventNotifWorker (e2e)', () => {
     ]);
   });
 
-  it('does not send suite reminders when users completed every suite action', async () => {
+  it("does not send suite reminders when users completed every suite action", async () => {
     const now = Date.now();
     await clearUserContract(ctx.testUserId);
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
-        name: uniqueName('suite-reminder-none'),
+        name: uniqueName("suite-reminder-none"),
       }),
     );
 
     const newtag = tagRepo.create({
-      name: uniqueName('suite-reminder-none-tag'),
-      description: 'Suite reminder none tag',
+      name: uniqueName("suite-reminder-none-tag"),
+      description: "Suite reminder none tag",
     });
     const savedTag = await tagRepo.save(newtag);
 
@@ -2114,14 +2114,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const { action: firstAction, memberEvent } =
       await createActionWithMemberEvent({
-        name: uniqueName('suite-reminder-none-one'),
+        name: uniqueName("suite-reminder-none-one"),
         eventDate,
         suite,
         suiteManaged: true,
       });
 
     const { action: secondAction } = await createActionWithMemberEvent({
-      name: uniqueName('suite-reminder-none-two'),
+      name: uniqueName("suite-reminder-none-two"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -2134,9 +2134,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const completeUser = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('suite-complete')}@example.com`,
-        password: 'pass',
-        name: 'Suite Completer',
+        email: `${uniqueName("suite-complete")}@example.com`,
+        password: "pass",
+        name: "Suite Completer",
         tags: [savedTag],
         contractEvents: [
           {
@@ -2147,7 +2147,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
           } as ContractEvent,
         ],
         textNotifsForActions: true,
-        phoneNumber: '+14155552005',
+        phoneNumber: "+14155552005",
         emailNotifsForActions: false,
         turnedOffAllNotifs: false,
       }),
@@ -2174,12 +2174,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await userRepo.delete({ id: completeUser.id });
   });
 
-  it('notifies group leaders about suite gaps and fills #{nmembers}', async () => {
+  it("notifies group leaders about suite gaps and fills #{nmembers}", async () => {
     const now = Date.now();
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
-        name: uniqueName('leader-suite'),
+        name: uniqueName("leader-suite"),
       }),
     );
 
@@ -2187,14 +2187,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const { action: firstAction, memberEvent } =
       await createActionWithMemberEvent({
-        name: uniqueName('leader-suite-one'),
+        name: uniqueName("leader-suite-one"),
         eventDate,
         suite,
         suiteManaged: true,
       });
 
     const { action: secondAction } = await createActionWithMemberEvent({
-      name: uniqueName('leader-suite-two'),
+      name: uniqueName("leader-suite-two"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -2213,9 +2213,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
       userRepo.save(
         userRepo.create({
           email: `${uniqueName(
-            `leader-${label.toLowerCase().replace(/\s+/g, '-')}`,
+            `leader-${label.toLowerCase().replace(/\s+/g, "-")}`,
           )}@example.com`,
-          password: 'pass',
+          password: "pass",
           name: label,
           tags: [ctx.defaultTag],
           contractEvents: [
@@ -2234,17 +2234,17 @@ describe('ActionEventNotifWorker (e2e)', () => {
         }),
       );
 
-    const leaderWithGaps = await createSignedUser('Lead With Gaps', '6101', {
+    const leaderWithGaps = await createSignedUser("Lead With Gaps", "6101", {
       remindAboutUncompletedGroupMembers: true,
     });
-    const leaderComplete = await createSignedUser('Lead Complete', '6102', {
+    const leaderComplete = await createSignedUser("Lead Complete", "6102", {
       remindAboutUncompletedGroupMembers: true,
     });
 
     const communityWithGaps = await communityRepo.save(
       communityRepo.create({
-        name: uniqueName('community-gaps'),
-        description: 'Community with uncompleted members',
+        name: uniqueName("community-gaps"),
+        description: "Community with uncompleted members",
         leaders: [leaderWithGaps],
         users: [leaderWithGaps],
       }),
@@ -2252,16 +2252,16 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const communityComplete = await communityRepo.save(
       communityRepo.create({
-        name: uniqueName('community-complete'),
-        description: 'Community with completed members',
+        name: uniqueName("community-complete"),
+        description: "Community with completed members",
         leaders: [leaderComplete],
         users: [leaderComplete],
       }),
     );
 
     const memberWithOneCompletion = await createSignedUser(
-      'Member One Completion',
-      '6103',
+      "Member One Completion",
+      "6103",
       {
         communities: [communityWithGaps],
         textNotifsForActions: false,
@@ -2269,8 +2269,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const memberWithNoCompletion = await createSignedUser(
-      'Member No Completion',
-      '6104',
+      "Member No Completion",
+      "6104",
       {
         communities: [communityWithGaps],
         textNotifsForActions: false,
@@ -2278,8 +2278,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const completeMemberOne = await createSignedUser(
-      'Member Complete One',
-      '6105',
+      "Member Complete One",
+      "6105",
       {
         communities: [communityComplete],
         textNotifsForActions: false,
@@ -2287,8 +2287,8 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const completeMemberTwo = await createSignedUser(
-      'Member Complete Two',
-      '6106',
+      "Member Complete Two",
+      "6106",
       {
         communities: [communityComplete],
         textNotifsForActions: false,
@@ -2312,7 +2312,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
       {
         sendAtAbsolute: new Date(now - 5 * 60 * 1000),
         actionSuite: suiteWithActions,
-        textMessage: 'Leader reminder: #{nmembers} members need help.',
+        textMessage: "Leader reminder: #{nmembers} members need help.",
       },
     );
 
@@ -2328,7 +2328,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const leaderWithGapsForText = await userRepo.findOneOrFail({
       where: { id: leaderWithGaps.id },
-      loadRelationIds: { relations: ['leaderOf'] },
+      loadRelationIds: { relations: ["leaderOf"] },
     });
     if (
       !leaderWithGapsForText.leaderOfIds ||
@@ -2346,11 +2346,11 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const leaderText = await worker.processCustomReminderText(
       reminderGroup.textMessage,
       leaderPlan,
-      'cid-group-leads',
+      "cid-group-leads",
       leaderTasks,
     );
 
-    expect(leaderText).toBe('Leader reminder: 2 members need help.');
+    expect(leaderText).toBe("Leader reminder: 2 members need help.");
 
     await userRepo.delete([
       leaderWithGaps.id,
@@ -2363,26 +2363,26 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await communityRepo.delete([communityWithGaps.id, communityComplete.id]);
   });
 
-  it('excludes the leader from #{nmembers} counts', async () => {
+  it("excludes the leader from #{nmembers} counts", async () => {
     const now = Date.now();
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
-        name: uniqueName('leader-count-suite'),
+        name: uniqueName("leader-count-suite"),
       }),
     );
 
     const eventDate = new Date(now - 60 * 60 * 1000);
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('leader-count-action'),
+      name: uniqueName("leader-count-action"),
       eventDate,
       suite,
       suiteManaged: true,
     });
 
     await createActionWithMemberEvent({
-      name: uniqueName('leader-count-action-two'),
+      name: uniqueName("leader-count-action-two"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -2401,9 +2401,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
       userRepo.save(
         userRepo.create({
           email: `${uniqueName(
-            `leader-count-${label.toLowerCase().replace(/\s+/g, '-')}`,
+            `leader-count-${label.toLowerCase().replace(/\s+/g, "-")}`,
           )}@example.com`,
-          password: 'pass',
+          password: "pass",
           name: label,
           tags: [ctx.defaultTag],
           contractEvents: [
@@ -2422,17 +2422,17 @@ describe('ActionEventNotifWorker (e2e)', () => {
         }),
       );
 
-    const leader = await createSignedUser('Leader Count', '6201', {
+    const leader = await createSignedUser("Leader Count", "6201", {
       remindAboutUncompletedGroupMembers: true,
     });
-    const member = await createSignedUser('Member Count', '6202', {
+    const member = await createSignedUser("Member Count", "6202", {
       textNotifsForActions: false,
     });
 
     const community = await communityRepo.save(
       communityRepo.create({
-        name: uniqueName('community-leader-count'),
-        description: 'Community for leader count',
+        name: uniqueName("community-leader-count"),
+        description: "Community for leader count",
         leaders: [leader],
         users: [leader, member],
       }),
@@ -2445,7 +2445,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
       {
         sendAtAbsolute: new Date(now - 5 * 60 * 1000),
         actionSuite: suiteWithActions,
-        textMessage: 'Leaders need to help #{nmembers} members.',
+        textMessage: "Leaders need to help #{nmembers} members.",
       },
     );
 
@@ -2456,7 +2456,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const leaderForText = await userRepo.findOneOrFail({
       where: { id: leader.id },
-      loadRelationIds: { relations: ['leaderOf'] },
+      loadRelationIds: { relations: ["leaderOf"] },
     });
     if (!leaderForText.leaderOfIds || leaderForText.leaderOfIds.length === 0) {
       leaderForText.leaderOfIds = [community.id];
@@ -2471,11 +2471,11 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const leaderText = await worker.processCustomReminderText(
       reminderGroup.textMessage,
       leaderPlan2,
-      'cid-leader-count',
+      "cid-leader-count",
       leaderTasks2,
     );
 
-    expect(leaderText).toBe('Leaders need to help 1 members.');
+    expect(leaderText).toBe("Leaders need to help 1 members.");
 
     await userRepo.update(leader.id, {
       remindAboutUncompletedGroupMembers: false,
@@ -2488,7 +2488,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
       {
         sendAtAbsolute: new Date(now - 4 * 60 * 1000),
         actionSuite: suiteWithActions,
-        textMessage: 'Leaders need to help #{nmembers} members.',
+        textMessage: "Leaders need to help #{nmembers} members.",
       },
     );
 
@@ -2503,26 +2503,26 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await communityRepo.delete({ id: community.id });
   });
 
-  it('uses suite-aware #{n} and #{tasktime} counts when configured', async () => {
+  it("uses suite-aware #{n} and #{tasktime} counts when configured", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
-        name: uniqueName('suite-count-primary'),
+        name: uniqueName("suite-count-primary"),
       }),
     );
 
     const otherSuite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
-        name: uniqueName('suite-count-secondary'),
+        name: uniqueName("suite-count-secondary"),
       }),
     );
 
     const eventDate = new Date(now - 30 * 60 * 1000);
 
     const { memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('suite-count-one'),
+      name: uniqueName("suite-count-one"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -2530,7 +2530,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     });
 
     await createActionWithMemberEvent({
-      name: uniqueName('suite-count-two'),
+      name: uniqueName("suite-count-two"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -2538,7 +2538,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     });
 
     await createActionWithMemberEvent({
-      name: uniqueName('suite-count-other-suite'),
+      name: uniqueName("suite-count-other-suite"),
       eventDate,
       suite: otherSuite,
       suiteManaged: true,
@@ -2558,9 +2558,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
         sendAtAbsolute: new Date(now - 5 * 60 * 1000),
         actionSuite: suiteWithActions,
         useSuiteTaskCount: true,
-        textMessage: 'Suite reminder #{n} with #{tasktime}',
-        emailMessage: 'Suite reminder #{n}',
-        emailSubject: 'Suite reminder #{n}',
+        textMessage: "Suite reminder #{n} with #{tasktime}",
+        emailMessage: "Suite reminder #{n}",
+        emailSubject: "Suite reminder #{n}",
       },
     );
 
@@ -2573,11 +2573,11 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const suiteText = await worker.processCustomReminderText(
       suiteReminderGroup.textMessage,
       suitePlan,
-      'cid-suite-count',
+      "cid-suite-count",
       suiteTasks,
     );
 
-    expect(suiteText).toBe('Suite reminder 2 with 22 minutes');
+    expect(suiteText).toBe("Suite reminder 2 with 22 minutes");
 
     const totalReminderGroup = await createReminderGroup(
       memberEvent,
@@ -2587,9 +2587,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
         sendAtAbsolute: new Date(now - 4 * 60 * 1000),
         actionSuite: suiteWithActions,
         useSuiteTaskCount: false,
-        textMessage: 'Total reminder #{n}',
-        emailMessage: 'Total reminder #{n}',
-        emailSubject: 'Total reminder #{n}',
+        textMessage: "Total reminder #{n}",
+        emailMessage: "Total reminder #{n}",
+        emailSubject: "Total reminder #{n}",
       },
     );
 
@@ -2602,23 +2602,23 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const totalText = await worker.processCustomReminderText(
       totalReminderGroup.textMessage,
       totalPlan,
-      'cid-total-count',
+      "cid-total-count",
       totalTasks,
     );
 
-    expect(totalText).toBe('Total reminder 3');
+    expect(totalText).toBe("Total reminder 3");
   });
 
-  it('replaces placeholders in custom reminder text', async () => {
+  it("replaces placeholders in custom reminder text", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 24 * 60 * 60 * 1000));
     await userRepo.update(user.id, {
-      name: 'Reminder Tester',
+      name: "Reminder Tester",
     });
 
     const { action, memberEvent } = await createActionWithMemberEvent({
-      name: uniqueName('template-action'),
+      name: uniqueName("template-action"),
       eventDate: new Date(now - 60 * 60 * 1000),
     });
 
@@ -2639,15 +2639,15 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const templateTasks =
       await worker.findUncompletedTasksForPlan(templatePlan);
     const text = await worker.processCustomReminderText(
-      'Hi #{firstname}, #{action} is waiting.',
+      "Hi #{firstname}, #{action} is waiting.",
       templatePlan,
-      'cid-123',
+      "cid-123",
       templateTasks,
     );
 
-    expect(text).toContain('Hi Reminder');
+    expect(text).toContain("Hi Reminder");
     expect(text).toContain(action.name);
-    expect(text).not.toContain('#{');
+    expect(text).not.toContain("#{");
   });
 
   // --- Cohort Expression Evaluation in Notification Pipeline ---
@@ -2664,9 +2664,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const action = await actionRepo.save(
       actionRepo.create({
         name,
-        category: 'Testing',
-        body: 'Body copy',
-        shortDescription: 'Short description',
+        category: "Testing",
+        body: "Body copy",
+        shortDescription: "Short description",
         type: ActionTaskType.Activity,
         cohortExpression,
       }),
@@ -2675,7 +2675,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const memberEvent = await eventRepo.save(
       eventRepo.create({
         title: `${name} member event`,
-        description: 'desc',
+        description: "desc",
         newStatus: ActionStatus.MemberAction,
         date: eventDate,
         action,
@@ -2685,7 +2685,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     return { action, memberEvent };
   };
 
-  it('excludes users not matching CompletedAction cohort from notifications', async () => {
+  it("excludes users not matching CompletedAction cohort from notifications", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 48 * 60 * 60 * 1000));
@@ -2693,10 +2693,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // Create a prerequisite action and mark user as completed
     const prereqAction = await actionRepo.save(
       actionRepo.create({
-        name: uniqueName('prereq'),
-        category: 'Testing',
-        body: 'Body',
-        shortDescription: 'Short',
+        name: uniqueName("prereq"),
+        category: "Testing",
+        body: "Body",
+        shortDescription: "Short",
         type: ActionTaskType.Activity,
       }),
     );
@@ -2705,12 +2705,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // Create a second user who did NOT complete the prereq
     const nonCompleter = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('non-completer')}@example.com`,
-        password: 'pass',
-        name: 'Non Completer',
+        email: `${uniqueName("non-completer")}@example.com`,
+        password: "pass",
+        name: "Non Completer",
         tags: [ctx.defaultTag],
         textNotifsForActions: true,
-        phoneNumber: '+14155550200',
+        phoneNumber: "+14155550200",
       }),
     );
     await setUserContractSigned(
@@ -2720,10 +2720,10 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     // Action with CompletedAction cohort: only users who completed prereq
     const { memberEvent } = await createActionWithCohortExpression({
-      name: uniqueName('completed-action-cohort'),
+      name: uniqueName("completed-action-cohort"),
       eventDate: new Date(now - 60 * 60 * 1000),
       cohortExpression: {
-        type: 'CompletedAction',
+        type: "CompletedAction",
         actionId: prereqAction.id,
       },
     });
@@ -2744,7 +2744,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifiedUserIds).not.toContain(nonCompleter.id);
   });
 
-  it('excludes users not matching GroupLead cohort from notifications', async () => {
+  it("excludes users not matching GroupLead cohort from notifications", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 48 * 60 * 60 * 1000));
@@ -2752,7 +2752,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // Create a community and make user a leader
     const community = await communityRepo.save(
       communityRepo.create({
-        name: uniqueName('leader-community'),
+        name: uniqueName("leader-community"),
         leaders: [user],
         users: [user],
       }),
@@ -2761,12 +2761,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // Create a non-leader
     const nonLeader = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('non-leader')}@example.com`,
-        password: 'pass',
-        name: 'Non Leader',
+        email: `${uniqueName("non-leader")}@example.com`,
+        password: "pass",
+        name: "Non Leader",
         tags: [ctx.defaultTag],
         textNotifsForActions: true,
-        phoneNumber: '+14155550201',
+        phoneNumber: "+14155550201",
       }),
     );
     await setUserContractSigned(
@@ -2777,9 +2777,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await communityRepo.save(community);
 
     const { memberEvent } = await createActionWithCohortExpression({
-      name: uniqueName('group-lead-cohort'),
+      name: uniqueName("group-lead-cohort"),
       eventDate: new Date(now - 60 * 60 * 1000),
-      cohortExpression: { type: 'GroupLead' },
+      cohortExpression: { type: "GroupLead" },
     });
 
     const reminderGroup = await createReminderGroup(
@@ -2798,7 +2798,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     expect(notifiedUserIds).not.toContain(nonLeader.id);
   });
 
-  it('excludes users not matching FormFieldValue cohort from notifications', async () => {
+  it("excludes users not matching FormFieldValue cohort from notifications", async () => {
     const now = Date.now();
     const user = await getPrimaryUser();
     await setUserContractSigned(user.id, new Date(now - 48 * 60 * 60 * 1000));
@@ -2806,14 +2806,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
     const { form, snapshot: cohortSnapshot } = await createFormWithSnapshot(
       ctx.dataSource,
       {
-        title: 'Cohort Form',
+        title: "Cohort Form",
         schema: {
-          title: 'Cohort Form',
+          title: "Cohort Form",
           pages: [
             {
-              id: 'page-1',
+              id: "page-1",
               fields: [
-                { id: 'field-1', type: 'input', kind: 'text', label: 'Answer' },
+                { id: "field-1", type: "input", kind: "text", label: "Answer" },
               ],
             },
           ],
@@ -2827,7 +2827,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
       formResponseRepo.create({
         formId: form.id,
         form,
-        answers: { 'field-1': 'yes' },
+        answers: { "field-1": "yes" },
         formSnapshotId: cohortSnapshot.id,
         user,
       }),
@@ -2836,12 +2836,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
     // Non-responder user
     const nonResponder = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('non-responder')}@example.com`,
-        password: 'pass',
-        name: 'Non Responder',
+        email: `${uniqueName("non-responder")}@example.com`,
+        password: "pass",
+        name: "Non Responder",
         tags: [ctx.defaultTag],
         textNotifsForActions: true,
-        phoneNumber: '+14155550202',
+        phoneNumber: "+14155550202",
       }),
     );
     await setUserContractSigned(
@@ -2850,12 +2850,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
     );
 
     const { memberEvent } = await createActionWithCohortExpression({
-      name: uniqueName('form-field-cohort'),
+      name: uniqueName("form-field-cohort"),
       eventDate: new Date(now - 60 * 60 * 1000),
       cohortExpression: {
-        type: 'FormFieldValue',
+        type: "FormFieldValue",
         formId: form.id,
-        fieldId: 'field-1',
+        fieldId: "field-1",
         responseAny: true,
       },
     });
@@ -2878,13 +2878,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
   // --- excludeOptionalActions tests ---
 
-  it('excludeOptionalActions: suite with only optional actions sends no reminders', async () => {
+  it("excludeOptionalActions: suite with only optional actions sends no reminders", async () => {
     const now = Date.now();
     await clearUserContract(ctx.testUserId);
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
-        name: uniqueName('optional-only-suite'),
+        name: uniqueName("optional-only-suite"),
       }),
     );
 
@@ -2892,7 +2892,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const { action: optionalAction, memberEvent } =
       await createActionWithMemberEvent({
-        name: uniqueName('optional-action-only'),
+        name: uniqueName("optional-action-only"),
         eventDate,
         suite,
         suiteManaged: true,
@@ -2908,9 +2908,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const user = await userRepo.save(
       userRepo.create({
-        email: `${uniqueName('opt-only-user')}@example.com`,
-        password: 'pass',
-        name: 'Optional Only User',
+        email: `${uniqueName("opt-only-user")}@example.com`,
+        password: "pass",
+        name: "Optional Only User",
         tags: [ctx.defaultTag],
         contractEvents: [
           {
@@ -2921,7 +2921,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
           } as ContractEvent,
         ],
         textNotifsForActions: true,
-        phoneNumber: '+14155553001',
+        phoneNumber: "+14155553001",
         emailNotifsForActions: false,
         turnedOffAllNotifs: false,
       }),
@@ -2948,13 +2948,13 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await userRepo.delete({ id: user.id });
   });
 
-  it('excludeOptionalActions: user with only uncompleted optional actions gets no reminder', async () => {
+  it("excludeOptionalActions: user with only uncompleted optional actions gets no reminder", async () => {
     const now = Date.now();
     await clearUserContract(ctx.testUserId);
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
-        name: uniqueName('mixed-suite'),
+        name: uniqueName("mixed-suite"),
       }),
     );
 
@@ -2962,14 +2962,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const { action: requiredAction, memberEvent } =
       await createActionWithMemberEvent({
-        name: uniqueName('required-action'),
+        name: uniqueName("required-action"),
         eventDate,
         suite,
         suiteManaged: true,
       });
 
     const { action: optionalAction } = await createActionWithMemberEvent({
-      name: uniqueName('optional-action'),
+      name: uniqueName("optional-action"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -2990,7 +2990,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
       userRepo.save(
         userRepo.create({
           email: `${uniqueName(`excl-opt-${label}`)}@example.com`,
-          password: 'pass',
+          password: "pass",
           name: `ExclOpt ${label}`,
           tags: [ctx.defaultTag],
           contractEvents: [
@@ -3009,14 +3009,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
       );
 
     // User A: completed required, NOT optional → should NOT get reminder
-    const userA = await createSuiteUser('completedReq', '3101');
+    const userA = await createSuiteUser("completedReq", "3101");
     await recordCompletion(userA, requiredAction);
 
     // User B: completed neither → SHOULD get reminder (uncompleted required action)
-    const userB = await createSuiteUser('completedNone', '3102');
+    const userB = await createSuiteUser("completedNone", "3102");
 
     // User C: completed both → should NOT get reminder
-    const userC = await createSuiteUser('completedBoth', '3103');
+    const userC = await createSuiteUser("completedBoth", "3103");
     await recordCompletion(userC, requiredAction);
     await recordCompletion(userC, optionalAction);
 
@@ -3044,12 +3044,12 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await userRepo.delete([userA.id, userB.id, userC.id]);
   });
 
-  it('excludeOptionalActions: GroupLeadsWithUncompleted ignores optional actions', async () => {
+  it("excludeOptionalActions: GroupLeadsWithUncompleted ignores optional actions", async () => {
     const now = Date.now();
 
     const suite = await actionSuiteRepo.save(
       actionSuiteRepo.create({
-        name: uniqueName('leader-opt-suite'),
+        name: uniqueName("leader-opt-suite"),
       }),
     );
 
@@ -3057,14 +3057,14 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const { action: requiredAction, memberEvent } =
       await createActionWithMemberEvent({
-        name: uniqueName('leader-opt-required'),
+        name: uniqueName("leader-opt-required"),
         eventDate,
         suite,
         suiteManaged: true,
       });
 
     const { action: optionalAction } = await createActionWithMemberEvent({
-      name: uniqueName('leader-opt-optional'),
+      name: uniqueName("leader-opt-optional"),
       eventDate,
       suite,
       suiteManaged: true,
@@ -3085,9 +3085,9 @@ describe('ActionEventNotifWorker (e2e)', () => {
       userRepo.save(
         userRepo.create({
           email: `${uniqueName(
-            `leader-opt-${label.toLowerCase().replace(/\s+/g, '-')}`,
+            `leader-opt-${label.toLowerCase().replace(/\s+/g, "-")}`,
           )}@example.com`,
-          password: 'pass',
+          password: "pass",
           name: label,
           tags: [ctx.defaultTag],
           contractEvents: [
@@ -3108,20 +3108,20 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     // Leader of a community where members completed required but not optional
     const leaderAllRequiredDone = await createSignedUser(
-      'Leader All Req Done',
-      '4101',
+      "Leader All Req Done",
+      "4101",
       { remindAboutUncompletedGroupMembers: true },
     );
 
     // Leader of a community where members haven't completed required
-    const leaderWithGaps = await createSignedUser('Leader With Gaps', '4102', {
+    const leaderWithGaps = await createSignedUser("Leader With Gaps", "4102", {
       remindAboutUncompletedGroupMembers: true,
     });
 
     const communityAllReqDone = await communityRepo.save(
       communityRepo.create({
-        name: uniqueName('community-all-req-done'),
-        description: 'All required actions done',
+        name: uniqueName("community-all-req-done"),
+        description: "All required actions done",
         leaders: [leaderAllRequiredDone],
         users: [leaderAllRequiredDone],
       }),
@@ -3129,15 +3129,15 @@ describe('ActionEventNotifWorker (e2e)', () => {
 
     const communityWithGaps = await communityRepo.save(
       communityRepo.create({
-        name: uniqueName('community-with-gaps'),
-        description: 'Has uncompleted required actions',
+        name: uniqueName("community-with-gaps"),
+        description: "Has uncompleted required actions",
         leaders: [leaderWithGaps],
         users: [leaderWithGaps],
       }),
     );
 
     // Member who completed required but NOT optional
-    const memberReqDone = await createSignedUser('Member Req Done', '4103', {
+    const memberReqDone = await createSignedUser("Member Req Done", "4103", {
       communities: [communityAllReqDone],
       textNotifsForActions: false,
     });
@@ -3147,7 +3147,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
     await recordCompletion(leaderAllRequiredDone, optionalAction);
 
     // Member who hasn't completed required
-    const memberNoReq = await createSignedUser('Member No Req', '4104', {
+    const memberNoReq = await createSignedUser("Member No Req", "4104", {
       communities: [communityWithGaps],
       textNotifsForActions: false,
     });
@@ -3162,7 +3162,7 @@ describe('ActionEventNotifWorker (e2e)', () => {
         sendAtAbsolute: new Date(now - 5 * 60 * 1000),
         actionSuite: suiteWithActions,
         excludeOptionalActions: true,
-        textMessage: 'Leader reminder: #{nmembers} members need help.',
+        textMessage: "Leader reminder: #{nmembers} members need help.",
       },
     );
 

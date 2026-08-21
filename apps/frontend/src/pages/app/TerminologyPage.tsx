@@ -47,8 +47,8 @@ const TerminologyPage: React.FC = () => {
           <Link to={href("/contract")} className="text-link hover:underline">
             contract page
           </Link>
-          . If a member misses all assigned non-optional actions for 3 weeks
-          in a row, their contract is automatically suspended.
+          . If a member misses all assigned non-optional actions for 3 weeks in
+          a row, their contract is automatically suspended.
         </p>
 
         <p>

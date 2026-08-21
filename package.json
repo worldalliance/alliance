@@ -25,6 +25,8 @@
     "worktree:new": "./scripts/new-worktree.sh",
     "worktree:rm": "./scripts/rm-worktree.sh",
     "test": "./scripts/test-all.sh",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "eas-build-pre-install": "bun install --frozen-lockfile"
   },
   "devDependencies": {

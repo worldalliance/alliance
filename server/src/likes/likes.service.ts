@@ -1,16 +1,16 @@
-import { LIKE_ORDER_RANK_FN, likeOrderRank } from '@alliance/common/likeOrder';
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ActionActivity } from 'src/actions/entities/action-activity.entity';
+import { LIKE_ORDER_RANK_FN, likeOrderRank } from "@alliance/common/likeOrder";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ActionActivity } from "src/actions/entities/action-activity.entity";
 import {
   Comment,
   CommentParentObject,
-} from 'src/forum/entities/comment.entity';
-import { Post } from 'src/forum/entities/post.entity';
-import { ForumService } from 'src/forum/forum.service';
-import { User } from 'src/user/entities/user.entity';
-import { Repository } from 'typeorm';
-import { FacepileService } from './facepile.service';
+} from "src/forum/entities/comment.entity";
+import { Post } from "src/forum/entities/post.entity";
+import { ForumService } from "src/forum/forum.service";
+import { User } from "src/user/entities/user.entity";
+import { Repository } from "typeorm";
+import { FacepileService } from "./facepile.service";
 
 @Injectable()
 export class LikesService {
@@ -103,12 +103,12 @@ export class LikesService {
     // param in ORDER BY.
     const rankExpr = `${LIKE_ORDER_RANK_FN}('${targetId}:' || "user"."id"::text)`;
     const query = this.userRepository
-      .createQueryBuilder('user')
-      .select('user.id', 'id')
-      .innerJoin(target, 'target', 'target.id = :targetId', { targetId })
-      .innerJoin('target.likes', 'liker', 'liker.id = user.id')
-      .orderBy(rankExpr, 'ASC')
-      .addOrderBy('user.id', 'ASC')
+      .createQueryBuilder("user")
+      .select("user.id", "id")
+      .innerJoin(target, "target", "target.id = :targetId", { targetId })
+      .innerJoin("target.likes", "liker", "liker.id = user.id")
+      .orderBy(rankExpr, "ASC")
+      .addOrderBy("user.id", "ASC")
       .limit(limit);
 
     if (afterId !== undefined) {

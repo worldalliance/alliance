@@ -15,8 +15,7 @@ const FeaturedImpactCard: React.FC<
   bgColor = "white",
 }) => {
   const external = Boolean(customLink?.startsWith("http"));
-  const to =
-    customLink ?? href("/actions/:id", { id: actionId.toString() });
+  const to = customLink ?? href("/actions/:id", { id: actionId.toString() });
 
   return (
     <ProgressCard

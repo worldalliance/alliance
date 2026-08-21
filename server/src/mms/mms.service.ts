@@ -3,14 +3,14 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EventType } from 'src/eventlog/event-log.entity';
-import { EventLogService } from 'src/eventlog/eventlog.service';
-import Twilio from 'twilio';
-import type { Repository } from 'src/utils/Repository';
-import { isAnonymizedPhoneNumber } from 'src/utils/phone';
-import { Mms } from './mms.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { EventType } from "src/eventlog/event-log.entity";
+import { EventLogService } from "src/eventlog/eventlog.service";
+import type { Repository } from "src/utils/Repository";
+import { isAnonymizedPhoneNumber } from "src/utils/phone";
+import Twilio from "twilio";
+import { Mms } from "./mms.entity";
 
 @Injectable()
 export class MmsService {
@@ -23,7 +23,7 @@ export class MmsService {
     private readonly mmsRepository: Repository<Mms>,
     private readonly eventLogService: EventLogService,
   ) {
-    if (process.env.NODE_ENV === 'test') {
+    if (process.env.NODE_ENV === "test") {
       return;
     }
     const accountSid = process.env.TWILIO_ACCOUNT_SID!;
@@ -32,19 +32,19 @@ export class MmsService {
 
     if (
       (!accountSid || !authToken || !this.twilioPhoneNumber) &&
-      (process.env.NODE_ENV !== 'development' || !process.env.SEND_DEV_NOTIFS)
+      (process.env.NODE_ENV !== "development" || !process.env.SEND_DEV_NOTIFS)
     ) {
       this.logger.error(
-        'Twilio configuration (Account SID, Auth Token, Phone Number) is missing or invalid.',
+        "Twilio configuration (Account SID, Auth Token, Phone Number) is missing or invalid.",
       );
       throw new InternalServerErrorException(
-        'Twilio configuration is missing or invalid.',
+        "Twilio configuration is missing or invalid.",
       );
     }
 
     try {
       this.twilioClient = Twilio(accountSid, authToken); // Initialize Twilio client
-      this.logger.log('Twilio client initialized successfully.');
+      this.logger.log("Twilio client initialized successfully.");
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -66,19 +66,19 @@ export class MmsService {
   }): Promise<Mms | null> {
     const { to, body, mediaUrls, cid } = params;
     if (
-      process.env.NODE_ENV === 'test' ||
+      process.env.NODE_ENV === "test" ||
       !(
-        process.env.NODE_ENV === 'production' ||
-        process.env.SEND_DEV_NOTIFS === '1'
+        process.env.NODE_ENV === "production" ||
+        process.env.SEND_DEV_NOTIFS === "1"
       ) ||
       isAnonymizedPhoneNumber(to)
     ) {
       const mms = this.mmsRepository.create({
         to: to,
-        from: '+15555550100',
+        from: "+15555550100",
         body: body,
-        status: 'sent',
-        twilioSid: 'test-sid',
+        status: "sent",
+        twilioSid: "test-sid",
         errorCode: null,
         errorMessage: null,
         cid,
@@ -90,14 +90,14 @@ export class MmsService {
     );
 
     if (mediaUrls.length === 0) {
-      this.logger.warn('No media URLs provided. Sending as SMS instead.');
+      this.logger.warn("No media URLs provided. Sending as SMS instead.");
     }
     if (mediaUrls.length > 10) {
       this.logger.error(
         `Cannot send more than 10 media items. Provided: ${mediaUrls.length}`,
       );
       throw new BadRequestException(
-        'Exceeded maximum number of media attachments (10).',
+        "Exceeded maximum number of media attachments (10).",
       );
     }
 
@@ -110,11 +110,11 @@ export class MmsService {
           mediaUrl: mediaUrls,
         }),
         10000,
-        'sendMms',
+        "sendMms",
       );
 
       if (!message) {
-        throw new Error('Failed to send MMS');
+        throw new Error("Failed to send MMS");
       }
 
       this.logger.log(`MMS sent successfully! Message SID: ${message.sid}`);
@@ -138,7 +138,7 @@ export class MmsService {
         `Failed to send MMS to ${to}: ${errorMessage}`,
         error instanceof Error ? error.stack : undefined,
       );
-      if (process.env.NODE_ENV === 'production') {
+      if (process.env.NODE_ENV === "production") {
         this.eventLogService.sendMessage({
           type: EventType.SmsFailure,
           message: `Failed to send MMS to ${to}: ${errorMessage}`,
@@ -191,7 +191,7 @@ function withTimeout<T>(
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutId = setTimeout(() => {
       const err = new Error(
-        `Timeout after ${ms}ms${label ? ` (${label})` : ''}`,
+        `Timeout after ${ms}ms${label ? ` (${label})` : ""}`,
       );
       reject(err);
     }, ms);

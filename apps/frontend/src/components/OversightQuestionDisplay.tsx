@@ -1,5 +1,5 @@
-import React from "react";
 import { cn } from "@alliance/shared/styles/util";
+import React from "react";
 
 export const ALLIANCE_OVERSIGHT_QUESTION = "Which do you prefer?";
 

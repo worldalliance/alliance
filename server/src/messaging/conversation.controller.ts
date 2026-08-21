@@ -1,4 +1,4 @@
-import { AnalyticsEvent } from '@alliance/common/analytics';
+import { AnalyticsEvent } from "@alliance/common/analytics";
 import {
   Body,
   Controller,
@@ -10,13 +10,13 @@ import {
   Post,
   Request,
   UseGuards,
-} from '@nestjs/common';
-import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
-import { AdminGuard } from 'src/auth/guards/admin.guard';
-import { AuthGuard } from 'src/auth/guards/auth.guard';
-import type { JwtRequest } from 'src/auth/guards/jwtreq';
-import { PosthogService } from 'src/posthog/posthog.service';
-import { ConversationService } from './conversation.service';
+} from "@nestjs/common";
+import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { AdminGuard } from "src/auth/guards/admin.guard";
+import { AuthGuard } from "src/auth/guards/auth.guard";
+import type { JwtRequest } from "src/auth/guards/jwtreq";
+import { PosthogService } from "src/posthog/posthog.service";
+import { ConversationService } from "./conversation.service";
 import {
   ConversationAdminSummaryDto,
   ConversationDto,
@@ -26,17 +26,17 @@ import {
   UnreadMessageSummaryDto,
   UnreadMessagesDto,
   UpdateConversationDto,
-} from './dto/messaging.dto';
+} from "./dto/messaging.dto";
 
-@ApiTags('messaging')
-@Controller('messaging/conversations')
+@ApiTags("messaging")
+@Controller("messaging/conversations")
 export class ConversationController {
   constructor(
     private readonly conversationService: ConversationService,
     private readonly posthog: PosthogService,
   ) {}
 
-  @Get('admin')
+  @Get("admin")
   @ApiOkResponse({ type: ConversationAdminSummaryDto, isArray: true })
   @UseGuards(AdminGuard)
   async getAllConversationsForAdmin(): Promise<ConversationAdminSummaryDto[]> {
@@ -52,11 +52,11 @@ export class ConversationController {
     return this.conversationService.getUserConversations(req.user.sub);
   }
 
-  @Get('community/:communityId')
+  @Get("community/:communityId")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   async getCommunityConversations(
-    @Param('communityId', ParseIntPipe) communityId: number,
+    @Param("communityId", ParseIntPipe) communityId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
     return this.conversationService.getConversationForCommunity(
@@ -65,7 +65,7 @@ export class ConversationController {
     );
   }
 
-  @Post('direct')
+  @Post("direct")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   async createDirectConversation(
@@ -82,13 +82,13 @@ export class ConversationController {
       distinctId: String(req.user.sub),
       properties: {
         conversationId: conversation.id,
-        kind: 'direct',
+        kind: "direct",
       },
     });
     return conversation;
   }
 
-  @Post('group')
+  @Post("group")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   async createGroupConversation(
@@ -105,17 +105,17 @@ export class ConversationController {
       distinctId: String(req.user.sub),
       properties: {
         conversationId: conversation.id,
-        kind: 'group',
+        kind: "group",
       },
     });
     return conversation;
   }
 
-  @Post(':conversationId/update')
+  @Post(":conversationId/update")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   updateInfo(
-    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Param("conversationId", ParseIntPipe) conversationId: number,
     @Body() body: UpdateConversationDto,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
@@ -128,11 +128,11 @@ export class ConversationController {
     );
   }
 
-  @Post(':conversationId/accept')
+  @Post(":conversationId/accept")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   acceptInvite(
-    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Param("conversationId", ParseIntPipe) conversationId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
     return this.ensureParticipantAndRun(conversationId, req.user.sub, () =>
@@ -140,11 +140,11 @@ export class ConversationController {
     );
   }
 
-  @Post(':conversationId/decline')
+  @Post(":conversationId/decline")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   declineInvite(
-    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Param("conversationId", ParseIntPipe) conversationId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
     return this.ensureParticipantAndRun(conversationId, req.user.sub, () =>
@@ -152,11 +152,11 @@ export class ConversationController {
     );
   }
 
-  @Post(':conversationId/participants')
+  @Post(":conversationId/participants")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   addParticipant(
-    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Param("conversationId", ParseIntPipe) conversationId: number,
     @Body() body: ConversationParticipantDto,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
@@ -167,12 +167,12 @@ export class ConversationController {
     );
   }
 
-  @Delete(':conversationId/participants/:userId')
+  @Delete(":conversationId/participants/:userId")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   removeParticipant(
-    @Param('conversationId', ParseIntPipe) conversationId: number,
-    @Param('userId', ParseIntPipe) targetUserId: number,
+    @Param("conversationId", ParseIntPipe) conversationId: number,
+    @Param("userId", ParseIntPipe) targetUserId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
     return this.conversationService.removeParticipantFromConversation(
@@ -182,11 +182,11 @@ export class ConversationController {
     );
   }
 
-  @Post(':conversationId/read')
+  @Post(":conversationId/read")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   markRead(
-    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Param("conversationId", ParseIntPipe) conversationId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
     return this.conversationService.markConversationRead(
@@ -195,7 +195,7 @@ export class ConversationController {
     );
   }
 
-  @Get('unread')
+  @Get("unread")
   @ApiOkResponse({ type: UnreadMessagesDto })
   @UseGuards(AuthGuard)
   async getUnreadMessages(
@@ -207,7 +207,7 @@ export class ConversationController {
     return new UnreadMessagesDto(count);
   }
 
-  @Get('unread-summary')
+  @Get("unread-summary")
   @ApiOkResponse({ type: UnreadMessageSummaryDto })
   @UseGuards(AuthGuard)
   async getUnreadSummary(
@@ -218,11 +218,11 @@ export class ConversationController {
     );
   }
 
-  @Post(':conversationId/leave')
+  @Post(":conversationId/leave")
   @ApiOkResponse({ type: ConversationDto })
   @UseGuards(AuthGuard)
   leave(
-    @Param('conversationId', ParseIntPipe) conversationId: number,
+    @Param("conversationId", ParseIntPipe) conversationId: number,
     @Request() req: JwtRequest,
   ): Promise<ConversationDto> {
     return this.conversationService.leaveConversation(
@@ -241,7 +241,7 @@ export class ConversationController {
       userId,
     );
     if (!isParticipant) {
-      throw new ForbiddenException('You are not part of this conversation.');
+      throw new ForbiddenException("You are not part of this conversation.");
     }
     return action();
   }

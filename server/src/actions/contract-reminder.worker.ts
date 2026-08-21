@@ -1,12 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
-import { User } from 'src/user/entities/user.entity';
-import { EmailType } from 'src/mail/mail.entity';
-import { MailService } from 'src/mail/mail.service';
-import { withPgAdvisoryLock } from '../notifs/lock-utils';
-import { LOCK_KEYS } from '../notifs/lock-keys';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { EmailType } from "src/mail/mail.entity";
+import { MailService } from "src/mail/mail.service";
+import { User } from "src/user/entities/user.entity";
+import { DataSource, Repository } from "typeorm";
+import { LOCK_KEYS } from "../notifs/lock-keys";
+import { withPgAdvisoryLock } from "../notifs/lock-utils";
 
 const [LOCK_KEY1, LOCK_KEY2] = LOCK_KEYS.contractReminder;
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
@@ -26,8 +26,8 @@ export class ContractReminderWorker {
   async sendContractReminders() {
     if (
       !(
-        process.env.NODE_ENV === 'production' ||
-        process.env.SEND_DEV_NOTIFS === '1'
+        process.env.NODE_ENV === "production" ||
+        process.env.SEND_DEV_NOTIFS === "1"
       )
     ) {
       return;
@@ -45,13 +45,13 @@ export class ContractReminderWorker {
         // 2. Have no contract events at all
         // 3. Haven't already received this reminder email
         const users = await this.userRepository
-          .createQueryBuilder('user')
-          .leftJoin('user.contractEvents', 'ce')
-          .where('user.createdAt <= :cutoff', { cutoff })
-          .andWhere('user.isNotSignedUpPartialProfile = :partial', {
+          .createQueryBuilder("user")
+          .leftJoin("user.contractEvents", "ce")
+          .where("user.createdAt <= :cutoff", { cutoff })
+          .andWhere("user.isNotSignedUpPartialProfile = :partial", {
             partial: false,
           })
-          .andWhere('ce.id IS NULL')
+          .andWhere("ce.id IS NULL")
           .andWhere(
             `NOT EXISTS (
               SELECT 1 FROM mail
@@ -70,7 +70,7 @@ export class ContractReminderWorker {
 
         for (const user of users) {
           try {
-            const firstName = user.name.split(' ')[0];
+            const firstName = user.name.split(" ")[0];
             await this.mailService.sendContractReminderEmail(
               user.email,
               firstName,
@@ -86,7 +86,7 @@ export class ContractReminderWorker {
     );
 
     if (ran === null) {
-      this.logger.log('contract reminder skipped bc of lock');
+      this.logger.log("contract reminder skipped bc of lock");
     }
   }
 }

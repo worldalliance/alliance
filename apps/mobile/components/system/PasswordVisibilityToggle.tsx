@@ -1,6 +1,5 @@
-import React from "react";
-import { TouchableOpacity } from "react-native";
 import { Eye, EyeOff } from "lucide-react-native";
+import { TouchableOpacity } from "react-native";
 import { colors } from "../../lib/style/colors";
 
 interface PasswordVisibilityToggleProps {

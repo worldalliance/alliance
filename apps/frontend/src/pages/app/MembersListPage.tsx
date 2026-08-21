@@ -5,16 +5,16 @@ import {
   userMembersWithFriends,
 } from "@alliance/shared/client";
 
-import MembersListItem from "../../components/MembersListItem";
-import List from "@alliance/sharedweb/ui/List";
-import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
-import { useAuth } from "../../lib/AuthContext";
-import { useMemo, useState } from "react";
-import BasicErrorMessage from "../../components/BasicErrorMessage";
 import CenterLayout from "@alliance/sharedweb/ui/CenterLayout";
+import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
+import List from "@alliance/sharedweb/ui/List";
 import Spinner from "@alliance/sharedweb/ui/Spinner";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
+import BasicErrorMessage from "../../components/BasicErrorMessage";
+import MembersListItem from "../../components/MembersListItem";
+import { useAuth } from "../../lib/AuthContext";
 
 export enum MemberFilterMode {
   All = "All",
@@ -34,13 +34,13 @@ const MembersListPage = () => {
     queryKey: ["userMembersWithFriends", { requireSignedContract: true }],
     queryFn: () =>
       userMembersWithFriends({ query: { requireSignedContract: true } }).then(
-        (res) => res.data ?? []
+        (res) => res.data ?? [],
       ),
   });
 
   const visibleMembers = useMemo(
     () => members.filter((m) => !m.anonymous),
-    [members]
+    [members],
   );
 
   const { data: sentRequests = [], isLoading: isLoadingSentRequests } =
@@ -58,18 +58,16 @@ const MembersListPage = () => {
 
   const sentRequestIds = useMemo(
     () => new Set(sentRequests.map((req) => req.id)),
-    [sentRequests]
+    [sentRequests],
   );
 
   const friendIds = useMemo(
     () => new Set(friendsData.map((friend) => friend.id)),
-    [friendsData]
+    [friendsData],
   );
 
   const loading =
-    isLoadingMembers ||
-    isLoadingSentRequests ||
-    (!!user && isPendingFriends);
+    isLoadingMembers || isLoadingSentRequests || (!!user && isPendingFriends);
   const error = membersError ? "Could not load members" : null;
 
   const [params, setParams] = useSearchParams();

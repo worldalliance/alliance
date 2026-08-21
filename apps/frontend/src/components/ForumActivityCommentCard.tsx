@@ -1,9 +1,9 @@
 import { UserCommentDto } from "@alliance/shared/client";
-import { Link, href, useNavigate } from "react-router";
-import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
-import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
-import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
 import { formatTime } from "@alliance/shared/lib/utils";
+import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
+import EditableContentRenderer from "@alliance/sharedweb/ui/EditableContentRenderer";
+import UserDisplayName from "@alliance/sharedweb/ui/UserDisplayName";
+import { Link, href, useNavigate } from "react-router";
 
 export interface ForumActivityCommentCardProps {
   comment: UserCommentDto;
@@ -18,10 +18,10 @@ const ForumActivityCommentCard = ({
           id: comment.parentObjectId.toString(),
         })}?replyId=${comment.id}`
       : comment.parentObjectType === "action"
-      ? `${href("/actions/:id", {
-          id: comment.parentObjectId.toString(),
-        })}?replyId=${comment.id}`
-      : null;
+        ? `${href("/actions/:id", {
+            id: comment.parentObjectId.toString(),
+          })}?replyId=${comment.id}`
+        : null;
 
   const navigate = useNavigate();
 
@@ -54,7 +54,7 @@ const ForumActivityCommentCard = ({
               navigate(
                 href("/forum/post/:id", {
                   id: comment.parentObjectId.toString(),
-                })
+                }),
               );
             }}
           >
