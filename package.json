@@ -17,10 +17,13 @@
     "node": ">=22"
   },
   "scripts": {
-    "frontend:dev": "bun run --cwd apps/frontend dev",
-    "admin:dev": "bun run --cwd apps/admin dev",
-    "server:dev": "cd server && bun dev",
-    "gen-api": "bun run --cwd shared gen-api",
+    "frontend:dev": "./scripts/with-env.sh bun run --cwd apps/frontend dev",
+    "admin:dev": "./scripts/with-env.sh bun run --cwd apps/admin dev",
+    "server:dev": "./scripts/with-env.sh bun run --cwd server dev",
+    "gen-api": "./scripts/with-env.sh bun run --cwd shared gen-api",
+    "ports": "./scripts/with-env.sh",
+    "worktree:new": "./scripts/new-worktree.sh",
+    "worktree:rm": "./scripts/rm-worktree.sh",
     "test": "./scripts/test-all.sh",
     "eas-build-pre-install": "bun install --frozen-lockfile"
   },

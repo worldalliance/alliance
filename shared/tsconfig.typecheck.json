@@ -18,6 +18,7 @@
     "client/hey-api.ts",
     "client/client.gen.ts",
     "styles/card.ts",
+    "openapi-config.ts",
     "../common"
   ]
 }

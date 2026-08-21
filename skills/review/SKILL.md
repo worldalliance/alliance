@@ -38,8 +38,8 @@ For each issue, a 1-3 word kebab-case handle to refer to it by, in its own copy-
 ```
 kebab-case-name
 ```
-- Description: summary stating the defect, readable without the fields below it
 - Severity: BLOCKER | HIGH | MEDIUM
+- Description: summary stating the defect, readable without the fields below it
 - Evidence: file(s) + snippet or behavioral description
 - Why it matters: risk, regression, security, maintenance
 - Recommended fix: durable and root-cause, small snippets where they help

@@ -1,3 +1,5 @@
+import { devPorts, PortCaller } from '@alliance/common/dev-ports';
+import { currentNodeEnv, isDeployed } from '@alliance/common/node-env';
 import { ValidationPipe } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -14,12 +16,20 @@ import { MetricsInterceptor } from './metrics';
 import { twilioSignatureEnforced } from './mms/twilio-signature.guard';
 import { injectResponseSchemas } from './openapi-errors';
 import { PosthogExceptionFilter } from './posthog.filter';
+import { socketCorsOrigins } from './utils/cors-origins';
 import { requestContext } from './utils/request-context';
 import { RouteContextGuard } from './utils/request-context.guard';
 import { VALIDATION_PIPE_OPTIONS } from './utils/validation-pipe-options';
 
+// Let validateNodeEnv report unknown values without treating them as deployed.
+function deployedUrlVars(): string[] {
+  const env = currentNodeEnv();
+  if (!env.ok || !isDeployed(env.value)) return [];
+  return ['APP_URL', 'ADMIN_URL'];
+}
+
 function validateEnv() {
-  const requiredVars = [
+  const requiredVars = new Set([
     'DB_HOST',
     'DB_USERNAME',
     'DB_PASSWORD',
@@ -27,9 +37,10 @@ function validateEnv() {
     'JWT_SECRET',
     'JWT_REFRESH_SECRET',
     ...(twilioSignatureEnforced() ? ['TWILIO_AUTH_TOKEN', 'APP_URL'] : []),
-  ];
+    ...deployedUrlVars(),
+  ]);
 
-  const missing = requiredVars.filter((v) => !process.env[v]);
+  const missing = [...requiredVars].filter((v) => !process.env[v]);
 
   if (missing.length > 0) {
     console.error(
@@ -42,11 +53,10 @@ function validateEnv() {
 }
 
 function validateNodeEnv() {
-  const expected = ['production', 'staging', 'development', 'test'];
-  const env = process.env.NODE_ENV;
-  if (env && expected.includes(env)) return;
+  const env = currentNodeEnv();
+  if (env.ok) return;
 
-  const msg = `:warning: Server starting with NODE_ENV=${env ?? '<unset>'} (expected one of ${expected.join(', ')}). Outbound notifs may misfire.`;
+  const msg = `:warning: Server starting with ${env.error.message}. Outbound notifs may misfire.`;
   console.error(msg);
 
   const webhook = process.env.SLACK_WEBHOOK_URL;
@@ -65,12 +75,11 @@ class SocketIoAdapter extends IoAdapter {
     return super.createIOServer(port, {
       ...options,
       cors: {
-        origin: [
-          'http://localhost:5173', //TODO: any localhost in dev
-          'http://localhost:5174',
-          process.env.APP_URL,
-          'https://admin.worldalliance.org',
-        ],
+        origin: socketCorsOrigins({
+          nodeEnv: process.env.NODE_ENV,
+          appUrl: process.env.APP_URL,
+          adminUrl: process.env.ADMIN_URL,
+        }),
         methods: ['GET', 'POST'],
         credentials: true,
       },
@@ -81,7 +90,7 @@ class SocketIoAdapter extends IoAdapter {
 async function bootstrap() {
   validateEnv();
 
-  const port = Number(process.env.PORT ?? '3005');
+  const port = devPorts(PortCaller.Server).server;
   let client: PostHog | null = null;
 
   if (process.env.NODE_ENV === 'production') {

@@ -357,7 +357,7 @@ jobs:
           DB_PORT: 5432
           DB_USERNAME: postgres
           DB_PASSWORD: postgres
-          DB_NAME: citesting
+          CITESTING_DB_NAME: citesting
           ASSETS_BUCKET: ${{ secrets.CI_ASSETS_BUCKET }}
           NODE_ENV: test
           SCREENSHOT_OUTPUT_DIR: ${{ github.workspace }}/screenshots/current
@@ -700,6 +700,7 @@ jobs:
             export ASSETS_BUCKET=${{ secrets.ASSETS_BUCKET_NAME }}
             export POSTHOG_KEY=${{ secrets.POSTHOG_KEY }}
             export APP_URL=https://${{vars.DOMAIN_NAME}}
+            export ADMIN_URL=https://admin.${{vars.DOMAIN_NAME}}
             export TWILIO_PHONE_NUMBER=${{ secrets.TWILIO_PHONE_NUMBER }}
             export TWILIO_ACCOUNT_SID=${{ secrets.TWILIO_ACCOUNT_SID }}
             export TWILIO_AUTH_TOKEN=${{ secrets.TWILIO_AUTH_TOKEN }}

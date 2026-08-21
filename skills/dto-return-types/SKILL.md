@@ -127,4 +127,4 @@ Naming that parameter's **type**, in order:
 
 ## After editing
 
-`bun run gen-api` from the repo root with the dev server up on port 3005, then update callsites — `shared/client/` is consumed by frontend, admin, and mobile. Never hand-edit generated files.
+`bun run gen-api` from the repo root with the dev server up, then update callsites — `shared/client/` is consumed by frontend, admin, and mobile. Never hand-edit generated files.

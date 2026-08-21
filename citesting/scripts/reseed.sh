@@ -15,8 +15,6 @@
 #   6. Dumps data only, overwrites seed_dataonly.sql, and updates
 #      seed_migration_timestamp.txt to the latest migration on disk.
 #
-# Run from anywhere; paths are resolved relative to the script.
-#
 # Usage:
 #   citesting/scripts/reseed.sh [--revert N]
 #
@@ -84,7 +82,9 @@ DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
 DB_USERNAME="${DB_USERNAME:-postgres}"
 DB_PASSWORD="${DB_PASSWORD:-}"
-DB_NAME="${RESEED_DB_NAME:-citesting_reseed}"
+# Resolve from REPO_ROOT, so the name matches the checkout whose
+# migrations run below.
+DB_NAME="$(cd "$REPO_ROOT" && bun scripts/ports.ts reseed-database)"
 
 export PGPASSWORD="$DB_PASSWORD"
 PSQL_BASE=(psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USERNAME")

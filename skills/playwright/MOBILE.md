@@ -4,13 +4,14 @@ The Expo app runs on react-native-web, so playwright drives it the way it drives
 
 ## Start it
 
-Nothing else brings Metro up, and expo dies on a port that is already serving rather than prompting for another one:
+Nothing else brings Metro up, and expo dies on a port that is already serving rather than prompting for another one. Metro's port belongs to the checkout, so resolve it rather than typing one — a literal port reaches whichever checkout happens to own it, and a bundle from another one talks to that one's server and database:
 
 ```bash
-curl -sfo /dev/null http://localhost:8085 || bun run --cwd apps/mobile web
+port="$(bun scripts/ports.ts mobile)"
+curl -sfo /dev/null "http://localhost:$port" || bun run --cwd apps/mobile web
 ```
 
-Metro holds the foreground, so background it. ~20s to the first bundle. `BROWSER=none` in the script stops expo opening a tab in the user's own Chrome, so keep it on any variant you run.
+Metro holds the foreground, so background it. ~20s to the first bundle. `BROWSER=none` in the script stops expo opening a tab in the user's own Chrome, so keep it on any variant you run. Point playwright at that same `http://localhost:$port`.
 
 ## Selectors
 

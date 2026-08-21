@@ -3,5 +3,7 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["src"]
+  // Scripts has no package.json. Keeping its TypeScript in this config avoids a
+  // workspace package that deploy.yaml would also need to ship to EC2.
+  "include": ["src", "../scripts"]
 }

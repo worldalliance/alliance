@@ -137,6 +137,7 @@
         "compression": "^1.8.0",
         "d3": "^7.9.0",
         "date-fns": "^4.1.0",
+        "dotenv": "^17.2.3",
         "es-toolkit": "^1.49.0",
         "express": "^5.1.0",
         "gray-matter": "^4.0.3",
@@ -314,6 +315,7 @@
       "name": "@alliance/common",
       "version": "0.0.0",
       "dependencies": {
+        "dotenv": "^17.2.3",
         "jsep": "^1.4.0",
         "libphonenumber-js": "^1.12.17",
         "validator": "^13.12.0",
@@ -353,6 +355,7 @@
         "class-validator": "^0.14.1",
         "cookie-parser": "^1.4.7",
         "date-fns": "^4.1.0",
+        "dotenv": "^17.2.3",
         "es-toolkit": "^1.49.0",
         "expo-server-sdk": "^4.0.0",
         "heic-convert": "^2.1.0",

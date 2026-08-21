@@ -1,8 +1,10 @@
+import { chromium, type Page } from "@playwright/test";
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
 import path from "path";
 import process from "process";
-import { chromium, type Page } from "@playwright/test";
+import { devPorts, PortCaller } from "../../common/src/dev-ports";
+import { screenshotDatabase } from "./screenshot-database";
 import { screenshotTargets } from "./screenshot-targets";
 import { testUserEmail, testUserPassword } from "./test-user";
 
@@ -14,18 +16,25 @@ type SpawnOptions = {
 };
 
 const repoRoot = path.resolve(__dirname, "..", "..");
-const backendPort = Number(process.env.BACKEND_PORT ?? "3005");
-const frontendPort = Number(process.env.FRONTEND_PORT ?? "5173");
+
+const ports = devPorts(PortCaller.Tooling);
+const backendPort = ports.server;
+const frontendPort = ports.frontend;
 const frontendMode = (process.env.FRONTEND_MODE ?? "prod").toLowerCase();
 const frontendBuildMode = process.env.FRONTEND_BUILD_MODE ?? "development";
 const baseUrl = process.env.FRONTEND_URL ?? `http://localhost:${frontendPort}`;
+
+const stackPortEnv: NodeJS.ProcessEnv = {
+  SERVER_PORT: String(backendPort),
+  FRONTEND_PORT: String(frontendPort),
+};
 const rawOutputDir =
   process.env.SCREENSHOT_OUTPUT_DIR ??
   path.join(
     repoRoot,
     "citesting",
     "screenshots",
-    new Date().toISOString().replace(/[:.]/g, "-")
+    new Date().toISOString().replace(/[:.]/g, "-"),
   );
 const outputDir = path.isAbsolute(rawOutputDir)
   ? rawOutputDir
@@ -35,7 +44,7 @@ const dbHost = process.env.DB_HOST ?? "localhost";
 const dbPort = process.env.DB_PORT ?? "5432";
 const dbUser = process.env.DB_USERNAME ?? "postgres";
 const dbPass = process.env.DB_PASSWORD ?? "postgres";
-const dbName = process.env.DB_NAME ?? "citesting";
+const dbName = screenshotDatabase();
 
 const childProcesses: ChildProcessHandle[] = [];
 
@@ -66,7 +75,7 @@ const trackChildProcess = (child: ChildProcessHandle) => {
 const spawnProcess = (
   command: string,
   args: string[],
-  options: SpawnOptions
+  options: SpawnOptions,
 ) => {
   return trackChildProcess(
     spawn(command, args, {
@@ -74,7 +83,7 @@ const spawnProcess = (
       env: options.env,
       detached: process.platform !== "win32",
       stdio: "inherit",
-    })
+    }),
   );
 };
 
@@ -111,7 +120,7 @@ const shutdown = async (code: number) => {
           // Ignore.
         }
       }
-    })
+    }),
   );
   process.exit(code);
 };
@@ -139,7 +148,7 @@ const runCommand = (command: string, args: string[], options: SpawnOptions) =>
         cwd: options.cwd,
         env: options.env,
         stdio: "inherit",
-      })
+      }),
     );
 
     child.on("error", (error) => reject(error));
@@ -181,12 +190,12 @@ const setupDatabase = async () => {
       "-c",
       `DROP DATABASE IF EXISTS "${dbName}"`,
     ],
-    { cwd: repoRoot, env: pgEnv }
+    { cwd: repoRoot, env: pgEnv },
   );
   await runCommand(
     "psql",
     [...psqlBase, "-d", "postgres", "-c", `CREATE DATABASE "${dbName}"`],
-    { cwd: repoRoot, env: pgEnv }
+    { cwd: repoRoot, env: pgEnv },
   );
 
   // Run migrations to create the schema from source of truth.
@@ -210,7 +219,7 @@ const setupDatabase = async () => {
         DB_NAME: dbName,
         NODE_ENV: "test",
       },
-    }
+    },
   );
 
   // Load the data-only dump. Using session_replication_role =
@@ -231,7 +240,7 @@ const loadSeedData = async (psqlBase: string[], pgEnv: NodeJS.ProcessEnv) => {
     repoRoot,
     "citesting",
     "fixtures",
-    "seed_dataonly.sql"
+    "seed_dataonly.sql",
   );
   let seedContent = await fs.readFile(seedFile, "utf8");
 
@@ -254,7 +263,7 @@ const loadSeedData = async (psqlBase: string[], pgEnv: NodeJS.ProcessEnv) => {
         cwd: repoRoot,
         env: pgEnv,
         stdio: ["pipe", "inherit", "inherit"],
-      }
+      },
     );
 
     child.stdin.write("SET session_replication_role = 'replica';\n");
@@ -275,7 +284,7 @@ const SEED_REFERENCE_DATE = "2026-02-10T18:00:00Z";
 
 const shiftTimestamps = async (
   psqlBase: string[],
-  pgEnv: NodeJS.ProcessEnv
+  pgEnv: NodeJS.ProcessEnv,
 ) => {
   // Dynamically discover every timestamp/timestamptz column in the public
   // schema and shift it forward by (NOW() - SEED_REFERENCE_DATE).  This keeps
@@ -332,7 +341,7 @@ const loginTestUser = async (page: Page): Promise<void> => {
       });
       return res.ok;
     },
-    { apiUrl, email: testUserEmail, password: testUserPassword }
+    { apiUrl, email: testUserEmail, password: testUserPassword },
   );
 
   if (!ok) {
@@ -347,6 +356,7 @@ const loginTestUser = async (page: Page): Promise<void> => {
 const startBackend = () => {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
+    ...stackPortEnv,
     NODE_ENV: process.env.NODE_ENV ?? "test",
     DB_HOST: dbHost,
     DB_PORT: dbPort,
@@ -369,26 +379,30 @@ const startBackend = () => {
   });
 };
 
-const ensureFrontendBuild = async () => {
-  const buildEntry = path.join(
-    repoRoot,
-    "apps",
-    "frontend",
-    "build",
-    "server",
-    "index.js"
-  );
+const frontendBuildEntry = path.join(
+  repoRoot,
+  "apps",
+  "frontend",
+  "build",
+  "server",
+  "index.js",
+);
 
+const ensureFrontendBuild = async () => {
   if (process.env.FRONTEND_BUILD === "false") {
     return;
   }
 
-  if (process.env.FRONTEND_BUILD !== "true" && (await fileExists(buildEntry))) {
+  if (
+    process.env.FRONTEND_BUILD !== "true" &&
+    (await fileExists(frontendBuildEntry))
+  ) {
     return;
   }
 
   const env: NodeJS.ProcessEnv = {
     ...process.env,
+    ...stackPortEnv,
     VITE_API_URL: process.env.VITE_API_URL ?? `http://localhost:${backendPort}`,
     VITE_APP_GIT_SHA: process.env.VITE_APP_GIT_SHA ?? "local",
     VITE_APP_VERSION: process.env.VITE_APP_VERSION ?? "local",
@@ -397,8 +411,16 @@ const ensureFrontendBuild = async () => {
   console.log(`${logPrefix} Building frontend (mode: ${frontendBuildMode})...`);
   await runCommand(
     "bun",
-    ["run", "--cwd", "apps/frontend", "build", "--", "--mode", frontendBuildMode],
-    { cwd: repoRoot, env }
+    [
+      "run",
+      "--cwd",
+      "apps/frontend",
+      "build",
+      "--",
+      "--mode",
+      frontendBuildMode,
+    ],
+    { cwd: repoRoot, env },
   );
 };
 
@@ -418,6 +440,7 @@ const startFrontend = async () => {
 
   const env: NodeJS.ProcessEnv = {
     ...process.env,
+    ...stackPortEnv,
     NODE_ENV: "development",
     CHOKIDAR_USEPOLLING: process.env.CHOKIDAR_USEPOLLING ?? "1",
     CHOKIDAR_INTERVAL: process.env.CHOKIDAR_INTERVAL ?? "2000",
@@ -425,11 +448,19 @@ const startFrontend = async () => {
 
   return spawnProcess(
     "bun",
-    ["run", "--cwd", "apps/frontend", "dev", "--", "--port", String(frontendPort)],
+    [
+      "run",
+      "--cwd",
+      "apps/frontend",
+      "dev",
+      "--",
+      "--port",
+      String(frontendPort),
+    ],
     {
       cwd: repoRoot,
       env,
-    }
+    },
   );
 };
 
@@ -484,7 +515,7 @@ const takeScreenshots = async () => {
           const label = target.name || target.path;
           const fileName = `${String(index + 1).padStart(
             2,
-            "0"
+            "0",
           )}-${sanitizeFileName(label)}.png`;
           const filePath = path.join(outputDir, fileName);
 
@@ -509,7 +540,7 @@ const takeScreenshots = async () => {
         } finally {
           await page.close();
         }
-      })
+      }),
     );
   }
 

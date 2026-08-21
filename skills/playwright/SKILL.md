@@ -7,11 +7,11 @@ description: Read before driving the locally running apps: verifying a change in
 
 ## Already running — check, don't start
 
-- API: `bun --watch src/main.ts` in `server/`, port **3005**, hot-reloads on edit, OpenAPI at `/openapi.yaml`
-- Admin (vite): **http://localhost:5174**, routes in `apps/admin/src/routes.ts`
-- Frontend (vite): **http://localhost:5173**
+- API: `bun --watch src/main.ts` in `server/`, hot-reloads on edit, OpenAPI at `/openapi.yaml`
+- Admin (vite): routes in `apps/admin/src/routes.ts`
+- Frontend (vite)
 
-`lsof -iTCP -sTCP:LISTEN -P | grep -E "node|bun"` to confirm.
+`./scripts/with-env.sh` prints the dev ports. `lsof -iTCP -sTCP:LISTEN -P | grep -E "node|bun"` confirms they're up.
 
 Mobile is the exception. [`MOBILE.md`](MOBILE.md) has its start command, selectors, and auth.
 
@@ -21,8 +21,8 @@ Auth is a JWT in the `access_token` cookie (or `Authorization: Bearer`), signed 
 
 Mint it in a bun script with `jsonwebtoken` from the root `node_modules`. Keep `JWT_SECRET` and the minted token out of anything you print.
 
-- API: `curl -H "Authorization: Bearer $TOKEN" http://localhost:3005/...`
-- Admin GUI: set cookie `{ name: "access_token", value: token, domain: "localhost", path: "/" }` on the browser context, then `goto http://localhost:5174/<route>`. Cookies cross ports on `localhost`, so the app's calls to :3005 authenticate.
+- API: `curl -H "Authorization: Bearer $TOKEN" http://localhost:<api port>/...`
+- Admin GUI: set cookie `{ name: "access_token", value: token, domain: "localhost", path: "/" }` on the browser context, then `goto http://localhost:<admin port>/<route>`. Cookies cross ports on `localhost`, so the app's calls to the API authenticate.
 
 ## Running playwright
 

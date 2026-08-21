@@ -12,6 +12,10 @@
 
 Working under `server/**` → read `server/AGENTS.md`; under `apps/**` → `apps/AGENTS.md`. Those are the only nested ones.
 
+## Worktree
+
+If @.worktree/AGENTS.md exists, read it. Otherwise, you can ignore this.
+
 ## Git
 
 Ask before running a git command that writes. Read-only ones (`git diff`, `git status`, `git log`) need no permission.

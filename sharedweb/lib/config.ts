@@ -1,11 +1,37 @@
-const mode = (import.meta as unknown as { env: { MODE: string } }).env.MODE;
+type ViteEnv = {
+  MODE: string;
+  VITE_API_URL: string;
+  // Vite configs inject these without the VITE_ prefix so `.env` files cannot
+  // override them.
+  ALLIANCE_DEV_API_URL?: string;
+  ALLIANCE_DEV_APP_URL?: string;
+};
 
-const prod_url = (import.meta as unknown as { env: { VITE_API_URL: string } })
-  .env.VITE_API_URL;
+const env = (import.meta as unknown as { env: ViteEnv }).env;
+
+const mode = env.MODE;
+
+const prod_url = env.VITE_API_URL;
+
+// A missing value must fail rather than send a worktree to the main database.
+// Read lazily because this module is also imported outside Vite.
+const devUrl = (
+  name: "ALLIANCE_DEV_API_URL" | "ALLIANCE_DEV_APP_URL",
+): string => {
+  const url = env[name];
+
+  if (!url) {
+    throw new Error(
+      `${name} is unset — the vite configs inject it from common/src/dev-ports.ts, so this bundle was not built by one of them`,
+    );
+  }
+
+  return url;
+};
 
 export const getWebSocketUrl = (mode: string): string => {
   if (mode === "development") {
-    return "http://localhost:3005";
+    return devUrl("ALLIANCE_DEV_API_URL");
   } else {
     return prod_url;
   }
@@ -21,7 +47,7 @@ export const isStaging = (): boolean => {
 
 export const getBaseUrl = (): string => {
   if (mode === "development") {
-    return "http://localhost:5173";
+    return devUrl("ALLIANCE_DEV_APP_URL");
   } else {
     return prod_url;
   }
@@ -32,7 +58,7 @@ export const memberProfileUrl = (id: number | string): string =>
 
 export const getApiUrl = (): string => {
   if (mode === "development") {
-    return "http://localhost:3005";
+    return devUrl("ALLIANCE_DEV_API_URL");
   } else {
     return prod_url + "/api";
   }

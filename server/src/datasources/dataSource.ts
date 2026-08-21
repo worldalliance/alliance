@@ -1,9 +1,23 @@
 import 'dotenv/config';
+
+import {
+  assertWorktreeDatabase,
+  DevDatabase,
+  devPorts,
+  PortCaller,
+} from '@alliance/common/dev-ports';
 import { DataSource } from 'typeorm';
-import { AppTypeOrmLogger } from '../utils/typeorm-logger';
 import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
+import { AppTypeOrmLogger } from '../utils/typeorm-logger';
 
 export const connectionOptions = (): PostgresConnectionOptions => {
+  // The TypeORM CLI bypasses main.ts, and dotenv preserves an exported DB_NAME.
+  assertWorktreeDatabase({
+    ports: devPorts(PortCaller.Server),
+    which: DevDatabase.Dev,
+    actual: process.env.DB_NAME,
+  });
+
   const shared: PostgresConnectionOptions = {
     type: 'postgres',
     host: process.env.DB_HOST,

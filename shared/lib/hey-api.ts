@@ -19,7 +19,7 @@ export const createClientConfig: CreateClientConfig = (config) => {
 
   const wrappedFetch: typeof fetch = async (
     input: RequestInfo | URL,
-    init?: RequestInit
+    init?: RequestInit,
   ) => {
     const req = new Request(input, init);
     const retryReq = req.clone();

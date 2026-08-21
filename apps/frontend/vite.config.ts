@@ -2,6 +2,11 @@ import { reactRouter } from "@react-router/dev/vite";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import { defineConfig } from "vite";
+import {
+  devPorts,
+  devViteDefine,
+  PortCaller,
+} from "../../common/src/dev-ports";
 
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 
@@ -14,8 +19,11 @@ const sharedPkg = path.resolve(monorepoRoot, "shared");
 const sharedWebPkg = path.resolve(monorepoRoot, "sharedweb");
 const commonPkg = path.resolve(monorepoRoot, "common");
 
+const ports = devPorts(PortCaller.Tooling);
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: devViteDefine(),
   plugins: [!isStorybook && reactRouter(), tailwindcss()],
   optimizeDeps: {
     exclude: ["@alliance/shared", "@alliance/sharedweb", "@alliance/common"],
@@ -24,13 +32,15 @@ export default defineConfig({
     sourcemap: "hidden",
   },
   server: {
+    port: ports.frontend,
+    strictPort: true,
     watch: {
       usePolling: true,
       interval: 100,
     },
     proxy: {
       "/api": {
-        target: "http://localhost:3005",
+        target: `http://localhost:${ports.server}`,
         changeOrigin: true,
         secure: false,
       },

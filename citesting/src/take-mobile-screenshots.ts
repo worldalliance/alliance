@@ -4,6 +4,7 @@ import os from "os";
 import path from "path";
 import process from "process";
 import { mobileScreenshotTargets } from "./mobile-screenshot-targets";
+import { screenshotDatabase } from "./screenshot-database";
 import { testUserEmail, testUserPassword } from "./test-user";
 
 type ChildProcessHandle = ReturnType<typeof spawn>;
@@ -14,25 +15,23 @@ type SpawnOptions = {
 };
 
 const repoRoot = path.resolve(__dirname, "..", "..");
-const backendPort = Number(process.env.BACKEND_PORT ?? "3105");
+const backendPort = Number(process.env.SERVER_PORT ?? "3105");
 const rawOutputDir =
   process.env.SCREENSHOT_OUTPUT_DIR ??
   path.join(
     repoRoot,
     "citesting",
     "screenshots-mobile",
-    new Date().toISOString().replace(/[:.]/g, "-")
+    new Date().toISOString().replace(/[:.]/g, "-"),
   );
 const outputDir = path.isAbsolute(rawOutputDir)
   ? rawOutputDir
   : path.join(repoRoot, rawOutputDir);
-const derivedDataPath = path.isAbsolute(
-  process.env.IOS_DERIVED_DATA_PATH ?? ""
-)
+const derivedDataPath = path.isAbsolute(process.env.IOS_DERIVED_DATA_PATH ?? "")
   ? (process.env.IOS_DERIVED_DATA_PATH as string)
   : path.join(
       repoRoot,
-      process.env.IOS_DERIVED_DATA_PATH ?? "citesting/ios-derived-data"
+      process.env.IOS_DERIVED_DATA_PATH ?? "citesting/ios-derived-data",
     );
 
 const preferredSimulatorNames = (
@@ -53,14 +52,14 @@ const appBinaryPath =
     "Build",
     "Products",
     `${iosConfiguration}-iphonesimulator`,
-    "Alliance.app"
+    "Alliance.app",
   );
 
 const dbHost = process.env.DB_HOST ?? "localhost";
 const dbPort = process.env.DB_PORT ?? "5432";
 const dbUser = process.env.DB_USERNAME ?? "postgres";
 const dbPass = process.env.DB_PASSWORD ?? "postgres";
-const dbName = process.env.DB_NAME ?? "citesting";
+const dbName = screenshotDatabase();
 const requestedTargetNames = (process.env.SCREENSHOT_TARGETS ?? "")
   .split(",")
   .map((value) => value.trim())
@@ -84,7 +83,7 @@ const sanitizeFileName = (value: string) =>
 const selectedTargets =
   requestedTargetNames.length > 0
     ? mobileScreenshotTargets.filter((target) =>
-        requestedTargetNames.includes(target.name)
+        requestedTargetNames.includes(target.name),
       )
     : mobileScreenshotTargets;
 
@@ -102,7 +101,7 @@ const trackChildProcess = (child: ChildProcessHandle) => {
 const spawnProcess = (
   command: string,
   args: string[],
-  options: SpawnOptions
+  options: SpawnOptions,
 ) => {
   return trackChildProcess(
     spawn(command, args, {
@@ -110,23 +109,28 @@ const spawnProcess = (
       env: options.env,
       detached: process.platform !== "win32",
       stdio: "inherit",
-    })
+    }),
   );
 };
 
 const execFileCapture = (
   command: string,
   args: string[],
-  options: SpawnOptions
+  options: SpawnOptions,
 ) =>
   new Promise<string>((resolve, reject) => {
-    execFile(command, args, { cwd: options.cwd, env: options.env }, (error, stdout, stderr) => {
-      if (error) {
-        reject(new Error(stderr || error.message));
-        return;
-      }
-      resolve(stdout);
-    });
+    execFile(
+      command,
+      args,
+      { cwd: options.cwd, env: options.env },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(new Error(stderr || error.message));
+          return;
+        }
+        resolve(stdout);
+      },
+    );
   });
 
 const runCommand = (command: string, args: string[], options: SpawnOptions) =>
@@ -136,7 +140,7 @@ const runCommand = (command: string, args: string[], options: SpawnOptions) =>
         cwd: options.cwd,
         env: options.env,
         stdio: "inherit",
-      })
+      }),
     );
 
     child.on("error", (error) => reject(error));
@@ -152,7 +156,7 @@ const runCommand = (command: string, args: string[], options: SpawnOptions) =>
 const tryRunCommand = async (
   command: string,
   args: string[],
-  options: SpawnOptions
+  options: SpawnOptions,
 ) => {
   try {
     await runCommand(command, args, options);
@@ -174,7 +178,7 @@ const findFirstMatch = async (directory: string, suffix: string) => {
   try {
     const entries = await fs.readdir(directory, { withFileTypes: true });
     const match = entries.find(
-      (entry) => entry.isDirectory() && entry.name.endsWith(suffix)
+      (entry) => entry.isDirectory() && entry.name.endsWith(suffix),
     );
     return match ? path.join(directory, match.name) : null;
   } catch {
@@ -187,17 +191,25 @@ const resolveWorkspacePath = async () => {
     return path.join(mobileAppRoot, configuredWorkspacePath);
   }
 
-  const workspace = await findFirstMatch(path.join(mobileAppRoot, "ios"), ".xcworkspace");
+  const workspace = await findFirstMatch(
+    path.join(mobileAppRoot, "ios"),
+    ".xcworkspace",
+  );
   if (workspace) {
     return workspace;
   }
 
-  const project = await findFirstMatch(path.join(mobileAppRoot, "ios"), ".xcodeproj");
+  const project = await findFirstMatch(
+    path.join(mobileAppRoot, "ios"),
+    ".xcodeproj",
+  );
   if (project) {
     return project;
   }
 
-  throw new Error("Could not find an iOS workspace or Xcode project under apps/mobile/ios");
+  throw new Error(
+    "Could not find an iOS workspace or Xcode project under apps/mobile/ios",
+  );
 };
 
 const resolveScheme = async (resolvedWorkspacePath: string) => {
@@ -215,14 +227,13 @@ const resolveScheme = async (resolvedWorkspacePath: string) => {
     {
       cwd: mobileAppRoot,
       env: process.env,
-    }
+    },
   );
   const parsed = JSON.parse(output) as {
     workspace?: { schemes?: string[] };
     project?: { schemes?: string[] };
   };
-  const schemes =
-    parsed.workspace?.schemes ?? parsed.project?.schemes ?? [];
+  const schemes = parsed.workspace?.schemes ?? parsed.project?.schemes ?? [];
   const preferredSchemes = ["alliancemobile", "Alliance"];
 
   for (const preferred of preferredSchemes) {
@@ -237,7 +248,7 @@ const resolveScheme = async (resolvedWorkspacePath: string) => {
   }
 
   throw new Error(
-    `Could not find an Xcode scheme for ${resolvedWorkspacePath}`
+    `Could not find an Xcode scheme for ${resolvedWorkspacePath}`,
   );
 };
 
@@ -274,7 +285,7 @@ const shutdown = async (code: number) => {
           // Ignore.
         }
       }
-    })
+    }),
   );
   process.exit(code);
 };
@@ -314,12 +325,12 @@ const setupDatabase = async () => {
       "-c",
       `DROP DATABASE IF EXISTS "${dbName}"`,
     ],
-    { cwd: repoRoot, env: pgEnv }
+    { cwd: repoRoot, env: pgEnv },
   );
   await runCommand(
     "psql",
     [...psqlBase, "-d", "postgres", "-c", `CREATE DATABASE "${dbName}"`],
-    { cwd: repoRoot, env: pgEnv }
+    { cwd: repoRoot, env: pgEnv },
   );
 
   console.log(`${logPrefix} Running migrations...`);
@@ -342,7 +353,7 @@ const setupDatabase = async () => {
         DB_NAME: dbName,
         NODE_ENV: "test",
       },
-    }
+    },
   );
 
   console.log(`${logPrefix} Loading seed dump...`);
@@ -357,7 +368,7 @@ const loadSeedData = async (psqlBase: string[], pgEnv: NodeJS.ProcessEnv) => {
     repoRoot,
     "citesting",
     "fixtures",
-    "seed_dataonly.sql"
+    "seed_dataonly.sql",
   );
   let seedContent = await fs.readFile(seedFile, "utf8");
 
@@ -379,7 +390,7 @@ const loadSeedData = async (psqlBase: string[], pgEnv: NodeJS.ProcessEnv) => {
         cwd: repoRoot,
         env: pgEnv,
         stdio: ["pipe", "inherit", "inherit"],
-      }
+      },
     );
 
     child.stdin.write("SET session_replication_role = 'replica';\n");
@@ -399,7 +410,7 @@ const SEED_REFERENCE_DATE = "2026-02-10T18:00:00Z";
 
 const shiftTimestamps = async (
   psqlBase: string[],
-  pgEnv: NodeJS.ProcessEnv
+  pgEnv: NodeJS.ProcessEnv,
 ) => {
   const sql = `
     DO $$
@@ -438,7 +449,7 @@ const startBackend = () => {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     NODE_ENV: process.env.NODE_ENV ?? "test",
-    PORT: String(backendPort),
+    SERVER_PORT: String(backendPort),
     DB_HOST: dbHost,
     DB_PORT: dbPort,
     DB_USERNAME: dbUser,
@@ -488,7 +499,7 @@ const listAvailableSimulators = async () => {
   const output = await execFileCapture(
     "xcrun",
     ["simctl", "list", "devices", "available", "-j"],
-    { cwd: repoRoot, env: process.env }
+    { cwd: repoRoot, env: process.env },
   );
   const devices = JSON.parse(output) as {
     devices: Record<string, SimDevice[]>;
@@ -518,7 +529,7 @@ const findSimulatorUdid = async () => {
   throw new Error(
     `Could not find an available iPhone simulator. Available devices: ${devices
       .map((device) => device.name)
-      .join(", ")}`
+      .join(", ")}`,
   );
 };
 
@@ -541,10 +552,14 @@ const bootSimulator = async (udid: string, simulatorName: string) => {
     env: process.env,
   });
   if (process.env.CI !== "true") {
-    await tryRunCommand("open", ["-a", "Simulator", "--args", "-CurrentDeviceUDID", udid], {
-      cwd: repoRoot,
-      env: process.env,
-    });
+    await tryRunCommand(
+      "open",
+      ["-a", "Simulator", "--args", "-CurrentDeviceUDID", udid],
+      {
+        cwd: repoRoot,
+        env: process.env,
+      },
+    );
   }
   await tryRunCommand("xcrun", ["simctl", "ui", udid, "appearance", "light"], {
     cwd: repoRoot,
@@ -571,7 +586,7 @@ const bootSimulator = async (udid: string, simulatorName: string) => {
     {
       cwd: repoRoot,
       env: process.env,
-    }
+    },
   );
 };
 
@@ -627,10 +642,10 @@ const buildIosApp = async (udid: string) => {
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message.includes("build.db\": database is locked")
+      error.message.includes('build.db": database is locked')
     ) {
       console.warn(
-        `${logPrefix} Derived data was locked. Cleaning ${derivedDataPath} and retrying build once.`
+        `${logPrefix} Derived data was locked. Cleaning ${derivedDataPath} and retrying build once.`,
       );
       await fs.rm(derivedDataPath, { recursive: true, force: true });
       await runCommand("xcodebuild", buildArgs, {
@@ -656,25 +671,21 @@ const ensureIosWorkspace = async () => {
   }
 
   console.log(
-    `${logPrefix} Native iOS workspace missing. Running Expo prebuild...`
+    `${logPrefix} Native iOS workspace missing. Running Expo prebuild...`,
   );
-  await runCommand(
-    "bun",
-    ["x", "expo", "prebuild", "--platform", "ios"],
-    {
-      cwd: path.join(repoRoot, "apps", "mobile"),
-      env: {
-        ...process.env,
-        CI: "true",
-      },
-    }
-  );
+  await runCommand("bun", ["x", "expo", "prebuild", "--platform", "ios"], {
+    cwd: path.join(repoRoot, "apps", "mobile"),
+    env: {
+      ...process.env,
+      CI: "true",
+    },
+  });
 
   const generatedWorkspace = await findFirstMatch(iosDir, ".xcworkspace");
   const generatedProject = await findFirstMatch(iosDir, ".xcodeproj");
   if (!generatedWorkspace && !generatedProject) {
     throw new Error(
-      `Expo prebuild completed but no Xcode workspace/project was generated under ${iosDir}`
+      `Expo prebuild completed but no Xcode workspace/project was generated under ${iosDir}`,
     );
   }
 };
@@ -704,7 +715,7 @@ const writeMaestroFlow = async (
   filePath: string,
   deepLink: string,
   readyTestId: string,
-  screenshotFileName: string
+  screenshotFileName: string,
 ) => {
   // NOTE: We pass the stem without a .png extension because Maestro's
   // takeScreenshot auto-appends ".png". The file lands in Maestro's CWD,
@@ -736,7 +747,7 @@ const writeMaestroFlow = async (
 const captureScreenshots = async (udid: string, simulatorName: string) => {
   if (selectedTargets.length === 0) {
     throw new Error(
-      `No mobile screenshot targets matched SCREENSHOT_TARGETS="${process.env.SCREENSHOT_TARGETS ?? ""}"`
+      `No mobile screenshot targets matched SCREENSHOT_TARGETS="${process.env.SCREENSHOT_TARGETS ?? ""}"`,
     );
   }
 
@@ -757,7 +768,7 @@ const captureScreenshots = async (udid: string, simulatorName: string) => {
 
   const maestro = await getMaestroCommand();
   const flowDir = await fs.mkdtemp(
-    path.join(os.tmpdir(), "alliance-mobile-maestro-")
+    path.join(os.tmpdir(), "alliance-mobile-maestro-"),
   );
 
   try {
@@ -766,47 +777,35 @@ const captureScreenshots = async (udid: string, simulatorName: string) => {
       // without the extension in the YAML flow. The final file on disk
       // will be "<stem>.png".
       const stem = `${String(index + 1).padStart(2, "0")}-${sanitizeFileName(
-        target.name
+        target.name,
       )}`;
       const fileName = `${stem}.png`;
       const expectedPath = path.join(outputDir, fileName);
       const flowPath = path.join(flowDir, `${target.name}.yaml`);
 
-      console.log(
-        `${logPrefix} Capturing ${target.deepLink} -> ${fileName}`
-      );
+      console.log(`${logPrefix} Capturing ${target.deepLink} -> ${fileName}`);
 
       // Pass the stem (no .png) — Maestro appends the extension itself.
       await writeMaestroFlow(
         flowPath,
         target.deepLink,
         target.readyTestId,
-        stem
+        stem,
       );
 
       // Maestro writes takeScreenshot output relative to its CWD, so we
       // set cwd to the output directory directly.
-      await runCommand(
-        maestro,
-        [
-          "test",
-          "--udid",
-          udid,
-          flowPath,
-        ],
-        {
-          cwd: outputDir,
-          env: {
-            ...process.env,
-            MAESTRO_CLI_NO_ANALYTICS:
-              process.env.MAESTRO_CLI_NO_ANALYTICS ?? "1",
-          },
-        }
-      );
+      await runCommand(maestro, ["test", "--udid", udid, flowPath], {
+        cwd: outputDir,
+        env: {
+          ...process.env,
+          MAESTRO_CLI_NO_ANALYTICS: process.env.MAESTRO_CLI_NO_ANALYTICS ?? "1",
+        },
+      });
 
       if (!(await fileExists(expectedPath))) {
         throw new Error(
-          `Maestro completed but did not write the expected screenshot at ${expectedPath}`
+          `Maestro completed but did not write the expected screenshot at ${expectedPath}`,
         );
       }
 

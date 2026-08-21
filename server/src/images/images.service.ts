@@ -1,3 +1,4 @@
+import { devPorts, PortCaller } from '@alliance/common/dev-ports';
 import {
   DeleteObjectCommand,
   PutObjectCommand,
@@ -148,7 +149,6 @@ export function getImageSource(string: string) {
     }
     return `${process.env.APP_URL}/api/images/${string}`;
   } else {
-    const port = process.env.PORT ?? '3005';
-    return `http://localhost:${port}/images/${string}`;
+    return `http://localhost:${devPorts(PortCaller.Server).server}/images/${string}`;
   }
 }

@@ -1,12 +1,6 @@
-import { defineConfig } from "@hey-api/openapi-ts";
+import { defineAllianceApiConfig } from "../../shared/openapi-config";
 
-export default defineConfig({
-  input: "http://localhost:3005/openapi.yaml",
+export default defineAllianceApiConfig({
   output: "./src/client",
-  plugins: [
-    {
-      name: "@hey-api/client-fetch",
-      runtimeConfigPath: "./src/hey-api.ts",
-    },
-  ],
+  runtimeConfigPath: "./src/hey-api.ts",
 });

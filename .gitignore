@@ -48,3 +48,7 @@ db_dumps/
 citesting/screenshots/
 terraform/.terraform.tfstate.lock.info
 shared/tsconfig.tsbuildinfo
+
+# Worktrees
+.worktree/
+common/.tmp-test/

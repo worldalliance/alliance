@@ -1,4 +1,5 @@
 import { ActionActivityType } from '@alliance/common/actionActivity';
+import { devPorts, PortCaller } from '@alliance/common/dev-ports';
 import type {
   FormSchema,
   RankingField,
@@ -237,7 +238,9 @@ describe('Tasks (e2e)', () => {
       (field) => field.id === 'hero-image',
     );
     expect(imageField).toBeDefined();
-    expect(imageField.src).toBe('http://localhost:3005/images/local-image-key');
+    expect(imageField.src).toBe(
+      `http://localhost:${devPorts(PortCaller.Server).server}/images/local-image-key`,
+    );
 
     const updateResponse = await request(ctx.app.getHttpServer())
       .put(`/tasks/updateForm/${formId}`)
