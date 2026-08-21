@@ -1,0 +1,7 @@
+# Revisions to skip in `git blame` — mechanical, repo-wide reformats only.
+# GitHub reads this file automatically. Locally:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Prettier across the whole repo: server switched from single to double quotes,
+# imports organized, no behavior change.
+6785f0bc991462b178f491e0f4a877e6fc176ce9
