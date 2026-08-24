@@ -30,11 +30,6 @@ export const PLACEHOLDER_CONTRACT_MARKDOWN = `
 3. I understand that if I miss all assigned non-optional actions for 3 weeks in a row, my contract will be suspended automatically.
 `.trim();
 
-export const CONTRACT_NOTES = [
-  "You can terminate your membership at any time.",
-  "If you miss all assigned non-optional actions for 3 weeks in a row, your contract will be suspended automatically. You can re-sign the contract to re-join the Alliance.",
-] as const;
-
 export function formatContractDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString();
 }

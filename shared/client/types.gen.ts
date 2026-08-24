@@ -1700,9 +1700,15 @@ export type CreateMessageDto = {
     replyToId?: string;
 };
 
+export type ContractDescriptionItem = {
+    point: string;
+    subtext: string;
+};
+
 export type ContractDto = {
     id: number;
     markdown: string;
+    description: Array<ContractDescriptionItem>;
 };
 
 export type ContractAdminDto = {
@@ -1712,6 +1718,7 @@ export type ContractAdminDto = {
     markdown: string;
     startDate: string | null;
     endDate: string | null;
+    description: Array<ContractDescriptionItem>;
 };
 
 export type SignContractDto = {
@@ -1727,12 +1734,14 @@ export type CreateContractDto = {
     markdown: string;
     startDate: string | null;
     endDate: string | null;
+    description?: Array<ContractDescriptionItem>;
 };
 
 export type UpdateContractDto = {
     name: string | null;
     startDate: string | null;
     endDate: string | null;
+    description?: Array<ContractDescriptionItem>;
 };
 
 export type ClusterMemberDto = {

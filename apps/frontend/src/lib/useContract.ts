@@ -9,6 +9,7 @@ export function useContract() {
     initialData: {
       id: 1,
       markdown: PLACEHOLDER_CONTRACT_MARKDOWN,
+      description: [],
     },
   });
 

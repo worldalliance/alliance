@@ -34,7 +34,11 @@ import {
   newMemberReferredNotif,
 } from "./contract.utils";
 import { CreateContractDto, UpdateContractDto } from "./dto/contract.dto";
-import { Contract } from "./entities/contract.entity";
+import {
+  Contract,
+  parseContract,
+  type ParsedContract,
+} from "./entities/contract.entity";
 
 @Injectable()
 export class ContractService {
@@ -51,35 +55,44 @@ export class ContractService {
     private readonly eventLogService: EventLogService,
   ) {}
 
-  async findAll(): Promise<Contract[]> {
-    return this.contractRepository.find({
-      order: { createdAt: "DESC" },
-    });
+  async findAll(): Promise<ParsedContract[]> {
+    return (
+      await this.contractRepository.find({
+        order: { createdAt: "DESC" },
+      })
+    ).map(parseContract);
   }
 
-  async findOne(id: number): Promise<Contract> {
-    return this.contractRepository.findOneOrFail({ where: { id } });
+  async findOne(id: number): Promise<ParsedContract> {
+    return parseContract(
+      await this.contractRepository.findOneOrFail({ where: { id } }),
+    );
   }
 
-  async findNewestActiveContract(): Promise<Contract> {
+  async findNewestActiveContract(): Promise<ParsedContract> {
     const now = new Date();
-    return this.contractRepository.findOneOrFail({
-      where: {
-        startDate: LessThanOrEqual(now),
-        endDate: Or(IsNull(), MoreThan(now)),
-      },
-      order: {
-        startDate: "DESC",
-      },
+    return parseContract(
+      await this.contractRepository.findOneOrFail({
+        where: {
+          startDate: LessThanOrEqual(now),
+          endDate: Or(IsNull(), MoreThan(now)),
+        },
+        order: {
+          startDate: "DESC",
+        },
+      }),
+    );
+  }
+
+  async create(dto: CreateContractDto): Promise<ParsedContract> {
+    const contract = this.contractRepository.create({
+      ...dto,
+      description: dto.description ?? [],
     });
+    return parseContract(await this.contractRepository.save(contract));
   }
 
-  async create(dto: CreateContractDto): Promise<Contract> {
-    const contract = this.contractRepository.create(dto);
-    return await this.contractRepository.save(contract);
-  }
-
-  async update(id: number, dto: UpdateContractDto): Promise<Contract> {
+  async update(id: number, dto: UpdateContractDto): Promise<ParsedContract> {
     await this.contractRepository.update(id, dto);
     return this.findOne(id);
   }

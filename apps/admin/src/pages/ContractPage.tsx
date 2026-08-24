@@ -12,23 +12,46 @@ import {
   resolveDateValue,
 } from "@alliance/sharedweb/ui/DateTimePicker";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import { Plus, X } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import FormTextarea from "../components/FormTextarea";
 
+type DescriptionRow = {
+  key: string;
+  point: string;
+  subtext: string;
+};
+
 type ContractForm = {
   name: string;
   markdown: string;
+  description: DescriptionRow[];
   startDate: string;
   endDate: string;
 };
 
+const newDescriptionRow = (): DescriptionRow => ({
+  key: crypto.randomUUID(),
+  point: "",
+  subtext: "",
+});
+
 const emptyForm: ContractForm = {
   name: "",
   markdown: "",
+  description: [],
   startDate: "",
   endDate: "",
 };
+
+const toDescriptionPayload = (rows: DescriptionRow[]) =>
+  rows
+    .map((row) => ({
+      point: row.point.trim(),
+      subtext: row.subtext.trim(),
+    }))
+    .filter((item) => item.point.length > 0);
 
 const ContractPage: React.FC = () => {
   const { id: idParam } = useParams<{ id?: string }>();
@@ -66,6 +89,11 @@ const ContractPage: React.FC = () => {
         setForm({
           name: data.name ?? "",
           markdown: data.markdown,
+          description: (data.description ?? []).map((item) => ({
+            key: crypto.randomUUID(),
+            point: item.point,
+            subtext: item.subtext,
+          })),
           startDate: data.startDate
             ? formatLocalDateTime(resolveDateValue(data.startDate), "minute")
             : "",
@@ -98,6 +126,7 @@ const ContractPage: React.FC = () => {
           const body: CreateContractDto = {
             name: form.name.trim(),
             markdown: form.markdown,
+            description: toDescriptionPayload(form.description),
             startDate: form.startDate
               ? new Date(form.startDate).toISOString()
               : null,
@@ -111,6 +140,7 @@ const ContractPage: React.FC = () => {
         } else if (id != null) {
           const body: UpdateContractDto = {
             name: form.name.trim(),
+            description: toDescriptionPayload(form.description),
             startDate: form.startDate
               ? new Date(form.startDate).toISOString()
               : null,
@@ -233,6 +263,111 @@ const ContractPage: React.FC = () => {
                 {form.markdown && (
                   <div className="w-full px-3 py-2 border border-gray-200 rounded-md max-h-96 overflow-y-auto">
                     <AppMarkdownWrapper markdownContent={form.markdown} />
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-medium text-gray-700">
+                    Description
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        description: [...prev.description, newDescriptionRow()],
+                      }))
+                    }
+                    className="p-1 text-gray-400 hover:text-blue-600"
+                    title="Add point"
+                    aria-label="Add point"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mb-2">
+                  Markdown points with optional subtext, shown with the
+                  contract.
+                </p>
+                {form.description.length === 0 ? (
+                  <p className="text-xs text-gray-500">No points yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {form.description.map((row) => (
+                      <div
+                        key={row.key}
+                        className="border border-gray-200 rounded-md p-3 space-y-2"
+                      >
+                        <div className="flex items-start gap-2">
+                          <FormTextarea
+                            value={row.point}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                description: prev.description.map((item) =>
+                                  item.key === row.key
+                                    ? { ...item, point: e.target.value }
+                                    : item,
+                                ),
+                              }))
+                            }
+                            minRows={1}
+                            placeholder="Point"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                description: prev.description.filter(
+                                  (item) => item.key !== row.key,
+                                ),
+                              }))
+                            }
+                            className="p-1 text-gray-400 hover:text-red-600 shrink-0"
+                            title="Remove point"
+                            aria-label="Remove point"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                        <FormTextarea
+                          value={row.subtext}
+                          onChange={(e) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              description: prev.description.map((item) =>
+                                item.key === row.key
+                                  ? { ...item, subtext: e.target.value }
+                                  : item,
+                              ),
+                            }))
+                          }
+                          minRows={2}
+                          placeholder="Subtext"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm font-mono"
+                        />
+                        {(row.point.trim() !== "" ||
+                          row.subtext.trim() !== "") && (
+                          <div className="px-3 py-2 border border-gray-200 rounded-md">
+                            {row.point.trim() !== "" && (
+                              <div className="font-semibold">
+                                <AppMarkdownWrapper
+                                  markdownContent={row.point}
+                                />
+                              </div>
+                            )}
+                            {row.subtext.trim() !== "" && (
+                              <AppMarkdownWrapper
+                                markdownContent={row.subtext}
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

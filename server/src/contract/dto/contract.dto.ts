@@ -1,13 +1,35 @@
 import type { ContractField } from "@alliance/common/forms/form-schema";
-import { ApiProperty, PickType } from "@nestjs/swagger";
-import { IsNotEmpty, IsString } from "class-validator";
-import { Contract } from "../entities/contract.entity";
+import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
+import { Type } from "class-transformer";
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from "class-validator";
+import { Contract, type ParsedContract } from "../entities/contract.entity";
+
+export class ContractDescriptionItem {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  point: string;
+
+  @ApiProperty()
+  @IsString()
+  subtext: string;
+}
 
 export class ContractDto extends PickType(Contract, ["id", "markdown"]) {
-  constructor(contract: Contract) {
+  @ApiProperty({ type: () => ContractDescriptionItem, isArray: true })
+  description: ContractDescriptionItem[];
+
+  constructor(input: ParsedContract) {
     super();
-    this.id = contract.id;
-    this.markdown = contract.markdown;
+    this.id = input.id;
+    this.markdown = input.markdown;
+    this.description = input.description;
   }
 }
 
@@ -35,14 +57,18 @@ export class ContractAdminDto extends PickType(Contract, [
   "startDate",
   "endDate",
 ]) {
-  constructor(contract: Contract) {
+  @ApiProperty({ type: () => ContractDescriptionItem, isArray: true })
+  description: ContractDescriptionItem[];
+
+  constructor(input: ParsedContract) {
     super();
-    this.id = contract.id;
-    this.name = contract.name;
-    this.createdAt = contract.createdAt;
-    this.markdown = contract.markdown;
-    this.startDate = contract.startDate;
-    this.endDate = contract.endDate;
+    this.id = input.id;
+    this.name = input.name;
+    this.createdAt = input.createdAt;
+    this.markdown = input.markdown;
+    this.startDate = input.startDate;
+    this.endDate = input.endDate;
+    this.description = input.description;
   }
 }
 
@@ -51,13 +77,27 @@ export class CreateContractDto extends PickType(Contract, [
   "markdown",
   "startDate",
   "endDate",
-]) {}
+]) {
+  @ApiPropertyOptional({ type: () => ContractDescriptionItem, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ContractDescriptionItem)
+  description?: ContractDescriptionItem[];
+}
 
 export class UpdateContractDto extends PickType(Contract, [
   "name",
   "startDate",
   "endDate",
-]) {}
+]) {
+  @ApiPropertyOptional({ type: () => ContractDescriptionItem, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ContractDescriptionItem)
+  description?: ContractDescriptionItem[];
+}
 
 export type ContractFieldDto = ContractField & {
   contract: ContractDto;

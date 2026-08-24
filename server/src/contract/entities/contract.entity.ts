@@ -1,6 +1,16 @@
+import {
+  contractDescriptionSchema,
+  type ContractDescription,
+} from "@alliance/common/contract";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { Allow, IsArray, IsOptional, IsString } from "class-validator";
+import {
+  Allow,
+  IsArray,
+  IsDefined,
+  IsOptional,
+  IsString,
+} from "class-validator";
 import { CreateDateColumnTz } from "src/datasources/basecolumns";
 import { ContractEvent } from "src/user/entities/contract-event.entity";
 import type { Relation } from "src/utils/Repository";
@@ -31,6 +41,14 @@ export class Contract {
   @IsString()
   markdown: string;
 
+  @Column({ type: "jsonb", default: [] })
+  @ApiProperty({
+    isArray: true,
+    description: "Markdown points shown with the contract",
+  })
+  @IsDefined()
+  description: unknown[];
+
   @Column({ type: "timestamptz", nullable: true })
   @ApiProperty({ type: Date, nullable: true })
   @Type(() => Date)
@@ -55,4 +73,15 @@ export class Contract {
   @Type(() => ContractEvent)
   // eslint-disable-next-line local-rules/relation-optionality -- legacy: pre-dates the rule, needs migrating
   events: Relation<ContractEvent>[];
+}
+
+export type ParsedContract = Omit<Contract, "description"> & {
+  description: ContractDescription;
+};
+
+export function parseContract(contract: Contract): ParsedContract {
+  contract.description = contractDescriptionSchema.parse(
+    contract.description ?? [],
+  );
+  return contract as ParsedContract;
 }
