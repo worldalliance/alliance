@@ -134,20 +134,20 @@ const ContractPage: React.FC = () => {
     weeklyCommitmentConfirmation,
   );
 
-  const signedContractId =
+  const previousSignedContractId =
     typeof lastContractEvent?.contractId === "number" &&
     lastContractEvent.contractId !== latestContract?.id
       ? lastContractEvent.contractId
       : null;
-  const { data: signedContract } = useQuery({
-    queryKey: ["contractGetById", signedContractId],
+  const { data: previousSignedContract } = useQuery({
+    queryKey: ["contractGetById", previousSignedContractId],
     queryFn: () =>
       contractGetById({
-        path: { id: signedContractId! },
+        path: { id: previousSignedContractId! },
       }).then((res) => res.data ?? null),
     initialData: null,
-    enabled: signedContractId != null,
-  });
+    enabled: previousSignedContractId != null,
+  }); // if the member has signed the latest contract, this will be null
 
   useEffect(() => {
     refreshUser();
@@ -211,7 +211,7 @@ const ContractPage: React.FC = () => {
     }
   };
 
-  const signedContractMessage = useMemo(() => {
+  const signedDateMessage = useMemo(() => {
     if (!lastContractEvent) {
       return null;
     }
@@ -227,15 +227,15 @@ const ContractPage: React.FC = () => {
         <h1 className="text-title">Membership contract</h1>
 
         <section className="flex flex-col gap-y-4">
-          {signedContract && (
+          {previousSignedContract && (
             <div className="flex flex-col gap-y-4">
               <ContractDescriptionList
-                items={signedContract.description}
-                markdown={signedContract.markdown}
+                items={previousSignedContract.description}
+                markdown={previousSignedContract.markdown}
               >
                 {lastContractEvent?.type === "signed" && (
                   <SignedContractActions
-                    message={signedContractMessage}
+                    message={signedDateMessage}
                     onSuspend={handleContractSuspend}
                   />
                 )}
@@ -245,7 +245,7 @@ const ContractPage: React.FC = () => {
 
           {latestContract && (
             <div className="flex flex-col gap-y-4">
-              {signedContract && (
+              {previousSignedContract && (
                 <p className="font-semibold">
                   An updated contract is available.
                 </p>
@@ -257,7 +257,7 @@ const ContractPage: React.FC = () => {
                 {lastContractEvent?.type === "signed" &&
                 lastContractEvent.contractId === latestContract.id ? (
                   <SignedContractActions
-                    message={signedContractMessage}
+                    message={signedDateMessage}
                     onSuspend={handleContractSuspend}
                   />
                 ) : (
