@@ -76,7 +76,10 @@ function main(): void {
     if (!field.success) usage();
 
     const value = FIELD_VALUE[field.data](devPorts(PortCaller.Tooling));
-    if (value !== null) console.log(value);
+    // String, because bun colorizes an inspected number under a pty or
+    // FORCE_COLOR, and the callers are `$(...)` substitutions that would
+    // capture the escapes.
+    if (value !== null) console.log(String(value));
     return;
   }
 
