@@ -2,6 +2,8 @@
 
 # dependencies
 node_modules/
+# bun.lock, not npm
+package-lock.json
 
 # Expo
 .expo/

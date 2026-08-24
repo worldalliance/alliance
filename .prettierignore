@@ -10,6 +10,7 @@ server/migrations
 
 # Generated — regenerating would undo any reformatting
 **/*.gen.ts
+apps/mobile/uniwind-types.d.ts
 shared/client
 apps/*/public/assets/world.js
 apps/*/public/assets/world.json
