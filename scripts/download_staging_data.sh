@@ -31,4 +31,4 @@ ssh -o BatchMode=yes "$SSH_HOST_ALIAS" "bash -lc '
 '" > "$dump_file"
 
 echo "==> Dump downloaded OK: ${dump_file}"
-echo "==> To restore, run: ./misc/restore_staging_data.sh ${dump_file}"
+echo "==> To restore, run: ./scripts/restore_staging_data.sh ${dump_file}"

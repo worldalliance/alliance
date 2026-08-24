@@ -16,7 +16,7 @@ export const phoneNumberTransformer: ValueTransformer = {
 };
 
 /**
- * Values written by `misc/sync_prod_to_staging.sh` in place of real member
+ * Values written by `scripts/sync_prod_to_staging.sh` in place of real member
  * numbers. `+1555…` is the current format; `15550100` is what it wrote before,
  * and survives on staging until the next sync runs.
  *

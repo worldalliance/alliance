@@ -11,10 +11,10 @@ colors, and the planet-earth globe. Outputs:
 These are referenced by src/lib/socialPreviewMeta.ts via each route's meta().
 
 Usage:
-  python3 apps/frontend/scripts/og/generate.py
+  python3 scripts/brand/og.py
 
 Requires Google Chrome. Override its path with the CHROME env var if needed:
-  CHROME="/path/to/chrome" python3 apps/frontend/scripts/og/generate.py
+  CHROME="/path/to/chrome" python3 scripts/brand/og.py
 """
 
 import base64
@@ -24,9 +24,9 @@ import subprocess
 import sys
 import tempfile
 
-# scripts/og/generate.py -> apps/frontend
-FRONTEND = pathlib.Path(__file__).resolve().parents[2]
-PUB = FRONTEND / "public"
+# scripts/brand/og.py -> repo root
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+PUB = ROOT / "apps/frontend/public"
 
 CHROME = os.environ.get(
     "CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -180,7 +180,7 @@ def main() -> int:
                 check=True,
                 stderr=subprocess.DEVNULL,
             )
-            print(f"wrote {out.relative_to(FRONTEND)} ({WIDTH * SCALE}x{HEIGHT * SCALE})")
+            print(f"wrote {out.relative_to(ROOT)} ({WIDTH * SCALE}x{HEIGHT * SCALE})")
     return 0
 
 

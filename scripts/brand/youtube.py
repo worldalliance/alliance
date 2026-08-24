@@ -3,7 +3,7 @@
 
 Renders with headless Chrome so the cards use the real brand fonts (Berlingske
 wordmark, Literata serif), exact brand colors, and the planet-earth globe --
-the same approach as apps/frontend/scripts/og/generate.py. Outputs into brand/:
+the same approach as og.py. Outputs into brand/:
 
   youtube-banner.png  2560x1440 channel banner
   youtube-avatar.png  800x800 channel profile picture

@@ -637,7 +637,7 @@ jobs:
             server/tsconfig.json \
             server/src \
             server/migrations \
-            misc/sync_prod_to_staging.sh \
+            scripts/sync_prod_to_staging.sh \
             common/package.json \
             common/tsconfig.json \
             common/src \
@@ -756,7 +756,7 @@ jobs:
             # ship its script with the deploy. Staging only. Never fails the
             # deploy
             if [ "${{ github.ref_name }}" != 'production' ]; then
-              install -m 755 ~/nest-backend/misc/sync_prod_to_staging.sh \
+              install -m 755 ~/nest-backend/scripts/sync_prod_to_staging.sh \
                 ~/sync_prod_to_staging.sh.new \
                 && mv -f ~/sync_prod_to_staging.sh.new ~/sync_prod_to_staging.sh \
                 && echo "installed ~/sync_prod_to_staging.sh" \

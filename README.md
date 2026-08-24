@@ -56,7 +56,7 @@ When opening the app locally for the first time, you can log in with the account
 
 ### Loading data
 
-Developers often want to test local code with a cleaned version of the production database. To allow for this, we have a script, `./misc/load_staging_data.sh` that will copy the data from the staging server into the local postgres. For this to work, you first need to set up your `.ssh/config` with a `staging` destination with the appropriate ssh key (ask an existing developer for the keys / ip)
+Developers often want to test local code with a cleaned version of the production database. To allow for this, we have a script, `./scripts/load_staging_data.sh` that will copy the data from the staging server into the local postgres. For this to work, you first need to set up your `.ssh/config` with a `staging` destination with the appropriate ssh key (ask an existing developer for the keys / ip)
 
 ### Viewing the database
 
