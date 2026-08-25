@@ -23,7 +23,7 @@ export const screenshotTargets: ScreenshotTarget[] = [
   { name: "feed", path: "/feed", requiresAuth: true },
   { name: "forum", path: "/forum", requiresAuth: true },
   { name: "invites", path: "/invites", requiresAuth: true },
-  { name: "contract", path: "/contract", requiresAuth: true },
+  { name: "contract", path: "/membership", requiresAuth: true },
   { name: "messages", path: "/messages", requiresAuth: true },
   { name: "settings", path: "/settings", requiresAuth: true },
   { name: "notifications", path: "/notifications", requiresAuth: true },

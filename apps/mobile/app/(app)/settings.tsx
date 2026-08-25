@@ -10,7 +10,6 @@ import { cn } from "@alliance/shared/styles/util";
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Switch, TextInput, TouchableOpacity, View } from "react-native";
-import AwayRangesSection from "../../components/AwayRangesSection";
 import PhoneNumberInput from "../../components/forms/PhoneNumberInput";
 import ReminderTimeSelect from "../../components/forms/ReminderTimeSelect";
 import TimeZoneSelect from "../../components/forms/TimeZoneSelect";
@@ -425,11 +424,6 @@ export default function SettingsPage() {
               </View>
             </Card>
           )}
-
-          {/* Away Periods Section */}
-          <Card cardStyle={CardStyle.White}>
-            <AwayRangesSection />
-          </Card>
 
           {/* Privacy Section */}
           <Card cardStyle={CardStyle.White}>

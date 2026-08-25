@@ -87,10 +87,10 @@ const INTERNAL_ROUTE_PATTERNS: {
     pattern: /^\/notifications\/?$/,
     getRoute: () => "/notifications",
   },
-  // Contract: /contract
+  // Membership: /membership or /contract
   {
-    pattern: /^\/contract\/?$/,
-    getRoute: () => "/contract",
+    pattern: /^\/(?:membership|contract)\/?$/,
+    getRoute: () => "/membership",
   },
   // Groups: /groups
   {

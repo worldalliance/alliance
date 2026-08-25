@@ -9,7 +9,6 @@ import DropdownSelect from "@alliance/sharedweb/ui/DropdownSelect";
 import FormInput from "@alliance/sharedweb/ui/FormInput";
 import { Pencil, X } from "lucide-react";
 import React, { useState } from "react";
-import { href, Link } from "react-router";
 
 enum ReasonDropdownOption {
   UNSELECTED = "Select a reason",
@@ -414,15 +413,8 @@ const AwayRangesSection: React.FC = () => {
             />
             {selectedReasonIsOther && (
               <p className="text-sm text-zinc-500 mb-2 mt-1">
-                See your{" "}
-                <Link
-                  to={href("/contract")}
-                  target={"_blank"}
-                  className="text-link"
-                >
-                  contract
-                </Link>{" "}
-                for guidelines on extenuating circumstances.
+                See your contract above for guidelines on extenuating
+                circumstances.
               </p>
             )}
           </div>

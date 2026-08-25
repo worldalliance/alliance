@@ -20,7 +20,6 @@ import PhoneNumberInput from "@alliance/sharedweb/ui/PhoneNumberInput";
 import YesNoToggle from "@alliance/sharedweb/ui/YesNoToggle";
 import React, { useCallback, useEffect, useState } from "react";
 import { href, useLocation, useNavigate } from "react-router";
-import AwayRangesSection from "../../components/AwayRangesSection";
 import CityAutosuggest from "../../components/CityAutosuggest";
 import { useAuth } from "../../lib/AuthContext";
 
@@ -293,14 +292,6 @@ const SettingsPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </Card>
-
-        <Card
-          id="away-periods"
-          style={CardStyle.White}
-          className="p-6 scroll-mt-[calc(var(--navbar-top-bar-height)+1rem)]"
-        >
-          <AwayRangesSection />
         </Card>
 
         <Card

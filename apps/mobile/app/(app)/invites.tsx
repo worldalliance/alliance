@@ -869,48 +869,7 @@ export default function InvitesScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <View className="px-4 pt-4 gap-4">
-          {!user.ambassador && (
-            <View className="pb-1">
-              <Text className="text-sm text-zinc-500 leading-snug">
-                Help the Alliance reach its current growth goal
-              </Text>
-              <View className="mt-1">
-                <View
-                  className="w-full h-4 rounded-full overflow-hidden"
-                  style={{ backgroundColor: colors.grey[2] }}
-                >
-                  <View
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${allianceProgressPercent}%`,
-                      backgroundColor: colors.green,
-                    }}
-                  />
-                </View>
-                <View className="flex-row items-center justify-between mt-1">
-                  <Text className="text-sm">
-                    <Text
-                      className="text-sm"
-                      weight={FontWeight.Semibold}
-                      style={{ color: colors.green }}
-                    >
-                      {allianceMemberCountPending
-                        ? "…"
-                        : (allianceMemberCount ?? 0).toLocaleString()}
-                    </Text>
-                    <Text className="text-sm text-zinc-500">
-                      {" "}
-                      / {MEMBER_GOAL.toLocaleString()} members
-                    </Text>
-                  </Text>
-                  <Text className="text-sm text-zinc-500">
-                    {acceptedInvites.length} accepted
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
+        <View className="px-4 gap-4">
           {user.ambassador && (
             <Card className="gap-5 p-5" style={{ backgroundColor: "#306028" }}>
               <TouchableOpacity

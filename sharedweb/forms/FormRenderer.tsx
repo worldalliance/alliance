@@ -1808,7 +1808,7 @@ const FormRenderer = ({
                       <BaseButton
                         className="justify-start"
                         iconLeft={TreePalm}
-                        onClick={() => navigate("/settings#away-periods")}
+                        onClick={() => navigate("/membership#away-periods")}
                       >
                         On vacation
                       </BaseButton>

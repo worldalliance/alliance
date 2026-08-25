@@ -1798,7 +1798,7 @@ const FormRenderer = ({
                     className="border border-zinc-200 rounded px-3 py-3"
                     onPress={() => {
                       setWithdrawOpen(false);
-                      router.push("/settings");
+                      router.push("/membership");
                     }}
                   >
                     <Text className="text-base text-zinc-900">On vacation</Text>

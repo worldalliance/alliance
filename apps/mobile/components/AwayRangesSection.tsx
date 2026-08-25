@@ -288,7 +288,8 @@ export default function AwayRangesSection() {
             />
             {selectedReason === "other" && (
               <Text className="text-sm text-zinc-500 mt-1">
-                See your contract for guidelines on extenuating circumstances.
+                See your contract above for guidelines on extenuating
+                circumstances.
               </Text>
             )}
           </View>

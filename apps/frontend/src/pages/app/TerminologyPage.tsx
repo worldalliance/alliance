@@ -44,8 +44,8 @@ const TerminologyPage: React.FC = () => {
         </div>
         <p>
           Members can suspend their contract at any time on their{" "}
-          <Link to={href("/contract")} className="text-link hover:underline">
-            contract page
+          <Link to={href("/membership")} className="text-link hover:underline">
+            membership page
           </Link>
           . If a member misses all assigned non-optional actions for 3 weeks in
           a row, their contract is automatically suspended.
@@ -159,9 +159,9 @@ const TerminologyPage: React.FC = () => {
         <p>
           An <span className="font-semibold">away period</span> is a period of
           time when a member is not available to complete tasks. Members can
-          mark themselves as away in{" "}
-          <Link to={href("/settings")} className="text-link hover:underline">
-            settings
+          mark themselves as away on the{" "}
+          <Link to={href("/membership")} className="text-link hover:underline">
+            membership page
           </Link>
           .
         </p>

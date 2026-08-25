@@ -101,6 +101,10 @@ function AppContent() {
             })}
           >
             <Stack.Screen
+              name="membership"
+              options={{ contentStyle: notchContentStyle(colors.grey[0]) }}
+            />
+            <Stack.Screen
               name="contract"
               options={{ contentStyle: notchContentStyle(colors.grey[0]) }}
             />

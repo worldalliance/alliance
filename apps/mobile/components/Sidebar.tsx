@@ -57,10 +57,10 @@ const navItems: NavItem[] = [
     matchPaths: ["/profile"],
   },
   {
-    name: "Contract",
-    href: "/contract",
+    name: "Membership",
+    href: "/membership",
     icon: FileText,
-    matchPaths: ["/contract"],
+    matchPaths: ["/membership", "/contract"],
   },
   {
     name: "Settings",

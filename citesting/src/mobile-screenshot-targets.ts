@@ -41,8 +41,8 @@ export const mobileScreenshotTargets: MobileScreenshotTarget[] = [
   },
   {
     name: "contract",
-    deepLink: "alliance://contract",
-    readyTestId: "vr-contract-ready",
+    deepLink: "alliance://membership",
+    readyTestId: "vr-membership-ready",
   },
   {
     name: "settings",
