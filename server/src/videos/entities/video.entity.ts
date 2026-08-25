@@ -27,10 +27,6 @@ export class Video {
   @ApiProperty()
   size: number;
 
-  @Column({ default: "processing" })
-  @ApiProperty()
-  status: "processing" | "ready" | "failed";
-
   @Column({ type: "float", nullable: true })
   @ApiProperty({ nullable: true })
   duration: number | null;

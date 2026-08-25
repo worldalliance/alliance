@@ -93,8 +93,8 @@ export class VideosService {
         f.originalname.endsWith(".m3u8") && !f.originalname.includes("_vtt"),
     );
 
-    // Upload to S3 before persisting: a failed upload throws before any Video
-    // row exists, so no phantom `ready` row points at an empty key.
+    // Upload to S3 before persisting so a failed upload cannot leave a Video
+    // row pointing at an empty key.
     try {
       await this.putFiles(key, files);
     } catch (err) {
@@ -110,7 +110,6 @@ export class VideosService {
         originalFilename: playlist?.originalname ?? files[0].originalname,
         mime: "application/vnd.apple.mpegurl",
         size: totalSize,
-        status: "ready",
         duration: null,
         processingInfo: null,
       }),
@@ -188,10 +187,7 @@ export class VideosService {
       ),
     );
 
-    await this.videoRepository.update(video.id, {
-      status: "ready",
-      processingInfo: null,
-    });
+    await this.videoRepository.update(video.id, { processingInfo: null });
     return this.videoRepository.findOneBy({ id });
   }
 

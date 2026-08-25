@@ -1,179 +1,87 @@
-import { AnalyticsEvent } from "@alliance/common/analytics";
-import { captureEvent } from "@alliance/shared/lib/analytics";
-import { VideoView, useVideoPlayer } from "expo-video";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Platform, View } from "react-native";
+import { useVideoAnalytics } from "@alliance/shared/lib/useVideoAnalytics";
+import {
+  SHOWS_SPINNER,
+  useVideoSource,
+  VIDEO_LOAD_FAILED_MESSAGE,
+  VIDEO_RETRY_LABEL,
+  VideoLoadState,
+} from "@alliance/shared/lib/useVideoSource";
+import { useVideoPlayer, VideoView } from "expo-video";
+import { RotateCcw } from "lucide-react-native";
+import { useEffect, useMemo } from "react";
+import {
+  ActivityIndicator,
+  Platform,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { getApiUrl } from "../../lib/config";
 import Text from "../system/Text";
 
 type VideoPlayerProps = {
   src: string;
-  videoId: number;
+  videoId?: number;
   caption?: string;
 };
 
-const resolveManifestUrl = (src: string, videoId?: number) => {
-  if (src.startsWith("http")) {
-    return `${src}/playlist.m3u8`;
-  }
-
-  if (videoId) {
-    return `${getApiUrl()}/videos/${videoId}/playlist.m3u8`;
-  }
-
-  return src;
-};
-
 const VideoPlayer = ({ src, videoId, caption }: VideoPlayerProps) => {
-  const [status, setStatus] = useState<"loading" | "ready" | "failed">(
-    videoId ? "loading" : "ready",
-  );
-  const [mediaReady, setMediaReady] = useState(false);
-  const hasVideo = !!(src || videoId);
-  const lastTrackedTimeRef = useRef(0);
-  const hasTrackedPlayRef = useRef(false);
-  const hasTrackedCompleteRef = useRef(false);
+  const { manifestUrl, state, attempt, onReady, onError, retry } =
+    useVideoSource({ src, videoId, apiUrl: getApiUrl() });
+  const { trackPlay, trackComplete, trackTimeUpdate } = useVideoAnalytics({
+    src,
+    videoId,
+    enabled: manifestUrl !== null,
+  });
 
-  const manifestUrl = useMemo(() => {
-    if (status !== "ready") {
-      return null;
-    }
-
-    return resolveManifestUrl(src, videoId);
-  }, [src, status, videoId]);
-
-  const player = useVideoPlayer(
-    manifestUrl
-      ? {
-          uri: manifestUrl,
-          contentType: "hls",
-        }
-      : null,
-    (instance) => {
-      instance.timeUpdateEventInterval = 5;
-      instance.keepScreenOnWhilePlaying = true;
-    },
+  const source = useMemo(
+    () =>
+      manifestUrl ? { uri: manifestUrl, contentType: "hls" as const } : null,
+    [manifestUrl],
   );
 
+  const player = useVideoPlayer(source, (instance) => {
+    instance.timeUpdateEventInterval = 5;
+    instance.keepScreenOnWhilePlaying = true;
+  });
+
+  // A retry reuses the player the source built, and AVPlayer and ExoPlayer both
+  // need an explicit reload to leave a fatal error behind.
   useEffect(() => {
-    setStatus(videoId ? "loading" : "ready");
-    setMediaReady(false);
-    lastTrackedTimeRef.current = 0;
-    hasTrackedPlayRef.current = false;
-    hasTrackedCompleteRef.current = false;
-  }, [src, videoId]);
+    if (attempt === 0 || !source) return;
 
-  useEffect(() => {
-    if (!videoId || status !== "loading") return;
-
-    let cancelled = false;
-    let cleanupInterval: ReturnType<typeof setInterval> | undefined;
-
-    const checkStatus = async () => {
-      try {
-        const res = await fetch(`${getApiUrl()}/videos/${videoId}/status`);
-        if (cancelled) return true;
-
-        if (res.status === 404) {
-          setStatus("failed");
-          return true;
-        }
-
-        if (!res.ok) {
-          return false;
-        }
-
-        const data = (await res.json()) as { status?: "ready" | "failed" };
-        if (data.status === "ready" || data.status === "failed") {
-          setStatus(data.status);
-          return true;
-        }
-      } catch {
-        // Ignore transient polling errors and keep retrying.
-      }
-
-      return false;
-    };
-
-    void checkStatus().then((done) => {
-      if (done || cancelled) return;
-
-      const interval = setInterval(async () => {
-        const finished = await checkStatus();
-        if (finished || cancelled) {
-          clearInterval(interval);
-        }
-      }, 3000);
-
-      cleanupInterval = interval;
-    });
-
-    return () => {
-      cancelled = true;
-      if (cleanupInterval) {
-        clearInterval(cleanupInterval);
-      }
-    };
-  }, [status, videoId]);
+    player.replaceAsync(source).catch(onError);
+  }, [player, source, attempt, onError]);
 
   useEffect(() => {
-    captureEvent(AnalyticsEvent.VideoSeen, { videoId });
-  }, [videoId]);
-
-  useEffect(() => {
-    if (!player) return;
+    // The player is built during render, so read the status the listener missed.
+    if (player.status === "readyToPlay") onReady();
+    if (player.status === "error") onError();
 
     const statusSubscription = player.addListener(
       "statusChange",
       ({ status }) => {
-        if (status === "error") {
-          setStatus("failed");
-        }
+        // A paused player can be ready without rendering a frame, so this clears
+        // the spinner that `onFirstFrameRender` alone would leave up.
+        if (status === "readyToPlay") onReady();
+        if (status === "error") onError();
       },
     );
 
     const playingSubscription = player.addListener(
       "playingChange",
       ({ isPlaying }) => {
-        if (!isPlaying || hasTrackedPlayRef.current) return;
-
-        hasTrackedPlayRef.current = true;
-        captureEvent(AnalyticsEvent.VideoStarted, { videoId, src });
+        if (isPlaying) trackPlay();
       },
     );
 
     const timeSubscription = player.addListener(
       "timeUpdate",
       ({ currentTime }) => {
-        const duration = player.duration;
-
-        if (
-          !hasTrackedCompleteRef.current &&
-          duration > 0 &&
-          duration - currentTime <= 3
-        ) {
-          hasTrackedCompleteRef.current = true;
-          captureEvent(AnalyticsEvent.VideoFullyWatched, { videoId, src });
-        }
-
-        if (currentTime > lastTrackedTimeRef.current + 5) {
-          lastTrackedTimeRef.current = currentTime;
-          captureEvent(AnalyticsEvent.VideoProgress, {
-            videoId,
-            src,
-            progress: Math.floor(currentTime),
-            duration: Math.floor(duration),
-          });
-        }
+        trackTimeUpdate({ currentTime, duration: player.duration });
       },
     );
 
-    const endSubscription = player.addListener("playToEnd", () => {
-      if (hasTrackedCompleteRef.current) return;
-
-      hasTrackedCompleteRef.current = true;
-      captureEvent(AnalyticsEvent.VideoFullyWatched, { videoId, src });
-    });
+    const endSubscription = player.addListener("playToEnd", trackComplete);
 
     return () => {
       statusSubscription.remove();
@@ -181,15 +89,29 @@ const VideoPlayer = ({ src, videoId, caption }: VideoPlayerProps) => {
       timeSubscription.remove();
       endSubscription.remove();
     };
-  }, [player, src, videoId]);
+  }, [player, onReady, onError, trackPlay, trackComplete, trackTimeUpdate]);
 
-  if (!hasVideo) return null;
-
-  if (status === "failed") {
+  if (state === VideoLoadState.Failed) {
     return (
       <View className="items-center">
-        <View className="h-48 w-full items-center justify-center rounded-lg bg-red-50 px-4">
-          <Text className="text-sm text-red-600">Could not load video.</Text>
+        <View
+          accessibilityRole="alert"
+          className="h-48 w-full flex-row items-center justify-center gap-2 rounded-lg bg-red-50 px-4"
+        >
+          <Text className="text-sm text-red-600">
+            {VIDEO_LOAD_FAILED_MESSAGE}
+          </Text>
+          {manifestUrl ? (
+            <TouchableOpacity
+              onPress={retry}
+              accessibilityRole="button"
+              accessibilityLabel={VIDEO_RETRY_LABEL}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              className="p-1"
+            >
+              <RotateCcw size={16} color="#dc2626" />
+            </TouchableOpacity>
+          ) : null}
         </View>
         {caption ? (
           <Text className="mt-2 text-center text-sm text-zinc-600">
@@ -200,27 +122,26 @@ const VideoPlayer = ({ src, videoId, caption }: VideoPlayerProps) => {
     );
   }
 
-  const showSpinner = status === "loading" || !mediaReady;
-
   return (
     <View className="items-center">
       <View
         className="w-full overflow-hidden rounded-lg bg-zinc-950"
         style={{ aspectRatio: 16 / 9 }}
       >
-        {status === "ready" ? (
-          <VideoView
-            player={player}
-            nativeControls
-            contentFit="contain"
-            fullscreenOptions={{ enable: true }}
-            onFirstFrameRender={() => setMediaReady(true)}
-            style={{ flex: 1 }}
-            surfaceType={Platform.OS === "android" ? "textureView" : undefined}
-          />
-        ) : null}
-        {showSpinner ? (
-          <View className="absolute inset-0 items-center justify-center bg-zinc-100">
+        <VideoView
+          player={player}
+          nativeControls
+          contentFit="contain"
+          fullscreenOptions={{ enable: true }}
+          onFirstFrameRender={onReady}
+          style={{ flex: 1 }}
+          surfaceType={Platform.OS === "android" ? "textureView" : undefined}
+        />
+        {SHOWS_SPINNER[state] ? (
+          <View
+            pointerEvents="none"
+            className="absolute inset-0 items-center justify-center bg-zinc-100/80"
+          >
             <ActivityIndicator size="large" color="#2563eb" />
             <Text className="mt-2 text-sm text-zinc-600">Loading video...</Text>
           </View>

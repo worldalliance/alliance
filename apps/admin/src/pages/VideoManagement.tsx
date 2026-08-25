@@ -3,7 +3,6 @@ import {
   videosListVideosAdmin,
 } from "@alliance/shared/client";
 import type { VideoListItemDto } from "@alliance/shared/client/types.gen";
-import Badge from "@alliance/sharedweb/ui/Badge";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -22,12 +21,6 @@ function formatDuration(seconds: number | null): string {
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
-
-const statusColor: Record<string, string> = {
-  ready: "!bg-green/20 !text-green",
-  processing: "!bg-yellow-100 !text-yellow-700",
-  failed: "!bg-red-100 !text-red-600",
-};
 
 const VideoManagement: React.FC = () => {
   const [videos, setVideos] = useState<VideoListItemDto[]>([]);
@@ -109,7 +102,6 @@ const VideoManagement: React.FC = () => {
                   <th className="py-3 px-2">ID</th>
                   <th className="py-3 px-2">Size</th>
                   <th className="py-3 px-2">Duration</th>
-                  <th className="py-3 px-2">Status</th>
                   <th className="py-3 px-2">Created</th>
                   <th className="py-3 px-2"></th>
                 </tr>
@@ -128,11 +120,6 @@ const VideoManagement: React.FC = () => {
                     <td className="py-3 px-2">{formatSize(video.size)}</td>
                     <td className="py-3 px-2">
                       {formatDuration(video.duration)}
-                    </td>
-                    <td className="py-3 px-2">
-                      <Badge className={statusColor[video.status] ?? ""}>
-                        {video.status}
-                      </Badge>
                     </td>
                     <td className="py-3 px-2 text-zinc-500">
                       {new Date(video.dateCreated).toLocaleDateString()}

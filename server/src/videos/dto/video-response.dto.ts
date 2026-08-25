@@ -1,31 +1,11 @@
 import { ApiProperty, ApiPropertyOptional, PickType } from "@nestjs/swagger";
 import { Video } from "../entities/video.entity";
 
-export class UploadVideoResponseDto extends PickType(Video, [
-  "id",
-  "key",
-  "status",
-]) {
+export class UploadVideoResponseDto extends PickType(Video, ["id", "key"]) {
   constructor(input: Video) {
     super();
     this.id = input.id;
     this.key = input.key;
-    this.status = input.status;
-  }
-}
-
-export class VideoStatusResponseDto extends PickType(Video, [
-  "id",
-  "key",
-  "status",
-  "duration",
-]) {
-  constructor(input: Video) {
-    super();
-    this.id = input.id;
-    this.key = input.key;
-    this.status = input.status;
-    this.duration = input.duration;
   }
 }
 
@@ -44,7 +24,6 @@ export class VideoListItemDto extends PickType(Video, [
   "originalFilename",
   "mime",
   "size",
-  "status",
   "duration",
 ]) {
   @ApiProperty()
@@ -60,7 +39,6 @@ export class VideoListItemDto extends PickType(Video, [
     this.originalFilename = input.originalFilename;
     this.mime = input.mime;
     this.size = input.size;
-    this.status = input.status;
     this.duration = input.duration;
     this.dateCreated = input.dateCreated;
     this.dateUpdated = input.dateUpdated;
@@ -160,7 +138,6 @@ export class VideoDetailResponseDto extends PickType(Video, [
   "originalFilename",
   "mime",
   "size",
-  "status",
   "duration",
 ]) {
   @ApiProperty({ isArray: true, type: VideoSegmentDto })
@@ -185,7 +162,6 @@ export class VideoDetailResponseDto extends PickType(Video, [
     this.originalFilename = input.video.originalFilename;
     this.mime = input.video.mime;
     this.size = input.video.size;
-    this.status = input.video.status;
     this.duration = input.video.duration;
     this.segments = input.segments.map((s) => new VideoSegmentDto(s));
     this.totalOutputSize = input.totalOutputSize;
@@ -199,15 +175,10 @@ export class VideoDetailResponseDto extends PickType(Video, [
   }
 }
 
-export class ReplaceVideoResponseDto extends PickType(Video, [
-  "id",
-  "key",
-  "status",
-]) {
+export class ReplaceVideoResponseDto extends PickType(Video, ["id", "key"]) {
   constructor(input: Video) {
     super();
     this.id = input.id;
     this.key = input.key;
-    this.status = input.status;
   }
 }
