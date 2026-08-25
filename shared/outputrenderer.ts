@@ -1,9 +1,9 @@
+import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type { DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import { outputBlockLabelOverride } from "@alliance/common/forms/element-descriptors";
 import type {
   AnyField,
-  CityFieldValue,
   FormSchema,
   FormValue,
   ListField,
@@ -11,7 +11,11 @@ import type {
   OutputFieldBlock,
   OutputViewSchema,
 } from "@alliance/common/forms/form-schema";
-import { isQuestionField } from "@alliance/common/forms/form-schema";
+import {
+  collectVariableInputFields,
+  isQuestionField,
+  variableInputFieldsById,
+} from "@alliance/common/forms/form-schema";
 import { getRankingOptionLabel } from "@alliance/common/forms/ranking";
 import {
   interpolateDisplayBlock,
@@ -52,29 +56,6 @@ type ResolveOutputItemsParams = {
   validatorResults?: Record<number, boolean>;
   deviceType?: DeviceVisibilityTarget;
   publicAnswers?: Record<string, boolean>;
-};
-
-const isCityValue = (value: unknown): value is CityFieldValue => {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.name === "string" &&
-    typeof candidate.countryName === "string" &&
-    "id" in candidate
-  );
-};
-
-const formatCity = (value: CityFieldValue | string): string => {
-  if (typeof value === "string") {
-    return value;
-  }
-  const region = value.admin1?.trim();
-  const country = value.countryName?.trim();
-  const locationParts = [region, country].filter(
-    (part): part is string => !!part && part.length > 0,
-  );
-  const suffix = locationParts.length ? `, ${locationParts.join(", ")}` : "";
-  return `${value.name}${suffix}`;
 };
 
 export const isOutputValueMissing = (value: FormValue | undefined): boolean => {
@@ -159,11 +140,10 @@ export const formatOutputFieldValue = (
         )
         .join(", ");
     }
-    case "city":
-      if (isCityValue(value)) {
-        return formatCity(value);
-      }
-      return formatCity(String(value));
+    case "city": {
+      const city = parseCityValue(value);
+      return city ? formatCityValue(city) : String(value);
+    }
     case "list": {
       const listValue = Array.isArray(value) ? value : [];
       return `${listValue.length} item${listValue.length === 1 ? "" : "s"}`;
@@ -321,7 +301,10 @@ export const resolveOutputItems = ({
 
   // Substituted here rather than in each renderer so every consumer of an item
   // — label, override and field text alike — sees the same resolved values.
-  const variableValues = resolveVariableValues(schema.variables, { answers });
+  const variableValues = resolveVariableValues(schema.variables, {
+    answers,
+    fields: variableInputFieldsById(collectVariableInputFields(schema)),
+  });
 
   const items = allBlocks
     .filter((block) =>

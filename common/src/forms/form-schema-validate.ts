@@ -1,15 +1,19 @@
 import type { DisplayBlock } from "./display-blocks";
 import {
+  collectVariableInputFields,
   isQuestionField,
+  variableInputFieldsById,
   type AnyField,
   type FormSchema,
   type ListField,
   type OutputViewSchema,
 } from "./form-schema";
 import { compileVariableExpression } from "./variable-expression";
+import { checkVariableFormulaType } from "./variable-formula-check";
 import {
-  FIELD_KIND_USABLE_AS_VARIABLE_INPUT,
+  isFieldKindUsableAsVariableInput,
   VARIABLE_NAME_REGEX,
+  variableTypeEnv,
   type FormVariable,
 } from "./variables";
 import {
@@ -86,17 +90,15 @@ export function validateFormSchema(
   return errors;
 }
 
-type VariableInputField = {
+type CollectedField = {
   kind: AnyField["kind"];
   // List sub-fields are collected so references to them are rejected as
   // unsupported rather than missing.
   insideList: boolean;
 };
 
-function collectFieldKinds(
-  schema: FormSchema,
-): Map<string, VariableInputField> {
-  const fields = new Map<string, VariableInputField>();
+function collectFieldKinds(schema: FormSchema): Map<string, CollectedField> {
+  const fields = new Map<string, CollectedField>();
   for (const page of schema.pages ?? []) {
     for (const item of page.fields ?? []) {
       if (!isQuestionField(item)) continue;
@@ -118,6 +120,13 @@ function collectVariableErrors(
   const variables = schema.variables ?? [];
   const fieldKinds = collectFieldKinds(schema);
   const declared = new Set<string>();
+
+  // An input the picker could never have offered is absent here rather than
+  // wrongly typed, which leaves it `any` so `checkVariableInputs` reports one
+  // focused error instead of the type checker adding one per use.
+  const readableFields = variableInputFieldsById(
+    collectVariableInputFields(schema),
+  );
 
   for (const variable of variables) {
     const blockId = `variable:${variable.name}`;
@@ -141,13 +150,22 @@ function collectVariableErrors(
     );
     if (!compiled.ok) {
       push(`Formula for "${variable.name}": ${compiled.error}`);
+      continue;
+    }
+
+    const typed = checkVariableFormulaType(
+      variable.formula,
+      variableTypeEnv(variable, readableFields),
+    );
+    if (!typed.ok) {
+      push(`Formula for "${variable.name}": ${typed.error}`);
     }
   }
 }
 
 function checkVariableInputs(
   variable: FormVariable,
-  fields: Map<string, VariableInputField>,
+  fields: Map<string, CollectedField>,
   push: (message: string) => void,
 ): void {
   for (const [inputName, input] of Object.entries(variable.inputs)) {
@@ -168,9 +186,9 @@ function checkVariableInputs(
       );
       continue;
     }
-    if (!FIELD_KIND_USABLE_AS_VARIABLE_INPUT[field.kind]) {
+    if (!isFieldKindUsableAsVariableInput(field.kind)) {
       push(
-        `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) has no numeric value`,
+        `Input "${inputName}" reads field "${input.fieldId}", whose kind (${field.kind}) has no value a formula can read`,
       );
     }
   }

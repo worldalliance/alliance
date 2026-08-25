@@ -2,8 +2,11 @@ import type { TextBlock } from "./display-blocks";
 import type {
   AnyField,
   CheckboxField,
+  CityField,
+  FileField,
   FormSchema,
   ListField,
+  MultiSelectField,
   NumberField,
   OutputFieldBlock,
   Page,
@@ -11,7 +14,11 @@ import type {
   RangeField,
   TextField,
 } from "./form-schema";
-import { isQuestionField } from "./form-schema";
+import {
+  collectVariableInputFields,
+  isQuestionField,
+  variableInputFieldsById,
+} from "./form-schema";
 import { validateFormSchema } from "./form-schema-validate";
 import {
   collectUnresolvedVariableReferences,
@@ -32,6 +39,7 @@ import {
   textHasVariableReference,
   VARIABLE_NAME_REGEX,
   type FormVariable,
+  type VariableInputField,
 } from "./variables";
 
 const numberField = (id: string): NumberField => ({
@@ -62,16 +70,46 @@ const textField = (id: string): TextField => ({
   label: id,
 });
 
+const options = (optionLabels: string[]) =>
+  optionLabels.map((label, index) => ({ label, value: `value${index}` }));
+
 const radioField = (id: string, optionLabels: string[]): RadioField => ({
   id,
   type: "input",
   kind: "radio",
   label: id,
-  options: optionLabels.map((label, index) => ({
-    label,
-    value: `value${index}`,
-  })),
+  options: options(optionLabels),
 });
+
+const multiSelectField = (
+  id: string,
+  optionLabels: string[],
+): MultiSelectField => ({
+  id,
+  type: "input",
+  kind: "multiselect",
+  label: id,
+  options: options(optionLabels),
+});
+
+const cityField = (id: string): CityField => ({
+  id,
+  type: "input",
+  kind: "city",
+  label: id,
+});
+
+const fileField = (id: string): FileField => ({
+  id,
+  type: "input",
+  kind: "file",
+  label: id,
+});
+
+const numberInputs = (
+  ...ids: string[]
+): ReadonlyMap<string, VariableInputField> =>
+  new Map(ids.map((id) => [id, { kind: "number" }]));
 
 const textBlock = (id: string, text: string): TextBlock => ({
   id,
@@ -179,6 +217,14 @@ describe("formatVariableValue", () => {
     expect(formatVariableValue(undefined)).toBe("");
   });
 
+  it("reads a list and a record the way JavaScript reads them", () => {
+    expect(formatVariableValue(["Solar", "Wind"])).toBe("Solar,Wind");
+    expect(formatVariableValue([])).toBe("");
+    expect(formatVariableValue({ label: "Solar", value: "v1" })).toBe(
+      "[object Object]",
+    );
+  });
+
   it("rejects a key the schema does not define", () => {
     expect(
       formVariableSchema.safeParse({ ...variable(), decimalPlaces: 2 }).success,
@@ -186,30 +232,135 @@ describe("formatVariableValue", () => {
   });
 });
 
+describe("collectVariableInputFields", () => {
+  const listWithSubFields: ListField = {
+    id: "items",
+    type: "input",
+    kind: "list",
+    label: "Items",
+    fields: [numberField("sub")],
+  };
+
+  const offered = (fields: AnyField[] | TextBlock[]) =>
+    collectVariableInputFields(schema({ pages: [page("p1", fields)] })).map(
+      (field) => field.id,
+    );
+
+  it("offers a question field whose answer a formula can read", () => {
+    expect(
+      offered([numberField("qty"), textField("note"), cityField("where")]),
+    ).toEqual(["qty", "note", "where"]);
+  });
+
+  it("leaves out a list and its sub-fields, which answer once per row", () => {
+    expect(offered([numberField("qty"), listWithSubFields])).toEqual(["qty"]);
+  });
+
+  it("leaves out a kind with no answer a formula can read", () => {
+    expect(offered([numberField("qty"), fileField("upload")])).toEqual(["qty"]);
+  });
+
+  it("leaves out display blocks", () => {
+    expect(offered([textBlock("intro", "Hello")])).toEqual([]);
+  });
+
+  it("keys the option labels a choice reads, and nothing else", () => {
+    const byId = variableInputFieldsById([
+      multiSelectField("pick", ["Solar", "Wind"]),
+      numberField("qty"),
+    ]);
+    expect(byId.get("pick")).toEqual({
+      kind: "multiselect",
+      options: options(["Solar", "Wind"]),
+    });
+    expect(byId.get("qty")).toEqual({ kind: "number" });
+  });
+});
+
 describe("formValueToExprValue", () => {
-  it("reads numbers, numeric strings and booleans", () => {
-    expect(formValueToExprValue(5)).toBe(5);
-    expect(formValueToExprValue("5")).toBe(5);
-    expect(formValueToExprValue(" 5.5 ")).toBe(5.5);
-    expect(formValueToExprValue(true)).toBe(true);
+  const qty = numberField("qty");
+  const note = textField("note");
+
+  it("reads a number field as a number, however it was stored", () => {
+    expect(formValueToExprValue(5, qty)).toBe(5);
+    expect(formValueToExprValue("5", qty)).toBe(5);
+    expect(formValueToExprValue(" 5.5 ", qty)).toBe(5.5);
+    expect(formValueToExprValue("abc", qty)).toBeUndefined();
+  });
+
+  it("reads a text field as text, digits included", () => {
+    expect(formValueToExprValue(" hello ", note)).toBe("hello");
+    expect(formValueToExprValue("01234", note)).toBe("01234");
+  });
+
+  it("reads a checkbox as a boolean", () => {
+    expect(formValueToExprValue(true, checkboxField("ok"))).toBe(true);
+    expect(formValueToExprValue(false, checkboxField("ok"))).toBe(false);
   });
 
   it("treats blank and unanswered as undefined so ?? can fill in", () => {
-    expect(formValueToExprValue(undefined)).toBeUndefined();
-    expect(formValueToExprValue(null)).toBeUndefined();
-    expect(formValueToExprValue("")).toBeUndefined();
-    expect(formValueToExprValue("   ")).toBeUndefined();
+    expect(formValueToExprValue(undefined, qty)).toBeUndefined();
+    expect(formValueToExprValue(null, qty)).toBeUndefined();
+    expect(formValueToExprValue("", qty)).toBeUndefined();
+    expect(formValueToExprValue("   ", note)).toBeUndefined();
   });
 
-  it("gives no numeric reading to multi-value answers", () => {
-    expect(formValueToExprValue(["a", "b"])).toBeUndefined();
-    expect(formValueToExprValue({ id: 1, name: "Paris" })).toBeUndefined();
+  it("reads a choice as both its label and its stored value", () => {
+    expect(
+      formValueToExprValue("value1", radioField("pick", ["Solar", "Wind"])),
+    ).toEqual({ label: "Wind", value: "value1" });
+  });
+
+  it("falls back to the stored value when the option is gone", () => {
+    expect(
+      formValueToExprValue("dropped", radioField("pick", ["Solar"])),
+    ).toEqual({ label: "dropped", value: "dropped" });
+  });
+
+  it("reads a multi-select as a list, in the order it was answered", () => {
+    const field = multiSelectField("pick", ["Solar", "Wind"]);
+    expect(formValueToExprValue(["value1", "value0"], field)).toEqual([
+      { label: "Wind", value: "value1" },
+      { label: "Solar", value: "value0" },
+    ]);
+  });
+
+  it("reads nothing selected the same as nothing answered", () => {
+    expect(
+      formValueToExprValue([], multiSelectField("pick", ["Solar"])),
+    ).toBeUndefined();
+  });
+
+  it("reads a city as its parts plus a label", () => {
+    expect(
+      formValueToExprValue(
+        {
+          id: 1,
+          name: "Paris",
+          admin1: "Île-de-France",
+          countryCode: "FR",
+          countryName: "France",
+        },
+        cityField("where"),
+      ),
+    ).toEqual({
+      id: 1,
+      name: "Paris",
+      admin1: "Île-de-France",
+      countryCode: "FR",
+      countryName: "France",
+      label: "Paris, Île-de-France, France",
+    });
+  });
+
+  it("has no reading for a kind a formula cannot use", () => {
+    expect(formValueToExprValue("upload-id", fileField("doc"))).toBeUndefined();
   });
 });
 
 describe("evaluateVariable", () => {
   const evaluate = (v: FormVariable, answers: Record<string, number>) =>
-    evaluateVariable(v, { answers });
+    evaluateVariable(v, { answers, fields: numberInputs("qty", "a", "b") });
 
   it("computes from form answers", () => {
     const result = evaluate(variable(), { qty: 21 });
@@ -238,10 +389,60 @@ describe("evaluateVariable", () => {
       },
       formula: "input1 + input2",
     });
-    expect(evaluateVariable(v, { answers: { a: 0.1, b: 0.2 } })).toEqual({
+    expect(
+      evaluateVariable(v, {
+        answers: { a: 0.1, b: 0.2 },
+        fields: numberInputs("a", "b"),
+      }),
+    ).toEqual({
       ok: true,
       value: "0.3",
     });
+  });
+
+  it("writes out the choices behind a multi-select answer", () => {
+    const v = variable({
+      inputs: { input1: { kind: "field", fieldId: "pick" } },
+      formula: "input1.map(choice => choice.label).join(' and ')",
+    });
+    const result = evaluateVariable(v, {
+      answers: { pick: ["value0", "value1"] },
+      fields: new Map([["pick", multiSelectField("pick", ["Solar", "Wind"])]]),
+    });
+    expect(result).toEqual({ ok: true, value: "Solar and Wind" });
+  });
+
+  it("counts the selections a formula filters down to", () => {
+    const v = variable({
+      inputs: { input1: { kind: "field", fieldId: "pick" } },
+      formula: "input1.filter(choice => choice.value !== 'value0').length",
+    });
+    const result = evaluateVariable(v, {
+      answers: { pick: ["value0", "value1", "value2"] },
+      fields: new Map([
+        ["pick", multiSelectField("pick", ["Solar", "Wind", "Hydro"])],
+      ]),
+    });
+    expect(result).toEqual({ ok: true, value: "2" });
+  });
+
+  it("writes a raw list of choices the way JavaScript writes one", () => {
+    const v = variable({
+      inputs: { input1: { kind: "field", fieldId: "pick" } },
+      formula: "input1",
+    });
+    const result = evaluateVariable(v, {
+      answers: { pick: ["value0"] },
+      fields: new Map([["pick", multiSelectField("pick", ["Solar", "Wind"])]]),
+    });
+    expect(result).toEqual({ ok: true, value: "[object Object]" });
+  });
+
+  it("reads nothing from an input whose field is gone", () => {
+    const v = variable({ formula: "input1 ?? 'n/a'" });
+    expect(
+      evaluateVariable(v, { answers: { qty: 3 }, fields: new Map() }),
+    ).toEqual({ ok: true, value: "n/a" });
   });
 
   it("renders nothing on a division by zero rather than showing Infinity", () => {
@@ -261,7 +462,7 @@ describe("resolveVariableValues", () => {
   it("returns display text for every variable", () => {
     const values = resolveVariableValues(
       [variable(), variable({ name: "half", formula: "input1 / 2" })],
-      { answers: { qty: 10 } },
+      { answers: { qty: 10 }, fields: numberInputs("qty") },
     );
     expect(values.get("total")).toBe("20");
     expect(values.get("half")).toBe("5");
@@ -270,6 +471,7 @@ describe("resolveVariableValues", () => {
   it("renders nothing for a variable that cannot compile", () => {
     const values = resolveVariableValues([variable({ formula: "this" })], {
       answers: { qty: 1 },
+      fields: numberInputs("qty"),
     });
     expect(values.get("total")).toBe("");
   });
@@ -506,7 +708,7 @@ describe("validateFormSchema: variables", () => {
       variables: [variable({ formula: "input1.constructor" })],
     });
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toContain("Math functions");
+    expect(errors[0]).toContain("not available");
   });
 
   it("rejects an input pointing at a missing field", () => {
@@ -515,14 +717,37 @@ describe("validateFormSchema: variables", () => {
     ]);
   });
 
-  it("rejects an input reading a field with no numeric value", () => {
+  it("rejects an input reading a field with nothing a formula can read", () => {
     const errors = errorsFor({
-      pages: [page("p1", [textField("qty")])],
+      pages: [page("p1", [fileField("qty")])],
       variables: [variable()],
     });
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toContain("has no numeric value");
+    expect(errors[0]).toContain("has no value a formula can read");
   });
+
+  it.each([
+    ["number", numberField("qty"), "input1 * 2"],
+    ["text", textField("qty"), "input1.toUpperCase()"],
+    ["checkbox", checkboxField("qty"), "input1 ? 'yes' : 'no'"],
+    ["choice", radioField("qty", ["Solar"]), "input1.label"],
+    [
+      "multi-select",
+      multiSelectField("qty", ["Solar"]),
+      "input1.map(choice => choice.label).join(', ')",
+    ],
+    ["city", cityField("qty"), "input1.label"],
+  ])(
+    "accepts a %s input read the way its type allows",
+    (_label, field, formula) => {
+      expect(
+        errorsFor({
+          pages: [page("p1", [field])],
+          variables: [variable({ formula })],
+        }),
+      ).toEqual([]);
+    },
+  );
 
   it("rejects an input reading a field inside a list", () => {
     const list: ListField = {
@@ -547,15 +772,6 @@ describe("validateFormSchema: variables", () => {
         variables: [variable()],
       }),
     ).toEqual([]);
-  });
-
-  it("rejects checkbox inputs", () => {
-    const errors = errorsFor({
-      pages: [page("p1", [checkboxField("qty")])],
-      variables: [variable()],
-    });
-    expect(errors).toHaveLength(1);
-    expect(errors[0]).toContain("has no numeric value");
   });
 
   it("rejects duplicate variable names", () => {

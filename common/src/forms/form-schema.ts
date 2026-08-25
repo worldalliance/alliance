@@ -1,21 +1,19 @@
 import z from "zod";
+import { cityFieldValueSchema, type CityFieldValue } from "./city";
 import type { DisplayBlock } from "./display-blocks";
 import {
   displayBlockSchema,
   type ManualDisplayBlockContent,
 } from "./display-blocks";
-import { formVariableSchema } from "./variables";
+import {
+  formVariableSchema,
+  isFieldKindUsableAsVariableInput,
+  type VariableInputField,
+} from "./variables";
 import type { Condition, VisibleIfFormula } from "./visible-if-formula";
 import { visibleIfFormulaSchema } from "./visible-if-formula";
 
-const cityFieldValueSchema = z.strictObject({
-  id: z.number(),
-  name: z.string(),
-  admin1: z.string(),
-  countryCode: z.string(),
-  countryName: z.string(),
-});
-export type CityFieldValue = z.infer<typeof cityFieldValueSchema>;
+export type { CityFieldValue } from "./city";
 
 export type ListFieldValue = Record<string, FormValue>[];
 export type FormValue =
@@ -423,6 +421,35 @@ export type OptionField = Extract<
 
 export function fieldHasOptions(field: AnyField): field is OptionField {
   return Object.hasOwn(OPTION_FIELD_KINDS, field.kind);
+}
+
+/**
+ * Returns page-level fields with one formula-readable answer. List sub-fields
+ * are excluded because each list answer contains one value per row.
+ */
+export function collectVariableInputFields(schema: FormSchema): AnyField[] {
+  const fields: AnyField[] = [];
+  for (const page of schema.pages ?? []) {
+    for (const element of page.fields ?? []) {
+      if (!isQuestionField(element)) continue;
+      if (!isFieldKindUsableAsVariableInput(element.kind)) continue;
+      fields.push(element);
+    }
+  }
+  return fields;
+}
+
+export function variableInputFieldsById(
+  fields: readonly AnyField[],
+): ReadonlyMap<string, VariableInputField> {
+  return new Map(
+    fields.map((field) => [
+      field.id,
+      fieldHasOptions(field)
+        ? { kind: field.kind, options: field.options }
+        : { kind: field.kind },
+    ]),
+  );
 }
 
 /**

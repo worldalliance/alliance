@@ -1,7 +1,7 @@
+import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type {
   AnyField,
   CityField,
-  CityFieldValue,
   FormValue,
   ListField,
   ListFieldValue,
@@ -74,26 +74,6 @@ const DEFAULT_RANGE_OPTION_COUNT = 10;
 const MIN_RANGE_OPTION_COUNT = 2;
 const MAX_RANGE_OPTION_COUNT = 50;
 type ChoiceOption = { label: string; value: string };
-
-const formatCityValue = (city: CityFieldValue): string => {
-  const region = city.admin1?.trim();
-  const country = city.countryName?.trim();
-  const locationParts = [region, country].filter(
-    (part): part is string => !!part && part.length > 0,
-  );
-  const suffix = locationParts.length ? `, ${locationParts.join(", ")}` : "";
-  return `${city.name}${suffix}`;
-};
-
-const isCityValue = (candidate: unknown): candidate is CityFieldValue => {
-  if (!candidate || typeof candidate !== "object") return false;
-  const value = candidate as Record<string, unknown>;
-  return (
-    typeof value.name === "string" &&
-    typeof value.countryName === "string" &&
-    "id" in value
-  );
-};
 
 const getRangeValues = (field: RangeField): number[] => {
   const desired = field.optionCount ?? DEFAULT_RANGE_OPTION_COUNT;
@@ -630,7 +610,7 @@ export function RenderField({
       );
 
     case "city": {
-      const cityValue = isCityValue(value) ? value : undefined;
+      const cityValue = parseCityValue(value);
       const displayValue =
         cityValue !== undefined
           ? formatCityValue(cityValue)

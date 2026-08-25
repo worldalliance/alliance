@@ -1,3 +1,4 @@
+import { formatCityValue, parseCityValue } from "@alliance/common/forms/city";
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   type AnyField,
@@ -188,16 +189,6 @@ export function findUnknownConditionKind(schema: FormSchema): string | null {
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
 
-const isCityValue = (value: unknown): value is CityFieldValue => {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.name === "string" &&
-    typeof candidate.countryName === "string" &&
-    "id" in candidate
-  );
-};
-
 export type UserLocationDisplayValue =
   | CityFieldValue
   | string
@@ -213,17 +204,8 @@ export function formatUserLocationDisplayValue(
   if (typeof value === "string") {
     return value.trim();
   }
-  if (!isCityValue(value)) {
-    return "";
-  }
-
-  const region = value.admin1?.trim();
-  const country = value.countryName?.trim();
-  const locationParts = [region, country].filter(
-    (part): part is string => !!part && part.length > 0,
-  );
-  const suffix = locationParts.length ? `, ${locationParts.join(", ")}` : "";
-  return `${value.name}${suffix}`;
+  const city = parseCityValue(value);
+  return city ? formatCityValue(city) : "";
 }
 
 /** Whether rendering this schema requires fetching the viewer's visibility context. */
@@ -315,10 +297,10 @@ export function resolveFieldDefaultValue(
       case "custom":
         return isNonEmptyString(rawDefault) ? rawDefault : undefined;
       case "city":
-        if (isCityValue(rawDefault)) {
-          return rawDefault;
-        }
-        return isNonEmptyString(rawDefault) ? rawDefault : undefined;
+        return (
+          parseCityValue(rawDefault) ??
+          (isNonEmptyString(rawDefault) ? rawDefault : undefined)
+        );
       default:
         return isNonEmptyString(rawDefault) ? rawDefault : undefined;
     }

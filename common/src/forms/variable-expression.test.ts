@@ -2,6 +2,8 @@ import { R } from "../result";
 import {
   compileVariableExpression,
   evaluateVariableExpression,
+  exprValueToText,
+  MATH_FUNCTION_NAMES,
   type ExprValue,
 } from "./variable-expression";
 
@@ -28,22 +30,39 @@ const errorFor = (formula: string): string => {
 };
 
 describe("compileVariableExpression rejects everything outside the subset", () => {
-  it("rejects property access, the CVE-2025-12735 shape", () => {
-    expect(errorFor("input1.constructor")).toContain("Math functions");
-    expect(errorFor('input1["constructor"]')).toContain("Math functions");
-    expect(errorFor("input1.constructor.constructor")).toContain(
-      "Math functions",
-    );
+  it.each([
+    "input1.constructor",
+    'input1["constructor"]',
+    "input1.constructor.constructor",
+    "input1.__proto__",
+    'input1["__proto__"]',
+    "input1.prototype",
+    "{ constructor: 1 }",
+    "[].constructor",
+    "'text'.constructor",
+    "input1.map(item => item.constructor)",
+  ])("rejects %s, the CVE-2025-12735 shape", (formula) => {
+    expect(errorFor(formula)).toContain("not available");
   });
 
-  it("rejects everything callable but a literal Math member", () => {
-    expect(errorFor("foo(input1)")).toContain("Math functions can be called");
-    expect(errorFor("round(input1)")).toContain("Math functions can be called");
-    expect(errorFor("Math.round(input1)(input2)")).toContain(
-      "Math functions can be called",
+  it("rejects calling anything but a Math function or a method", () => {
+    expect(errorFor("foo(input1)")).toContain("can be called");
+    expect(errorFor("round(input1)")).toContain("can be called");
+    expect(errorFor("Math.round(input1)(input2)")).toContain("can be called");
+    expect(errorFor("(item => item)(1)")).toContain("can be called");
+  });
+
+  it("rejects a method it does not know", () => {
+    expect(errorFor("input1.explode()")).toContain(
+      '"explode" is not a method you can call',
     );
-    expect(errorFor("Math['round'](1)")).toContain(
-      "Math functions can be called",
+    expect(errorFor("input1.toString()")).toContain("is not a method");
+    expect(errorFor("input1.valueOf()")).toContain("is not a method");
+  });
+
+  it("rejects a method chosen at runtime", () => {
+    expect(errorFor("input1[input2](1)")).toContain(
+      "A method has to be called by name",
     );
   });
 
@@ -62,16 +81,24 @@ describe("compileVariableExpression rejects everything outside the subset", () =
     );
   });
 
-  // This catches new Math members that do not accept numeric arguments;
-  // `Math.sumPrecise`, for example, requires an iterable.
-  it("exposes only members that take and return numbers", () => {
-    const members = Object.getOwnPropertyNames(Math).filter(
-      (name) => typeof Reflect.get(Math, name) === "function",
+  it("reaches no Math member the allowlist has not named", () => {
+    const named = new Set<string>(MATH_FUNCTION_NAMES);
+    const unnamed = Object.getOwnPropertyNames(Math).filter(
+      (name) =>
+        typeof Reflect.get(Math, name) === "function" && !named.has(name),
     );
-    expect(members.length).toBeGreaterThan(30);
+    expect(unnamed).toContain("random");
+    for (const name of unnamed) {
+      expect(errorFor(`Math.${name}(1)`)).toContain("Math functions");
+    }
+  });
 
-    for (const name of members) {
+  it("names only Math functions that exist and answer with a number", () => {
+    expect(MATH_FUNCTION_NAMES.length).toBeGreaterThan(30);
+    for (const name of MATH_FUNCTION_NAMES) {
+      expect(typeof Reflect.get(Math, name)).toBe("function");
       const compiled = compile(`Math.${name}(1, 1)`);
+      expect(compiled.ok).toBe(true);
       if (!compiled.ok) continue;
       expect(typeof evaluateVariableExpression(compiled.value, new Map())).toBe(
         "number",
@@ -82,14 +109,41 @@ describe("compileVariableExpression rejects everything outside the subset", () =
   it("rejects Math used as anything but a call", () => {
     expect(errorFor("Math")).toContain('Unknown input "Math"');
     expect(errorFor("Math.round")).toContain("Math functions");
-    expect(errorFor("Math.round(1).toFixed")).toContain("Math functions");
+    expect(errorFor("Math.floor.call")).toContain("Math functions");
   });
 
-  it("rejects this, arrays, and multi-statement input", () => {
+  it("takes a Math function named as text, which is still a literal name", () => {
+    expect(run("Math['round'](2.5)")).toBe(3);
+    expect(errorFor("Math['constructor'](1)")).toContain("Math functions");
+  });
+
+  // jsep emits the same AST for `-x ** 2` and `(-x) ** 2`, so both are rejected.
+  it.each(["-2 ** 2", "-input1 ** 2", "!input1 ** 2", "(-2) ** 2"])(
+    "rejects %s, which JavaScript rejects as ambiguous",
+    (formula) => {
+      expect(errorFor(formula)).toContain("directly before ** reads two ways");
+    },
+  );
+
+  it("takes a unary minus anywhere else around **", () => {
+    expect(run("2 ** -1")).toBe(0.5);
+    expect(run("-(2 ** 2)")).toBe(-4);
+    expect(run("-2 * 2 ** 2")).toBe(-8);
+  });
+
+  it("rejects this and multi-statement input", () => {
     expect(errorFor("this")).toContain('"this" is not allowed');
-    expect(errorFor("[1, 2]")).toContain("Arrays are not allowed");
     expect(errorFor("input1; input2")).toContain("single expression");
     expect(errorFor("input1, input2")).toContain("single expression");
+    // jsep reports these as compound expressions, so the error names the
+    // unsupported word.
+    expect(errorFor("typeof input1")).toContain("typeof");
+    expect(errorFor("new Date()")).toContain("new");
+  });
+
+  it("rejects an object key it cannot see in the formula", () => {
+    expect(errorFor("{ [input1]: 1 }")).toContain("not computed");
+    expect(errorFor("{ label: }")).toBeTruthy();
   });
 
   it("rejects empty and unparseable formulas", () => {
@@ -260,7 +314,8 @@ describe("evaluates exactly as JavaScript does", () => {
     "(1 + 2) * 3",
     "2 ** 3 ** 2",
     "7 % 3",
-    "(-2) ** 2",
+    "-(2 ** 2)",
+    "Math.pow(-2, 2)",
     "1 / 3",
     "0.1 + 0.2",
     "'5' + 1",
@@ -321,6 +376,81 @@ describe("evaluates exactly as JavaScript does", () => {
     expect(errorFor("Date.now()")).toBeTruthy();
     expect(errorFor("globalThis")).toBeTruthy();
   });
+
+  it.each([
+    "[1, 2, 3].length",
+    "[1, 2, 3][1]",
+    "[1, 2, 3]['1']",
+    "'abc'['1']",
+    "[1, 2, 3]['01']",
+    "[1, 2, 3][' 1']",
+    "[1, 2, 3]['1.0']",
+    "[1, 2, 3]['-1']",
+    "[1, 2, 3]['3']",
+    "[3, 1, 2].filter(n => n > 1).length",
+    "[1, 2, 3].map(n => n * 2)[2]",
+    "[1, 2, 3].reduce((total, n) => total + n, 0)",
+    "[1, 2, 3].some(n => n === 2)",
+    "[1, 2, 3].every(n => n > 0)",
+    "[1, 2, 3].indexOf(2)",
+    "[1, 2, 3].includes(4)",
+    "[1, 2, 3].slice(1).length",
+    "[1, 2].concat([3]).length",
+    "[[1], [2, 3]].flat().length",
+    "[[1, [2]]].flat(2).length",
+    "[[1, [2]]].flat(2)[0]",
+    "[[[1]]].flat(3)[0]",
+    "[1, 2, 3].at(-1)",
+    "[1, 2, 3].find(n => n > 1)",
+    "[1, 2, 3].findIndex(n => n > 1)",
+    "[1, 2, 3].findLast(n => n < 3)",
+    "[1, 2, 3].findLastIndex(n => n < 3)",
+    "[1, 2].flatMap(n => [n, n]).length",
+    "'abc'.length",
+    "'abc'[1]",
+    "'abc'.toUpperCase()",
+    "'a,b'.split(',').length",
+    "' a '.trim()",
+    "'abc'.slice(1)",
+    "'abc'.includes('b')",
+    "'abc'.replace('b', 'B')",
+    "'7'.padStart(3, '0')",
+    "(1.005).toFixed(2)",
+    "({ label: 'Solar', value: 'v1' }).label",
+    "[1, 2, 3].sort((a, b) => b - a)[0]",
+    "[10, 9, 1].sort() + ''",
+    "['a', 'b'].join()",
+    "['a', 'b'].join('')",
+    "[1, 2] + ''",
+    "[1, [2, 3]] + ''",
+    "[1] + [2]",
+    "[1] * 2",
+    "['1'] * 2",
+    "['1', '2'] * 2",
+    "+[]",
+    "+['2']",
+    "({ a: 1 }) + ''",
+    "({ a: 1 }) * 2",
+    "[] + ({ a: 1 })",
+    "['b'] < 'c'",
+    "[2] < 3",
+    "[1, 2] == '1,2'",
+    "[1, 2] === '1,2'",
+    "'abcd'.slice('1')",
+    "'ab'.repeat('2')",
+    "'abc'.at('1')",
+    "(1.005).toFixed('2')",
+    "[1, 2, 3].at('-1')",
+    "[] + []",
+    "[1] < [2]",
+    "true + true",
+    "'a' + true",
+    "[1, 2]?.length",
+    "({ a: 1 })?.a",
+    "[1, 2, 3]?.map(n => n * 2)[0]",
+  ])("%s", (formula) => {
+    expect(run(formula)).toEqual(eval(formula));
+  });
 });
 
 describe("compileVariableExpression accepts the documented subset", () => {
@@ -343,5 +473,146 @@ describe("compileVariableExpression accepts the documented subset", () => {
     ]) {
       expect(R.isSuccess(compile(formula))).toBe(true);
     }
+  });
+});
+
+describe("lists, records and the methods that read them", () => {
+  const CHOICES: ExprValue = [
+    { label: "Solar", value: "v1" },
+    { label: "Wind", value: "v2" },
+  ];
+
+  it("writes a record the way JavaScript writes one, not as one of its keys", () => {
+    expect(exprValueToText(CHOICES[0])).toBe("[object Object]");
+    expect(exprValueToText(CHOICES)).toBe("[object Object],[object Object]");
+    expect(run("'You picked ' + input1", { input1: CHOICES })).toBe(
+      "You picked [object Object],[object Object]",
+    );
+    expect(
+      run("'You picked ' + input1.map(choice => choice.label).join(', ')", {
+        input1: CHOICES,
+      }),
+    ).toBe("You picked Solar, Wind");
+  });
+
+  it("writes a list of text as its parts, joined with a comma", () => {
+    expect(exprValueToText(["a", "b"])).toBe("a,b");
+    expect(run("input1", { input1: CHOICES })).toEqual(CHOICES);
+  });
+
+  it("has no text for a value with no reading of its own", () => {
+    expect(exprValueToText(1 / 0)).toBeUndefined();
+    expect(exprValueToText(undefined)).toBeUndefined();
+  });
+
+  it("reads a choice by label and by value", () => {
+    expect(run("input1[0].label", { input1: CHOICES })).toBe("Solar");
+    expect(
+      run("input1.map(choice => choice.value).join('|')", { input1: CHOICES }),
+    ).toBe("v1|v2");
+    expect(
+      run("input1.some(choice => choice.value === 'v2')", { input1: CHOICES }),
+    ).toBe(true);
+  });
+
+  it("sorts by text unless given a comparator, as JavaScript does", () => {
+    expect(run("[10, 9, 1].sort()")).toEqual([1, 10, 9]);
+    expect(run("[10, 9, 1].sort((a, b) => a - b)")).toEqual([1, 9, 10]);
+    expect(run("['b', 'a'].sort()")).toEqual(["a", "b"]);
+  });
+
+  it("gives a lambda the item, its position and the whole list", () => {
+    expect(
+      run("input1.map((item, index) => index + ':' + item).join('|')", {
+        input1: ["a", "b"],
+      }),
+    ).toBe("0:a|1:b");
+    expect(
+      run("input1.map((item, index, all) => all.length).at(0)", {
+        input1: ["a", "b"],
+      }),
+    ).toBe(2);
+  });
+
+  it("lets a lambda read the inputs around it", () => {
+    expect(
+      run("input1.filter(n => n > input2).length", {
+        input1: [1, 5, 9],
+        input2: 4,
+      }),
+    ).toBe(2);
+  });
+
+  it("reduces with and without a starting value", () => {
+    expect(
+      run("input1.reduce((total, n) => total + n, 0)", { input1: [1, 2, 3] }),
+    ).toBe(6);
+    expect(
+      run("input1.reduce((total, n) => total + n)", { input1: [1, 2, 3] }),
+    ).toBe(6);
+    expect(run("[].reduce((total, n) => total + n)")).toBeUndefined();
+  });
+
+  it("builds a record in the formula", () => {
+    expect(run("{ label: input1, count: 2 }", { input1: "Solar" })).toEqual({
+      label: "Solar",
+      count: 2,
+    });
+    expect(run("({ label: 'Solar' }).label")).toBe("Solar");
+  });
+
+  it("reads a key a record does not have as undefined, not as an error", () => {
+    expect(run("input1.nope", { input1: { label: "Solar" } })).toBeUndefined();
+    expect(run("input1[0]", { input1: [] })).toBeUndefined();
+    expect(run("input1[9]", { input1: ["a"] })).toBeUndefined();
+  });
+
+  it("leaves an unanswered field undefined instead of throwing on it", () => {
+    expect(run("input1.length", {})).toBeUndefined();
+    expect(run("input1.map(item => item)", {})).toBeUndefined();
+    expect(run("input1.length ?? 0", {})).toBe(0);
+  });
+
+  it("blanks a method call whose receiver is unanswered", () => {
+    expect(run("input1.slice(1)", {})).toBeUndefined();
+    expect(run("input1.join(',')", {})).toBeUndefined();
+  });
+
+  it.each([
+    ["'abc'.slice(input1)", "'abc'.slice(undefined)"],
+    ["['a', 'b'].join(input1)", "['a', 'b'].join(undefined)"],
+    ["['a', 'b'].includes(input1)", "['a', 'b'].includes(undefined)"],
+    ["['a', 'b'].indexOf(input1)", "['a', 'b'].indexOf(undefined)"],
+    ["'ab'.padEnd(input1, '.')", "'ab'.padEnd(undefined, '.')"],
+    ["'ab'.repeat(input1)", "'ab'.repeat(undefined)"],
+    ["'a b'.split(input1)", "'a b'.split(undefined)"],
+    ["['a', 'b'].at(input1)", "['a', 'b'].at(undefined)"],
+  ])("passes an unanswered argument through: %s", (formula, javascript) => {
+    expect(run(formula, {})).toEqual(eval(javascript));
+  });
+
+  it("has no value for a method that is read but never called", () => {
+    expect(run("input1.map", { input1: [1] })).toBeUndefined();
+    expect(run("Math.round(1).toFixed")).toBeUndefined();
+  });
+
+  it("refuses to build a string larger than the answers it came from", () => {
+    expect(run("'ab'.repeat(3)")).toBe("ababab");
+    expect(run("'ab'.repeat(100000)")).toBeUndefined();
+    expect(run("'ab'.padStart(100000, '-')")).toBeUndefined();
+  });
+
+  it("coerces a list and a record in arithmetic the way JavaScript does", () => {
+    expect(run("input1 * 2", { input1: ["1"] })).toBe(2);
+    expect(run("input1 * 2", { input1: ["1", "2"] })).toBeNaN();
+    expect(run("input1 - 1", { input1: { label: "Solar" } })).toBeNaN();
+  });
+
+  it("cannot reach a prototype through a record built in the formula", () => {
+    expect(run("({ label: 'a' })['toString']")).toBeUndefined();
+    expect(
+      run("input1['hasOwnProperty']", { input1: { label: "a" } }),
+    ).toBeUndefined();
+    expect(run("input1['length']", { input1: { label: "a" } })).toBeUndefined();
   });
 });

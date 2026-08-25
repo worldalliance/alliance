@@ -10,7 +10,9 @@ import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
   collectSourceFormIds,
+  collectVariableInputFields,
   isQuestionField,
+  variableInputFieldsById,
   type AnyField,
   type CityFieldValue,
   type FormSchema,
@@ -857,10 +859,18 @@ const FormRenderer = ({
     [schema.pages, formData, visibilityExtrasReadOnly],
   );
 
+  const variableInputFields = useMemo(
+    () => variableInputFieldsById(collectVariableInputFields(schema)),
+    [schema],
+  );
+
   const variableValues = useMemo(
     () =>
-      resolveVariableValues(schema.variables, { answers: effectiveFormData }),
-    [schema.variables, effectiveFormData],
+      resolveVariableValues(schema.variables, {
+        answers: effectiveFormData,
+        fields: variableInputFields,
+      }),
+    [schema.variables, effectiveFormData, variableInputFields],
   );
 
   const isElementCurrentlyVisible = useCallback(

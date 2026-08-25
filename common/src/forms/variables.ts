@@ -2,11 +2,13 @@
 
 import z from "zod";
 import { R, type Result } from "../result";
+import { formatCityValue, parseCityValue } from "./city";
 import type { FieldKind, FormValue } from "./form-schema";
 import {
   compileVariableExpression,
   evaluateVariableExpression,
-  formatExprNumber,
+  exprValueToText,
+  type ExprRecord,
   type ExprValue,
 } from "./variable-expression";
 
@@ -69,28 +71,95 @@ export function variableInputNameForIndex(index: number): string {
   return `${VARIABLE_INPUT_NAME_PREFIX}${index + 1}`;
 }
 
-// The variable-input contract does not define checkbox-to-number conversion.
-export const FIELD_KIND_USABLE_AS_VARIABLE_INPUT: Record<FieldKind, boolean> = {
-  number: true,
-  range: true,
-  checkbox: false,
-  text: false,
-  textarea: false,
-  email: false,
-  phone: false,
-  radio: false,
-  select: false,
-  multiselect: false,
-  date: false,
-  time: false,
-  timezone: false,
-  city: false,
-  file: false,
-  contract: false,
-  custom: false,
-  list: false,
-  ranking: false,
+export enum VariableInputMode {
+  Number = "number",
+  Text = "text",
+  Boolean = "boolean",
+  /** One `{ label, value }` record. */
+  Choice = "choice",
+  /** A list of `{ label, value }` records, in the order the answer holds. */
+  Choices = "choices",
+  /** The city record, plus a `label` reading "Paris, Île-de-France, France". */
+  City = "city",
+  None = "none",
+}
+
+export const FIELD_KIND_VARIABLE_INPUT_MODE: Record<
+  FieldKind,
+  VariableInputMode
+> = {
+  number: VariableInputMode.Number,
+  range: VariableInputMode.Number,
+  text: VariableInputMode.Text,
+  textarea: VariableInputMode.Text,
+  email: VariableInputMode.Text,
+  phone: VariableInputMode.Text,
+  date: VariableInputMode.Text,
+  time: VariableInputMode.Text,
+  timezone: VariableInputMode.Text,
+  checkbox: VariableInputMode.Boolean,
+  contract: VariableInputMode.Boolean,
+  radio: VariableInputMode.Choice,
+  select: VariableInputMode.Choice,
+  multiselect: VariableInputMode.Choices,
+  ranking: VariableInputMode.Choices,
+  city: VariableInputMode.City,
+  // A list holds one answer per row, a file holds an upload id, and a custom
+  // component stores whatever it likes: none of the three has a reading a
+  // formula could put in a sentence.
+  list: VariableInputMode.None,
+  file: VariableInputMode.None,
+  custom: VariableInputMode.None,
 };
+
+export function isFieldKindUsableAsVariableInput(kind: FieldKind): boolean {
+  return FIELD_KIND_VARIABLE_INPUT_MODE[kind] !== VariableInputMode.None;
+}
+
+export type VariableInputField = {
+  kind: FieldKind;
+  options?: readonly { label: string; value: string }[];
+};
+
+// Keep these as strings so form renderers can import this module without
+// pulling in TypeScript. `variable-formula-check.ts` writes them into its
+// virtual source.
+const CHOICE_TYPE = "{ label: string; value: string }";
+
+const CITY_TYPE =
+  "{ id: number; name: string; admin1: string; countryCode: string; countryName: string; label: string }";
+
+export const VARIABLE_INPUT_TYPE: Record<VariableInputMode, string> = {
+  [VariableInputMode.Number]: "number",
+  [VariableInputMode.Text]: "string",
+  [VariableInputMode.Boolean]: "boolean",
+  [VariableInputMode.Choice]: CHOICE_TYPE,
+  [VariableInputMode.Choices]: `${CHOICE_TYPE}[]`,
+  [VariableInputMode.City]: CITY_TYPE,
+  [VariableInputMode.None]: "undefined",
+};
+
+/**
+ * All fields are optional. Missing fields use `any` so validation reports only
+ * the missing-field error.
+ */
+export function variableInputType(kind: FieldKind | undefined): string {
+  return kind === undefined
+    ? "any"
+    : `${VARIABLE_INPUT_TYPE[FIELD_KIND_VARIABLE_INPUT_MODE[kind]]} | undefined`;
+}
+
+export function variableTypeEnv(
+  variable: FormVariable,
+  fields: ReadonlyMap<string, VariableInputField>,
+): ReadonlyMap<string, string> {
+  return new Map(
+    Object.entries(variable.inputs).map(([name, input]) => [
+      name,
+      variableInputType(fields.get(input.fieldId)?.kind),
+    ]),
+  );
+}
 
 export function collectVariableReferences(text: string): string[] {
   const names: string[] = [];
@@ -119,29 +188,101 @@ export function interpolateVariables(
   });
 }
 
-/**
- * Coerce a stored answer into something a formula can use. Numeric strings
- * become numbers (number fields round-trip through text inputs), an unanswered
- * or blank field becomes `undefined` so `??` can supply a default, and values
- * with no scalar reading (city, list, multi-select) become `undefined` rather
- * than a misleading stand-in.
- */
-export function formValueToExprValue(value: unknown): ExprValue {
-  if (value === undefined || value === null) return undefined;
-  if (typeof value === "number")
+function numberFromAnswer(value: unknown): ExprValue {
+  if (typeof value === "number") {
     return Number.isFinite(value) ? value : undefined;
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return undefined;
-    const asNumber = Number(trimmed);
-    return Number.isFinite(asNumber) ? asNumber : trimmed;
   }
-  return undefined;
+  // Number fields round-trip through text inputs, so a numeric answer often
+  // arrives as a string.
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  const asNumber = Number(trimmed);
+  return Number.isFinite(asNumber) ? asNumber : undefined;
+}
+
+function textFromAnswer(value: unknown): ExprValue {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : undefined;
+  }
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function booleanFromAnswer(value: unknown): ExprValue {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+// Use the stored value as the label when an option was removed.
+function choiceRecord(
+  value: string,
+  field: VariableInputField,
+): ExprRecord | undefined {
+  if (!value) return undefined;
+  const option = field.options?.find((candidate) => candidate.value === value);
+  return { label: option?.label ?? value, value };
+}
+
+function choiceFromAnswer(
+  value: unknown,
+  field: VariableInputField,
+): ExprValue {
+  return typeof value === "string" ? choiceRecord(value, field) : undefined;
+}
+
+function choicesFromAnswer(
+  value: unknown,
+  field: VariableInputField,
+): ExprValue {
+  if (!Array.isArray(value)) return undefined;
+  const records = value.flatMap((item: unknown) => {
+    const record =
+      typeof item === "string" ? choiceRecord(item, field) : undefined;
+    return record ? [record] : [];
+  });
+  // Nothing selected reads the same as nothing answered, so `??` can step in.
+  return records.length > 0 ? records : undefined;
+}
+
+function cityFromAnswer(value: unknown): ExprValue {
+  const city = parseCityValue(value);
+  return city === undefined
+    ? undefined
+    : { ...city, label: formatCityValue(city) };
+}
+
+const ANSWER_READERS: Record<
+  VariableInputMode,
+  (value: unknown, field: VariableInputField) => ExprValue
+> = {
+  [VariableInputMode.Number]: numberFromAnswer,
+  [VariableInputMode.Text]: textFromAnswer,
+  [VariableInputMode.Boolean]: booleanFromAnswer,
+  [VariableInputMode.Choice]: choiceFromAnswer,
+  [VariableInputMode.Choices]: choicesFromAnswer,
+  [VariableInputMode.City]: cityFromAnswer,
+  [VariableInputMode.None]: () => undefined,
+};
+
+/**
+ * Converts a stored answer according to its field kind. Unanswered and blank
+ * fields become `undefined` so `??` can supply a default.
+ */
+export function formValueToExprValue(
+  value: unknown,
+  field: VariableInputField,
+): ExprValue {
+  if (value === undefined || value === null) return undefined;
+  return ANSWER_READERS[FIELD_KIND_VARIABLE_INPUT_MODE[field.kind]](
+    value,
+    field,
+  );
 }
 
 export type VariableResolutionContext = {
   answers: Record<string, FormValue>;
+  fields: ReadonlyMap<string, VariableInputField>;
 };
 
 const INPUT_RESOLVERS: {
@@ -150,8 +291,11 @@ const INPUT_RESOLVERS: {
     context: VariableResolutionContext,
   ) => ExprValue;
 } = {
-  field: (input, context) =>
-    formValueToExprValue(context.answers[input.fieldId]),
+  field: (input, context) => {
+    const field = context.fields.get(input.fieldId);
+    if (field === undefined) return undefined;
+    return formValueToExprValue(context.answers[input.fieldId], field);
+  },
 };
 
 function resolveInput(
@@ -164,15 +308,8 @@ function resolveInput(
   return INPUT_RESOLVERS[input.kind](input, context);
 }
 
-/**
- * Formats a computed value for interpolation. Undefined and non-finite values
- * render as empty; `??` can provide a default for an undefined input.
- */
 export function formatVariableValue(value: ExprValue): string {
-  if (value === undefined) return "";
-  if (typeof value === "string") return value;
-  if (typeof value === "boolean") return value ? "true" : "false";
-  return formatExprNumber(value) ?? "";
+  return exprValueToText(value) ?? "";
 }
 
 export function evaluateVariable(
