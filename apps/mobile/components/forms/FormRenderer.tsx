@@ -393,7 +393,7 @@ export function RenderDisplayBlockMobile({
       );
     }
     case "video": {
-      return block.videoId !== undefined ? (
+      return (
         <View
           className={cn(
             hasRenderedNeighborAbove && "mt-4",
@@ -406,8 +406,6 @@ export function RenderDisplayBlockMobile({
             caption={block.caption}
           />
         </View>
-      ) : (
-        <Text className="text-sm text-red-500">Could not load video</Text>
       );
     }
     case "chatTranscript": {

@@ -2,7 +2,6 @@ import { videosGetVideoDetailsAdmin } from "@alliance/shared/client";
 import type { VideoDetailResponseDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
 import VideoPlayer from "@alliance/sharedweb/forms/VideoPlayer";
-import Badge from "@alliance/sharedweb/ui/Badge";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import Card from "@alliance/sharedweb/ui/Card";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
@@ -24,12 +23,6 @@ function formatDuration(seconds: number | null): string {
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
-
-const statusColor: Record<string, string> = {
-  ready: "!bg-green/20 !text-green",
-  processing: "!bg-yellow-100 !text-yellow-700",
-  failed: "!bg-red-100 !text-red-600",
-};
 
 const VideoDetail: React.FC = () => {
   const { videoId } = useParams();
@@ -100,14 +93,6 @@ const VideoDetail: React.FC = () => {
         <Card style={CardStyle.White}>
           <h2 className="font-semibold text-lg mb-3">Video Info</h2>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <dt className="text-zinc-500">Status</dt>
-            <dd>
-              <div className="max-w-20">
-                <Badge className={statusColor[video.status] ?? ""}>
-                  {video.status}
-                </Badge>
-              </div>
-            </dd>
             <dt className="text-zinc-500">Original Size</dt>
             <dd>{formatSize(video.size)}</dd>
             <dt className="text-zinc-500">Output Size</dt>

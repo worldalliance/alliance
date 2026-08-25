@@ -46,7 +46,7 @@ describe("Videos (e2e)", () => {
     await ctx.app.close();
   });
 
-  it("uploads a video and returns processing status", async () => {
+  it("uploads a video", async () => {
     const response = await request(ctx.app.getHttpServer())
       .post("/videos/upload")
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
@@ -59,31 +59,6 @@ describe("Videos (e2e)", () => {
     expect(response.body).toMatchObject({
       id: expect.any(Number),
       key: expect.stringContaining("videos/"),
-      status: "ready",
-    });
-  });
-
-  it("returns video status", async () => {
-    const video = await videoRepo.save(
-      videoRepo.create({
-        key: "videos/test-status",
-        originalFilename: "test.mp4",
-        mime: "video/mp4",
-        size: 1000,
-        status: "ready",
-        duration: 10.5,
-      }),
-    );
-
-    const response = await request(ctx.app.getHttpServer())
-      .get(`/videos/${video.id}/status`)
-      .expect(200);
-
-    expect(response.body).toMatchObject({
-      id: video.id,
-      key: "videos/test-status",
-      status: "ready",
-      duration: 10.5,
     });
   });
 
@@ -94,7 +69,6 @@ describe("Videos (e2e)", () => {
         originalFilename: "test.mp4",
         mime: "video/mp4",
         size: 1000,
-        status: "ready",
       }),
     );
 
@@ -108,9 +82,9 @@ describe("Videos (e2e)", () => {
     );
   });
 
-  it("returns 404 for non-existent video status", async () => {
+  it("returns 404 when streaming a file for a non-existent video", async () => {
     await request(ctx.app.getHttpServer())
-      .get("/videos/99999/status")
+      .get("/videos/99999/playlist.m3u8")
       .expect(404);
   });
 
@@ -121,7 +95,6 @@ describe("Videos (e2e)", () => {
         originalFilename: "test.mp4",
         mime: "video/mp4",
         size: 1000,
-        status: "ready",
       }),
     );
 
@@ -161,7 +134,6 @@ describe("Videos (e2e)", () => {
         originalFilename: "one.mp4",
         mime: "video/mp4",
         size: 1000,
-        status: "ready",
       }),
     );
     await videoRepo.save(
@@ -170,7 +142,6 @@ describe("Videos (e2e)", () => {
         originalFilename: "two.mp4",
         mime: "video/mp4",
         size: 2000,
-        status: "processing",
       }),
     );
 
@@ -196,7 +167,6 @@ describe("Videos (e2e)", () => {
         originalFilename: "detail.mp4",
         mime: "video/mp4",
         size: 5000,
-        status: "ready",
         duration: 30.0,
         processingInfo: {
           codec: "libx264",
@@ -240,7 +210,6 @@ describe("Videos (e2e)", () => {
     expect(response.body).toMatchObject({
       id: video.id,
       originalFilename: "detail.mp4",
-      status: "ready",
       duration: 30.0,
     });
     expect(response.body.segments).toHaveLength(3);
@@ -265,7 +234,6 @@ describe("Videos (e2e)", () => {
         originalFilename: "replace.mp4",
         mime: "video/mp4",
         size: 3000,
-        status: "ready",
       }),
     );
 
@@ -297,7 +265,6 @@ describe("Videos (e2e)", () => {
     expect(response.body).toMatchObject({
       id: video.id,
       key: video.key,
-      status: "ready",
     });
   });
 });

@@ -24,7 +24,6 @@ import {
   UploadVideoResponseDto,
   VideoDetailResponseDto,
   VideoListResponseDto,
-  VideoStatusResponseDto,
 } from "./dto/video-response.dto";
 import { VideosService } from "./videos.service";
 
@@ -70,18 +69,6 @@ export class VideosController {
   async listVideosAdmin(): Promise<VideoListResponseDto> {
     const videos = await this.videosService.listVideos();
     return new VideoListResponseDto(videos);
-  }
-
-  @Get(":id/status")
-  @ApiOkResponse({ type: VideoStatusResponseDto })
-  async getVideoStatus(
-    @Param("id") id: number,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<VideoStatusResponseDto> {
-    const video = await this.videosService.getVideo(id);
-    if (!video) throw new NotFoundException();
-    res.setHeader("Cache-Control", "no-store");
-    return new VideoStatusResponseDto(video);
   }
 
   @Get(":id/details")

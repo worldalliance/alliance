@@ -3105,7 +3105,6 @@ export type CreateActionPartnershipNoteDto = {
 export type UploadVideoResponseDto = {
     id: number;
     key: string;
-    status: string;
 };
 
 export type VideoListItemDto = {
@@ -3114,7 +3113,6 @@ export type VideoListItemDto = {
     originalFilename: string;
     mime: string;
     size: number;
-    status: string;
     duration: number | null;
     dateCreated: string;
     dateUpdated: string;
@@ -3122,13 +3120,6 @@ export type VideoListItemDto = {
 
 export type VideoListResponseDto = {
     videos: Array<VideoListItemDto>;
-};
-
-export type VideoStatusResponseDto = {
-    id: number;
-    key: string;
-    status: string;
-    duration: number | null;
 };
 
 export type VideoSegmentDto = {
@@ -3155,7 +3146,6 @@ export type VideoDetailResponseDto = {
     originalFilename: string;
     mime: string;
     size: number;
-    status: string;
     duration: number | null;
     segments: Array<VideoSegmentDto>;
     totalOutputSize: number;
@@ -3167,7 +3157,6 @@ export type VideoDetailResponseDto = {
 export type ReplaceVideoResponseDto = {
     id: number;
     key: string;
-    status: string;
 };
 
 export type DeleteVideoResponseDto = {
@@ -11083,30 +11072,6 @@ export type VideosListVideosAdminResponses = {
 };
 
 export type VideosListVideosAdminResponse = VideosListVideosAdminResponses[keyof VideosListVideosAdminResponses];
-
-export type VideosGetVideoStatusData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/videos/{id}/status';
-};
-
-export type VideosGetVideoStatusErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type VideosGetVideoStatusError = VideosGetVideoStatusErrors[keyof VideosGetVideoStatusErrors];
-
-export type VideosGetVideoStatusResponses = {
-    200: VideoStatusResponseDto;
-};
-
-export type VideosGetVideoStatusResponse = VideosGetVideoStatusResponses[keyof VideosGetVideoStatusResponses];
 
 export type VideosGetVideoDetailsAdminData = {
     body?: never;

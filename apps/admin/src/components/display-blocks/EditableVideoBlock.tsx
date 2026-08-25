@@ -1,9 +1,8 @@
 import { errorMessage } from "@alliance/common/errorMessage";
 import type { VideoBlock } from "@alliance/common/forms/display-blocks";
-import { videosGetVideoStatus } from "@alliance/shared/client";
 import RenderDisplayBlock from "@alliance/sharedweb/forms/RenderDisplayBlock";
 import { getApiUrl } from "@alliance/sharedweb/lib/config";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Link, href } from "react-router";
 import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
@@ -20,51 +19,6 @@ export function EditableVideoBlock({
 }: BaseDisplayBlockProps<VideoBlock>) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
-
-  // Check status immediately, then poll if still processing
-  useEffect(() => {
-    if (
-      !block.videoId ||
-      processingStatus === "ready" ||
-      processingStatus === "failed"
-    )
-      return;
-
-    let cancelled = false;
-
-    const checkStatus = async () => {
-      if (!block.videoId) return false;
-      try {
-        const res = await videosGetVideoStatus({ path: { id: block.videoId } });
-        if (!res.response.ok || cancelled) return false;
-        const data = res.data;
-        if (data && (data.status === "ready" || data.status === "failed")) {
-          setProcessingStatus(data.status);
-          return true;
-        }
-      } catch {
-        // ignore polling errors
-      }
-      setProcessingStatus("processing");
-      return false;
-    };
-
-    void checkStatus().then((done) => {
-      if (done || cancelled) return;
-      const interval = setInterval(async () => {
-        const finished = await checkStatus();
-        if (finished || cancelled) clearInterval(interval);
-      }, 3000);
-      cleanupInterval = interval;
-    });
-
-    let cleanupInterval: ReturnType<typeof setInterval> | undefined;
-    return () => {
-      cancelled = true;
-      if (cleanupInterval) clearInterval(cleanupInterval);
-    };
-  }, [block.videoId, processingStatus]);
 
   const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -81,7 +35,6 @@ export function EditableVideoBlock({
 
     setIsUploading(true);
     setUploadError(null);
-    setProcessingStatus(null);
 
     try {
       const formData = new FormData();
@@ -109,7 +62,6 @@ export function EditableVideoBlock({
 
       const data = await res.json();
       update({ src: data.key, videoId: data.id });
-      setProcessingStatus("ready");
     } catch {
       setUploadError("Upload failed");
     }
@@ -158,15 +110,6 @@ export function EditableVideoBlock({
           </div>
 
           {uploadError && <p className="text-xs text-red-600">{uploadError}</p>}
-
-          {processingStatus === "processing" && (
-            <p className="text-xs text-blue-600">Processing video...</p>
-          )}
-          {processingStatus === "failed" && (
-            <p className="text-xs text-red-600">
-              Video processing failed. Try again.
-            </p>
-          )}
 
           <div className="space-y-1">
             <label className="block text-xs font-medium text-gray-600">
