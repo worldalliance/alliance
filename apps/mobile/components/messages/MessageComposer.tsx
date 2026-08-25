@@ -95,7 +95,6 @@ export default function MessageComposer({
             <Text
               className="text-sm text-zinc-900 max-w-[250px]"
               numberOfLines={1}
-              style={{ textOverflow: "ellipsis" }}
             >
               {replyingTo.body || "image"}
             </Text>
