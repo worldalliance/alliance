@@ -463,11 +463,6 @@ export default function InvitesScreen() {
       });
     }, [invites, leaderCommunityIds, user]);
 
-  const acceptedInvites = useMemo(
-    () => invites.filter((invite) => invite.status === "link_used"),
-    [invites],
-  );
-
   const handleShared = useCallback((inviteId: number) => {
     if (sharedTimeoutRef.current) {
       clearTimeout(sharedTimeoutRef.current);
@@ -770,11 +765,6 @@ export default function InvitesScreen() {
 
   const { data: allianceMemberCount, isPending: allianceMemberCountPending } =
     useAllianceMemberCount({ enabled: Boolean(user) });
-
-  const allianceProgressPercent = useMemo(() => {
-    const n = allianceMemberCount ?? 0;
-    return Math.min(100, (n / MEMBER_GOAL) * 100);
-  }, [allianceMemberCount]);
 
   if (!user || loadingInvites) {
     return <ScreenWithLoading title="Invites" loading />;
