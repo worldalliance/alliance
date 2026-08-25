@@ -1,4 +1,4 @@
-import type { LabelBlock } from "./display-blocks";
+import type { ImagesBlock, LabelBlock } from "./display-blocks";
 import type {
   AnyField,
   FormSchema,
@@ -38,13 +38,21 @@ const labelBlock = (
   ...overrides,
 });
 
+const imagesBlock = (
+  id: string,
+  images: ImagesBlock["images"],
+): ImagesBlock => ({ id, type: "display", kind: "images", images });
+
 const fieldBlock = (
   id: string,
   fieldId: string,
   overrides: Partial<OutputFieldBlock> = {},
 ): OutputFieldBlock => ({ id, fieldId, ...overrides });
 
-const page = (id: string, fields: Array<AnyField | LabelBlock>): Page => ({
+const page = (
+  id: string,
+  fields: Array<AnyField | LabelBlock | ImagesBlock>,
+): Page => ({
   id,
   fields,
 });
@@ -618,5 +626,38 @@ describe("validateFormSchema", () => {
         message: 'References missing output block "missing"',
       },
     ]);
+  });
+
+  it("flags an images block with no images on a page", () => {
+    const schema = baseSchema({
+      pages: [page("p1", [imagesBlock("blk-images", [])])],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        viewId: undefined,
+        blockId: "blk-images",
+        message: "Images block has no images. Add one or remove the block",
+      },
+    ]);
+  });
+
+  it("flags an images block with no images in an output view", () => {
+    const schema = baseSchema({
+      outputViews: [view("v1", [imagesBlock("blk-images", [])])],
+    });
+    expect(validateFormSchema(schema)).toEqual([
+      {
+        viewId: "v1",
+        blockId: "blk-images",
+        message: "Images block has no images. Add one or remove the block",
+      },
+    ]);
+  });
+
+  it("accepts an images block that has an image", () => {
+    const schema = baseSchema({
+      pages: [page("p1", [imagesBlock("blk-images", [{ src: "key" }])])],
+    });
+    expect(validateFormSchema(schema)).toEqual([]);
   });
 });

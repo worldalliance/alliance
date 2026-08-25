@@ -20,7 +20,7 @@ const INTERPOLATED_DISPLAY_FIELDS: Record<DisplayKind, readonly string[]> = {
   quote: ["text", "userName"],
   copytext: ["text", "title"],
   biglink: ["text"],
-  image: ["alt", "caption"],
+  images: [],
   video: ["caption"],
   chatTranscript: ["leftName", "rightName"],
   previousAnswer: ["title", "emptyText"],
@@ -29,6 +29,8 @@ const INTERPOLATED_DISPLAY_FIELDS: Record<DisplayKind, readonly string[]> = {
   spacer: [],
   html: [],
 };
+
+const IMAGES_ITEM_PROPS = ["alt", "caption"] as const;
 
 const INTERPOLATED_FIELD_PROPS = [
   "label",
@@ -122,6 +124,12 @@ export function interpolateDisplayBlock<T extends DisplayBlock>(
     INTERPOLATED_DISPLAY_FIELDS[block.kind] ?? [],
     values,
   );
+  if (result.kind === "images") {
+    const images = mapPreservingIdentity(result.images, (image) =>
+      interpolateStringProps(image, IMAGES_ITEM_PROPS, values),
+    );
+    return images === result.images ? result : { ...result, images };
+  }
   if (result.kind !== "chatTranscript") return result;
 
   const messages = mapPreservingIdentity(result.messages, (message) =>
@@ -205,6 +213,11 @@ export function forEachInterpolatableText(
       INTERPOLATED_DISPLAY_FIELDS[element.kind] ?? [],
       location,
     );
+    if (element.kind === "images") {
+      element.images.forEach((image, index) =>
+        visitProps(image, IMAGES_ITEM_PROPS, `${location}.images[${index}]`),
+      );
+    }
     if (element.kind === "chatTranscript") {
       element.messages.forEach((message, index) =>
         visit(message.text, `${location}.messages[${index}].text`),

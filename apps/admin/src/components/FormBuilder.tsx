@@ -59,7 +59,7 @@ import {
   EditableDividerBlock,
   EditableHeaderBlock,
   EditableHtmlBlock,
-  EditableImageBlock,
+  EditableImagesBlock,
   EditableLabelBlock,
   EditablePreviousAnswerBlock,
   EditableSpacerBlock,
@@ -1219,13 +1219,12 @@ export function FormBuilder(props: FormBuilderProps) {
           html: "<p>Custom HTML content</p>",
         };
         break;
-      case "image":
+      case "images":
         newBlock = {
           type: "display",
-          kind: "image",
+          kind: "images",
           id: blockId,
-          alt: "Image",
-          src: "https://via.placeholder.com/300x200",
+          images: [],
         };
         break;
       case "video":
@@ -2555,9 +2554,9 @@ export function FormBuilder(props: FormBuilderProps) {
                         {...commonProps}
                       />
                     );
-                  case "image":
+                  case "images":
                     return (
-                      <EditableImageBlock
+                      <EditableImagesBlock
                         block={block as any}
                         {...commonProps}
                       />

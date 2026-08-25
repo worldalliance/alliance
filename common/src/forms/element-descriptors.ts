@@ -37,7 +37,7 @@ export const DISPLAY_KIND_NAMES = {
   divider: "Divider Block",
   spacer: "Spacer Block",
   html: "HTML Block",
-  image: "Image Block",
+  images: "Images Block",
   video: "Video Block",
   quote: "Quote Block",
   biglink: "Big Link Block",
@@ -92,8 +92,12 @@ export function displayBlockPreview(block: DisplayBlock): string {
       return block.size ?? "";
     case "html":
       return block.html;
-    case "image":
-      return block.alt || block.src;
+    case "images": {
+      const [first, ...rest] = block.images;
+      if (!first) return "";
+      const label = first.alt || first.src;
+      return rest.length ? `${label} +${rest.length} more` : label;
+    }
     case "video":
       return block.caption ?? block.src;
     case "previousAnswer":

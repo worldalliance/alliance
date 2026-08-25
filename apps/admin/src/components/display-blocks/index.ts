@@ -5,7 +5,7 @@ export { EditableCopyTextBlock } from "./EditableCopyTextBlock";
 export { EditableDividerBlock } from "./EditableDividerBlock";
 export { EditableHeaderBlock } from "./EditableHeaderBlock";
 export { EditableHtmlBlock } from "./EditableHtmlBlock";
-export { EditableImageBlock } from "./EditableImageBlock";
+export { EditableImagesBlock } from "./EditableImagesBlock";
 export { EditableLabelBlock } from "./EditableLabelBlock";
 export { EditablePreviousAnswerBlock } from "./EditablePreviousAnswerBlock";
 export { EditableSpacerBlock } from "./EditableSpacerBlock";

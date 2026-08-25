@@ -134,7 +134,7 @@ const KNOWN_FORM_ELEMENT_KINDS_RECORD = {
   divider: true,
   spacer: true,
   html: true,
-  image: true,
+  images: true,
   video: true,
   quote: true,
   biglink: true,

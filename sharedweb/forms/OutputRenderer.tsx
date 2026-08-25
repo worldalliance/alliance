@@ -12,7 +12,7 @@ import {
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { useMemo, type ReactNode } from "react";
-import { getApiUrl } from "../lib/config";
+import { imageSrcFromKey } from "../lib/imageSrc";
 import Card from "../ui/Card";
 import { ImageThumbnailGrid } from "../ui/ImageLightbox";
 import RenderDisplayBlock from "./RenderDisplayBlock";
@@ -41,9 +41,7 @@ const renderOutputFieldValue = (item: ResolvedOutputFieldItem): ReactNode => {
     if (!item.fileValues.length) {
       return <span className="text-xs text-gray-500">No file uploaded</span>;
     }
-    const imageUrls = item.fileValues.map(
-      (entry) => `${getApiUrl()}/images/${entry}`,
-    );
+    const imageUrls = item.fileValues.map((entry) => imageSrcFromKey(entry));
     return <ImageThumbnailGrid images={imageUrls} alt="Uploaded file" />;
   }
   if (!item.formattedValue) {

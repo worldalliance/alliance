@@ -3,6 +3,7 @@ import {
   groupChatTranscriptMessages,
   type BigLinkIcon,
   type DisplayBlock,
+  type ImagesItem,
 } from "@alliance/common/forms/display-blocks";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
 import {
@@ -13,6 +14,8 @@ import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import {
   Check,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   File,
   FileCheck,
@@ -20,13 +23,13 @@ import {
   MessagesSquare,
   Signature,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Link } from "react-router";
-import { getApiUrl } from "../lib/config";
+import { resolveImageSrc } from "../lib/imageSrc";
 import { AvatarProfile } from "../ui/Avatar";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
-import { ImageLightboxModal } from "../ui/ImageLightbox";
+import ImageLightbox from "../ui/ImageLightbox";
 import RenderPreviousAnswer from "./RenderPreviousAnswer";
 import VideoPlayer from "./VideoPlayer";
 
@@ -70,67 +73,41 @@ function CopyTextDisplay({ text, title }: { text: string; title?: string }) {
   );
 }
 
-function ImageDisplay({
-  src,
-  alt,
-  caption,
-  aspectRatio,
-  expandable,
+function ImageFigure({
+  resolvedSrc,
+  image,
+  openLabel,
+  onOpen,
+  className,
 }: {
-  src: string;
-  alt?: string;
-  caption?: string;
-  aspectRatio?: number;
-  expandable?: boolean;
+  resolvedSrc: string;
+  image: ImagesItem;
+  openLabel: string;
+  onOpen: (e: React.MouseEvent) => void;
+  className?: string;
 }) {
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const resolvedSrc = src.includes("/") ? src : `${getApiUrl()}/images/${src}`;
-  const hasCaption = Boolean(caption && caption.trim().length);
-
-  const openLightbox = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setLightboxSrc(resolvedSrc);
-  };
+  // The button's label wins over the `img` alt in the accessible name, so the
+  // author's alt text has to go on the button or it is never announced.
+  const label = image.alt?.trim() ? `${openLabel}: ${image.alt}` : openLabel;
 
   return (
-    <figure className="mx-auto max-w-full text-center">
-      {expandable ? (
-        <button
-          type="button"
-          className="mx-auto block max-w-full rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 !cursor-zoom-in"
-          onClick={openLightbox}
-          aria-label="Open image"
-        >
-          <img
-            src={resolvedSrc}
-            alt={alt}
-            className="mx-auto max-h-80 w-auto rounded !cursor-zoom-in"
-            style={{
-              aspectRatio: aspectRatio ? aspectRatio.toString() : undefined,
-            }}
-          />
-        </button>
-      ) : (
+    <figure className={cn("mx-auto max-w-full text-center", className)}>
+      <button
+        type="button"
+        className="mx-auto block max-w-full rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 !cursor-zoom-in"
+        onClick={onOpen}
+        aria-label={label}
+      >
         <img
           src={resolvedSrc}
-          alt={alt}
-          className="mx-auto max-h-80 w-auto rounded"
-          style={{
-            aspectRatio: aspectRatio ? aspectRatio.toString() : undefined,
-          }}
+          alt=""
+          className="mx-auto max-h-80 w-auto rounded !cursor-zoom-in"
         />
-      )}
-      {hasCaption && (
+      </button>
+      {image.caption?.trim() && (
         <figcaption className="mt-2 text-sm text-gray-600">
-          {caption}
+          {image.caption}
         </figcaption>
-      )}
-      {expandable && (
-        <ImageLightboxModal
-          src={lightboxSrc}
-          onClose={() => setLightboxSrc(null)}
-        />
       )}
     </figure>
   );
@@ -143,6 +120,106 @@ type Props = {
   userLocation?: UserLocationDisplayValue;
   userLocationLoading?: boolean;
 };
+
+function ImagesDisplay({ images }: { images: ImagesItem[] }) {
+  const [index, setIndex] = useState(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const sources = images.map((image) => resolveImageSrc(image.src));
+
+  const scrollToIndex = (next: number) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const clamped = Math.min(Math.max(next, 0), images.length - 1);
+    track.scrollTo({ left: track.clientWidth * clamped, behavior: "smooth" });
+    setIndex(clamped);
+  };
+
+  const handleScroll = () => {
+    const track = trackRef.current;
+    if (!track || track.clientWidth === 0) return;
+    setIndex(Math.round(track.scrollLeft / track.clientWidth));
+  };
+
+  const arrowClass =
+    "absolute top-1/2 -translate-y-1/2 z-10 rounded-full bg-white/80 p-1.5 text-zinc-800 shadow hover:bg-white disabled:opacity-0 disabled:pointer-events-none focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
+
+  if (images.length === 1) {
+    return (
+      <ImageLightbox
+        images={sources}
+        renderPreview={(openAtIndex) => (
+          <ImageFigure
+            resolvedSrc={sources[0]}
+            image={images[0]}
+            openLabel="Open image"
+            onOpen={(e) => openAtIndex(0, e)}
+          />
+        )}
+      />
+    );
+  }
+
+  return (
+    <ImageLightbox
+      images={sources}
+      renderPreview={(openAtIndex) => (
+        <div className="relative mx-auto max-w-full">
+          <div
+            ref={trackRef}
+            onScroll={handleScroll}
+            className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {images.map((image, slide) => (
+              <ImageFigure
+                key={slide}
+                resolvedSrc={sources[slide]}
+                image={image}
+                openLabel={`Open image ${slide + 1} of ${images.length}`}
+                onOpen={(e) => openAtIndex(slide, e)}
+                className="w-full shrink-0 snap-center"
+              />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className={cn(arrowClass, "left-1")}
+            onClick={() => scrollToIndex(index - 1)}
+            disabled={index === 0}
+            aria-label="Previous image"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <button
+            type="button"
+            className={cn(arrowClass, "right-1")}
+            onClick={() => scrollToIndex(index + 1)}
+            disabled={index === images.length - 1}
+            aria-label="Next image"
+          >
+            <ChevronRight size={20} />
+          </button>
+
+          <div className="mt-2 flex justify-center gap-1.5">
+            {images.map((_, dot) => (
+              <button
+                key={dot}
+                type="button"
+                onClick={() => scrollToIndex(dot)}
+                aria-label={`Go to image ${dot + 1} of ${images.length}`}
+                aria-current={dot === index}
+                className={cn(
+                  "h-2 w-2 rounded-full transition-colors",
+                  dot === index ? "bg-zinc-700" : "bg-zinc-300",
+                )}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    />
+  );
+}
 
 export default function RenderDisplayBlock({
   block,
@@ -213,16 +290,9 @@ export default function RenderDisplayBlock({
     case "html":
       return <div dangerouslySetInnerHTML={{ __html: block.html }} />;
 
-    case "image":
-      return (
-        <ImageDisplay
-          src={block.src}
-          alt={block.alt}
-          caption={block.caption}
-          aspectRatio={block.aspectRatio}
-          expandable={block.expandable}
-        />
-      );
+    case "images":
+      if (block.images.length === 0) return null;
+      return <ImagesDisplay images={block.images} />;
 
     case "video":
       return (

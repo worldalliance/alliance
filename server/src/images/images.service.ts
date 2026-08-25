@@ -1,4 +1,5 @@
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
+import { isUploadKey } from "@alliance/common/image-src";
 import {
   DeleteObjectCommand,
   PutObjectCommand,
@@ -143,8 +144,8 @@ export function getImageSource(string: string) {
     return "";
   }
 
-  if (string.startsWith("http")) {
-    return string; // TODO
+  if (!isUploadKey(string)) {
+    return string;
   }
 
   if (

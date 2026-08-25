@@ -6,6 +6,7 @@ import {
   type AnyField,
   type FormSchema,
   type ListField,
+  type OutputFieldBlock,
   type OutputViewSchema,
 } from "./form-schema";
 import { compileVariableExpression } from "./variable-expression";
@@ -58,6 +59,7 @@ export function validateFormSchema(
     }
     for (const item of page.fields ?? []) {
       collectInputErrors(item, errors);
+      collectDisplayContentErrors(item, undefined, errors);
       collectQuestionFieldIds(item, earlierFieldIds);
     }
   }
@@ -82,6 +84,7 @@ export function validateFormSchema(
         },
         errors,
       );
+      collectDisplayContentErrors(block, view.id, errors);
     }
 
     collectCycleErrors(view, outputBlockIds, errors);
@@ -290,6 +293,23 @@ function collectQuestionFieldIds(
     for (const subField of (item as ListField).fields ?? []) {
       into.add(subField.id);
     }
+  }
+}
+
+// The schema permits an empty display block, so save-time validation is the
+// last chance to warn the author before the block renders nothing.
+function collectDisplayContentErrors(
+  item: AnyField | DisplayBlock | OutputFieldBlock,
+  viewId: string | undefined,
+  errors: FormSchemaValidationError[],
+): void {
+  if (!("type" in item) || item.type !== "display") return;
+  if (item.kind === "images" && item.images.length === 0) {
+    errors.push({
+      viewId,
+      blockId: item.id ?? "<unnamed>",
+      message: "Images block has no images. Add one or remove the block",
+    });
   }
 }
 

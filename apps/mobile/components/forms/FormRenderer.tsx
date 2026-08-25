@@ -12,6 +12,7 @@ import {
   type BigLinkIcon,
   type ChatTranscriptMessage,
   type DisplayBlock,
+  type ImagesItem,
 } from "@alliance/common/forms/display-blocks";
 import {
   collectSourceFormIds,
@@ -108,9 +109,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { resolveImageSource } from "../../lib/config";
 import { getImageLoadSize } from "../../lib/imageLoadSize";
 import AppMarkdownWrapper, { useHandleLinkPress } from "../AppMarkdownWrapper";
-import { ImageLightboxModal } from "../ImageLightbox";
+import { ImageGalleryModal } from "../ImageLightbox";
 import { MARKDOWN_HUG_WIDTH_STYLE, MarkdownTone } from "../markdownStyles";
 import ProfileImage from "../ProfileImage";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
@@ -232,50 +234,139 @@ type RenderDisplayBlockMobileProps = {
   userLocationLoading?: boolean;
 };
 
-function ImageBlock({
-  src,
-  alt,
-  caption,
-  aspectRatio: configuredAspectRatio,
+function ImageSlide({
+  image,
+  resolvedSrc,
+  width,
+  aspectRatio,
+  onPress,
+  onMeasure,
 }: {
-  src: string;
-  alt?: string;
-  caption?: string;
-  aspectRatio?: number;
+  image: ImagesItem;
+  resolvedSrc: string;
+  width: number | null;
+  aspectRatio: number | null;
+  onPress: () => void;
+  onMeasure: (ratio: number) => void;
 }) {
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [measuredAspectRatio, setMeasuredAspectRatio] = useState<number | null>(
-    null,
-  );
-  const aspectRatio = configuredAspectRatio ?? measuredAspectRatio;
+  const widthStyle = width === null ? {} : { width };
+  const fullWidthClass = width === null && "w-full";
+
   return (
-    <View className="items-center">
+    <View style={widthStyle} className="items-center">
       <TouchableOpacity
-        onPress={() => setLightboxOpen(true)}
+        onPress={onPress}
         activeOpacity={0.9}
-        className="w-full"
+        style={widthStyle}
+        className={cn(fullWidthClass)}
       >
         <Image
-          source={{ uri: src }}
-          accessibilityLabel={alt}
+          source={{ uri: resolvedSrc }}
+          accessibilityLabel={image.alt}
           onLoad={(event) => {
             const size = getImageLoadSize(event);
-            if (size) setMeasuredAspectRatio(size.width / size.height);
+            if (size) onMeasure(size.width / size.height);
           }}
-          className="w-full bg-zinc-200 rounded-lg"
-          style={aspectRatio ? { aspectRatio } : { height: 192 }}
+          className={cn("bg-zinc-200 rounded-lg", fullWidthClass)}
+          style={{
+            ...widthStyle,
+            ...(aspectRatio ? { aspectRatio } : { height: 192 }),
+          }}
           resizeMode="contain"
         />
       </TouchableOpacity>
-      {caption && (
+      {image.caption ? (
         <Text className="text-sm text-zinc-600 mt-2 text-center">
-          {caption}
+          {image.caption}
         </Text>
-      )}
-      <ImageLightboxModal
-        uri={lightboxOpen ? src : null}
-        onClose={() => setLightboxOpen(false)}
-      />
+      ) : null}
+    </View>
+  );
+}
+
+function ImagesDisplay({ images }: { images: ImagesItem[] }) {
+  const sources = images.map((image) => resolveImageSource(image.src));
+  const [width, setWidth] = useState(0);
+  const [index, setIndex] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  // Keyed by slide rather than indexed into an array, because images finish
+  // loading out of order and a sparse array would put holes in the `Math.min`.
+  const [measuredAspectRatios, setMeasuredAspectRatios] = useState<
+    Record<number, number>
+  >({});
+
+  // One height for every slide, taken from the tallest image loaded so far, so
+  // swiping doesn't resize the block under the reader's finger. `contain`
+  // letterboxes the wider ones rather than cropping them.
+  const measured = Object.values(measuredAspectRatios);
+  const aspectRatio = measured.length ? Math.min(...measured) : null;
+
+  const measureSlide = (slide: number) => (ratio: number) =>
+    setMeasuredAspectRatios((current) => ({ ...current, [slide]: ratio }));
+
+  const lightbox = (
+    <ImageGalleryModal
+      uris={sources}
+      index={lightboxIndex}
+      onClose={() => setLightboxIndex(null)}
+    />
+  );
+
+  if (images.length === 1) {
+    return (
+      <View>
+        <ImageSlide
+          image={images[0]}
+          resolvedSrc={sources[0]}
+          width={null}
+          aspectRatio={aspectRatio}
+          onPress={() => setLightboxIndex(0)}
+          onMeasure={measureSlide(0)}
+        />
+        {lightbox}
+      </View>
+    );
+  }
+
+  return (
+    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={(event) =>
+          setIndex(
+            width ? Math.round(event.nativeEvent.contentOffset.x / width) : 0,
+          )
+        }
+      >
+        {images.map((image, slide) => (
+          <ImageSlide
+            key={slide}
+            image={image}
+            resolvedSrc={sources[slide]}
+            width={width}
+            aspectRatio={aspectRatio}
+            onPress={() => setLightboxIndex(slide)}
+            onMeasure={measureSlide(slide)}
+          />
+        ))}
+      </ScrollView>
+
+      <View className="flex-row justify-center gap-1.5 mt-2">
+        {images.map((_, dot) => (
+          <View
+            key={dot}
+            className={cn(
+              "h-2 w-2 rounded-full",
+              dot === index ? "bg-zinc-700" : "bg-zinc-300",
+            )}
+          />
+        ))}
+      </View>
+
+      {lightbox}
     </View>
   );
 }
@@ -350,15 +441,9 @@ export function RenderDisplayBlockMobile({
       );
     case "html":
       return <HtmlBlock html={block.html} />;
-    case "image":
-      return (
-        <ImageBlock
-          src={block.src}
-          alt={block.alt}
-          caption={block.caption}
-          aspectRatio={block.aspectRatio}
-        />
-      );
+    case "images":
+      if (block.images.length === 0) return null;
+      return <ImagesDisplay images={block.images} />;
     case "biglink":
       const IconComponent = bigLinkIcons[block.icon || "messages-square"];
       return (

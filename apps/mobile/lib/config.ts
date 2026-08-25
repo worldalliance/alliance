@@ -1,3 +1,4 @@
+import { isUploadKey } from "@alliance/common/image-src";
 import { NativeModules, Platform } from "react-native";
 import { getVisualTestApiUrl } from "./visualTest";
 
@@ -47,6 +48,9 @@ export const getBaseUrl = (): string => {
 export const getImageSource = (string: string) => {
   return `${getApiUrl()}/images/${string}`;
 };
+
+export const resolveImageSource = (src: string): string =>
+  isUploadKey(src) ? getImageSource(src) : src;
 
 export const getWebSocketUrl = (): string => {
   const baseUrl = getBaseUrl();

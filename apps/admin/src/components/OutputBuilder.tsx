@@ -25,7 +25,7 @@ import {
   EditableDividerBlock,
   EditableHeaderBlock,
   EditableHtmlBlock,
-  EditableImageBlock,
+  EditableImagesBlock,
   EditableLabelBlock,
   EditableSpacerBlock,
   EditableTextBlock,
@@ -41,7 +41,7 @@ const DISPLAY_BLOCK_KINDS = [
   "divider",
   "spacer",
   "html",
-  "image",
+  "images",
   "quote",
   "userLocation",
 ] as const satisfies DisplayKind[];
@@ -81,14 +81,8 @@ const createDisplayBlock = (kind: OutputDisplayBlockKind): DisplayBlock => {
         id: blockId,
         html: "<p>Custom HTML</p>",
       };
-    case "image":
-      return {
-        type: "display" as const,
-        kind,
-        id: blockId,
-        alt: "Image",
-        src: "https://via.placeholder.com/400x200",
-      };
+    case "images":
+      return { type: "display" as const, kind, id: blockId, images: [] };
     case "quote":
       return {
         type: "display" as const,
@@ -482,9 +476,12 @@ export function OutputBuilder({ schema, onSchemaChange }: OutputBuilderProps) {
                   return (
                     <EditableHtmlBlock block={displayBlock} {...sharedProps} />
                   );
-                case "image":
+                case "images":
                   return (
-                    <EditableImageBlock block={displayBlock} {...sharedProps} />
+                    <EditableImagesBlock
+                      block={displayBlock}
+                      {...sharedProps}
+                    />
                   );
                 case "quote":
                   return (

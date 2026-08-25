@@ -13,10 +13,12 @@ import {
 import {
   displayOnlySchema,
   displayOnlySchemaError,
+  displayOnlyToFormSchema,
   emptyDisplayOnlySchema,
   type DisplayOnlySchema,
 } from "@alliance/common/forms/display-only-schema";
 import type { FormSchema } from "@alliance/common/forms/form-schema";
+import { validateFormSchema } from "@alliance/common/forms/form-schema-validate";
 import { run } from "@alliance/common/run";
 import { Assert } from "@alliance/common/types";
 import {
@@ -1169,6 +1171,15 @@ export class ActionsService {
     const parsed = displayOnlySchema.safeParse(schema);
     if (!parsed.success) {
       throw new BadRequestException(displayOnlySchemaError(parsed.error));
+    }
+    // displayOnlySchema accepts empty images blocks; semantic validation rejects
+    // them before updates are saved.
+    const errors = validateFormSchema(displayOnlyToFormSchema(parsed.data));
+    if (errors.length > 0) {
+      throw new BadRequestException({
+        message: "Invalid form schema",
+        errors,
+      });
     }
     return parsed.data;
   }

@@ -284,8 +284,11 @@ export class TasksService {
     const pages = schema.pages as Page[];
     for (const page of pages) {
       for (const field of page.fields) {
-        if (field.kind === "image") {
-          field.src = getImageSource(field.src);
+        if (field.kind === "images") {
+          field.images = field.images.map((image) => ({
+            ...image,
+            src: getImageSource(image.src),
+          }));
         }
         if (field.kind === "video") {
           field.src = getVideoSource(field.src);

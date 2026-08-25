@@ -50,9 +50,8 @@ const sampleSchema: FormSchema = {
         {
           id: "hero-image",
           type: "display",
-          kind: "image",
-          alt: "Hero Image",
-          src: "local-image-key",
+          kind: "images",
+          images: [{ src: "local-image-key", alt: "Hero Image" }],
         },
         {
           id: "full-name",
@@ -238,7 +237,7 @@ describe("Tasks (e2e)", () => {
       (field) => field.id === "hero-image",
     );
     expect(imageField).toBeDefined();
-    expect(imageField.src).toBe(
+    expect(imageField.images[0].src).toBe(
       `http://localhost:${devPorts(PortCaller.Server).server}/images/local-image-key`,
     );
 

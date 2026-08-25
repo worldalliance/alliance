@@ -56,14 +56,22 @@ const htmlContentSchema = z.strictObject({
   html: z.string(),
 });
 
-const imageContentSchema = z.strictObject({
-  ...baseContentFields,
-  alt: z.string(),
+const imagesItemSchema = z.strictObject({
+  /**
+   * Stable identity for reordering in the editor, since `src` repeats when the
+   * same image is added twice. Optional because blocks migrated from the old
+   * `image` kind have none until the editor next writes them.
+   */
+  id: z.string().optional(),
   src: z.string(),
-  aspectRatio: z.number().optional(),
+  alt: z.string().optional(),
   caption: z.string().optional(),
-  /** When true, web clients open a closable lightbox on click. */
-  expandable: z.boolean().optional(),
+});
+export type ImagesItem = z.infer<typeof imagesItemSchema>;
+
+const imagesContentSchema = z.strictObject({
+  ...baseContentFields,
+  images: z.array(imagesItemSchema),
 });
 
 const videoContentSchema = z.strictObject({
@@ -157,7 +165,7 @@ const manualDisplayBlockContentSchema = z.union([
   dividerContentSchema,
   spacerContentSchema,
   htmlContentSchema,
-  imageContentSchema,
+  imagesContentSchema,
   videoContentSchema,
   bigLinkContentSchema,
   copyTextContentSchema,
@@ -227,12 +235,12 @@ export const htmlBlockSchema = z.strictObject({
 });
 export type HtmlBlock = z.infer<typeof htmlBlockSchema>;
 
-export const imageBlockSchema = z.strictObject({
+export const imagesBlockSchema = z.strictObject({
   ...baseBlockFields,
-  kind: z.literal("image"),
-  ...imageContentSchema.shape,
+  kind: z.literal("images"),
+  ...imagesContentSchema.shape,
 });
-export type ImageBlock = z.infer<typeof imageBlockSchema>;
+export type ImagesBlock = z.infer<typeof imagesBlockSchema>;
 
 export const videoBlockSchema = z.strictObject({
   ...baseBlockFields,
@@ -284,7 +292,7 @@ export const displayBlockSchema = z.discriminatedUnion("kind", [
   dividerBlockSchema,
   spacerBlockSchema,
   htmlBlockSchema,
-  imageBlockSchema,
+  imagesBlockSchema,
   videoBlockSchema,
   bigLinkBlockSchema,
   copyTextBlockSchema,
@@ -314,7 +322,7 @@ export const MANUAL_IMPORT_FIELD_BY_KIND: Record<
   html: "html",
   divider: null,
   spacer: null,
-  image: null,
+  images: null,
   video: null,
   biglink: null,
   previousAnswer: null,
