@@ -1,6 +1,6 @@
 import { CreateEditableContentDto } from "@alliance/shared/client";
+import { photoPickFailed, unreadablePhotos } from "@alliance/shared/lib/copy";
 import { File, Paths } from "expo-file-system";
-import { launchImageLibraryAsync } from "expo-image-picker";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { KeyboardExtender } from "react-native-keyboard-controller";
 import Reanimated from "react-native-reanimated";
+import { pickImageDataUris } from "../lib/pickImageDataUri";
 import { useKeyboardExtenderPortal } from "./KeyboardExtenderPortal";
 import Text from "./system/Text";
 
@@ -251,34 +252,24 @@ const EditableContentForm: React.FC<EditableContentFormProps> = ({
     setPickerError(null);
     setIsPicking(true);
     try {
-      const result = await launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        base64: true,
-      });
-      if (result.canceled || !result.assets.length) return;
-      const attachments = result.assets
-        .map((asset) => {
-          if (!asset.base64) {
-            return asset.uri;
-          }
-          const mime = asset.mimeType ?? "image/jpeg";
-          return `data:${mime};base64,${asset.base64}`;
-        })
-        .filter((img): img is string => Boolean(img));
-      if (!attachments.length) return;
+      const picked = await pickImageDataUris();
+      if (!picked.ok) {
+        console.error("Failed to pick image(s)", picked.error);
+        setPickerError(photoPickFailed);
+        return;
+      }
+      const { dataUris, unreadableCount } = picked.value;
+      if (unreadableCount > 0) {
+        setPickerError(
+          unreadablePhotos(unreadableCount, unreadableCount + dataUris.length),
+        );
+      }
+      if (!dataUris.length) return;
       onChange({
         ...value,
-        attachments: [...(value.attachments ?? []), ...attachments],
+        attachments: [...(value.attachments ?? []), ...dataUris],
       });
       inputRef.current?.focus();
-    } catch (err) {
-      console.error("Failed to pick image(s)", err);
-      const message =
-        (err instanceof Error ? err.message : String(err || "")) ||
-        "Unable to add that photo.";
-      setPickerError(message);
     } finally {
       isPickingRef.current = false;
       setIsPicking(false);

@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { randomUUID } from "crypto";
 import convert from "heic-convert";
 import sharp from "sharp";
 import type { Repository } from "src/utils/Repository";
@@ -20,6 +21,15 @@ export class ImagesService {
   ) {}
 
   private readonly bucket = process.env.ASSETS_BUCKET!; // TODO: separate dev bucket
+
+  /**
+   * The timestamp keeps keys roughly ordered; the uuid is what makes them
+   * unique, since two uploads can land in the same millisecond and one would
+   * otherwise overwrite the other.
+   */
+  private newImageKey(): string {
+    return `${Date.now()}-${randomUUID()}.webp`;
+  }
 
   async getImages(): Promise<Image[]> {
     return this.imageRepository.find();
@@ -81,7 +91,7 @@ export class ImagesService {
       .webp({ effort: 3 })
       .toBuffer();
 
-    const key = `${Date.now()}.webp`;
+    const key = this.newImageKey();
 
     await this.s3.send(
       new PutObjectCommand({
@@ -110,7 +120,7 @@ export class ImagesService {
     try {
       const buffer = await processed.toBuffer();
 
-      const key = `${Date.now()}.webp`;
+      const key = this.newImageKey();
       await this.s3.send(
         new PutObjectCommand({
           Bucket: this.bucket,

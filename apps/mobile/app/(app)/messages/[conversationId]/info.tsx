@@ -5,7 +5,6 @@ import {
   conversationUpdateInfo,
 } from "@alliance/shared/client";
 import { useMessageableUsersQuery } from "@alliance/shared/lib/user";
-import { launchImageLibraryAsync } from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, Edit, Plus, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -29,6 +28,7 @@ import {
   mergeConversationUpdate,
   useConversations,
 } from "../../../../lib/messages";
+import { pickImageDataUri } from "../../../../lib/pickImageDataUri";
 import { colors } from "../../../../lib/style/colors";
 
 export default function ConversationInfoScreen() {
@@ -97,23 +97,14 @@ export default function ConversationInfoScreen() {
 
   const handlePickPhoto = useCallback(async () => {
     if (!isAdmin || !isGroup) return;
-    try {
-      const result = await launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        quality: 0.8,
-        base64: true,
-      });
-      if (result.canceled || !result.assets.length) return;
-      const asset = result.assets[0];
-      if (!asset.base64) {
-        Alert.alert("Upload failed", "Unable to read that image.");
-        return;
-      }
-      const mime = asset.mimeType ?? "image/jpeg";
-      setEditingPhoto(`data:${mime};base64,${asset.base64}`);
-    } catch (error) {
-      console.error("Failed to pick image", error);
+    const picked = await pickImageDataUri();
+    if (!picked.ok) {
+      console.error("Failed to pick image", picked.error);
       Alert.alert("Upload failed", "Unable to select that photo.");
+      return;
+    }
+    if (picked.value) {
+      setEditingPhoto(picked.value.dataUri);
     }
   }, [isAdmin, isGroup]);
 

@@ -59,11 +59,22 @@ import {
   getVisiblePageIndices,
   resolveDisplayBlockForUser,
   resolveFieldDefaultValue,
+  restorableAnswers,
   validateFieldValue as validateFieldValueShared,
   type UserLocationDisplayValue,
 } from "@alliance/shared/formrenderer";
+import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
+import {
+  resolveFormValue,
+  type SetFieldValue,
+} from "@alliance/shared/forms/formValueUpdater";
+import { stripCardIds } from "@alliance/shared/forms/listCards";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
-import { outputFieldPublicToggle } from "@alliance/shared/lib/copy";
+import {
+  outputFieldPublicToggle,
+  waitingForImageUpload,
+} from "@alliance/shared/lib/copy";
+import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -809,7 +820,7 @@ const FormRenderer = ({
         }
         const parsed = JSON.parse(raw);
         if (parsed?.formData && typeof parsed.formData === "object") {
-          const filtered = filterAnswersByFieldIds(
+          const filtered = restorableAnswers(
             parsed.formData as Record<string, FormValue>,
             fieldLookup,
           );
@@ -1279,23 +1290,32 @@ const FormRenderer = ({
     } as const;
   }, [schema.pages.length, validatePage]);
 
-  const handleFieldChange = (fieldId: string, value: FormValue) => {
+  const markFormStarted = () => {
+    if (hasEmittedStart) return;
+    setHasEmittedStart(true);
+    onFormStarted?.();
+  };
+
+  const handleFieldChange: SetFieldValue = (fieldId, value) => {
     if (readOnly) return;
-    setFormData((prev) => {
-      const next = { ...prev, [fieldId]: value };
-      return next;
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [fieldId]: resolveFormValue(value, prev[fieldId]),
+    }));
     setFieldErrors((prev) => {
       if (!(fieldId in prev)) return prev;
       const next = { ...prev };
       delete next[fieldId];
       return next;
     });
-    if (!hasEmittedStart) {
-      setHasEmittedStart(true);
-      onFormStarted?.();
-    }
+    markFormStarted();
   };
+
+  const imageUpload = useImageUpload({
+    onUploaded: (slot, imageKey) =>
+      applyUploadedImage({ slot, imageKey, setFieldValue: handleFieldChange }),
+    onStart: markFormStarted,
+  });
 
   const handlePublicToggleChange = (fieldId: string, nextPublic: boolean) => {
     if (readOnly) return;
@@ -1349,7 +1369,7 @@ const FormRenderer = ({
   };
 
   const handleSubmit = async () => {
-    if (submitting || readOnly || !onSubmit) {
+    if (submitting || readOnly || !onSubmit || imageUpload.uploadingAny) {
       return;
     }
     if (formSnapshotId === null) {
@@ -1389,9 +1409,8 @@ const FormRenderer = ({
       return;
     }
 
-    const sanitizedAnswers = filterAnswersByFieldIds(
-      effectiveFormData,
-      fieldLookup,
+    const sanitizedAnswers = stripCardIds(
+      filterAnswersByFieldIds(effectiveFormData, fieldLookup),
     );
     const submissionPayload: SubmitFormDto = {
       answers: sanitizedAnswers,
@@ -1422,7 +1441,7 @@ const FormRenderer = ({
       );
     }
     const submissionPayload: SubmitFormDto = {
-      answers: formData,
+      answers: stripCardIds(formData),
       formSnapshotId,
       actionId,
       visibilityValidatorResults,
@@ -1539,6 +1558,7 @@ const FormRenderer = ({
                 field={interpolateFieldText(field, variableValues)}
                 value={effectiveFormData[field.id]}
                 onChange={(value) => handleFieldChange(field.id, value)}
+                fileUpload={readOnly ? undefined : imageUpload}
                 disabled={readOnly}
                 error={fieldErrors[field.id]}
                 randomizationKey={randomizationKey}
@@ -1613,7 +1633,7 @@ const FormRenderer = ({
                 color={ButtonColor.Black}
                 size={ButtonSize.Medium}
                 className="flex-2 py-4! gap-x-1"
-                disabled={submitting}
+                disabled={submitting || imageUpload.uploadingAny}
               >
                 {submitting ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -1642,6 +1662,11 @@ const FormRenderer = ({
               )}
             </View>
           </View>
+          {imageUpload.uploadingAny && (
+            <Text className="text-zinc-500 text-base p-2">
+              {waitingForImageUpload}
+            </Text>
+          )}
           {Object.keys(fieldErrors).length > 0 && (
             <Text className="text-red-500 text-base p-2">
               Your form has errors. Please fix before submitting.

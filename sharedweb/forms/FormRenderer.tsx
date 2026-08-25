@@ -5,7 +5,6 @@ import {
   withdrawalFlagsFromOption,
   type WithdrawalOption,
 } from "@alliance/common/actionActivity";
-import { errorMessage } from "@alliance/common/errorMessage";
 import { type DeviceVisibilityTarget } from "@alliance/common/forms/device";
 import { type DisplayBlock } from "@alliance/common/forms/display-blocks";
 import {
@@ -32,7 +31,6 @@ import {
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
 import {
   FormResponseDto,
-  imagesUploadImage,
   SubmitFormDto,
   tasksGetForm,
   tasksGetFormResponsesAdmin,
@@ -56,13 +54,22 @@ import {
   getVisiblePageIndices,
   resolveDisplayBlockForUser,
   resolveFieldDefaultValue,
+  restorableAnswers,
   validateFieldValue as validateFieldValueShared,
 } from "@alliance/shared/formrenderer";
+import { applyUploadedImage } from "@alliance/shared/forms/fileUploadSlots";
+import {
+  resolveFormValue,
+  type SetFieldValue,
+} from "@alliance/shared/forms/formValueUpdater";
+import { stripCardIds } from "@alliance/shared/forms/listCards";
 import { type ActionWithdrawal } from "@alliance/shared/lib/actionTaskPanel";
 import {
   guestReferral,
   outputFieldPublicToggle,
+  waitingForImageUpload,
 } from "@alliance/shared/lib/copy";
+import { useImageUpload } from "@alliance/shared/lib/useImageUpload";
 import { useVisibilityContext } from "@alliance/shared/lib/useVisibilityContext";
 import { cn } from "@alliance/shared/styles/util";
 import {
@@ -323,7 +330,7 @@ const FormRenderer = ({
             ? (parsed.formData as Record<string, FormValue>)
             : null;
         if (!storedFormData) return null;
-        const filtered = filterAnswersByFieldIds(storedFormData, fieldLookup);
+        const filtered = restorableAnswers(storedFormData, fieldLookup);
         return Object.keys(filtered).length > 0 ? filtered : null;
       } catch {
         return null;
@@ -337,7 +344,7 @@ const FormRenderer = ({
     }
 
     const draftAnswers = draftFormResponse?.answers
-      ? filterAnswersByFieldIds(
+      ? restorableAnswers(
           draftFormResponse.answers as Record<string, FormValue>,
           fieldLookup,
         )
@@ -369,10 +376,6 @@ const FormRenderer = ({
     publicAnswerOverrides,
   ]);
 
-  const [uploadingFields, setUploadingFields] = useState<Set<string>>(
-    new Set(),
-  );
-  const [uploadErrors, setUploadErrors] = useState<Record<string, string>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [hasEmittedStart, setHasEmittedStart] = useState(false);
   const [deviceType, setDeviceType] = useState<DeviceVisibilityTarget>(() =>
@@ -694,7 +697,7 @@ const FormRenderer = ({
     if (readOnly) return;
     if (draftLockedRef.current) return;
     if (!draftFormResponse?.answers) return;
-    const draftAnswers = filterAnswersByFieldIds(
+    const draftAnswers = restorableAnswers(
       draftFormResponse.answers as Record<string, FormValue>,
       fieldLookup,
     );
@@ -1124,11 +1127,14 @@ const FormRenderer = ({
   const isLastPage = nextVisiblePageIndex === null;
   const isFirstPage = previousVisiblePageIndex === null;
 
-  const updateField = (fieldId: string, value: FormValue) => {
+  const updateField: SetFieldValue = (fieldId, value) => {
     if (readOnly) return;
     ensureStarted();
     setFormData((prev) => {
-      const next = { ...prev, [fieldId]: value };
+      const next = {
+        ...prev,
+        [fieldId]: resolveFormValue(value, prev[fieldId]),
+      };
       const fieldDefinition = fieldLookup.get(fieldId);
       if (fieldDefinition) {
         const nextValue = next[fieldId];
@@ -1162,63 +1168,12 @@ const FormRenderer = ({
     });
   };
 
-  const handleFileUpload = async (fieldId: string, file: File) => {
-    if (readOnly) return;
-    ensureStarted();
-    setUploadingFields((prev) => new Set(prev).add(fieldId));
-    setUploadErrors((prev) => {
-      const newErrors = { ...prev };
-      delete newErrors[fieldId];
-      return newErrors;
-    });
-
-    try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        if (typeof reader.result === "string") {
-          try {
-            const { data, error } = await imagesUploadImage({
-              body: { file: reader.result },
-            });
-            if (data) {
-              updateField(fieldId, data.key);
-            } else if (error) {
-              setUploadErrors((prev) => ({
-                ...prev,
-                [fieldId]: errorMessage({
-                  error,
-                  fallback: "Failed to upload image",
-                }),
-              }));
-            }
-          } catch (error) {
-            console.error("Failed to upload image:", error);
-            setUploadErrors((prev) => ({
-              ...prev,
-              [fieldId]: "Failed to upload image",
-            }));
-          }
-        }
-        setUploadingFields((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(fieldId);
-          return newSet;
-        });
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error("Failed to read file:", error);
-      setUploadErrors((prev) => ({
-        ...prev,
-        [fieldId]: "Failed to read file",
-      }));
-      setUploadingFields((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(fieldId);
-        return newSet;
-      });
-    }
-  };
+  const imageUpload = useImageUpload({
+    onUploaded: (slot, imageKey) =>
+      applyUploadedImage({ slot, imageKey, setFieldValue: updateField }),
+    onStart: ensureStarted,
+  });
+  const { uploadingAny } = imageUpload;
 
   const handleNext = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -1230,6 +1185,10 @@ const FormRenderer = ({
       }
       return;
     }
+
+    // File fields receive their stored answer only after the upload finishes,
+    // so validation must wait too.
+    if (uploadingAny) return;
 
     if (nextVisiblePageIndex !== null) {
       const result = await validatePage(currentPageIndex, true);
@@ -1274,7 +1233,7 @@ const FormRenderer = ({
       return result;
     };
 
-    if (readOnly || !onSubmit) {
+    if (readOnly || !onSubmit || uploadingAny) {
       return finishSubmit(false);
     }
 
@@ -1307,9 +1266,8 @@ const FormRenderer = ({
       return finishSubmit(false);
     }
 
-    const sanitizedAnswers = filterAnswersByFieldIds(
-      effectiveFormData,
-      fieldLookup,
+    const sanitizedAnswers = stripCardIds(
+      filterAnswersByFieldIds(effectiveFormData, fieldLookup),
     );
 
     const sid = searchParams.get("sid") ?? searchParams.get("ref");
@@ -1350,6 +1308,7 @@ const FormRenderer = ({
     searchParams,
     sessionReplayUrl,
     trackValidationError,
+    uploadingAny,
     validateAllPages,
     validatePage,
     visibilityValidatorResults,
@@ -1377,7 +1336,7 @@ const FormRenderer = ({
       );
     }
     const submissionPayload: SubmitFormDto = {
-      answers: formData,
+      answers: stripCardIds(formData),
       formSnapshotId,
       actionId,
       visibilityValidatorResults,
@@ -1422,7 +1381,7 @@ const FormRenderer = ({
     if (!raw) return;
     const parsed = JSON.parse(raw);
     if (parsed?.formData && typeof parsed.formData === "object") {
-      const filtered = filterAnswersByFieldIds(
+      const filtered = restorableAnswers(
         parsed.formData as Record<string, FormValue>,
         fieldLookup,
       );
@@ -1623,12 +1582,8 @@ const FormRenderer = ({
           field={interpolateFieldText(field, variableValues)}
           value={effectiveFormData[field.id]}
           onChange={readOnly ? undefined : (val) => updateField(field.id, val)}
-          onFileSelected={
-            readOnly ? undefined : (file) => handleFileUpload(field.id, file)
-          }
+          fileUpload={readOnly ? undefined : imageUpload}
           disabled={readOnly}
-          uploading={uploadingFields.has(field.id)}
-          uploadError={uploadErrors[field.id]}
           error={fieldErrors[field.id]}
           randomizationKey={
             disableOptionRandomization ? undefined : randomizationKey
@@ -1754,6 +1709,7 @@ const FormRenderer = ({
                     variant={BaseButtonVariant.Black}
                     size={BaseButtonSize.MediumDynamic}
                     onClick={handleNext}
+                    disabled={uploadingAny}
                   >
                     Next
                   </BaseButton>
@@ -1789,7 +1745,9 @@ const FormRenderer = ({
                             <BaseButton
                               variant={BaseButtonVariant.Black}
                               className="w-full"
-                              disabled={submitting || confettiDisabled}
+                              disabled={
+                                submitting || confettiDisabled || uploadingAny
+                              }
                               type="submit"
                               onClick={onClick}
                               onKeyDown={onKeyDown}
@@ -1817,6 +1775,9 @@ const FormRenderer = ({
                   </div>
                 )}
               </>
+            )}
+            {uploadingAny && !readOnly && (
+              <p className="text-zinc-500">{waitingForImageUpload}</p>
             )}
           </div>
 

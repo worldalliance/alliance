@@ -1,6 +1,6 @@
 import { MessageDto } from "@alliance/shared/client";
+import { photoPickFailed, unreadablePhotos } from "@alliance/shared/lib/copy";
 import { cn } from "@alliance/shared/styles/util";
-import { launchImageLibraryAsync } from "expo-image-picker";
 import { ImagePlus, Send, X } from "lucide-react-native";
 import {
   type Dispatch,
@@ -10,12 +10,14 @@ import {
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
+import { pickImageDataUris } from "../../lib/pickImageDataUri";
 import { colors } from "../../lib/style/colors";
 import Text from "../system/Text";
 
@@ -51,25 +53,22 @@ export default function MessageComposer({
     if (picking) return;
     setPicking(true);
     try {
-      const result = await launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsMultipleSelection: true,
-        base64: true,
-        quality: 0.8,
-      });
-      if (result.canceled) return;
-      const newAttachments = result.assets
-        .map((asset) => {
-          if (!asset.base64) return null;
-          const mimeType = asset.mimeType ?? "image/jpeg";
-          return `data:${mimeType};base64,${asset.base64}`;
-        })
-        .filter((value): value is string => !!value);
-      if (newAttachments.length > 0) {
-        setAttachments((prev) => [...prev, ...newAttachments]);
+      const picked = await pickImageDataUris();
+      if (!picked.ok) {
+        console.error("Failed to pick images", picked.error);
+        Alert.alert("Couldn't add photos", photoPickFailed);
+        return;
       }
-    } catch (error) {
-      console.error("Failed to pick images", error);
+      const { dataUris, unreadableCount } = picked.value;
+      if (unreadableCount > 0) {
+        Alert.alert(
+          "Couldn't add photos",
+          unreadablePhotos(unreadableCount, unreadableCount + dataUris.length),
+        );
+      }
+      if (dataUris.length > 0) {
+        setAttachments((prev) => [...prev, ...dataUris]);
+      }
     } finally {
       setPicking(false);
     }

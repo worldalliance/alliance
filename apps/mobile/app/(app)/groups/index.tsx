@@ -26,7 +26,6 @@ import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
 import { LegendList } from "@legendapp/list";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { keyBy } from "es-toolkit";
-import { launchImageLibraryAsync } from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import { ChevronDown, Settings, X } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -55,6 +54,7 @@ import { SimplePageTitle } from "../../../components/system/SimplePageTitle";
 import Text, { FontWeight } from "../../../components/system/Text";
 import UserActivityCard from "../../../components/UserActivityCard";
 import { useAuth } from "../../../lib/AuthContext";
+import { pickImageDataUri } from "../../../lib/pickImageDataUri";
 import { colors } from "../../../lib/style/colors";
 
 type Tab = "activity" | "members" | "invites" | "settings";
@@ -803,28 +803,16 @@ function GroupSettingsTab({
   }, [community, resetFormFromCommunity]);
 
   const handlePickPhoto = useCallback(async () => {
-    try {
-      const result = await launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        quality: 0.8,
-        base64: true,
-      });
-      if (result.canceled || !result.assets.length) return;
-      const asset = result.assets[0];
-      if (!asset.base64) {
-        Alert.alert("Upload failed", "Unable to read that image.");
-        return;
-      }
-      const mime = asset.mimeType ?? "image/jpeg";
-      setEditForm((prev) => ({
-        ...prev,
-        photo: `data:${mime};base64,${asset.base64}`,
-      }));
-      setError(null);
-    } catch (err) {
-      console.error("Failed to pick image", err);
+    const picked = await pickImageDataUri();
+    if (!picked.ok) {
+      console.error("Failed to pick image", picked.error);
       Alert.alert("Upload failed", "Unable to select that photo.");
+      return;
     }
+    if (!picked.value) return;
+    const { dataUri } = picked.value;
+    setEditForm((prev) => ({ ...prev, photo: dataUri }));
+    setError(null);
   }, []);
 
   const handleSave = useCallback(async () => {

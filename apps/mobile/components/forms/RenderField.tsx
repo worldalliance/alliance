@@ -4,12 +4,22 @@ import type {
   CityField,
   FormValue,
   ListField,
-  ListFieldValue,
   PhoneField,
   RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
 import type { UserDto } from "@alliance/shared/client";
+import {
+  resolveUploadSlot,
+  type FileUploadSlot,
+  type FileUploadSlots,
+} from "@alliance/shared/forms/fileUploadSlots";
+import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
+import {
+  CARD_ID_KEY,
+  listCardWriters,
+  resolveCards,
+} from "@alliance/shared/forms/listCards";
 import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import {
   formatTimeForDisplay,
@@ -17,9 +27,8 @@ import {
 } from "@alliance/shared/forms/timeUtils";
 import { usePhoneFieldCountry } from "@alliance/shared/lib/usePhoneNumberField";
 import { cn } from "@alliance/shared/styles/util";
-import { launchImageLibraryAsync } from "expo-image-picker";
 import { ChevronDown } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   Pressable,
@@ -28,6 +37,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { getImageSource } from "../../lib/config";
+import { pickImageDataUri } from "../../lib/pickImageDataUri";
 import { colors } from "../../lib/style/colors";
 import AppMarkdownWrapper from "../AppMarkdownWrapper";
 import BottomSheetOptionPicker from "../BottomSheetOptionPicker";
@@ -47,12 +58,11 @@ import TimeZoneSelect from "./TimeZoneSelect";
 export type RenderFieldProps = {
   field: AnyField;
   value?: FormValue;
-  onChange?: (value: FormValue) => void;
+  onChange?: (value: FormValueUpdater) => void;
   onFocus?: () => void;
   disabled?: boolean;
-  onFileSelected?: (file: unknown) => void;
-  uploading?: boolean;
-  uploadError?: string | null;
+  fileUpload?: FileUploadSlots;
+  fileUploadSlot?: FileUploadSlot;
   error?: string | null;
   randomizationKey?: string;
   disableOptionRandomization?: boolean;
@@ -125,9 +135,8 @@ export function RenderField({
   onChange,
   onFocus,
   disabled,
-  onFileSelected,
-  uploading,
-  uploadError,
+  fileUpload,
+  fileUploadSlot,
   error,
   randomizationKey,
   disableOptionRandomization,
@@ -171,6 +180,21 @@ export function RenderField({
 
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  // The library sheet is open across an await, before any upload has started,
+  // so `uploading` cannot keep a second tap out.
+  const pickingRef = useRef(false);
+
+  const {
+    slot: uploadSlot,
+    uploading,
+    uploadError,
+  } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
+
+  useEffect(() => {
+    if (uploadError) {
+      setFilePreview(null);
+    }
+  }, [uploadError]);
 
   switch (field.kind) {
     case "text":
@@ -639,30 +663,31 @@ export function RenderField({
       );
     }
 
-    case "file":
+    case "file": {
       const currentPreview =
-        filePreview || (typeof value === "string" && value ? value : null);
+        filePreview ||
+        (typeof value === "string" && value ? getImageSource(value) : null);
 
       const pickImage = async () => {
-        if (disabled || uploading) return;
+        if (disabled || uploading || !fileUpload) return;
+        if (pickingRef.current) return;
+        pickingRef.current = true;
         setPickerError(null);
-        const result = await launchImageLibraryAsync({
-          mediaTypes: ["images"],
-          allowsEditing: true,
-          quality: 0.8,
-        });
-        if (result.canceled || !result.assets.length) {
-          return;
+        try {
+          const picked = await pickImageDataUri({ allowsEditing: true });
+          if (!picked.ok) {
+            console.error("Failed to pick image", picked.error);
+            setPickerError("Unable to read that photo. Try another one.");
+            return;
+          }
+          if (!picked.value) {
+            return;
+          }
+          setFilePreview(picked.value.uri);
+          void fileUpload.onFileSelected(uploadSlot, picked.value.dataUri);
+        } finally {
+          pickingRef.current = false;
         }
-        const asset = result.assets[0];
-        const fileLike = {
-          uri: asset.uri,
-          name: asset.fileName,
-          type: asset.mimeType,
-        };
-        setFilePreview(asset.uri);
-        onFileSelected?.(fileLike as unknown);
-        onChange?.(asset.uri);
       };
 
       return (
@@ -701,17 +726,11 @@ export function RenderField({
           {renderValidationMessage(errorMessage)}
         </View>
       );
+    }
 
     case "list": {
       const listField = field as ListField;
       const subFields = listField.fields ?? [];
-      const rawList = Array.isArray(value) ? value : [];
-      const listValue: ListFieldValue = rawList.every(
-        (item): item is Record<string, FormValue> =>
-          item !== null && typeof item === "object" && !Array.isArray(item),
-      )
-        ? rawList
-        : [];
       const defaultCount = Math.max(
         0,
         Math.floor(listField.defaultNumber ?? 0),
@@ -721,10 +740,7 @@ export function RenderField({
         typeof listField.max === "number" && listField.max >= 0
           ? Math.floor(listField.max)
           : Infinity;
-      const cards: ListFieldValue =
-        value === undefined
-          ? Array.from({ length: defaultCount }, () => ({}))
-          : listValue;
+      const cards = resolveCards({ value, defaultCardCount: defaultCount });
       const hiddenInOutputIds = new Set(
         isOutputView ? (listField.outputViewHiddenFieldIds ?? []) : [],
       );
@@ -732,34 +748,11 @@ export function RenderField({
         (subField) => !hiddenInOutputIds.has(subField.id),
       );
       const canDelete = cards.length > minCards;
-
-      const addCard = () => {
-        if (cards.length >= maxCards) {
-          return;
-        }
-        const nextCards: ListFieldValue =
-          value === undefined
-            ? Array.from({ length: defaultCount + 1 }, () => ({}))
-            : [...listValue, {}];
-        onChange?.(nextCards);
-      };
-
-      const removeCard = (index: number) => {
-        onChange?.(cards.filter((_, cardIndex) => cardIndex !== index));
-      };
-
-      const updateCard = (
-        index: number,
-        subFieldId: string,
-        subValue: FormValue,
-      ) => {
-        const nextCards = [...cards];
-        nextCards[index] = {
-          ...(nextCards[index] ?? {}),
-          [subFieldId]: subValue,
-        };
-        onChange?.(nextCards);
-      };
+      const { addCard, removeCard, updateCard } = listCardWriters({
+        onChange,
+        defaultCardCount: defaultCount,
+        maxCards,
+      });
 
       return (
         <View>
@@ -770,50 +763,65 @@ export function RenderField({
             required={required}
           />
           <View className="gap-3">
-            {cards.map((card, cardIndex) => (
-              <Card
-                key={cardIndex}
-                cardStyle={CardStyle.White}
-                className="border border-zinc-200 gap-4"
-              >
-                {visibleSubFields.map((subField) => (
-                  <RenderField
-                    key={subField.id}
-                    field={subField}
-                    value={card[subField.id]}
-                    onChange={
-                      onChange
-                        ? (nextValue) =>
-                            updateCard(cardIndex, subField.id, nextValue)
-                        : undefined
-                    }
-                    onFocus={onFocus}
-                    disabled={disabled}
-                    randomizationKey={randomizationKey}
-                    disableOptionRandomization={disableOptionRandomization}
-                    isOutputView={isOutputView}
-                    user={user}
-                    // A sub-field's requiredIfFormula can reference either the
-                    // surrounding answers or its own card.
-                    isFieldRequired={
-                      isFieldRequired
-                        ? (sub: AnyField) =>
-                            isFieldRequired(sub, { ...formData, ...card })
-                        : undefined
-                    }
-                  />
-                ))}
-                {!disabled && (
-                  <Button
-                    onPress={() => removeCard(cardIndex)}
-                    disabled={!canDelete}
-                    color={ButtonColor.Red}
-                    size={ButtonSize.Small}
-                    title="Remove item"
-                  />
-                )}
-              </Card>
-            ))}
+            {cards.map((card) => {
+              const cardId = card[CARD_ID_KEY];
+              return (
+                <Card
+                  key={cardId}
+                  cardStyle={CardStyle.White}
+                  className="border border-zinc-200 gap-4"
+                >
+                  {visibleSubFields.map((subField) => (
+                    <RenderField
+                      key={subField.id}
+                      field={subField}
+                      value={card[subField.id]}
+                      onChange={
+                        onChange
+                          ? (nextValue) =>
+                              updateCard({
+                                cardId,
+                                subFieldId: subField.id,
+                                value: nextValue,
+                              })
+                          : undefined
+                      }
+                      onFocus={onFocus}
+                      disabled={disabled}
+                      fileUpload={fileUpload}
+                      fileUploadSlot={{
+                        kind: "listCard",
+                        fieldId: field.id,
+                        cardId,
+                        subFieldId: subField.id,
+                        defaultCardCount: defaultCount,
+                      }}
+                      randomizationKey={randomizationKey}
+                      disableOptionRandomization={disableOptionRandomization}
+                      isOutputView={isOutputView}
+                      user={user}
+                      // A sub-field's requiredIfFormula can reference either the
+                      // surrounding answers or its own card.
+                      isFieldRequired={
+                        isFieldRequired
+                          ? (sub: AnyField) =>
+                              isFieldRequired(sub, { ...formData, ...card })
+                          : undefined
+                      }
+                    />
+                  ))}
+                  {!disabled && (
+                    <Button
+                      onPress={() => removeCard(cardId)}
+                      disabled={!canDelete}
+                      color={ButtonColor.Red}
+                      size={ButtonSize.Small}
+                      title="Remove item"
+                    />
+                  )}
+                </Card>
+              );
+            })}
             {!disabled && cards.length < maxCards && (
               <Button
                 onPress={addCard}
@@ -970,7 +978,7 @@ export function RenderField({
 type PhoneInputFieldProps = {
   field: PhoneField;
   value: FormValue | undefined;
-  onChange?: (value: FormValue) => void;
+  onChange?: (value: FormValueUpdater) => void;
   onFocus?: () => void;
   disabled?: boolean;
   baseError: string | null;
@@ -1022,7 +1030,7 @@ export function PhoneInputField({
 type TimeInputFieldProps = {
   field: TimeField;
   value: FormValue | undefined;
-  onChange?: (value: FormValue) => void;
+  onChange?: (value: FormValueUpdater) => void;
   onFocus?: () => void;
   disabled?: boolean;
   baseError: string | null;

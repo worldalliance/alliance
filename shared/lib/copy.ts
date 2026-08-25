@@ -229,6 +229,18 @@ export const guestReferral = {
 export const suspendContractConfirmation =
   "Are you sure you want to suspend your contract? You will be removed from your groups.";
 
+export const waitingForImageUpload =
+  "Waiting for your photo to finish uploading.";
+
+export const imageUploadFailed = "Failed to upload image";
+
+export const photoPickFailed = "Couldn't open your photo library.";
+
+export const unreadablePhotos = (count: number, of: number) =>
+  count === of
+    ? `Couldn't read ${count === 1 ? "that photo" : "those photos"}. Try picking again.`
+    : `Couldn't read ${count} of ${of} photos.`;
+
 export const outputFieldPublicToggle = {
   showPublicly: "Show my response to other members",
   hidePublicly: "Hide my response from others",

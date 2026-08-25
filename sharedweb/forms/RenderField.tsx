@@ -4,12 +4,22 @@ import type {
   CityField,
   FormValue,
   ListField,
-  ListFieldValue,
   PhoneField,
   RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
 import type { UserDto } from "@alliance/shared/client";
+import {
+  resolveUploadSlot,
+  type FileUploadSlot,
+  type FileUploadSlots,
+} from "@alliance/shared/forms/fileUploadSlots";
+import { type FormValueUpdater } from "@alliance/shared/forms/formValueUpdater";
+import {
+  CARD_ID_KEY,
+  listCardWriters,
+  resolveCards,
+} from "@alliance/shared/forms/listCards";
 import {
   formatTimeForDisplay,
   parseTimeInput,
@@ -29,6 +39,7 @@ import {
 } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { getApiUrl } from "../lib/config";
+import { readFileDataUri } from "../lib/readFileDataUri";
 import AppMarkdownWrapper from "../ui/AppMarkdownWrapper";
 import Card from "../ui/Card";
 import FormMarkdownWrapper from "../ui/FormMarkdownWrapper";
@@ -47,12 +58,10 @@ import TimeZoneSelect from "./TimeZoneSelect";
 export type RenderFieldProps = {
   field: AnyField;
   value?: FormValue;
-  onChange?: (value: FormValue) => void;
+  onChange?: (value: FormValueUpdater) => void;
   disabled?: boolean;
-  // File upload hooks (used by file field)
-  onFileSelected?: (file: File) => void;
-  uploading?: boolean;
-  uploadError?: string | null;
+  fileUpload?: FileUploadSlots;
+  fileUploadSlot?: FileUploadSlot;
   error?: string | null;
   randomizationKey?: string;
   disableOptionRandomization?: boolean;
@@ -142,9 +151,8 @@ export function RenderField({
   value,
   onChange,
   disabled,
-  onFileSelected,
-  uploading,
-  uploadError,
+  fileUpload,
+  fileUploadSlot,
   error,
   randomizationKey,
   disableOptionRandomization,
@@ -160,6 +168,12 @@ export function RenderField({
 }: RenderFieldProps) {
   const instanceId = useId();
   const fieldName = `${field.id}-${instanceId}`;
+  const {
+    slot: uploadSlot,
+    uploading,
+    uploadError,
+  } = resolveUploadSlot({ fileUpload, fileUploadSlot, fieldId: field.id });
+  const [fileReadError, setFileReadError] = useState<string | null>(null);
   const required = isFieldRequired ? isFieldRequired(field) : !!field.required;
   const errorMessage =
     typeof error === "string" && error.trim().length > 0 ? error : null;
@@ -775,8 +789,6 @@ export function RenderField({
 
     case "file": {
       const fileValue = value;
-      const isUploading = !!uploading;
-      const err = uploadError;
       const imageUrl =
         typeof fileValue === "string" && fileValue
           ? getApiUrl() + "/images/" + fileValue
@@ -816,20 +828,29 @@ export function RenderField({
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (!file || disabled) return;
-                  if (onFileSelected) onFileSelected(file);
+                  // Clear the input so re-picking the same file after a failed
+                  // read still fires a change event.
+                  e.target.value = "";
+                  if (!file || disabled || !fileUpload) return;
+                  const dataUri = await readFileDataUri(file);
+                  if (!dataUri.ok) {
+                    setFileReadError(dataUri.error.message);
+                    return;
+                  }
+                  setFileReadError(null);
+                  void fileUpload.onFileSelected(uploadSlot, dataUri.value);
                 }}
                 required={required && !fileValue}
-                disabled={disabled || isUploading}
+                disabled={disabled || uploading}
                 aria-invalid={hasError}
                 className={composeClassName(
                   sharedInputClasses +
                     " max-w-full flex-1 file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 file:cursor-pointer disabled:opacity-50 disabled:pointer-events-none",
                 )}
               />
-              {isUploading && (
+              {uploading && (
                 <span className=" text-blue-600">Uploading...</span>
               )}
             </div>
@@ -837,7 +858,9 @@ export function RenderField({
 
           {renderValidationMessage()}
 
-          {err && <p className=" text-red-600">{err}</p>}
+          {(uploadError ?? fileReadError) && (
+            <p className=" text-red-600">{uploadError ?? fileReadError}</p>
+          )}
         </div>
       );
     }
@@ -845,13 +868,6 @@ export function RenderField({
     case "list": {
       const listField = field as ListField;
       const subFields = listField.fields ?? [];
-      const rawList = Array.isArray(value) ? value : [];
-      const listValue: ListFieldValue = rawList.every(
-        (item): item is Record<string, FormValue> =>
-          item !== null && typeof item === "object" && !Array.isArray(item),
-      )
-        ? rawList
-        : [];
       const defaultCount = Math.max(
         0,
         Math.floor(listField.defaultNumber ?? 0),
@@ -862,42 +878,13 @@ export function RenderField({
           ? Math.floor(listField.max)
           : Infinity;
 
-      const cards: ListFieldValue =
-        value === undefined
-          ? Array.from(
-              { length: Math.max(0, defaultCount) },
-              () => ({}) as Record<string, FormValue>,
-            )
-          : listValue;
+      const cards = resolveCards({ value, defaultCardCount: defaultCount });
       const canDelete = cards.length > minCards;
-      const addCard = () => {
-        if (maxCards !== undefined && cards.length >= maxCards) {
-          return;
-        }
-        const nextCards: ListFieldValue =
-          value === undefined
-            ? Array.from(
-                { length: Math.max(0, defaultCount) + 1 },
-                () => ({}) as Record<string, FormValue>,
-              )
-            : [...listValue, {} as Record<string, FormValue>];
-        onChange?.(nextCards);
-      };
-      const removeCard = (index: number) => {
-        const next = cards.filter((_, i) => i !== index);
-        onChange?.(next);
-      };
-      const updateCard = (
-        index: number,
-        subFieldId: string,
-        subValue: FormValue,
-      ) => {
-        const next = [...cards];
-        const card = { ...(next[index] ?? {}) };
-        card[subFieldId] = subValue;
-        next[index] = card;
-        onChange?.(next);
-      };
+      const { addCard, removeCard, updateCard } = listCardWriters({
+        onChange,
+        defaultCardCount: defaultCount,
+        maxCards,
+      });
       const visibleSubFieldsForCard = (card: Record<string, FormValue>) => {
         if (!isElementVisible || !formData) return subFields;
         const mergedData = { ...formData, ...card };
@@ -934,63 +921,79 @@ export function RenderField({
             required={required}
           />
           <div className="space-y-3">
-            {cards.map((card, cardIndex) => (
-              <Card
-                key={cardIndex}
-                style={CardStyle.WhiteBorder}
-                className="gap-4"
-              >
-                <div className="flex flex-row gap-x-4 justify-between">
-                  <div className="w-full space-y-6">
-                    {subFieldsForCard(card).map((sub) => {
-                      const isHiddenInOutput = hiddenInOutputIds.has(sub.id);
-                      return (
-                        <div key={sub.id}>
-                          <RenderField
-                            field={sub}
-                            value={card[sub.id]}
-                            onChange={
-                              onChange
-                                ? (val) => updateCard(cardIndex, sub.id, val)
-                                : undefined
-                            }
-                            disabled={disabled}
-                            isOutputView={isOutputView}
-                            error={
-                              fieldErrors?.[
-                                `${field.id}:${cardIndex}:${sub.id}`
-                              ] ?? null
-                            }
-                            randomizationKey={randomizationKey}
-                            disableOptionRandomization={
-                              disableOptionRandomization
-                            }
-                            user={user}
-                            isFieldRequired={subFieldRequiredForCard(card)}
-                          />
-                          {!disabled &&
-                            isHiddenInOutput &&
-                            !responseHiddenFromOthers && (
-                              <p className="text-xs text-gray-500">
-                                This will not be shown to other members.
-                              </p>
-                            )}
-                        </div>
-                      );
-                    })}
+            {cards.map((card, cardIndex) => {
+              const cardId = card[CARD_ID_KEY];
+              return (
+                <Card
+                  key={cardId}
+                  style={CardStyle.WhiteBorder}
+                  className="gap-4"
+                >
+                  <div className="flex flex-row gap-x-4 justify-between">
+                    <div className="w-full space-y-6">
+                      {subFieldsForCard(card).map((sub) => {
+                        const isHiddenInOutput = hiddenInOutputIds.has(sub.id);
+                        return (
+                          <div key={sub.id}>
+                            <RenderField
+                              field={sub}
+                              value={card[sub.id]}
+                              onChange={
+                                onChange
+                                  ? (val) =>
+                                      updateCard({
+                                        cardId,
+                                        subFieldId: sub.id,
+                                        value: val,
+                                      })
+                                  : undefined
+                              }
+                              disabled={disabled}
+                              isOutputView={isOutputView}
+                              fileUpload={fileUpload}
+                              fileUploadSlot={{
+                                kind: "listCard",
+                                fieldId: field.id,
+                                cardId,
+                                subFieldId: sub.id,
+                                defaultCardCount: defaultCount,
+                              }}
+                              error={
+                                fieldErrors?.[
+                                  `${field.id}:${cardIndex}:${sub.id}`
+                                ] ?? null
+                              }
+                              randomizationKey={randomizationKey}
+                              disableOptionRandomization={
+                                disableOptionRandomization
+                              }
+                              user={user}
+                              isFieldRequired={subFieldRequiredForCard(card)}
+                            />
+                            {!disabled &&
+                              isHiddenInOutput &&
+                              !responseHiddenFromOthers && (
+                                <p className="text-xs text-gray-500">
+                                  This will not be shown to other members.
+                                </p>
+                              )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {!disabled && (
+                      <NewButton
+                        onClick={() => removeCard(cardId)}
+                        disabled={disabled || !canDelete}
+                        color={ButtonColor.Red}
+                        size={ButtonSize.Small}
+                        iconLeft={X}
+                      />
+                    )}
                   </div>
-                  {!disabled && (
-                    <NewButton
-                      onClick={() => removeCard(cardIndex)}
-                      disabled={disabled || !canDelete}
-                      color={ButtonColor.Red}
-                      size={ButtonSize.Small}
-                      iconLeft={X}
-                    />
-                  )}
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
             {!disabled && cards.length < maxCards && (
               <NewButton
                 type="button"
@@ -1118,7 +1121,7 @@ export default RenderField;
 type PhoneInputFieldProps = {
   field: PhoneField;
   value: FormValue | undefined;
-  onChange?: (value: FormValue) => void;
+  onChange?: (value: FormValueUpdater) => void;
   disabled?: boolean;
   baseError: string | null;
   labelRightAddon?: ReactNode;
@@ -1169,7 +1172,7 @@ export function PhoneInputField({
 type TimeInputFieldProps = {
   field: TimeField;
   value: FormValue | undefined;
-  onChange?: (value: FormValue) => void;
+  onChange?: (value: FormValueUpdater) => void;
   disabled?: boolean;
   baseError: string | null;
   labelRightAddon?: ReactNode;

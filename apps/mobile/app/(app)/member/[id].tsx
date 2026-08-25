@@ -32,7 +32,6 @@ import {
 import { formatTime } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useQuery } from "@tanstack/react-query";
-import { launchImageLibraryAsync } from "expo-image-picker";
 import { RelativePathString, router, useLocalSearchParams } from "expo-router";
 import { ChevronDown, Edit, Menu, MessageSquare } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -63,6 +62,7 @@ import { SegmentedTabs } from "../../../components/system/SegmentedTabs";
 import Text, { FontWeight } from "../../../components/system/Text";
 import { useAppDrawer } from "../../../lib/AppDrawerContext";
 import { useAuth } from "../../../lib/AuthContext";
+import { pickImageDataUri } from "../../../lib/pickImageDataUri";
 import { colors } from "../../../lib/style/colors";
 
 enum ProfileTab {
@@ -212,24 +212,15 @@ export default function UserProfileScreen() {
     if (isPickingAvatar) return;
     setIsPickingAvatar(true);
     try {
-      const result = await launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        quality: 0.8,
-        base64: true,
-      });
-
-      if (result.canceled || !result.assets.length) return;
-      const asset = result.assets[0];
-      if (!asset.base64) {
-        Alert.alert("Upload failed", "Unable to read that image.");
+      const picked = await pickImageDataUri();
+      if (!picked.ok) {
+        console.error("Failed to pick image", picked.error);
+        Alert.alert("Upload failed", "Unable to select that photo.");
         return;
       }
-
-      const mime = asset.mimeType ?? "image/jpeg";
-      setEditAvatarUrl(`data:${mime};base64,${asset.base64}`);
-    } catch (error) {
-      console.error("Failed to pick image", error);
-      Alert.alert("Upload failed", "Unable to select that photo.");
+      if (picked.value) {
+        setEditAvatarUrl(picked.value.dataUri);
+      }
     } finally {
       setIsPickingAvatar(false);
     }

@@ -27,6 +27,7 @@ import {
   isKnownConditionKind,
 } from "@alliance/common/forms/visible-if-formula";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
+import { dropUnuploadedFileAnswers } from "./forms/fileAnswers";
 
 /** Indices into `pages` of the currently visible pages. */
 export function getVisiblePageIndices(
@@ -425,6 +426,22 @@ export function filterAnswersByFieldIds(
     }
   }
   return filtered;
+}
+
+/**
+ * The answers a renderer should start a draft from: only fields the schema
+ * still has, and only file answers naming an image that reached the server.
+ * Callers apply defaults afterwards, since an empty result is what decides
+ * which of several stored drafts wins.
+ */
+export function restorableAnswers(
+  answers: Record<string, FormValue> | null,
+  allowedFields: Map<string, AnyField>,
+): Record<string, FormValue> {
+  return dropUnuploadedFileAnswers(
+    filterAnswersByFieldIds(answers, allowedFields),
+    allowedFields,
+  );
 }
 
 export function validateFieldValue(
