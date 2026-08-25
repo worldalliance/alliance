@@ -1,3 +1,4 @@
+import { withCount } from "../plural";
 import type { DisplayBlock, DisplayKind } from "./display-blocks";
 import {
   isQuestionField,
@@ -100,7 +101,7 @@ export function displayBlockPreview(block: DisplayBlock): string {
     case "userLocation":
       return block.title ?? "";
     case "chatTranscript":
-      return `${block.messages.length} message${block.messages.length === 1 ? "" : "s"}`;
+      return withCount(block.messages.length, "message");
     default:
       block satisfies never;
       return "";

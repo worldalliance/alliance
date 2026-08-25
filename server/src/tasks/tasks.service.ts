@@ -42,6 +42,7 @@ import {
   isKnownConditionKind,
 } from "@alliance/common/forms/visible-if-formula";
 import { toE164 } from "@alliance/common/phone";
+import { withCount } from "@alliance/common/plural";
 import { R, type Result } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import {
@@ -505,7 +506,7 @@ export class TasksService {
               (!Array.isArray(answer) || answer.length < slotCount)
             ) {
               throw new BadRequestException(
-                `Field ${elementInternalDescriptor(field)} requires ranking ${slotCount} item${slotCount === 1 ? "" : "s"}.`,
+                `Field ${elementInternalDescriptor(field)} requires ranking ${withCount(slotCount, "item")}.`,
               );
             }
           }
@@ -546,12 +547,12 @@ export class TasksService {
             }
             if (listValue.length < minCards) {
               throw new BadRequestException(
-                `Field ${elementInternalDescriptor(listField)}: add at least ${minCards} item${minCards === 1 ? "" : "s"}.`,
+                `Field ${elementInternalDescriptor(listField)}: add at least ${withCount(minCards, "item")}.`,
               );
             }
             if (listValue.length > maxCards) {
               throw new BadRequestException(
-                `Field ${elementInternalDescriptor(listField)}: add no more than ${maxCards} item${maxCards === 1 ? "" : "s"}.`,
+                `Field ${elementInternalDescriptor(listField)}: add no more than ${withCount(maxCards, "item")}.`,
               );
             }
             const subFields = listField.fields ?? [];

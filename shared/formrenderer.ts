@@ -26,6 +26,7 @@ import {
   CONDITION_KIND_IS_ACCOUNT_DERIVED,
   isKnownConditionKind,
 } from "@alliance/common/forms/visible-if-formula";
+import { withCount } from "@alliance/common/plural";
 import { parseTimeToMinutes } from "@alliance/shared/forms/timeUtils";
 import { dropUnuploadedFileAnswers } from "./forms/fileAnswers";
 
@@ -466,9 +467,7 @@ export function validateFieldValue(
       field.maxSelections > 0 &&
       selections.length > field.maxSelections
     ) {
-      return `Select no more than ${field.maxSelections} option${
-        field.maxSelections === 1 ? "" : "s"
-      }.`;
+      return `Select no more than ${withCount(field.maxSelections, "option")}.`;
     }
     return null;
   }
@@ -538,7 +537,7 @@ export function validateFieldValue(
       ) {
         const parts = String(numValue).split(".");
         if (parts.length === 2 && parts[1].length > numberField.decimalPlaces) {
-          return `Value must have at most ${numberField.decimalPlaces} decimal place${numberField.decimalPlaces === 1 ? "" : "s"}.`;
+          return `Value must have at most ${withCount(numberField.decimalPlaces, "decimal place")}.`;
         }
       }
       if (!required) return null;
@@ -584,7 +583,7 @@ export function validateFieldValue(
       const slotCount = getRankingSlotCount(field);
       const rankedCount = Array.isArray(valueToCheck) ? valueToCheck.length : 0;
       if (rankedCount < slotCount) {
-        return `Rank ${slotCount} item${slotCount === 1 ? "" : "s"}.`;
+        return `Rank ${withCount(slotCount, "item")}.`;
       }
       return null;
     }
@@ -615,10 +614,10 @@ export function validateFieldValue(
         return "Add at least one item.";
       }
       if (listValTyped.length < minCards) {
-        return `Add at least ${minCards} item${minCards === 1 ? "" : "s"}.`;
+        return `Add at least ${withCount(minCards, "item")}.`;
       }
       if (listValTyped.length > maxCards) {
-        return `Add no more than ${maxCards} item${maxCards === 1 ? "" : "s"}.`;
+        return `Add no more than ${withCount(maxCards, "item")}.`;
       }
       return null;
     }

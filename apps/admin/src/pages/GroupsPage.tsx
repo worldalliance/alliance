@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   communityCreateCommunityAdmin,
   communityGetCommunitiesAdmin,
@@ -411,7 +412,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({
             </div>
             {leaderCount !== 1 && (
               <p className="text-sm text-zinc-600">
-                {leaderCount} leader{leaderCount === 1 ? "" : "s"}
+                {withCount(leaderCount, "leader")}
               </p>
             )}
             <p

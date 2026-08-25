@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   CommunityDto,
   CreateOnetimeInviteDto,
@@ -592,9 +593,10 @@ const InviteForm = ({
                           {memberCommunities[0].name}
                         </p>
                         <p className="text-invite-form-body shrink-0">
-                          {`${memberCommunityRemainingCapacity} open seat${
-                            memberCommunityRemainingCapacity === 1 ? "" : "s"
-                          }`}
+                          {withCount(
+                            memberCommunityRemainingCapacity,
+                            "open seat",
+                          )}
                         </p>
                       </div>
                     </div>

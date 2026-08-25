@@ -6,6 +6,7 @@ import {
 } from "@alliance/common/forms/display-blocks";
 import { type AnyField } from "@alliance/common/forms/form-schema";
 import { type VisibleIfFormula } from "@alliance/common/forms/visible-if-formula";
+import { pickForCount, withCount } from "@alliance/common/plural";
 import { userListAdmin, type UserDto } from "@alliance/shared/client";
 import { resolveDisplayBlockForUser } from "@alliance/shared/formrenderer";
 import { cn } from "@alliance/shared/styles/util";
@@ -477,11 +478,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     if (overwriteCount > 0) {
       const ok = await confirm({
         title: "Overwrite existing per-user content?",
-        message: `${overwriteCount} user${
-          overwriteCount === 1 ? " already has" : "s already have"
-        } a different ${manualImportField} value. Continue and replace ${
-          overwriteCount === 1 ? "it" : "them"
-        }?`,
+        message: `${withCount(overwriteCount, "user")} already ${pickForCount(overwriteCount, "has", "have")} a different ${manualImportField} value. Continue and replace ${pickForCount(overwriteCount, "it", "them")}?`,
         confirmLabel: "Overwrite",
         cancelLabel: "Cancel",
         mode: "fullscreen",
@@ -495,11 +492,7 @@ export function DisplayBlockWrapper<T extends DisplayBlock = DisplayBlock>({
     } as Partial<T>);
 
     setIsMenuOpen(false);
-    success(
-      `Imported content for ${importedCount} user${
-        importedCount === 1 ? "" : "s"
-      }.`,
-    );
+    success(`Imported content for ${withCount(importedCount, "user")}.`);
   }, [
     block,
     confirm,

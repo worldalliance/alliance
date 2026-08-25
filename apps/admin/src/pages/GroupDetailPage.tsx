@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   actionsGetCommunityMemberInfoAdmin,
   communityAddLeaderAdmin,
@@ -693,7 +694,7 @@ const CommunityDetailPage: React.FC = () => {
               <div>
                 <h2 className="font-semibold text-lg">Members</h2>
                 <p className="text-sm text-zinc-500">
-                  {`${memberCount} ${memberCount === 1 ? "member" : "members"}`}
+                  {withCount(memberCount, "member")}
                 </p>
               </div>
               <form

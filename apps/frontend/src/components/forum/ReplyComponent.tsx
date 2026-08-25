@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import { CommentDto } from "@alliance/shared/client";
 import { countAllReplies } from "@alliance/shared/lib/commentsFilter";
 import { cn } from "@alliance/shared/styles/util";
@@ -118,9 +119,7 @@ const ReplyContent = ({
             )}
             {hasChildren && isCollapsed && reply.children !== undefined && (
               <span className="text-xs bg-zinc-200 px-2 py-1 -my-1 rounded">
-                {countAllReplies(reply.children)}{" "}
-                {countAllReplies(reply.children) === 1 ? "reply" : "replies"}{" "}
-                hidden
+                {withCount(countAllReplies(reply.children), "reply")} hidden
               </span>
             )}
           </div>

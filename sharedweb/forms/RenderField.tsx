@@ -8,6 +8,7 @@ import type {
   RangeField,
   TimeField,
 } from "@alliance/common/forms/form-schema";
+import { withCount } from "@alliance/common/plural";
 import type { UserDto } from "@alliance/shared/client";
 import {
   resolveUploadSlot,
@@ -680,8 +681,7 @@ export function RenderField({
           </div>
           {maxSelections !== undefined && (
             <p className="text-xs text-gray-500">
-              Select up to {maxSelections} option
-              {maxSelections === 1 ? "" : "s"}
+              Select up to {withCount(maxSelections, "option")}
             </p>
           )}
           {renderValidationMessage()}

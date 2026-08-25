@@ -1,4 +1,5 @@
-import { FormSchema, Page } from "@alliance/common/forms/form-schema";
+import { FormSchema } from "@alliance/common/forms/form-schema";
+import { withCount } from "@alliance/common/plural";
 import {
   FormDto,
   tasksDeleteFormAdmin,
@@ -12,8 +13,15 @@ import { useNavigate } from "react-router";
 
 export type Form = Pick<FormDto, "id" | "title" | "usedInAction"> & {
   schema: FormSchema;
-  pages: Page[];
 };
+
+const countPages = (schema: FormSchema) => schema.pages?.length ?? 0;
+
+const countFields = (schema: FormSchema) =>
+  schema.pages?.reduce(
+    (total, page) => total + (page.fields?.length ?? 0),
+    0,
+  ) ?? 0;
 
 const FormsList: React.FC = () => {
   const [forms, setForms] = useState<Form[]>([]);
@@ -142,21 +150,8 @@ const FormsList: React.FC = () => {
                   <div className="flex-1" />
                   <div className="flex items-center gap-3">
                     <p className="text-sm text-zinc-600">
-                      {form.schema.pages?.length || 0} page
-                      {(form.schema.pages?.length || 0) !== 1 ? "s" : ""} •{" "}
-                      {form.schema.pages?.reduce(
-                        (total: number, page) =>
-                          total + (page.fields?.length || 0),
-                        0,
-                      ) || 0}{" "}
-                      field
-                      {(form.pages?.reduce(
-                        (total: number, page) =>
-                          total + (page.fields?.length || 0),
-                        0,
-                      ) || 0) !== 1
-                        ? "s"
-                        : ""}
+                      {withCount(countPages(form.schema), "page")} •{" "}
+                      {withCount(countFields(form.schema), "field")}
                     </p>
                     <button
                       onClick={(e) => {

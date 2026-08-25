@@ -1,3 +1,4 @@
+import { forCount } from "@alliance/common/plural";
 import {
   UpdateProfileDto,
   actionsUserCompletedCount,
@@ -454,20 +455,20 @@ const UserProfilePage: React.FC = () => {
             />
             <PillTab
               number={completedActionCount}
-              label={`action${completedActionCount === 1 ? "" : "s"} completed`}
-              shortLabel={`action${completedActionCount === 1 ? "" : "s"}`}
+              label={`${forCount(completedActionCount, "action")} completed`}
+              shortLabel={forCount(completedActionCount, "action")}
               selected={selectedTab === ProfileTabs.ActionsCompleted}
               onClick={() => setSelectedTab(ProfileTabs.ActionsCompleted)}
             />
             <PillTab
               number={forumActivityCount}
-              label={forumActivityCount === 1 ? "post" : "posts"}
+              label={forCount(forumActivityCount, "post")}
               selected={selectedTab === ProfileTabs.Forum}
               onClick={() => setSelectedTab(ProfileTabs.Forum)}
             />
             <PillTab
               number={friends.length}
-              label={`friend${friends.length === 1 ? "" : "s"}`}
+              label={forCount(friends.length, "friend")}
               selected={selectedTab === ProfileTabs.Friends}
               onClick={() => setSelectedTab(ProfileTabs.Friends)}
             />

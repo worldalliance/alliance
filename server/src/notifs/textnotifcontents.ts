@@ -1,8 +1,5 @@
+import { withCount } from "@alliance/common/plural";
 import { ActionEvent } from "src/actions/entities/action-event.entity";
-
-export function plural(n: number, word: string): string {
-  return n.toString() + " " + word + (n === 1 ? "" : "s");
-}
 
 export function getTimeLeftString(
   deadlineEvent: ActionEvent,
@@ -10,7 +7,7 @@ export function getTimeLeftString(
   mode: "both" | "days" | "hours" = "both",
 ): string {
   if (dateNow.getTime() > deadlineEvent.date.getTime()) {
-    return "0 " + (mode === "days" ? "days" : "hours");
+    return withCount(0, mode === "days" ? "day" : "hour");
   }
   let days = Math.floor(
     (deadlineEvent.date.getTime() - dateNow.getTime()) / (1000 * 60 * 60 * 24),
@@ -28,21 +25,21 @@ export function getTimeLeftString(
   }
 
   if (mode === "hours") {
-    return plural(hours, "hour");
+    return withCount(hours, "hour");
   }
   if (mode === "days") {
-    return plural(days, "day");
+    return withCount(days, "day");
   }
 
   if (days === 0) {
-    return plural(hours, "hour");
+    return withCount(hours, "hour");
   }
   if (hours === 0) {
-    return plural(days, "day");
+    return withCount(days, "day");
   }
 
-  const daysString = plural(days, "day");
-  const hoursString = plural(hours, "hour");
+  const daysString = withCount(days, "day");
+  const hoursString = withCount(hours, "hour");
 
   return `${daysString}, ${hoursString}`;
 }

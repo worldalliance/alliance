@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
 import { communityCreateCommunity } from "@alliance/shared/client";
 import { GROUP_MAX_CAPACITY_DEFAULT } from "@alliance/shared/lib/constants";
@@ -195,9 +196,7 @@ export default function InviteShareLink() {
     title:
       openLink.label ||
       (openLink.duplicate ? "Untitled link" : "Primary invite"),
-    meta: `${openLink.signupCount} ${
-      openLink.signupCount === 1 ? "signup" : "signups"
-    } so far`,
+    meta: `${withCount(openLink.signupCount, "signup")} so far`,
     url: openLink.url,
     name: {
       label: "Label",
@@ -541,8 +540,7 @@ function InviteLinkRow({
         {link.url}
       </Text>
       <Text className="text-sm text-zinc-500">
-        {link.signupCount} {link.signupCount === 1 ? "use" : "uses"} ·{" "}
-        {destinationLabel}
+        {withCount(link.signupCount, "use")} · {destinationLabel}
       </Text>
 
       <View className="flex-row items-center justify-end mt-1">

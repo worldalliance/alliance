@@ -56,13 +56,6 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(value, max));
 }
 
-/** Count-inclusive label, e.g. `pluralize(2, "like")` → "2 likes". */
-export const pluralize = (
-  count: number,
-  singular: string,
-  plural = `${singular}s`,
-) => `${count} ${count === 1 ? singular : plural}`;
-
 /** 0–100 width % for progress UI; denominator ≤ 0 is treated as full (100%). */
 export function completedBarPercentage(
   numerator: number,

@@ -1,5 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import type { AccountDerivedConditionKind } from "@alliance/common/forms/visible-if-formula";
+import { forCount } from "@alliance/common/plural";
 import type { Result } from "@alliance/common/result";
 import { Temporal } from "@js-temporal/polyfill";
 import {
@@ -2096,7 +2097,7 @@ export class UserService {
   }
 
   private formatSuccessfulRecruitCount(successful: number, target: number) {
-    return `${successful}/${target} ${target === 1 ? "successful recruit" : "successful recruits"}`;
+    return `${successful}/${target} ${forCount(target, "successful recruit")}`;
   }
 
   private async getAmbassadorInviteStatsByUserIds(

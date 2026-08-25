@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import { type ProfileDto } from "@alliance/shared/client";
 import { joinNames } from "./nameList";
 
@@ -38,7 +39,7 @@ export function getLikeSummaryParts({
   const remaining = likesCount - names.length;
   const parts = [...names];
   if (remaining > 0) {
-    parts.push(`${remaining} ${remaining === 1 ? "other" : "others"}`);
+    parts.push(withCount(remaining, "other"));
   }
   const subject = joinNames(parts);
   const verb = likesCount === 1 && !liked ? "likes this" : "like this";

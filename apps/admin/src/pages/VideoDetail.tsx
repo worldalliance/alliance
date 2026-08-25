@@ -184,10 +184,6 @@ const VideoDetail: React.FC = () => {
                 </table>
               </div>
               <div className="flex justify-end mt-2 text-sm">
-                {/* <span className="text-zinc-500">
-                  {video.segments.length} segment
-                  {video.segments.length !== 1 ? "s" : ""}
-                </span> */}
                 <span className="font-medium">
                   Total: {formatSize(video.totalOutputSize)}
                 </span>

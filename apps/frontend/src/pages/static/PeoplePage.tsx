@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   ProfileDto,
   type StaffDirectoryEntryDto,
@@ -264,9 +265,8 @@ const PeoplePage: React.FC = () => {
               <div className="flex flex-col gap-1">
                 {nmembers !== undefined && (
                   <p className={SUBTITLE_CLASS}>
-                    The Alliance has {nmembers}{" "}
-                    {nmembers === 1 ? "member" : "members"}. Membership is
-                    currently by invitation only.
+                    The Alliance has {withCount(nmembers, "member")}. Membership
+                    is currently by invitation only.
                   </p>
                 )}
                 <p className={`${SUBTITLE_CLASS} !text-zinc-500`}>

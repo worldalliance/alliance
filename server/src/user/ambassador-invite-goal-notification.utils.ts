@@ -1,3 +1,4 @@
+import { forCount, withCount } from "@alliance/common/plural";
 import { Temporal } from "@js-temporal/polyfill";
 import { DEFAULT_TIME_ZONE, type User } from "./entities/user.entity";
 
@@ -68,11 +69,11 @@ export function getAmbassadorGoalHalfwayNotificationMessage(
     goal.targetSuccessfulRecruits - successfulRecruits,
     0,
   );
-  const daysLabel = `${daysRemaining} ${daysRemaining === 1 ? "day" : "days"}`;
+  const daysLabel = withCount(daysRemaining, "day");
 
   if (remainingRecruits === 0) {
-    return `You have ${daysLabel} left, and you've already reached your goal of successfully inviting ${goal.targetSuccessfulRecruits} ${goal.targetSuccessfulRecruits === 1 ? "person" : "people"}.`;
+    return `You have ${daysLabel} left, and you've already reached your goal of successfully inviting ${withCount(goal.targetSuccessfulRecruits, "person")}.`;
   }
 
-  return `You have ${daysLabel} left to successfully invite ${remainingRecruits} more ${remainingRecruits === 1 ? "person" : "people"} and reach your goal of ${goal.targetSuccessfulRecruits}.`;
+  return `You have ${daysLabel} left to successfully invite ${remainingRecruits} more ${forCount(remainingRecruits, "person")} and reach your goal of ${goal.targetSuccessfulRecruits}.`;
 }

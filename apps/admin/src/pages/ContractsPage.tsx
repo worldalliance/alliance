@@ -1,3 +1,4 @@
+import { forCount } from "@alliance/common/plural";
 import {
   ContractAdminDto,
   contractAllAdmin,
@@ -96,7 +97,7 @@ const ContractsPage: React.FC = () => {
         </Button>
       </div>
       <p className="text-sm text-zinc-500">
-        {contracts.length} total contract{contracts.length !== 1 ? "s" : ""}
+        {contracts.length} total {forCount(contracts.length, "contract")}
       </p>
 
       {contracts.length === 0 ? (

@@ -1,4 +1,5 @@
 import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
+import { withCount } from "@alliance/common/plural";
 import {
   tasksGetResponseSnapshotMigrationAdmin,
   tasksMigrateResponseSnapshotsAdmin,
@@ -66,9 +67,8 @@ const SnapshotGroupCard: React.FC<{
               </h3>
               <p className="text-xs text-zinc-500">
                 Created {new Date(group.snapshot.createdAt).toLocaleString()} ·{" "}
-                {group.responses.length} response
-                {group.responses.length === 1 ? "" : "s"} · {selectedInGroup}{" "}
-                selected
+                {withCount(group.responses.length, "response")} ·{" "}
+                {selectedInGroup} selected
               </p>
               <p
                 className="text-xs text-zinc-400 font-mono"
@@ -176,9 +176,7 @@ const FormSnapshotMigration: React.FC = () => {
       return res.data?.updatedCount ?? 0;
     },
     onSuccess: async (updated) => {
-      setResultMessage(
-        `Reassigned ${updated} response${updated === 1 ? "" : "s"}.`,
-      );
+      setResultMessage(`Reassigned ${withCount(updated, "response")}.`);
       setSelectedIds(new Set());
       await queryClient.invalidateQueries({ queryKey });
     },
@@ -216,9 +214,10 @@ const FormSnapshotMigration: React.FC = () => {
     if (selectedIds.size === 0 || !data) return;
     if (
       !confirm(
-        `Reassign ${selectedIds.size} response${
-          selectedIds.size === 1 ? "" : "s"
-        } to the current snapshot? Answer data will not be transformed — keys for removed fields will be orphaned.`,
+        `Reassign ${withCount(
+          selectedIds.size,
+          "response",
+        )} to the current snapshot? Answer data will not be transformed — keys for removed fields will be orphaned.`,
       )
     ) {
       return;
@@ -295,8 +294,7 @@ const FormSnapshotMigration: React.FC = () => {
               <div className="flex items-center justify-between sticky top-0 bg-gray-50 py-2 z-10">
                 <p className="text-sm text-zinc-700">
                   {selectedIds.size} of {totalResponses} responses selected
-                  across {data.groups.length} snapshot
-                  {data.groups.length === 1 ? "" : "s"}
+                  across {withCount(data.groups.length, "snapshot")}
                 </p>
                 <div className="flex items-center gap-2">
                   <Button

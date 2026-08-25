@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import { clusterListAdmin, clusterUpdateAdmin } from "@alliance/shared/client";
 import type { ClusterAdminDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -63,9 +64,7 @@ const ClustersPage: React.FC = () => {
       await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
       const userCount = Object.keys(payload).length;
       success(
-        `Copied clustermates for ${userCount} user${
-          userCount === 1 ? "" : "s"
-        } to clipboard.`,
+        `Copied clustermates for ${withCount(userCount, "user")} to clipboard.`,
       );
     } catch (err) {
       console.error("Failed to copy clustermates", err);
@@ -101,10 +100,10 @@ const ClustersPage: React.FC = () => {
         <Card style={CardStyle.White}>
           <div className="flex items-center justify-between text-sm">
             <p className="font-medium text-zinc-700">
-              {clusters.length} cluster{clusters.length === 1 ? "" : "s"}
+              {withCount(clusters.length, "cluster")}
             </p>
             <p className="text-zinc-500">
-              {totalMembers} member{totalMembers === 1 ? "" : "s"} placed
+              {withCount(totalMembers, "member")} placed
             </p>
           </div>
         </Card>
@@ -227,8 +226,7 @@ const ClusterCard: React.FC<ClusterCardProps> = ({ cluster, onRenamed }) => {
             </div>
           )}
           <p className="text-sm text-zinc-500">
-            {cluster.members.length} member
-            {cluster.members.length === 1 ? "" : "s"}
+            {withCount(cluster.members.length, "member")}
           </p>
         </div>
 

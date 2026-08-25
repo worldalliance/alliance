@@ -1,6 +1,6 @@
+import { withCount } from "@alliance/common/plural";
 import { ProfileDto } from "@alliance/shared/client";
 import { FeedMemberSource } from "@alliance/shared/lib/useFeedMembers";
-import { pluralize } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { AvatarProfile } from "@alliance/sharedweb/ui/Avatar";
 import { useState } from "react";
@@ -62,7 +62,7 @@ export const MemberFacepileButton = ({
         className="inline-flex items-center gap-1 align-middle hover:text-zinc-900"
       >
         <MemberFacepile users={users} max={max} className="inline-flex" />
-        <span className="font-medium">{pluralize(count, noun)}</span>
+        <span className="font-medium">{withCount(count, noun)}</span>
       </button>
       <MembersModal
         open={open}

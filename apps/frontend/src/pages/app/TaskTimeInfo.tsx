@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   deadlineColor,
   formatDeadline,
@@ -19,9 +20,9 @@ const TaskTimeInfo = ({
       {!!action.timeEstimate && (
         <div className="flex flex-row items-center gap-x-1.5 text-base text-zinc-500">
           <ClockIcon />
-          <p className="text-green">{`${action.timeEstimate} minute${
-            action.timeEstimate === 1 ? "" : "s"
-          }`}</p>
+          <p className="text-green">
+            {withCount(action.timeEstimate, "minute")}
+          </p>
         </div>
       )}
       {!!nextEvent && (

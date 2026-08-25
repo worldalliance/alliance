@@ -1,3 +1,4 @@
+import { forCount, withCount } from "@alliance/common/plural";
 import {
   CommunityMemberContactInfoDto,
   ProfileDto,
@@ -9,7 +10,6 @@ import {
   sortMembersByNextTaskDue,
 } from "@alliance/shared/lib/communityMemberActions";
 import { useOnNextDeadline } from "@alliance/shared/lib/useOnNextDeadline";
-import { pluralize } from "@alliance/shared/lib/utils";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CommunityMemberTableRow from "./CommunityMemberTableRow";
 import DropdownSelect from "./DropdownSelect";
@@ -209,7 +209,7 @@ const CommunityMembersTable = ({
                 <tr>
                   <td colSpan={amLeader ? 4 : 2} className="px-0 pb-4">
                     <p className="text-xl md:text-2xl font-semibold px-5 md:px-0">
-                      Lead{leaders.length !== 1 ? "s" : ""}
+                      {forCount(leaders.length, "Lead")}
                     </p>
                   </td>
                 </tr>
@@ -350,7 +350,7 @@ const CommunityMembersTable = ({
       {pageSize != null && totalPages > 1 && (
         <div className="flex flex-row items-center justify-between mt-4 px-5 md:px-0">
           <p className="text-sm text-zinc-500">
-            {pluralize(filteredSortedMembers.length, "member")}
+            {withCount(filteredSortedMembers.length, "member")}
           </p>
           <Pagination
             page={currentPage}

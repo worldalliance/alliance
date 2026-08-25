@@ -7,6 +7,7 @@ import {
   type FormSchema,
   type Page,
 } from "@alliance/common/forms/form-schema";
+import { withCount } from "@alliance/common/plural";
 import type {
   ActionWithdrawalDto,
   FormDto,
@@ -783,7 +784,7 @@ const FormResponsesView: React.FC<FormResponsesViewProps> = ({
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
                 <p className="text-sm text-gray-500">
-                  {total} response{total === 1 ? "" : "s"}
+                  {withCount(total, "response")}
                 </p>
               </div>
               <div className="flex items-center gap-2 ml-3">

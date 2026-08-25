@@ -1,3 +1,4 @@
+import { forCount, withCount } from "@alliance/common/plural";
 import { NotificationDto } from "@alliance/shared/client";
 import {
   getNotificationTime,
@@ -87,8 +88,8 @@ export default function LikesGroup({
   const unreadCount = getUnreadLikesCount(bucket);
   const likesLabel =
     unreadCount > 0
-      ? `${unreadCount} new like${unreadCount === 1 ? "" : "s"}`
-      : `${bucket.likes.length} like${bucket.likes.length === 1 ? "" : "s"}`;
+      ? `${unreadCount} new ${forCount(unreadCount, "like")}`
+      : withCount(bucket.likes.length, "like");
 
   return (
     <View className="mx-px overflow-hidden">

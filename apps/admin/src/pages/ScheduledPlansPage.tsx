@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   actionsScheduledPlansAdmin,
   ScheduledPlansOverviewDto,
@@ -182,8 +183,7 @@ const ScheduledPlansPage = () => {
                           <div className="flex items-center gap-2 text-sm text-gray-600">
                             <Users size={16} className="text-gray-500" />
                             <span>
-                              {userCount} {userCount === 1 ? "user" : "users"}{" "}
-                              scheduled
+                              {withCount(userCount, "user")} scheduled
                             </span>
                           </div>
                         </div>

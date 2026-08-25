@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import { ISendMailOptions, MailerService } from "@nestjs-modules/mailer";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -299,7 +300,7 @@ export class MailService {
     cid: string;
   }): Promise<Mail> {
     const { email, name, unreadCount, notifications, cid } = params;
-    const subject = `You have ${unreadCount} unread Alliance forum notification${unreadCount === 1 ? "" : "s"}`;
+    const subject = `You have ${withCount(unreadCount, "unread Alliance forum notification")}`;
 
     return this.sendMail({
       recipient: email,

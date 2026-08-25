@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import { CreateTagDto, TagDto } from "@alliance/shared/client/types.gen";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -245,9 +246,7 @@ const TagCard: React.FC<TagCardProps> = ({
           <div className="flex flex-col gap-1">
             <div className="flex flex-row items-center gap-3">
               <h3 className="font-semibold">{tag.name}</h3>
-              <Badge>
-                {memberCount} member{memberCount === 1 ? "" : "s"}
-              </Badge>
+              <Badge>{withCount(memberCount, "member")}</Badge>
             </div>
             {tag.publicDisplayName && !isEditing && (
               <p className="text-sm text-zinc-500">

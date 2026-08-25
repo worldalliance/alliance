@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   deadlineColor,
   formatDeadline,
@@ -32,7 +33,7 @@ const TaskTimeInfo = ({
         >
           <ClockIcon size={15} color={filled ? colors.white : colors.green} />
           <Text className={cn("text-sm", filled ? "text-white" : "text-green")}>
-            {action.timeEstimate} minute{action.timeEstimate === 1 ? "" : "s"}
+            {withCount(action.timeEstimate, "minute")}
           </Text>
         </View>
       ) : null}

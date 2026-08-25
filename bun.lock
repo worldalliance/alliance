@@ -155,6 +155,7 @@
         "morgan": "^1.10.0",
         "msw": "^2.8.4",
         "msw-storybook-addon": "^2.0.4",
+        "pluralize": "^8.0.0",
         "pm2": "^6.0.6",
         "posthog-js": "^1.311.0",
         "prom-client": "^15.1.3",
@@ -194,6 +195,7 @@
         "@types/express": "^5",
         "@types/jest": "^29.5.14",
         "@types/morgan": "^1",
+        "@types/pluralize": "^0.0.33",
         "@types/react": "^19.0.10",
         "@types/react-dom": "^19.0.4",
         "@types/turndown": "^5.0.6",
@@ -322,12 +324,14 @@
         "dotenv": "^17.2.3",
         "jsep": "^1.4.0",
         "libphonenumber-js": "^1.12.17",
+        "pluralize": "^8.0.0",
         "typescript": "^5.9.3",
         "validator": "^13.12.0",
         "zod": "^4.3.6",
       },
       "devDependencies": {
         "@types/jest": "^29.5.14",
+        "@types/pluralize": "^0.0.33",
         "@types/validator": "^13.12.2",
       },
     },
@@ -1976,6 +1980,8 @@
     "@types/passport-strategy": ["@types/passport-strategy@0.2.38", "", { "dependencies": { "@types/express": "*", "@types/passport": "*" } }, "sha512-GC6eMqqojOooq993Tmnmp7AUTbbQSgilyvpCYQjT+H6JfG/g6RGc7nXEniZlp0zyKJ0WUdOiZWLBZft9Yug1uA=="],
 
     "@types/pixelmatch": ["@types/pixelmatch@5.2.6", "", { "dependencies": { "@types/node": "*" } }, "sha512-wC83uexE5KGuUODn6zkm9gMzTwdY5L0chiK+VrKcDfEjzxh1uadlWTvOmAbCpnM9zx/Ww3f8uKlYQVnO/TrqVg=="],
+
+    "@types/pluralize": ["@types/pluralize@0.0.33", "", {}, "sha512-JOqsl+ZoCpP4e8TDke9W79FDcSgPAR0l6pixx2JHkhnRjvShyYiAYw2LVsnA7K08Y6DeOnaU6ujmENO4os/cYg=="],
 
     "@types/pngjs": ["@types/pngjs@6.0.5", "", { "dependencies": { "@types/node": "*" } }, "sha512-0k5eKfrA83JOZPppLtS2C7OUtyNAl2wKNxfyYl9Q5g9lPkgBl/9hNyAu6HuEH2J4XmIv2znEpkDd0SaZVxW6iQ=="],
 

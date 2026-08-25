@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   actionsFindAllWithDraftsAdmin,
   campaignCreateAdmin,
@@ -903,12 +904,10 @@ const GroupCard: React.FC<{
           <p className="text-xs text-zinc-500">{targetSubtitle(target)}</p>
         </div>
         <div className="flex flex-row gap-2 shrink-0 text-xs text-zinc-600">
-          <span>
-            {rows.length} link{rows.length === 1 ? "" : "s"}
-          </span>
+          <span>{withCount(rows.length, "link")}</span>
           {duplicateCount > 0 && (
             <span className="text-blue-700 font-semibold">
-              {duplicateCount} duplicate{duplicateCount === 1 ? "" : "s"}
+              {withCount(duplicateCount, "duplicate")}
             </span>
           )}
         </div>
@@ -1039,7 +1038,7 @@ const ShareUrlRow: React.FC<{
         )}
         {row.kind === "invite" && (
           <p className="text-xs font-medium text-green">
-            {row.signupCount} {row.signupCount === 1 ? "use" : "uses"}
+            {withCount(row.signupCount, "use")}
           </p>
         )}
       </div>

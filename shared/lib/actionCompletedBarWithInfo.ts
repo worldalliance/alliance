@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import { ActionActivityDto, ActionDto } from "../client/types.gen";
 
 export interface ActionCompletedBarWithInfoPropsShared {
@@ -32,8 +33,8 @@ export function getCompletedPercentage(
   const noDenominator = action.optional || action.onboarding;
 
   const labelString = noDenominator
-    ? `${value} member${value === 1 ? "" : "s"} completed`
-    : `${value} / ${safeThreshold} member${safeThreshold === 1 ? "" : "s"} completed`;
+    ? `${withCount(value, "member")} completed`
+    : `${value} / ${withCount(safeThreshold, "member")} completed`;
 
   const percentage = noDenominator ? 100 : (value / safeThreshold) * 100;
 

@@ -1,3 +1,4 @@
+import { forCount } from "@alliance/common/plural";
 import {
   actionsAllGeneralUpdatesAdmin,
   GeneralUpdateAdminDto,
@@ -83,7 +84,7 @@ const GeneralUpdatesPage: React.FC = () => {
         </Button>
       </div>
       <p className="text-sm text-zinc-500">
-        {updates.length} total update{updates.length !== 1 ? "s" : ""}
+        {updates.length} total {forCount(updates.length, "update")}
       </p>
 
       {updates.length === 0 ? (

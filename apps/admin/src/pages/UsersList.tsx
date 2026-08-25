@@ -1,4 +1,5 @@
 import { phoneSearchDigits } from "@alliance/common/phone";
+import { withCount } from "@alliance/common/plural";
 import {
   actionsActionRelationsAdmin,
   analyticsGetTimeSpentPerUserAdmin,
@@ -15,7 +16,6 @@ import { shuffleWithSeed } from "@alliance/shared/forms/randomutils";
 import { calculateCompletionData } from "@alliance/shared/lib/actionUtils";
 import { queryKeys } from "@alliance/shared/lib/queryKeys";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
-import { pluralize } from "@alliance/shared/lib/utils";
 import { cn } from "@alliance/shared/styles/util";
 import { useOutsideClick } from "@alliance/sharedweb/lib/useOutsideClick";
 import CommunityMembersTable from "@alliance/sharedweb/ui/CommunityMembersTable";
@@ -187,7 +187,7 @@ const UsersList: React.FC = () => {
     }
     return (
       (selectedTagIds.length === 1 && selectedTagNames[0]) ||
-      pluralize(selectedTagIds.length, "tag")
+      withCount(selectedTagIds.length, "tag")
     );
   }, [selectedTagIds, selectedTagNames]);
 
@@ -399,7 +399,7 @@ const UsersList: React.FC = () => {
                           <div className="flex flex-col">
                             <span className="font-medium">{tag.name}</span>
                             <span className="text-xs text-zinc-500">
-                              {memberCount} member{memberCount === 1 ? "" : "s"}
+                              {withCount(memberCount, "member")}
                             </span>
                           </div>
                         </label>
@@ -496,7 +496,7 @@ const UsersList: React.FC = () => {
           {cardTotalPages > 1 && (
             <div className="flex flex-row items-center justify-between">
               <p className="text-sm text-zinc-500">
-                {pluralize(displayedUsers.length, "member")}
+                {withCount(displayedUsers.length, "member")}
               </p>
               <Pagination
                 page={currentCardPage}

@@ -1,3 +1,4 @@
+import { pickForCount, withCount } from "@alliance/common/plural";
 import { actionsGetUnwelcomedSignedContractMembersAdmin } from "@alliance/shared/client";
 import type { UnwelcomedSignedContractMemberDto } from "@alliance/shared/client/types.gen";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
@@ -90,9 +91,7 @@ const WelcomeQueuePage: React.FC = () => {
           <p className="text-sm font-semibold text-zinc-800">
             {loading
               ? "Loading members..."
-              : `${displayedMembers.length} member${
-                  displayedMembers.length === 1 ? "" : "s"
-                } need${displayedMembers.length === 1 ? "s" : ""} a welcome`}
+              : `${withCount(displayedMembers.length, "member")} ${pickForCount(displayedMembers.length, "needs", "need")} a welcome`}
           </p>
           <div className="flex rounded-md border border-zinc-300 bg-white overflow-hidden text-sm">
             <button

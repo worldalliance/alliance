@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import { userCityCountsAdmin } from "@alliance/shared/client";
 import type { UserCityCountDto } from "@alliance/shared/client/types.gen";
 import { CardStyle } from "@alliance/shared/styles/card";
@@ -269,8 +270,7 @@ const MemberMapPage: React.FC = () => {
                     >
                       <span className="text-zinc-700">{point.label}</span>
                       <span className="text-zinc-500">
-                        {point.count} member
-                        {point.count === 1 ? "" : "s"}
+                        {withCount(point.count, "member")}
                       </span>
                     </li>
                   ))}

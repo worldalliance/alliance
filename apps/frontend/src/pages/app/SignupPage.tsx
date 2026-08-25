@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from "@alliance/common/analytics";
 import { errorMessage } from "@alliance/common/errorMessage";
+import { withCount } from "@alliance/common/plural";
 import {
   authMe,
   authRegister,
@@ -48,7 +49,7 @@ function formatSignupSocialProofNames(
   }
   const namesShown = 3;
   const others = Math.max(0, totalMemberCount - namesShown);
-  return `${names[0]}, ${names[1]}, ${names[2]} and ${others} ${others === 1 ? "other" : "others"}`;
+  return `${names[0]}, ${names[1]}, ${names[2]} and ${withCount(others, "other")}`;
 }
 
 export function meta() {

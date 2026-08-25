@@ -24,6 +24,7 @@ import {
 } from "@alliance/common/forms/variable-interpolation";
 import { resolveVariableValues } from "@alliance/common/forms/variables";
 import { isElementCurrentlyVisible } from "@alliance/common/forms/visibility";
+import { withCount } from "@alliance/common/plural";
 
 export type ResolvedOutputDisplayItem = {
   type: "display";
@@ -146,7 +147,7 @@ export const formatOutputFieldValue = (
     }
     case "list": {
       const listValue = Array.isArray(value) ? value : [];
-      return `${listValue.length} item${listValue.length === 1 ? "" : "s"}`;
+      return withCount(listValue.length, "item");
     }
     case "file":
       return "";

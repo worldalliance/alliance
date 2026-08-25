@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import type { OnetimeInviteDto } from "@alliance/shared/client";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
 import {
@@ -17,7 +18,7 @@ import { useAmbassadorInviteDashboard } from "@alliance/shared/lib/useAmbassador
 import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
-import { formatTime, pluralize } from "@alliance/shared/lib/utils";
+import { formatTime } from "@alliance/shared/lib/utils";
 import {
   CalendarDays,
   ChevronDown,
@@ -731,7 +732,7 @@ export default function InvitesScreen() {
     if (startAt > now) {
       return (
         <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-          This goal starts in {pluralize(daysUntil(startAt, now), "day")}.
+          This goal starts in {withCount(daysUntil(startAt, now), "day")}.
         </Text>
       );
     }
@@ -747,7 +748,7 @@ export default function InvitesScreen() {
     if (dueAt < now) {
       return (
         <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-          This goal ended with {pluralize(remainingRecruits, "member")} left to
+          This goal ended with {withCount(remainingRecruits, "member")} left to
           successfully invite.
         </Text>
       );
@@ -755,8 +756,8 @@ export default function InvitesScreen() {
 
     return (
       <Text className="text-lg text-white" weight={FontWeight.Semibold}>
-        You have {pluralize(daysUntil(dueAt, now), "day")} to successfully
-        invite {pluralize(remainingRecruits, "more member", "more members")}.
+        You have {withCount(daysUntil(dueAt, now), "day")} to successfully
+        invite {withCount(remainingRecruits, "more member")}.
       </Text>
     );
   }, [currentGoal]);

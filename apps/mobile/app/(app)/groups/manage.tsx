@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+import { forCount, withCount } from "@alliance/common/plural";
 import {
   communityAcceptCommunityInvite,
   communityCreateCommunity,
@@ -715,12 +716,12 @@ function LeaderCommunityCard({ community }: { community: CommunityDto }) {
           </Text>
           <Text className="text-sm text-zinc-600">
             {memberCount}
-            {capacity ? ` / ${capacity}` : ""} member
-            {memberCount === 1 ? "" : "s"}
+            {capacity ? ` / ${capacity}` : ""}{" "}
+            {forCount(capacity || memberCount, "member")}
           </Text>
           {leaderCount > 0 && (
             <Text className="text-xs text-zinc-400">
-              {leaderCount} leader{leaderCount === 1 ? "" : "s"}
+              {withCount(leaderCount, "leader")}
             </Text>
           )}
         </View>
@@ -759,11 +760,9 @@ function MemberCommunityCard({
           </Text>
           <Text className="text-sm text-zinc-600">
             {memberCount}
-            {capacity ? ` / ${capacity}` : ""} member
-            {memberCount === 1 ? "" : "s"}
-            {leaderCount > 0
-              ? ` · ${leaderCount} leader${leaderCount === 1 ? "" : "s"}`
-              : ""}
+            {capacity ? ` / ${capacity}` : ""}{" "}
+            {forCount(capacity || memberCount, "member")}
+            {leaderCount > 0 ? ` · ${withCount(leaderCount, "leader")}` : ""}
           </Text>
         </View>
         <Button

@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   conversationAcceptInvite,
   conversationDeclineInvite,
@@ -295,8 +296,7 @@ export default function ConversationScreen() {
               <View className="flex-row items-center gap-1">
                 <Users size={14} color="#71717a" />
                 <Text className="text-xs text-zinc-500">
-                  {selectedConvo.participants.length} member
-                  {selectedConvo.participants.length === 1 ? "" : "s"}
+                  {withCount(selectedConvo.participants.length, "member")}
                 </Text>
               </View>
             )}

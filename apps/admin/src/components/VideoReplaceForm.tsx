@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+import { withCount } from "@alliance/common/plural";
 import { getApiUrl } from "@alliance/sharedweb/lib/config";
 import Button, { ButtonColor } from "@alliance/sharedweb/ui/Button";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
@@ -87,8 +88,7 @@ const VideoReplaceForm: React.FC<VideoReplaceFormProps> = ({
       />
       {selectedFiles.length > 0 && (
         <p className="text-xs text-zinc-500">
-          {selectedFiles.length} file{selectedFiles.length !== 1 ? "s" : ""}{" "}
-          selected
+          {withCount(selectedFiles.length, "file")} selected
         </p>
       )}
       <Button

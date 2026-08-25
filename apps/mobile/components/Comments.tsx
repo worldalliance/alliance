@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   CommentDto,
   CommentParentObject,
@@ -342,8 +343,7 @@ const ReplyItem = ({ reply, depth = 0, ...shared }: ReplyItemProps) => {
           </Text>
           {hasChildren && isCollapsed && (
             <Text className={cn("text-zinc-500", metaTextClass)}>
-              {reply.children?.length ?? 0}{" "}
-              {reply.children?.length === 1 ? "reply" : "replies"} hidden
+              {withCount(reply.children?.length ?? 0, "reply")} hidden
             </Text>
           )}
         </View>

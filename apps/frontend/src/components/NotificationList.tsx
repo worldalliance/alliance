@@ -1,3 +1,4 @@
+import { forCount, withCount } from "@alliance/common/plural";
 import { NotificationDto, notifsSetRead } from "@alliance/shared/client";
 import {
   buildNotificationRenderItems,
@@ -50,10 +51,8 @@ const LikesGroup = ({
           <Heart className="text-zinc-500" size={16} />
           <span className="text-zinc-600">
             {unreadCount > 0
-              ? `${unreadCount} new like${unreadCount !== 1 ? "s" : ""} `
-              : `${bucket.likes.length} like${
-                  bucket.likes.length !== 1 ? "s" : ""
-                }`}
+              ? `${unreadCount} new ${forCount(unreadCount, "like")}`
+              : withCount(bucket.likes.length, "like")}
           </span>
           {expanded ? (
             <ChevronUp className="text-zinc-400" size={16} />

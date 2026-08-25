@@ -16,12 +16,14 @@
     "dotenv": "^17.2.3",
     "jsep": "^1.4.0",
     "libphonenumber-js": "^1.12.17",
+    "pluralize": "^8.0.0",
     "typescript": "^5.9.3",
     "validator": "^13.12.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
+    "@types/pluralize": "^0.0.33",
     "@types/validator": "^13.12.2"
   }
 }

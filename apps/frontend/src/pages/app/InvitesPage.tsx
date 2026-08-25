@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import { OnetimeInviteDto } from "@alliance/shared/client";
 import { MEMBER_GOAL } from "@alliance/shared/lib/constants";
 import {
@@ -18,7 +19,7 @@ import { useMyCommunities } from "@alliance/shared/lib/useMyCommunities";
 import { useOnetimeInvitesOverview } from "@alliance/shared/lib/useOnetimeInvitesOverview";
 import { useReusableInvites } from "@alliance/shared/lib/useReusableInvites";
 import { getLeaderCommunityIds } from "@alliance/shared/lib/userUtils";
-import { formatTime, pluralize } from "@alliance/shared/lib/utils";
+import { formatTime } from "@alliance/shared/lib/utils";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
 import { getBaseUrl } from "@alliance/sharedweb/lib/config";
@@ -216,7 +217,7 @@ const InvitesPage = () => {
         <>
           This goal starts in{" "}
           <span className="font-semibold text-white">
-            {pluralize(daysToStart, "day")}
+            {withCount(daysToStart, "day")}
           </span>
           .
         </>
@@ -232,7 +233,7 @@ const InvitesPage = () => {
         <>
           This goal ended with{" "}
           <span className="font-semibold text-white">
-            {pluralize(remainingRecruits, "member")}
+            {withCount(remainingRecruits, "member")}
           </span>{" "}
           left to successfully invite.
         </>
@@ -243,11 +244,11 @@ const InvitesPage = () => {
       <>
         You have{" "}
         <span className="font-semibold text-white">
-          {pluralize(daysUntil(dueAt, now), "day")}
+          {withCount(daysUntil(dueAt, now), "day")}
         </span>{" "}
         to successfully invite{" "}
         <span className="font-semibold text-white">
-          {pluralize(remainingRecruits, "more member", "more members")}
+          {withCount(remainingRecruits, "more member")}
         </span>
         .
       </>

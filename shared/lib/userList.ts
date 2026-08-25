@@ -1,4 +1,4 @@
-import { pluralize } from "./utils";
+import { withCount } from "@alliance/common/plural";
 
 /** Default page size for paged user lists (likers, feed members). */
 export const USER_LIST_PAGE_SIZE = 30;
@@ -29,7 +29,7 @@ export function getUserListTitle({
     : hasNextPage
       ? Math.max(expectedCount, loadedCount)
       : loadedCount;
-  return pluralize(count, noun);
+  return withCount(count, noun);
 }
 
 /**

@@ -1,4 +1,5 @@
 import { formatPhoneNumberForDisplay } from "@alliance/common/phone";
+import { withCount } from "@alliance/common/plural";
 import {
   communityGetCommunitiesAdmin,
   userAssignGroupsAdmin,
@@ -255,9 +256,10 @@ const GroupAssignmentPanel: React.FC<GroupAssignmentPanelProps> = ({
         : community.name;
       return `${member.name}: ${groupTransitionSummary}`;
     });
-    return `You're about to assign ${assignmentPreview.length} member${
-      assignmentPreview.length === 1 ? "" : "s"
-    }:\n\n${lines.join("\n")}`;
+    return `You're about to assign ${withCount(
+      assignmentPreview.length,
+      "member",
+    )}:\n\n${lines.join("\n")}`;
   }, [assignmentPreview, memberGroupsByMemberId]);
 
   const canConfirm =

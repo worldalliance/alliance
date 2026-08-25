@@ -1,3 +1,4 @@
+import { pickForCount } from "@alliance/common/plural";
 import type { AutomaticInviteReason } from "./inviteUtils";
 
 export const noTasksToDoRightNow = "No tasks to do right now";
@@ -238,7 +239,7 @@ export const photoPickFailed = "Couldn't open your photo library.";
 
 export const unreadablePhotos = (count: number, of: number) =>
   count === of
-    ? `Couldn't read ${count === 1 ? "that photo" : "those photos"}. Try picking again.`
+    ? `Couldn't read ${pickForCount(count, "that photo", "those photos")}. Try picking again.`
     : `Couldn't read ${count} of ${of} photos.`;
 
 export const outputFieldPublicToggle = {

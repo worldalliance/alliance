@@ -1,4 +1,5 @@
 import { errorMessage } from "@alliance/common/errorMessage";
+import { forCount, withCount } from "@alliance/common/plural";
 import type { ActionDto } from "@alliance/shared/client";
 import {
   actionsCreateFormVariantAdmin,
@@ -183,9 +184,7 @@ export default function ActionFormVariantsTab({
         succeeded++;
       }
       if (succeeded > 0) {
-        toast.success(
-          `Published ${succeeded} variant${succeeded === 1 ? "" : "s"}`,
-        );
+        toast.success(`Published ${withCount(succeeded, "variant")}`);
       }
       // Drop everything we successfully wrote; keep the failed one and any after it.
       setStaged((s) => s.slice(stopAt));
@@ -321,9 +320,9 @@ export default function ActionFormVariantsTab({
 
       {hasUnpublished && (
         <Card style={CardStyle.Alert} className="p-4 text-sm">
-          You have {staged.length} unpublished variant
-          {staged.length === 1 ? "" : "s"}. Nothing is sent to the server until
-          you click &quot;Publish drafts&quot;. Refreshing this page will
+          You have {staged.length} unpublished{" "}
+          {forCount(staged.length, "variant")}. Nothing is sent to the server
+          until you click &quot;Publish drafts&quot;. Refreshing this page will
           discard staged variants.
         </Card>
       )}
@@ -334,7 +333,7 @@ export default function ActionFormVariantsTab({
           <span className="font-medium text-zinc-900">
             {totalAssigned} users assigned
           </span>{" "}
-          across {stats.length} group{stats.length === 1 ? "" : "s"}.{" "}
+          across {withCount(stats.length, "group")}.{" "}
           {percentageSum > 100 ? (
             <span className="text-red-600">
               Percentage total {formatPct(percentageSum)} exceeds 100% — fix

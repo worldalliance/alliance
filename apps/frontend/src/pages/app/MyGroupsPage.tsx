@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import {
   CommunityDto,
   communityJoinPublicCommunity,
@@ -304,8 +305,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
                         </p>
                         <p className="text-zinc-500">{community.description}</p>
                         <span className="text-zinc-500">
-                          {memberCount}{" "}
-                          {memberCount === 1 ? "member" : "members"}
+                          {withCount(memberCount, "member")}
                         </span>
                       </div>
                     </div>
@@ -408,8 +408,7 @@ const MyGroupsPage = ({ onSelectCommunity, onBack }: MyGroupsPageProps) => {
                             {community.description}
                           </p>
                           <span className="text-zinc-500">
-                            {memberCount}{" "}
-                            {memberCount === 1 ? "member" : "members"}
+                            {withCount(memberCount, "member")}
                           </span>
                         </div>
                       </div>

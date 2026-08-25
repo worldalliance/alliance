@@ -1,3 +1,4 @@
+import { withCount } from "@alliance/common/plural";
 import type { CommunityDto, ShareUrlMineDto } from "@alliance/shared/client";
 import { inviteDestination } from "@alliance/shared/lib/copy";
 import {
@@ -68,7 +69,7 @@ const InviteShareLink = () => {
     title:
       openLink.label ||
       (openLink.duplicate ? "Untitled link" : "Primary invite"),
-    meta: `${openLink.signupCount} ${openLink.signupCount === 1 ? "signup" : "signups"} so far`,
+    meta: `${withCount(openLink.signupCount, "signup")} so far`,
     url: openLink.url,
     name: {
       label: "Label",
@@ -189,8 +190,7 @@ const InviteLinkRow = ({
       </div>
       <p className="break-all font-mono text-sm text-zinc-400">{link.url}</p>
       <p className="text-sm text-zinc-500">
-        {link.signupCount} {link.signupCount === 1 ? "use" : "uses"} ·{" "}
-        {destinationLabel}
+        {withCount(link.signupCount, "use")} · {destinationLabel}
       </p>
     </div>
 
