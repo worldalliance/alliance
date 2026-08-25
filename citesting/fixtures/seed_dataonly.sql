@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict MFbUm4aqhs68KbUVJ4x8Gt0riGGWA3QImuegqi9stkwBSYDufpu8PtPfBzpOW2V
+\restrict DyGH52yPqyNhFTuz2WBao0lb9Xu37GzQyudZAMzdhfrf5qqnFeuJsR2ah1GW0Pe
 
 -- Dumped from database version 18.3 (Homebrew)
 -- Dumped by pg_dump version 18.3 (Homebrew)
@@ -2296,7 +2296,7 @@ COPY public.user_device ("deviceType", "expoPushToken", "updatedAt", "createdAt"
 -- Data for Name: video; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.video (id, key, "originalFilename", mime, size, status, duration, "dateCreated", "dateUpdated", "processingInfo") FROM stdin;
+COPY public.video (id, key, "originalFilename", mime, size, duration, "dateCreated", "dateUpdated", "processingInfo") FROM stdin;
 \.
 
 
@@ -2598,7 +2598,7 @@ SELECT pg_catalog.setval('public.mail_id_seq', 752, true);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 351, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 354, true);
 
 
 --
@@ -2717,5 +2717,5 @@ SELECT pg_catalog.setval('public.video_id_seq', 1, false);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict MFbUm4aqhs68KbUVJ4x8Gt0riGGWA3QImuegqi9stkwBSYDufpu8PtPfBzpOW2V
+\unrestrict DyGH52yPqyNhFTuz2WBao0lb9Xu37GzQyudZAMzdhfrf5qqnFeuJsR2ah1GW0Pe
 
