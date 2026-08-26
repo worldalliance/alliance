@@ -11,9 +11,6 @@ import { Linking, Modal, Platform, View } from "react-native";
 import Button, { ButtonColor } from "./system/Button";
 import Text, { FontWeight } from "./system/Text";
 
-// Delay before checking: parent effects run after child effects, so at our
-// effect's mount time the root layout hasn't configured the API client yet.
-// The delay also keeps the popup from appearing under the splash screen.
 const CHECK_DELAY_MS = 1500;
 
 function storeBuildFor(
