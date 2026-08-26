@@ -1,3 +1,5 @@
+import { safeUrl } from "./url-safety";
+
 /** Stored sources may be upload keys or absolute URLs; upload keys contain no slash or scheme. */
 export function isUploadKey(src: string): boolean {
   return !src.includes("/") && !src.includes(":");
@@ -22,4 +24,20 @@ export function resolveUploadSrc({
   apiUrl: string;
 }): string {
   return isUploadKey(src) ? uploadSrc({ key: src, apiUrl }) : src;
+}
+
+/**
+ * {@link resolveUploadSrc} for a source that came from authored content. The
+ * rejection has to happen first, or a `javascript:` source would come back out
+ * as an `images/` request.
+ */
+export function resolveSafeUploadSrc({
+  src,
+  apiUrl,
+}: {
+  src: string;
+  apiUrl: string;
+}): string {
+  const safe = safeUrl(src);
+  return safe ? resolveUploadSrc({ src: safe, apiUrl }) : safe;
 }
