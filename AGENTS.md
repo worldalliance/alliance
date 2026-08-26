@@ -44,6 +44,12 @@ Non-standard workspace: every web package installs from `apps/frontend/package.j
 
 Reach for a maintained npm package over hand-rolling parsing, sanitization, date handling, retries. Same inside the repo — reuse or extract a shared util instead of duplicating one.
 
+## Fail loudly
+
+Prefer to fail loudly over silently.
+
+For example, forms should not render at all if we detect any error in the schema. If this were not the case, a user may try to go through the normal journey of completing the form, and not realize anything is wrong.
+
 ## Enum branching
 
 Enums over string-literal unions for closed sets of named variants.
