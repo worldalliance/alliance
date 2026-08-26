@@ -15,13 +15,11 @@ import {
   actionsSuitesAdmin,
   analyticsGetActionStatsByIdAdmin,
   CreateActionDto,
-  FormDto,
   FormResponseDto,
   imagesUploadImage,
   tasksCreateFormAdmin,
   tasksGetForm,
   tasksGetFormResponsesAdmin,
-  tasksListFormsAdmin,
   userMembers,
 } from "@alliance/shared/client";
 import type {
@@ -32,6 +30,7 @@ import type {
 } from "@alliance/shared/client/types.gen";
 import { clipboardCopy } from "@alliance/shared/lib/copy";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
+import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -160,9 +159,8 @@ const ActionDashboard: React.FC = () => {
     error ?? (actionLoadFailed ? "Failed to load action" : null);
   const [imageKey, setImageKey] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [availableForms, setAvailableForms] = useState<FormDto[]>([]);
-  const [formsLoading, setFormsLoading] = useState<boolean>(true);
   const { tags: availableTags, isLoading: tagsLoading } = useTagsAdmin();
+  const invalidateFormsIndex = useInvalidateFormsIndex();
   const [availableSuites, setAvailableSuites] = useState<ActionSuiteDto[]>([]);
   const [suitesLoading, setSuitesLoading] = useState<boolean>(true);
   const [cohortExpression, setCohortExpression] =
@@ -200,23 +198,6 @@ const ActionDashboard: React.FC = () => {
     },
     [setSearchParams],
   );
-
-  // Load available forms on component mount
-  useEffect(() => {
-    const loadForms = async () => {
-      try {
-        const response = await tasksListFormsAdmin();
-        if (response.data) {
-          setAvailableForms(response.data);
-        }
-        setFormsLoading(false);
-      } catch (err) {
-        console.error("Failed to load forms:", err);
-        setFormsLoading(false);
-      }
-    };
-    loadForms();
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -541,6 +522,9 @@ const ActionDashboard: React.FC = () => {
           },
         });
         taskFormId = newTaskForm.data?.id;
+        // The clone is a form row from here on, whether or not the action it
+        // was made for gets created.
+        if (taskFormId !== undefined) await invalidateFormsIndex();
       }
     }
 
@@ -556,7 +540,7 @@ const ActionDashboard: React.FC = () => {
       return;
     }
     handleActionCreated(result.value);
-  }, [form, createAction, handleActionCreated]);
+  }, [form, createAction, handleActionCreated, invalidateFormsIndex]);
 
   const handleActionDeleted = useCallback(() => {
     navigate("/actions");
@@ -974,8 +958,6 @@ const ActionDashboard: React.FC = () => {
             imagePreview={imagePreview}
             isNew={true}
             onCancel={handleCancel}
-            availableForms={availableForms}
-            formsLoading={formsLoading}
             availableTags={availableTags}
             tagsLoading={tagsLoading}
             availableSuites={availableSuites}
@@ -1533,8 +1515,6 @@ const ActionDashboard: React.FC = () => {
                   actionId={action?.id}
                   onDelete={handleDelete}
                   baseUrl={baseUrl}
-                  availableForms={availableForms}
-                  formsLoading={formsLoading}
                   availableTags={availableTags}
                   tagsLoading={tagsLoading}
                   availableSuites={availableSuites}
@@ -1589,7 +1569,6 @@ const ActionDashboard: React.FC = () => {
                 action={action}
                 availableTags={availableTags}
                 availableActions={allActions}
-                availableForms={availableForms}
                 availableUsers={availableUsers}
               />
             )}

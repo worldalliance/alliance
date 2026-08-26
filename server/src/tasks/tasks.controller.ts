@@ -39,9 +39,11 @@ import {
   CreateFormDto,
   FormAggregateViewsDto,
   FormDto,
+  FormResponseCountDto,
   FormResponseDto,
   FormResponsesByFormsDto,
   FormSnapshotMigrationDto,
+  FormSummaryDto,
   GuestFormResponseDto,
   LinkedGuestDraftDto,
   MigrateResponseSnapshotsDto,
@@ -131,9 +133,10 @@ export class TasksController {
 
   @Get("listForms")
   @UseGuards(AdminGuard)
-  @ApiOkResponse({ type: [FormDto] })
-  async listFormsAdmin(): Promise<FormDto[]> {
-    return this.tasksService.listForms();
+  @ApiOkResponse({ type: [FormSummaryDto] })
+  async listFormsAdmin(): Promise<FormSummaryDto[]> {
+    const summaries = await this.tasksService.listForms();
+    return summaries.map((summary) => new FormSummaryDto(summary));
   }
 
   @Get("responses/:id")
@@ -152,6 +155,18 @@ export class TasksController {
     @Body() body: FormResponsesByFormsDto,
   ): Promise<FormResponseDto[]> {
     return this.tasksService.getFormResponsesForForms(body.formIds);
+  }
+
+  @Post("responses/counts")
+  @UseGuards(AdminGuard)
+  @ApiOkResponse({ type: [FormResponseCountDto] })
+  async getFormResponseCountsAdmin(
+    @Body() body: FormResponsesByFormsDto,
+  ): Promise<FormResponseCountDto[]> {
+    const counts = await this.tasksService.getFormResponseCountsForForms(
+      body.formIds,
+    );
+    return counts.map((count) => new FormResponseCountDto(count));
   }
 
   @Get("forms/:formId/snapshotMigration")

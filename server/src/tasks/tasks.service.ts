@@ -57,7 +57,6 @@ import {
 import { InjectRepository } from "@nestjs/typeorm";
 import { ActionFormVariantService } from "src/actions/action-form-variant.service";
 import { ActionsService } from "src/actions/actions.service";
-import { ActionDto } from "src/actions/dto/action.dto";
 import { Action } from "src/actions/entities/action.entity";
 import {
   FollowUpForm,
@@ -101,15 +100,40 @@ import {
 } from "./entities/formsnapshot.entity";
 import {
   CreateFormDto,
-  FormDto,
+  type FormResponseCount,
   FormResponseDto,
   type FormSnapshotMigration,
+  type FormSummary,
   type SnapshotResponseGroup,
   SubmitFollowUpFormDto,
   SubmitFormDto,
   UpdateFormDto,
 } from "./form.dto";
 import { FormSnapshotService } from "./formsnapshot.service";
+
+const STORED_PAGES = `snapshot.schema -> 'pages'`;
+
+// Both counts read this rather than the stored value, so a snapshot whose
+// `pages` is not an array counts as empty instead of failing the query for
+// every other form in the index. `pagesType` tells the two apart afterwards.
+const READABLE_PAGES = `CASE WHEN jsonb_typeof(${STORED_PAGES}) = 'array' THEN ${STORED_PAGES} ELSE '[]'::jsonb END`;
+
+const FIELD_COUNT = `(
+  SELECT COALESCE(SUM(
+    CASE WHEN jsonb_typeof(page -> 'fields') = 'array'
+         THEN jsonb_array_length(page -> 'fields') ELSE 0 END
+  ), 0)::int
+  FROM jsonb_array_elements(${READABLE_PAGES}) AS page
+)`;
+
+type FormIndexRow = {
+  id: number;
+  title: string;
+  formSnapshotId: number;
+  pagesType: string | null;
+  pageCount: number;
+  fieldCount: number;
+};
 
 @Injectable()
 export class TasksService {
@@ -1181,16 +1205,34 @@ export class TasksService {
     return null;
   }
 
-  async listForms(): Promise<FormDto[]> {
-    const forms = await this.formRepository.find({
-      relations: { formSnapshot: true },
-    });
-    return Promise.all(
-      forms.map(async (form) => {
-        const action = await this.actionsService.findActionByFormId(form.id);
-        return new FormDto(form, action ? new ActionDto(action) : undefined);
-      }),
+  async listForms(): Promise<FormSummary[]> {
+    const rows = await this.formRepository
+      .createQueryBuilder("form")
+      .innerJoin(FormSnapshot, "snapshot", "snapshot.id = form.formSnapshotId")
+      .select("form.id", "id")
+      .addSelect("form.title", "title")
+      .addSelect("form.formSnapshotId", "formSnapshotId")
+      .addSelect(`jsonb_typeof(${STORED_PAGES})`, "pagesType")
+      .addSelect(`jsonb_array_length(${READABLE_PAGES})`, "pageCount")
+      .addSelect(FIELD_COUNT, "fieldCount")
+      .orderBy("form.id", "DESC")
+      .getRawMany<FormIndexRow>();
+    const actionsByFormId = await this.actionsService.findActionsByFormIds(
+      rows.map((row) => row.id),
     );
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      formSnapshotId: row.formSnapshotId,
+      // Counted leniently: a form the strict schema rejects still shows its
+      // size in the index, and a snapshot too malformed to read at all keeps
+      // its row without counts.
+      schemaCounts:
+        row.pagesType === "array"
+          ? { pages: row.pageCount, fields: row.fieldCount }
+          : undefined,
+      usedInAction: actionsByFormId.get(row.id),
+    }));
   }
 
   async deleteForm(formId: number): Promise<void> {
@@ -1200,6 +1242,30 @@ export class TasksService {
 
   async getFormResponses(formId: number): Promise<FormResponseDto[]> {
     return this.getFormResponsesForForms([formId]);
+  }
+
+  async getFormResponseCountsForForms(
+    formIds: number[],
+  ): Promise<FormResponseCount[]> {
+    if (formIds.length === 0) {
+      return [];
+    }
+    const rows = await this.formResponseRepository
+      .createQueryBuilder("response")
+      .select("response.formId", "formId")
+      .addSelect("COUNT(*)", "count")
+      .where("response.formId IN (:...formIds)", { formIds })
+      .groupBy("response.formId")
+      .getRawMany<{ formId: number; count: string }>();
+    const countByFormId = new Map(
+      rows.map((row) => [row.formId, Number(row.count)]),
+    );
+    // A form with no responses has no row to group, so fill it in here rather
+    // than leaving the caller to infer the zero from what is missing.
+    return formIds.map((formId) => ({
+      formId,
+      count: countByFormId.get(formId) ?? 0,
+    }));
   }
 
   async getFormResponsesForForms(

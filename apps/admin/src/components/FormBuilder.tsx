@@ -40,6 +40,7 @@ import {
   userListAdmin,
   type UserDto,
 } from "@alliance/shared/client";
+import { useInvalidateFormsAdmin } from "@alliance/shared/lib/useFormsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import { customComponentRegistry } from "@alliance/sharedweb/forms/components";
 import FormRenderer from "@alliance/sharedweb/forms/FormRenderer";
@@ -792,6 +793,7 @@ export function FormBuilder(props: FormBuilderProps) {
       : (resolvedPreviewUser?.id ?? "preview");
 
   const { success: showSuccessToast, error: showErrorToast } = useToast();
+  const invalidateForms = useInvalidateFormsAdmin();
 
   useEffect(() => {
     if (Object.keys(customValidatorDrafts).length === 0) {
@@ -1722,6 +1724,7 @@ export function FormBuilder(props: FormBuilderProps) {
       }
 
       if (response.response.ok && response.data) {
+        void invalidateForms();
         setLastSavedSchemaJSON(JSON.stringify(schemaForSave));
         setBaseFormSnapshotId(response.data.formSnapshotId);
         setHasUnsavedChanges(false);
@@ -1756,6 +1759,7 @@ export function FormBuilder(props: FormBuilderProps) {
     displayOnlySave,
     formId,
     baseFormSnapshotId,
+    invalidateForms,
     lastSavedSchemaJSON,
     newFormTitle,
     resolveCustomValidatorDrafts,
@@ -1851,6 +1855,7 @@ export function FormBuilder(props: FormBuilderProps) {
         return;
       }
       if (response.response.ok && response.data) {
+        void invalidateForms();
         setSchema(conflict.mine);
         setLastSavedSchemaJSON(JSON.stringify(conflict.mine));
         setBaseFormSnapshotId(response.data.formSnapshotId);
@@ -1869,7 +1874,14 @@ export function FormBuilder(props: FormBuilderProps) {
     } finally {
       setIsSaving(false);
     }
-  }, [conflict, displayOnlySave, formId, showErrorToast, showSuccessToast]);
+  }, [
+    conflict,
+    displayOnlySave,
+    formId,
+    invalidateForms,
+    showErrorToast,
+    showSuccessToast,
+  ]);
 
   const handleTakeTheirs = useCallback(() => {
     if (!conflict) return;

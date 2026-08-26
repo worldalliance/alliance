@@ -4,10 +4,10 @@ import { R } from "@alliance/common/result";
 import { ActionDto, tasksCreateFormAdmin } from "@alliance/shared/client";
 import type {
   FollowUpFormDto,
-  FormDto,
   TagDto,
 } from "@alliance/shared/client/types.gen";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
+import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { parseFollowUpFormDto } from "@alliance/shared/parsed-dtos";
 import { CardStyle } from "@alliance/shared/styles/card";
 import BaseButton, {
@@ -26,7 +26,6 @@ export interface ActionFollowUpFormsTabProps {
   action: ActionDto;
   availableTags: TagDto[];
   availableActions: { id: number; name: string }[];
-  availableForms: FormDto[];
   availableUsers: UserSelectUser[];
 }
 
@@ -47,7 +46,6 @@ export default function ActionFollowUpFormsTab({
   action,
   availableTags,
   availableActions,
-  availableForms,
   availableUsers,
 }: ActionFollowUpFormsTabProps) {
   const followUpForms = useMemo(
@@ -62,6 +60,7 @@ export default function ActionFollowUpFormsTab({
     deletingFollowUpFormIds,
   } = useActionAdmin(action.id, { enabled: false });
   const { error: pushError } = useToast();
+  const invalidateFormsIndex = useInvalidateFormsIndex();
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(
     followUpForms.length > 0 ? followUpForms[0].id : null,
@@ -94,10 +93,16 @@ export default function ActionFollowUpFormsTab({
       if (!formRes.data?.id) {
         throw new Error("Failed to create form");
       }
-      return createFollowUpForm({
-        actionId: action.id,
-        formId: formRes.data.id,
-      });
+      try {
+        return await createFollowUpForm({
+          actionId: action.id,
+          formId: formRes.data.id,
+        });
+      } finally {
+        // The form row exists whether or not the link write landed. Not
+        // awaited: a rejection here would replace the error being reported.
+        void invalidateFormsIndex();
+      }
     });
     setCreating(false);
     if (!result.ok) {
@@ -106,7 +111,13 @@ export default function ActionFollowUpFormsTab({
       return;
     }
     setSelectedId(result.value.id);
-  }, [action.id, action.name, createFollowUpForm, pushError]);
+  }, [
+    action.id,
+    action.name,
+    createFollowUpForm,
+    invalidateFormsIndex,
+    pushError,
+  ]);
 
   const handleSaveFields = useCallback(
     async (
@@ -245,7 +256,6 @@ export default function ActionFollowUpFormsTab({
           deleting={deletingFollowUpFormIds.has(selectedForm.id)}
           availableTags={availableTags}
           availableActions={availableActions}
-          availableForms={availableForms}
           availableUsers={availableUsers}
         />
       )}
@@ -272,7 +282,6 @@ interface FollowUpFormCardProps {
   deleting: boolean;
   availableTags: TagDto[];
   availableActions: { id: number; name: string }[];
-  availableForms: FormDto[];
   availableUsers: UserSelectUser[];
 }
 
@@ -286,7 +295,6 @@ function FollowUpFormCard({
   deleting,
   availableTags,
   availableActions,
-  availableForms,
   availableUsers,
 }: FollowUpFormCardProps) {
   const [startDate, setStartDate] = useState<string>(
@@ -371,7 +379,6 @@ function FollowUpFormCard({
             onChange={setCohortExpr}
             availableTags={availableTags}
             availableActions={availableActions}
-            availableForms={availableForms}
             availableUsers={availableUsers}
           />
         </div>

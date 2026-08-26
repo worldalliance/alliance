@@ -14,14 +14,11 @@ import {
   type TagCondition,
 } from "@alliance/common/cohort-expression";
 import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
-import type { AnyField, FormSchema } from "@alliance/common/forms/form-schema";
-import {
-  fieldHasOptions,
-  isQuestionField,
-} from "@alliance/common/forms/form-schema";
-import type { FormDto, TagDto } from "@alliance/shared/client";
-import { tasksGetForm } from "@alliance/shared/client";
+import { fieldHasOptions } from "@alliance/common/forms/form-schema";
+import type { TagDto } from "@alliance/shared/client";
 import { useActionAdmin } from "@alliance/shared/lib/useActionAdmin";
+import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
+import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { cn } from "@alliance/shared/styles/util";
 import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
 import type { UserSelectUser } from "@alliance/sharedweb/ui/UserSelect";
@@ -42,13 +39,17 @@ import React, {
   useState,
 } from "react";
 import CohortVisualization from "./CohortVisualization";
+import {
+  formFieldsErrorReason,
+  FormPickerError,
+  FormPickerErrorReason,
+} from "./FormPickerError";
 
 interface CohortExpressionBuilderProps {
   value: CohortExpression | null | undefined;
   onChange: (value: CohortExpression | null) => void;
   availableTags: TagDto[];
   availableActions: { id: number; name: string }[];
-  availableForms: FormDto[];
   availableUsers: UserSelectUser[];
   usersLoading?: boolean;
   activeContractUserIds?: Set<number>;
@@ -169,38 +170,12 @@ const ActionSelectEditor: React.FC<{
 const FormFieldEditor: React.FC<{
   value: FormFieldValueCondition;
   onChange: (v: FormFieldValueCondition) => void;
-  availableForms: FormDto[];
-}> = ({ value, onChange, availableForms }) => {
-  const [sourceFields, setSourceFields] = useState<AnyField[]>([]);
-
-  useEffect(() => {
-    if (!value.formId) {
-      setSourceFields([]);
-      return;
-    }
-    let cancelled = false;
-    tasksGetForm({ path: { id: value.formId } })
-      .then((response) => {
-        if (cancelled || !response.data) return;
-        const schema = (response.data as unknown as { schema: FormSchema })
-          .schema;
-        const fields: AnyField[] = [];
-        for (const page of schema.pages ?? []) {
-          for (const element of page.fields ?? []) {
-            if (isQuestionField(element)) {
-              fields.push(element);
-            }
-          }
-        }
-        setSourceFields(fields);
-      })
-      .catch(() => {
-        if (!cancelled) setSourceFields([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [value.formId]);
+}> = ({ value, onChange }) => {
+  const { options: availableForms, isError: formListFailed } = useFormOptions();
+  const { fields: sourceFields, status: sourceStatus } = useFormQuestionFields(
+    value.formId,
+  );
+  const sourceFormError = formFieldsErrorReason(sourceStatus);
 
   const selectedField = sourceFields.find((f) => f.id === value.fieldId);
   // TODO: multiselect and ranking are excluded because the server matches
@@ -229,13 +204,11 @@ const FormFieldEditor: React.FC<{
         className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
       >
         <option value="">Select form...</option>
-        {[...availableForms]
-          .sort((a, b) => b.id - a.id)
-          .map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.title ?? "Untitled"} (#{f.id})
-            </option>
-          ))}
+        {availableForms.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.title} (#{f.id})
+          </option>
+        ))}
       </select>
       <select
         value={value.fieldId}
@@ -256,6 +229,10 @@ const FormFieldEditor: React.FC<{
           </option>
         ))}
       </select>
+      {formListFailed && (
+        <FormPickerError reason={FormPickerErrorReason.FormList} />
+      )}
+      {sourceFormError && <FormPickerError reason={sourceFormError} />}
       {!value.responseAny ? (
         fieldOptions ? (
           <select
@@ -487,13 +464,7 @@ const LeafConditionEditor: React.FC<{
         />
       );
     case "FormFieldValue":
-      return (
-        <FormFieldEditor
-          value={expr}
-          onChange={onChange}
-          availableForms={props.availableForms}
-        />
-      );
+      return <FormFieldEditor value={expr} onChange={onChange} />;
     case "GroupLead":
       return (
         <p className="text-sm text-gray-500 italic">

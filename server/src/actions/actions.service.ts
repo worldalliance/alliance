@@ -224,6 +224,13 @@ type SuspendPlanContext = {
  */
 export type SuspensionCandidate = { user: User; reasonKey: string };
 
+/**
+ * All anything resolving a form back to its action reads. A partially selected
+ * `Action` would type as a whole one with most columns silently undefined, so
+ * the narrow reads hand back a narrow type instead.
+ */
+export type LinkedAction = Pick<Action, "id" | "name">;
+
 /** Facepile preview size; member-list endpoints paginate full lists. */
 const GLOBAL_FEED_FACEPILE_LIMIT = 8;
 
@@ -330,16 +337,58 @@ export class ActionsService {
     return this.actionRepository.findOne({ where: { id } });
   }
 
-  async findActionByFormId(formId: number): Promise<Action | null> {
-    const direct = await this.actionRepository.findOne({
-      where: { taskFormId: formId },
+  async findActionByFormId(formId: number): Promise<LinkedAction | null> {
+    const byFormId = await this.findActionsByFormIds([formId]);
+    return byFormId.get(formId) ?? null;
+  }
+
+  /** Resolves all form IDs in at most three queries. Direct task forms take
+   * precedence over variants. Narrow because listing every form would
+   * otherwise materialize every linked action's markdown and image columns. */
+  async findActionsByFormIds(
+    formIds: number[],
+  ): Promise<Map<number, LinkedAction>> {
+    const byFormId = new Map<number, LinkedAction>();
+    if (formIds.length === 0) {
+      return byFormId;
+    }
+    const direct = await this.actionRepository.find({
+      where: { taskFormId: In(formIds) },
+      select: { id: true, name: true, taskFormId: true },
     });
-    if (direct) return direct;
-    const variant = await this.actionFormVariantRepository.findOne({
-      where: { formId },
+    for (const action of direct) {
+      if (action.taskFormId != null) {
+        byFormId.set(action.taskFormId, { id: action.id, name: action.name });
+      }
+    }
+    const remaining = formIds.filter((formId) => !byFormId.has(formId));
+    if (remaining.length === 0) {
+      return byFormId;
+    }
+    const variants = await this.actionFormVariantRepository.find({
+      where: { formId: In(remaining) },
+      select: { formId: true, actionId: true },
     });
-    if (!variant) return null;
-    return this.actionRepository.findOne({ where: { id: variant.actionId } });
+    if (variants.length === 0) {
+      return byFormId;
+    }
+    const actions = await this.actionRepository.find({
+      where: { id: In(variants.map((variant) => variant.actionId)) },
+      select: { id: true, name: true },
+    });
+    const actionById = new Map(
+      actions.map((action) => [
+        action.id,
+        { id: action.id, name: action.name },
+      ]),
+    );
+    for (const variant of variants) {
+      const action = actionById.get(variant.actionId);
+      if (action) {
+        byFormId.set(variant.formId, action);
+      }
+    }
+    return byFormId;
   }
 
   async assertFormIdNotUsedAsVariant(formId: number): Promise<void> {

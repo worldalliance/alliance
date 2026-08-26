@@ -3297,11 +3297,39 @@ export type FormDto = {
     schema: {
         [key: string]: unknown;
     };
-    usedInAction?: ActionDto;
+};
+
+export type FormSchemaCountsDto = {
+    pages: number;
+    fields: number;
+};
+
+export type FormLinkedActionDto = {
+    /**
+     * Unique identifier for the action
+     */
+    id: number;
+    /**
+     * Name of the action
+     */
+    name: string;
+};
+
+export type FormSummaryDto = {
+    id: number;
+    title: string;
+    formSnapshotId: number;
+    schemaCounts?: FormSchemaCountsDto;
+    usedInAction?: FormLinkedActionDto;
 };
 
 export type FormResponsesByFormsDto = {
     formIds: Array<number>;
+};
+
+export type FormResponseCountDto = {
+    formId: number;
+    count: number;
 };
 
 export type FormSnapshotDto = {
@@ -11497,7 +11525,7 @@ export type TasksListFormsAdminErrors = {
 export type TasksListFormsAdminError = TasksListFormsAdminErrors[keyof TasksListFormsAdminErrors];
 
 export type TasksListFormsAdminResponses = {
-    200: Array<FormDto>;
+    200: Array<FormSummaryDto>;
 };
 
 export type TasksListFormsAdminResponse = TasksListFormsAdminResponses[keyof TasksListFormsAdminResponses];
@@ -11547,6 +11575,28 @@ export type TasksGetFormResponsesByFormsAdminResponses = {
 };
 
 export type TasksGetFormResponsesByFormsAdminResponse = TasksGetFormResponsesByFormsAdminResponses[keyof TasksGetFormResponsesByFormsAdminResponses];
+
+export type TasksGetFormResponseCountsAdminData = {
+    body: FormResponsesByFormsDto;
+    path?: never;
+    query?: never;
+    url: '/tasks/responses/counts';
+};
+
+export type TasksGetFormResponseCountsAdminErrors = {
+    /**
+     * Default error response for hey-api
+     */
+    default: HeyApiError;
+};
+
+export type TasksGetFormResponseCountsAdminError = TasksGetFormResponseCountsAdminErrors[keyof TasksGetFormResponseCountsAdminErrors];
+
+export type TasksGetFormResponseCountsAdminResponses = {
+    200: Array<FormResponseCountDto>;
+};
+
+export type TasksGetFormResponseCountsAdminResponse = TasksGetFormResponseCountsAdminResponses[keyof TasksGetFormResponseCountsAdminResponses];
 
 export type TasksGetResponseSnapshotMigrationAdminData = {
     body?: never;

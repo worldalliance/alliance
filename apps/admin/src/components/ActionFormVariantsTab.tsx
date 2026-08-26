@@ -11,6 +11,7 @@ import type {
   ActionFormVariantDto,
   ActionFormVariantStatsDto,
 } from "@alliance/shared/client/types.gen";
+import { useInvalidateFormsIndex } from "@alliance/shared/lib/useFormsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import BaseButton, {
   BaseButtonVariant,
@@ -45,6 +46,7 @@ export default function ActionFormVariantsTab({
 }: ActionFormVariantsTabProps) {
   const navigate = useNavigate();
   const toast = useToast();
+  const invalidateFormsIndex = useInvalidateFormsIndex();
   const [variants, setVariants] = useState<ActionFormVariantDto[]>([]);
   const [stats, setStats] = useState<ActionFormVariantStatsDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -185,6 +187,8 @@ export default function ActionFormVariantsTab({
       }
       if (succeeded > 0) {
         toast.success(`Published ${withCount(succeeded, "variant")}`);
+        // Each published variant clones the task form into a new form row.
+        await invalidateFormsIndex();
       }
       // Drop everything we successfully wrote; keep the failed one and any after it.
       setStaged((s) => s.slice(stopAt));
@@ -192,7 +196,15 @@ export default function ActionFormVariantsTab({
     } finally {
       setPublishing(false);
     }
-  }, [action.id, action.taskFormId, percentageSum, refresh, staged, toast]);
+  }, [
+    action.id,
+    action.taskFormId,
+    invalidateFormsIndex,
+    percentageSum,
+    refresh,
+    staged,
+    toast,
+  ]);
 
   const updateEdit = useCallback(
     (variantId: number, patch: Partial<EditState>) => {
@@ -253,7 +265,8 @@ export default function ActionFormVariantsTab({
             errorMessage({ error: res.error, fallback: "Failed to delete" }),
           );
         } else {
-          await refresh();
+          // The cloned form outlives the variant, but nothing points at it now.
+          await Promise.all([refresh(), invalidateFormsIndex()]);
         }
       } finally {
         setDeletingIds((s) => {
@@ -263,7 +276,7 @@ export default function ActionFormVariantsTab({
         });
       }
     },
-    [refresh, toast],
+    [invalidateFormsIndex, refresh, toast],
   );
 
   if (loading) {

@@ -6,7 +6,6 @@ import {
   ActionReviewerIcon,
   ActionSuiteDto,
   CreateActionDto,
-  FormDto,
   TagDto,
   VisibilityMode,
 } from "@alliance/shared/client";
@@ -35,8 +34,6 @@ interface ActionFormProps {
   onCancel?: () => void;
   onDelete?: () => void;
   baseUrl?: string;
-  availableForms?: FormDto[];
-  formsLoading: boolean;
   availableTags?: TagDto[];
   tagsLoading: boolean;
   availableSuites?: ActionSuiteDto[];
@@ -120,7 +117,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
   reviewers,
   onReviewersChange,
   allActions = [],
-  availableForms = [],
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -756,7 +752,6 @@ const ActionForm: React.FC<ActionFormProps> = ({
           onChange={onCohortExpressionChange}
           availableTags={availableTags}
           availableActions={allActions}
-          availableForms={availableForms}
           availableUsers={availableUsers}
           usersLoading={usersLoading}
           activeContractUserIds={activeContractUserIds}

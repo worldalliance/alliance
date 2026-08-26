@@ -1,5 +1,6 @@
 import { ActionActivityType } from "@alliance/common/actionActivity";
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
+import { FORM_RESPONSES_BY_FORMS_MAX_BATCH } from "@alliance/common/forms/form-responses";
 import type {
   FormSchema,
   RankingField,
@@ -11,6 +12,7 @@ import {
   ActionEvent,
   ActionStatus,
 } from "src/actions/entities/action-event.entity";
+import { ActionFormVariant } from "src/actions/entities/action-form-variant.entity";
 import {
   Action,
   ActionTaskType,
@@ -32,6 +34,7 @@ import {
 } from "src/tasks/entities/customvalidator.entity";
 import { Form } from "src/tasks/entities/form.entity";
 import { FormResponse } from "src/tasks/entities/formresponse.entity";
+import type { FormSummaryDto } from "src/tasks/form.dto";
 import { TasksModule } from "src/tasks/tasks.module";
 import {
   ContractEvent,
@@ -89,6 +92,7 @@ describe("Tasks (e2e)", () => {
   let formRepo: Repository<Form>;
   let formResponseRepo: Repository<FormResponse>;
   let actionRepo: Repository<Action>;
+  let variantRepo: Repository<ActionFormVariant>;
   let eventRepo: Repository<ActionEvent>;
   let userRepo: Repository<User>;
   let actionActivityRepo: Repository<ActionActivity>;
@@ -105,6 +109,7 @@ describe("Tasks (e2e)", () => {
     formRepo = ctx.dataSource.getRepository(Form);
     formResponseRepo = ctx.dataSource.getRepository(FormResponse);
     actionRepo = ctx.dataSource.getRepository(Action);
+    variantRepo = ctx.dataSource.getRepository(ActionFormVariant);
     eventRepo = ctx.dataSource.getRepository(ActionEvent);
     userRepo = ctx.dataSource.getRepository(User);
     actionActivityRepo = ctx.dataSource.getRepository(ActionActivity);
@@ -118,6 +123,8 @@ describe("Tasks (e2e)", () => {
 
   afterEach(async () => {
     await formResponseRepo.query("DELETE FROM form_response");
+    // Before the forms it points at; the variant -> form FK is RESTRICT.
+    await variantRepo.query("DELETE FROM action_form_variant");
     await formRepo.query("DELETE FROM form");
     await actionRepo.query("DELETE FROM action");
     await eventRepo.query("DELETE FROM action_event");
@@ -314,6 +321,219 @@ describe("Tasks (e2e)", () => {
       .get(`/tasks/slug/${formId}`)
       .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
       .expect(404);
+  });
+
+  describe("Forms index", () => {
+    const createForm = async (
+      title: string,
+      schema: FormSchema = sampleSchema,
+    ): Promise<number> => {
+      const response = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title, schema })
+        .expect(201);
+      return response.body.id as number;
+    };
+
+    // Snapshots are stored by content hash, so two forms created from the
+    // same schema share one row. A test that corrupts a snapshot needs a
+    // schema of its own or it corrupts every later form built from that one.
+    const ownSchema = (pageId: string): FormSchema => ({
+      ...sampleSchema,
+      pages: [{ ...sampleSchema.pages[0], id: pageId }],
+    });
+
+    const listForms = async (): Promise<FormSummaryDto[]> => {
+      const response = await request(ctx.app.getHttpServer())
+        .get("/tasks/listForms")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .expect(200);
+      return response.body as FormSummaryDto[];
+    };
+
+    it("counts pages and fields itself instead of shipping the schema", async () => {
+      const olderId = await createForm("Older");
+      const newerId = await createForm("Newer");
+
+      const forms = await listForms();
+
+      // Newest first. The admin pickers render the list as it arrives.
+      expect(forms.map((form) => form.id)).toEqual([newerId, olderId]);
+      expect(forms[0].schemaCounts).toEqual({ pages: 1, fields: 3 });
+      expect(forms[0]).not.toHaveProperty("schema");
+    });
+
+    it("counts a form holding an element the strict schema rejects", async () => {
+      const formId = await createForm("Legacy", ownSchema("legacy-page"));
+      const form = await formRepo.findOneOrFail({ where: { id: formId } });
+      // What a display-block rename leaves behind. The index has to size the
+      // form anyway, so it reads the stored schema leniently.
+      await formRepo.query(
+        `UPDATE form_snapshot
+         SET schema = jsonb_set(
+           schema::jsonb,
+           '{pages,0,fields,3}',
+           '{"id": "legacy", "type": "display", "kind": "image", "url": "old.png"}'::jsonb
+         )
+         WHERE id = $1`,
+        [form.formSnapshotId],
+      );
+
+      const [summary] = await listForms();
+
+      expect(summary.id).toBe(formId);
+      expect(summary.schemaCounts).toEqual({ pages: 1, fields: 4 });
+    });
+
+    it("keeps a form whose stored schema cannot be read at all, minus its counts", async () => {
+      const formId = await createForm("Broken", {
+        pages: [{ id: "broken-page", fields: [] }],
+        outputViews: [],
+      });
+      const form = await formRepo.findOneOrFail({ where: { id: formId } });
+      await formRepo.query(
+        `UPDATE form_snapshot SET schema = '{"pages": "not an array"}' WHERE id = $1`,
+        [form.formSnapshotId],
+      );
+
+      const [summary] = await listForms();
+
+      expect(summary.id).toBe(formId);
+      expect(summary.schemaCounts).toBeUndefined();
+    });
+
+    it("counts a page whose fields are unreadable as an empty page", async () => {
+      const formId = await createForm("Half broken", ownSchema("half-broken"));
+      const form = await formRepo.findOneOrFail({ where: { id: formId } });
+      await formRepo.query(
+        `UPDATE form_snapshot
+         SET schema = jsonb_set(schema::jsonb, '{pages,0,fields}', '"nope"'::jsonb)
+         WHERE id = $1`,
+        [form.formSnapshotId],
+      );
+
+      const [summary] = await listForms();
+
+      // The page count is still true, so the row keeps its size rather than
+      // falling back to the no-counts case one bad page at a time.
+      expect(summary.schemaCounts).toEqual({ pages: 1, fields: 0 });
+    });
+
+    it("resolves the action that owns a form only as a variant", async () => {
+      const formId = await createForm("Variant Form");
+      const action = await createAction("Variant Owner");
+      await variantRepo.save(
+        variantRepo.create({
+          actionId: action.id,
+          formId,
+          name: "B",
+          splitValue: 0.5,
+        }),
+      );
+
+      const [summary] = await listForms();
+
+      // Narrowed to what the list renders; a full ActionDto here would dwarf
+      // the rest of the payload.
+      expect(summary.usedInAction).toEqual({
+        id: action.id,
+        name: "Variant Owner",
+      });
+    });
+
+    it("prefers a direct task form over another action's variant", async () => {
+      const formId = await createForm("Shared Form");
+      const owner = await createAction("Direct Owner");
+      const other = await createAction("Variant Owner");
+      await actionRepo.update(owner.id, { taskFormId: formId });
+      await variantRepo.save(
+        variantRepo.create({
+          actionId: other.id,
+          formId,
+          name: "B",
+          splitValue: 0.5,
+        }),
+      );
+
+      const [summary] = await listForms();
+
+      expect(summary.usedInAction?.name).toBe("Direct Owner");
+    });
+
+    it("leaves usedInAction off a form no action points at", async () => {
+      await createForm("Orphan");
+
+      const [summary] = await listForms();
+
+      expect(summary.usedInAction).toBeUndefined();
+    });
+  });
+
+  describe("Form response counts", () => {
+    it("answers with a row per requested form, zeroes included", async () => {
+      const answered = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Answered", schema: sampleSchema })
+        .expect(201);
+      const unanswered = await request(ctx.app.getHttpServer())
+        .post("/tasks/createForm")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ title: "Unanswered", schema: sampleSchema })
+        .expect(201);
+
+      const action = await createAction("Counted Action");
+      await actionRepo.update(action.id, { taskFormId: answered.body.id });
+
+      await request(ctx.app.getHttpServer())
+        .post(`/tasks/submitForm/${answered.body.id}`)
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({
+          answers: {
+            "full-name": "Member Example",
+            "phone-number": "+14155552671",
+          },
+          formSnapshotId: answered.body.formSnapshotId as number,
+          actionId: action.id,
+          deviceType: "desktop" as const,
+        })
+        .expect(201);
+
+      const response = await request(ctx.app.getHttpServer())
+        .post("/tasks/responses/counts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({ formIds: [answered.body.id, unanswered.body.id] })
+        .expect(201);
+
+      // The zero row is load-bearing: the client reads a missing id as
+      // unresolved, not as none, and renders it as unknown forever.
+      expect(response.body).toEqual([
+        { formId: answered.body.id, count: 1 },
+        { formId: unanswered.body.id, count: 0 },
+      ]);
+    });
+
+    it("rejects a batch bigger than the size the client chunks to", async () => {
+      await request(ctx.app.getHttpServer())
+        .post("/tasks/responses/counts")
+        .set("Authorization", `Bearer ${ctx.adminAccessToken}`)
+        .send({
+          formIds: Array.from(
+            { length: FORM_RESPONSES_BY_FORMS_MAX_BATCH + 1 },
+            (_, index) => index + 1,
+          ),
+        })
+        .expect(400);
+    });
+
+    it("turns away a non-admin", async () => {
+      await request(ctx.app.getHttpServer())
+        .post("/tasks/responses/counts")
+        .set("Authorization", `Bearer ${ctx.accessToken}`)
+        .send({ formIds: [1] })
+        .expect(401);
+    });
   });
 
   it("rejects a stale form update that would clobber another edit", async () => {

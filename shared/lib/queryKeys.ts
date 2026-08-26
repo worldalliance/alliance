@@ -2,6 +2,10 @@ import type { EventType } from "../client/types.gen";
 
 const onetimeInvitesAdminAll = () => ["userGetOnetimeInvitesAdmin"] as const;
 
+/** Prefix over everything derived from a form definition, so one form write
+ * invalidates the index and the per-form field lists together. */
+const formsAdminAll = () => ["formsAdmin"] as const;
+
 /**
  * Central registry of react-query keys
  */
@@ -28,6 +32,12 @@ export const queryKeys = {
   ambassadorProgramAdmin: () => ["userGetAmbassadorProgramAdmin"] as const,
   eventLogAdmin: (page: number, limit: number, eventType: EventType | "") =>
     ["eventLogFindAllAdmin", page, limit, eventType] as const,
+  formsAdminAll,
+  formsAdmin: () => [...formsAdminAll(), "index"] as const,
+  formQuestionFieldsAdmin: (formId: number | null) =>
+    [...formsAdminAll(), "questionFields", formId] as const,
+  formResponseCountsAdmin: (formIds: readonly number[]) =>
+    [...formsAdminAll(), "responseCounts", formIds] as const,
   memberContactInfoAdmin: () =>
     ["communityGetAllMemberContactInfoAdmin"] as const,
   onetimeInvitesAdminAll,

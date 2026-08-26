@@ -5,12 +5,10 @@ import {
 import type { DisplayBlock } from "@alliance/common/forms/display-blocks";
 import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
 import {
-  isQuestionField,
   type AnyField,
   type CheckboxField,
   type ContractField,
   type EmailField,
-  type FormSchema,
   type MultiSelectField,
   type NumberField,
   type Page,
@@ -18,8 +16,8 @@ import {
   type RadioField,
   type RangeField,
   type SelectField,
-  type TextField,
   type TextareaField,
+  type TextField,
 } from "@alliance/common/forms/form-schema";
 import {
   type Condition,
@@ -31,8 +29,6 @@ import {
   CustomValidatorTypeDto,
   tasksCustomValidatorsAdmin,
   tasksFindOneCustomValidatorAdmin,
-  tasksGetForm,
-  tasksListFormsAdmin,
   tasksTestCustomExpressionAdmin,
   userListAdmin,
   type UserDto,
@@ -43,6 +39,12 @@ import {
   parseVisibilityFormula,
   serializeVisibilityFormula,
 } from "@alliance/shared/forms/visibilityFormula";
+import {
+  FormFieldsStatus,
+  useFormQuestionFieldsMap,
+  useFormQuestionFieldsPeek,
+} from "@alliance/shared/lib/useFormSchema";
+import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
 import { useTagsAdmin } from "@alliance/shared/lib/useTagsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import { cn } from "@alliance/shared/styles/util";
@@ -55,6 +57,11 @@ import {
   useState,
   type ChangeEvent,
 } from "react";
+import {
+  formFieldsErrorReason,
+  FormPickerError,
+  FormPickerErrorReason,
+} from "../FormPickerError";
 import {
   isDraftValidatorId,
   useCustomValidatorDrafts,
@@ -396,7 +403,11 @@ export function ConditionalVisibility({
   const { createDraftId, drafts, removeDraft, setDraft } =
     useCustomValidatorDrafts();
 
-  const { forms: formList, loading: formListLoading } = useFormList();
+  const {
+    options: formList,
+    isLoading: formListLoading,
+    isError: formListFailed,
+  } = useFormOptions();
 
   const activeExternalFormIds = useMemo(() => {
     const ids = new Set<number>();
@@ -411,64 +422,13 @@ export function ConditionalVisibility({
     return Array.from(ids);
   }, [field.visibleIfFormula]);
 
-  const [externalFieldsMap, setExternalFieldsMap] = useState<
-    Record<number, AnyField[]>
-  >(() => {
-    const initial: Record<number, AnyField[]> = {};
-    for (const fid of activeExternalFormIds) {
-      const cached = externalSchemaCache.get(fid);
-      if (cached) initial[fid] = cached;
-    }
-    return initial;
-  });
-  const [externalFieldsLoading, setExternalFieldsLoading] = useState(false);
-
-  useEffect(() => {
-    const toLoad = activeExternalFormIds.filter(
-      (fid) => !externalFieldsMap[fid] && !externalSchemaCache.has(fid),
-    );
-    if (toLoad.length === 0) return;
-    let cancelled = false;
-    setExternalFieldsLoading(true);
-    Promise.all(
-      toLoad.map(async (fid) => {
-        try {
-          const response = await tasksGetForm({ path: { id: fid } });
-          const schema = (response.data as Record<string, unknown> | undefined)
-            ?.schema as FormSchema | undefined;
-          if (!schema?.pages) return [fid, []] as const;
-          const allFields: AnyField[] = [];
-          for (const page of schema.pages) {
-            for (const el of page.fields) {
-              if (isQuestionField(el)) allFields.push(el);
-            }
-          }
-          externalSchemaCache.set(fid, allFields);
-          return [fid, allFields] as const;
-        } catch {
-          return [fid, []] as const;
-        }
-      }),
-    ).then((entries) => {
-      if (cancelled) return;
-      setExternalFieldsMap((prev) => {
-        const next = { ...prev };
-        for (const [fid, fields] of entries) {
-          next[fid] = fields as AnyField[];
-        }
-        return next;
-      });
-      setExternalFieldsLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeExternalFormIds, externalFieldsMap]);
+  const { byForm: externalFieldsMap, statusByForm: externalFieldsStatus } =
+    useFormQuestionFieldsMap(activeExternalFormIds);
+  const peekFormFields = useFormQuestionFieldsPeek();
 
   const getExternalControllers = useCallback(
     (formId: number): ControllerField[] => {
-      const fields =
-        externalFieldsMap[formId] ?? externalSchemaCache.get(formId) ?? [];
+      const fields = externalFieldsMap[formId] ?? [];
       return fields.filter((f): f is ControllerField =>
         isConditionalController(f),
       );
@@ -797,50 +757,30 @@ export function ConditionalVisibility({
 
   const handleSourceFormChange = useCallback(
     (index: number, formId: number) => {
-      const cached = externalSchemaCache.get(formId);
-      if (cached) {
-        const extCtrls = cached.filter((f): f is ControllerField =>
-          isConditionalController(f),
-        );
-        const first = extCtrls[0];
-        const next = [...conditions];
-        const cond = buildConditionForField(first, formId);
-        if (cond) {
-          next[index] = cond;
-          updateConditions(next, true);
-        }
-        setExternalFieldsMap((prev) => ({ ...prev, [formId]: cached }));
-      } else {
-        const next = [...conditions];
-        next[index] = {
-          kind: "hasValue",
-          when: "",
-          hasValue: true,
-          sourceFormId: formId,
-        };
-        updateConditions(next, true);
-        tasksGetForm({ path: { id: formId } }).then((response) => {
-          const schema = (response.data as Record<string, unknown> | undefined)
-            ?.schema as FormSchema | undefined;
-          if (!schema?.pages) return;
-          const allFields: AnyField[] = [];
-          for (const page of schema.pages) {
-            for (const el of page.fields) {
-              if (isQuestionField(el)) allFields.push(el);
-            }
-          }
-          externalSchemaCache.set(formId, allFields);
-          setExternalFieldsMap((prev) => ({ ...prev, [formId]: allFields }));
-        });
-      }
+      const cached = peekFormFields(formId);
+      const extCtrls = (cached ?? []).filter((f): f is ControllerField =>
+        isConditionalController(f),
+      );
+      // Nothing cached, or nothing in it to point at: seed a placeholder, so
+      // the form still gets selected and the next render's
+      // activeExternalFormIds starts the query that fills the picker in.
+      const placeholder: FieldCondition = {
+        kind: "hasValue",
+        when: "",
+        hasValue: true,
+        sourceFormId: formId,
+      };
+      const next = [...conditions];
+      next[index] = buildConditionForField(extCtrls[0], formId) ?? placeholder;
+      updateConditions(next, true);
     },
-    [buildConditionForField, conditions, updateConditions],
+    [buildConditionForField, conditions, peekFormFields, updateConditions],
   );
 
   const addCrossFormCondition = useCallback(() => {
     if (formList.length === 0) return;
     const firstFormId = formList[0].id;
-    const cached = externalSchemaCache.get(firstFormId);
+    const cached = peekFormFields(firstFormId);
     if (cached) {
       const extCtrls = cached.filter((f): f is ControllerField =>
         isConditionalController(f),
@@ -859,7 +799,13 @@ export function ConditionalVisibility({
       sourceFormId: firstFormId,
     };
     updateConditions([...conditions, placeholder]);
-  }, [buildConditionForField, conditions, formList, updateConditions]);
+  }, [
+    buildConditionForField,
+    conditions,
+    formList,
+    peekFormFields,
+    updateConditions,
+  ]);
 
   const addDeviceCondition = useCallback(() => {
     const defaultCondition: DeviceCondition = {
@@ -1191,6 +1137,9 @@ export function ConditionalVisibility({
   const renderFieldCondition = (condition: FieldCondition, index: number) => {
     const sourceFormId = condition.sourceFormId;
     const isCrossForm = sourceFormId != null;
+    const externalStatus =
+      sourceFormId != null ? externalFieldsStatus[sourceFormId] : undefined;
+    const externalError = formFieldsErrorReason(externalStatus);
     const pool = isCrossForm
       ? getExternalControllers(sourceFormId)
       : controllers;
@@ -1235,8 +1184,20 @@ export function ConditionalVisibility({
                 </option>
               ))}
             </select>
-            {externalFieldsLoading && (
+            {formListFailed && (
+              <FormPickerError
+                reason={FormPickerErrorReason.FormList}
+                className="text-[11px] mt-1"
+              />
+            )}
+            {externalStatus === FormFieldsStatus.Pending && (
               <p className="text-[11px] text-gray-400 mt-1">Loading fields…</p>
+            )}
+            {externalError && (
+              <FormPickerError
+                reason={externalError}
+                className="text-[11px] mt-1"
+              />
             )}
           </div>
         )}
@@ -1258,7 +1219,7 @@ export function ConditionalVisibility({
             ))}
             {pool.length === 0 && (
               <option value="">
-                {isCrossForm && externalFieldsLoading
+                {externalStatus === FormFieldsStatus.Pending
                   ? "Loading…"
                   : "No fields available"}
               </option>
@@ -2056,61 +2017,6 @@ function useUsers(enabled: boolean): {
     error,
   };
 }
-
-type FormListItem = { id: number; title: string };
-
-let cachedFormList: FormListItem[] | null = null;
-let pendingFormListRequest: Promise<FormListItem[]> | null = null;
-
-function useFormList(): {
-  forms: FormListItem[];
-  loading: boolean;
-} {
-  const [forms, setForms] = useState<FormListItem[]>(
-    () => cachedFormList ?? [],
-  );
-  const [loading, setLoading] = useState(() => !cachedFormList);
-
-  useEffect(() => {
-    if (cachedFormList) {
-      setForms(cachedFormList);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    if (!pendingFormListRequest) {
-      pendingFormListRequest = tasksListFormsAdmin().then((response) => {
-        const items = (
-          (response.data ?? []) as Array<{ id: number; title: string }>
-        )
-          .map((f) => ({ id: f.id, title: f.title }))
-          .sort((a, b) => a.id - b.id);
-        cachedFormList = items;
-        return items;
-      });
-    }
-    setLoading(true);
-    pendingFormListRequest
-      .then((data) => {
-        if (cancelled) return;
-        setForms(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!cancelled) setLoading(false);
-      })
-      .finally(() => {
-        pendingFormListRequest = null;
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return { forms, loading };
-}
-
-const externalSchemaCache = new Map<number, AnyField[]>();
 
 type CustomValidatorSelectProps = {
   type?: CustomValidatorType;

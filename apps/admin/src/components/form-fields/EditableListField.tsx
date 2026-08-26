@@ -5,13 +5,16 @@ import {
 import type {
   AnyField,
   FieldKind,
-  FormSchema,
   ListField,
   ListSubField,
 } from "@alliance/common/forms/form-schema";
-import { isQuestionField } from "@alliance/common/forms/form-schema";
-import { tasksGetForm, tasksListFormsAdmin } from "@alliance/shared/client";
-import { useEffect, useState } from "react";
+import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
+import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
+import {
+  formFieldsErrorReason,
+  FormPickerError,
+  FormPickerErrorReason,
+} from "../FormPickerError";
 import { EditableCheckboxField } from "./EditableCheckboxField";
 import { EditableChoiceField } from "./EditableChoiceField";
 import { EditableCityField } from "./EditableCityField";
@@ -28,8 +31,6 @@ import { EditableTimezoneField } from "./EditableTimezoneField";
 import { FieldLabelEditor } from "./FieldLabelEditor";
 import { FieldWrapper } from "./FieldWrapper";
 import type { BaseFieldProps } from "./types";
-
-type FormListItem = { id: number; title: string };
 
 const SUB_FIELD_KINDS_OPTIONS = {
   textarea: true,
@@ -185,68 +186,11 @@ export function EditableListField({
   previousFields,
 }: BaseFieldProps<ListField>) {
   // --- Prefill from previous answer state ---
-  const [prefillForms, setPrefillForms] = useState<FormListItem[]>([]);
-  const [prefillSourceFields, setPrefillSourceFields] = useState<AnyField[]>(
-    [],
-  );
-
-  // Load list of forms on mount
-  useEffect(() => {
-    let cancelled = false;
-    tasksListFormsAdmin()
-      .then((response) => {
-        if (cancelled) return;
-        const items = (response.data ?? []) as Array<{
-          id: number;
-          title?: string;
-        }>;
-        const mapped = items.map((f) => ({
-          id: f.id,
-          title: f.title ?? `Form ${f.id}`,
-        }));
-        mapped.sort((a, b) => b.id - a.id);
-        setPrefillForms(mapped);
-      })
-      .catch(() => {
-        // ignore
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Fetch source form schema when sourceFormId changes
+  const { options: prefillForms, isError: formListFailed } = useFormOptions();
   const prefillSourceFormId = field.prefillFromPreviousAnswer?.sourceFormId;
-  useEffect(() => {
-    if (!prefillSourceFormId) {
-      setPrefillSourceFields([]);
-      return;
-    }
-    let cancelled = false;
-    tasksGetForm({ path: { id: prefillSourceFormId } })
-      .then((response) => {
-        if (cancelled) return;
-        if (response.data) {
-          const form = response.data as Record<string, unknown>;
-          const schema = form.schema as FormSchema;
-          const fields: AnyField[] = [];
-          for (const page of schema.pages ?? []) {
-            for (const element of page.fields ?? []) {
-              if (isQuestionField(element)) {
-                fields.push(element);
-              }
-            }
-          }
-          setPrefillSourceFields(fields);
-        }
-      })
-      .catch(() => {
-        setPrefillSourceFields([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [prefillSourceFormId]);
+  const { fields: prefillSourceFields, status: prefillSourceStatus } =
+    useFormQuestionFields(prefillSourceFormId);
+  const prefillSourceError = formFieldsErrorReason(prefillSourceStatus);
 
   const prefillSourceListFields = prefillSourceFields.filter(
     (f) => f.kind === "list",
@@ -478,6 +422,12 @@ export function EditableListField({
                 </option>
               ))}
             </select>
+            {formListFailed && (
+              <FormPickerError
+                reason={FormPickerErrorReason.FormList}
+                className="text-[11px] mt-1"
+              />
+            )}
           </div>
 
           {/* Source List Field */}
@@ -507,6 +457,12 @@ export function EditableListField({
                   </option>
                 ))}
               </select>
+              {prefillSourceError && (
+                <FormPickerError
+                  reason={prefillSourceError}
+                  className="text-[11px] mt-1"
+                />
+              )}
             </div>
           )}
 

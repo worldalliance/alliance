@@ -1,18 +1,16 @@
 import type { PreviousAnswerBlock } from "@alliance/common/forms/display-blocks";
 import { fieldPickerLabel } from "@alliance/common/forms/element-descriptors";
-import type {
-  AnyField,
-  FormSchema,
-  ListField,
-} from "@alliance/common/forms/form-schema";
-import { isQuestionField } from "@alliance/common/forms/form-schema";
-import { tasksGetForm, tasksListFormsAdmin } from "@alliance/shared/client";
-import { useEffect, useState } from "react";
+import type { ListField } from "@alliance/common/forms/form-schema";
+import { useFormQuestionFields } from "@alliance/shared/lib/useFormSchema";
+import { useFormOptions } from "@alliance/shared/lib/useFormsAdmin";
+import {
+  formFieldsErrorReason,
+  FormPickerError,
+  FormPickerErrorReason,
+} from "../FormPickerError";
 import { VariableTextField } from "../VariableTextField";
 import { DisplayBlockWrapper } from "./DisplayBlockWrapper";
 import type { BaseDisplayBlockProps } from "./types";
-
-type FormListItem = { id: number; title: string };
 
 export function EditablePreviousAnswerBlock({
   block,
@@ -23,65 +21,11 @@ export function EditablePreviousAnswerBlock({
   isDragging,
   previousFields,
 }: BaseDisplayBlockProps<PreviousAnswerBlock>) {
-  const [forms, setForms] = useState<FormListItem[]>([]);
-  const [sourceFields, setSourceFields] = useState<AnyField[]>([]);
-
-  // Load list of forms on mount
-  useEffect(() => {
-    let cancelled = false;
-    tasksListFormsAdmin()
-      .then((response) => {
-        if (cancelled) return;
-        const items = (response.data ?? []) as Array<{
-          id: number;
-          title?: string;
-        }>;
-        const mapped = items.map((f) => ({
-          id: f.id,
-          title: f.title ?? `Form ${f.id}`,
-        }));
-        mapped.sort((a, b) => b.id - a.id);
-        setForms(mapped);
-      })
-      .catch(() => {
-        // ignore
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Fetch form schema when sourceFormId changes
-  useEffect(() => {
-    if (!block.sourceFormId) {
-      setSourceFields([]);
-      return;
-    }
-    let cancelled = false;
-    tasksGetForm({ path: { id: block.sourceFormId } })
-      .then((response) => {
-        if (cancelled) return;
-        if (response.data) {
-          const form = response.data as Record<string, unknown>;
-          const schema = form.schema as FormSchema;
-          const fields: AnyField[] = [];
-          for (const page of schema.pages ?? []) {
-            for (const element of page.fields ?? []) {
-              if (isQuestionField(element)) {
-                fields.push(element);
-              }
-            }
-          }
-          setSourceFields(fields);
-        }
-      })
-      .catch(() => {
-        setSourceFields([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [block.sourceFormId]);
+  const { options: forms, isError: formListFailed } = useFormOptions();
+  const { fields: sourceFields, status: sourceStatus } = useFormQuestionFields(
+    block.sourceFormId,
+  );
+  const sourceFormError = formFieldsErrorReason(sourceStatus);
 
   const selectedField = sourceFields.find((f) => f.id === block.sourceFieldId);
   const isListField = selectedField?.kind === "list";
@@ -149,6 +93,12 @@ export function EditablePreviousAnswerBlock({
                 </option>
               ))}
             </select>
+            {formListFailed && (
+              <FormPickerError
+                reason={FormPickerErrorReason.FormList}
+                className="mt-1"
+              />
+            )}
           </div>
 
           {/* Field picker */}
@@ -174,6 +124,9 @@ export function EditablePreviousAnswerBlock({
                   </option>
                 ))}
               </select>
+              {sourceFormError && (
+                <FormPickerError reason={sourceFormError} className="mt-1" />
+              )}
             </div>
           )}
 

@@ -3,6 +3,7 @@ import {
   DEVICE_VISIBILITY_TARGETS,
   type DeviceVisibilityTarget,
 } from "@alliance/common/forms/device";
+import { FORM_RESPONSES_BY_FORMS_MAX_BATCH } from "@alliance/common/forms/form-responses";
 import type { AggregateViewSchema } from "@alliance/common/forms/form-schema";
 import { MIGRATE_RESPONSE_SNAPSHOTS_MAX_BATCH } from "@alliance/common/forms/snapshot-migration";
 import {
@@ -22,14 +23,14 @@ import {
   IsOptional,
   IsString,
 } from "class-validator";
-import { ActionDto } from "src/actions/dto/action.dto";
+import type { LinkedAction } from "src/actions/actions.service";
+import { Action } from "src/actions/entities/action.entity";
 import { AiDetectionResultDto } from "src/ai-detection/dto/ai-detection-result.dto";
 import { AiDetectionResult } from "src/ai-detection/entities/ai-detection-result.entity";
 import { UserDto } from "src/user/dto/user.dto";
 import { Form } from "./entities/form.entity";
 import { FormResponse } from "./entities/formresponse.entity";
 import { FormSnapshot } from "./entities/formsnapshot.entity";
-import type { Ty } from "./entities/type";
 
 export class CreateFormDto extends PickType(Form, ["title"]) {
   @ApiProperty()
@@ -110,18 +111,80 @@ export class FormDto extends PickType(Form, ["id", "title", "formSnapshotId"]) {
   @Type(() => Object)
   schema: Record<string, unknown>;
 
-  @ApiPropertyOptional({ type: () => ActionDto })
-  @IsOptional()
-  @Type(() => ActionDto)
-  usedInAction?: Ty<ActionDto>;
-
-  constructor(form: Form, usedInAction?: Ty<ActionDto>) {
+  constructor(form: Form) {
     super();
     this.id = form.id;
     this.title = form.title;
     this.formSnapshotId = form.formSnapshotId;
     this.schema = form.formSnapshot.schema;
-    this.usedInAction = usedInAction;
+  }
+}
+
+export class FormLinkedActionDto extends PickType(Action, ["id", "name"]) {
+  constructor(input: LinkedAction) {
+    super();
+    this.id = input.id;
+    this.name = input.name;
+  }
+}
+
+export type FormSchemaCounts = {
+  pages: number;
+  fields: number;
+};
+
+export class FormSchemaCountsDto {
+  @ApiProperty()
+  pages: number;
+
+  @ApiProperty()
+  fields: number;
+
+  constructor(input: FormSchemaCounts) {
+    this.pages = input.pages;
+    this.fields = input.fields;
+  }
+}
+
+export type FormSummary = {
+  id: number;
+  title: string;
+  formSnapshotId: number;
+  /** Absent when the stored schema no longer parses. */
+  schemaCounts?: FormSchemaCounts;
+  usedInAction?: LinkedAction;
+};
+
+/**
+ * The forms index. Deliberately carries no schema: the admin lists ~100 forms
+ * at once and every form picker in the builder mounts the same list, so the
+ * two numbers it renders are counted in SQL rather than shipped as ~900 KB of
+ * schemas for the client to count itself.
+ */
+export class FormSummaryDto extends PickType(Form, [
+  "id",
+  "title",
+  "formSnapshotId",
+]) {
+  @ApiPropertyOptional({ type: () => FormSchemaCountsDto })
+  @IsOptional()
+  @Type(() => FormSchemaCountsDto)
+  schemaCounts?: FormSchemaCountsDto;
+
+  @ApiPropertyOptional({ type: () => FormLinkedActionDto })
+  @IsOptional()
+  @Type(() => FormLinkedActionDto)
+  usedInAction?: FormLinkedActionDto;
+
+  constructor(input: FormSummary) {
+    super();
+    this.id = input.id;
+    this.title = input.title;
+    this.formSnapshotId = input.formSnapshotId;
+    this.schemaCounts =
+      input.schemaCounts && new FormSchemaCountsDto(input.schemaCounts);
+    this.usedInAction =
+      input.usedInAction && new FormLinkedActionDto(input.usedInAction);
   }
 }
 
@@ -317,9 +380,27 @@ export class FormResponsesByFormsDto {
   @ApiProperty({ type: Number, isArray: true })
   @IsArray()
   @ArrayNotEmpty()
-  @ArrayMaxSize(100)
+  @ArrayMaxSize(FORM_RESPONSES_BY_FORMS_MAX_BATCH)
   @IsInt({ each: true })
   formIds: number[];
+}
+
+export type FormResponseCount = {
+  formId: number;
+  count: number;
+};
+
+export class FormResponseCountDto {
+  @ApiProperty()
+  formId: number;
+
+  @ApiProperty()
+  count: number;
+
+  constructor(input: FormResponseCount) {
+    this.formId = input.formId;
+    this.count = input.count;
+  }
 }
 
 export class GuestFormResponseDto {

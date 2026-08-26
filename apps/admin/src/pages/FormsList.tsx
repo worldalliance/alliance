@@ -1,99 +1,86 @@
-import { FormSchema } from "@alliance/common/forms/form-schema";
+import { errorMessage } from "@alliance/common/errorMessage";
 import { withCount } from "@alliance/common/plural";
 import {
-  FormDto,
-  tasksDeleteFormAdmin,
-  tasksGetFormResponsesAdmin,
-  tasksListFormsAdmin,
-} from "@alliance/shared/client";
+  ResponseCountStatus,
+  useFormResponseCountsAdmin,
+  useFormsAdmin,
+  type FormResponseCounts,
+} from "@alliance/shared/lib/useFormsAdmin";
 import { CardStyle } from "@alliance/shared/styles/card";
 import Card from "@alliance/sharedweb/ui/Card";
-import React, { useCallback, useEffect, useState } from "react";
+import { useToast } from "@alliance/sharedweb/ui/ToastProvider";
+import React, { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 
-export type Form = Pick<FormDto, "id" | "title" | "usedInAction"> & {
-  schema: FormSchema;
+// The endpoint answers with a row per requested id, zeroes included, so a
+// missing entry means unresolved, not none.
+const UNCOUNTED: Record<ResponseCountStatus, { label: string; title: string }> =
+  {
+    [ResponseCountStatus.Pending]: {
+      label: "…",
+      title: "Counting responses",
+    },
+    [ResponseCountStatus.Error]: {
+      label: "?",
+      title: "Could not load the response count",
+    },
+    // Its batch came back without a row for this form.
+    [ResponseCountStatus.Ready]: {
+      label: "?",
+      title: "Could not load the response count",
+    },
+  };
+
+const responseCountButton = (
+  counts: FormResponseCounts,
+  formId: number,
+): { label: string; title?: string } => {
+  const count = counts.byForm[formId];
+  if (count !== undefined) return { label: String(count) };
+  return UNCOUNTED[counts.statusByForm[formId] ?? ResponseCountStatus.Error];
 };
 
-const countPages = (schema: FormSchema) => schema.pages?.length ?? 0;
-
-const countFields = (schema: FormSchema) =>
-  schema.pages?.reduce(
-    (total, page) => total + (page.fields?.length ?? 0),
-    0,
-  ) ?? 0;
+const ResponsesButton: React.FC<{
+  counts: FormResponseCounts;
+  formId: number;
+  onClick: () => void;
+}> = ({ counts, formId, onClick }) => {
+  const { label, title } = responseCountButton(counts, formId);
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      title={title}
+      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md text-xs font-medium"
+    >
+      Responses ({label})
+    </button>
+  );
+};
 
 const FormsList: React.FC = () => {
-  const [forms, setForms] = useState<Form[]>([]);
-  const [formsLoading, setFormsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [responseCounts, setResponseCounts] = useState<Record<number, number>>(
-    {},
-  );
+  const { forms, isLoading, isError, deleteForm } = useFormsAdmin();
+  const formIds = useMemo(() => forms.map((form) => form.id), [forms]);
+  const responseCounts = useFormResponseCountsAdmin(formIds);
   const navigate = useNavigate();
-
-  const loadForms = useCallback(async () => {
-    try {
-      const response = await tasksListFormsAdmin();
-      if (response.data) {
-        setForms(response.data as unknown as Form[]);
-      }
-      setFormsLoading(false);
-    } catch (err) {
-      setError("Failed to load forms");
-      setFormsLoading(false);
-      console.error(err);
-    }
-  }, []);
+  const toast = useToast();
 
   const handleDeleteForm = useCallback(
     async (id: number) => {
-      if (confirm("Are you sure you want to delete this form?")) {
-        try {
-          await tasksDeleteFormAdmin({ path: { id } });
-          // Reload forms after successful deletion
-          loadForms();
-        } catch (err) {
-          console.error("Failed to delete form:", err);
-          alert("Failed to delete form. Please try again.");
-        }
+      if (!confirm("Are you sure you want to delete this form?")) return;
+      try {
+        await deleteForm(id);
+      } catch (err) {
+        console.error("Failed to delete form:", err);
+        toast.error(
+          errorMessage({ error: err, fallback: "Failed to delete form" }),
+        );
       }
     },
-    [loadForms],
+    [deleteForm, toast],
   );
-
-  useEffect(() => {
-    loadForms();
-  }, [loadForms]);
-
-  // After forms load, fetch response counts for each form
-  useEffect(() => {
-    let cancelled = false;
-    const fetchCounts = async () => {
-      const entries = await Promise.all(
-        forms.map(async (f) => {
-          try {
-            const res = await tasksGetFormResponsesAdmin({
-              path: { id: f.id },
-            });
-            return [f.id, (res.data ?? []).length] as const;
-          } catch (e) {
-            console.error("Failed to get responses for form", f.id, e);
-            return [f.id, 0] as const;
-          }
-        }),
-      );
-      if (!cancelled) {
-        const map: Record<number, number> = {};
-        for (const [id, count] of entries) map[id] = count;
-        setResponseCounts(map);
-      }
-    };
-    if (forms.length > 0) fetchCounts();
-    return () => {
-      cancelled = true;
-    };
-  }, [forms]);
 
   const handleEditForm = useCallback(
     (formId: number, actionId: number | undefined) => {
@@ -108,10 +95,15 @@ const FormsList: React.FC = () => {
 
   return (
     <div className="space-y-4 p-5">
-      {formsLoading ? (
+      {isError && forms.length > 0 && (
+        <p className="text-red-500 text-sm">
+          Could not refresh. Showing the list as of the last successful load.
+        </p>
+      )}
+      {isLoading ? (
         <p>Loading forms...</p>
-      ) : error ? (
-        <p className="text-red-500">{error}</p>
+      ) : isError && forms.length === 0 ? (
+        <p className="text-red-500">Failed to load forms</p>
       ) : forms.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500 mb-4">No forms found.</p>
@@ -149,19 +141,19 @@ const FormsList: React.FC = () => {
                   )}
                   <div className="flex-1" />
                   <div className="flex items-center gap-3">
-                    <p className="text-sm text-zinc-600">
-                      {withCount(countPages(form.schema), "page")} •{" "}
-                      {withCount(countFields(form.schema), "field")}
-                    </p>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/forms/${form.id}/responses`);
-                      }}
-                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md text-xs font-medium"
-                    >
-                      Responses ({responseCounts[form.id] ?? 0})
-                    </button>
+                    {form.schemaCounts ? (
+                      <p className="text-sm text-zinc-600">
+                        {withCount(form.schemaCounts.pages, "page")} •{" "}
+                        {withCount(form.schemaCounts.fields, "field")}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-red-600">Unreadable schema</p>
+                    )}
+                    <ResponsesButton
+                      counts={responseCounts}
+                      formId={form.id}
+                      onClick={() => navigate(`/forms/${form.id}/responses`)}
+                    />
                   </div>
                 </div>
               </div>

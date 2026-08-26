@@ -24,6 +24,7 @@ import {
 } from "../client";
 import { parseActionDto } from "../parsed-dtos";
 import { queryKeys } from "./queryKeys";
+import { useInvalidateFormsIndex } from "./useFormsAdmin";
 
 /**
  * The admin action-detail query. Fetches the action and validates its
@@ -80,6 +81,7 @@ export function useActionAdmin(
 ) {
   const { enabled = true } = params ?? {};
   const queryClient = useQueryClient();
+  const invalidateFormsIndex = useInvalidateFormsIndex();
 
   const query = useQuery({
     ...actionAdminQuery(actionId),
@@ -104,10 +106,15 @@ export function useActionAdmin(
 
   // For mutations that change fields the all-actions list shows (name,
   // archived, existence); marks it stale so list screens refetch on return.
+  // The forms index carries the same facts as usedInAction, so it goes stale
+  // on exactly these mutations too.
   const invalidateList = () =>
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.actionsAllAdmin(),
-    });
+    Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.actionsAllAdmin(),
+      }),
+      invalidateFormsIndex(),
+    ]);
 
   const invalidateActionAndList = () =>
     Promise.all([invalidate(), invalidateList()]);
