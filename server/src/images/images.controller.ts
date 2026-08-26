@@ -1,12 +1,7 @@
-import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Inject,
   NotFoundException,
@@ -19,11 +14,7 @@ import { ApiOkResponse } from "@nestjs/swagger";
 import type { Response } from "express";
 import { basename } from "path";
 import { Readable } from "stream";
-import {
-  DeleteImageResponseDto,
-  UploadImageDto,
-  UploadImageResponseDto,
-} from "./dto/image.dto";
+import { UploadImageDto, UploadImageResponseDto } from "./dto/image.dto";
 import { getImageSource, ImagesService } from "./images.service";
 
 @Controller("images")
@@ -84,19 +75,6 @@ export class ImagesController {
       }
       throw new NotFoundException();
     }
-  }
-
-  @Delete(":id")
-  @ApiOkResponse({ type: DeleteImageResponseDto })
-  async deleteImage(@Param("id") id: number): Promise<DeleteImageResponseDto> {
-    const img = await this.imagesService.getImage(id);
-    if (!img) throw new NotFoundException();
-
-    await this.s3.send(
-      new DeleteObjectCommand({ Bucket: this.bucket, Key: img.key }),
-    );
-    await this.imagesService.deleteImage(id);
-    return new DeleteImageResponseDto(true);
   }
 
   @Post("/uploadImage")

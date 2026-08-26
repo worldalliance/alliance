@@ -1,25 +1,14 @@
 import { devPorts, PortCaller } from "@alliance/common/dev-ports";
 import { isUploadKey } from "@alliance/common/image-src";
-import {
-  DeleteObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { randomUUID } from "crypto";
 import convert from "heic-convert";
 import sharp from "sharp";
-import type { Repository } from "src/utils/Repository";
-import { Image } from "./entities/image.entity";
 
 @Injectable()
 export class ImagesService {
-  constructor(
-    @InjectRepository(Image)
-    private imageRepository: Repository<Image>,
-    @Inject("S3_CLIENT") private readonly s3: S3Client,
-  ) {}
+  constructor(@Inject("S3_CLIENT") private readonly s3: S3Client) {}
 
   private readonly bucket = process.env.ASSETS_BUCKET!; // TODO: separate dev bucket
 
@@ -30,39 +19,6 @@ export class ImagesService {
    */
   private newImageKey(): string {
     return `${Date.now()}-${randomUUID()}.webp`;
-  }
-
-  async getImages(): Promise<Image[]> {
-    return this.imageRepository.find();
-  }
-
-  async createImage(
-    image: Pick<Image, "key" | "mime" | "size">,
-  ): Promise<Image> {
-    return this.imageRepository.save(image);
-  }
-
-  async getImage(id: number): Promise<Image | null> {
-    const image = await this.imageRepository.findOneBy({ id });
-    if (!image) {
-      return null;
-    }
-    return image;
-  }
-
-  async deleteImage(id: number): Promise<boolean> {
-    const image = await this.getImage(id);
-
-    if (!image) {
-      return false;
-    }
-    await this.imageRepository.delete(id);
-
-    await this.s3.send(
-      new DeleteObjectCommand({ Bucket: this.bucket, Key: image.key }),
-    ); //TODO: untested
-
-    return true;
   }
 
   /** Returns a buffer suitable for sharp (HEIC/HEIF converted to JPEG). */

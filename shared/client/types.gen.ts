@@ -1296,10 +1296,6 @@ export type StreamableFile = {
     [key: string]: unknown;
 };
 
-export type DeleteImageResponseDto = {
-    deleted: boolean;
-};
-
 export type UploadImageDto = {
     file: string;
 };
@@ -5787,30 +5783,6 @@ export type ImagesGetImageResponses = {
 };
 
 export type ImagesGetImageResponse = ImagesGetImageResponses[keyof ImagesGetImageResponses];
-
-export type ImagesDeleteImageData = {
-    body?: never;
-    path: {
-        id: number;
-    };
-    query?: never;
-    url: '/images/{id}';
-};
-
-export type ImagesDeleteImageErrors = {
-    /**
-     * Default error response for hey-api
-     */
-    default: HeyApiError;
-};
-
-export type ImagesDeleteImageError = ImagesDeleteImageErrors[keyof ImagesDeleteImageErrors];
-
-export type ImagesDeleteImageResponses = {
-    200: DeleteImageResponseDto;
-};
-
-export type ImagesDeleteImageResponse = ImagesDeleteImageResponses[keyof ImagesDeleteImageResponses];
 
 export type ImagesUploadImageData = {
     body: UploadImageDto;

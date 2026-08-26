@@ -10,7 +10,6 @@ import type { Cluster } from "src/cluster/entities/cluster.entity";
 import type { EventLog } from "src/eventlog/event-log.entity";
 import type { EditableContent } from "src/forum/entities/editablecontent.entity";
 import type { City } from "src/geo/city.entity";
-import type { Image } from "src/images/entities/image.entity";
 import type { Mail } from "src/mail/mail.entity";
 import type { Mms } from "src/mms/mms.entity";
 import type { PaymentUserDataToken } from "src/payments/entities/payment-token.entity";
@@ -49,7 +48,6 @@ type _typecheck_EntityShapes =
   | Assert<EntityShape<ExternalShareTarget>>
   | Assert<EntityShape<FormSnapshot>>
   | Assert<EntityShape<Guest>>
-  | Assert<EntityShape<Image>>
   | Assert<EntityShape<Mail>>
   | Assert<EntityShape<Mms>>
   | Assert<EntityShape<PaymentUserDataToken>>

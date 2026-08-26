@@ -1,19 +1,15 @@
 import {
-  DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { Readable } from "stream";
 import request from "supertest";
-import type { Repository } from "typeorm";
-import { Image } from "../src/images/entities/image.entity";
 import { ImagesModule } from "../src/images/images.module";
 import { createTestApp, TestContext } from "./e2e-test-utils";
 
 describe("Images (e2e)", () => {
   let ctx: TestContext;
-  let imageRepo: Repository<Image>;
   let mockSend: jest.Mock;
   const dataUrl =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=";
@@ -21,7 +17,6 @@ describe("Images (e2e)", () => {
   beforeAll(async () => {
     process.env.ASSETS_BUCKET = "test-bucket";
     ctx = await createTestApp([ImagesModule]);
-    imageRepo = ctx.dataSource.getRepository(Image);
 
     const s3 = ctx.app.get<S3Client>("S3_CLIENT");
     mockSend = jest.fn(async (command) => {
@@ -37,8 +32,7 @@ describe("Images (e2e)", () => {
     (s3 as any).send = mockSend;
   }, 50000);
 
-  afterEach(async () => {
-    await imageRepo.query("DELETE FROM image");
+  afterEach(() => {
     mockSend.mockClear();
   });
 
@@ -46,6 +40,8 @@ describe("Images (e2e)", () => {
     await ctx.app.close();
   });
 
+  // Unauthenticated on purpose: a public form is filled by visitors who have no
+  // account, and no guest token exists until they submit.
   it("uploads a base64 image and returns a served url", async () => {
     const response = await request(ctx.app.getHttpServer())
       .post("/images/uploadImage")
@@ -64,28 +60,5 @@ describe("Images (e2e)", () => {
       .expect("Content-Type", /image\/webp/);
 
     expect(res.body).toBeInstanceOf(Buffer);
-  });
-
-  it("deletes stored image metadata and S3 object", async () => {
-    const image = await imageRepo.save(
-      imageRepo.create({
-        key: "delete-me.webp",
-        mime: "image/webp",
-        size: 123,
-      }),
-    );
-
-    await request(ctx.app.getHttpServer())
-      .delete(`/images/${image.id}`)
-      .expect(200)
-      .expect((res) => {
-        expect(res.body.deleted).toBe(true);
-      });
-
-    expect(mockSend).toHaveBeenCalledWith(expect.any(DeleteObjectCommand));
-  });
-
-  it("returns 404 when deleting a non-existent image", async () => {
-    await request(ctx.app.getHttpServer()).delete("/images/99999").expect(404);
   });
 });
