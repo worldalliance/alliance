@@ -1,6 +1,7 @@
 import { cn } from "@alliance/shared/styles/util";
 import React from "react";
 import ReactMarkdown from "react-markdown";
+import { transformMarkdownUrl } from "../lib/markdownUrl";
 import ActionLink, { getActionIdFromHref } from "./ActionLink";
 import ExternalLinkPreview from "./ExternalLinkPreview";
 
@@ -120,6 +121,7 @@ const FormMarkdownWrapper: React.FC<FormMarkdownWrapper> = ({
           />
         ),
       }}
+      urlTransform={transformMarkdownUrl}
     >
       {markdownContent}
     </ReactMarkdown>

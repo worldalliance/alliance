@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { transformMarkdownUrl } from "@alliance/sharedweb/lib/markdownUrl";
 import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import React from "react";
 import ReactMarkdown from "react-markdown";
@@ -61,6 +62,7 @@ const MarkdownWrapper: React.FC<MarkdownWrapperProps> = ({
           ),
           a: ({ ...props }) => <ExternalLinkPreview {...props} />,
         }}
+        urlTransform={transformMarkdownUrl}
       >
         {markdownContent}
       </ReactMarkdown>

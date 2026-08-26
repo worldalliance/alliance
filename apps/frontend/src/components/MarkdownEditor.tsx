@@ -1,4 +1,5 @@
 import { cn } from "@alliance/shared/styles/util";
+import { transformMarkdownUrl } from "@alliance/sharedweb/lib/markdownUrl";
 import ExternalLinkPreview from "@alliance/sharedweb/ui/ExternalLinkPreview";
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -157,7 +158,10 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             )}
             <div className="border border-gray-300 rounded-md p-4 min-h-[200px] bg-white prose prose-stone max-w-none overflow-auto">
               {value ? (
-                <ReactMarkdown components={{ a: ExternalLinkPreview }}>
+                <ReactMarkdown
+                  components={{ a: ExternalLinkPreview }}
+                  urlTransform={transformMarkdownUrl}
+                >
                   {value}
                 </ReactMarkdown>
               ) : (
