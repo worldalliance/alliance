@@ -816,7 +816,10 @@ export function RenderField({
                     <img
                       src={imageUrl}
                       alt="Uploaded file"
-                      className="max-w-full h-auto max-h-32 rounded"
+                      className={cn(
+                        "max-w-full h-auto rounded",
+                        isOutputView ? "max-h-48" : "max-h-32",
+                      )}
                     />
                   </button>
                 )}
