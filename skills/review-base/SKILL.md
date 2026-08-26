@@ -1,6 +1,6 @@
 ---
 name: review-base
-description: Review every commit on a branch as a small standalone change.
+description: Review a "base" commit on a branch as a small standalone change.
 disable-model-invocation: true
 ---
 
