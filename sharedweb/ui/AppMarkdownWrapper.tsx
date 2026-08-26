@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { imageSrcFromKey } from "../lib/imageSrc";
+import {
+  resolveMarkdownImageSrc,
+  transformMarkdownUrl,
+} from "../lib/markdownUrl";
 import ActionLink, { getActionIdFromHref } from "./ActionLink";
 import ExternalLinkPreview from "./ExternalLinkPreview";
 import { ImageLightboxModal } from "./ImageLightbox";
@@ -109,7 +112,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
               const [imgLine, ...captionLines] = value.split("\n");
               const img = imgLine.trim();
               const caption = captionLines.join("\n").trim();
-              const src = imageSrcFromKey(img);
+              const src = resolveMarkdownImageSrc(img);
 
               return (
                 <div className="text-center my-6">
@@ -133,13 +136,7 @@ const AppMarkdownWrapper: React.FC<AppMarkdownWrapperProps> = ({
             );
           },
         }}
-        urlTransform={(url) => {
-          // TODO: better way to identify images
-          if (url.includes(".webp") && !url.startsWith("http")) {
-            return imageSrcFromKey(url);
-          }
-          return url;
-        }}
+        urlTransform={transformMarkdownUrl}
       >
         {markdownContent}
       </ReactMarkdown>
