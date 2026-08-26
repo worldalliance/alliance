@@ -4,6 +4,7 @@ import {
   useShareLink,
 } from "@alliance/shared/forms/useShareLink";
 import { CardStyle } from "@alliance/shared/styles/card";
+import { cn } from "@alliance/shared/styles/util";
 import { setStringAsync as setClipboardStringAsync } from "expo-clipboard";
 import { useEffect, useState } from "react";
 import Button, { ButtonColor, ButtonSize } from "../system/Button";
@@ -49,7 +50,11 @@ const ShareUrlComponent = ({ field }: CustomComponentProps) => {
   const showMuted = isLoading || isError || !shareUrl;
   return (
     <Card cardStyle={CardStyle.Grey} className="flex-row items-center !p-0">
-      <Text className={`flex-1 p-2 pl-3 ${showMuted ? "text-zinc-500" : ""}`}>
+      <Text
+        className={cn("flex-1 p-2 pl-3", showMuted && "text-zinc-500")}
+        numberOfLines={1}
+        ellipsizeMode="middle"
+      >
         {message}
       </Text>
       <Button
