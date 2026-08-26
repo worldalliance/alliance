@@ -32,7 +32,6 @@ import {
   Share2,
   SquareActivity,
   SquareMousePointer,
-  TowerControl,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -314,11 +313,6 @@ const Sidebar: React.FC = () => {
                     to: "/videos",
                     label: "Videos",
                     icon: <Film size={16} />,
-                  },
-                  {
-                    to: "/messaging",
-                    label: "Messaging",
-                    icon: <TowerControl size={16} />,
                   },
                   {
                     to: "/event-log",

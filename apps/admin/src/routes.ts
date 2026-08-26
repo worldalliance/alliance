@@ -31,11 +31,6 @@ export default [
       route("/image", "pages/ImageUpload.tsx"),
       route("/videos", "pages/VideoManagement.tsx"),
       route("/videos/:videoId", "pages/VideoDetail.tsx"),
-      route("/messaging", "pages/MessagingOverview.tsx"),
-      route(
-        "/messaging/:conversationId",
-        "pages/MessagingConversationDetail.tsx",
-      ),
       route("/posts/:postId?", "pages/PostsManagement.tsx"),
       route("/event-log", "pages/EventLogPage.tsx"),
       route("/welcome-queue", "pages/WelcomeQueuePage.tsx"),
