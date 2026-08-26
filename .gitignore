@@ -52,3 +52,7 @@ shared/tsconfig.tsbuildinfo
 # Worktrees
 .worktree/
 common/.tmp-test/
+
+# Captured migration output — carries row values from the database it ran against
+migration_log.txt
+prod_migration_*.txt
