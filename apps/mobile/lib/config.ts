@@ -1,4 +1,4 @@
-import { isUploadKey } from "@alliance/common/image-src";
+import { resolveUploadSrc, uploadSrc } from "@alliance/common/image-src";
 import { NativeModules, Platform } from "react-native";
 import { getVisualTestApiUrl } from "./visualTest";
 
@@ -45,12 +45,11 @@ export const getBaseUrl = (): string => {
   return apiUrl.replace(/\/api\/?$/, "") || "https://worldalliance.org";
 };
 
-export const getImageSource = (string: string) => {
-  return `${getApiUrl()}/images/${string}`;
-};
+export const getImageSource = (key: string) =>
+  uploadSrc({ key, apiUrl: getApiUrl() });
 
 export const resolveImageSource = (src: string): string =>
-  isUploadKey(src) ? getImageSource(src) : src;
+  resolveUploadSrc({ src, apiUrl: getApiUrl() });
 
 export const getWebSocketUrl = (): string => {
   const baseUrl = getBaseUrl();

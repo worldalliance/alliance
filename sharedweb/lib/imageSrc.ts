@@ -1,10 +1,10 @@
-import { isUploadKey } from "@alliance/common/image-src";
+import { resolveUploadSrc, uploadSrc } from "@alliance/common/image-src";
 import { getApiUrl } from "./config";
 
 export function imageSrcFromKey(key: string): string {
-  return `${getApiUrl()}/images/${key}`;
+  return uploadSrc({ key, apiUrl: getApiUrl() });
 }
 
 export function resolveImageSrc(src: string): string {
-  return isUploadKey(src) ? imageSrcFromKey(src) : src;
+  return resolveUploadSrc({ src, apiUrl: getApiUrl() });
 }
