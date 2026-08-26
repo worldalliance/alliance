@@ -9,6 +9,8 @@ import { MmsService } from "./mms.service";
 const TO = "+14155559001";
 const BODY = "you have tasks waiting";
 
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
 const message = {
   sid: "SM0123456789",
   status: "queued" as const,
@@ -52,6 +54,7 @@ describe("MmsService sendMms", () => {
     service["twilioPhoneNumber"] = "+15555550100";
 
     jest.spyOn(Logger.prototype, "log").mockImplementation(() => {});
+    jest.spyOn(Logger.prototype, "warn").mockImplementation(() => {});
     jest.spyOn(Logger.prototype, "error").mockImplementation(() => {});
   });
 
@@ -112,5 +115,45 @@ describe("MmsService sendMms", () => {
         message: `Failed to send MMS to ${TO}: sendMms timed out after 5ms`,
       }),
     );
+  });
+
+  // The deadline is covered above. These two drive recordLateSend on its own,
+  // since what they turn on is the row it writes once sendMms has already
+  // answered and stopped listening.
+  it("records a send that twilio accepted after the deadline", async () => {
+    service["recordLateSend"]({
+      sending: Promise.resolve(message),
+      to: TO,
+      body: BODY,
+      cid: "cid-1",
+    });
+    await delay(0);
+
+    expect(saved).toEqual([
+      {
+        to: TO,
+        from: "+15555550100",
+        body: BODY,
+        twilioSid: "SM0123456789",
+        status: "queued",
+        errorCode: null,
+        errorMessage: null,
+        cid: "cid-1",
+      },
+    ]);
+  });
+
+  it("writes no row for a send that failed after the deadline", async () => {
+    service["recordLateSend"]({
+      sending: Promise.reject(new Error("network down")),
+      to: TO,
+      body: BODY,
+      cid: "cid-1",
+    });
+    await delay(0);
+
+    expect(saved).toEqual([]);
+    // This test staying green also covers the rejection: bun fails a test that
+    // leaves one unhandled, and sendMms has stopped listening by this point.
   });
 });

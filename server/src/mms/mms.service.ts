@@ -11,9 +11,22 @@ import { EventLogService } from "src/eventlog/eventlog.service";
 import type { Repository } from "src/utils/Repository";
 import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import Twilio from "twilio";
+import type { MessageStatus } from "twilio/lib/rest/api/v2010/account/message";
 import { Mms } from "./mms.entity";
 
 const SEND_TIMEOUT_MS = 10_000;
+
+/**
+ * The parts of a twilio message an {@link Mms} row is built from. Twilio types
+ * the two error fields as always present, but a message that has not failed
+ * carries null in both, which is what the columns hold.
+ */
+type SentMessage = {
+  sid: string;
+  status: MessageStatus;
+  errorCode: number | null;
+  errorMessage: string | null;
+};
 
 @Injectable()
 export class MmsService {
@@ -108,34 +121,22 @@ export class MmsService {
     }
 
     try {
-      const message = await withTimeout(
-        this.twilioClient.messages.create({
-          to: to,
-          from: this.twilioPhoneNumber,
-          body: body,
-          mediaUrl: mediaUrls,
-        }),
-        this.sendTimeoutMs,
-      );
+      const sending = this.twilioClient.messages.create({
+        to: to,
+        from: this.twilioPhoneNumber,
+        body: body,
+        mediaUrl: mediaUrls,
+      });
+      const message = await withTimeout(sending, this.sendTimeoutMs);
 
       if (message === TIMED_OUT) {
+        this.recordLateSend({ sending, to, body, cid });
         throw new Error(`sendMms timed out after ${this.sendTimeoutMs}ms`);
       }
 
       this.logger.log(`MMS sent successfully! Message SID: ${message.sid}`);
 
-      const mms = this.mmsRepository.create({
-        to: to,
-        from: this.twilioPhoneNumber,
-        body: body,
-        twilioSid: message.sid,
-        status: message.status,
-        errorCode: message.errorCode,
-        errorMessage: message.errorMessage,
-        cid,
-      });
-
-      return this.mmsRepository.save(mms);
+      return this.saveSent({ message, to, body, cid });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
@@ -153,6 +154,56 @@ export class MmsService {
       }
       return null;
     }
+  }
+
+  private saveSent(params: {
+    message: SentMessage;
+    to: string;
+    body: string;
+    cid: string | null;
+  }): Promise<Mms> {
+    const { message, to, body, cid } = params;
+    return this.mmsRepository.save(
+      this.mmsRepository.create({
+        to: to,
+        from: this.twilioPhoneNumber,
+        body: body,
+        twilioSid: message.sid,
+        status: message.status,
+        errorCode: message.errorCode,
+        errorMessage: message.errorMessage,
+        cid,
+      }),
+    );
+  }
+
+  /**
+   * Nothing cancels a send that missed the deadline, so twilio may still accept
+   * it. Records it when it lands: a message that went out with no row of its
+   * own has no cid for {@link setClickedLinkByCid} to match a click against and
+   * no id for a caller to hang an opt-in on. sendMms has already returned null
+   * by now, so this can only write down what happened.
+   */
+  private recordLateSend(params: {
+    sending: Promise<SentMessage>;
+    to: string;
+    body: string;
+    cid: string | null;
+  }): void {
+    const { sending, to, body, cid } = params;
+    void sending
+      .then(async (message) => {
+        const mms = await this.saveSent({ message, to, body, cid });
+        this.logger.warn(
+          `MMS to ${to} landed after ${this.sendTimeoutMs}ms and was recorded as ${mms.id} (SID ${message.sid})`,
+        );
+      })
+      .catch((error: unknown) => {
+        this.logger.error(
+          `MMS to ${to} failed after ${this.sendTimeoutMs}ms: ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      });
   }
 
   async refreshMmsData(mms: Mms): Promise<Mms> {
