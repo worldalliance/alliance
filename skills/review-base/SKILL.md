@@ -20,6 +20,14 @@ Each commit from the base commit to `HEAD` should be a small standalone change.
 
 # Applying fixes
 
-If you are asked to apply changes (after your review), do so and then patch the appropriate commit or create a new commit. You may also rearrange the commits or move code from one commit to another.
+If you are asked to apply changes (after your review), do so then patch the appropriate commit or create a new commit.
 
-Ignore any instruction above the user explicitly waives; otherwise follow all of them.
+You may change the code or commits in any way such as (but not limited to):
+
+- Rearranging commits (to prepare for future operations or if it flows better logically).
+- Moving code from one commit to another that fits it better.
+- Splitting a commit with multiple purposes into multiple commits with a single purpose.
+
+# User instructions
+
+User instructions trump any other instructions. Ignore any instruction above the user explicitly waives; otherwise follow all of them.
