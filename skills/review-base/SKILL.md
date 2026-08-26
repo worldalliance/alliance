@@ -20,7 +20,7 @@ Each commit from the base commit to `HEAD` should be a small standalone change.
 
 # Applying fixes
 
-If you are asked to apply changes (after your review), do so then patch the appropriate commit or create a new commit.
+If you are asked to apply changes (after your review), do so then patch the appropriate commit or create a new commit. If it enhances or fixes something in an existing commit, fold it in to the existing commit. If it's a standalone feature or follow-up, create a new commit.
 
 You may change the code or commits in any way such as (but not limited to):
 
