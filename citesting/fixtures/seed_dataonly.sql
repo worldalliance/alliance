@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Kk77j9MZnD335OH5sZ2Ki3wQ1pETjzvPGMekWudPT19iASwrf8FJXXjPDtM7hnY
+\restrict bpdxXXvKq7RLaFD5wUbhj0K289KFCA5Mp3T63gM8utOO3Oxx8ohmgHIAeanpCEZ
 
 -- Dumped from database version 18.3 (Homebrew)
 -- Dumped by pg_dump version 18.3 (Homebrew)
@@ -1962,14 +1962,6 @@ COPY public.group_users_user ("groupId", "userId") FROM stdin;
 
 
 --
--- Data for Name: image; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.image (id, "dateCreated", "dateUpdated", key, mime, size) FROM stdin;
-\.
-
-
---
 -- Data for Name: live_activity_registration; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -2574,13 +2566,6 @@ SELECT pg_catalog.setval('public.group_id_seq', 4, true);
 
 
 --
--- Name: image_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.image_id_seq', 1, false);
-
-
---
 -- Name: live_activity_registration_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -2598,7 +2583,7 @@ SELECT pg_catalog.setval('public.mail_id_seq', 752, true);
 -- Name: migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.migrations_id_seq', 355, true);
+SELECT pg_catalog.setval('public.migrations_id_seq', 356, true);
 
 
 --
@@ -2717,5 +2702,5 @@ SELECT pg_catalog.setval('public.video_id_seq', 1, false);
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Kk77j9MZnD335OH5sZ2Ki3wQ1pETjzvPGMekWudPT19iASwrf8FJXXjPDtM7hnY
+\unrestrict bpdxXXvKq7RLaFD5wUbhj0K289KFCA5Mp3T63gM8utOO3Oxx8ohmgHIAeanpCEZ
 
