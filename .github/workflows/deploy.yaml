@@ -182,8 +182,11 @@ jobs:
           strip_components: 2
 
       - name: SSH and Deploy frontend SSR on EC2
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
+          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
+          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
+          version: 1.8.4
           host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
@@ -256,8 +259,11 @@ jobs:
           target: "~/"
 
       - name: SSH and Deploy on EC2
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
+          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
+          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
+          version: 1.8.4
           host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
@@ -658,8 +664,11 @@ jobs:
           target: "~/"
 
       - name: SSH and Deploy Backend on EC2
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.5
         with:
+          # v1.2.5 defaults to drone-ssh 1.8.2, which stops forwarding output
+          # for good once one line outgrows its scanner. 1.8.3+ has no limit.
+          version: 1.8.4
           host: ${{ secrets.INSTANCE_IP }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
