@@ -1,3 +1,4 @@
+import { TIMED_OUT, withTimeout } from "@alliance/common/timeout";
 import {
   BadRequestException,
   Injectable,
@@ -12,11 +13,16 @@ import { isAnonymizedPhoneNumber } from "src/utils/phone";
 import Twilio from "twilio";
 import { Mms } from "./mms.entity";
 
+const SEND_TIMEOUT_MS = 10_000;
+
 @Injectable()
 export class MmsService {
   private readonly logger = new Logger(MmsService.name);
   private twilioClient: Twilio.Twilio;
   private twilioPhoneNumber: string;
+  // A field, not the constant directly, so a test can shorten the deadline
+  // instead of waiting it out.
+  private sendTimeoutMs = SEND_TIMEOUT_MS;
 
   constructor(
     @InjectRepository(Mms)
@@ -109,12 +115,11 @@ export class MmsService {
           body: body,
           mediaUrl: mediaUrls,
         }),
-        10000,
-        "sendMms",
+        this.sendTimeoutMs,
       );
 
-      if (!message) {
-        throw new Error("Failed to send MMS");
+      if (message === TIMED_OUT) {
+        throw new Error(`sendMms timed out after ${this.sendTimeoutMs}ms`);
       }
 
       this.logger.log(`MMS sent successfully! Message SID: ${message.sid}`);
@@ -179,25 +184,4 @@ export class MmsService {
     await this.mmsRepository.save(mms);
     return true;
   }
-}
-
-function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  label?: string,
-): Promise<T> {
-  let timeoutId: NodeJS.Timeout;
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      const err = new Error(
-        `Timeout after ${ms}ms${label ? ` (${label})` : ""}`,
-      );
-      reject(err);
-    }, ms);
-  });
-
-  return Promise.race([promise, timeoutPromise]).finally(() => {
-    clearTimeout(timeoutId);
-  });
 }
