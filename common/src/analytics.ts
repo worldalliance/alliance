@@ -36,6 +36,9 @@ export enum AnalyticsEvent {
   Login = "login",
   Logout = "logout",
 
+  // OTA updates
+  OtaGateResolved = "ota_gate_resolved",
+
   // Visible actions (server-side). Each is forwarded to Slack.
   ForumPostCreated = "forum_post_created",
   ForumCommentCreated = "forum_comment_created",
@@ -73,6 +76,18 @@ export enum AnalyticsEvent {
 
   // Server
   DbSlowQuery = "db.slow_query",
+}
+
+/** The `outcome` property of {@link AnalyticsEvent.OtaGateResolved}: why the mobile cold-start gate stopped blocking. */
+export enum OtaGateOutcome {
+  NoUpdate = "no_update",
+  Applied = "applied",
+  CheckTimedOut = "check_timed_out",
+  DownloadTimedOut = "download_timed_out",
+  Skipped = "skipped",
+  CheckError = "check_error",
+  DownloadError = "download_error",
+  ReloadFailed = "reload_failed",
 }
 
 // Strongly-typed labels for exceptions reported via `captureException`.
@@ -121,6 +136,9 @@ export const SEND_TO_SLACK: Record<AnalyticsEvent | ExceptionEvent, boolean> = {
   [AnalyticsEvent.AuthFailedToRefresh]: false,
   [AnalyticsEvent.Login]: true,
   [AnalyticsEvent.Logout]: true,
+
+  // OTA updates
+  [AnalyticsEvent.OtaGateResolved]: false,
 
   // Visible actions (server-side)
   [AnalyticsEvent.ForumPostCreated]: true,
