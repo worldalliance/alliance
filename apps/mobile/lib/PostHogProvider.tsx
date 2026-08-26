@@ -1,3 +1,4 @@
+import type { AnalyticsBackend } from "@alliance/shared/lib/analytics";
 import { registerAnalytics } from "@alliance/shared/lib/analytics";
 import {
   PostHogProviderProps,
@@ -34,7 +35,14 @@ const postHogProviderProps: Omit<PostHogProviderProps, "children"> = __DEV__
 function AnalyticsBridge() {
   const posthog = usePostHog();
   useEffect(() => {
-    if (posthog) registerAnalytics(posthog);
+    if (posthog) {
+      // AnalyticsBackend.flush is optional, so a posthog upgrade that dropped
+      // flush would typecheck and turn every flushAnalytics into a silent
+      // Unsupported. The pin makes that a build error instead.
+      registerAnalytics(
+        posthog satisfies Required<Pick<AnalyticsBackend, "flush">>,
+      );
+    }
   }, [posthog]);
   return null;
 }
