@@ -452,7 +452,7 @@ export function RenderDisplayBlockMobile({
           onPress={() => handleLinkPress(block.url)}
         >
           <IconComponent size={20} />
-          <View className="">
+          <View className="flex-1">
             <Text className="text-base text-black" weight={FontWeight.Medium}>
               {block.text}
             </Text>
