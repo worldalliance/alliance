@@ -1,3 +1,5 @@
+# This repo
+
 ## Packages
 
 - `server/` — backend (NestJS)
@@ -15,10 +17,6 @@ Working under `server/**` → read `server/AGENTS.md`; under `apps/**` → `apps
 ## Worktree
 
 If @.worktree/AGENTS.md exists, read it. Otherwise, you can ignore this.
-
-## Git
-
-Ask before running a git command that writes. Read-only ones (`git diff`, `git status`, `git log`) need no permission.
 
 ## Skills
 
@@ -43,6 +41,12 @@ Read before the matching task:
 Non-standard workspace: every web package installs from `apps/frontend/package.json`. A dependency used in `apps/admin`, `sharedweb`, `common`, … must also be declared there, same version range. `bun install` after editing.
 
 Reach for a maintained npm package over hand-rolling parsing, sanitization, date handling, retries. Same inside the repo — reuse or extract a shared util instead of duplicating one.
+
+# General
+
+## Git
+
+Ask before running a git command that writes. Read-only ones (`git diff`, `git status`, `git log`) need no permission.
 
 ## Fail loudly
 
@@ -96,3 +100,7 @@ Icon-only controls carry a tooltip or `aria-label`, and destructive or irreversi
 ## Working files
 
 Everything stays inside the repo — scratch files, notes, scripts, logs, dumps, downloads. Never `/tmp` or `~`. Same when reading: prefer files in the repo over things stashed elsewhere on the machine.
+
+## Less is more
+
+Follow YAGNI principles and prefer one-liner solutions.
