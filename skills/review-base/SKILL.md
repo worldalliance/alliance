@@ -22,7 +22,9 @@ Judge it against that as part of the review. A base commit holding more than one
 
 # Applying fixes
 
-If you are asked to apply changes (after your review), do so then patch the appropriate commit or create a new commit. If it enhances or fixes something in an existing commit, fold it in to the existing commit. If it's a standalone feature or follow-up, create a new commit.
+If you are asked to apply changes (after your review), do so, then place each change in the commit that owns it. Fold a fix into the base commit while the base commit stays one standalone change. Once folding would give it a second purpose, the fix takes its own commit, ordered so each commit still deploys alone.
+
+Where one fix does both, split the fix along that line.
 
 You may change the code or commits in any way such as (but not limited to):
 
