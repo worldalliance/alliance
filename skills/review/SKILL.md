@@ -4,19 +4,17 @@ description: Review the proposed change for correctness, maintainability, and ri
 disable-model-invocation: true
 ---
 
-You are in CODE REVIEW MODE, not implementation mode.
-
 # Goal
 
 High-signal review of the proposed change: catch correctness bugs, edge cases, and likely regressions; prevent quiet tech debt (duplication, inconsistent abstractions, fragile error handling); keep the change maintainable, testable, secure, and consistent with the codebase.
 
 # Reviewer stance
 
-- Assume the author is competent and had reasons. Ask when context is missing; say so when uncertain, and name the evidence that would settle it.
+- Ask when context is missing; say so when uncertain, and name the evidence that would settle it.
 - Prefer root-cause fixes that preserve clear invariants and hold up as the code evolves. Never recommend a narrow patch solely because it's smaller.
 - When the most robust fix is disproportionately costly, risky, or broad, still name it as preferred, then offer pragmatic alternatives with tradeoffs and the follow-up work each creates.
 
-# What to inspect, in this order
+# What to inspect
 
 1. **Intent & scope** — what is the change trying to do, does the diff match, is anything unrelated mixed in?
 2. **Correctness** — logic, error paths, boundary conditions, concurrency/async hazards, backward compatibility, public API and contract changes.
@@ -25,12 +23,16 @@ High-signal review of the proposed change: catch correctness bugs, edge cases, a
 5. **Reliability** — failure modes, retries, timeouts, idempotency, resource cleanup; logs/metrics/traces where they matter, carrying no secrets or PII.
 6. **Tests** — is the change covered, and by the right kind (unit/integration/e2e)? If not, propose the smallest set of tests that would raise confidence, plus an ordered verification script (lint, typecheck, tests) — propose it even when you can't run it.
 
+# Verify every claim
+
+Every finding is a claim about behavior, and an untested claim is a guess. Before a finding reaches the output, make the defect observable: run the input that breaks it, write a script that fails, take screenshots, query the db, trace the call path back to a real caller, etc.
+
+Some claims resist testing (an external service, a race, a migration against production data). Report those as unverified and name what would settle it.
+
 # Tiers
 
-Every finding lands in exactly one tier. The test is what happens if the change ships as written.
-
 - **Must-fix** — shipping it is wrong. Wrong behavior on a reachable path, data loss, a security or privacy hole, a regression, a broken contract, or a repo rule the build won't catch. The author changes the code before merge.
-- **Should-fix** — it works, and someone pays for it later. Duplication, wrong layer, a fragile error path, an abstraction the next change will fight, a real case with no test. The author picks: fix now, or file a follow-up.
+- **Should-fix** — it works, but someone pays for it later. Duplication, wrong layer, a fragile error path, an abstraction the next change will fight, a real case with no test. The author picks: fix now, or file a follow-up.
 - **Nit** — taste. Naming, ordering, a shorter way to write the same thing. No effect on behavior or on the next change. The author can ignore it without replying.
 
 Out of scope for this change → should-fix, phrased as a follow-up, unless it is a real risk.
@@ -39,7 +41,7 @@ Torn between two tiers, take the lower one. A must-fix the author talks you out 
 
 # Output contract
 
-Always these sections, in this order:
+Always these sections, in this order. If a section has no issues, the section body should say `None`:
 
 ````
 ## Summary
@@ -51,7 +53,7 @@ kebab-case-name
 ```
 - Severity: BLOCKER | HIGH
 - Description: summary stating the defect, readable without the fields below it
-- Evidence: file(s) + snippet or behavioral description
+- Evidence: file(s) + snippet, and how you verified it — the command, test, or query you ran and what it returned
 - Why it matters: risk, regression, security, maintenance
 - Recommended fix: durable and root-cause, small snippets where they help
 - Alternatives: when the recommended fix is disproportionately costly, risky, or broad — tradeoffs and follow-up work for each
