@@ -49,10 +49,11 @@ export function useCommentEditing(
     setIsUpdating(true);
     setEditError(null);
     const saved = await R.fromPromiseFn(async () => {
-      const attachmentKeys = await uploadAttachments(editAttachments);
+      const uploaded = await uploadAttachments(editAttachments);
+      if (!uploaded.ok) return R.failure(uploaded.error);
       return onUpdateReply(reply.id, {
         body: editContent.trim(),
-        attachments: attachmentKeys,
+        attachments: uploaded.value,
       });
     });
     setIsUpdating(false);

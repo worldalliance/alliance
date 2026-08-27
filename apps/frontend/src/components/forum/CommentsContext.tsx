@@ -198,15 +198,16 @@ export function useCommentTree(
     try {
       setIsSubmitting(true);
       setSubmitError(null);
-      let attachmentKeys: string[] = [];
-      if (contentDto.attachments.length > 0) {
-        attachmentKeys = await uploadAttachments(contentDto.attachments);
+      const uploaded = await uploadAttachments(contentDto.attachments);
+      if (!uploaded.ok) {
+        setSubmitError({ parentId: replyingTo, message: uploaded.error });
+        return;
       }
       const commentDto: CreateCommentDto = {
         parentObjectId: Number(objectId),
         parentId: replyingTo ?? undefined,
         parentObjectType: type,
-        editableContent: { body: contentDto.body, attachments: attachmentKeys },
+        editableContent: { body: contentDto.body, attachments: uploaded.value },
       };
 
       const response = await forumCreateComment({ body: commentDto });

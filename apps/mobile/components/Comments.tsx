@@ -609,16 +609,21 @@ export default function Comments({
       try {
         setIsSubmitting(true);
         setSubmitError(null);
-        const attachmentKeys = await uploadAttachments(
-          contentDto.attachments ?? [],
-        );
+        const uploaded = await uploadAttachments(contentDto.attachments ?? []);
+        if (!uploaded.ok) {
+          setSubmitError({
+            parentId: parentId ?? null,
+            message: uploaded.error,
+          });
+          return;
+        }
         const commentDto: CreateCommentDto = {
           parentObjectId: Number(objectId),
           parentId: parentId ?? undefined,
           parentObjectType: type,
           editableContent: {
             body: contentDto.body,
-            attachments: attachmentKeys,
+            attachments: uploaded.value,
           },
         };
 
@@ -699,10 +704,11 @@ export default function Comments({
       replyId: number,
       content: CreateEditableContentDto,
     ): Promise<Result<void, string>> => {
+      const uploaded = await uploadAttachments(content.attachments ?? []);
+      if (!uploaded.ok) return R.failure(uploaded.error);
+      const attachmentKeys = uploaded.value;
+
       const saved = await R.fromPromiseFn(async () => {
-        const attachmentKeys = await uploadAttachments(
-          content.attachments ?? [],
-        );
         const response = await forumUpdateComment({
           path: { id: replyId },
           body: {
@@ -712,7 +718,7 @@ export default function Comments({
             },
           },
         });
-        return { attachmentKeys, error: response.error };
+        return response.error;
       });
 
       if (!saved.ok) {
@@ -720,16 +726,14 @@ export default function Comments({
         return R.failure("Failed to save your edit");
       }
 
-      if (saved.value.error) {
+      if (saved.value) {
         return R.failure(
           errorMessage({
-            error: saved.value.error,
+            error: saved.value,
             fallback: "Failed to save your edit",
           }),
         );
       }
-
-      const { attachmentKeys } = saved.value;
 
       setComments((prevComments) => {
         if (!prevComments) return null;
