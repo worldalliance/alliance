@@ -184,13 +184,6 @@ const ActionActivityDetail = () => {
                 <OutputRenderer submission={activity.formResponseOutput} />
               </div>
             )}
-            {activity.editableContent?.attachments?.map((attachment) => (
-              <img
-                key={attachment}
-                src={attachment}
-                className="w-full h-auto rounded-md object-cover"
-              />
-            ))}
             <LikeFooter
               likeTargetType="activity"
               likeTargetId={activity.id}

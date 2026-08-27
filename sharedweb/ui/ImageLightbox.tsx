@@ -133,7 +133,7 @@ export const ImageThumbnailGrid: React.FC<ImageThumbnailGridProps> = ({
             <img
               src={src}
               alt={alt}
-              className={cn("w-28 h-28 object-cover rounded", imageClassName)}
+              className={cn("w-44 h-44 object-cover rounded", imageClassName)}
             />
           </button>
         ))}

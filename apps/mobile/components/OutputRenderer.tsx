@@ -56,7 +56,7 @@ const renderFormattedOutputFieldValue = (item: ResolvedOutputFieldItem) => {
           <Image
             key={fileValue}
             source={{ uri: getImageSource(fileValue) }}
-            className="w-24 h-24 rounded-lg bg-zinc-200"
+            className="w-36 h-36 rounded-lg bg-zinc-200"
             resizeMode="cover"
           />
         ))}

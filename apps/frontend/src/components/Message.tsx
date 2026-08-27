@@ -107,7 +107,7 @@ const Message = ({
               <ImageThumbnailGrid
                 images={attachments}
                 className="mt-2"
-                imageClassName="border border-zinc-200"
+                imageClassName="w-28 h-28 border border-zinc-200"
               />
             )}
           </div>

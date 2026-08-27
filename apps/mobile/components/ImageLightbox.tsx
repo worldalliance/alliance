@@ -148,7 +148,7 @@ interface ImageLightboxProps {
 
 export default function ImageLightbox({
   uris,
-  thumbnailClassName = "w-24 h-24 rounded",
+  thumbnailClassName = "w-36 h-36 rounded",
 }: ImageLightboxProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
